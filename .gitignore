@@ -1,0 +1,6 @@
+/target
+/.tmp
+/tmp
+/.direnv
+/.env
+/.DS_Store

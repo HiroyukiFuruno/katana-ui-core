@@ -1,0 +1,11 @@
+[package]
+name = "katana-ui-widget"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Floem向け共通UI widget の共通基盤"
+authors.workspace = true
+
+[dependencies]
