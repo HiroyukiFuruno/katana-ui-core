@@ -1,0 +1,20 @@
+/target
+/.DS_Store
+.claude/scheduled_tasks.lock
+tmp
+/dist/
+/build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# openspec workfiles
+**/openspec-*/*.md
+**/opsx*/*.md
+**/opsx-*.md
+
+# Editors
+.idea/
+*.swp
