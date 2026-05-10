@@ -1,5 +1,6 @@
 pub mod icon;
 pub mod icon_text_button;
+pub mod segmented_toggle;
 pub mod toggle;
 pub mod spinner;
 pub mod svg_button;
