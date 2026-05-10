@@ -6,7 +6,9 @@ pub use types::{Direction, SplitPaneProps};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
-use view::{handle_color, handle_hover_color, handle_thickness};
+use view::{
+    handle_active_color, handle_color, handle_cursor, handle_hover_color, handle_thickness,
+};
 
 /// Resolved visual properties for `SplitPane`.
 #[derive(Debug, Clone)]
@@ -18,6 +20,8 @@ pub struct ResolvedSplitPane {
     pub handle_thickness: f32,
     pub handle_color: Color,
     pub handle_hover_color: Color,
+    pub handle_active_color: Color,
+    pub handle_cursor: &'static str,
 }
 
 /// Builder for the SplitPane layout widget.
@@ -69,16 +73,30 @@ impl SplitPane {
 
     #[must_use]
     pub fn resolve(&self, theme: &Theme) -> ResolvedSplitPane {
-        let ratio = ops::clamp_ratio(self.props.ratio, self.props.min_ratio, self.props.max_ratio);
+        let (min_ratio, max_ratio) =
+            ops::normalized_bounds(self.props.min_ratio, self.props.max_ratio);
+        let ratio = ops::clamp_ratio(self.props.ratio, min_ratio, max_ratio);
         ResolvedSplitPane {
             direction: self.props.direction,
             ratio,
-            min_ratio: self.props.min_ratio,
-            max_ratio: self.props.max_ratio,
+            min_ratio,
+            max_ratio,
             handle_thickness: handle_thickness(),
             handle_color: handle_color(theme),
             handle_hover_color: handle_hover_color(theme),
+            handle_active_color: handle_active_color(theme),
+            handle_cursor: handle_cursor(self.props.direction),
         }
+    }
+
+    #[must_use]
+    pub fn drag_ratio(start_ratio: f32, delta_px: f32, total_px: f32) -> f32 {
+        ops::drag_ratio(start_ratio, delta_px, total_px)
+    }
+
+    #[must_use]
+    pub fn reset_ratio() -> f32 {
+        ops::reset_ratio()
     }
 }
 
@@ -114,14 +132,46 @@ mod tests {
     }
 
     #[test]
+    fn drag_ratio_is_clamped_by_unit_range() {
+        let ratio = ops::drag_ratio(0.5, -1000.0, 100.0);
+        assert!((ratio - 0.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
     fn drag_zero_total_returns_start() {
         let r = ops::drag_ratio(0.5, 100.0, 0.0);
         assert!((r - 0.5).abs() < f32::EPSILON);
     }
 
     #[test]
+    fn min_max_bounds_are_normalized() {
+        let theme = Theme::default_light();
+        let r = SplitPane::new()
+            .ratio(0.1)
+            .min_ratio(0.9)
+            .max_ratio(0.2)
+            .resolve(&theme);
+
+        assert!((r.min_ratio - 0.2).abs() < f32::EPSILON);
+        assert!((r.max_ratio - 0.9).abs() < f32::EPSILON);
+        assert!((r.ratio - 0.2).abs() < f32::EPSILON);
+    }
+
+    #[test]
     fn double_click_resets_to_half() {
         assert!((ops::reset_ratio() - 0.5).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn handle_cursor_direction_is_reflected_in_constants() {
+        assert_eq!(view::handle_cursor(Direction::Horizontal), "col-resize");
+        assert_eq!(view::handle_cursor(Direction::Vertical), "row-resize");
+    }
+
+    #[test]
+    fn active_hover_colors_are_distinct_by_alpha() {
+        let theme = Theme::default_light();
+        assert!(view::handle_active_color(&theme).a > view::handle_hover_color(&theme).a);
     }
 
     #[test]
