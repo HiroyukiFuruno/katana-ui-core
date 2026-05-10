@@ -5,6 +5,8 @@ pub use types::{TextAlign, TextProps, TextRole};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use floem::IntoView;
+use floem::views::{Decorators, label};
 use view::{resolve_color, resolve_style};
 
 /// Builder for the Text primitive.
@@ -66,6 +68,19 @@ impl Text {
             max_lines: self.props.max_lines,
             align: self.props.align,
         }
+    }
+
+    #[must_use]
+    pub fn view(self, theme: Theme) -> impl IntoView {
+        let resolved = self.resolve(&theme);
+        let text_color = floem::peniko::Color::rgba8(
+            resolved.color_r,
+            resolved.color_g,
+            resolved.color_b,
+            resolved.color_a,
+        );
+        label(move || resolved.content.clone())
+            .style(move |style| style.font_size(resolved.font_size).color(text_color))
     }
 }
 

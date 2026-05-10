@@ -1,6 +1,5 @@
 use floem::peniko::Color as PenikoColor;
-use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
-use floem::views::{dyn_container, h_stack, label, scroll, toggle_button, v_stack, Decorators};
+use floem::views::{h_stack, label, scroll, v_stack, Decorators};
 use floem::IntoView;
 use katana_ui_widget::primitive::text::{Text, TextRole};
 use katana_ui_widget::theme::color::Color;
@@ -32,6 +31,10 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     scroll(
         v_stack((
             label(|| "Text Roles").style(|s| s.font_size(16.0).margin_bottom(8.0)),
+            label(|| "Live widget").style(|s| s.font_size(13.0)),
+            Text::new("Text::view sample")
+                .role(TextRole::Heading2)
+                .view(theme.clone()),
             role_row("Heading1", h1),
             role_row("Heading2", h2),
             role_row("Heading3", h3),
@@ -54,26 +57,6 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     )
 }
 
-pub fn text_page() -> impl IntoView {
-    let is_dark = create_rw_signal(false);
-
-    v_stack((
-        h_stack((
-            label(|| "Text Primitive").style(|s| s.font_size(20.0)),
-            label(move || if is_dark.get() { "Dark" } else { "Light" }),
-            toggle_button(move || is_dark.get()).on_toggle(move |v| is_dark.set(v)),
-        ))
-        .style(|s| s.gap(12.0).items_center().padding(12.0)),
-        dyn_container(
-            move || is_dark.get(),
-            move |dark| {
-                let theme = if dark {
-                    Theme::default_dark()
-                } else {
-                    Theme::default_light()
-                };
-                page_content(&theme)
-            },
-        ),
-    ))
+pub fn text_page(theme: Theme) -> impl IntoView {
+    page_content(&theme)
 }
