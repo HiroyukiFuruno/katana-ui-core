@@ -6,7 +6,11 @@ pub use types::{SvgButtonProps, Tone, Variant};
 use crate::primitive::icon::{IconSize, IconSource};
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use floem::IntoView;
+use floem::views::{Decorators, button, svg};
 use view::{bg_color, disabled_icon_color, hover_bg_color, icon_color};
+
+const BUTTON_PADDING: f32 = crate::floem_view::GAP_XS;
 
 /// Resolved visual properties for `SvgButton`.
 #[derive(Debug, Clone)]
@@ -103,6 +107,39 @@ impl SvgButton {
             loading: self.props.loading,
             a11y_label: self.props.a11y_label.clone(),
         }
+    }
+
+    #[must_use]
+    pub fn view(self, theme: Theme, mut on_press: impl FnMut() + 'static) -> impl IntoView {
+        let resolved = self.resolve(&theme);
+        let icon = crate::primitive::icon::Icon::new(resolved.icon_source.clone())
+            .size(IconSize::Pt(resolved.size_px))
+            .color_override(resolved.icon_color)
+            .resolve(&theme);
+        let icon_color = crate::floem_view::FloemColor::from_token(resolved.icon_color);
+        let bg_color = resolved
+            .bg_color
+            .map(crate::floem_view::FloemColor::from_token);
+        let disabled = resolved.disabled || resolved.loading;
+        button(svg(icon.svg_content).style(move |style| {
+            style
+                .width(resolved.size_px)
+                .height(resolved.size_px)
+                .color(icon_color)
+        }))
+        .action(move || {
+            if !disabled {
+                on_press();
+            }
+        })
+        .style(move |style| {
+            let style = style.padding(BUTTON_PADDING);
+            if let Some(bg) = bg_color {
+                style.background(bg)
+            } else {
+                style
+            }
+        })
     }
 }
 
