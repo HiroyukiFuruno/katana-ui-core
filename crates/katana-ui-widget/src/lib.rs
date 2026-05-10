@@ -5,6 +5,8 @@ pub mod layout;
 pub mod primitive;
 pub mod theme;
 
+mod floem_view;
+
 /// Registry marker for shared widget components.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct WidgetRegistry;
