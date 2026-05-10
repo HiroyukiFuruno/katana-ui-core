@@ -1,6 +1,7 @@
 pub mod color_swatch;
 pub mod icon;
 pub mod icon_text_button;
+pub mod search_box;
 pub mod segmented_toggle;
 pub mod select_box;
 pub mod text_input;
