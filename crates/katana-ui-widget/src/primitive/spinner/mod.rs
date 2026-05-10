@@ -5,7 +5,16 @@ pub use types::{SpinnerProps, SpinnerSize};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use floem::IntoView;
+use floem::action::exec_after;
+use floem::reactive::{RwSignal, SignalGet, SignalUpdate, create_rw_signal};
+use floem::views::{Decorators, dyn_container, svg};
+use std::time::Duration;
 use view::build_svg;
+
+const FRAME_INTERVAL_MS: u64 = 80;
+const DEGREES_PER_REVOLUTION: f32 = 360.0;
+const MILLIS_PER_SECOND: f32 = 1000.0;
 
 /// Resolved spinner state at a given animation angle.
 #[derive(Debug, Clone)]
@@ -54,6 +63,33 @@ impl Spinner {
         self
     }
 
+    /// Create an animated Floem view for this spinner.
+    ///
+    /// The caller controls whether the spinner is present in the view tree.
+    /// Rotation timing and frame updates are owned by the widget itself.
+    #[must_use]
+    pub fn view(self, theme: Theme) -> impl IntoView {
+        let angle_deg = create_rw_signal(0.0);
+        let is_mounted = create_rw_signal(true);
+        let step_deg = self.step_degrees();
+
+        if !self.props.reduced_motion && step_deg > 0.0 {
+            schedule_next_frame(angle_deg, is_mounted, step_deg);
+        }
+
+        dyn_container(
+            move || angle_deg.try_get().unwrap_or(0.0),
+            move |angle| {
+                let resolved = self.resolve(&theme, angle);
+                svg(resolved.svg_content)
+                    .style(move |s| s.width(resolved.size_px).height(resolved.size_px))
+            },
+        )
+        .on_cleanup(move || {
+            is_mounted.set(false);
+        })
+    }
+
     /// Resolve spinner properties to an SVG frame at `angle_deg` (0.0 for default position).
     #[must_use]
     pub fn resolve(&self, theme: &Theme, angle_deg: f32) -> ResolvedSpinner {
@@ -75,6 +111,29 @@ impl Spinner {
             reduced_motion: self.props.reduced_motion,
         }
     }
+
+    fn step_degrees(&self) -> f32 {
+        self.props.speed_rps * DEGREES_PER_REVOLUTION * FRAME_INTERVAL_MS as f32 / MILLIS_PER_SECOND
+    }
+}
+
+fn schedule_next_frame(angle_deg: RwSignal<f32>, is_mounted: RwSignal<bool>, step_deg: f32) {
+    exec_after(Duration::from_millis(FRAME_INTERVAL_MS), move |_| {
+        if !is_mounted.try_get_untracked().unwrap_or(false) {
+            return;
+        }
+
+        if angle_deg
+            .try_update(|angle| {
+                *angle = (*angle + step_deg) % DEGREES_PER_REVOLUTION;
+            })
+            .is_none()
+        {
+            return;
+        }
+
+        schedule_next_frame(angle_deg, is_mounted, step_deg);
+    });
 }
 
 impl Default for Spinner {
