@@ -5,10 +5,11 @@ pub use types::{InputSize, TextInputProps, TrailingSlot};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use std::rc::Rc;
 use view::{bg_color, border_color, focus_ring_color, font_size, padding, text_color};
 
 /// Resolved visual properties for `TextInput`.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ResolvedTextInput {
     pub value: String,
     pub placeholder: Option<String>,
@@ -25,10 +26,23 @@ pub struct ResolvedTextInput {
     pub readonly: bool,
     pub invalid: bool,
     pub a11y_label: String,
+    pub on_change: Rc<dyn Fn(String)>,
+}
+
+impl ResolvedTextInput {
+    pub fn input(&self, value: impl Into<String>) -> Option<String> {
+        if self.disabled || self.readonly {
+            return None;
+        }
+
+        let next = value.into();
+        (self.on_change)(next.clone());
+        Some(next)
+    }
 }
 
 /// Builder for the TextInput composite widget.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TextInput {
     props: TextInputProps,
 }
@@ -47,6 +61,7 @@ impl TextInput {
                 readonly: false,
                 invalid: false,
                 a11y_label: a11y_label.into(),
+                on_change: Rc::new(|_| {}),
             },
         }
     }
@@ -100,6 +115,12 @@ impl TextInput {
     }
 
     #[must_use]
+    pub fn on_change(mut self, on_change: impl Fn(String) + 'static) -> Self {
+        self.props.on_change = Rc::new(on_change);
+        self
+    }
+
+    #[must_use]
     pub fn resolve(&self, theme: &Theme) -> ResolvedTextInput {
         let has_value = !self.props.value.is_empty();
         ResolvedTextInput {
@@ -118,6 +139,7 @@ impl TextInput {
             readonly: self.props.readonly,
             invalid: self.props.invalid,
             a11y_label: self.props.a11y_label.clone(),
+            on_change: Rc::clone(&self.props.on_change),
         }
     }
 }
@@ -162,5 +184,36 @@ mod tests {
         let theme = Theme::default_light();
         let r = TextInput::new("Field").readonly(true).resolve(&theme);
         assert!(r.readonly);
+    }
+
+    #[test]
+    fn input_calls_on_change_when_editable() {
+        let called = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let called_ref = std::rc::Rc::clone(&called);
+        let theme = Theme::default_light();
+        let r = TextInput::new("Field")
+            .on_change(move |value| {
+                *called_ref.borrow_mut() = Some(value);
+            })
+            .resolve(&theme);
+
+        assert_eq!(r.input("next"), Some("next".to_string()));
+        assert_eq!(*called.borrow(), Some("next".to_string()));
+    }
+
+    #[test]
+    fn readonly_input_does_not_call_on_change() {
+        let called = std::rc::Rc::new(std::cell::RefCell::new(false));
+        let called_ref = std::rc::Rc::clone(&called);
+        let theme = Theme::default_light();
+        let r = TextInput::new("Field")
+            .readonly(true)
+            .on_change(move |_| {
+                *called_ref.borrow_mut() = true;
+            })
+            .resolve(&theme);
+
+        assert_eq!(r.input("next"), None);
+        assert!(!*called.borrow());
     }
 }

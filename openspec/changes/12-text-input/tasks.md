@@ -27,3 +27,10 @@
 - [x] 4.1 `cargo check -p katana-ui-widget`
 - [x] 4.2 `just storybook` で text_input ページが想定通り表示
 - [x] 4.3 ast-lint 通過
+
+## ユーザーフィードバック
+
+- [/] ast-lint の file-length / type-separation が発火した場合、単に `view()` を別ファイルへ逃がして完了扱いにしない。対象 widget の型定義・状態管理・style resolve・event 処理・Storybook ライブセルまで含めて責務境界を再設計し、なぜその分割が妥当かを確認する。
+- [/] Storybook の TextInput ページから resolved 値をラベルで再現した疑似サンプルを除去し、実際の `TextInput::view` で live / readonly / trailing / size / state を確認できる構成にする。
+- [ ] マテリアルUI（Material UI）のように leading icon、trailing icon、clear、spinner を input の枠内に内包する。input 外の sibling 要素として表示する構成は不可。
+- [ ] input 内アイコンの表示 / 非表示 / 領域だけ確保、クリック可能領域、disabled / readonly 時の見え方を API と Storybook に明記する。

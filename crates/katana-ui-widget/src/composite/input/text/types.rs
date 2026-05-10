@@ -1,4 +1,5 @@
 use crate::primitive::icon::IconSource;
+use std::rc::Rc;
 
 /// Content for the trailing slot.
 #[derive(Debug, Clone, Default)]
@@ -20,7 +21,7 @@ pub enum InputSize {
 }
 
 /// Properties for `TextInput`.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TextInputProps {
     pub value: String,
     pub placeholder: Option<String>,
@@ -31,4 +32,5 @@ pub struct TextInputProps {
     pub readonly: bool,
     pub invalid: bool,
     pub a11y_label: String,
+    pub on_change: Rc<dyn Fn(String)>,
 }
