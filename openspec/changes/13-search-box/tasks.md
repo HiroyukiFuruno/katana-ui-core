@@ -27,3 +27,12 @@
 - [x] 4.1 `cargo check -p katana-ui-widget`
 - [x] 4.2 `just storybook` で search_box ページが想定通り表示
 - [x] 4.3 ast-lint 通過（`composite/input/search` から `composite/input/text` のみを参照）
+
+## ユーザーフィードバック
+
+- [/] ast-lint の file-length / type-separation が発火した場合、単に `view()` を別ファイルへ逃がして完了扱いにしない。対象 widget の型定義・状態管理・style resolve・event 処理・Storybook ライブセルまで含めて責務境界を再設計し、なぜその分割が妥当かを確認する。
+- [/] Storybook の SearchBox ページから resolved 値をラベルで再現した疑似サンプルを除去し、実際の `SearchBox::view` で live / readonly / size を確認できる構成にする。
+- [ ] マテリアルUI（Material UI）のように検索アイコン、clear、submit、検索オプションを input の枠内に内包する。input の外に記号やボタンが並ぶ構成は不可。
+- [ ] 正規表現利用、単語単位検索、大文字小文字区別の 3 種コントロールを実装する。各コントロールは default false とし、表示 / 非表示 / 領域だけ確保を利用側から制御できるようにする。
+- [ ] dark mode で SVG の配色が theme token に追従するようにする。preset SVG と custom SVG の両方で `currentColor` 相当の配色反映を確認する。
+- [ ] Storybook に Material UI 風の input 内アイコン配置、3 種コントロール、dark mode SVG 配色変化の live sample を追加する。
