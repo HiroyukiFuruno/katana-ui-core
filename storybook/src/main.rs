@@ -8,6 +8,7 @@ use pages::icon::icon_page;
 use pages::icon_text_button::icon_text_button_page;
 use pages::segmented_toggle::segmented_toggle_page;
 use pages::select_box::select_box_page;
+use pages::text_input::text_input_page;
 use pages::spinner::spinner_page;
 use pages::toggle::toggle_page;
 use pages::svg_button::svg_button_page;
@@ -30,6 +31,7 @@ enum Page {
     SegmentedToggle,
     SelectBox,
     ColorSwatch,
+    TextInput,
 }
 
 fn app_view() -> impl IntoView {
@@ -51,6 +53,7 @@ fn app_view() -> impl IntoView {
             button(label(|| "SegmentedToggle")).action(move || current_page.set(Page::SegmentedToggle)),
             button(label(|| "SelectBox")).action(move || current_page.set(Page::SelectBox)),
             button(label(|| "ColorSwatch")).action(move || current_page.set(Page::ColorSwatch)),
+            button(label(|| "TextInput")).action(move || current_page.set(Page::TextInput)),
         ))
         .style(|s| s.padding(8.0).gap(4.0)),
     )
@@ -71,6 +74,7 @@ fn app_view() -> impl IntoView {
             Page::SegmentedToggle => segmented_toggle_page().into_any(),
             Page::SelectBox => select_box_page().into_any(),
             Page::ColorSwatch => color_swatch_page().into_any(),
+            Page::TextInput => text_input_page().into_any(),
         },
     )
     .style(|s| s.flex_grow(1.0));
