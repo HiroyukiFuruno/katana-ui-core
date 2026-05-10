@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 /// Size of the select box.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SelectSize {
@@ -8,7 +10,7 @@ pub enum SelectSize {
 }
 
 /// Properties for `SelectBox<K>`.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SelectBoxProps<K> {
     pub value: Option<K>,
     pub options: Vec<(K, String)>,
@@ -17,4 +19,5 @@ pub struct SelectBoxProps<K> {
     pub disabled: bool,
     pub is_open: bool,
     pub a11y_label: String,
+    pub on_change: Rc<dyn Fn(K)>,
 }

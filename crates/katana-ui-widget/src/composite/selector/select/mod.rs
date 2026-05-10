@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod ops;
 mod types;
 mod view;
@@ -7,6 +6,7 @@ pub use types::{SelectBoxProps, SelectSize};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use std::rc::Rc;
 use view::{border_color, font_size, option_bg, option_text, padding, trigger_bg, trigger_text};
 
 /// Resolved visual properties for a single option row.
@@ -35,7 +35,7 @@ pub struct ResolvedSelectBox {
 }
 
 /// Builder for the SelectBox composite widget.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SelectBox<K> {
     props: SelectBoxProps<K>,
 }
@@ -52,6 +52,7 @@ impl<K: PartialEq + Clone> SelectBox<K> {
                 disabled: false,
                 is_open: false,
                 a11y_label: a11y_label.into(),
+                on_change: Rc::new(|_| {}),
             },
         }
     }
@@ -84,6 +85,31 @@ impl<K: PartialEq + Clone> SelectBox<K> {
     pub fn open(mut self, is_open: bool) -> Self {
         self.props.is_open = is_open;
         self
+    }
+
+    #[must_use]
+    pub fn on_change(mut self, on_change: impl Fn(K) + 'static) -> Self {
+        self.props.on_change = Rc::new(on_change);
+        self
+    }
+
+    #[must_use]
+    pub fn next_open(&self) -> bool {
+        ops::toggle_open(self.props.is_open, self.props.disabled)
+    }
+
+    pub fn select(&self, value: K) -> Option<(K, bool)> {
+        if self.props.disabled {
+            return None;
+        }
+
+        let exists = self.props.options.iter().any(|(key, _)| *key == value);
+        if !exists {
+            return None;
+        }
+
+        (self.props.on_change)(value.clone());
+        Some((value, ops::close_on_select()))
     }
 
     #[must_use]
@@ -189,5 +215,31 @@ mod tests {
             .disabled(true)
             .resolve(&theme);
         assert_eq!(r.trigger_text, theme.color.text_disabled);
+    }
+
+    #[test]
+    fn select_calls_on_change_and_closes_panel() {
+        let called = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let called_ref = std::rc::Rc::clone(&called);
+        let select = SelectBox::new(opts(), "Choose").on_change(move |value| {
+            *called_ref.borrow_mut() = Some(value);
+        });
+
+        assert_eq!(select.select(2u8), Some((2u8, false)));
+        assert_eq!(*called.borrow(), Some(2u8));
+    }
+
+    #[test]
+    fn disabled_select_does_not_call_on_change() {
+        let called = std::rc::Rc::new(std::cell::RefCell::new(false));
+        let called_ref = std::rc::Rc::clone(&called);
+        let select = SelectBox::new(opts(), "Choose")
+            .disabled(true)
+            .on_change(move |_| {
+                *called_ref.borrow_mut() = true;
+            });
+
+        assert_eq!(select.select(2u8), None);
+        assert!(!*called.borrow());
     }
 }
