@@ -3,5 +3,23 @@
 version = 4
 
 [[package]]
+name = "floem_reactive"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6b9dd30efe54c413d07e3af6b410afb4b098ff70e79cfd0d13b6f3f2246448a"
+dependencies = [
+ "smallvec",
+]
+
+[[package]]
 name = "katana-ui-widget"
 version = "0.1.0"
+dependencies = [
+ "floem_reactive",
+]
+
+[[package]]
+name = "smallvec"
+version = "1.15.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"

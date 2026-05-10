@@ -1548,6 +1548,9 @@ dependencies = [
 [[package]]
 name = "katana-ui-widget"
 version = "0.1.0"
+dependencies = [
+ "floem_reactive",
+]
 
 [[package]]
 name = "katana-ui-widget-storybook"

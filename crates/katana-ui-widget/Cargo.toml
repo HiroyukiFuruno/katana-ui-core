@@ -9,3 +9,4 @@ description = "Floem向け共通UI widget の共通基盤"
 authors.workspace = true
 
 [dependencies]
+floem_reactive = "0.2.0"
