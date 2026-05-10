@@ -3,6 +3,7 @@ mod pages;
 use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
 use floem::views::{button, h_stack, label, scroll, v_stack, Decorators};
 use floem::{Application, IntoView};
+use pages::icon::icon_page;
 use pages::text::text_page;
 use pages::theme_tokens::theme_tokens_page;
 use pages::welcome::welcome_page;
@@ -12,6 +13,7 @@ enum Page {
     Welcome,
     ThemeTokens,
     Text,
+    Icon,
 }
 
 fn app_view() -> impl IntoView {
@@ -24,6 +26,7 @@ fn app_view() -> impl IntoView {
             button(label(|| "Theme Tokens"))
                 .action(move || current_page.set(Page::ThemeTokens)),
             button(label(|| "Text")).action(move || current_page.set(Page::Text)),
+            button(label(|| "Icon")).action(move || current_page.set(Page::Icon)),
         ))
         .style(|s| s.padding(8.0).gap(4.0)),
     )
@@ -35,6 +38,7 @@ fn app_view() -> impl IntoView {
             Page::Welcome => welcome_page().into_any(),
             Page::ThemeTokens => theme_tokens_page().into_any(),
             Page::Text => text_page().into_any(),
+            Page::Icon => icon_page().into_any(),
         },
     )
     .style(|s| s.flex_grow(1.0));
