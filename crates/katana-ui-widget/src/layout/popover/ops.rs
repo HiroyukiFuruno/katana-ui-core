@@ -1,4 +1,4 @@
-use super::types::{AnchorRect, Placement};
+use super::types::{AnchorRect, Placement, PopoverProps};
 
 /// Resolved position for the popover origin (top-left corner).
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -18,7 +18,7 @@ pub(super) fn compute_origin(
     viewport_width: f32,
     viewport_height: f32,
 ) -> PopoverOrigin {
-    let effective = flip_if_needed(
+    let effective = resolve_placement(
         placement,
         anchor,
         offset,
@@ -28,6 +28,26 @@ pub(super) fn compute_origin(
         viewport_height,
     );
     origin_for(effective, anchor, offset)
+}
+
+pub(super) fn resolve_placement(
+    placement: Placement,
+    anchor: AnchorRect,
+    offset: f32,
+    popover_width: f32,
+    popover_height: f32,
+    viewport_width: f32,
+    viewport_height: f32,
+) -> Placement {
+    flip_if_needed(
+        placement,
+        anchor,
+        offset,
+        popover_width,
+        popover_height,
+        viewport_width,
+        viewport_height,
+    )
 }
 
 fn origin_for(placement: Placement, anchor: AnchorRect, offset: f32) -> PopoverOrigin {
@@ -100,13 +120,13 @@ fn flip_if_needed(
 }
 
 /// Returns whether an outside click should close the popover.
-pub(super) fn should_dismiss_on_outside_click(dismiss: bool) -> bool {
-    dismiss
+pub(super) fn should_dismiss_on_outside_click(props: &PopoverProps) -> bool {
+    props.open && props.dismiss_on_outside_click
 }
 
 /// Returns whether an Esc key press should close the popover.
-pub(super) fn should_dismiss_on_esc(dismiss: bool) -> bool {
-    dismiss
+pub(super) fn should_dismiss_on_esc(props: &PopoverProps) -> bool {
+    props.open && props.dismiss_on_esc
 }
 
 #[cfg(test)]
