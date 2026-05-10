@@ -1,0 +1,118 @@
+use floem::peniko::Color as PenikoColor;
+use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
+use floem::views::{dyn_container, h_stack, label, scroll, toggle_button, v_stack, Decorators};
+use floem::IntoView;
+use katana_ui_widget::composite::button::icon_text::{IconPosition, IconTextButton};
+use katana_ui_widget::composite::button::text::{Size, Tone, Variant};
+use katana_ui_widget::primitive::icon::{IconSize, IconSource};
+use katana_ui_widget::theme::Theme;
+
+const SAMPLE_SVG: &[u8] = b"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 16 16\"><circle cx=\"8\" cy=\"8\" r=\"6\" fill=\"currentColor\"/></svg>";
+
+fn btn_cell(lbl: &'static str, font_sz: f32, r: u8, g: u8, b: u8, a: u8) -> impl IntoView {
+    let color = PenikoColor::rgba8(r, g, b, a);
+    label(move || lbl).style(move |s| s.font_size(font_sz).color(color).padding(4.0))
+}
+
+fn page_content(theme: &Theme) -> impl IntoView + use<> {
+    let icon = IconSource::SvgBytes(SAMPLE_SVG);
+
+    let r0 = IconTextButton::new(icon.clone(), "Leading Icon")
+        .icon_position(IconPosition::Leading)
+        .variant(Variant::Primary)
+        .tone(Tone::Accent)
+        .size(Size::Md)
+        .resolve(theme);
+
+    let r1 = IconTextButton::new(icon.clone(), "Trailing Icon")
+        .icon_position(IconPosition::Trailing)
+        .variant(Variant::Secondary)
+        .tone(Tone::Accent)
+        .size(Size::Md)
+        .resolve(theme);
+
+    let r2 = IconTextButton::new(icon.clone(), "Danger")
+        .variant(Variant::Primary)
+        .tone(Tone::Danger)
+        .size(Size::Md)
+        .resolve(theme);
+
+    let r3 = IconTextButton::new(icon.clone(), "Small")
+        .variant(Variant::Ghost)
+        .tone(Tone::Neutral)
+        .size(Size::Sm)
+        .icon_size(IconSize::Sm)
+        .resolve(theme);
+
+    let r4 = IconTextButton::new(icon.clone(), "Large")
+        .variant(Variant::Primary)
+        .tone(Tone::Neutral)
+        .size(Size::Lg)
+        .icon_size(IconSize::Lg)
+        .resolve(theme);
+
+    let r_disabled = IconTextButton::new(icon.clone(), "Disabled")
+        .disabled(true)
+        .resolve(theme);
+
+    let r_loading = IconTextButton::new(icon.clone(), "Loading...")
+        .loading(true)
+        .resolve(theme);
+
+    let bg = PenikoColor::rgb8(theme.color.bg.r, theme.color.bg.g, theme.color.bg.b);
+    let text_col = PenikoColor::rgb8(theme.color.text.r, theme.color.text.g, theme.color.text.b);
+
+    scroll(
+        v_stack((
+            label(|| "IconTextButton Samples").style(|s| s.font_size(16.0).margin_bottom(8.0)),
+            h_stack((
+                btn_cell("Leading/Primary/Accent", r0.font_size, r0.text_color.r, r0.text_color.g, r0.text_color.b, r0.text_alpha),
+                btn_cell("Trailing/Secondary/Accent", r1.font_size, r1.text_color.r, r1.text_color.g, r1.text_color.b, r1.text_alpha),
+                btn_cell("Primary/Danger", r2.font_size, r2.text_color.r, r2.text_color.g, r2.text_color.b, r2.text_alpha),
+            ))
+            .style(|s| s.gap(8.0)),
+            h_stack((
+                btn_cell("Ghost/Neutral/Sm", r3.font_size, r3.text_color.r, r3.text_color.g, r3.text_color.b, r3.text_alpha),
+                btn_cell("Primary/Neutral/Lg", r4.font_size, r4.text_color.r, r4.text_color.g, r4.text_color.b, r4.text_alpha),
+            ))
+            .style(|s| s.gap(8.0)),
+            label(|| "States").style(|s| s.font_size(16.0).margin_top(12.0).margin_bottom(8.0)),
+            h_stack((
+                btn_cell("Disabled", r_disabled.font_size, r_disabled.text_color.r, r_disabled.text_color.g, r_disabled.text_color.b, r_disabled.text_alpha),
+                btn_cell("Loading (semi-transparent)", r_loading.font_size, r_loading.text_color.r, r_loading.text_color.g, r_loading.text_color.b, r_loading.text_alpha),
+            ))
+            .style(|s| s.gap(8.0)),
+        ))
+        .style(move |s| {
+            s.gap(8.0)
+                .padding(16.0)
+                .background(bg)
+                .color(text_col)
+                .min_width_full()
+        }),
+    )
+}
+
+pub fn icon_text_button_page() -> impl IntoView {
+    let is_dark = create_rw_signal(false);
+
+    v_stack((
+        h_stack((
+            label(|| "IconTextButton").style(|s| s.font_size(20.0)),
+            label(move || if is_dark.get() { "Dark" } else { "Light" }),
+            toggle_button(move || is_dark.get()).on_toggle(move |v| is_dark.set(v)),
+        ))
+        .style(|s| s.gap(12.0).items_center().padding(12.0)),
+        dyn_container(
+            move || is_dark.get(),
+            move |dark| {
+                let theme = if dark {
+                    Theme::default_dark()
+                } else {
+                    Theme::default_light()
+                };
+                page_content(&theme)
+            },
+        ),
+    ))
+}
