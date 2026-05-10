@@ -1,3 +1,23 @@
 {
-  "source_roots": ["crates"]
+  "source_roots": ["crates"],
+  "rules": {
+    "file-length": {
+      "enabled": true,
+      "threshold": 300
+    },
+    "function-length": {
+      "enabled": true,
+      "threshold": 50
+    },
+    "nesting-depth": {
+      "enabled": true,
+      "threshold": 4
+    },
+    "pub-free-fn": {
+      "enabled": true
+    },
+    "type-separation": {
+      "enabled": true
+    }
+  }
 }

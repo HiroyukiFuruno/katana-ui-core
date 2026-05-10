@@ -81,6 +81,10 @@ jobs:
       - name: Install just
         uses: taiki-e/install-action@just
 
+      - name: Install ast-lint
+        if: matrix.os != 'windows-latest'
+        run: just ast-lint-install
+
       - name: Check types
         run: just check-types
 
@@ -102,6 +106,10 @@ jobs:
 
       - name: Run tests
         run: just unit-test
+
+      - name: Check storybook
+        if: matrix.os != 'windows-latest'
+        run: just storybook-check
 
       - name: Run coverage
         if: matrix.os == 'ubuntu-latest'

@@ -1,0 +1,17 @@
+[workspace]
+
+[package]
+name = "katana-ui-widget-storybook"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Interactive storybook for katana-ui-widget components"
+publish = false
+
+[[bin]]
+name = "storybook"
+path = "src/main.rs"
+
+[dependencies]
+katana-ui-widget = { path = "../crates/katana-ui-widget" }
+floem = "0.2.0"

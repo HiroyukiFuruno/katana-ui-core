@@ -1,5 +1,10 @@
 //! KatanA ecosystem shared UI widgets.
 
+pub mod composite;
+pub mod layout;
+pub mod primitive;
+pub mod theme;
+
 /// Registry marker for shared widget components.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct WidgetRegistry;

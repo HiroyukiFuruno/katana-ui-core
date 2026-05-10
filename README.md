@@ -22,32 +22,52 @@
 
 `katana-ui-widget` は、KatanAエコシステム向けの共有UI部品を管理するリポジトリです。
 
-このリポジトリはFloem前提です。`egui` 固有の部品をそのまま移す場所ではありません。
+**Floem前提**です。`egui` 互換層や egui 固有の部品は対象外です。
 
-## 責務
+## Widget 階層と依存方向
 
-- metadata表示
-- unresolved表示
-- copy/edit action
-- tab、toolbar、badgeなどの共有UI部品
+```
+theme  ←  primitive  ←  composite  ←  layout
+```
 
-## 非責務
+| 階層 | パス | 依存可能な層 |
+|---|---|---|
+| `theme` | `src/theme/` | なし |
+| `primitive` | `src/primitive/` | theme のみ |
+| `composite` | `src/composite/<category>/` | theme, primitive |
+| `layout` | `src/layout/` | theme, primitive, composite |
 
-- KMEの文書モデル
-- metadata schema本体
-- KatanAアプリ本体のshell/chrome
-- `egui` 互換層
+詳細は [`docs/directory-structure.md`](docs/directory-structure.md) を参照。
+
+## Storybook
+
+widget を目視確認するための独立した Floem アプリです。`crates/` 外で管理し、workspace に含めません。
+
+```bash
+# Storybook を起動
+just storybook
+
+# コンパイル確認のみ（CI用）
+just storybook-check
+```
 
 ## 品質ゲート
 
-ローカル確認は次で実行します。
-
 ```bash
+# 全チェック（fmt / types / lint / ast-lint / tests）
 just check
-```
 
-共有AST lint（抽象構文木ベースの静的検査）の導入は次で行います。
-
-```bash
+# ast-lint インストール（初回のみ）
 just ast-lint-install
 ```
+
+## ドキュメント
+
+- [`docs/directory-structure.md`](docs/directory-structure.md) — 階層図と依存方向
+- [`docs/widget-extraction-policy.md`](docs/widget-extraction-policy.md) — 抽出対象の判断軸
+- [`docs/release.md`](docs/release.md) — リリース手順
+- [`CONTRIBUTING.md`](CONTRIBUTING.md) / [`CONTRIBUTING.ja.md`](CONTRIBUTING.ja.md) — 貢献ガイド
+
+## スキル
+
+- `.claude/skills/kuw-workflow-guide/` — KUW 専用ワークフローガイド（Floem前提・階層ルール・Storybook規約）

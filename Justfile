@@ -83,6 +83,14 @@ update:
     {{RTK_CMD}}cargo upgrade -i
     {{RTK_CMD}}cargo update
 
+# Run the Storybook (independent Cargo project)
+storybook:
+    cd storybook && cargo run
+
+# Check that Storybook compiles without running
+storybook-check:
+    cd storybook && cargo check
+
 # Verify VERSION follows the published release line
 release-target-check:
     bash scripts/release/verify-version.sh "{{VERSION}}"
