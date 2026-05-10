@@ -1,6 +1,5 @@
 use floem::peniko::Color as PenikoColor;
-use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
-use floem::views::{dyn_container, h_stack, label, scroll, toggle_button, v_stack, Decorators};
+use floem::views::{h_stack, label, scroll, v_stack, Decorators};
 use floem::IntoView;
 use katana_ui_widget::composite::button::text::{Size, TextButton, Tone, Variant};
 use katana_ui_widget::theme::Theme;
@@ -52,6 +51,11 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     scroll(
         v_stack((
             label(|| "TextButton Samples").style(|s| s.font_size(16.0).margin_bottom(8.0)),
+            label(|| "Live widget").style(|s| s.font_size(13.0)),
+            TextButton::new("Clickable")
+                .variant(Variant::Primary)
+                .tone(Tone::Accent)
+                .view(theme.clone(), || {}),
             h_stack((
                 btn_cell("Primary/Accent/Md", fs0, r0, g0, b0, a0),
                 btn_cell("Primary/Danger/Md", fs1, r1, g1, b1, a1),
@@ -82,26 +86,6 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     )
 }
 
-pub fn text_button_page() -> impl IntoView {
-    let is_dark = create_rw_signal(false);
-
-    v_stack((
-        h_stack((
-            label(|| "TextButton").style(|s| s.font_size(20.0)),
-            label(move || if is_dark.get() { "Dark" } else { "Light" }),
-            toggle_button(move || is_dark.get()).on_toggle(move |v| is_dark.set(v)),
-        ))
-        .style(|s| s.gap(12.0).items_center().padding(12.0)),
-        dyn_container(
-            move || is_dark.get(),
-            move |dark| {
-                let theme = if dark {
-                    Theme::default_dark()
-                } else {
-                    Theme::default_light()
-                };
-                page_content(&theme)
-            },
-        ),
-    ))
+pub fn text_button_page(theme: Theme) -> impl IntoView {
+    page_content(&theme)
 }

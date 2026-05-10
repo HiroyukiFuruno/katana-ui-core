@@ -26,3 +26,7 @@
 - [x] 4.1 `cargo check -p katana-ui-widget`
 - [x] 4.2 storybook-check 通過
 - [x] 4.3 ast-lint 通過
+
+## ユーザーフィードバック
+
+- [/] ast-lint の file-length / type-separation が発火した場合、単に `view()` を別ファイルへ逃がして完了扱いにしない。対象 widget の型定義・状態管理・style resolve・event 処理・Storybook ライブセルまで含めて責務境界を再設計し、なぜその分割が妥当かを確認する。

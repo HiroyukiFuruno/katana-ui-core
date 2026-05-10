@@ -5,6 +5,8 @@ pub use types::{Size, TextButtonProps, Tone, Variant};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use floem::IntoView;
+use floem::views::{Decorators, button, label};
 use view::{bg_color, font_size, hover_bg_color, loading_text_alpha, padding, text_color};
 
 /// Resolved visual properties for `TextButton`.
@@ -106,6 +108,38 @@ impl TextButton {
             loading: self.props.loading,
             text_alpha,
         }
+    }
+
+    #[must_use]
+    pub fn view(self, theme: Theme, mut on_press: impl FnMut() + 'static) -> impl IntoView {
+        let resolved = self.resolve(&theme);
+        let text_color = crate::floem_view::FloemColor::from_token(Color {
+            a: resolved.text_alpha,
+            ..resolved.text_color
+        });
+        let bg_color = resolved
+            .bg_color
+            .map(crate::floem_view::FloemColor::from_token);
+        let disabled = resolved.disabled || resolved.loading;
+        button(
+            label(move || resolved.label.clone())
+                .style(move |style| style.font_size(resolved.font_size).color(text_color)),
+        )
+        .action(move || {
+            if !disabled {
+                on_press();
+            }
+        })
+        .style(move |style| {
+            let style = style
+                .padding_horiz(resolved.pad_h)
+                .padding_vert(resolved.pad_v);
+            if let Some(bg) = bg_color {
+                style.background(bg)
+            } else {
+                style
+            }
+        })
     }
 }
 
