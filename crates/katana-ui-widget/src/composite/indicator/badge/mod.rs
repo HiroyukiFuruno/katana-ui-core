@@ -5,7 +5,12 @@ pub use types::{BadgeProps, BadgeSize, BadgeTone, BadgeVariant};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use floem::IntoView;
+use floem::views::{Decorators, h_stack, label};
 use view::{bg_color, border_color, font_size, padding, text_color};
+
+const BADGE_GAP: f32 = crate::floem_view::GAP_XS;
+const BADGE_RADIUS: f32 = crate::floem_view::CORNER_RADIUS_SM;
 
 /// Resolved visual properties for `Badge`.
 #[derive(Debug, Clone)]
@@ -76,6 +81,47 @@ impl Badge {
             border_color: border_color(self.props.tone, self.props.variant, theme),
             has_leading_icon: self.props.leading_icon.is_some(),
         }
+    }
+
+    #[must_use]
+    pub fn view(self, theme: Theme) -> impl IntoView {
+        let resolved = self.resolve(&theme);
+        let text = crate::floem_view::FloemColor::from_token(resolved.text_color);
+        let bg = resolved
+            .bg_color
+            .map(crate::floem_view::FloemColor::from_token);
+        let border = resolved
+            .border_color
+            .map(crate::floem_view::FloemColor::from_token);
+        h_stack((
+            label(move || {
+                if resolved.has_leading_icon {
+                    "●".to_string()
+                } else {
+                    String::new()
+                }
+            }),
+            label(move || resolved.label.clone())
+                .style(move |style| style.font_size(resolved.font_size).color(text)),
+        ))
+        .style(move |style| {
+            let style = style
+                .gap(BADGE_GAP)
+                .items_center()
+                .padding_vert(resolved.pad_v)
+                .padding_horiz(resolved.pad_h)
+                .border_radius(BADGE_RADIUS);
+            let style = if let Some(bg) = bg {
+                style.background(bg)
+            } else {
+                style
+            };
+            if let Some(border) = border {
+                style.border(1.0).border_color(border)
+            } else {
+                style
+            }
+        })
     }
 }
 
