@@ -5,11 +5,13 @@ pub use types::{Segment, SegmentedSize, SegmentedToggleProps};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use std::rc::Rc;
 use view::{font_size, padding, selected_bg, selected_text, unselected_bg, unselected_text};
 
 /// Resolved visual properties for a single segment.
 #[derive(Debug, Clone)]
 pub struct ResolvedSegment {
+    pub key_index: usize,
     pub label: String,
     pub bg_color: Color,
     pub text_color: Color,
@@ -28,7 +30,7 @@ pub struct ResolvedSegmentedToggle {
 }
 
 /// Builder for the SegmentedToggle composite widget.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SegmentedToggle<K> {
     props: SegmentedToggleProps<K>,
 }
@@ -43,6 +45,7 @@ impl<K: PartialEq + Clone> SegmentedToggle<K> {
                 size: SegmentedSize::default(),
                 disabled: false,
                 a11y_label: a11y_label.into(),
+                on_change: Rc::new(|_| {}),
             },
         }
     }
@@ -60,6 +63,27 @@ impl<K: PartialEq + Clone> SegmentedToggle<K> {
     }
 
     #[must_use]
+    pub fn on_change(mut self, on_change: impl Fn(K) + 'static) -> Self {
+        self.props.on_change = Rc::new(on_change);
+        self
+    }
+
+    /// Select an option and notify the caller when enabled.
+    pub fn select(&self, value: K) -> Option<K> {
+        if self.props.disabled {
+            return None;
+        }
+
+        let exists = self.props.options.iter().any(|(key, _)| *key == value);
+        if !exists {
+            return None;
+        }
+
+        (self.props.on_change)(value.clone());
+        Some(value)
+    }
+
+    #[must_use]
     pub fn resolve(&self, theme: &Theme) -> ResolvedSegmentedToggle {
         let fs = font_size(self.props.size);
         let (pv, ph) = padding(self.props.size);
@@ -67,6 +91,7 @@ impl<K: PartialEq + Clone> SegmentedToggle<K> {
 
         let segments = if self.props.options.is_empty() {
             vec![ResolvedSegment {
+                key_index: 0,
                 label: String::new(),
                 bg_color: unselected_bg(theme),
                 text_color: unselected_text(disabled, theme),
@@ -76,7 +101,8 @@ impl<K: PartialEq + Clone> SegmentedToggle<K> {
             self.props
                 .options
                 .iter()
-                .map(|(key, seg)| {
+                .enumerate()
+                .map(|(index, (key, seg))| {
                     let selected = *key == self.props.value;
                     let label = match seg {
                         Segment::Label(s) => s.clone(),
@@ -93,6 +119,7 @@ impl<K: PartialEq + Clone> SegmentedToggle<K> {
                         unselected_text(disabled, theme)
                     };
                     ResolvedSegment {
+                        key_index: index,
                         label,
                         bg_color,
                         text_color,
@@ -182,5 +209,31 @@ mod tests {
             .collect::<Vec<_>>();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].bg_color, theme.color.border);
+    }
+
+    #[test]
+    fn select_calls_on_change_when_enabled() {
+        let called = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let called_ref = std::rc::Rc::clone(&called);
+        let toggle = SegmentedToggle::new(Mode::List, options(), "Mode").on_change(move |mode| {
+            *called_ref.borrow_mut() = Some(mode);
+        });
+
+        assert_eq!(toggle.select(Mode::Grid), Some(Mode::Grid));
+        assert_eq!(*called.borrow(), Some(Mode::Grid));
+    }
+
+    #[test]
+    fn disabled_select_does_not_call_on_change() {
+        let called = std::rc::Rc::new(std::cell::RefCell::new(false));
+        let called_ref = std::rc::Rc::clone(&called);
+        let toggle = SegmentedToggle::new(Mode::List, options(), "Mode")
+            .disabled(true)
+            .on_change(move |_| {
+                *called_ref.borrow_mut() = true;
+            });
+
+        assert_eq!(toggle.select(Mode::Grid), None);
+        assert!(!*called.borrow());
     }
 }
