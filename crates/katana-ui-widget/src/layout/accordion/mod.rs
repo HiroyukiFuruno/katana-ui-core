@@ -5,13 +5,14 @@ pub use types::{AccordionProps, IndicatorPosition};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use std::rc::Rc;
 use view::{
     animation_ms, border_color, chevron_symbol, header_bg, header_font_size, header_padding,
     header_text,
 };
 
 /// Resolved visual properties for `Accordion`.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ResolvedAccordion {
     pub header: String,
     pub chevron: Option<&'static str>,
@@ -25,10 +26,23 @@ pub struct ResolvedAccordion {
     pub header_text: Color,
     pub border_color: Color,
     pub animation_ms: u32,
+    pub on_toggle: Rc<dyn Fn(bool)>,
+}
+
+impl ResolvedAccordion {
+    pub fn toggle(&self) -> Option<bool> {
+        if self.disabled {
+            return None;
+        }
+
+        let next = !self.expanded;
+        (self.on_toggle)(next);
+        Some(next)
+    }
 }
 
 /// Builder for the Accordion layout widget.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Accordion {
     props: AccordionProps,
 }
@@ -42,6 +56,7 @@ impl Accordion {
                 expanded: false,
                 disabled: false,
                 indicator: IndicatorPosition::default(),
+                on_toggle: Rc::new(|_| {}),
             },
         }
     }
@@ -65,6 +80,12 @@ impl Accordion {
     }
 
     #[must_use]
+    pub fn on_toggle(mut self, on_toggle: impl Fn(bool) + 'static) -> Self {
+        self.props.on_toggle = Rc::new(on_toggle);
+        self
+    }
+
+    #[must_use]
     pub fn resolve(&self, theme: &Theme) -> ResolvedAccordion {
         let (pv, ph) = header_padding();
         ResolvedAccordion {
@@ -80,6 +101,7 @@ impl Accordion {
             header_text: header_text(self.props.disabled, theme),
             border_color: border_color(theme),
             animation_ms: animation_ms(),
+            on_toggle: Rc::clone(&self.props.on_toggle),
         }
     }
 }
@@ -119,5 +141,37 @@ mod tests {
         let theme = Theme::default_light();
         let r = Accordion::new("Section").disabled(true).resolve(&theme);
         assert_eq!(r.header_text, theme.color.text_disabled);
+    }
+
+    #[test]
+    fn toggle_calls_on_toggle_with_next_state() {
+        let called = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let called_ref = std::rc::Rc::clone(&called);
+        let theme = Theme::default_light();
+        let r = Accordion::new("Section")
+            .expanded(false)
+            .on_toggle(move |expanded| {
+                *called_ref.borrow_mut() = Some(expanded);
+            })
+            .resolve(&theme);
+
+        assert_eq!(r.toggle(), Some(true));
+        assert_eq!(*called.borrow(), Some(true));
+    }
+
+    #[test]
+    fn disabled_toggle_does_not_call_on_toggle() {
+        let called = std::rc::Rc::new(std::cell::RefCell::new(false));
+        let called_ref = std::rc::Rc::clone(&called);
+        let theme = Theme::default_light();
+        let r = Accordion::new("Section")
+            .disabled(true)
+            .on_toggle(move |_| {
+                *called_ref.borrow_mut() = true;
+            })
+            .resolve(&theme);
+
+        assert_eq!(r.toggle(), None);
+        assert!(!*called.borrow());
     }
 }
