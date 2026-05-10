@@ -7,6 +7,7 @@ use pages::badge::badge_page;
 use pages::color_swatch::color_swatch_page;
 use pages::icon::icon_page;
 use pages::icon_text_button::icon_text_button_page;
+use pages::key_cap::key_cap_page;
 use pages::segmented_toggle::segmented_toggle_page;
 use pages::search_box::search_box_page;
 use pages::select_box::select_box_page;
@@ -38,6 +39,7 @@ enum Page {
     SearchBox,
     Tooltip,
     Badge,
+    KeyCap,
 }
 
 fn app_view() -> impl IntoView {
@@ -63,6 +65,7 @@ fn app_view() -> impl IntoView {
             button(label(|| "SearchBox")).action(move || current_page.set(Page::SearchBox)),
             button(label(|| "Tooltip")).action(move || current_page.set(Page::Tooltip)),
             button(label(|| "Badge")).action(move || current_page.set(Page::Badge)),
+            button(label(|| "KeyCap")).action(move || current_page.set(Page::KeyCap)),
         ))
         .style(|s| s.padding(8.0).gap(4.0)),
     )
@@ -87,6 +90,7 @@ fn app_view() -> impl IntoView {
             Page::SearchBox => search_box_page().into_any(),
             Page::Tooltip => tooltip_page().into_any(),
             Page::Badge => badge_page().into_any(),
+            Page::KeyCap => key_cap_page().into_any(),
         },
     )
     .style(|s| s.flex_grow(1.0));
