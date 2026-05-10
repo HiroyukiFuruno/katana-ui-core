@@ -113,8 +113,7 @@ mod tests {
             .tone(BadgeTone::Warning)
             .variant(BadgeVariant::Subtle)
             .resolve(&theme);
-        let bg = r.bg_color.unwrap();
-        assert!(bg.a < 255);
+        assert_eq!(r.bg_color.map(|bg| bg.a < 255), Some(true));
     }
 
     #[test]

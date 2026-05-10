@@ -119,10 +119,13 @@ mod tests {
     fn selected_cell_marked() {
         let theme = Theme::default_light();
         let r = ColorSwatch::new(blue(), palette(), "Pick color").resolve(&theme);
-        let blue_cell = r.cells.iter().find(|c| c.color == blue()).unwrap();
-        assert!(blue_cell.selected);
-        let red_cell = r.cells.iter().find(|c| c.color == red()).unwrap();
-        assert!(!red_cell.selected);
+        let blue_cells: Vec<_> = r.cells.iter().filter(|c| c.color == blue()).collect();
+        assert_eq!(blue_cells.len(), 1);
+        assert!(blue_cells[0].selected);
+
+        let red_cells: Vec<_> = r.cells.iter().filter(|c| c.color == red()).collect();
+        assert_eq!(red_cells.len(), 1);
+        assert!(!red_cells[0].selected);
     }
 
     #[test]

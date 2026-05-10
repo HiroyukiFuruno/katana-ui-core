@@ -137,18 +137,28 @@ mod tests {
     fn selected_segment_has_accent_bg() {
         let theme = Theme::default_light();
         let r = SegmentedToggle::new(Mode::Grid, options(), "View mode").resolve(&theme);
-        let grid = r.segments.iter().find(|s| s.label == "Grid").unwrap();
-        assert!(grid.selected);
-        assert_eq!(grid.bg_color, theme.color.accent);
+        let grid = r
+            .segments
+            .iter()
+            .filter(|s| s.label == "Grid")
+            .collect::<Vec<_>>();
+        assert_eq!(grid.len(), 1);
+        assert!(grid[0].selected);
+        assert_eq!(grid[0].bg_color, theme.color.accent);
     }
 
     #[test]
     fn unselected_segments_have_surface_bg() {
         let theme = Theme::default_light();
         let r = SegmentedToggle::new(Mode::Grid, options(), "View mode").resolve(&theme);
-        let list = r.segments.iter().find(|s| s.label == "List").unwrap();
-        assert!(!list.selected);
-        assert_eq!(list.bg_color, theme.color.surface);
+        let list = r
+            .segments
+            .iter()
+            .filter(|s| s.label == "List")
+            .collect::<Vec<_>>();
+        assert_eq!(list.len(), 1);
+        assert!(!list[0].selected);
+        assert_eq!(list[0].bg_color, theme.color.surface);
     }
 
     #[test]
@@ -165,7 +175,12 @@ mod tests {
         let r = SegmentedToggle::new(Mode::List, options(), "Mode")
             .disabled(true)
             .resolve(&theme);
-        let list = r.segments.iter().find(|s| s.label == "List").unwrap();
-        assert_eq!(list.bg_color, theme.color.border);
+        let list = r
+            .segments
+            .iter()
+            .filter(|s| s.label == "List")
+            .collect::<Vec<_>>();
+        assert_eq!(list.len(), 1);
+        assert_eq!(list[0].bg_color, theme.color.border);
     }
 }
