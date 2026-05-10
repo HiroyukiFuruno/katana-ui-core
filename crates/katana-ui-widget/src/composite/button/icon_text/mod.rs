@@ -4,8 +4,11 @@ pub use types::{IconPosition, IconTextButtonProps};
 
 use crate::composite::button::text::{Size, TextButton, Tone, Variant};
 use crate::primitive::icon::{Icon, IconSize, IconSource};
+use crate::primitive::spinner::{Spinner, SpinnerSize};
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use floem::IntoView;
+use floem::views::{Decorators, button, h_stack, label, svg};
 
 /// Resolved visual properties for `IconTextButton`.
 #[derive(Debug, Clone)]
@@ -130,6 +133,60 @@ impl IconTextButton {
             disabled: self.props.disabled,
             loading: self.props.loading,
         }
+    }
+
+    #[must_use]
+    pub fn view(self, theme: Theme, mut on_press: impl FnMut() + 'static) -> impl IntoView {
+        let resolved = self.resolve(&theme);
+        let icon_color = crate::floem_view::FloemColor::from_token(resolved.icon_color);
+        let text_color = crate::floem_view::FloemColor::from_token(Color {
+            a: resolved.text_alpha,
+            ..resolved.text_color
+        });
+        let bg_color = resolved
+            .bg_color
+            .map(crate::floem_view::FloemColor::from_token);
+        let disabled = resolved.disabled || resolved.loading;
+        let icon_view = if resolved.loading {
+            Spinner::new()
+                .size(SpinnerSize::Pt(resolved.icon_size_px))
+                .color_override(resolved.icon_color)
+                .view(theme)
+                .into_any()
+        } else {
+            svg(resolved.icon_svg)
+                .style(move |style| {
+                    style
+                        .width(resolved.icon_size_px)
+                        .height(resolved.icon_size_px)
+                        .color(icon_color)
+                })
+                .into_any()
+        };
+        let text_view = label(move || resolved.label.clone())
+            .style(move |style| style.font_size(resolved.font_size).color(text_color));
+        let content = match resolved.icon_position {
+            IconPosition::Leading => h_stack((icon_view, text_view)).into_any(),
+            IconPosition::Trailing => h_stack((text_view, icon_view)).into_any(),
+        };
+
+        button(content)
+            .action(move || {
+                if !disabled {
+                    on_press();
+                }
+            })
+            .style(move |style| {
+                let style = style
+                    .gap(resolved.gap)
+                    .padding_horiz(resolved.pad_h)
+                    .padding_vert(resolved.pad_v);
+                if let Some(bg) = bg_color {
+                    style.background(bg)
+                } else {
+                    style
+                }
+            })
     }
 }
 

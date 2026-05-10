@@ -1,6 +1,5 @@
 use floem::peniko::Color as PenikoColor;
-use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
-use floem::views::{dyn_container, h_stack, label, scroll, toggle_button, v_stack, Decorators};
+use floem::views::{h_stack, label, scroll, v_stack, Decorators};
 use floem::IntoView;
 use katana_ui_widget::composite::button::icon_text::{IconPosition, IconTextButton};
 use katana_ui_widget::composite::button::text::{Size, Tone, Variant};
@@ -65,6 +64,11 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     scroll(
         v_stack((
             label(|| "IconTextButton Samples").style(|s| s.font_size(16.0).margin_bottom(8.0)),
+            label(|| "Live widget").style(|s| s.font_size(13.0)),
+            IconTextButton::new(icon.clone(), "Clickable")
+                .variant(Variant::Primary)
+                .tone(Tone::Accent)
+                .view(theme.clone(), || {}),
             h_stack((
                 btn_cell("Leading/Primary/Accent", r0.font_size, r0.text_color.r, r0.text_color.g, r0.text_color.b, r0.text_alpha),
                 btn_cell("Trailing/Secondary/Accent", r1.font_size, r1.text_color.r, r1.text_color.g, r1.text_color.b, r1.text_alpha),
@@ -93,26 +97,6 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     )
 }
 
-pub fn icon_text_button_page() -> impl IntoView {
-    let is_dark = create_rw_signal(false);
-
-    v_stack((
-        h_stack((
-            label(|| "IconTextButton").style(|s| s.font_size(20.0)),
-            label(move || if is_dark.get() { "Dark" } else { "Light" }),
-            toggle_button(move || is_dark.get()).on_toggle(move |v| is_dark.set(v)),
-        ))
-        .style(|s| s.gap(12.0).items_center().padding(12.0)),
-        dyn_container(
-            move || is_dark.get(),
-            move |dark| {
-                let theme = if dark {
-                    Theme::default_dark()
-                } else {
-                    Theme::default_light()
-                };
-                page_content(&theme)
-            },
-        ),
-    ))
+pub fn icon_text_button_page(theme: Theme) -> impl IntoView {
+    page_content(&theme)
 }
