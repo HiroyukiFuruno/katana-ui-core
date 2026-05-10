@@ -6,8 +6,13 @@ pub use types::{KeyCapProps, KeyCapSize, KeyCapTone, KeyComboProps, KeyLabel, Na
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use floem::IntoView;
+use floem::views::{Decorators, h_stack_from_iter, label};
 use ops::key_display;
 use view::{bg_color, border_color, font_size, padding, text_color};
+
+const KEY_COMBO_GAP: f32 = crate::floem_view::GAP_XS;
+const KEY_CAP_RADIUS: f32 = crate::floem_view::CORNER_RADIUS_SM;
 
 /// Resolved visual properties for a single KeyCap.
 #[derive(Debug, Clone)]
@@ -86,6 +91,12 @@ impl KeyCap {
             border_color: border_color(theme),
         }
     }
+
+    #[must_use]
+    pub fn view(self, theme: Theme) -> impl IntoView {
+        let resolved = self.resolve(&theme);
+        keycap_label(resolved)
+    }
 }
 
 /// Builder for KeyCombo (sequence of keys).
@@ -129,6 +140,30 @@ impl KeyCombo {
             .collect();
         ResolvedKeyCombo { caps }
     }
+
+    #[must_use]
+    pub fn view(self, theme: Theme) -> impl IntoView {
+        let resolved = self.resolve(&theme);
+        h_stack_from_iter(resolved.caps.into_iter().map(keycap_label))
+            .style(|style| style.gap(KEY_COMBO_GAP))
+    }
+}
+
+fn keycap_label(resolved: ResolvedKeyCap) -> impl IntoView {
+    let bg = crate::floem_view::FloemColor::from_token(resolved.bg_color);
+    let text = crate::floem_view::FloemColor::from_token(resolved.text_color);
+    let border = crate::floem_view::FloemColor::from_token(resolved.border_color);
+    label(move || resolved.display.clone()).style(move |style| {
+        style
+            .font_size(resolved.font_size)
+            .color(text)
+            .background(bg)
+            .border(1.0)
+            .border_color(border)
+            .border_radius(KEY_CAP_RADIUS)
+            .padding_vert(resolved.pad_v)
+            .padding_horiz(resolved.pad_h)
+    })
 }
 
 #[cfg(test)]
