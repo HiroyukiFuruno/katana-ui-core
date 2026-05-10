@@ -30,6 +30,6 @@
 
 ## 5. 完了確認
 
-- [x] 5.1 `cargo check -p katana-ui-widget` が通る
-- [x] 5.2 `just storybook-check` 通過（theme_tokens ページ追加済）
-- [x] 5.3 ast-lint が通る
+- [ ] 5.1 `cargo check -p katana-ui-widget` が通る
+- [ ] 5.2 `just storybook-check` 通過（theme_tokens ページ追加済）
+- [ ] 5.3 ast-lint が通る

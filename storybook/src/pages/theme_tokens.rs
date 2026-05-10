@@ -1,8 +1,5 @@
 use floem::peniko::Color as PenikoColor;
-use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
-use floem::views::{
-    container, dyn_container, empty, h_stack, label, scroll, toggle_button, v_stack, Decorators,
-};
+use floem::views::{container, empty, h_stack, label, scroll, v_stack, Decorators};
 use floem::IntoView;
 use katana_ui_widget::theme::{ColorTokens, SpacingTokens, Theme, TypographyTokens};
 
@@ -109,26 +106,6 @@ fn theme_content(theme: Theme) -> impl IntoView {
     )
 }
 
-pub fn theme_tokens_page() -> impl IntoView {
-    let is_dark = create_rw_signal(false);
-
-    v_stack((
-        h_stack((
-            label(|| "Theme Tokens").style(|s| s.font_size(20.0)),
-            label(move || if is_dark.get() { "Dark" } else { "Light" }),
-            toggle_button(move || is_dark.get()).on_toggle(move |v| is_dark.set(v)),
-        ))
-        .style(|s| s.gap(12.0).items_center().padding(12.0)),
-        dyn_container(
-            move || is_dark.get(),
-            move |dark| {
-                let theme = if dark {
-                    Theme::default_dark()
-                } else {
-                    Theme::default_light()
-                };
-                theme_content(theme)
-            },
-        ),
-    ))
+pub fn theme_tokens_page(theme: Theme) -> impl IntoView {
+    theme_content(theme)
 }
