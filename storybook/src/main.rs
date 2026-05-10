@@ -1,21 +1,41 @@
 mod pages;
 
-use floem::views::{h_stack, label, scroll, v_stack, Decorators};
+use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
+use floem::views::{button, h_stack, label, scroll, v_stack, Decorators};
 use floem::{Application, IntoView};
+use pages::theme_tokens::theme_tokens_page;
 use pages::welcome::welcome_page;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-#[allow(dead_code)]
 enum Page {
     Welcome,
+    ThemeTokens,
 }
 
 fn app_view() -> impl IntoView {
-    let sidebar = scroll(v_stack((label(|| "Widgets"),)).style(|s| s.padding(8.0)));
+    let current_page = create_rw_signal(Page::Welcome);
 
-    let content = welcome_page();
+    let sidebar = scroll(
+        v_stack((
+            label(|| "Widgets").style(|s| s.font_size(14.0).margin_bottom(8.0)),
+            button(label(|| "Welcome")).action(move || current_page.set(Page::Welcome)),
+            button(label(|| "Theme Tokens"))
+                .action(move || current_page.set(Page::ThemeTokens)),
+        ))
+        .style(|s| s.padding(8.0).gap(4.0)),
+    )
+    .style(|s| s.width(160.0).min_height_full());
 
-    h_stack((sidebar, content))
+    let content = floem::views::dyn_container(
+        move || current_page.get(),
+        move |page| match page {
+            Page::Welcome => welcome_page().into_any(),
+            Page::ThemeTokens => theme_tokens_page().into_any(),
+        },
+    )
+    .style(|s| s.flex_grow(1.0));
+
+    h_stack((sidebar, content)).style(|s| s.min_height_full())
 }
 
 fn main() {

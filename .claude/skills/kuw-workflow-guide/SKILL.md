@@ -59,6 +59,30 @@ Each page must show at minimum:
 2. Key variants (prop differences)
 3. Interactive states (hover / focus / disabled / active, where applicable)
 
+## Theme Token Convention
+
+**Never hard-code numeric color/size/spacing values in widget code.** All values must be referenced through `theme/` tokens.
+
+```rust
+// ❌ Forbidden — numeric literals directly in widget code
+.style(|s| s.background(Color::rgb8(59, 130, 246)).padding(8.0))
+
+// ✅ Required — use theme tokens
+let theme = use_theme();
+.style(move |s| {
+    s.background(/* theme.color.accent → peniko::Color */)
+     .padding(theme.spacing.sm)
+})
+```
+
+| Token type  | Access path            | Example values                          |
+|-------------|------------------------|-----------------------------------------|
+| Color       | `theme.color.*`        | `accent`, `bg`, `text`, `danger`, ...   |
+| Spacing     | `theme.spacing.*`      | `xxs=2`, `xs=4`, `sm=8`, `md=12`, ...  |
+| Typography  | `theme.typography.*`   | `body`, `heading_1`, `code`, ...        |
+
+Use `use_theme()` from `katana_ui_widget::theme` to read the current theme from the Floem reactive context. Inject the theme at app root with `provide_theme(Theme::default_light())`.
+
 ## Per-Widget Change Checklist (DoD)
 
 - [ ] Implementation under the correct hierarchy directory

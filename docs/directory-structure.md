@@ -55,6 +55,30 @@ Rules:
 
 Enforcement: by code review and convention. Mechanical enforcement (via `katana-ast-lint` dependency direction rule) is planned for a future kal release.
 
+## Theme Token Convention
+
+**Never hard-code numeric values (colors, sizes, spacing) directly in widget code.**
+
+All widgets must reference values through `theme/` tokens:
+
+```rust
+// ❌ Forbidden
+.style(|s| s.background(Color::rgb8(59, 130, 246)).padding(8.0))
+
+// ✅ Required
+let theme = use_theme();
+.style(move |s| {
+    s.background(/* convert theme.color.accent */)
+     .padding(theme.spacing.sm)
+})
+```
+
+- Color values → `theme.color.*`
+- Spacing values → `theme.spacing.*`
+- Font sizes / weights → `theme.typography.*`
+
+Violation detection is planned via `katana-ast-lint` in a future kal release.
+
 ## Storybook
 
 ```
