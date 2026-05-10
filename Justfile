@@ -85,11 +85,11 @@ update:
 
 # Run the Storybook (independent Cargo project)
 storybook:
-    cd storybook && cargo run
+    cd storybook && RUSTFLAGS="-D warnings" cargo run
 
 # Check that Storybook compiles without running
 storybook-check:
-    cd storybook && cargo check
+    cd storybook && RUSTFLAGS="-D warnings" cargo check
 
 # Verify VERSION follows the published release line
 release-target-check:

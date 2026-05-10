@@ -1549,6 +1549,7 @@ dependencies = [
 name = "katana-ui-widget"
 version = "0.1.0"
 dependencies = [
+ "floem",
  "floem_reactive",
 ]
 
