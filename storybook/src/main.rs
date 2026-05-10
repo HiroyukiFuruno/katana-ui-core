@@ -1,14 +1,18 @@
 mod pages;
 
 use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
-use floem::views::{button, h_stack, label, scroll, v_stack, Decorators};
+use floem::views::{
+    button, h_stack, label, scroll, toggle_button, v_stack, v_stack_from_iter, Decorators,
+};
 use floem::{Application, IntoView};
+use katana_ui_widget::theme::Theme;
 use pages::accordion::accordion_page;
 use pages::modal_overlay::modal_overlay_page;
 use pages::popover::popover_page;
 use pages::split_pane::split_pane_page;
 use pages::badge::badge_page;
 use pages::card::card_page;
+use pages::color_picker_rgba::color_picker_rgba_page;
 use pages::color_swatch::color_swatch_page;
 use pages::icon::icon_page;
 use pages::icon_text_button::icon_text_button_page;
@@ -28,7 +32,7 @@ use pages::welcome::welcome_page;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Page {
-    Welcome,
+    Overview,
     ThemeTokens,
     Text,
     Icon,
@@ -40,6 +44,7 @@ enum Page {
     SegmentedToggle,
     SelectBox,
     ColorSwatch,
+    ColorPickerRgba,
     TextInput,
     SearchBox,
     Tooltip,
@@ -53,64 +58,99 @@ enum Page {
 }
 
 fn app_view() -> impl IntoView {
-    let current_page = create_rw_signal(Page::Welcome);
+    let current_page = create_rw_signal(Page::Overview);
+    let is_dark = create_rw_signal(false);
 
-    let sidebar = scroll(
-        v_stack((
-            label(|| "Widgets").style(|s| s.font_size(14.0).margin_bottom(8.0)),
-            button(label(|| "Welcome")).action(move || current_page.set(Page::Welcome)),
-            button(label(|| "Theme Tokens"))
-                .action(move || current_page.set(Page::ThemeTokens)),
-            button(label(|| "Text")).action(move || current_page.set(Page::Text)),
-            button(label(|| "Icon")).action(move || current_page.set(Page::Icon)),
-            button(label(|| "Spinner")).action(move || current_page.set(Page::Spinner)),
-            button(label(|| "SvgButton")).action(move || current_page.set(Page::SvgButton)),
-            button(label(|| "TextButton")).action(move || current_page.set(Page::TextButton)),
-            button(label(|| "IconTextButton")).action(move || current_page.set(Page::IconTextButton)),
-            button(label(|| "Toggle")).action(move || current_page.set(Page::Toggle)),
-            button(label(|| "SegmentedToggle")).action(move || current_page.set(Page::SegmentedToggle)),
-            button(label(|| "SelectBox")).action(move || current_page.set(Page::SelectBox)),
-            button(label(|| "ColorSwatch")).action(move || current_page.set(Page::ColorSwatch)),
-            button(label(|| "TextInput")).action(move || current_page.set(Page::TextInput)),
-            button(label(|| "SearchBox")).action(move || current_page.set(Page::SearchBox)),
-            button(label(|| "Tooltip")).action(move || current_page.set(Page::Tooltip)),
-            button(label(|| "Badge")).action(move || current_page.set(Page::Badge)),
-            button(label(|| "KeyCap")).action(move || current_page.set(Page::KeyCap)),
-            button(label(|| "Card")).action(move || current_page.set(Page::Card)),
-            button(label(|| "Accordion")).action(move || current_page.set(Page::Accordion)),
-            button(label(|| "SplitPane")).action(move || current_page.set(Page::SplitPane)),
-            button(label(|| "ModalOverlay")).action(move || current_page.set(Page::ModalOverlay)),
-            button(label(|| "Popover")).action(move || current_page.set(Page::Popover)),
-        ))
-        .style(|s| s.padding(8.0).gap(4.0)),
-    )
-    .style(|s| s.width(160.0).min_height_full());
+    let sidebar_buttons: Vec<_> = [
+        ("Overview", Some(Page::Overview)),
+        ("Theme Tokens", Some(Page::ThemeTokens)),
+        ("Text", Some(Page::Text)),
+        ("Icon", Some(Page::Icon)),
+        ("Spinner", Some(Page::Spinner)),
+        ("SvgButton", Some(Page::SvgButton)),
+        ("TextButton", Some(Page::TextButton)),
+        ("IconTextButton", Some(Page::IconTextButton)),
+        ("Toggle", Some(Page::Toggle)),
+        ("SegmentedToggle", Some(Page::SegmentedToggle)),
+        ("SelectBox", Some(Page::SelectBox)),
+        ("ColorSwatch", Some(Page::ColorSwatch)),
+        ("ColorPickerRgba", Some(Page::ColorPickerRgba)),
+        ("TextInput", Some(Page::TextInput)),
+        ("SearchBox", Some(Page::SearchBox)),
+        ("Tooltip", Some(Page::Tooltip)),
+        ("Badge", Some(Page::Badge)),
+        ("KeyCap", Some(Page::KeyCap)),
+        ("Card", Some(Page::Card)),
+        ("Accordion", Some(Page::Accordion)),
+        ("SplitPane", Some(Page::SplitPane)),
+        ("ModalOverlay", Some(Page::ModalOverlay)),
+        ("Popover", Some(Page::Popover)),
+    ]
+    .into_iter()
+    .map(|(name, page)| {
+        let current_page = current_page;
+        let button_view = button(label(move || name));
+        match page {
+            None => button_view,
+            Some(page) => button_view.action(move || current_page.set(page)),
+        }
+    })
+    .collect();
+
+    let theme_switch = h_stack((
+        label(|| "Theme").style(|s| s.font_size(13.0).margin_left(4.0)),
+        label(move || if is_dark.get() { "Dark" } else { "Light" }),
+        toggle_button(move || is_dark.get()).on_toggle(move |v| is_dark.set(v)),
+    ))
+    .style(|s| s.gap(8.0).items_center().padding(8.0));
+
+    let sidebar = scroll(v_stack((
+        theme_switch,
+        label(|| "Components").style(|s| {
+            s.font_size(13.0)
+                .margin_left(8.0)
+                .margin_top(8.0)
+                .margin_bottom(4.0)
+        }),
+        v_stack_from_iter(sidebar_buttons).style(|s| s.padding(4.0).gap(4.0)),
+    )))
+    .style(|s| s.width(180.0).min_height_full());
 
     let content = floem::views::dyn_container(
-        move || current_page.get(),
-        move |page| match page {
-            Page::Welcome => welcome_page().into_any(),
-            Page::ThemeTokens => theme_tokens_page().into_any(),
-            Page::Text => text_page().into_any(),
-            Page::Icon => icon_page().into_any(),
-            Page::Spinner => spinner_page().into_any(),
-            Page::SvgButton => svg_button_page().into_any(),
-            Page::TextButton => text_button_page().into_any(),
-            Page::IconTextButton => icon_text_button_page().into_any(),
-            Page::Toggle => toggle_page().into_any(),
-            Page::SegmentedToggle => segmented_toggle_page().into_any(),
-            Page::SelectBox => select_box_page().into_any(),
-            Page::ColorSwatch => color_swatch_page().into_any(),
-            Page::TextInput => text_input_page().into_any(),
-            Page::SearchBox => search_box_page().into_any(),
-            Page::Tooltip => tooltip_page().into_any(),
-            Page::Badge => badge_page().into_any(),
-            Page::KeyCap => key_cap_page().into_any(),
-            Page::Card => card_page().into_any(),
-            Page::Accordion => accordion_page().into_any(),
-            Page::SplitPane => split_pane_page().into_any(),
-            Page::ModalOverlay => modal_overlay_page().into_any(),
-            Page::Popover => popover_page().into_any(),
+        move || (current_page.get(), is_dark.get()),
+        move |(page, dark)| {
+            let theme = if dark {
+                Theme::default_dark()
+            } else {
+                Theme::default_light()
+            };
+            theme.clone().provide();
+
+            match page {
+                Page::Overview => welcome_page().into_any(),
+                Page::ThemeTokens => theme_tokens_page(theme).into_any(),
+                Page::Text => text_page(theme).into_any(),
+                Page::Icon => icon_page(theme).into_any(),
+                Page::Spinner => spinner_page(theme).into_any(),
+                Page::SvgButton => svg_button_page(theme).into_any(),
+                Page::TextButton => text_button_page(theme).into_any(),
+                Page::IconTextButton => icon_text_button_page(theme).into_any(),
+                Page::Toggle => toggle_page(theme).into_any(),
+                Page::SegmentedToggle => segmented_toggle_page(theme).into_any(),
+                Page::SelectBox => select_box_page(theme).into_any(),
+                Page::ColorSwatch => color_swatch_page(theme).into_any(),
+                Page::ColorPickerRgba => color_picker_rgba_page(theme).into_any(),
+                Page::TextInput => text_input_page(theme).into_any(),
+                Page::SearchBox => search_box_page(theme).into_any(),
+                Page::Tooltip => tooltip_page(theme).into_any(),
+                Page::Badge => badge_page(theme).into_any(),
+                Page::KeyCap => key_cap_page(theme).into_any(),
+                Page::Card => card_page(theme).into_any(),
+                Page::Accordion => accordion_page(theme).into_any(),
+                Page::SplitPane => split_pane_page(theme).into_any(),
+                Page::ModalOverlay => modal_overlay_page(theme).into_any(),
+                Page::Popover => popover_page(theme).into_any(),
+            }
         },
     )
     .style(|s| s.flex_grow(1.0));

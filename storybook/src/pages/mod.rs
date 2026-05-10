@@ -4,6 +4,7 @@ pub mod modal_overlay;
 pub mod split_pane;
 pub mod badge;
 pub mod card;
+pub mod color_picker_rgba;
 pub mod color_swatch;
 pub mod icon;
 pub mod icon_text_button;
