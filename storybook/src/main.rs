@@ -5,6 +5,7 @@ use floem::views::{button, h_stack, label, scroll, v_stack, Decorators};
 use floem::{Application, IntoView};
 use pages::accordion::accordion_page;
 use pages::modal_overlay::modal_overlay_page;
+use pages::popover::popover_page;
 use pages::split_pane::split_pane_page;
 use pages::badge::badge_page;
 use pages::card::card_page;
@@ -48,6 +49,7 @@ enum Page {
     Accordion,
     SplitPane,
     ModalOverlay,
+    Popover,
 }
 
 fn app_view() -> impl IntoView {
@@ -78,6 +80,7 @@ fn app_view() -> impl IntoView {
             button(label(|| "Accordion")).action(move || current_page.set(Page::Accordion)),
             button(label(|| "SplitPane")).action(move || current_page.set(Page::SplitPane)),
             button(label(|| "ModalOverlay")).action(move || current_page.set(Page::ModalOverlay)),
+            button(label(|| "Popover")).action(move || current_page.set(Page::Popover)),
         ))
         .style(|s| s.padding(8.0).gap(4.0)),
     )
@@ -107,6 +110,7 @@ fn app_view() -> impl IntoView {
             Page::Accordion => accordion_page().into_any(),
             Page::SplitPane => split_pane_page().into_any(),
             Page::ModalOverlay => modal_overlay_page().into_any(),
+            Page::Popover => popover_page().into_any(),
         },
     )
     .style(|s| s.flex_grow(1.0));
