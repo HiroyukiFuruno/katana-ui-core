@@ -39,3 +39,28 @@ pub(super) fn text_color(theme: &Theme) -> Color {
 pub(super) fn effective_placement(placement: Placement) -> Placement {
     placement
 }
+
+pub(super) fn hover_visible(elapsed_ms: u32, delay_ms: u32) -> bool {
+    elapsed_ms >= delay_ms
+}
+
+pub(super) fn focus_visible() -> bool {
+    true
+}
+
+pub(super) fn flip_placement(
+    placement: Placement,
+    preferred_fits: bool,
+    opposite_fits: bool,
+) -> Placement {
+    if preferred_fits || !opposite_fits {
+        return placement;
+    }
+
+    match placement {
+        Placement::Top => Placement::Bottom,
+        Placement::Bottom => Placement::Top,
+        Placement::Start => Placement::End,
+        Placement::End => Placement::Start,
+    }
+}
