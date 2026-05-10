@@ -1,4 +1,5 @@
 pub mod badge;
+pub mod card;
 pub mod color_swatch;
 pub mod icon;
 pub mod icon_text_button;

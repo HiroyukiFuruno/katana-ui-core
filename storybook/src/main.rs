@@ -4,6 +4,7 @@ use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
 use floem::views::{button, h_stack, label, scroll, v_stack, Decorators};
 use floem::{Application, IntoView};
 use pages::badge::badge_page;
+use pages::card::card_page;
 use pages::color_swatch::color_swatch_page;
 use pages::icon::icon_page;
 use pages::icon_text_button::icon_text_button_page;
@@ -40,6 +41,7 @@ enum Page {
     Tooltip,
     Badge,
     KeyCap,
+    Card,
 }
 
 fn app_view() -> impl IntoView {
@@ -66,6 +68,7 @@ fn app_view() -> impl IntoView {
             button(label(|| "Tooltip")).action(move || current_page.set(Page::Tooltip)),
             button(label(|| "Badge")).action(move || current_page.set(Page::Badge)),
             button(label(|| "KeyCap")).action(move || current_page.set(Page::KeyCap)),
+            button(label(|| "Card")).action(move || current_page.set(Page::Card)),
         ))
         .style(|s| s.padding(8.0).gap(4.0)),
     )
@@ -91,6 +94,7 @@ fn app_view() -> impl IntoView {
             Page::Tooltip => tooltip_page().into_any(),
             Page::Badge => badge_page().into_any(),
             Page::KeyCap => key_cap_page().into_any(),
+            Page::Card => card_page().into_any(),
         },
     )
     .style(|s| s.flex_grow(1.0));
