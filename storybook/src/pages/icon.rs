@@ -1,7 +1,5 @@
 use floem::peniko::Color as PenikoColor;
-use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
-use floem::views::{
-    dyn_container, h_stack, label, scroll, svg, toggle_button, v_stack, Decorators,
+use floem::views::{h_stack, label, scroll, svg, v_stack, Decorators,
 };
 use floem::IntoView;
 use katana_ui_widget::primitive::icon::{Icon, IconSize, IconSource};
@@ -90,6 +88,10 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     scroll(
         v_stack((
             label(|| "Icon Sizes (check icon)").style(|s| s.font_size(16.0).margin_bottom(8.0)),
+            label(|| "Live widget").style(|s| s.font_size(13.0)),
+            Icon::new(IconSource::SvgBytes(ICON_CHECK))
+                .size(IconSize::Lg)
+                .view(theme.clone()),
             icon_row("check / Sm", svg0, sz0, r0, g0, b0),
             icon_row("check / Md", svg1, sz1, r1, g1, b1),
             icon_row("check / Lg", svg2, sz2, r2, g2, b2),
@@ -108,26 +110,6 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     )
 }
 
-pub fn icon_page() -> impl IntoView {
-    let is_dark = create_rw_signal(false);
-
-    v_stack((
-        h_stack((
-            label(|| "Icon Primitive").style(|s| s.font_size(20.0)),
-            label(move || if is_dark.get() { "Dark" } else { "Light" }),
-            toggle_button(move || is_dark.get()).on_toggle(move |v| is_dark.set(v)),
-        ))
-        .style(|s| s.gap(12.0).items_center().padding(12.0)),
-        dyn_container(
-            move || is_dark.get(),
-            move |dark| {
-                let theme = if dark {
-                    Theme::default_dark()
-                } else {
-                    Theme::default_light()
-                };
-                page_content(&theme)
-            },
-        ),
-    ))
+pub fn icon_page(theme: Theme) -> impl IntoView {
+    page_content(&theme)
 }

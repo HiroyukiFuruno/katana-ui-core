@@ -4,6 +4,8 @@ pub use types::{IconProps, IconSize, IconSource};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use floem::IntoView;
+use floem::views::{Decorators, svg};
 
 /// Resolved, ready-to-render icon properties.
 #[derive(Debug, Clone)]
@@ -65,6 +67,23 @@ impl Icon {
             color_a: c.a,
             is_empty,
         }
+    }
+
+    #[must_use]
+    pub fn view(self, theme: Theme) -> impl IntoView {
+        let resolved = self.resolve(&theme);
+        let icon_color = floem::peniko::Color::rgba8(
+            resolved.color_r,
+            resolved.color_g,
+            resolved.color_b,
+            resolved.color_a,
+        );
+        svg(resolved.svg_content).style(move |style| {
+            style
+                .width(resolved.size_px)
+                .height(resolved.size_px)
+                .color(icon_color)
+        })
     }
 }
 
