@@ -3,6 +3,7 @@ mod pages;
 use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
 use floem::views::{button, h_stack, label, scroll, v_stack, Decorators};
 use floem::{Application, IntoView};
+use pages::color_swatch::color_swatch_page;
 use pages::icon::icon_page;
 use pages::icon_text_button::icon_text_button_page;
 use pages::segmented_toggle::segmented_toggle_page;
@@ -28,6 +29,7 @@ enum Page {
     Toggle,
     SegmentedToggle,
     SelectBox,
+    ColorSwatch,
 }
 
 fn app_view() -> impl IntoView {
@@ -48,6 +50,7 @@ fn app_view() -> impl IntoView {
             button(label(|| "Toggle")).action(move || current_page.set(Page::Toggle)),
             button(label(|| "SegmentedToggle")).action(move || current_page.set(Page::SegmentedToggle)),
             button(label(|| "SelectBox")).action(move || current_page.set(Page::SelectBox)),
+            button(label(|| "ColorSwatch")).action(move || current_page.set(Page::ColorSwatch)),
         ))
         .style(|s| s.padding(8.0).gap(4.0)),
     )
@@ -67,6 +70,7 @@ fn app_view() -> impl IntoView {
             Page::Toggle => toggle_page().into_any(),
             Page::SegmentedToggle => segmented_toggle_page().into_any(),
             Page::SelectBox => select_box_page().into_any(),
+            Page::ColorSwatch => color_swatch_page().into_any(),
         },
     )
     .style(|s| s.flex_grow(1.0));
