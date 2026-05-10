@@ -3,6 +3,7 @@ mod pages;
 use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
 use floem::views::{button, h_stack, label, scroll, v_stack, Decorators};
 use floem::{Application, IntoView};
+use pages::badge::badge_page;
 use pages::color_swatch::color_swatch_page;
 use pages::icon::icon_page;
 use pages::icon_text_button::icon_text_button_page;
@@ -36,6 +37,7 @@ enum Page {
     TextInput,
     SearchBox,
     Tooltip,
+    Badge,
 }
 
 fn app_view() -> impl IntoView {
@@ -60,6 +62,7 @@ fn app_view() -> impl IntoView {
             button(label(|| "TextInput")).action(move || current_page.set(Page::TextInput)),
             button(label(|| "SearchBox")).action(move || current_page.set(Page::SearchBox)),
             button(label(|| "Tooltip")).action(move || current_page.set(Page::Tooltip)),
+            button(label(|| "Badge")).action(move || current_page.set(Page::Badge)),
         ))
         .style(|s| s.padding(8.0).gap(4.0)),
     )
@@ -83,6 +86,7 @@ fn app_view() -> impl IntoView {
             Page::TextInput => text_input_page().into_any(),
             Page::SearchBox => search_box_page().into_any(),
             Page::Tooltip => tooltip_page().into_any(),
+            Page::Badge => badge_page().into_any(),
         },
     )
     .style(|s| s.flex_grow(1.0));
