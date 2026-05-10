@@ -1,4 +1,5 @@
 pub mod accordion;
+pub mod split_pane;
 pub mod badge;
 pub mod card;
 pub mod color_swatch;

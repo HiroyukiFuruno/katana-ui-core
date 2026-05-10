@@ -4,6 +4,7 @@ use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
 use floem::views::{button, h_stack, label, scroll, v_stack, Decorators};
 use floem::{Application, IntoView};
 use pages::accordion::accordion_page;
+use pages::split_pane::split_pane_page;
 use pages::badge::badge_page;
 use pages::card::card_page;
 use pages::color_swatch::color_swatch_page;
@@ -44,6 +45,7 @@ enum Page {
     KeyCap,
     Card,
     Accordion,
+    SplitPane,
 }
 
 fn app_view() -> impl IntoView {
@@ -72,6 +74,7 @@ fn app_view() -> impl IntoView {
             button(label(|| "KeyCap")).action(move || current_page.set(Page::KeyCap)),
             button(label(|| "Card")).action(move || current_page.set(Page::Card)),
             button(label(|| "Accordion")).action(move || current_page.set(Page::Accordion)),
+            button(label(|| "SplitPane")).action(move || current_page.set(Page::SplitPane)),
         ))
         .style(|s| s.padding(8.0).gap(4.0)),
     )
@@ -99,6 +102,7 @@ fn app_view() -> impl IntoView {
             Page::KeyCap => key_cap_page().into_any(),
             Page::Card => card_page().into_any(),
             Page::Accordion => accordion_page().into_any(),
+            Page::SplitPane => split_pane_page().into_any(),
         },
     )
     .style(|s| s.flex_grow(1.0));
