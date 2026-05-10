@@ -6,6 +6,7 @@ pub mod segmented_toggle;
 pub mod select_box;
 pub mod text_input;
 pub mod toggle;
+pub mod tooltip;
 pub mod spinner;
 pub mod svg_button;
 pub mod text_button;
