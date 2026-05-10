@@ -6,6 +6,7 @@ use floem::{Application, IntoView};
 use pages::icon::icon_page;
 use pages::icon_text_button::icon_text_button_page;
 use pages::segmented_toggle::segmented_toggle_page;
+use pages::select_box::select_box_page;
 use pages::spinner::spinner_page;
 use pages::toggle::toggle_page;
 use pages::svg_button::svg_button_page;
@@ -26,6 +27,7 @@ enum Page {
     IconTextButton,
     Toggle,
     SegmentedToggle,
+    SelectBox,
 }
 
 fn app_view() -> impl IntoView {
@@ -45,6 +47,7 @@ fn app_view() -> impl IntoView {
             button(label(|| "IconTextButton")).action(move || current_page.set(Page::IconTextButton)),
             button(label(|| "Toggle")).action(move || current_page.set(Page::Toggle)),
             button(label(|| "SegmentedToggle")).action(move || current_page.set(Page::SegmentedToggle)),
+            button(label(|| "SelectBox")).action(move || current_page.set(Page::SelectBox)),
         ))
         .style(|s| s.padding(8.0).gap(4.0)),
     )
@@ -63,6 +66,7 @@ fn app_view() -> impl IntoView {
             Page::IconTextButton => icon_text_button_page().into_any(),
             Page::Toggle => toggle_page().into_any(),
             Page::SegmentedToggle => segmented_toggle_page().into_any(),
+            Page::SelectBox => select_box_page().into_any(),
         },
     )
     .style(|s| s.flex_grow(1.0));
