@@ -1,4 +1,5 @@
 pub mod accordion;
+pub mod modal_overlay;
 pub mod split_pane;
 pub mod badge;
 pub mod card;
