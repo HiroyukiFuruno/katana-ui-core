@@ -1,6 +1,5 @@
 use floem::peniko::Color as PenikoColor;
-use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
-use floem::views::{dyn_container, h_stack, label, scroll, toggle_button, v_stack, Decorators};
+use floem::views::{label, scroll, v_stack, Decorators};
 use floem::IntoView;
 use katana_ui_widget::layout::card::{Card, CardPadding, CardVariant};
 use katana_ui_widget::theme::Theme;
@@ -20,12 +19,10 @@ fn card_row(
     let border_w = if has_border { 1.0_f32 } else { 0.0_f32 };
     let shadow_tag = if has_shadow { " [shadow]" } else { "" };
     let interactive_tag = if interactive { " [interactive]" } else { "" };
-    let desc: &'static str = Box::leak(
-        format!("pad={pad} radius={radius}{shadow_tag}{interactive_tag}").into_boxed_str(),
-    );
+    let desc = format!("pad={pad} radius={radius}{shadow_tag}{interactive_tag}");
     v_stack((
         label(move || heading).style(|s| s.font_size(12.0).margin_bottom(2.0)),
-        label(move || desc).style(move |s| {
+        label(move || desc.clone()).style(move |s| {
             s.background(bg)
                 .border(border_w)
                 .border_radius(radius)
@@ -50,6 +47,10 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     scroll(
         v_stack((
             label(|| "Card Samples").style(|s| s.font_size(16.0).margin_bottom(8.0)),
+            label(|| "Live widget").style(|s| s.font_size(13.0)),
+            Card::new()
+                .variant(CardVariant::Outlined)
+                .view(theme.clone(), label(|| "Card::view content")),
             card_row("Plain", r_plain.bg_color.r, r_plain.bg_color.g, r_plain.bg_color.b, r_plain.border_color.is_some(), r_plain.has_shadow, r_plain.padding, r_plain.corner_radius, r_plain.interactive),
             card_row("Elevated (shadow)", r_elevated.bg_color.r, r_elevated.bg_color.g, r_elevated.bg_color.b, r_elevated.border_color.is_some(), r_elevated.has_shadow, r_elevated.padding, r_elevated.corner_radius, r_elevated.interactive),
             card_row("Outlined (border)", r_outlined.bg_color.r, r_outlined.bg_color.g, r_outlined.bg_color.b, r_outlined.border_color.is_some(), r_outlined.has_shadow, r_outlined.padding, r_outlined.corner_radius, r_outlined.interactive),
@@ -68,26 +69,6 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     )
 }
 
-pub fn card_page() -> impl IntoView {
-    let is_dark = create_rw_signal(false);
-
-    v_stack((
-        h_stack((
-            label(|| "Card").style(|s| s.font_size(20.0)),
-            label(move || if is_dark.get() { "Dark" } else { "Light" }),
-            toggle_button(move || is_dark.get()).on_toggle(move |v| is_dark.set(v)),
-        ))
-        .style(|s| s.gap(12.0).items_center().padding(12.0)),
-        dyn_container(
-            move || is_dark.get(),
-            move |dark| {
-                let theme = if dark {
-                    Theme::default_dark()
-                } else {
-                    Theme::default_light()
-                };
-                page_content(&theme)
-            },
-        ),
-    ))
+pub fn card_page(theme: Theme) -> impl IntoView {
+    page_content(&theme)
 }

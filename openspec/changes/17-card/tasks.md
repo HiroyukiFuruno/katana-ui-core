@@ -26,3 +26,10 @@
 - [x] 4.1 `cargo check -p katana-ui-widget`
 - [x] 4.2 `just storybook` で card ページが想定通り表示
 - [x] 4.3 ast-lint 通過
+
+## ユーザーフィードバック
+
+- [/] ast-lint の file-length / type-separation が発火した場合、単に `view()` を別ファイルへ逃がして完了扱いにしない。対象 widget の型定義・状態管理・style resolve・event 処理・Storybook ライブセルまで含めて責務境界を再設計し、なぜその分割が妥当かを確認する。
+- [ ] 現状は未実装扱いで再確認する。Card は単なる枠ではなく、複雑な UI 自身を子要素として配置できる構成にする。
+- [ ] header / body / footer / actions / 任意 content slot を持ち、TextInput、Button、Badge、Accordion などの複合 widget を内部に置けることを Storybook で確認する。
+- [ ] interactive Card の click / hover / focus は、内部の button や input の操作を壊さない責務分離にする。

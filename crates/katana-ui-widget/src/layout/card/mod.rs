@@ -5,6 +5,8 @@ pub use types::{CardPadding, CardProps, CardVariant};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
+use floem::IntoView;
+use floem::views::{Decorators, container};
 use view::{bg_color, border_color, corner_radius, has_shadow, hover_bg, padding_px};
 
 /// Resolved visual properties for `Card`.
@@ -66,6 +68,26 @@ impl Card {
             padding: padding_px(self.props.padding, theme),
             interactive: self.props.interactive,
         }
+    }
+
+    #[must_use]
+    pub fn view(self, theme: Theme, child: impl IntoView + 'static) -> impl IntoView {
+        let resolved = self.resolve(&theme);
+        let bg = crate::floem_view::FloemColor::from_token(resolved.bg_color);
+        let border = resolved
+            .border_color
+            .map(crate::floem_view::FloemColor::from_token);
+        container(child).style(move |style| {
+            let style = style
+                .background(bg)
+                .border_radius(resolved.corner_radius)
+                .padding(resolved.padding);
+            if let Some(border) = border {
+                style.border(1.0).border_color(border)
+            } else {
+                style
+            }
+        })
     }
 }
 
