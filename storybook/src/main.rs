@@ -6,6 +6,7 @@ use floem::{Application, IntoView};
 use pages::icon::icon_page;
 use pages::icon_text_button::icon_text_button_page;
 use pages::spinner::spinner_page;
+use pages::toggle::toggle_page;
 use pages::svg_button::svg_button_page;
 use pages::text::text_page;
 use pages::text_button::text_button_page;
@@ -22,6 +23,7 @@ enum Page {
     SvgButton,
     TextButton,
     IconTextButton,
+    Toggle,
 }
 
 fn app_view() -> impl IntoView {
@@ -39,6 +41,7 @@ fn app_view() -> impl IntoView {
             button(label(|| "SvgButton")).action(move || current_page.set(Page::SvgButton)),
             button(label(|| "TextButton")).action(move || current_page.set(Page::TextButton)),
             button(label(|| "IconTextButton")).action(move || current_page.set(Page::IconTextButton)),
+            button(label(|| "Toggle")).action(move || current_page.set(Page::Toggle)),
         ))
         .style(|s| s.padding(8.0).gap(4.0)),
     )
@@ -55,6 +58,7 @@ fn app_view() -> impl IntoView {
             Page::SvgButton => svg_button_page().into_any(),
             Page::TextButton => text_button_page().into_any(),
             Page::IconTextButton => icon_text_button_page().into_any(),
+            Page::Toggle => toggle_page().into_any(),
         },
     )
     .style(|s| s.flex_grow(1.0));
