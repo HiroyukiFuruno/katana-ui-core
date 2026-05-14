@@ -1,4 +1,4 @@
-use super::{AnchorRect, FreePlacement, Placement};
+use super::{AnchorRect, Placement};
 
 pub(super) struct PlacementMath;
 
@@ -17,37 +17,18 @@ impl PlacementMath {
                 Self::center_x(anchor, popover_width),
                 anchor.y + anchor.height + offset,
             ),
-            Placement::BottomStart => (anchor.x, anchor.y + anchor.height + offset),
-            Placement::BottomEnd => (
-                anchor.x + anchor.width - popover_width,
-                anchor.y + anchor.height + offset,
-            ),
             Placement::Top => (
                 Self::center_x(anchor, popover_width),
                 anchor.y - popover_height - offset,
             ),
-            Placement::TopStart => (anchor.x, anchor.y - popover_height - offset),
-            Placement::TopEnd => (
-                anchor.x + anchor.width - popover_width,
-                anchor.y - popover_height - offset,
-            ),
-            Placement::End => (
+            Placement::Right => (
                 anchor.x + anchor.width + offset,
                 Self::center_y(anchor, popover_height),
             ),
-            Placement::Start => (
+            Placement::Left => (
                 anchor.x - popover_width - offset,
                 Self::center_y(anchor, popover_height),
             ),
-            Placement::Auto => Self::origin_for(
-                Placement::BottomStart,
-                anchor,
-                offset,
-                popover_width,
-                popover_height,
-            ),
-            Placement::Free(FreePlacement::AnchorOffset { x, y }) => (anchor.x + x, anchor.y + y),
-            Placement::Free(FreePlacement::ParentOffset { x, y }) => (x, y),
         }
     }
 
@@ -71,13 +52,8 @@ impl PlacementMath {
         match placement {
             Placement::Top => Placement::Bottom,
             Placement::Bottom => Placement::Top,
-            Placement::Start => Placement::End,
-            Placement::End => Placement::Start,
-            Placement::TopStart => Placement::BottomStart,
-            Placement::TopEnd => Placement::BottomEnd,
-            Placement::BottomStart => Placement::TopStart,
-            Placement::BottomEnd => Placement::TopEnd,
-            Placement::Auto | Placement::Free(_) => placement,
+            Placement::Left => Placement::Right,
+            Placement::Right => Placement::Left,
         }
     }
 

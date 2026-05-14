@@ -76,7 +76,7 @@ impl<K: Clone + PartialEq + 'static> ComboBoxProps<K> {
             on_select: noop_select(),
             on_input_change: noop_input_change(),
             is_open: false,
-            placement: Placement::BottomStart,
+            placement: Placement::Bottom,
         }
     }
 

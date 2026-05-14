@@ -2,24 +2,15 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{RwSignal, SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, button, container, dyn_container, h_stack, label, scroll, v_stack};
-use katana_ui_widget::composite::indicator::tooltip::{
-    FreePlacement, Placement as TooltipPlacement, Tooltip,
-};
+use katana_ui_widget::composite::indicator::tooltip::{Tooltip, TooltipPlacement};
 use katana_ui_widget::theme::Theme;
 
 fn placement_label(placement: TooltipPlacement) -> &'static str {
     match placement {
         TooltipPlacement::Top => "Top",
         TooltipPlacement::Bottom => "Bottom",
-        TooltipPlacement::Start => "Start",
-        TooltipPlacement::End => "End",
-        TooltipPlacement::TopStart => "TopStart",
-        TooltipPlacement::TopEnd => "TopEnd",
-        TooltipPlacement::BottomStart => "BottomStart",
-        TooltipPlacement::BottomEnd => "BottomEnd",
-        TooltipPlacement::Auto => "Auto",
-        TooltipPlacement::Free(FreePlacement::AnchorOffset { .. }) => "Free relative",
-        TooltipPlacement::Free(FreePlacement::ParentOffset { .. }) => "Free parent",
+        TooltipPlacement::Left => "Left",
+        TooltipPlacement::Right => "Right",
     }
 }
 
@@ -43,34 +34,10 @@ fn placement_button(
 fn placement_controls(placement: RwSignal<TooltipPlacement>) -> impl IntoView {
     v_stack((
         h_stack((
-            placement_button("TopStart", TooltipPlacement::TopStart, placement),
             placement_button("Top", TooltipPlacement::Top, placement),
-            placement_button("TopEnd", TooltipPlacement::TopEnd, placement),
-        ))
-        .style(|style| style.gap(8.0)),
-        h_stack((
-            placement_button("Start", TooltipPlacement::Start, placement),
-            placement_button("Auto", TooltipPlacement::Auto, placement),
-            placement_button("End", TooltipPlacement::End, placement),
-        ))
-        .style(|style| style.gap(8.0)),
-        h_stack((
-            placement_button("BottomStart", TooltipPlacement::BottomStart, placement),
             placement_button("Bottom", TooltipPlacement::Bottom, placement),
-            placement_button("BottomEnd", TooltipPlacement::BottomEnd, placement),
-        ))
-        .style(|style| style.gap(8.0)),
-        h_stack((
-            placement_button(
-                "Free 相対",
-                TooltipPlacement::Free(FreePlacement::AnchorOffset { x: 18.0, y: 44.0 }),
-                placement,
-            ),
-            placement_button(
-                "Free 親",
-                TooltipPlacement::Free(FreePlacement::ParentOffset { x: 34.0, y: 138.0 }),
-                placement,
-            ),
+            placement_button("Left", TooltipPlacement::Left, placement),
+            placement_button("Right", TooltipPlacement::Right, placement),
         ))
         .style(|style| style.gap(8.0)),
     ))

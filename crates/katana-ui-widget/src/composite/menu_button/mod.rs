@@ -1,15 +1,21 @@
+mod contract;
+mod ops;
 mod overlay;
 mod style;
 mod trigger;
 mod types;
 mod view;
 
+#[cfg(test)]
+mod placement_tests;
+
+#[doc(hidden)]
+pub use contract::{MenuButtonInteractionState, MenuButtonTransition};
 pub use types::{
-    MenuButtonCloseCallback, MenuButtonContentFactory, MenuButtonOpenCallback, MenuButtonTrigger,
-    MenuButtonTriggerFactory, MenuButtonVariant,
+    MenuButtonCloseCallback, MenuButtonContentFactory, MenuButtonOpenCallback, MenuButtonPlacement,
+    MenuButtonTrigger, MenuButtonTriggerFactory, MenuButtonVariant,
 };
 
-pub use crate::layout::popover::{FreePlacement, Placement as MenuButtonPlacement};
 use crate::theme::Theme;
 use floem::IntoView;
 use std::rc::Rc;
@@ -30,7 +36,7 @@ impl MenuButton {
                 content: MenuButtonDefaults::default_content(),
                 on_open: MenuButtonDefaults::noop_open_callback(),
                 on_close: MenuButtonDefaults::noop_close_callback(),
-                placement: MenuButtonPlacement::BottomStart,
+                placement: MenuButtonPlacement::Bottom,
                 open: false,
             },
         }

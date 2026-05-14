@@ -1,4 +1,4 @@
-use super::Placement;
+use crate::layout::popover::Placement;
 use crate::layout::popover::{AnchorRect, PlacementOrigin, PlacementResolver};
 use crate::theme::Theme;
 use crate::theme::color::Color;
@@ -94,13 +94,8 @@ pub(super) fn flip_placement(
     match placement {
         Placement::Top => Placement::Bottom,
         Placement::Bottom => Placement::Top,
-        Placement::Start => Placement::End,
-        Placement::End => Placement::Start,
-        Placement::TopStart => Placement::BottomStart,
-        Placement::TopEnd => Placement::BottomEnd,
-        Placement::BottomStart => Placement::TopStart,
-        Placement::BottomEnd => Placement::TopEnd,
-        Placement::Auto | Placement::Free(_) => placement,
+        Placement::Left => Placement::Right,
+        Placement::Right => Placement::Left,
     }
 }
 
@@ -158,9 +153,6 @@ pub(super) fn overlay_layout_detail(
         viewport_width,
         viewport_height,
     );
-    if matches!(origin.placement, Placement::Free(_)) {
-        return origin;
-    }
     let max_x = (viewport_width - tooltip_width).max(0.0);
     let max_y = (viewport_height - tooltip_height).max(0.0);
     PlacementOrigin {
@@ -204,7 +196,7 @@ mod tests {
             width: 30.0,
             height: 20.0,
         };
-        let (x, y) = overlay_layout(Placement::End, anchor, 120.0, 40.0, 800.0, 600.0, 8.0);
+        let (x, y) = overlay_layout(Placement::Right, anchor, 120.0, 40.0, 800.0, 600.0, 8.0);
         assert!((x <= 680.0) && (y >= 0.0));
     }
 

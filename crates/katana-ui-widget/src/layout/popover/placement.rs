@@ -10,16 +10,6 @@ pub struct PlacementOrigin {
 
 pub struct PlacementResolver;
 
-const AUTO_ORDER: [Placement; 8] = [
-    Placement::BottomStart,
-    Placement::Bottom,
-    Placement::BottomEnd,
-    Placement::TopStart,
-    Placement::Top,
-    Placement::TopEnd,
-    Placement::End,
-    Placement::Start,
-];
 impl PlacementResolver {
     pub fn resolve_origin(
         placement: Placement,
@@ -57,50 +47,15 @@ impl PlacementResolver {
         viewport_width: f32,
         viewport_height: f32,
     ) -> Placement {
-        match placement {
-            Placement::Auto => Self::auto_placement(
-                anchor,
-                offset,
-                popover_width,
-                popover_height,
-                viewport_width,
-                viewport_height,
-            ),
-            Placement::Free(_) => placement,
-            _ => Self::flip_if_needed(
-                placement,
-                anchor,
-                offset,
-                popover_width,
-                popover_height,
-                viewport_width,
-                viewport_height,
-            ),
-        }
-    }
-
-    fn auto_placement(
-        anchor: AnchorRect,
-        offset: f32,
-        popover_width: f32,
-        popover_height: f32,
-        viewport_width: f32,
-        viewport_height: f32,
-    ) -> Placement {
-        AUTO_ORDER
-            .into_iter()
-            .find(|placement| {
-                PlacementMath::fits(
-                    *placement,
-                    anchor,
-                    offset,
-                    popover_width,
-                    popover_height,
-                    viewport_width,
-                    viewport_height,
-                )
-            })
-            .unwrap_or(Placement::BottomStart)
+        Self::flip_if_needed(
+            placement,
+            anchor,
+            offset,
+            popover_width,
+            popover_height,
+            viewport_width,
+            viewport_height,
+        )
     }
 
     fn flip_if_needed(

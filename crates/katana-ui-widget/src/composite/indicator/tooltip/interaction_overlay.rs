@@ -1,4 +1,4 @@
-use crate::layout::popover::{AnchorRect, FreePlacement, Placement};
+use crate::layout::popover::{AnchorRect, Placement};
 use crate::overlay_lifecycle::{OverlayLifecycle, OverlayLifetime};
 use floem::event::{Event, EventListener};
 use floem::keyboard::{Key, NamedKey};
@@ -17,9 +17,12 @@ use super::view::{
 use std::cell::Cell;
 
 const TOOLTIP_RADIUS: f32 = crate::floem_view::CORNER_RADIUS_SM;
+const TOOLTIP_OVERLAY_CATCH_PLANE_SIZE: f32 = 10000.0;
+const TOOLTIP_OVERLAY_ROOT_Z_INDEX: i32 = 1000;
+const TOOLTIP_OVERLAY_PANEL_Z_INDEX: i32 = 1001;
 
 pub(super) struct TooltipOverlayConfig {
-    pub(super) placement: super::Placement,
+    pub(super) placement: Placement,
     pub(super) tooltip_label: String,
     pub(super) tooltip_max_width: f32,
     pub(super) tooltip_font_size: f32,
@@ -153,16 +156,8 @@ pub(super) fn bind_overlay_effect(
     });
 }
 
-fn placement_for_parent_origin(placement: Placement, parent_origin: (f32, f32)) -> Placement {
-    match placement {
-        Placement::Free(FreePlacement::ParentOffset { x, y }) => {
-            Placement::Free(FreePlacement::ParentOffset {
-                x: parent_origin.0 + x,
-                y: parent_origin.1 + y,
-            })
-        }
-        _ => placement,
-    }
+fn placement_for_parent_origin(placement: Placement, _parent_origin: (f32, f32)) -> Placement {
+    placement
 }
 
 fn overlay_view(config: TooltipOverlayViewConfig) -> Box<dyn View> {
@@ -191,10 +186,24 @@ fn overlay_view(config: TooltipOverlayViewConfig) -> Box<dyn View> {
             })
             .on_event_stop(EventListener::PointerDown, |_| {}),
     )
-    .style(move |style| style.absolute().inset_left(config.x).inset_top(config.y));
+    .style(move |style| {
+        style
+            .absolute()
+            .inset_left(config.x)
+            .inset_top(config.y)
+            .z_index(TOOLTIP_OVERLAY_PANEL_Z_INDEX)
+    });
 
     container((arrow, panel))
-        .style(|style| style.width_full().height_full())
+        .style(|style| {
+            style
+                .absolute()
+                .inset_left(0.0)
+                .inset_top(0.0)
+                .width(TOOLTIP_OVERLAY_CATCH_PLANE_SIZE)
+                .height(TOOLTIP_OVERLAY_CATCH_PLANE_SIZE)
+                .z_index(TOOLTIP_OVERLAY_ROOT_Z_INDEX)
+        })
         .on_event_stop(EventListener::PointerDown, move |_| {
             (config.close_overlay_for_outside)();
         })

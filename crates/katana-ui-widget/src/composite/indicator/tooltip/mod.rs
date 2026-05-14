@@ -1,3 +1,4 @@
+mod contract;
 mod interaction;
 mod interaction_arrow;
 mod interaction_events;
@@ -5,8 +6,11 @@ mod interaction_overlay;
 mod types;
 mod view;
 
-pub use types::{FreePlacement, Placement, ResolvedTooltip, Tooltip, TooltipProps};
+#[doc(hidden)]
+pub use contract::{TooltipInteractionState, TooltipTransition};
+pub use types::{ResolvedTooltip, Tooltip, TooltipPlacement, TooltipProps};
 
+use crate::layout::popover::Placement;
 use crate::theme::Theme;
 use floem::IntoView;
 
@@ -16,7 +20,7 @@ impl Tooltip {
         Self {
             props: TooltipProps {
                 label: label.into(),
-                placement: Placement::Top,
+                placement: TooltipPlacement::Top,
                 delay_ms: default_delay_ms(),
                 max_width: default_max_width(),
                 dismiss_on_pointer_leave: true,
@@ -28,7 +32,7 @@ impl Tooltip {
     }
 
     #[must_use]
-    pub fn placement(mut self, placement: Placement) -> Self {
+    pub fn placement(mut self, placement: TooltipPlacement) -> Self {
         self.props.placement = placement;
         self
     }
@@ -81,11 +85,15 @@ impl Tooltip {
 
     #[must_use]
     pub fn flip_placement(
-        placement: Placement,
+        placement: TooltipPlacement,
         preferred_fits: bool,
         opposite_fits: bool,
-    ) -> Placement {
-        flip_placement(placement, preferred_fits, opposite_fits)
+    ) -> TooltipPlacement {
+        TooltipPlacement::from_popover_placement(flip_placement(
+            placement.as_popover_placement(),
+            preferred_fits,
+            opposite_fits,
+        ))
     }
 
     #[must_use]
@@ -93,7 +101,7 @@ impl Tooltip {
         let (pv, ph) = padding();
         ResolvedTooltip {
             label: self.props.label.clone(),
-            placement: effective_placement(self.props.placement),
+            placement: effective_placement(self.props.placement.as_popover_placement()),
             delay_ms: self.props.delay_ms,
             max_width: self.props.max_width,
             font_size: font_size(),
@@ -179,29 +187,23 @@ mod tests {
     fn custom_placement_bottom() {
         let theme = Theme::default_light();
         let r = Tooltip::new("Hello")
-            .placement(Placement::Bottom)
+            .placement(TooltipPlacement::Bottom)
             .resolve(&theme);
         assert_eq!(r.placement, Placement::Bottom);
     }
 
     #[test]
-    fn custom_placement_auto_and_free() {
+    fn custom_placement_four_directions_only() {
         let theme = Theme::default_light();
-        let auto = Tooltip::new("Hello")
-            .placement(Placement::Auto)
+        let start = Tooltip::new("Hello")
+            .placement(TooltipPlacement::Left)
             .resolve(&theme);
-        assert_eq!(auto.placement, Placement::Auto);
+        assert_eq!(start.placement, Placement::Left);
 
-        let free = Tooltip::new("Hello")
-            .placement(Placement::Free(FreePlacement::AnchorOffset {
-                x: 4.0,
-                y: 8.0,
-            }))
+        let end = Tooltip::new("Hello")
+            .placement(TooltipPlacement::Right)
             .resolve(&theme);
-        assert_eq!(
-            free.placement,
-            Placement::Free(FreePlacement::AnchorOffset { x: 4.0, y: 8.0 })
-        );
+        assert_eq!(end.placement, Placement::Right);
     }
 
     #[test]
@@ -273,24 +275,24 @@ mod tests {
     #[test]
     fn placement_flips_when_preferred_side_does_not_fit() {
         assert_eq!(
-            Tooltip::flip_placement(Placement::Top, false, true),
-            Placement::Bottom
+            Tooltip::flip_placement(TooltipPlacement::Top, false, true),
+            TooltipPlacement::Bottom
         );
         assert_eq!(
-            Tooltip::flip_placement(Placement::End, false, true),
-            Placement::Start
+            Tooltip::flip_placement(TooltipPlacement::Right, false, true),
+            TooltipPlacement::Left
         );
     }
 
     #[test]
     fn placement_not_flipped_when_preferred_side_already_fits() {
         assert_eq!(
-            Tooltip::flip_placement(Placement::Bottom, true, false),
-            Placement::Bottom
+            Tooltip::flip_placement(TooltipPlacement::Bottom, true, false),
+            TooltipPlacement::Bottom
         );
         assert_eq!(
-            Tooltip::flip_placement(Placement::Top, true, false),
-            Placement::Top
+            Tooltip::flip_placement(TooltipPlacement::Top, true, false),
+            TooltipPlacement::Top
         );
     }
 }

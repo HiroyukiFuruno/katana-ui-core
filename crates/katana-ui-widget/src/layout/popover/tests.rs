@@ -65,59 +65,70 @@ fn compute_origin_top_accounts_for_popover_height() {
 }
 
 #[test]
-fn compute_origin_start_accounts_for_popover_width() {
-    let p = Popover::new().placement(Placement::Start).offset(4.0);
+fn compute_origin_left_accounts_for_popover_width() {
+    let p = Popover::new().placement(Placement::Left).offset(4.0);
     let o = p.compute_origin(anchor(), 120.0, 60.0, 800.0, 600.0);
     assert!((o.x - (200.0 - 120.0 - 4.0)).abs() < f32::EPSILON);
 }
 
 #[test]
-fn compute_origin_supports_edge_aligned_placements() {
-    let p = Popover::new().placement(Placement::BottomStart).offset(4.0);
-    let o = p.compute_origin(anchor(), 120.0, 60.0, 800.0, 600.0);
-    assert!((o.x - ANCHOR_X).abs() < f32::EPSILON);
-    assert!((o.y - (ANCHOR_Y + ANCHOR_HEIGHT + 4.0)).abs() < f32::EPSILON);
-
-    let p = Popover::new().placement(Placement::TopEnd).offset(4.0);
-    let o = p.compute_origin(anchor(), 120.0, 60.0, 800.0, 600.0);
-    assert!((o.x - (ANCHOR_X + ANCHOR_WIDTH - 120.0)).abs() < f32::EPSILON);
-    assert!((o.y - (ANCHOR_Y - 60.0 - 4.0)).abs() < f32::EPSILON);
-}
-
-#[test]
-fn auto_placement_prefers_bottom_start_when_it_fits() {
-    let theme = Theme::default_light();
-    let r = Popover::new()
-        .placement(Placement::Auto)
-        .open(true)
-        .anchor(AnchorRef::new(anchor()))
-        .resolve(&theme);
-    let overlay = r.overlay_layout(120.0, 60.0, 800.0, 600.0);
-    assert_eq!(
-        overlay.map(|layout| layout.placement),
-        Some(Placement::BottomStart)
+fn left_edge_left_flips_to_right() {
+    let o = PlacementResolver::resolve_origin(
+        Placement::Left,
+        AnchorRect::new(10.0, 200.0, 100.0, 40.0),
+        4.0,
+        120.0,
+        60.0,
+        800.0,
+        600.0,
     );
+    assert_eq!(o.placement, Placement::Right);
+    assert_eq!(o.x, 114.0);
 }
 
 #[test]
-fn free_placement_supports_anchor_and_parent_offsets() {
-    let relative = Popover::new()
-        .placement(Placement::Free(FreePlacement::AnchorOffset {
-            x: 12.0,
-            y: 16.0,
-        }))
-        .offset(4.0);
-    let o = relative.compute_origin(anchor(), 120.0, 60.0, 800.0, 600.0);
-    assert!((o.x - (ANCHOR_X + 12.0)).abs() < f32::EPSILON);
-    assert!((o.y - (ANCHOR_Y + 16.0)).abs() < f32::EPSILON);
+fn right_edge_right_flips_to_left() {
+    let o = PlacementResolver::resolve_origin(
+        Placement::Right,
+        AnchorRect::new(740.0, 200.0, 50.0, 40.0),
+        4.0,
+        120.0,
+        60.0,
+        800.0,
+        600.0,
+    );
+    assert_eq!(o.placement, Placement::Left);
+    assert_eq!(o.x, 616.0);
+}
 
-    let parent = Popover::new().placement(Placement::Free(FreePlacement::ParentOffset {
-        x: 24.0,
-        y: 32.0,
-    }));
-    let o = parent.compute_origin(anchor(), 120.0, 60.0, 800.0, 600.0);
-    assert!((o.x - 24.0).abs() < f32::EPSILON);
-    assert!((o.y - 32.0).abs() < f32::EPSILON);
+#[test]
+fn top_edge_top_flips_to_bottom() {
+    let o = PlacementResolver::resolve_origin(
+        Placement::Top,
+        AnchorRect::new(200.0, 10.0, 100.0, 40.0),
+        4.0,
+        120.0,
+        60.0,
+        800.0,
+        600.0,
+    );
+    assert_eq!(o.placement, Placement::Bottom);
+    assert_eq!(o.y, 54.0);
+}
+
+#[test]
+fn bottom_edge_bottom_flips_to_top() {
+    let o = PlacementResolver::resolve_origin(
+        Placement::Bottom,
+        AnchorRect::new(200.0, 560.0, 100.0, 30.0),
+        4.0,
+        120.0,
+        60.0,
+        800.0,
+        600.0,
+    );
+    assert_eq!(o.placement, Placement::Top);
+    assert_eq!(o.y, 496.0);
 }
 
 #[test]

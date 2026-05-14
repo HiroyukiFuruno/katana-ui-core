@@ -7,6 +7,7 @@ use katana_ui_widget::composite::menu_button::{
 };
 use katana_ui_widget::primitive::icon::IconSource;
 use katana_ui_widget::theme::Theme;
+use floem::View;
 use std::rc::Rc;
 
 const ICON_DOTS: &[u8] =
@@ -89,7 +90,7 @@ fn placement_sample(
     title: &'static str,
     placement: MenuButtonPlacement,
     log: RwSignal<String>,
-) -> impl IntoView {
+) -> Box<dyn View> {
     v_stack((
         label(move || title).style(|s| s.font_size(12.0)),
         MenuButton::new()
@@ -99,6 +100,68 @@ fn placement_sample(
             .view(theme),
     ))
     .style(|s| s.gap(4.0))
+    .into_any()
+}
+
+fn placement_row(theme: Theme, log: RwSignal<String>) -> Box<dyn View> {
+    h_stack((
+        placement_sample(theme.clone(), "Top", MenuButtonPlacement::Top, log),
+        placement_sample(theme.clone(), "Bottom", MenuButtonPlacement::Bottom, log),
+        placement_sample(theme.clone(), "Left", MenuButtonPlacement::Left, log),
+        placement_sample(theme, "Right", MenuButtonPlacement::Right, log),
+    ))
+    .style(|s| s.gap(12.0))
+    .into_any()
+}
+
+fn placement_demo(theme: Theme, log: RwSignal<String>) -> impl IntoView {
+    v_stack((
+        label(|| "表示方向（placement）: 四方向").style(|s| s.font_size(14.0)),
+        placement_row(theme, log),
+        status_row("placement", log),
+    ))
+    .style(|s| s.gap(10.0))
+}
+
+fn close_behavior_demo(theme: Theme) -> impl IntoView {
+    let close_log = create_rw_signal("未操作".to_string());
+    let close_open = create_rw_signal(0_u32);
+    let close_count = create_rw_signal(0_u32);
+    let menu = MenuButton::new()
+        .trigger_label("閉じ方確認メニュー")
+        .on_open({
+            let close_open = close_open;
+            let close_log = close_log;
+            move || {
+                let _ = close_open.try_update(|value| *value += 1);
+                close_log.set("open: ボタンで開いた".to_string());
+            }
+        })
+        .on_close({
+            let close_count = close_count;
+            let close_log = close_log;
+            move || {
+                let _ = close_count.try_update(|value| *value += 1);
+                close_log.set("close: 再クリック / 外側クリック / Esc / 項目選択".to_string());
+            }
+        })
+        .content(sample_menu("close behavior", close_log));
+
+    v_stack((
+        label(|| "閉じ方").style(|s| s.font_size(14.0)),
+        label(|| "同じボタンを再度押す、メニュー外をクリックする、Esc を押す、項目を選ぶ、の全てで閉じます")
+            .style(|s| s.font_size(12.0)),
+        container(menu.view(theme)).style(|s| s.padding(2.0)).into_any(),
+        menu_status("close behavior", close_open, close_count, close_log),
+        container(label(|| "外側クリック確認用の余白"))
+            .style(|s| {
+                s.padding(16.0)
+                    .border(1.0)
+                    .border_color(floem::peniko::Color::rgb8(200, 200, 200))
+            })
+            .into_any(),
+    ))
+    .style(|s| s.gap(8.0))
 }
 
 pub fn menu_button_page(theme: Theme) -> impl IntoView {
@@ -184,29 +247,8 @@ pub fn menu_button_page(theme: Theme) -> impl IntoView {
                 .style(|s| s.padding(2.0))
                 .into_any(),
             menu_status("icon", icon_open, icon_close, icon_log),
-            label(|| "placement").style(|s| s.font_size(14.0)),
-            h_stack((
-                placement_sample(
-                    theme.clone(),
-                    "BottomStart",
-                    MenuButtonPlacement::BottomStart,
-                    placement_log,
-                ),
-                placement_sample(
-                    theme.clone(),
-                    "TopEnd",
-                    MenuButtonPlacement::TopEnd,
-                    placement_log,
-                ),
-                placement_sample(
-                    theme.clone(),
-                    "End",
-                    MenuButtonPlacement::End,
-                    placement_log,
-                ),
-            ))
-            .style(|s| s.gap(12.0)),
-            status_row("placement", placement_log),
+            close_behavior_demo(theme.clone()),
+            placement_demo(theme.clone(), placement_log),
         ))
         .style(move |s| s.gap(14.0).padding(16.0).background(bg).color(text)),
     )

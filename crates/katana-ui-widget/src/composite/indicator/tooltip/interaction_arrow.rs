@@ -42,7 +42,7 @@ pub(super) fn arrow_view(config: TooltipArrowConfig) -> Box<dyn View> {
 }
 
 fn arrow_origin(config: &TooltipArrowConfig) -> Option<(f32, f32)> {
-    if !config.show_arrow || matches!(config.placement, Placement::Free(_)) {
+    if !config.show_arrow {
         return None;
     }
 
@@ -54,22 +54,21 @@ fn arrow_origin(config: &TooltipArrowConfig) -> Option<(f32, f32)> {
     let max_y = config.y + config.tooltip_height - TOOLTIP_ARROW_INSET - TOOLTIP_ARROW_SIZE;
 
     match config.placement {
-        Placement::Bottom | Placement::BottomStart | Placement::BottomEnd => Some((
+        Placement::Bottom => Some((
             (anchor_center_x - (TOOLTIP_ARROW_SIZE * CENTER_RATE)).clamp(min_x, max_x),
             config.y - (TOOLTIP_ARROW_SIZE * CENTER_RATE),
         )),
-        Placement::Top | Placement::TopStart | Placement::TopEnd => Some((
+        Placement::Top => Some((
             (anchor_center_x - (TOOLTIP_ARROW_SIZE * CENTER_RATE)).clamp(min_x, max_x),
             config.y + config.tooltip_height - (TOOLTIP_ARROW_SIZE * CENTER_RATE),
         )),
-        Placement::End => Some((
+        Placement::Right => Some((
             config.x - (TOOLTIP_ARROW_SIZE * CENTER_RATE),
             (anchor_center_y - (TOOLTIP_ARROW_SIZE * CENTER_RATE)).clamp(min_y, max_y),
         )),
-        Placement::Start => Some((
+        Placement::Left => Some((
             config.x + config.tooltip_max_width - (TOOLTIP_ARROW_SIZE * CENTER_RATE),
             (anchor_center_y - (TOOLTIP_ARROW_SIZE * CENTER_RATE)).clamp(min_y, max_y),
         )),
-        Placement::Auto | Placement::Free(_) => None,
     }
 }

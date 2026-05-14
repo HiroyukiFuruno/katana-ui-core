@@ -5,7 +5,7 @@ mod types;
 mod view;
 
 use self::ops::toggle_open;
-pub use crate::layout::popover::{FreePlacement, Placement as ComboBoxPlacement};
+pub use crate::layout::popover::Placement as ComboBoxPlacement;
 pub use types::{ComboBoxOption, ComboBoxProps, ResolvedComboBox, ResolvedComboBoxOption};
 
 use std::rc::Rc;
@@ -30,7 +30,7 @@ impl<K: Clone + PartialEq + 'static> ComboBox<K> {
                 on_select: Rc::new(|_| {}),
                 on_input_change: Rc::new(|_| {}),
                 is_open: false,
-                placement: ComboBoxPlacement::BottomStart,
+                placement: ComboBoxPlacement::Bottom,
             },
         }
     }

@@ -28,6 +28,28 @@ pub enum MenuButtonVariant {
     Unframed,
 }
 
+/// MenuButton が対応する表示方向。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum MenuButtonPlacement {
+    Top,
+    #[default]
+    Bottom,
+    Left,
+    Right,
+}
+
+impl MenuButtonPlacement {
+    #[must_use]
+    pub const fn as_popover_placement(self) -> Placement {
+        match self {
+            Self::Top => Placement::Top,
+            Self::Bottom => Placement::Bottom,
+            Self::Left => Placement::Left,
+            Self::Right => Placement::Right,
+        }
+    }
+}
+
 /// Trigger shape for `MenuButton`.
 pub enum MenuButtonTrigger {
     Label(String),
@@ -48,7 +70,7 @@ pub struct MenuButtonProps {
     pub content: MenuButtonContentFactory,
     pub on_open: MenuButtonOpenCallback,
     pub on_close: MenuButtonCloseCallback,
-    pub placement: Placement,
+    pub placement: MenuButtonPlacement,
     pub open: bool,
 }
 

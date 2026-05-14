@@ -11,14 +11,8 @@ fn placement_row(title: &'static str, placement: Placement, x: f32, y: f32) -> i
     let tag = match placement {
         Placement::Bottom => "Bottom",
         Placement::Top => "Top",
-        Placement::Start => "Start",
-        Placement::End => "End",
-        Placement::TopStart => "TopStart",
-        Placement::TopEnd => "TopEnd",
-        Placement::BottomStart => "BottomStart",
-        Placement::BottomEnd => "BottomEnd",
-        Placement::Auto => "Auto",
-        Placement::Free(_) => "Free",
+        Placement::Left => "Left",
+        Placement::Right => "Right",
     };
     v_stack((
         label(move || title).style(|s| s.font_size(12.0)),
@@ -200,20 +194,20 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
                         log.set("placement: Top".to_string());
                     }
                 }),
-                button(label(|| "Start")).action({
+                button(label(|| "Left")).action({
                     let placement = placement;
                     let log = log;
                     move || {
-                        placement.set(Placement::Start);
-                        log.set("placement: Start".to_string());
+                        placement.set(Placement::Left);
+                        log.set("placement: Left".to_string());
                     }
                 }),
-                button(label(|| "End")).action({
+                button(label(|| "Right")).action({
                     let placement = placement;
                     let log = log;
                     move || {
-                        placement.set(Placement::End);
-                        log.set("placement: End".to_string());
+                        placement.set(Placement::Right);
+                        log.set("placement: Right".to_string());
                     }
                 }),
             ))
@@ -383,7 +377,6 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     );
 
     let base_anchor = anchors[0];
-    let edge_anchor = anchors[1];
     let o_bottom = Popover::new().compute_origin(base_anchor, 120.0, 60.0, 800.0, 600.0);
     let o_top = Popover::new().placement(Placement::Top).compute_origin(
         base_anchor,
@@ -392,35 +385,20 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
         800.0,
         600.0,
     );
-    let o_start = Popover::new().placement(Placement::Start).compute_origin(
+    let o_start = Popover::new().placement(Placement::Left).compute_origin(
         base_anchor,
         120.0,
         60.0,
         800.0,
         600.0,
     );
-    let o_end = Popover::new().placement(Placement::End).compute_origin(
+    let o_end = Popover::new().placement(Placement::Right).compute_origin(
         base_anchor,
         120.0,
         60.0,
         800.0,
         600.0,
     );
-    let o_flip_bottom = Popover::new().placement(Placement::Bottom).compute_origin(
-        edge_anchor,
-        120.0,
-        60.0,
-        800.0,
-        600.0,
-    );
-    let o_flip_end = Popover::new().placement(Placement::End).compute_origin(
-        edge_anchor,
-        120.0,
-        60.0,
-        800.0,
-        600.0,
-    );
-
     let anchor_buttons = h_stack((
         button(label(|| "anchor center")).action({
             let anchor_index = anchor_index;
@@ -453,16 +431,8 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
             label(|| "Placement").style(|s| s.font_size(13.0)),
             placement_row("Bottom", Placement::Bottom, o_bottom.x, o_bottom.y),
             placement_row("Top", Placement::Top, o_top.x, o_top.y),
-            placement_row("Start", Placement::Start, o_start.x, o_start.y),
-            placement_row("End", Placement::End, o_end.x, o_end.y),
-            label(|| "Auto flip near edge").style(|s| s.font_size(13.0)),
-            placement_row(
-                "Bottom flip",
-                Placement::Bottom,
-                o_flip_bottom.x,
-                o_flip_bottom.y,
-            ),
-            placement_row("End flip", Placement::End, o_flip_end.x, o_flip_end.y),
+            placement_row("Left", Placement::Left, o_start.x, o_start.y),
+            placement_row("Right", Placement::Right, o_end.x, o_end.y),
         ))
         .style(move |s| {
             s.gap(8.0)

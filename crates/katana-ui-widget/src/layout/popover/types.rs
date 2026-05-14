@@ -4,27 +4,14 @@ use std::rc::Rc;
 
 pub type PopoverChildren = Rc<dyn Fn() -> Box<dyn View>>;
 
-/// Free-form placement relative to the anchor or parent overlay.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum FreePlacement {
-    AnchorOffset { x: f32, y: f32 },
-    ParentOffset { x: f32, y: f32 },
-}
-
 /// Placement of the popover relative to its anchor.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum Placement {
     #[default]
     Bottom,
     Top,
-    Start,
-    End,
-    TopStart,
-    TopEnd,
-    BottomStart,
-    BottomEnd,
-    Auto,
-    Free(FreePlacement),
+    Left,
+    Right,
 }
 
 /// Anchor position and dimensions (in logical pixels).

@@ -124,28 +124,28 @@ fn page_content(theme: Theme) -> impl IntoView {
         label(|| "配置差分（クリックで候補リストの開く位置を確認）")
             .style(|style| style.font_size(14.0).margin_top(12.0)),
         h_stack((
-            ComboBox::new(font_options(), "BottomStart")
-                .placeholder("BottomStart")
-                .placement(ComboBoxPlacement::BottomStart)
+            ComboBox::new(font_options(), "Bottom")
+                .placeholder("Bottom")
+                .placement(ComboBoxPlacement::Bottom)
                 .on_select({
                     let placement_selected = placement_selected;
-                    move |value| placement_selected.set(format!("BottomStart: {value}"))
+                    move |value| placement_selected.set(format!("Bottom: {value}"))
                 })
                 .view(theme.clone()),
-            ComboBox::new(font_options(), "TopEnd")
-                .placeholder("TopEnd")
-                .placement(ComboBoxPlacement::TopEnd)
+            ComboBox::new(font_options(), "Top")
+                .placeholder("Top")
+                .placement(ComboBoxPlacement::Top)
                 .on_select({
                     let placement_selected = placement_selected;
-                    move |value| placement_selected.set(format!("TopEnd: {value}"))
+                    move |value| placement_selected.set(format!("Top: {value}"))
                 })
                 .view(theme.clone()),
-            ComboBox::new(font_options(), "End")
-                .placeholder("End")
-                .placement(ComboBoxPlacement::End)
+            ComboBox::new(font_options(), "Right")
+                .placeholder("Right")
+                .placement(ComboBoxPlacement::Right)
                 .on_select({
                     let placement_selected = placement_selected;
-                    move |value| placement_selected.set(format!("End: {value}"))
+                    move |value| placement_selected.set(format!("Right: {value}"))
                 })
                 .view(theme.clone()),
         ))

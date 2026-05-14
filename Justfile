@@ -60,6 +60,10 @@ storybook-ast-lint:
 overlay-lifecycle-lint:
     bash scripts/assert-overlay-lifecycle.sh
 
+# Check MenuButton placement and close behavior contracts.
+menu-button-contract:
+    bash scripts/assert-menu-button-contract.sh
+
 # Run workspace tests
 unit-test:
     {{CARGO}} test --workspace --all-targets --all-features --locked
@@ -72,7 +76,7 @@ coverage:
     {{CARGO}} llvm-cov --workspace --all-features --locked --summary-only --fail-under-lines {{COVERAGE_MIN_LINES}}
 
 # Run the local quality gate
-check: fmt-check check-types lint unit-test ast-lint overlay-lifecycle-lint
+check: fmt-check check-types lint unit-test ast-lint overlay-lifecycle-lint menu-button-contract
     @echo "checks passed"
 
 # Sweep old build artifacts locally (older than 7 days)
@@ -136,4 +140,4 @@ cargo-test:
     RUSTFLAGS="-D warnings" cargo test --workspace --all-targets
 
 # Run the full Storybook regression gate used before publishing.
-storybook-regression: cargo-test storybook-check ast-lint overlay-lifecycle-lint storybook-smoke storybook-interaction-smoke storybook-requirement-gate
+storybook-regression: cargo-test storybook-check ast-lint overlay-lifecycle-lint menu-button-contract storybook-smoke storybook-interaction-smoke storybook-requirement-gate

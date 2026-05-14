@@ -9,6 +9,7 @@ use floem::views::{Decorators, button};
 use floem::{IntoView, View, ViewId};
 use std::rc::Rc;
 
+use super::ops::{self, CloseIntent};
 use super::overlay::build_overlay;
 use super::style::{MENU_GAP, MENU_RADIUS, menu_style};
 use super::trigger::build_trigger;
@@ -35,6 +36,7 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
     let trigger_anchor = create_rw_signal(default_anchor());
     let overlay_pending = Rc::new(Cell::new(false));
     let overlay_lifetime = OverlayLifetime::new();
+    let menu_id = ops::next_menu_id();
 
     let remove_overlay_if_open = {
         let overlay_lifetime = overlay_lifetime.clone();
@@ -62,11 +64,15 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
             if !changed {
                 return;
             }
+            ops::deactivate_menu(menu_id);
             remove_overlay_if_open();
             on_close();
         })
     };
+    ops::register_menu(menu_id, &close_overlay);
 
+    let base_button = button(build_trigger(&trigger, &theme));
+    let trigger_id = base_button.id();
     let close_overlay_for_effect = Rc::clone(&close_overlay);
     create_effect({
         let remove_overlay_if_open = Rc::clone(&remove_overlay_if_open);
@@ -80,6 +86,7 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
                 remove_overlay_if_open();
                 return;
             }
+            ops::activate_menu(menu_id);
 
             if overlay_id.try_get().unwrap_or(None).is_some() || overlay_pending.get() {
                 return;
@@ -87,6 +94,7 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
             overlay_pending.set(true);
 
             let overlay_anchor = trigger_anchor.try_get().unwrap_or(default_anchor());
+            let overlay_placement = placement.as_popover_placement();
             let content = Rc::clone(&content);
             let close_overlay = Rc::clone(&close_overlay_for_effect);
             let overlay_theme = theme.clone();
@@ -102,7 +110,7 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
                         content.clone(),
                         Rc::clone(&close_overlay),
                         overlay_anchor,
-                        placement,
+                        overlay_placement,
                         overlay_theme.clone(),
                     )
                 },
@@ -114,6 +122,10 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
                             && overlay_id.try_get().unwrap_or(None).is_none()
                         {
                             overlay_id.set(Some(view_id));
+                            OverlayLifecycle::request_focus_next_tick(
+                                &overlay_lifetime_for_added,
+                                view_id,
+                            );
                         } else {
                             OverlayLifecycle::remove_overlay_next_tick(
                                 &overlay_lifetime_for_added,
@@ -128,8 +140,6 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
 
     let (text_color, bg_color, border_color, border_width) = menu_style(variant, &theme);
     let close_overlay = Rc::clone(&close_overlay);
-    let base_button = button(build_trigger(&trigger, &theme));
-    let trigger_id = base_button.id();
     let mut trigger_button = base_button
         .on_event_stop(EventListener::PointerDown, {
             let close_overlay = Rc::clone(&close_overlay);
@@ -143,14 +153,25 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
                 }
 
                 let currently_open = is_open.try_get().unwrap_or(false);
-                if currently_open {
-                    close_overlay();
-                    return;
-                }
-
-                trigger_anchor.set(ViewAnchor::rect_for_view(trigger_id, default_anchor()));
-                if is_open.try_update(|open| *open = true).is_some() {
-                    on_open();
+                match ops::close_intent_for_trigger_press(currently_open) {
+                    CloseIntent::Close => close_overlay(),
+                    CloseIntent::KeepOpen => {
+                        ops::activate_menu(menu_id);
+                        trigger_anchor.set(ViewAnchor::rect_for_view(trigger_id, default_anchor()));
+                        let changed = is_open
+                            .try_update(|open| {
+                                if *open {
+                                    false
+                                } else {
+                                    *open = true;
+                                    true
+                                }
+                            })
+                            .unwrap_or(false);
+                        if changed {
+                            on_open();
+                        }
+                    }
                 }
             }
         })
@@ -178,6 +199,7 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
     }
 
     trigger_button.on_cleanup(move || {
+        ops::unregister_menu(menu_id);
         overlay_lifetime.dispose();
         remove_overlay_if_open();
     })
