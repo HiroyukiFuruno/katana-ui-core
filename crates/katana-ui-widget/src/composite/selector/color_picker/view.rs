@@ -11,7 +11,7 @@ use super::types::{
     ColorPickerValue, InlineColorPicker, LabeledColorPicker, ResolvedInlineColorPicker,
     ResolvedLabeledColorPicker, RgbaChannel,
 };
-use crate::overlay_lifecycle::OverlayLifecycle;
+use crate::overlay_lifecycle::{OverlayLifecycle, OverlayLifetime};
 use crate::theme::Theme;
 use crate::theme::color::Color;
 use floem::IntoView;
@@ -79,6 +79,7 @@ fn inline_picker_view(resolved: ResolvedInlineColorPicker, theme: Theme) -> impl
     let theme_for_trigger = theme.clone();
     let overlay_id = create_rw_signal::<Option<ViewId>>(None);
     let overlay_pending = Rc::new(Cell::new(false));
+    let overlay_lifetime = OverlayLifetime::new();
 
     let trigger = trigger::trigger_button(
         state,
@@ -88,15 +89,17 @@ fn inline_picker_view(resolved: ResolvedInlineColorPicker, theme: Theme) -> impl
         locked,
     );
     let trigger_id = trigger.id();
-    let close_overlay = close_overlay_handler(open, overlay_id, trigger_id);
+    let close_overlay =
+        close_overlay_handler(open, overlay_id, trigger_id, overlay_lifetime.clone());
 
     create_effect({
         let close_overlay = Rc::clone(&close_overlay);
         let overlay_pending = Rc::clone(&overlay_pending);
+        let overlay_lifetime = overlay_lifetime.clone();
         move |_| {
             if !open.try_get().unwrap_or(false) {
                 overlay_pending.set(false);
-                remove_overlay_if_present(overlay_id);
+                remove_overlay_if_present(overlay_id, &overlay_lifetime);
                 return;
             }
 
@@ -112,8 +115,11 @@ fn inline_picker_view(resolved: ResolvedInlineColorPicker, theme: Theme) -> impl
             let panel_on_change = Rc::clone(&on_change);
             let close_on_outside = Rc::clone(&close_overlay);
             let close_on_escape = Rc::clone(&close_overlay);
+            let overlay_lifetime_for_added = overlay_lifetime.clone();
+            let overlay_lifetime_for_panel = overlay_lifetime.clone();
 
             OverlayLifecycle::add_overlay_next_tick(
+                &overlay_lifetime,
                 Point::new(0.0, 0.0),
                 move |_| {
                     let panel = panel::panel_view(panel::PanelViewArgs {
@@ -128,7 +134,10 @@ fn inline_picker_view(resolved: ResolvedInlineColorPicker, theme: Theme) -> impl
                     })
                     .on_event_stop(EventListener::PointerDown, |_| {});
                     let panel_id = panel.id();
-                    OverlayLifecycle::request_focus_next_tick(panel_id);
+                    OverlayLifecycle::request_focus_next_tick(
+                        &overlay_lifetime_for_panel,
+                        panel_id,
+                    );
 
                     let floating_panel = container(panel).style(move |style| {
                         style
@@ -169,7 +178,10 @@ fn inline_picker_view(resolved: ResolvedInlineColorPicker, theme: Theme) -> impl
                         {
                             overlay_id.set(Some(overlay_view_id));
                         } else {
-                            OverlayLifecycle::remove_overlay_next_tick(overlay_view_id);
+                            OverlayLifecycle::remove_overlay_next_tick(
+                                &overlay_lifetime_for_added,
+                                overlay_view_id,
+                            );
                         }
                     }
                 },
@@ -178,7 +190,8 @@ fn inline_picker_view(resolved: ResolvedInlineColorPicker, theme: Theme) -> impl
     });
 
     container(trigger).on_cleanup(move || {
-        (close_overlay)();
+        overlay_lifetime.dispose();
+        remove_overlay_if_present(overlay_id, &overlay_lifetime);
     })
 }
 
@@ -235,19 +248,20 @@ fn close_overlay_handler(
     open: RwSignal<bool>,
     overlay_id: RwSignal<Option<ViewId>>,
     trigger_id: ViewId,
+    overlay_lifetime: OverlayLifetime,
 ) -> Rc<dyn Fn()> {
     Rc::new(move || {
-        remove_overlay_if_present(overlay_id);
+        remove_overlay_if_present(overlay_id, &overlay_lifetime);
         let _ = open.try_update(|is_open| *is_open = false);
-        OverlayLifecycle::request_focus_next_tick(trigger_id);
+        OverlayLifecycle::request_focus_next_tick(&overlay_lifetime, trigger_id);
     })
 }
 
-fn remove_overlay_if_present(overlay_id: RwSignal<Option<ViewId>>) {
+fn remove_overlay_if_present(overlay_id: RwSignal<Option<ViewId>>, lifetime: &OverlayLifetime) {
     if let Some(id) = overlay_id
         .try_update(|current_overlay_id| current_overlay_id.take())
         .flatten()
     {
-        OverlayLifecycle::remove_overlay_next_tick(id);
+        OverlayLifecycle::remove_overlay_next_tick(lifetime, id);
     }
 }

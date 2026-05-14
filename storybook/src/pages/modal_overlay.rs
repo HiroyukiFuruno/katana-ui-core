@@ -47,7 +47,6 @@ fn setting_buttons(state: ModalStateSignals) -> (impl IntoView, impl IntoView, i
 fn schedule_requested_setting_replay(
     theme: Theme,
     state: ModalStateSignals,
-    parent_window_id: Option<WindowId>,
     native_log: RwSignal<String>,
     focus_log: RwSignal<String>,
 ) {
@@ -64,7 +63,6 @@ fn schedule_requested_setting_replay(
             if open_native_modal(
                 replay_theme.clone(),
                 state,
-                parent_window_id,
                 native_log,
                 focus_log,
                 move |opened| {
@@ -91,7 +89,6 @@ fn schedule_requested_setting_replay(
 fn open_native_modal(
     theme: Theme,
     state: ModalStateSignals,
-    parent_window_id: Option<WindowId>,
     native_log: RwSignal<String>,
     focus_log: RwSignal<String>,
     on_window_created: impl Fn(ModalOpenSnapshot) + 'static,
@@ -101,7 +98,7 @@ fn open_native_modal(
     let focus_return_log = focus_log;
     let snapshot = open_snapshot_from_signals(state);
     let footer_body = snapshot.footer_body.clone();
-    let mut modal = Modal::new()
+    let modal = Modal::new()
         .open(true)
         .size(snapshot.size.clone())
         .title(snapshot.title.clone())
@@ -110,10 +107,7 @@ fn open_native_modal(
         .parent_interaction(snapshot.parent_interaction.clone())
         .dismiss_on_backdrop(snapshot.dismiss_on_backdrop)
         .dismiss_on_esc(snapshot.dismiss_on_esc);
-    if let Some(window_id) = parent_window_id {
-        modal = modal.same_display_as(window_id);
-    }
-    let opened = modal
+    let open_result = modal
         .on_open(move || {
             open_log.set(format!("Modal native window: created footer={footer_body}"));
             on_window_created(snapshot.clone());
@@ -126,6 +120,14 @@ fn open_native_modal(
         })
         .open_window(theme);
 
+    let opened = match open_result {
+        Ok(opened) => opened,
+        Err(error) => {
+            native_log.set(format!("Modal native window error: {error}"));
+            false
+        }
+    };
+
     if opened {
         native_log.set("Modal native window: open requested".to_string());
     }
@@ -135,7 +137,6 @@ fn open_native_modal(
 fn open_modal_button(
     theme: Theme,
     state: ModalStateSignals,
-    parent_window_id: Option<WindowId>,
     native_log: RwSignal<String>,
     focus_log: RwSignal<String>,
 ) -> impl IntoView {
@@ -144,7 +145,6 @@ fn open_modal_button(
         let _ = open_native_modal(
             theme,
             state,
-            parent_window_id,
             native_log,
             focus_log,
             |_| {},
@@ -174,7 +174,7 @@ fn native_status(
     .style(|style| style.gap(4.0))
 }
 
-pub fn modal_page(theme: Theme, parent_window_id: Option<WindowId>) -> impl IntoView {
+pub fn modal_page(theme: Theme, _parent_window_id: Option<WindowId>) -> impl IntoView {
     let selected_size = create_rw_signal(ModalSize::Md);
     let selected_title = create_rw_signal("確認Modal".to_string());
     let selected_body = create_rw_signal("別ウィンドウとして開くModalです。".to_string());
@@ -202,7 +202,6 @@ pub fn modal_page(theme: Theme, parent_window_id: Option<WindowId>) -> impl Into
             if open_native_modal(
                 replay_theme.clone(),
                 replay_state,
-                parent_window_id,
                 native_log,
                 native_focus_log,
                 |_| {
@@ -225,7 +224,6 @@ pub fn modal_page(theme: Theme, parent_window_id: Option<WindowId>) -> impl Into
             dismiss_on_esc,
             parent_interaction,
         ),
-        parent_window_id,
         native_log,
         native_focus_log,
     );
@@ -259,7 +257,6 @@ pub fn modal_page(theme: Theme, parent_window_id: Option<WindowId>) -> impl Into
             dismiss_on_esc,
             parent_interaction,
         ),
-        parent_window_id,
         native_log,
         native_focus_log,
     );

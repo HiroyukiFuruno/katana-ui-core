@@ -122,8 +122,8 @@ const SECTIONS: &[SidebarSection] = &[
 
 pub(crate) fn sidebar_tree(current_page: RwSignal<Page>, is_dark: RwSignal<bool>) -> impl IntoView {
     floem::views::dyn_container(
-        move || (current_page.get(), is_dark.get()),
-        move |(_, dark)| {
+        move || is_dark.get(),
+        move |dark| {
             let theme = if dark {
                 Theme::default_dark()
             } else {

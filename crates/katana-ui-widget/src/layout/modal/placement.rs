@@ -1,33 +1,29 @@
-use super::types::ModalWindowPlacement;
-use floem::WindowIdExt;
-use floem::peniko::kurbo::{Point, Rect};
+use super::types::{ModalOpenError, ModalWindowPlacement};
+use floem::peniko::kurbo::Point;
 
 pub(super) fn window_position(
     placement: ModalWindowPlacement,
-    width: f64,
-    height: f64,
-) -> Option<Point> {
+    _width: f64,
+    _height: f64,
+) -> Result<Option<Point>, ModalOpenError> {
     match placement {
-        ModalWindowPlacement::SystemDefault => None,
-        ModalWindowPlacement::At(position) => Some(position),
-        ModalWindowPlacement::SameDisplayAs(parent) => {
-            let parent_bounds = parent
-                .bounds_on_screen_including_frame()
-                .or_else(|| parent.bounds_of_content_on_screen())?;
-            Some(same_display_position(parent_bounds, width, height))
+        ModalWindowPlacement::SystemDefault => Ok(None),
+        ModalWindowPlacement::At(position) => validate_position(position).map(Some),
+        ModalWindowPlacement::SameDisplayAs(_) => {
+            Err(ModalOpenError::SameDisplayPlacementUnavailable)
         }
     }
 }
 
-fn same_display_position(parent_bounds: Rect, width: f64, height: f64) -> Point {
-    Point::new(
-        centered_axis(parent_bounds.x0, parent_bounds.x1, width),
-        centered_axis(parent_bounds.y0, parent_bounds.y1, height),
-    )
-}
+fn validate_position(position: Point) -> Result<Point, ModalOpenError> {
+    if position.x.is_finite() && position.y.is_finite() {
+        return Ok(position);
+    }
 
-fn centered_axis(parent_start: f64, parent_end: f64, size: f64) -> f64 {
-    parent_start + ((parent_end - parent_start - size) / 2.0)
+    Err(ModalOpenError::InvalidWindowPosition {
+        x: position.x,
+        y: position.y,
+    })
 }
 
 #[cfg(test)]
@@ -35,20 +31,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn same_display_position_centers_inside_parent_window() {
-        let parent = Rect::new(100.0, 80.0, 900.0, 680.0);
+    fn explicit_position_accepts_finite_coordinates() {
+        let position = Point::new(120.0, 240.0);
 
-        let position = same_display_position(parent, 400.0, 240.0);
-
-        assert_eq!(position, Point::new(300.0, 260.0));
+        assert_eq!(validate_position(position), Ok(position));
     }
 
     #[test]
-    fn same_display_position_preserves_secondary_display_offset() {
-        let parent = Rect::new(1800.0, 100.0, 2600.0, 700.0);
+    fn explicit_position_rejects_nan_coordinates() {
+        let error = validate_position(Point::new(f64::NAN, 240.0));
 
-        let position = same_display_position(parent, 400.0, 240.0);
-
-        assert_eq!(position, Point::new(2000.0, 280.0));
+        assert!(matches!(
+            error,
+            Err(ModalOpenError::InvalidWindowPosition { .. })
+        ));
     }
 }

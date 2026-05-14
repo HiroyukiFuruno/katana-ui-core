@@ -28,6 +28,18 @@ fn parent_interaction_policy_is_explicit() {
 }
 
 #[test]
+fn native_window_level_follows_parent_interaction() {
+    assert!(matches!(
+        native_window::window_level_for_parent_interaction(&ModalParentInteraction::Block),
+        floem::window::WindowLevel::AlwaysOnTop
+    ));
+    assert!(matches!(
+        native_window::window_level_for_parent_interaction(&ModalParentInteraction::Allow),
+        floem::window::WindowLevel::Normal
+    ));
+}
+
+#[test]
 fn children_footer_and_close_are_resolved() {
     let called = Rc::new(RefCell::new(false));
     let flag = Rc::clone(&called);
@@ -67,6 +79,26 @@ fn native_window_position_is_stored_on_props() {
         modal.props.window_placement,
         ModalWindowPlacement::At(position)
     );
+}
+
+#[test]
+fn native_window_open_returns_false_when_closed() {
+    let result = Modal::new().open_window(Theme::default_light());
+
+    assert_eq!(result, Ok(false));
+}
+
+#[test]
+fn native_window_open_rejects_invalid_position_before_request() {
+    let result = Modal::new()
+        .open(true)
+        .window_position(Point::new(f64::NAN, 240.0))
+        .open_window(Theme::default_light());
+
+    assert!(matches!(
+        result,
+        Err(ModalOpenError::InvalidWindowPosition { .. })
+    ));
 }
 
 #[test]

@@ -1,5 +1,5 @@
 use crate::layout::popover::{AnchorRect, FreePlacement, Placement};
-use crate::overlay_lifecycle::OverlayLifecycle;
+use crate::overlay_lifecycle::{OverlayLifecycle, OverlayLifetime};
 use floem::event::{Event, EventListener};
 use floem::keyboard::{Key, NamedKey};
 use floem::peniko::Color;
@@ -56,6 +56,7 @@ pub(super) fn bind_overlay_effect(
     overlay_id: RwSignal<Option<ViewId>>,
     config: TooltipOverlayConfig,
     close_overlay: Rc<dyn Fn()>,
+    overlay_lifetime: OverlayLifetime,
 ) {
     let overlay_pending = Rc::new(Cell::new(false));
     create_effect({
@@ -65,7 +66,7 @@ pub(super) fn bind_overlay_effect(
             if !visible.try_get().unwrap_or(false) {
                 overlay_pending.set(false);
                 if let Some(id) = overlay_id.try_update(|id| id.take()).flatten() {
-                    OverlayLifecycle::remove_overlay_next_tick(id);
+                    OverlayLifecycle::remove_overlay_next_tick(&overlay_lifetime, id);
                 }
                 return;
             }
@@ -109,6 +110,7 @@ pub(super) fn bind_overlay_effect(
             let tooltip_max_width = config.tooltip_max_width;
             let tooltip_pad_v = config.tooltip_pad_v;
             let tooltip_pad_h = config.tooltip_pad_h;
+            let overlay_lifetime_for_added = overlay_lifetime.clone();
             let view_config = TooltipOverlayViewConfig {
                 overlay_label: tooltip_label,
                 tooltip_font_size,
@@ -127,6 +129,7 @@ pub(super) fn bind_overlay_effect(
                 close_overlay_for_escape: Rc::clone(&close_overlay),
             };
             OverlayLifecycle::add_overlay_next_tick(
+                &overlay_lifetime,
                 Point::new(0.0, 0.0),
                 move |_| overlay_view(view_config.clone()).into_any(),
                 {
@@ -138,7 +141,10 @@ pub(super) fn bind_overlay_effect(
                         {
                             overlay_id.set(Some(overlay_view_id));
                         } else {
-                            OverlayLifecycle::remove_overlay_next_tick(overlay_view_id);
+                            OverlayLifecycle::remove_overlay_next_tick(
+                                &overlay_lifetime_for_added,
+                                overlay_view_id,
+                            );
                         }
                     }
                 },

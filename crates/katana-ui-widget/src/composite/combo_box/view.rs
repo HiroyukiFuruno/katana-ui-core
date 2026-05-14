@@ -1,7 +1,7 @@
 use super::{ResolvedComboBox, ops, rows::build_rows};
 use crate::composite::input::text::TextInput;
 use crate::layout::popover::{AnchorRect, ViewAnchor};
-use crate::overlay_lifecycle::OverlayLifecycle;
+use crate::overlay_lifecycle::{OverlayLifecycle, OverlayLifetime};
 use crate::theme::Theme;
 use floem::event::{Event, EventListener};
 use floem::peniko::kurbo::Point;
@@ -33,9 +33,11 @@ impl<K: Clone + PartialEq + 'static> super::ComboBox<K> {
         let anchor = create_rw_signal(default_anchor());
         let overlay_id = create_rw_signal::<Option<ViewId>>(None);
         let overlay_pending = Rc::new(Cell::new(false));
+        let overlay_lifetime = OverlayLifetime::new();
 
         let close_overlay: Rc<dyn Fn()> = {
             let options = options.clone();
+            let overlay_lifetime = overlay_lifetime.clone();
             Rc::new(move || {
                 let was_open = open.try_update(|state| {
                     if *state {
@@ -68,7 +70,7 @@ impl<K: Clone + PartialEq + 'static> super::ComboBox<K> {
                 }
 
                 if let Some(id) = overlay_id.try_update(|id| id.take()).flatten() {
-                    OverlayLifecycle::remove_overlay_next_tick(id);
+                    OverlayLifecycle::remove_overlay_next_tick(&overlay_lifetime, id);
                 }
             })
         };
@@ -78,17 +80,18 @@ impl<K: Clone + PartialEq + 'static> super::ComboBox<K> {
             let close_overlay = Rc::clone(&close_overlay);
             let theme = theme.clone();
             let overlay_pending = Rc::clone(&overlay_pending);
+            let overlay_lifetime = overlay_lifetime.clone();
             move |_| {
                 if !open.try_get().unwrap_or(false) {
                     overlay_pending.set(false);
                     if let Some(id) = overlay_id.try_update(|id| id.take()).flatten() {
-                        OverlayLifecycle::remove_overlay_next_tick(id);
+                        OverlayLifecycle::remove_overlay_next_tick(&overlay_lifetime, id);
                     }
                     return;
                 }
 
                 if let Some(id) = overlay_id.try_update(|id| id.take()).flatten() {
-                    OverlayLifecycle::remove_overlay_next_tick(id);
+                    OverlayLifecycle::remove_overlay_next_tick(&overlay_lifetime, id);
                 }
                 if overlay_pending.get() {
                     return;
@@ -121,7 +124,9 @@ impl<K: Clone + PartialEq + 'static> super::ComboBox<K> {
                 };
 
                 let current_anchor = anchor.try_get().unwrap_or(default_anchor());
+                let overlay_lifetime_for_added = overlay_lifetime.clone();
                 OverlayLifecycle::add_overlay_next_tick(
+                    &overlay_lifetime,
                     Point::new(0.0, 0.0),
                     move |_| {
                         super::overlay::build_overlay(
@@ -139,7 +144,10 @@ impl<K: Clone + PartialEq + 'static> super::ComboBox<K> {
                             if open.try_get().unwrap_or(false) {
                                 overlay_id.set(Some(next_overlay_id));
                             } else {
-                                OverlayLifecycle::remove_overlay_next_tick(next_overlay_id);
+                                OverlayLifecycle::remove_overlay_next_tick(
+                                    &overlay_lifetime_for_added,
+                                    next_overlay_id,
+                                );
                             }
                         }
                     },
@@ -180,7 +188,10 @@ impl<K: Clone + PartialEq + 'static> super::ComboBox<K> {
                 }
             })
             .on_cleanup(move || {
-                close_overlay();
+                overlay_lifetime.dispose();
+                if let Some(id) = overlay_id.try_update(|id| id.take()).flatten() {
+                    OverlayLifecycle::remove_overlay_next_tick(&overlay_lifetime, id);
+                }
             })
     }
 }

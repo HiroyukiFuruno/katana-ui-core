@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use crate::floem_view::FloemColor;
 use crate::layout::popover::AnchorRect;
-use crate::overlay_lifecycle::OverlayLifecycle;
+use crate::overlay_lifecycle::{OverlayLifecycle, OverlayLifetime};
 use floem::event::EventListener;
 use floem::reactive::{SignalUpdate, create_rw_signal};
 use floem::views::Decorators;
@@ -24,12 +24,15 @@ pub(super) fn build_view(
     let focus_ready = Rc::new(Cell::new(false));
     let hover_token = Rc::new(Cell::new(0_u64));
     let overlay_id = create_rw_signal::<Option<ViewId>>(None);
+    let mounted = Rc::new(Cell::new(true));
+    let overlay_lifetime = OverlayLifetime::new();
 
     let tooltip_label = resolved.label.clone();
     let close_overlay: Rc<dyn Fn()> = {
+        let overlay_lifetime = overlay_lifetime.clone();
         Rc::new(move || {
             if let Some(id) = overlay_id.try_update(|id| id.take()).flatten() {
-                OverlayLifecycle::remove_overlay_next_tick(id);
+                OverlayLifecycle::remove_overlay_next_tick(&overlay_lifetime, id);
             }
             let _ = visible.try_update(|is_visible| {
                 *is_visible = false;
@@ -72,12 +75,14 @@ pub(super) fn build_view(
             show_arrow,
         },
         Rc::clone(&close_overlay),
+        overlay_lifetime.clone(),
     );
 
     child_view
         .on_event_cont(EventListener::PointerMove, {
             let hover_ready = Rc::clone(&hover_ready);
             let hover_token = Rc::clone(&hover_token);
+            let mounted = Rc::clone(&mounted);
             move |event| {
                 interaction_events::apply_pointer_move(
                     event,
@@ -87,6 +92,7 @@ pub(super) fn build_view(
                         parent_origin,
                         hover_ready: Rc::clone(&hover_ready),
                         hover_token: Rc::clone(&hover_token),
+                        mounted: Rc::clone(&mounted),
                         visible,
                         delay_ms,
                     },
@@ -126,7 +132,11 @@ pub(super) fn build_view(
             }
         })
         .on_cleanup(move || {
-            (close_overlay)();
+            mounted.set(false);
+            overlay_lifetime.dispose();
+            if let Some(id) = overlay_id.try_update(|id| id.take()).flatten() {
+                OverlayLifecycle::remove_overlay_next_tick(&overlay_lifetime, id);
+            }
         })
         .into_any()
 }

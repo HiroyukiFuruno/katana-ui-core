@@ -1,7 +1,7 @@
 use super::Modal;
 use super::ops;
 use super::placement;
-use super::types::{ModalParentInteraction, ModalProps, ModalSize};
+use super::types::{ModalOpenError, ModalParentInteraction, ModalProps, ModalSize};
 use crate::theme::Theme;
 use floem::action::exec_after;
 use floem::event::{Event, EventListener};
@@ -23,29 +23,30 @@ const BUTTON_GAP: f32 = 8.0;
 const BODY_FONT_SIZE: f32 = 12.0;
 const FOOTER_FONT_SIZE: f32 = 11.0;
 const DEFER_NATIVE_WINDOW_MS: u64 = 1;
+const ERROR_TEXT_RED: u8 = 200;
+const ERROR_TEXT_GREEN: u8 = 40;
+const ERROR_TEXT_BLUE: u8 = 40;
 
 impl Modal {
-    #[must_use]
-    pub fn open_window(self, theme: Theme) -> bool {
+    pub fn open_window(self, theme: Theme) -> Result<bool, ModalOpenError> {
         if !self.props.open {
-            return false;
+            return Ok(false);
         }
 
         let props = self.props;
         let width = window_width(&props.size);
-        let config = WindowConfig::default()
+        let window_level = window_level_for_parent_interaction(&props.parent_interaction);
+        let mut config = WindowConfig::default()
             .title(window_title(&props))
             .size((width, WINDOW_HEIGHT))
-            .resizable(false);
-        let config = match placement::window_position(props.window_placement, width, WINDOW_HEIGHT)
+            .resizable(false)
+            .window_level(window_level);
+
+        if let Some(position) =
+            placement::window_position(props.window_placement, width, WINDOW_HEIGHT)?
         {
-            Some(position) => config.position(position),
-            None => config,
-        };
-        let config = match props.parent_interaction {
-            ModalParentInteraction::Block => config.window_level(WindowLevel::AlwaysOnTop),
-            ModalParentInteraction::Allow => config,
-        };
+            config = config.position(position);
+        }
 
         exec_after(Duration::from_millis(DEFER_NATIVE_WINDOW_MS), move |_| {
             let on_open = Rc::clone(&props.on_open);
@@ -57,14 +58,28 @@ impl Modal {
                 Some(config),
             );
         });
-        true
+        Ok(true)
     }
 
     #[must_use]
-    pub fn view(self, theme: Theme) -> impl IntoView {
-        let _ = self.open_window(theme);
-        empty()
+    pub fn view(self, theme: Theme) -> Box<dyn View> {
+        match self.open_window(theme) {
+            Ok(_) => empty().into_any(),
+            Err(error) => modal_open_error_view(error).into_any(),
+        }
     }
+}
+
+fn modal_open_error_view(error: ModalOpenError) -> impl IntoView {
+    label(move || format!("Modal native window open failed: {error}")).style(|style| {
+        style
+            .color(floem::peniko::Color::rgb8(
+                ERROR_TEXT_RED,
+                ERROR_TEXT_GREEN,
+                ERROR_TEXT_BLUE,
+            ))
+            .padding(WINDOW_PADDING)
+    })
 }
 
 fn window_title(props: &ModalProps) -> String {
@@ -79,6 +94,15 @@ fn window_width(size: &ModalSize) -> f64 {
         ModalSize::Custom(width) => *width,
     };
     f64::from(width.max(WINDOW_MIN_WIDTH as f32))
+}
+
+pub(super) fn window_level_for_parent_interaction(
+    parent_interaction: &ModalParentInteraction,
+) -> WindowLevel {
+    match parent_interaction {
+        ModalParentInteraction::Block => WindowLevel::AlwaysOnTop,
+        ModalParentInteraction::Allow => WindowLevel::Normal,
+    }
 }
 
 fn modal_window_view(window_id: WindowId, props: ModalProps, theme: Theme) -> impl IntoView {
@@ -118,9 +142,7 @@ fn modal_window_view(window_id: WindowId, props: ModalProps, theme: Theme) -> im
             .color(text_color)
     });
     let dialog_id = dialog.id();
-    exec_after(Duration::from_millis(DEFER_NATIVE_WINDOW_MS), move |_| {
-        dialog_id.request_focus();
-    });
+    raise_modal_window(dialog_id);
 
     container(dialog)
         .keyboard_navigable()
@@ -137,6 +159,14 @@ fn modal_window_view(window_id: WindowId, props: ModalProps, theme: Theme) -> im
             );
         })
         .style(|style| style.padding(WINDOW_PADDING).gap(WINDOW_GAP))
+}
+
+fn raise_modal_window(dialog_id: ViewId) {
+    /* WHY: macOS では window level だけでは前面化が保証されないため、生成後に明示的に表示し直す。 */
+    exec_after(Duration::from_millis(DEFER_NATIVE_WINDOW_MS), move |_| {
+        dialog_id.window_visible(true);
+        dialog_id.request_focus();
+    });
 }
 
 fn trap_focus_on_tab(event: &Event, dialog_id: ViewId, trap_focus: bool) -> bool {

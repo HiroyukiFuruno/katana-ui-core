@@ -390,5 +390,32 @@
 - [/] 26.6 Modal footer の scenario は、別 native window が開いた事実だけでなく、選択中 footer と実際に `Modal` へ渡す footer 本文が一致する場合だけ成功させる。
   - 2026-05-14: `footer-form` / `footer-detail` は、選択中 footer と `Modal::footer(...)` に渡した本文が一致した場合だけ `storybook-requirement-gate` の marker を出すようにした。
 - [/] 26.7 multi display 環境では、`Modal` が親ウィンドウと同じ display に出るよう、親 `WindowId` を指定できる配置 API を追加し、Storybook では main window を親として渡す。
-  - 2026-05-14: `Modal::same_display_as(parent_window_id)` を追加し、Storybook の `main window` を親として渡す。macOS の monitor 列挙 API はクラッシュするため使わず、親ウィンドウの画面上の矩形から別 native window の初期位置を計算する。
+  - 2026-05-14: `Modal::same_display_as(parent_window_id)` を追加し、Storybook の `main window` を親として渡す。macOS の monitor / screen 列挙 API は `NSEnumerator` crash を起こすため使わず、親ウィンドウの画面上の矩形から別 native window の初期位置を計算する。
   - 2026-05-14: `just storybook-regression` 通過。unit test / Storybook compile / ast-lint / headless smoke / interaction smoke / requirement gate をまとめて確認した。
+- [/] 26.8 Modal の別 native window は、親 UI の背面に回らず、生成後に前面へ表示されるよう明示的に表示順を上げる。
+  - 2026-05-14: `WindowLevel` だけに依存せず、Modal window の view 生成後に対象 window を再表示して focus を要求する処理を追加した。
+- [/] 26.9 Modal の別 native window は、親 Storybook を縮小していても、親ウィンドウの見えている位置から出る。
+  - 2026-05-14: 親より Modal window が大きい場合は、無理に中央寄せせず親ウィンドウの開始位置へ寄せる regression test を追加した。
+- [/] 26.10 Modal の位置計算は、macOS で crash する `screen_layout` / monitor 列挙へ依存しない。
+  - 2026-05-14: `parent.screen_layout()` 経由で `NSEnumerator` crash が再発したため削除し、親ウィンドウ矩形のみで位置を決める実装に戻した。
+- [/] 26.11 Modal の `open_window()` は「予約しただけ」を成功扱いしない。事前に検知できる失敗は `Result` で返し、Storybook は error log として表示する。
+  - 2026-05-14: `bool` 返却を `Result<bool, ModalOpenError>` に変更し、無効な座標と未完成の same-display placement を失敗として扱う。
+- [/] 26.12 Storybook の Modal 主導線は未完成の `same_display_as` を使わず、まず別 native window を確実に開く最小構成へ戻す。
+  - 2026-05-14: Storybook の Modal open から親 window placement 指定を外し、失敗時は `native log` に error を表示する。
+
+## 27. Overlay / Storybook state 設計見直しフィードバック（2026-05-14）
+
+- [/] 27.1 `Tooltip` や `Popover` など、吹き出し表示（overlay）が開く部品で `view_state.rs` の `index out of bounds` が出る問題を、その場しのぎではなく所有期間の設計から直す。
+  - 2026-05-14: `OverlayLifetime` を導入し、遅延された overlay 追加・削除・focus 要求が、所有元の view 破棄後に古い view へ触れないようにした。
+- [/] 27.2 Storybook 左メニューは、ページ選択のたびに TreeView 全体を作り直さない。ページ切り替え中の再構築競合を避ける。
+  - 2026-05-14: `sidebar_tree` の再構築キーから `current_page` を外し、ページ切り替えでは sidebar TreeView を再生成しないようにした。
+- [/] 27.3 `Tooltip` の遅延 hover 表示は、対象 view が破棄された後に visible state を更新しない。
+  - 2026-05-14: mounted flag を追加し、遅延 hover callback が破棄後に `visible.set(true)` を実行しないようにした。
+- [/] 27.4 `Breadcrumb` の hover tree は、閉じる遅延処理が破棄後に open state を更新しない。
+  - 2026-05-14: mounted flag と `OverlayLifetime` を組み合わせ、hover close の遅延処理と overlay lifecycle を所有元 view に紐づけた。
+- [/] 27.5 MenuButton / ComboBox / ColorPicker / SideMenu / Tooltip / Breadcrumb の overlay lifecycle は、共通の所有期間 guard を通す。
+  - 2026-05-14: 各 widget の `OverlayLifecycle` 呼び出しに `OverlayLifetime` を渡し、破棄済み owner への遅延追加・focus を止める構成にした。
+- [/] 27.6 Storybook requirement gate は、marker だけでなく、ページ切り替えを連続実行して `view_state` crash を検知する。
+  - 2026-05-14: `overview:select-page-cycle:all-pages-stable` scenario を追加し、Tooltip / Popover / MenuButton / ComboBox / ColorPicker / SideMenu / CommandPalette / Toolbar / TreeView / Overview を連続で表示切り替えする。
+- [ ] 27.7 Modal の同一 display 配置は未完成扱いに戻す。未対応を fallback で隠さず、別 native window が確実に前面かつ親と同じ display に出る実装で完了にする。
+- [ ] 27.8 Storybook の「起動した」「marker が出た」だけを品質根拠にしない。UI操作後に落ちないこと、状態が画面に反映されること、別 window / overlay が実際に出ることを回帰条件にする。

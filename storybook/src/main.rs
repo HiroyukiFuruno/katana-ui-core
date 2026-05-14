@@ -67,6 +67,13 @@ fn set_page_deferred(current_page: floem::reactive::RwSignal<Page>, next: Page) 
     });
 }
 
+fn set_page_after(current_page: floem::reactive::RwSignal<Page>, next: Page, delay_ms: u64) {
+    floem::action::exec_after(Duration::from_millis(delay_ms), move |_| {
+        eprintln!("katana-storybook-page-cycle: page={next:?}");
+        current_page.set(next);
+    });
+}
+
 fn theme_toggle_button(is_dark: floem::reactive::RwSignal<bool>) -> impl IntoView {
     button(label(move || if is_dark.get() { "Dark" } else { "Light" }))
         .action(move || {
@@ -175,6 +182,31 @@ impl Page {
     }
 }
 
+fn schedule_page_cycle(current_page: floem::reactive::RwSignal<Page>) {
+    const PAGE_CYCLE_STEP_MS: u64 = 80;
+    const PAGE_CYCLE_MARKER_MS: u64 = 760;
+    let pages = [
+        Page::Tooltip,
+        Page::Popover,
+        Page::MenuButton,
+        Page::ComboBox,
+        Page::ColorPickerRgba,
+        Page::SideMenu,
+        Page::CommandPalette,
+        Page::Toolbar,
+        Page::TreeView,
+        Page::Overview,
+    ];
+
+    for (index, page) in pages.into_iter().enumerate() {
+        set_page_after(current_page, page, (index as u64 + 1) * PAGE_CYCLE_STEP_MS);
+    }
+
+    floem::action::exec_after(Duration::from_millis(PAGE_CYCLE_MARKER_MS), move |_| {
+        interaction::mark_exercised("overview", "select-page-cycle", "all-pages-stable");
+    });
+}
+
 fn app_view(main_window_id: WindowId) -> impl IntoView {
     let current_page = create_rw_signal(Page::initial());
     let is_dark = create_rw_signal(false);
@@ -194,6 +226,12 @@ fn app_view(main_window_id: WindowId) -> impl IntoView {
             floem::action::exec_after(Duration::from_millis(THEME_STABLE_MARKER_MS), move |_| {
                 interaction::mark_exercised("overview", "select-page", "svg-button-selected");
             });
+        });
+    }
+    if interaction::requested("select-page-cycle") {
+        interaction::mark_supported("overview", "select-page-cycle");
+        interaction::schedule_replay(move || {
+            schedule_page_cycle(current_page);
         });
     }
 

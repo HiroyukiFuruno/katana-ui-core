@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{fmt, rc::Rc};
 
 use floem::peniko::kurbo::Point;
 use floem::window::WindowId;
@@ -29,6 +29,28 @@ pub enum ModalWindowPlacement {
     SameDisplayAs(WindowId),
     At(Point),
 }
+
+/// Error returned before requesting a native Modal window.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ModalOpenError {
+    SameDisplayPlacementUnavailable,
+    InvalidWindowPosition { x: f64, y: f64 },
+}
+
+impl fmt::Display for ModalOpenError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::SameDisplayPlacementUnavailable => {
+                write!(f, "same-display modal placement is unavailable")
+            }
+            Self::InvalidWindowPosition { x, y } => {
+                write!(f, "modal window position must be finite: x={x}, y={y}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ModalOpenError {}
 
 /// Properties for `Modal`.
 #[derive(Clone)]

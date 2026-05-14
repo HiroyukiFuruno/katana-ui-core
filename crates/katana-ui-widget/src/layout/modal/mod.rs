@@ -10,7 +10,8 @@ pub use ops::FocusTransition;
 pub use overlay_dialog::OverlayDialog;
 pub use resolved::ResolvedModal;
 pub use types::{
-    ModalParentInteraction, ModalProps, ModalSize, ModalWindowPlacement, OverlayDialogProps,
+    ModalOpenError, ModalParentInteraction, ModalProps, ModalSize, ModalWindowPlacement,
+    OverlayDialogProps,
 };
 
 use crate::theme::Theme;

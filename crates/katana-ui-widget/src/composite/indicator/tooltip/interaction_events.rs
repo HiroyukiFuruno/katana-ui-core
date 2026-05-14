@@ -15,6 +15,7 @@ pub(super) struct PointerMoveState {
     pub(super) parent_origin: RwSignal<(f32, f32)>,
     pub(super) hover_ready: Rc<Cell<bool>>,
     pub(super) hover_token: Rc<Cell<u64>>,
+    pub(super) mounted: Rc<Cell<bool>>,
     pub(super) visible: RwSignal<bool>,
     pub(super) delay_ms: u32,
 }
@@ -23,6 +24,9 @@ pub(super) fn apply_pointer_move(event: &Event, state: PointerMoveState) {
     let Event::PointerMove(_) = event else {
         return;
     };
+    if !state.mounted.get() {
+        return;
+    }
 
     state.anchor.set(ViewAnchor::rect_for_view(
         state.anchor_id,
@@ -45,9 +49,13 @@ pub(super) fn apply_pointer_move(event: &Event, state: PointerMoveState) {
 
     let hover_ready_for_delay = Rc::clone(&state.hover_ready);
     let hover_token_for_delay = Rc::clone(&state.hover_token);
+    let mounted_for_delay = Rc::clone(&state.mounted);
     floem::action::exec_after(
         Duration::from_millis(u64::from(state.delay_ms)),
         move |_| {
+            if !mounted_for_delay.get() {
+                return;
+            }
             if hover_token_for_delay.get() != token {
                 return;
             }

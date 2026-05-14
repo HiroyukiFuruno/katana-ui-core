@@ -1,6 +1,6 @@
 use crate::composite::menu_button::types::{MenuButtonProps, MenuButtonVariant};
 use crate::layout::popover::{AnchorRect, ViewAnchor};
-use crate::overlay_lifecycle::OverlayLifecycle;
+use crate::overlay_lifecycle::{OverlayLifecycle, OverlayLifetime};
 use crate::theme::Theme;
 use floem::event::{Event, EventListener};
 use floem::peniko::kurbo::Point;
@@ -34,11 +34,13 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
     let overlay_id = create_rw_signal::<Option<ViewId>>(None);
     let trigger_anchor = create_rw_signal(default_anchor());
     let overlay_pending = Rc::new(Cell::new(false));
+    let overlay_lifetime = OverlayLifetime::new();
 
     let remove_overlay_if_open = {
+        let overlay_lifetime = overlay_lifetime.clone();
         Rc::new(move || {
             if let Some(id) = overlay_id.try_update(|value| value.take()).flatten() {
-                OverlayLifecycle::remove_overlay_next_tick(id);
+                OverlayLifecycle::remove_overlay_next_tick(&overlay_lifetime, id);
             }
         })
     };
@@ -71,6 +73,7 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
         let content = Rc::clone(&content);
         let theme = theme.clone();
         let overlay_pending = Rc::clone(&overlay_pending);
+        let overlay_lifetime = overlay_lifetime.clone();
         move |_| {
             if !is_open.try_get().unwrap_or(false) {
                 overlay_pending.set(false);
@@ -87,7 +90,9 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
             let content = Rc::clone(&content);
             let close_overlay = Rc::clone(&close_overlay_for_effect);
             let overlay_theme = theme.clone();
+            let overlay_lifetime_for_added = overlay_lifetime.clone();
             OverlayLifecycle::add_overlay_next_tick(
+                &overlay_lifetime,
                 Point::new(
                     MENU_BUTTON_OVERLAY_COORDINATE,
                     MENU_BUTTON_OVERLAY_COORDINATE,
@@ -110,7 +115,10 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
                         {
                             overlay_id.set(Some(view_id));
                         } else {
-                            OverlayLifecycle::remove_overlay_next_tick(view_id);
+                            OverlayLifecycle::remove_overlay_next_tick(
+                                &overlay_lifetime_for_added,
+                                view_id,
+                            );
                         }
                     }
                 },
@@ -170,7 +178,8 @@ pub(super) fn build_view(props: MenuButtonProps, theme: Theme) -> impl IntoView 
     }
 
     trigger_button.on_cleanup(move || {
-        close_overlay();
+        overlay_lifetime.dispose();
+        remove_overlay_if_open();
     })
 }
 

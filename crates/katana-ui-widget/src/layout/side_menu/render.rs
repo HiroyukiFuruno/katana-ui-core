@@ -1,11 +1,11 @@
 use super::expand_panel::expand_panel;
 use super::helpers::{ActivePop, SideMenuSignals, build_buttons, rail_surface};
-use super::overlay_effect::bind_overlay_effect;
+use super::overlay_effect::{SideMenuOverlayEffectArgs, bind_overlay_effect};
 use super::types::{
     DEFAULT_EXPANDED_PANEL_WIDTH, DEFAULT_HOVER_HANDLE_WIDTH, SideMenuExpandMode,
     SideMenuItemPlacement, SideMenuPopMode, SideMenuProps, SideMenuSide,
 };
-use crate::overlay_lifecycle::OverlayLifecycle;
+use crate::overlay_lifecycle::{OverlayLifecycle, OverlayLifetime};
 use crate::theme::Theme;
 use floem::event::EventListener;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
@@ -38,11 +38,13 @@ pub(super) fn render(props: SideMenuProps, theme: Theme) -> impl IntoView {
     }));
     let anchor = create_rw_signal((0.0_f32, 0.0_f32));
     let overlay_id = create_rw_signal(None::<ViewId>);
+    let overlay_lifetime = OverlayLifetime::new();
 
     let close_overlay: Rc<dyn Fn()> = {
+        let overlay_lifetime = overlay_lifetime.clone();
         Rc::new(move || {
             if let Some(id) = overlay_id.try_update(|value| value.take()).flatten() {
-                OverlayLifecycle::remove_overlay_next_tick(id);
+                OverlayLifecycle::remove_overlay_next_tick(&overlay_lifetime, id);
             }
         })
     };
@@ -55,15 +57,16 @@ pub(super) fn render(props: SideMenuProps, theme: Theme) -> impl IntoView {
     };
     let clear_for_popup: Rc<dyn Fn()> = Rc::clone(&clear);
 
-    bind_overlay_effect(
+    bind_overlay_effect(SideMenuOverlayEffectArgs {
         active,
         anchor,
-        Rc::clone(&items),
+        items: Rc::clone(&items),
         overlay_id,
-        theme.clone(),
-        Rc::clone(&close_overlay),
-        clear_for_popup,
-    );
+        theme: theme.clone(),
+        close_overlay: Rc::clone(&close_overlay),
+        clear: clear_for_popup,
+        overlay_lifetime: overlay_lifetime.clone(),
+    });
 
     let is_expand_open = move || {
         matches!(
@@ -179,6 +182,9 @@ pub(super) fn render(props: SideMenuProps, theme: Theme) -> impl IntoView {
         })
         .on_cleanup({
             let close_overlay = Rc::clone(&close_overlay);
-            move || close_overlay()
+            move || {
+                overlay_lifetime.dispose();
+                close_overlay();
+            }
         })
 }
