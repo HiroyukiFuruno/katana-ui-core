@@ -52,6 +52,11 @@ ast-lint:
     kal check
     python3 scripts/assert-storybook-page-layout.py
 
+# Run katana-ui-widget specific guardrails
+kuw-guardrails:
+    python3 scripts/test_kuw_guardrails.py
+    python3 scripts/assert-kuw-guardrails.py
+
 # Run Storybook page structure checks
 storybook-ast-lint:
     python3 scripts/assert-storybook-page-layout.py
@@ -76,7 +81,7 @@ coverage:
     {{CARGO}} llvm-cov --workspace --all-features --locked --summary-only --fail-under-lines {{COVERAGE_MIN_LINES}}
 
 # Run the local quality gate
-check: fmt-check check-types lint unit-test ast-lint overlay-lifecycle-lint menu-button-contract
+check: fmt-check check-types lint unit-test ast-lint kuw-guardrails overlay-lifecycle-lint menu-button-contract
     @echo "checks passed"
 
 # Sweep old build artifacts locally (older than 7 days)
@@ -140,4 +145,4 @@ cargo-test:
     RUSTFLAGS="-D warnings" cargo test --workspace --all-targets
 
 # Run the full Storybook regression gate used before publishing.
-storybook-regression: cargo-test storybook-check ast-lint overlay-lifecycle-lint menu-button-contract storybook-smoke storybook-interaction-smoke storybook-requirement-gate
+storybook-regression: cargo-test storybook-check ast-lint kuw-guardrails overlay-lifecycle-lint menu-button-contract storybook-smoke storybook-interaction-smoke storybook-requirement-gate

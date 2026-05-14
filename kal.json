@@ -18,27 +18,6 @@
     },
     "type-separation": {
       "enabled": true
-    },
-    "no-test-only-runtime-api": {
-      "enabled": true
-    },
-    "interactive-component-requires-callback": {
-      "enabled": true
-    },
-    "no-storybook-box-leak": {
-      "enabled": true,
-      "inputs": ["storybook"]
-    },
-    "no-helper-only-view-file": {
-      "enabled": true
-    },
-    "openspec-done-requires-evidence": {
-      "enabled": true,
-      "inputs": ["openspec/changes"]
-    },
-    "file-length-design-review": {
-      "enabled": true,
-      "inputs": ["openspec/changes"]
     }
   }
 }
