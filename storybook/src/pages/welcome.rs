@@ -1,5 +1,5 @@
-use floem::views::{label, v_stack};
 use floem::IntoView;
+use floem::views::{label, v_stack};
 
 pub fn welcome_page() -> impl IntoView {
     v_stack((

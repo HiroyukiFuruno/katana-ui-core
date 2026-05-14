@@ -1,4 +1,4 @@
-use super::Modal;
+use super::OverlayDialog;
 use super::types::{ModalProps, ModalSize};
 use crate::theme::Theme;
 use crate::theme::color::Color;
@@ -114,7 +114,7 @@ pub(super) fn title_color(theme: &Theme) -> Color {
     theme.color.text
 }
 
-impl Modal {
+impl OverlayDialog {
     #[must_use]
     pub fn view(self, theme: Theme) -> impl IntoView {
         let open = create_rw_signal(self.props.open);
@@ -138,15 +138,18 @@ impl Modal {
                 let title_text = title.clone();
                 let children_text = children.clone();
                 let footer_text = footer.clone();
-                let resolved = Modal {
+                let resolved = OverlayDialog {
                     props: ModalProps {
                         open: true,
                         title: Some(title_text.clone()),
                         size: size.clone(),
+                        window_placement: self.props.window_placement,
+                        parent_interaction: self.props.parent_interaction.clone(),
                         dismiss_on_backdrop,
                         dismiss_on_esc,
                         children: Some(children_text.clone()),
                         footer: Some(footer_text.clone()),
+                        on_open: Rc::clone(&self.props.on_open),
                         on_close: Rc::clone(&on_close),
                         on_focus_return: Rc::clone(&on_focus_return),
                     },

@@ -6,9 +6,19 @@ use std::rc::Rc;
 pub enum TrailingSlot {
     #[default]
     None,
+    Reserved,
     ClearButton,
     Custom(IconSource),
     Spinner,
+}
+
+/// Visibility behavior for an input icon slot.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum IconSlotMode {
+    #[default]
+    Hidden,
+    Visible,
+    Reserved,
 }
 
 /// Input size.
@@ -26,6 +36,7 @@ pub struct TextInputProps {
     pub value: String,
     pub placeholder: Option<String>,
     pub leading_icon: Option<IconSource>,
+    pub leading_icon_mode: IconSlotMode,
     pub trailing: TrailingSlot,
     pub size: InputSize,
     pub disabled: bool,

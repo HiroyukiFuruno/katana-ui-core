@@ -27,6 +27,31 @@ pub enum SearchBoxIconPreset {
     Submit,
 }
 
+/// Search option control inside the input frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SearchBoxControl {
+    Regex,
+    WholeWord,
+    CaseSensitive,
+}
+
+/// Visibility behavior for a SearchBox search option control.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SearchBoxControlMode {
+    #[default]
+    Hidden,
+    Visible,
+    Reserved,
+}
+
+/// Enabled search options.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SearchBoxOptions {
+    pub regex: bool,
+    pub whole_word: bool,
+    pub case_sensitive: bool,
+}
+
 /// Icon configuration for a SearchBox slot.
 #[derive(Debug, Clone)]
 pub struct SearchBoxIconConfig {
@@ -44,8 +69,13 @@ pub struct SearchBoxProps {
     pub leading_icon: SearchBoxIconConfig,
     pub clear_icon: SearchBoxIconConfig,
     pub submit_icon: SearchBoxIconConfig,
+    pub options: SearchBoxOptions,
+    pub regex_control: SearchBoxControlMode,
+    pub whole_word_control: SearchBoxControlMode,
+    pub case_sensitive_control: SearchBoxControlMode,
     pub a11y_label: String,
     pub on_submit: Rc<dyn Fn(String)>,
+    pub on_options_change: Rc<dyn Fn(SearchBoxOptions)>,
 }
 
 /// Resolved visual properties for `SearchBox`.

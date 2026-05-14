@@ -1,5 +1,6 @@
 use super::*;
 use crate::theme::Theme;
+use floem::peniko::kurbo::Point;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -9,6 +10,21 @@ fn resolve_defaults_have_expected_flags() {
     let r = Modal::new().open(true).resolve(&theme);
     assert!(r.dismiss_on_backdrop);
     assert!(r.dismiss_on_esc);
+}
+
+#[test]
+fn parent_interaction_policy_is_explicit() {
+    let modal = Modal::new();
+    assert_eq!(
+        modal.props.parent_interaction,
+        ModalParentInteraction::Block
+    );
+
+    let modal = Modal::new().parent_interaction(ModalParentInteraction::Allow);
+    assert_eq!(
+        modal.props.parent_interaction,
+        ModalParentInteraction::Allow
+    );
 }
 
 #[test]
@@ -28,6 +44,29 @@ fn children_footer_and_close_are_resolved() {
     assert_eq!(r.footer.as_deref(), Some("Footer"));
     (r.on_close)();
     assert!(*called.borrow());
+}
+
+#[test]
+fn open_handler_is_stored_on_props() {
+    let called = Rc::new(RefCell::new(false));
+    let flag = Rc::clone(&called);
+    let modal = Modal::new().on_open(move || {
+        *flag.borrow_mut() = true;
+    });
+
+    (modal.props.on_open)();
+    assert!(*called.borrow());
+}
+
+#[test]
+fn native_window_position_is_stored_on_props() {
+    let position = Point::new(120.0, 240.0);
+    let modal = Modal::new().window_position(position);
+
+    assert_eq!(
+        modal.props.window_placement,
+        ModalWindowPlacement::At(position)
+    );
 }
 
 #[test]
@@ -188,6 +227,23 @@ fn close_returns_focus_after_dismiss() {
     assert!(modal.close_with_esc());
     assert!(*close_called.borrow());
     assert!(*focus_called.borrow());
+}
+
+#[test]
+fn focus_trap_and_focus_return_rules_are_testable() {
+    let closed = Modal::new();
+    let open = Modal::new().open(true);
+
+    assert!(!ops::should_trap_tab_navigation(&closed.props));
+    assert!(ops::should_trap_tab_navigation(&open.props));
+    assert!(!ops::should_return_focus_after_close(
+        &closed.props,
+        ops::DismissReason::Escape
+    ));
+    assert!(ops::should_return_focus_after_close(
+        &open.props,
+        ops::DismissReason::Escape
+    ));
 }
 
 #[test]

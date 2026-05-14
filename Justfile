@@ -50,6 +50,15 @@ ast-lint-install:
 # Run shared KatanA Rust syntax checks
 ast-lint:
     kal check
+    python3 scripts/assert-storybook-page-layout.py
+
+# Run Storybook page structure checks
+storybook-ast-lint:
+    python3 scripts/assert-storybook-page-layout.py
+
+# Reject direct Floem overlay lifecycle calls outside the shared guard.
+overlay-lifecycle-lint:
+    bash scripts/assert-overlay-lifecycle.sh
 
 # Run workspace tests
 unit-test:
@@ -63,7 +72,7 @@ coverage:
     {{CARGO}} llvm-cov --workspace --all-features --locked --summary-only --fail-under-lines {{COVERAGE_MIN_LINES}}
 
 # Run the local quality gate
-check: fmt-check check-types lint unit-test ast-lint
+check: fmt-check check-types lint unit-test ast-lint overlay-lifecycle-lint
     @echo "checks passed"
 
 # Sweep old build artifacts locally (older than 7 days)
@@ -91,6 +100,10 @@ storybook:
 storybook-check:
     cd storybook && RUSTFLAGS="-D warnings" cargo check
 
+# Check Storybook pages can build without opening visible windows.
+storybook-smoke:
+    bash scripts/storybook-headless-smoke.sh
+
 # Verify VERSION follows the published release line
 release-target-check:
     bash scripts/release/verify-version.sh "{{VERSION}}"
@@ -109,3 +122,18 @@ release-check: release-target-check release-verify
 # Show recent Release workflow runs
 release-status:
     gh run list --repo {{RELEASE_REPO}} --workflow Release --limit 5
+
+# Check Storybook overlay/action pages in an opened state, not only initial mount.
+storybook-interaction-smoke:
+    bash scripts/storybook-interaction-smoke.sh
+
+# Check Storybook pages against requirement scenarios, not only crash-free launch.
+storybook-requirement-gate:
+    bash scripts/storybook-requirement-gate.sh
+
+# Run all Rust tests with warnings denied.
+cargo-test:
+    RUSTFLAGS="-D warnings" cargo test --workspace --all-targets
+
+# Run the full Storybook regression gate used before publishing.
+storybook-regression: cargo-test storybook-check ast-lint overlay-lifecycle-lint storybook-smoke storybook-interaction-smoke storybook-requirement-gate

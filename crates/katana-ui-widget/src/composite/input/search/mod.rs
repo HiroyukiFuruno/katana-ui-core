@@ -2,23 +2,19 @@ mod types;
 mod view;
 
 pub use types::{
-    ResolvedSearchBox, SearchBox, SearchBoxIconConfig, SearchBoxIconMode, SearchBoxIconPreset,
-    SearchBoxIconSlot, SearchBoxProps,
+    ResolvedSearchBox, SearchBox, SearchBoxControl, SearchBoxControlMode, SearchBoxIconConfig,
+    SearchBoxIconMode, SearchBoxIconPreset, SearchBoxIconSlot, SearchBoxOptions, SearchBoxProps,
 };
 
 use crate::composite::input::text::{InputSize, TextInput, TrailingSlot};
-use crate::primitive::icon::{Icon, IconSource};
+use crate::primitive::icon::IconSource;
 use crate::theme::Theme;
-use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
-use floem::views::{Decorators, button, container, empty, h_stack, text_input as floem_text_input};
-use floem::{IntoView, View};
+use floem::IntoView;
 use std::rc::Rc;
 
 const SEARCH_ICON: &[u8] = b"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 16 16\"><circle cx=\"6\" cy=\"6\" r=\"4\" stroke=\"currentColor\" stroke-width=\"1.5\" fill=\"none\"/><line x1=\"9.5\" y1=\"9.5\" x2=\"13\" y2=\"13\" stroke=\"currentColor\" stroke-width=\"1.5\"/></svg>";
 const CLEAR_ICON: &[u8] = b"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 16 16\"><path d=\"M4 4l8 8M12 4l-8 8\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\"/></svg>";
 const SUBMIT_ICON: &[u8] = b"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 16 16\"><path d=\"M3 8h9M8.5 4L12.5 8l-4 4\" stroke=\"currentColor\" stroke-width=\"1.7\" stroke-linecap=\"round\" stroke-linejoin=\"round\" fill=\"none\"/></svg>";
-const SEARCH_GAP: f32 = crate::floem_view::GAP_XS;
-const ICON_RESERVED_SIZE: f32 = 16.0;
 
 fn preset_source(preset: SearchBoxIconPreset) -> IconSource {
     match preset {
@@ -47,8 +43,13 @@ impl SearchBox {
                 leading_icon: icon_config(SearchBoxIconPreset::Search),
                 clear_icon: icon_config(SearchBoxIconPreset::Clear),
                 submit_icon: icon_config(SearchBoxIconPreset::Submit),
+                options: SearchBoxOptions::default(),
+                regex_control: SearchBoxControlMode::Hidden,
+                whole_word_control: SearchBoxControlMode::Hidden,
+                case_sensitive_control: SearchBoxControlMode::Hidden,
                 a11y_label: a11y_label.into(),
                 on_submit: Rc::new(|_| {}),
+                on_options_change: Rc::new(|_| {}),
             },
         }
     }
@@ -114,8 +115,53 @@ impl SearchBox {
     }
 
     #[must_use]
+    pub fn regex(mut self, enabled: bool) -> Self {
+        self.props.options.regex = enabled;
+        self
+    }
+
+    #[must_use]
+    pub fn whole_word(mut self, enabled: bool) -> Self {
+        self.props.options.whole_word = enabled;
+        self
+    }
+
+    #[must_use]
+    pub fn case_sensitive(mut self, enabled: bool) -> Self {
+        self.props.options.case_sensitive = enabled;
+        self
+    }
+
+    #[must_use]
+    pub fn control_mode(mut self, control: SearchBoxControl, mode: SearchBoxControlMode) -> Self {
+        match control {
+            SearchBoxControl::Regex => self.props.regex_control = mode,
+            SearchBoxControl::WholeWord => self.props.whole_word_control = mode,
+            SearchBoxControl::CaseSensitive => self.props.case_sensitive_control = mode,
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn show_all_controls(mut self) -> Self {
+        self.props.regex_control = SearchBoxControlMode::Visible;
+        self.props.whole_word_control = SearchBoxControlMode::Visible;
+        self.props.case_sensitive_control = SearchBoxControlMode::Visible;
+        self
+    }
+
+    #[must_use]
     pub fn on_submit(mut self, on_submit: impl Fn(String) + 'static) -> Self {
         self.props.on_submit = Rc::new(on_submit);
+        self
+    }
+
+    #[must_use]
+    pub fn on_options_change(
+        mut self,
+        on_options_change: impl Fn(SearchBoxOptions) + 'static,
+    ) -> Self {
+        self.props.on_options_change = Rc::new(on_options_change);
         self
     }
 
@@ -168,74 +214,8 @@ impl SearchBox {
 
     #[must_use]
     pub fn view(self, theme: Theme) -> impl IntoView {
-        let value = create_rw_signal(self.props.value.clone());
-        let disabled = self.props.disabled;
-        let on_submit = Rc::clone(&self.props.on_submit);
-        let placeholder = self.props.placeholder.clone().unwrap_or_default();
-        let resolved = self.resolve(&theme);
-        let leading_icon = self.props.leading_icon.clone();
-        let clear_icon = self.props.clear_icon.clone();
-        let submit_icon = self.props.submit_icon.clone();
-        let bg = crate::floem_view::FloemColor::from_token(resolved.bg_color);
-        let text = crate::floem_view::FloemColor::from_token(resolved.text_color);
-        let border = crate::floem_view::FloemColor::from_token(resolved.border_color);
-
-        h_stack((
-            icon_slot(leading_icon, &theme),
-            floem_text_input(value)
-                .placeholder(placeholder)
-                .disabled(move || disabled)
-                .style(move |style| style.font_size(resolved.font_size).color(text)),
-            action_icon_slot(clear_icon, &theme, move || {
-                if !disabled {
-                    value.set(String::new());
-                }
-            }),
-            action_icon_slot(submit_icon, &theme, move || {
-                if !disabled {
-                    on_submit(value.try_get_untracked().unwrap_or_default());
-                }
-            }),
-        ))
-        .style(move |style| {
-            style
-                .gap(SEARCH_GAP)
-                .items_center()
-                .background(bg)
-                .border(1.0)
-                .border_color(border)
-                .padding_vert(resolved.pad_v)
-                .padding_horiz(resolved.pad_h)
-        })
+        view::build_view(self, theme)
     }
-}
-
-fn icon_slot(config: SearchBoxIconConfig, theme: &Theme) -> Box<dyn View> {
-    match config.mode {
-        SearchBoxIconMode::Hidden => empty_icon_space(0.0),
-        SearchBoxIconMode::Reserved => empty_icon_space(ICON_RESERVED_SIZE),
-        SearchBoxIconMode::Visible => Icon::new(config.source).view(theme.clone()).into_any(),
-    }
-}
-
-fn action_icon_slot(
-    config: SearchBoxIconConfig,
-    theme: &Theme,
-    action: impl Fn() + 'static,
-) -> Box<dyn View> {
-    match config.mode {
-        SearchBoxIconMode::Hidden => empty_icon_space(0.0),
-        SearchBoxIconMode::Reserved => empty_icon_space(ICON_RESERVED_SIZE),
-        SearchBoxIconMode::Visible => button(Icon::new(config.source).view(theme.clone()))
-            .action(action)
-            .into_any(),
-    }
-}
-
-fn empty_icon_space(width: f32) -> Box<dyn View> {
-    container(empty())
-        .style(move |style| style.width(width).height(ICON_RESERVED_SIZE))
-        .into_any()
 }
 
 #[cfg(test)]
@@ -303,5 +283,58 @@ mod tests {
 
         assert_eq!(search.submit(), None);
         assert!(!*called.borrow());
+    }
+
+    #[test]
+    fn katana_search_controls_default_hidden_and_can_be_enabled() {
+        let search = SearchBox::new("Search").show_all_controls();
+
+        assert_eq!(search.props.regex_control, SearchBoxControlMode::Visible);
+        assert_eq!(
+            search.props.whole_word_control,
+            SearchBoxControlMode::Visible
+        );
+        assert_eq!(
+            search.props.case_sensitive_control,
+            SearchBoxControlMode::Visible
+        );
+    }
+
+    #[test]
+    fn icon_slots_support_visible_reserved_and_custom_source() {
+        let search = SearchBox::new("Search")
+            .search_icon(SearchBoxIconMode::Visible)
+            .clear_icon(SearchBoxIconMode::Reserved)
+            .submit_icon(SearchBoxIconMode::Visible)
+            .icon_source(
+                SearchBoxIconSlot::Leading,
+                IconSource::SvgString("<svg />".to_string()),
+            );
+
+        assert_eq!(search.props.leading_icon.mode, SearchBoxIconMode::Visible);
+        assert_eq!(search.props.clear_icon.mode, SearchBoxIconMode::Reserved);
+        assert_eq!(search.props.submit_icon.mode, SearchBoxIconMode::Visible);
+        assert!(matches!(
+            search.props.leading_icon.source,
+            IconSource::SvgString(_)
+        ));
+    }
+
+    #[test]
+    fn search_options_callback_exposes_regex_word_and_case() {
+        let called = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let called_ref = std::rc::Rc::clone(&called);
+        let search = SearchBox::new("Search").on_options_change(move |options| {
+            *called_ref.borrow_mut() = Some(options);
+        });
+        let options = SearchBoxOptions {
+            regex: true,
+            whole_word: true,
+            case_sensitive: true,
+        };
+
+        (search.props.on_options_change)(options);
+
+        assert_eq!(*called.borrow(), Some(options));
     }
 }

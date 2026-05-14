@@ -2,7 +2,7 @@
 
 ### Requirement: DynamicArrayEditor widget
 
-DynamicArrayEditor は画像3枚目のように、配列 item の追加、削除、編集、並び替えを扱えること。
+DynamicArrayEditor は画像3枚目のように、配列 item の追加、削除、編集、並び替えを扱えることを MUST とする。
 
 #### Scenario: item を追加する
 

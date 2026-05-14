@@ -1,5 +1,5 @@
 use super::TextInput;
-use super::types::{InputSize, TrailingSlot};
+use super::types::{IconSlotMode, InputSize, TrailingSlot};
 use crate::primitive::icon::Icon;
 use crate::primitive::spinner::{Spinner, SpinnerSize};
 use crate::theme::Theme;
@@ -22,6 +22,7 @@ const PAD_H_SM: f32 = 8.0;
 const PAD_H_MD: f32 = 10.0;
 const PAD_H_LG: f32 = 12.0;
 const INPUT_GAP: f32 = crate::floem_view::GAP_XS;
+const ICON_RESERVED_SIZE: f32 = 16.0;
 
 pub(super) fn font_size(size: InputSize) -> f32 {
     match size {
@@ -100,17 +101,20 @@ impl TextInput {
         let text = crate::floem_view::FloemColor::from_token(resolved.text_color);
         let border = crate::floem_view::FloemColor::from_token(resolved.border_color);
         let placeholder = resolved.placeholder.clone().unwrap_or_default();
-        let leading = if let Some(icon) = leading_icon {
-            Icon::new(icon).view(theme.clone()).into_any()
-        } else {
-            container(empty())
-                .style(|style| style.width(0.0))
-                .into_any()
+        let leading = match (
+            resolved.has_leading_icon,
+            self.props.leading_icon_mode,
+            leading_icon,
+        ) {
+            (true, IconSlotMode::Visible, Some(icon)) => {
+                Icon::new(icon).view(theme.clone()).into_any()
+            }
+            (_, IconSlotMode::Reserved, _) => empty_icon_space(),
+            _ => empty_slot(),
         };
         let trailing = match resolved.trailing.clone() {
-            TrailingSlot::None => container(empty())
-                .style(|style| style.width(0.0))
-                .into_any(),
+            TrailingSlot::None => empty_slot(),
+            TrailingSlot::Reserved => empty_icon_space(),
             TrailingSlot::ClearButton => button(label(|| "×"))
                 .action(move || {
                     if !disabled {
@@ -144,4 +148,16 @@ impl TextInput {
                 .padding_horiz(resolved.pad_h)
         })
     }
+}
+
+fn empty_slot() -> Box<dyn floem::View> {
+    container(empty())
+        .style(|style| style.width(0.0))
+        .into_any()
+}
+
+fn empty_icon_space() -> Box<dyn floem::View> {
+    container(empty())
+        .style(|style| style.width(ICON_RESERVED_SIZE).height(ICON_RESERVED_SIZE))
+        .into_any()
 }

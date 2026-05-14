@@ -2,7 +2,7 @@
 
 ### Requirement: AlignCenterWrapper widget
 
-AlignCenterWrapper は katana の AlignCenter のように、子要素を中央揃えで表示できること。
+AlignCenterWrapper は katana の AlignCenter のように、子要素を中央揃えで表示できることを MUST とする。
 
 #### Scenario: 子要素を中央揃えする
 

@@ -28,6 +28,16 @@ pub(super) fn should_trap_focus(props: &ModalProps) -> bool {
     props.open
 }
 
+/// Returns whether Tab navigation should be kept inside the modal surface.
+pub(super) fn should_trap_tab_navigation(props: &ModalProps) -> bool {
+    should_trap_focus(props)
+}
+
+/// Returns whether focus return callback should run after a successful close.
+pub(super) fn should_return_focus_after_close(props: &ModalProps, reason: DismissReason) -> bool {
+    should_close(props, reason)
+}
+
 pub(super) fn should_close(props: &ModalProps, reason: DismissReason) -> bool {
     props.open
         && match reason {

@@ -1,23 +1,20 @@
-# StatusBar Widget Spec
+## ADDED Requirements
 
-## 概要
+### Requirement: StatusBar widget
 
-severity アイコン付きステータスメッセージ + アクションボタンを表示する水平バー widget。
+StatusBar は severity icon、message、任意 trailing content、action callback を持つ水平バーとして表示できることを MUST とする。
 
-## 出典
+#### Scenario: severity を表示する
 
-- `../katana/crates/katana-ui/src/views/top_bar/status_bar.rs`
+- **WHEN** severity が Error / Warning / Success / Info のいずれか
+- **THEN** severity に対応する icon と色を theme token から解決して表示する
 
-## 階層配置
+#### Scenario: trailing content を表示する
 
-`layout/status_bar`
+- **WHEN** trailing slot が渡される
+- **THEN** message の右側に任意 node を表示する
 
-## 依存
+#### Scenario: action を実行する
 
-- Icon (03)
-- Badge (15) — severity 表示
-
-## API 概要（TBD）
-
-- `Severity`: Error | Warning | Success | Info
-- `StatusBar`: message, severity, leading_slot (node), trailing_slot (node), on_action
+- **WHEN** 利用者が action 領域を押す
+- **THEN** `on_action` callback が呼ばれる

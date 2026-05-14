@@ -2,7 +2,7 @@
 
 ### Requirement: SelectionList widget
 
-SelectionList は画像2枚目のような section label、色付き marker、選択 highlight、もっと表示を扱えること。
+SelectionList は画像2枚目のような section label、色付き marker、選択 highlight、もっと表示を扱えることを MUST とする。
 
 #### Scenario: section ごとに item を表示する
 

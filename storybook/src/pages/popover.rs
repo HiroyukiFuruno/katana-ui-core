@@ -1,286 +1,474 @@
 use floem::peniko::Color as PenikoColor;
+use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{
-    button, container, dyn_container, empty, h_stack, label, scroll, v_stack, v_stack_from_iter,
-    Decorators,
+    Decorators, button, dyn_container, h_stack, label, scroll, v_stack, v_stack_from_iter,
 };
-use floem::IntoView;
-use floem::reactive::{create_rw_signal, SignalGet, SignalUpdate};
-use katana_ui_widget::layout::popover::{AnchorRect, Placement, Popover};
+use floem::{IntoView, View};
+use katana_ui_widget::layout::popover::{AnchorRect, AnchorRef, Placement, Popover};
 use katana_ui_widget::theme::Theme;
 
-fn placement_row(
-    label_text: &'static str,
-    placement: Placement,
-    origin_x: f32,
-    origin_y: f32,
-    bg_r: u8,
-    bg_g: u8,
-    bg_b: u8,
-) -> impl IntoView {
-    let origin_str = format!("({:.0}, {:.0})", origin_x, origin_y);
-    let placement_tag: &'static str = match placement {
-        Placement::Bottom => "[Bottom]",
-        Placement::Top => "[Top]",
-        Placement::Start => "[Start]",
-        Placement::End => "[End]",
+fn placement_row(title: &'static str, placement: Placement, x: f32, y: f32) -> impl IntoView {
+    let tag = match placement {
+        Placement::Bottom => "Bottom",
+        Placement::Top => "Top",
+        Placement::Start => "Start",
+        Placement::End => "End",
+        Placement::TopStart => "TopStart",
+        Placement::TopEnd => "TopEnd",
+        Placement::BottomStart => "BottomStart",
+        Placement::BottomEnd => "BottomEnd",
+        Placement::Auto => "Auto",
+        Placement::Free(_) => "Free",
     };
-    let bg = PenikoColor::rgb8(bg_r, bg_g, bg_b);
     v_stack((
-        label(move || label_text).style(|s| s.font_size(12.0).margin_bottom(2.0)),
+        label(move || title).style(|s| s.font_size(12.0)),
         h_stack((
-            label(move || placement_tag).style(|s| s.font_size(10.0).margin_right(4.0)),
-            label(move || "")
-                .style(move |s| s.width(60.0).height(16.0).background(bg).border(0.5)),
-            label(move || origin_str.clone()).style(|s| s.font_size(10.0).margin_left(4.0)),
+            label(move || tag.to_string()).style(|s| s.font_size(11.0)),
+            label(move || format!("({x:.0}, {y:.0})")).style(|s| s.font_size(11.0)),
         ))
-        .style(|s| s.items_center().gap(2.0)),
+        .style(|s| s.gap(4.0)),
     ))
-    .style(|s| s.gap(4.0))
+}
+
+fn anchor_presets() -> [AnchorRect; 2] {
+    [
+        AnchorRect {
+            x: 200.0,
+            y: 210.0,
+            width: 120.0,
+            height: 40.0,
+        },
+        AnchorRect {
+            x: 700.0,
+            y: 535.0,
+            width: 100.0,
+            height: 36.0,
+        },
+    ]
+}
+
+fn should_start_open() -> bool {
+    let should_open = crate::interaction::requested("open");
+    if should_open {
+        crate::interaction::mark_supported("popover", "open");
+    }
+    should_open
+}
+
+fn bind_replay_open(is_open: floem::reactive::RwSignal<bool>) {
+    if crate::interaction::requested("replay-open") {
+        crate::interaction::mark_supported("popover", "replay-open");
+        crate::interaction::schedule_replay(move || {
+            is_open.set(true);
+            crate::interaction::mark_exercised("popover", "replay-open", "signal-open");
+        });
+    }
+}
+
+fn popover_content(
+    offset: f32,
+    width: f32,
+    focus_state: floem::reactive::RwSignal<String>,
+    log: floem::reactive::RwSignal<String>,
+) -> impl Fn() -> Box<dyn View> + 'static {
+    move || {
+        let menu = v_stack_from_iter(
+            ["新規", "編集", "削除", "共有"]
+                .into_iter()
+                .map(|text| {
+                    let text_label = text.to_string();
+                    let log_label = text.to_string();
+                    let log = log;
+                    button(label(move || text_label.clone())).action({
+                        let log = log;
+                        let log_label = log_label;
+                        let focus_state = focus_state;
+                        move || {
+                            log.set(format!("menu clicked: {log_label}"));
+                            focus_state.set("menu clicked".to_string());
+                        }
+                    })
+                })
+                .collect::<Vec<_>>(),
+        );
+        let content = v_stack((
+            label(move || format!("offset={offset}, width={width}")),
+            label(|| "menu".to_string()).style(|s| s.font_size(12.0)),
+            menu,
+            label(|| "card".to_string()).style(|s| s.font_size(12.0)),
+            label(|| "form".to_string()).style(|s| s.font_size(12.0)),
+        ))
+        .style(|s| s.gap(6.0).padding(8.0));
+
+        Box::new(content)
+    }
 }
 
 fn page_content(theme: &Theme) -> impl IntoView + use<> {
-    let anchor = AnchorRect { x: 200.0, y: 200.0, width: 100.0, height: 40.0 };
-    let anchor_edge = AnchorRect { x: 700.0, y: 550.0, width: 80.0, height: 32.0 };
-    let is_open = create_rw_signal(false);
+    let is_open = create_rw_signal(should_start_open());
+    bind_replay_open(is_open);
     let dismiss_outside = create_rw_signal(true);
     let dismiss_esc = create_rw_signal(true);
     let placement = create_rw_signal(Placement::Bottom);
+    let offset = create_rw_signal(4.0);
+    let width = create_rw_signal(220.0);
+    let anchor_index = create_rw_signal(0usize);
+    let focus_state = create_rw_signal("未フォーカス".to_string());
     let log = create_rw_signal("待機中".to_string());
     let page_theme = theme.clone();
-    let interactive_theme = page_theme.clone();
+    let anchors = anchor_presets();
 
-    let p_bottom = Popover::new().placement(Placement::Bottom).resolve(&page_theme);
-    let p_top = Popover::new().placement(Placement::Top).resolve(&page_theme);
-    let p_start = Popover::new().placement(Placement::Start).resolve(&page_theme);
-    let p_end = Popover::new().placement(Placement::End).resolve(&page_theme);
-
-    let o_bottom =
-        Popover::new().placement(Placement::Bottom).compute_origin(anchor, 120.0, 60.0, 800.0, 600.0);
-    let o_top =
-        Popover::new().placement(Placement::Top).compute_origin(anchor, 120.0, 60.0, 800.0, 600.0);
-    let o_start =
-        Popover::new().placement(Placement::Start).compute_origin(anchor, 120.0, 60.0, 800.0, 600.0);
-    let o_end =
-        Popover::new().placement(Placement::End).compute_origin(anchor, 120.0, 60.0, 800.0, 600.0);
-
-    let o_flip_bottom =
-        Popover::new().placement(Placement::Bottom).compute_origin(anchor_edge, 120.0, 60.0, 800.0, 600.0);
-    let o_flip_end =
-        Popover::new().placement(Placement::End).compute_origin(anchor_edge, 120.0, 60.0, 800.0, 600.0);
-
-    let bg = PenikoColor::rgb8(page_theme.color.bg.r, page_theme.color.bg.g, page_theme.color.bg.b);
-    let text_col = PenikoColor::rgb8(page_theme.color.text.r, page_theme.color.text.g, page_theme.color.text.b);
-
-    let interactive = dyn_container(
-        move || (is_open.get(), dismiss_outside.get(), dismiss_esc.get(), placement.get()),
-        move |(open_now, _, _, placement_now)| {
-            let pop = Popover::new()
-                .open(open_now)
-                .placement(placement_now)
+    let live = dyn_container(
+        move || {
+            (
+                is_open.get(),
+                dismiss_outside.get(),
+                dismiss_esc.get(),
+                placement.get(),
+                offset.get(),
+                width.get(),
+                anchor_index.get(),
+            )
+        },
+        move |(_, _, _, _, _, _, active_anchor)| {
+            if is_open.get() && crate::interaction::requested("replay-open") {
+                crate::interaction::mark_exercised("popover", "replay-open", "render-open");
+            }
+            if is_open.get() && crate::interaction::requested("open") {
+                crate::interaction::mark_exercised("popover", "open", "render-open");
+            }
+            let anchor = anchors[active_anchor];
+            let resolved = Popover::new()
+                .open(is_open.get())
+                .placement(placement.get())
+                .offset(offset.get())
+                .width(width.get())
+                .anchor(AnchorRef::new(anchor))
+                .children(popover_content(offset.get(), width.get(), focus_state, log))
                 .dismiss_on_outside_click(dismiss_outside.get())
                 .dismiss_on_esc(dismiss_esc.get())
+                .on_focus_in({
+                    let focus_state = focus_state;
+                    move || focus_state.set("popover focus in".to_string())
+                })
+                .on_focus_out({
+                    let focus_state = focus_state;
+                    move || focus_state.set("popover focus out".to_string())
+                })
                 .on_close({
                     let is_open = is_open;
+                    let focus_state = focus_state;
                     let log = log;
                     move || {
                         is_open.set(false);
-                        log.set("closed".to_string());
+                        focus_state.set("closed".to_string());
+                        log.set("on_close".to_string());
                     }
                 })
-                .resolve(&interactive_theme);
-            let origin = Popover::new()
-                .placement(placement_now)
-                .open(open_now)
-                .compute_origin(anchor, 120.0, 60.0, 800.0, 600.0);
-            let pop_for_outside = pop.clone();
-            let pop_for_esc = pop.clone();
-            let overlay = pop.overlay_layout(220.0, 120.0, 800.0, 600.0);
-            let menu_button_colors = (pop.popover_bg.r, pop.popover_bg.g, pop.popover_bg.b);
-            let pop_border = PenikoColor::rgb8(
-                pop.popover_border.r,
-                pop.popover_border.g,
-                pop.popover_border.b,
-            );
-    let menu_rows = if open_now {
-        ["開く", "編集", "移動", "削除", "共有"]
-            .into_iter()
-            .map(|text| {
-                let text = text.to_string();
-                let label_text = text.clone();
-                let action_text = text;
-                button(label(move || label_text.clone()))
-                    .action({
-                        let log = log;
-                        move || {
-                                    log.set(format!("menu clicked: {action_text}"));
-                                }
-                            })
-                            .style({
-                                let menu_button_colors = menu_button_colors;
-                                move |s| {
-                                    s.padding(4.0)
-                                        .width(140.0)
-                                        .background(PenikoColor::rgb8(
-                                            menu_button_colors.0,
-                                            menu_button_colors.1,
-                                            menu_button_colors.2,
-                                        ))
-                                        .border(1.0)
-                                        .border_color(pop_border)
-                                }
-                            })
-                    })
-                    .collect::<Vec<_>>()
-            } else {
-                Vec::new()
-            };
-            let overlay_box = if let Some(layer) = overlay {
-                let overlay_bg = PenikoColor::rgb8(layer.popover_bg.r, layer.popover_bg.g, layer.popover_bg.b);
-                let overlay_border = PenikoColor::rgb8(
-                    layer.popover_border.r,
-                    layer.popover_border.g,
-                    layer.popover_border.b,
-                );
-                container(
-                    v_stack((
-                        label(move || "メニュー項目".to_string()).style(|s| s.font_size(11.0)),
-                        v_stack_from_iter(menu_rows),
-                    ))
-                    .style(move |s| {
-                        s.padding(8.0)
-                            .background(overlay_bg)
-                            .border(1.0)
-                            .border_color(overlay_border)
-                            .border_radius(layer.corner_radius)
-                            .width(layer.width)
-                    }),
-                )
-                .style(|s| s.width(220.0).height(120.0))
-            } else {
-                container(empty()).style(|s| s.width(0.0).height(0.0))
-            };
-            let overlay_status = match overlay {
+                .resolve(&page_theme);
+
+            let close_by_outside = resolved.clone();
+            let close_by_esc = resolved.clone();
+
+            let origin = resolved.overlay_layout(width.get(), 140.0, 1024.0, 768.0);
+            let overlay_text = match origin {
                 Some(layer) => format!(
-                    "overlay=({}, {}), size=({}, {}), placement={:?}",
-                    layer.x as i32, layer.y as i32, layer.width as i32, layer.height as i32, layer.placement
+                    "overlay=({:.0}, {:.0}) size=({:.0}, {:.0}) {:?}",
+                    layer.x, layer.y, layer.width, layer.height, layer.placement
                 ),
                 None => "overlay=hidden".to_string(),
             };
-            let state = if open_now { "open" } else { "closed" };
+            let computed_origin = Popover::new()
+                .placement(placement.get())
+                .offset(offset.get())
+                .compute_origin(anchor, width.get(), 140.0, 1024.0, 768.0);
+
+            let placement_controls = h_stack((
+                button(label(|| "Bottom")).action({
+                    let placement = placement;
+                    let log = log;
+                    move || {
+                        placement.set(Placement::Bottom);
+                        log.set("placement: Bottom".to_string());
+                    }
+                }),
+                button(label(|| "Top")).action({
+                    let placement = placement;
+                    let log = log;
+                    move || {
+                        placement.set(Placement::Top);
+                        log.set("placement: Top".to_string());
+                    }
+                }),
+                button(label(|| "Start")).action({
+                    let placement = placement;
+                    let log = log;
+                    move || {
+                        placement.set(Placement::Start);
+                        log.set("placement: Start".to_string());
+                    }
+                }),
+                button(label(|| "End")).action({
+                    let placement = placement;
+                    let log = log;
+                    move || {
+                        placement.set(Placement::End);
+                        log.set("placement: End".to_string());
+                    }
+                }),
+            ))
+            .style(|s| s.gap(4.0));
+
+            let geom_controls = h_stack((
+                button(label(|| "offset-")).action({
+                    let offset = offset;
+                    move || offset.set((offset.get() - 4.0).max(-20.0))
+                }),
+                button(label(|| "offset+")).action({
+                    let offset = offset;
+                    move || offset.set((offset.get() + 4.0).min(40.0))
+                }),
+                button(label(|| "offset=0")).action({
+                    let offset = offset;
+                    move || offset.set(0.0)
+                }),
+            ))
+            .style(|s| s.gap(4.0));
+
+            let width_controls = h_stack((
+                button(label(|| "width-")).action({
+                    let width = width;
+                    move || width.set((width.get() - 40.0).max(160.0))
+                }),
+                button(label(|| "width+")).action({
+                    let width = width;
+                    move || width.set((width.get() + 40.0).min(360.0))
+                }),
+            ))
+            .style(|s| s.gap(4.0));
+
+            let dismiss_controls = h_stack((
+                button(label(|| "outside on")).action({
+                    let dismiss_outside = dismiss_outside;
+                    let log = log;
+                    move || {
+                        dismiss_outside.set(true);
+                        log.set("dismiss outside on".to_string());
+                    }
+                }),
+                button(label(|| "outside off")).action({
+                    let dismiss_outside = dismiss_outside;
+                    let log = log;
+                    move || {
+                        dismiss_outside.set(false);
+                        log.set("dismiss outside off".to_string());
+                    }
+                }),
+                button(label(|| "esc on")).action({
+                    let dismiss_esc = dismiss_esc;
+                    let log = log;
+                    move || {
+                        dismiss_esc.set(true);
+                        log.set("dismiss esc on".to_string());
+                    }
+                }),
+                button(label(|| "esc off")).action({
+                    let dismiss_esc = dismiss_esc;
+                    let log = log;
+                    move || {
+                        dismiss_esc.set(false);
+                        log.set("dismiss esc off".to_string());
+                    }
+                }),
+            ))
+            .style(|s| s.gap(4.0));
+
+            let close_controls = h_stack((
+                button(label(|| "Open")).action({
+                    let is_open = is_open;
+                    let log = log;
+                    move || {
+                        is_open.set(true);
+                        log.set("open".to_string());
+                    }
+                }),
+                button(label(|| "Close via outside API")).action({
+                    let is_open = is_open;
+                    let log = log;
+                    move || {
+                        if close_by_outside.close_with_outside_click() {
+                            is_open.set(false);
+                            log.set("outside click close".to_string());
+                        } else {
+                            log.set("outside click ignored".to_string());
+                        }
+                    }
+                }),
+                button(label(|| "Close via Esc API")).action({
+                    let is_open = is_open;
+                    let log = log;
+                    move || {
+                        if close_by_esc.close_with_esc() {
+                            is_open.set(false);
+                            log.set("esc close".to_string());
+                        } else {
+                            log.set("esc ignored".to_string());
+                        }
+                    }
+                }),
+            ))
+            .style(|s| s.gap(4.0));
+
             v_stack((
-                label(|| "Live state").style(|s| s.font_size(13.0)),
-                h_stack((
-                    button(label(|| "Open")).action({
-                        let is_open = is_open;
-                        let log = log;
-                        move || {
-                            is_open.set(true);
-                            log.set("opened".to_string());
-                        }
-                    }),
-                    button(label(|| "Close (outside)")).action({
-                        let is_open = is_open;
-                        let log = log;
-                        let pop = pop_for_outside;
-                        move || {
-                            if pop.close_with_outside_click() {
-                                is_open.set(false);
-                                log.set("outside_click: closed".to_string());
-                            } else {
-                                log.set("outside_click: ignored".to_string());
-                            }
-                        }
-                    }),
-                    button(label(|| "Close (Esc)")).action({
-                        let is_open = is_open;
-                        let log = log;
-                        let pop = pop_for_esc;
-                        move || {
-                            if pop.close_with_esc() {
-                                is_open.set(false);
-                                log.set("esc: closed".to_string());
-                            } else {
-                                log.set("esc: ignored".to_string());
-                            }
-                        }
-                    }),
-                ))
-                .style(|s| s.gap(6.0)),
-                label(move || overlay_status.clone()).style(|s| s.font_size(11.0)),
-                h_stack((
-                    button(label(|| "Bottom")).action({
-                        let placement = placement;
-                        let log = log;
-                        move || {
-                            placement.set(Placement::Bottom);
-                            log.set("placement = Bottom".to_string());
-                        }
-                    }),
-                    button(label(|| "Top")).action({
-                        let placement = placement;
-                        let log = log;
-                        move || {
-                            placement.set(Placement::Top);
-                            log.set("placement = Top".to_string());
-                        }
-                    }),
-                    button(label(|| "Start")).action({
-                        let placement = placement;
-                        let log = log;
-                        move || {
-                            placement.set(Placement::Start);
-                            log.set("placement = Start".to_string());
-                        }
-                    }),
-                    button(label(|| "End")).action({
-                        let placement = placement;
-                        let log = log;
-                        move || {
-                            placement.set(Placement::End);
-                            log.set("placement = End".to_string());
-                        }
-                    }),
-                ))
-                .style(|s| s.gap(6.0)),
-                label(move || format!("state={state}, placement={:?}", placement_now)).style(|s| s.font_size(11.0)),
-                overlay_box,
                 label(move || {
                     format!(
-                        "origin=({}, {}), bg=({}, {}, {}), dismiss=outside({}) esc({})",
-                        origin.x as i32, origin.y as i32, pop.popover_bg.r, pop.popover_bg.g, pop.popover_bg.b, pop.dismiss_on_outside_click, pop.dismiss_on_esc
+                        "state open={} anchor={}",
+                        is_open.get(),
+                        if active_anchor == 0 { "center" } else { "edge" }
                     )
                 })
                 .style(|s| s.font_size(11.0)),
-                label(move || format!("log: {}", log.get()))
-                    .style(|s| s.font_size(11.0)),
+                Popover::new()
+                    .open(is_open.get())
+                    .placement(placement.get())
+                    .offset(offset.get())
+                    .width(width.get())
+                    .anchor(AnchorRef::new(anchor))
+                    .children(popover_content(offset.get(), width.get(), focus_state, log))
+                    .dismiss_on_outside_click(dismiss_outside.get())
+                    .dismiss_on_esc(dismiss_esc.get())
+                    .on_focus_in({
+                        let focus_state = focus_state;
+                        move || focus_state.set("popover focus in".to_string())
+                    })
+                    .on_focus_out({
+                        let focus_state = focus_state;
+                        move || focus_state.set("popover focus out".to_string())
+                    })
+                    .on_close({
+                        let is_open = is_open;
+                        let focus_state = focus_state;
+                        let log = log;
+                        move || {
+                            is_open.set(false);
+                            focus_state.set("closed".to_string());
+                            log.set("on_close".to_string());
+                        }
+                    })
+                    .view(
+                        page_theme.clone(),
+                        if active_anchor == 0 {
+                            "anchor center"
+                        } else {
+                            "anchor edge"
+                        },
+                    ),
+                close_controls,
+                placement_controls,
+                geom_controls,
+                width_controls,
+                dismiss_controls,
+                label(move || {
+                    format!(
+                        "computed origin ({:.0}, {:.0}) / {}",
+                        computed_origin.x, computed_origin.y, overlay_text
+                    )
+                })
+                .style(|s| s.font_size(11.0)),
+                label(move || format!("focus: {}", focus_state.get())).style(|s| s.font_size(11.0)),
+                label(move || format!("log: {}", log.get())).style(|s| s.font_size(11.0)),
             ))
             .style(|s| s.gap(8.0))
         },
     );
 
+    let base_anchor = anchors[0];
+    let edge_anchor = anchors[1];
+    let o_bottom = Popover::new().compute_origin(base_anchor, 120.0, 60.0, 800.0, 600.0);
+    let o_top = Popover::new().placement(Placement::Top).compute_origin(
+        base_anchor,
+        120.0,
+        60.0,
+        800.0,
+        600.0,
+    );
+    let o_start = Popover::new().placement(Placement::Start).compute_origin(
+        base_anchor,
+        120.0,
+        60.0,
+        800.0,
+        600.0,
+    );
+    let o_end = Popover::new().placement(Placement::End).compute_origin(
+        base_anchor,
+        120.0,
+        60.0,
+        800.0,
+        600.0,
+    );
+    let o_flip_bottom = Popover::new().placement(Placement::Bottom).compute_origin(
+        edge_anchor,
+        120.0,
+        60.0,
+        800.0,
+        600.0,
+    );
+    let o_flip_end = Popover::new().placement(Placement::End).compute_origin(
+        edge_anchor,
+        120.0,
+        60.0,
+        800.0,
+        600.0,
+    );
+
+    let anchor_buttons = h_stack((
+        button(label(|| "anchor center")).action({
+            let anchor_index = anchor_index;
+            let log = log;
+            move || {
+                anchor_index.set(0);
+                log.set("anchor: center".to_string());
+            }
+        }),
+        button(label(|| "anchor edge")).action({
+            let anchor_index = anchor_index;
+            let log = log;
+            move || {
+                anchor_index.set(1);
+                log.set("anchor: edge".to_string());
+            }
+        }),
+    ))
+    .style(|s| s.gap(4.0));
+
+    let bg = PenikoColor::rgb8(theme.color.bg.r, theme.color.bg.g, theme.color.bg.b);
+    let text = PenikoColor::rgb8(theme.color.text.r, theme.color.text.g, theme.color.text.b);
+
     scroll(
         v_stack((
-            label(|| "Popover Samples").style(|s| s.font_size(16.0).margin_bottom(8.0)),
-            label(|| "Live widget").style(|s| s.font_size(13.0)),
-            Popover::new()
-                .children("Popover::view の内容")
-                .view(theme.clone(), "Toggle popover"),
-            label(|| "Placements (anchor at 200,200)").style(|s| s.font_size(13.0).margin_bottom(4.0)),
-            placement_row("Bottom", p_bottom.placement, o_bottom.x, o_bottom.y, p_bottom.popover_bg.r, p_bottom.popover_bg.g, p_bottom.popover_bg.b),
-            placement_row("Top", p_top.placement, o_top.x, o_top.y, p_top.popover_bg.r, p_top.popover_bg.g, p_top.popover_bg.b),
-            placement_row("Start", p_start.placement, o_start.x, o_start.y, p_start.popover_bg.r, p_start.popover_bg.g, p_start.popover_bg.b),
-            placement_row("End", p_end.placement, o_end.x, o_end.y, p_end.popover_bg.r, p_end.popover_bg.g, p_end.popover_bg.b),
-            label(|| "Auto-flip (anchor near bottom-right edge 700,550)").style(|s| s.font_size(13.0).margin_top(8.0).margin_bottom(4.0)),
-            placement_row("Bottom→flipped", Placement::Bottom, o_flip_bottom.x, o_flip_bottom.y, p_bottom.popover_bg.r, p_bottom.popover_bg.g, p_bottom.popover_bg.b),
-            placement_row("End→flipped", Placement::End, o_flip_end.x, o_flip_end.y, p_end.popover_bg.r, p_end.popover_bg.g, p_end.popover_bg.b),
-            label(|| "dismiss_on_outside_click / dismiss_on_esc governed by props").style(|s| s.font_size(11.0).margin_top(8.0)),
-            interactive,
+            label(|| "Popover").style(|s| s.font_size(16.0)),
+            label(|| "Live sample").style(|s| s.font_size(13.0)),
+            anchor_buttons,
+            live,
+            label(|| "Placement").style(|s| s.font_size(13.0)),
+            placement_row("Bottom", Placement::Bottom, o_bottom.x, o_bottom.y),
+            placement_row("Top", Placement::Top, o_top.x, o_top.y),
+            placement_row("Start", Placement::Start, o_start.x, o_start.y),
+            placement_row("End", Placement::End, o_end.x, o_end.y),
+            label(|| "Auto flip near edge").style(|s| s.font_size(13.0)),
+            placement_row(
+                "Bottom flip",
+                Placement::Bottom,
+                o_flip_bottom.x,
+                o_flip_bottom.y,
+            ),
+            placement_row("End flip", Placement::End, o_flip_end.x, o_flip_end.y),
         ))
         .style(move |s| {
             s.gap(8.0)
                 .padding(16.0)
                 .background(bg)
-                .color(text_col)
+                .color(text)
                 .min_width_full()
         }),
     )

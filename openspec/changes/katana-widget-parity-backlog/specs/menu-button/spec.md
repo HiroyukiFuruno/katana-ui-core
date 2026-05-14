@@ -1,23 +1,22 @@
-# MenuButton Widget Spec
+## ADDED Requirements
 
-## 概要
+### Requirement: MenuButton widget
 
-ボタンクリックでドロップダウンメニューを開く widget。framed / unframed variant を持つ。
+MenuButton は trigger を押すと任意 content を Popover として開けることを MUST とする。
 
-## 出典
+#### Scenario: menu を開く
 
-- `../katana/crates/katana-ui/src/widgets/menu_button/`
-- `../katana/crates/katana-ui/src/views/app_frame/breadcrumbs.rs` (unframed 利用)
+- **WHEN** 利用者が trigger を押す
+- **THEN** menu content が表示される
+- **AND** `on_open` callback が呼ばれる
 
-## 階層配置
+#### Scenario: menu を閉じる
 
-`composite/button/menu`
+- **WHEN** 利用者が外側 click、Esc、または menu item 選択で閉じる
+- **THEN** menu content が非表示になる
+- **AND** `on_close` callback が呼ばれる
 
-## 依存
+#### Scenario: unframed variant を表示する
 
-- SVG Button (05)
-- Popover (21)
-
-## API 概要（TBD）
-
-- `MenuButton`: trigger (node), content (node), variant (Framed | Unframed), on_open, on_close
+- **WHEN** variant が `Unframed`
+- **THEN** ボタン枠なしの text / icon trigger として表示される

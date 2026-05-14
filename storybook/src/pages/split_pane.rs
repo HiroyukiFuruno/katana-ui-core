@@ -1,6 +1,6 @@
-use floem::peniko::Color as PenikoColor;
-use floem::views::{h_stack, label, scroll, v_stack, Decorators};
 use floem::IntoView;
+use floem::peniko::Color as PenikoColor;
+use floem::views::{Decorators, h_stack, label, scroll, v_stack};
 use katana_ui_widget::layout::split::{Direction, SplitPane};
 use katana_ui_widget::theme::Theme;
 
@@ -48,14 +48,18 @@ fn handle_strip(
 ) -> impl IntoView {
     let color = PenikoColor::rgb8(color_r, color_g, color_b);
     match direction {
-        Direction::Horizontal => {
-            label(move || "")
-                .style(move |s| s.width(thickness).height(main).background(color).border(0.5))
-        }
-        Direction::Vertical => {
-            label(move || "")
-                .style(move |s| s.width(main).height(thickness).background(color).border(0.5))
-        }
+        Direction::Horizontal => label(move || "").style(move |s| {
+            s.width(thickness)
+                .height(main)
+                .background(color)
+                .border(0.5)
+        }),
+        Direction::Vertical => label(move || "").style(move |s| {
+            s.width(main)
+                .height(thickness)
+                .background(color)
+                .border(0.5)
+        }),
     }
 }
 
@@ -82,76 +86,72 @@ fn split_row(
     };
 
     let split = match direction {
-        Direction::Horizontal => {
-            h_stack((
-                panel_box(
-                    "Pane A",
-                    resolved.handle_color.r,
-                    resolved.handle_color.g,
-                    resolved.handle_color.b,
-                    text_color.0,
-                    text_color.1,
-                    text_color.2,
-                    first_size,
-                    height,
-                ),
-                handle_strip(
-                    direction,
-                    height,
-                    resolved.handle_thickness,
-                    resolved.handle_color.r,
-                    resolved.handle_color.g,
-                    resolved.handle_color.b,
-                ),
-                panel_box(
-                    "Pane B",
-                    resolved.handle_hover_color.r,
-                    resolved.handle_hover_color.g,
-                    resolved.handle_hover_color.b,
-                    text_color.0,
-                    text_color.1,
-                    text_color.2,
-                    second_size,
-                    height,
-                ),
-            ))
-            .style(move |s| s.width(width).height(height))
-        }
-        Direction::Vertical => {
-            v_stack((
-                panel_box(
-                    "Pane A",
-                    resolved.handle_color.r,
-                    resolved.handle_color.g,
-                    resolved.handle_color.b,
-                    text_color.0,
-                    text_color.1,
-                    text_color.2,
-                    width,
-                    first_size,
-                ),
-                handle_strip(
-                    direction,
-                    width,
-                    resolved.handle_thickness,
-                    resolved.handle_color.r,
-                    resolved.handle_color.g,
-                    resolved.handle_color.b,
-                ),
-                panel_box(
-                    "Pane B",
-                    resolved.handle_hover_color.r,
-                    resolved.handle_hover_color.g,
-                    resolved.handle_hover_color.b,
-                    text_color.0,
-                    text_color.1,
-                    text_color.2,
-                    width,
-                    second_size,
-                ),
-            ))
-            .style(move |s| s.width(width).height(height))
-        }
+        Direction::Horizontal => h_stack((
+            panel_box(
+                "Pane A",
+                resolved.handle_color.r,
+                resolved.handle_color.g,
+                resolved.handle_color.b,
+                text_color.0,
+                text_color.1,
+                text_color.2,
+                first_size,
+                height,
+            ),
+            handle_strip(
+                direction,
+                height,
+                resolved.handle_thickness,
+                resolved.handle_color.r,
+                resolved.handle_color.g,
+                resolved.handle_color.b,
+            ),
+            panel_box(
+                "Pane B",
+                resolved.handle_hover_color.r,
+                resolved.handle_hover_color.g,
+                resolved.handle_hover_color.b,
+                text_color.0,
+                text_color.1,
+                text_color.2,
+                second_size,
+                height,
+            ),
+        ))
+        .style(move |s| s.width(width).height(height)),
+        Direction::Vertical => v_stack((
+            panel_box(
+                "Pane A",
+                resolved.handle_color.r,
+                resolved.handle_color.g,
+                resolved.handle_color.b,
+                text_color.0,
+                text_color.1,
+                text_color.2,
+                width,
+                first_size,
+            ),
+            handle_strip(
+                direction,
+                width,
+                resolved.handle_thickness,
+                resolved.handle_color.r,
+                resolved.handle_color.g,
+                resolved.handle_color.b,
+            ),
+            panel_box(
+                "Pane B",
+                resolved.handle_hover_color.r,
+                resolved.handle_hover_color.g,
+                resolved.handle_hover_color.b,
+                text_color.0,
+                text_color.1,
+                text_color.2,
+                width,
+                second_size,
+            ),
+        ))
+        .style(move |s| s.width(width).height(height)),
     };
 
     let cursor = match direction {
@@ -169,7 +169,7 @@ fn split_row(
                 cursor
             )
         })
-            .style(|s| s.font_size(10.0)),
+        .style(|s| s.font_size(10.0)),
         split,
     ))
     .style(|s| s.gap(4.0))
@@ -191,11 +191,17 @@ fn nested_split_sample(theme: Theme) -> impl IntoView {
         .resolve(&theme);
 
     let left = (NESTED_WIDTH - outer.handle_thickness) * outer.ratio;
-    let left = left.clamp(60.0, (NESTED_WIDTH - outer.handle_thickness - 20.0).max(60.0));
+    let left = left.clamp(
+        60.0,
+        (NESTED_WIDTH - outer.handle_thickness - 20.0).max(60.0),
+    );
     let right = (NESTED_WIDTH - outer.handle_thickness - left).max(1.0);
 
     let top = (NESTED_HEIGHT - inner.handle_thickness) * inner.ratio;
-    let top = top.clamp(30.0, (NESTED_HEIGHT - inner.handle_thickness - 20.0).max(30.0));
+    let top = top.clamp(
+        30.0,
+        (NESTED_HEIGHT - inner.handle_thickness - 20.0).max(30.0),
+    );
     let bottom = (NESTED_HEIGHT - inner.handle_thickness - top).max(1.0);
 
     let left_panel = panel_box(
@@ -210,15 +216,7 @@ fn nested_split_sample(theme: Theme) -> impl IntoView {
         NESTED_HEIGHT,
     );
     let right_top = panel_box(
-        "Pane B",
-        surface.r,
-        surface.g,
-        surface.b,
-        text.r,
-        text.g,
-        text.b,
-        right,
-        top,
+        "Pane B", surface.r, surface.g, surface.b, text.r, text.g, text.b, right, top,
     );
     let right_bottom = panel_box(
         "Pane C",
@@ -265,13 +263,14 @@ fn nested_split_sample(theme: Theme) -> impl IntoView {
 }
 
 fn page_content(theme: Theme) -> impl IntoView + use<> {
-    let h = SplitPane::new().direction(Direction::Horizontal).resolve(&theme);
-    let v = SplitPane::new().direction(Direction::Vertical).resolve(&theme);
-    let r_60 = SplitPane::new().ratio(0.6).resolve(&theme);
-    let r_min = SplitPane::new()
-        .ratio(0.05)
-        .min_ratio(0.15)
+    let h = SplitPane::new()
+        .direction(Direction::Horizontal)
         .resolve(&theme);
+    let v = SplitPane::new()
+        .direction(Direction::Vertical)
+        .resolve(&theme);
+    let r_60 = SplitPane::new().ratio(0.6).resolve(&theme);
+    let r_min = SplitPane::new().ratio(0.05).min_ratio(0.15).resolve(&theme);
     let r_min_ratio = r_min.ratio;
 
     let bg = PenikoColor::rgb8(theme.color.bg.r, theme.color.bg.g, theme.color.bg.b);
@@ -286,7 +285,7 @@ fn page_content(theme: Theme) -> impl IntoView + use<> {
                 label(|| "Left pane").style(|s| s.padding(8.0)),
                 label(|| "Right pane").style(|s| s.padding(8.0)),
             ),
-                split_row(
+            split_row(
                 "Horizontal sample",
                 Direction::Horizontal,
                 h,
@@ -319,10 +318,12 @@ fn page_content(theme: Theme) -> impl IntoView + use<> {
                 DEMO_HEIGHT,
                 (text.r, text.g, text.b),
             ),
-            label(move || "cursor: horizontal=col-resize, vertical=row-resize").style(|s| s.font_size(11.0)),
+            label(move || "cursor: horizontal=col-resize, vertical=row-resize")
+                .style(|s| s.font_size(11.0)),
             label(move || format!("min raw 5% resolved {}", ratio_to_label(r_min_ratio)))
                 .style(|s| s.font_size(11.0)),
-            label(|| "Double-click handle resets to 50/50 (docs behavior)").style(|s| s.font_size(11.0)),
+            label(|| "Double-click handle resets to 50/50 (docs behavior)")
+                .style(|s| s.font_size(11.0)),
         ))
         .style(move |s| {
             s.gap(8.0)

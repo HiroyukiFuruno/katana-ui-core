@@ -1,9 +1,8 @@
-use floem::peniko::Color as PenikoColor;
-use floem::views::{label, scroll, v_stack, Decorators};
 use floem::IntoView;
-use katana_ui_widget::composite::selector::segmented::{
-    Segment, SegmentedSize, SegmentedToggle,
-};
+use floem::peniko::Color as PenikoColor;
+use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
+use floem::views::{Decorators, label, scroll, v_stack};
+use katana_ui_widget::composite::selector::segmented::{Segment, SegmentedSize, SegmentedToggle};
 use katana_ui_widget::theme::Theme;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,13 +48,37 @@ fn status_options() -> Vec<(Filter, Segment)> {
 fn page_content(theme: &Theme) -> impl IntoView + use<> {
     let bg = PenikoColor::rgb8(theme.color.bg.r, theme.color.bg.g, theme.color.bg.b);
     let text_col = PenikoColor::rgb8(theme.color.text.r, theme.color.text.g, theme.color.text.b);
+    let selected = create_rw_signal(ViewMode::List);
+    let log = create_rw_signal("on_change: なし".to_string());
+
+    crate::interaction::replay("select-grid", "segmented-toggle", "value-grid", {
+        let selected = selected;
+        let log = log;
+        move || {
+            selected.set(ViewMode::Grid);
+            log.set("on_change: Grid".to_string());
+        }
+    });
 
     scroll(
         v_stack((
             label(|| "SegmentedToggle Samples").style(|s| s.font_size(16.0).margin_bottom(8.0)),
             label(|| "Live widget").style(|s| s.font_size(13.0)),
-            SegmentedToggle::new(ViewMode::List, view_mode_options(), "Live view mode")
+            SegmentedToggle::new(selected.get(), view_mode_options(), "Live view mode")
+                .on_change({
+                    let selected = selected;
+                    let log = log;
+                    move |value| {
+                        selected.set(value.clone());
+                        let mode = match value {
+                            ViewMode::List => "List",
+                            ViewMode::Grid => "Grid",
+                        };
+                        log.set(format!("on_change: {mode}"));
+                    }
+                })
                 .view(theme.clone()),
+            label(move || format!("callback log: {}", log.get())).style(|s| s.font_size(12.0)),
             label(|| "Readonly display")
                 .style(|s| s.font_size(16.0).margin_top(12.0).margin_bottom(8.0)),
             SegmentedToggle::new(ViewMode::Grid, view_mode_options(), "View mode")

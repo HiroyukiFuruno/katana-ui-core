@@ -1,9 +1,9 @@
-use floem::peniko::Color as PenikoColor;
-use floem::views::{h_stack, label, scroll, v_stack, Decorators};
 use floem::IntoView;
-use katana_ui_widget::primitive::text::{Text, TextRole};
-use katana_ui_widget::theme::color::Color;
+use floem::peniko::Color as PenikoColor;
+use floem::views::{Decorators, container, h_stack, label, scroll, v_stack};
+use katana_ui_widget::primitive::text::{Text, TextAlign, TextRole};
 use katana_ui_widget::theme::Theme;
+use katana_ui_widget::theme::color::Color;
 
 fn role_row(desc: &'static str, size: f32) -> impl IntoView {
     h_stack((
@@ -13,16 +13,44 @@ fn role_row(desc: &'static str, size: f32) -> impl IntoView {
     .style(|s| s.gap(8.0).items_center())
 }
 
+fn text_demo(desc: &'static str, body: impl IntoView + 'static) -> impl IntoView {
+    v_stack((
+        label(move || desc).style(|s| s.font_size(11.0)),
+        container(body).style(|s| s.width(360.0).border(1.0).padding(6.0).margin_bottom(2.0)),
+    ))
+    .style(|s| s.gap(4.0))
+}
+
 fn page_content(theme: &Theme) -> impl IntoView + use<> {
-    let h1 = Text::new("").role(TextRole::Heading1).resolve(theme).font_size;
-    let h2 = Text::new("").role(TextRole::Heading2).resolve(theme).font_size;
-    let h3 = Text::new("").role(TextRole::Heading3).resolve(theme).font_size;
+    let h1 = Text::new("")
+        .role(TextRole::Heading1)
+        .resolve(theme)
+        .font_size;
+    let h2 = Text::new("")
+        .role(TextRole::Heading2)
+        .resolve(theme)
+        .font_size;
+    let h3 = Text::new("")
+        .role(TextRole::Heading3)
+        .resolve(theme)
+        .font_size;
     let body = Text::new("").role(TextRole::Body).resolve(theme).font_size;
-    let strong = Text::new("").role(TextRole::BodyStrong).resolve(theme).font_size;
-    let caption = Text::new("").role(TextRole::Caption).resolve(theme).font_size;
+    let strong = Text::new("")
+        .role(TextRole::BodyStrong)
+        .resolve(theme)
+        .font_size;
+    let caption = Text::new("")
+        .role(TextRole::Caption)
+        .resolve(theme)
+        .font_size;
     let code = Text::new("").role(TextRole::Code).resolve(theme).font_size;
 
-    let red = Color { r: 220, g: 38, b: 38, a: 255 };
+    let red = Color {
+        r: 220,
+        g: 38,
+        b: 38,
+        a: 255,
+    };
     let override_size = Text::new("").color_override(red).resolve(theme).font_size;
 
     let bg = PenikoColor::rgb8(theme.color.bg.r, theme.color.bg.g, theme.color.bg.b);
@@ -42,10 +70,36 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
             role_row("BodyStrong", strong),
             role_row("Caption", caption),
             role_row("Code", code),
-            label(|| "color_override: Danger red")
-                .style(move |s| s.font_size(override_size).color(PenikoColor::rgb8(220, 38, 38))),
-            label(|| "max_lines=1: Lorem ipsum dolor sit amet, consectetur adipiscing elit.")
-                .style(move |s| s.font_size(body)),
+            label(|| "color_override: Danger red").style(move |s| {
+                s.font_size(override_size)
+                    .color(PenikoColor::rgb8(220, 38, 38))
+            }),
+            label(|| "max_lines / align")
+                .style(|s| s.font_size(16.0).margin_top(12.0).margin_bottom(8.0)),
+            text_demo(
+                "max_lines=1",
+                Text::new("1行目: 表示される\n2行目: 省略される\n3行目: 省略される")
+                    .max_lines(1)
+                    .view(theme.clone()),
+            ),
+            text_demo(
+                "align=start",
+                Text::new("左寄せ")
+                    .align(TextAlign::Start)
+                    .view(theme.clone()),
+            ),
+            text_demo(
+                "align=center",
+                Text::new("中央寄せ")
+                    .align(TextAlign::Center)
+                    .view(theme.clone()),
+            ),
+            text_demo(
+                "align=end",
+                Text::new("右寄せ")
+                    .align(TextAlign::End)
+                    .view(theme.clone()),
+            ),
         ))
         .style(move |s| {
             s.gap(8.0)

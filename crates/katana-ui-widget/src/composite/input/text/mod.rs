@@ -1,7 +1,7 @@
 mod types;
 mod view;
 
-pub use types::{InputSize, TextInputProps, TrailingSlot};
+pub use types::{IconSlotMode, InputSize, TextInputProps, TrailingSlot};
 
 use crate::theme::Theme;
 use crate::theme::color::Color;
@@ -55,6 +55,7 @@ impl TextInput {
                 value: String::new(),
                 placeholder: None,
                 leading_icon: None,
+                leading_icon_mode: IconSlotMode::Hidden,
                 trailing: TrailingSlot::None,
                 size: InputSize::default(),
                 disabled: false,
@@ -81,6 +82,13 @@ impl TextInput {
     #[must_use]
     pub fn leading_icon(mut self, icon: crate::primitive::icon::IconSource) -> Self {
         self.props.leading_icon = Some(icon);
+        self.props.leading_icon_mode = IconSlotMode::Visible;
+        self
+    }
+
+    #[must_use]
+    pub fn leading_icon_mode(mut self, mode: IconSlotMode) -> Self {
+        self.props.leading_icon_mode = mode;
         self
     }
 

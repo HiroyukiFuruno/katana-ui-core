@@ -4,6 +4,7 @@ use crate::theme::color::Color;
 
 const CORNER_RADIUS: f32 = 6.0;
 const HOVER_DARKEN: u8 = 8;
+const ACTIVE_DARKEN: u8 = 16;
 
 pub(super) fn bg_color(variant: CardVariant, theme: &Theme) -> Color {
     match variant {
@@ -42,6 +43,16 @@ pub(super) fn hover_bg(variant: CardVariant, theme: &Theme) -> Color {
         r: base.r.saturating_sub(HOVER_DARKEN),
         g: base.g.saturating_sub(HOVER_DARKEN),
         b: base.b.saturating_sub(HOVER_DARKEN),
+        a: base.a,
+    }
+}
+
+pub(super) fn active_bg(variant: CardVariant, theme: &Theme) -> Color {
+    let base = bg_color(variant, theme);
+    Color {
+        r: base.r.saturating_sub(ACTIVE_DARKEN),
+        g: base.g.saturating_sub(ACTIVE_DARKEN),
+        b: base.b.saturating_sub(ACTIVE_DARKEN),
         a: base.a,
     }
 }

@@ -13,9 +13,10 @@ katana と katana-chat-ui で繰り返し使われる UI が widget 化されて
 - 画像2枚目のような section label、選択行、色付きマーカー、もっと表示、数値 slider を含む設定リスト表現を定義する。
 - 画像3枚目のような配列を動的に追加 / 削除 / 並び替えできる UI を定義する。
 
-### 横断調査で追加された widget 候補（2026-05-11）
+### 横断調査で採用した widget（2026-05-11）
 
-以下は katana (`katana-ui/src/`) と katana-chat-ui (`katana-chat-ui-floem/src/widget/`) のソースコード横断調査で発見された、widget 化すべき汎用 UI 部品である。README 除外リストの「汎用化が見えた段階で追加」方針に基づき、ドメインロジックを分離した上で汎用構造として定義する。
+以下は katana (`katana-ui/src/`) と katana-chat-ui (`katana-chat-ui-floem/src/widget/`) のソースコード横断調査で採用判定を 1 とした汎用 UI 部品である。
+判定は `1 = 採用して実装対象`、`0 = widget crate では実装しない` とする。未判定状態は作らない。
 
 - **TreeView**: 階層データの展開・折り畳み表示。katana の explorer (`views/panels/explorer/`)、TOC (`views/panels/toc/`)、settings tree (`settings/settings_tree.rs`) で繰り返し利用されるパターン。ファイルツリー、設定ツリー、目次など広く使える。
 - **ComboBox**: テキスト入力 + ドロップダウン選択。katana の `widgets/combo_box/` で定義済みだが widget crate に抽出されていない。SelectBox (10) の上位互換として基本フォーム widget に位置付ける。
@@ -25,6 +26,39 @@ katana と katana-chat-ui で繰り返し使われる UI が widget 化されて
 - **Toolbar**: SVG アイコンアクションの水平配置。katana-chat-ui の `widget/toolbar.rs` が実装。identity セクション + action セクションに分かれる汎用パターン。
 - **LoadingDots**: アニメーション付きドットインジケーター。katana-chat-ui の `widget/thinking_indicator.rs` が実装。Spinner (04) とは異なる「テキスト横の点滅ドット」パターンで、非同期処理の汎用表示に使える。
 - **NotificationToast**: ステータスメッセージの一時表示。katana の StatusBar と status type (`Error / Warning / Success / Info`) パターンから抽出。時間経過で自動消去するトースト通知。
+
+### 0/1 採用判定
+
+| 判定 | 対象 | 理由 | 扱い |
+|---:|---|---|---|
+| 1 | ProgressBar | 汎用進捗表示として複数 UI で利用可能 | 実装対象 |
+| 1 | Tabs | katana の top bar tab を汎用化できる | 実装対象 |
+| 1 | Breadcrumb | katana の app frame breadcrumbs を汎用化できる | 実装対象 |
+| 1 | SideMenu | 左右メニューと icon action は汎用 shell UI に必要 | 実装対象 |
+| 1 | SelectionList | theme preset list など選択 UI として汎用 | 実装対象 |
+| 1 | SlideControl | 数値調整 UI として設定画面で汎用 | 実装対象 |
+| 1 | DynamicArrayEditor | 配列設定 UI として画像3枚目の用途に必要 | 実装対象 |
+| 1 | AlignCenterWrapper | katana の AlignCenter 相当として再利用価値が高い | 実装対象 |
+| 1 | TreeView | explorer / TOC / settings tree に共通する | 実装対象 |
+| 1 | ComboBox | SelectBox + TextInput + Popover の汎用入力 | 実装対象 |
+| 1 | MenuButton | breadcrumb / menu 系に共通する | 実装対象 |
+| 1 | CommandPalette | provider を分離すれば検索可能 overlay として汎用 | 実装対象 |
+| 1 | StatusBar | severity message bar として汎用 | 実装対象 |
+| 1 | Toolbar | leading / trailing action layout として汎用 | 実装対象 |
+| 1 | LoadingDots | Spinner とは別の非同期表示として汎用 | 実装対象 |
+| 1 | NotificationToast | severity + dismiss + stack 表示として汎用 | 実装対象 |
+| 0 | DiffViewer | ファイルパス（file path）、承認、拒否、複数ファイル移動を含む katana のドメイン UI | 実装しない |
+| 1 | CodeDiff | 2つのコード文字列を見比べるだけの汎用差分表示 | `24-code-diff` で実装対象 |
+| 0 | ProblemsPanel | lint 問題表示は katana のドメイン UI | 実装しない |
+| 0 | Dashboard | katana の画面固有 UI | 実装しない |
+| 0 | Splash | katana の画面固有 UI | 実装しない |
+| 0 | Chat output cards | chat domain 固有 UI | 実装しない |
+| 0 | Composer | chat input domain 固有 UI | 実装しない |
+| 0 | Thread | chat message domain 固有 UI | 実装しない |
+| 0 | History | chat session domain 固有 UI | 実装しない |
+| 0 | VendorControls | AI vendor domain 固有 UI | 実装しない |
+| 0 | ProviderIconSelector | AI provider domain 固有 UI | 実装しない |
+| 0 | WidgetInventoryAudit | 実装 widget ではなく調査作業 | この change から除外 |
 
 ## Capabilities
 
@@ -38,7 +72,6 @@ katana と katana-chat-ui で繰り返し使われる UI が widget 化されて
 - `slide-control`: 最小値 / 最大値 / step / 小数 / 整数 / 対象 binding を扱う slider UI。
 - `dynamic-array-editor`: 画像3枚目のような配列 item の追加、削除、編集、並び替えを扱う UI。
 - `align-center-wrapper`: katana の AlignCenter のように子要素を中央揃えする wrapper。
-- `widget-inventory-audit`: katana / katana-chat-ui から widget 化漏れを洗い出す監査。
 - `tree-view`: 階層データの展開・折り畳み・選択・アクティブ表示を持つツリー widget。katana explorer / TOC / settings tree 由来。
 - `combo-box`: テキスト入力 + ドロップダウン選択。入力によるフィルタリング、自由入力許可 / 不許可を扱う。katana combo_box 由来。
 - `menu-button`: ボタンクリックでドロップダウンメニューを開く widget。framed / unframed、任意メニュー content を扱う。katana menu_button 由来。
@@ -56,5 +89,5 @@ katana と katana-chat-ui で繰り返し使われる UI が widget 化されて
 
 - `crates/katana-ui-widget/src/composite` と `crates/katana-ui-widget/src/layout` に新規 widget が追加される。
 - `storybook/src/pages` に各 widget の live sample が追加される。
-- katana / katana-chat-ui で個別実装している UI の移植候補が整理される。
+- katana / katana-chat-ui で個別実装している UI の移植対象が整理される。
 - OpenSpec の完了判定は、`tasks.md` の checkbox だけでなく、Storybook 上の実操作と widget API の再利用性を確認してから行う。

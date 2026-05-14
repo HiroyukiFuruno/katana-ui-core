@@ -1,6 +1,7 @@
-use floem::peniko::Color as PenikoColor;
-use floem::views::{h_stack, label, scroll, v_stack, Decorators};
 use floem::IntoView;
+use floem::peniko::Color as PenikoColor;
+use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
+use floem::views::{Decorators, h_stack, label, scroll, v_stack};
 use katana_ui_widget::composite::button::icon_text::{IconPosition, IconTextButton};
 use katana_ui_widget::composite::button::text::{Size, Tone, Variant};
 use katana_ui_widget::primitive::icon::{IconSize, IconSource};
@@ -15,6 +16,7 @@ fn btn_cell(lbl: &'static str, font_sz: f32, r: u8, g: u8, b: u8, a: u8) -> impl
 
 fn page_content(theme: &Theme) -> impl IntoView + use<> {
     let icon = IconSource::SvgBytes(SAMPLE_SVG);
+    let click_log = create_rw_signal("未クリック".to_string());
 
     let r0 = IconTextButton::new(icon.clone(), "Leading Icon")
         .icon_position(IconPosition::Leading)
@@ -68,22 +70,76 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
             IconTextButton::new(icon.clone(), "Clickable")
                 .variant(Variant::Primary)
                 .tone(Tone::Accent)
-                .view(theme.clone(), || {}),
+                .view(theme.clone(), {
+                    let click_log = click_log;
+                    move || click_log.set("クリック: IconText Primary/Accent".to_string())
+                }),
+            label(move || format!("callback log: {}", click_log.get()))
+                .style(|s| s.font_size(12.0)),
             h_stack((
-                btn_cell("Leading/Primary/Accent", r0.font_size, r0.text_color.r, r0.text_color.g, r0.text_color.b, r0.text_alpha),
-                btn_cell("Trailing/Secondary/Accent", r1.font_size, r1.text_color.r, r1.text_color.g, r1.text_color.b, r1.text_alpha),
-                btn_cell("Primary/Danger", r2.font_size, r2.text_color.r, r2.text_color.g, r2.text_color.b, r2.text_alpha),
+                btn_cell(
+                    "Leading/Primary/Accent",
+                    r0.font_size,
+                    r0.text_color.r,
+                    r0.text_color.g,
+                    r0.text_color.b,
+                    r0.text_alpha,
+                ),
+                btn_cell(
+                    "Trailing/Secondary/Accent",
+                    r1.font_size,
+                    r1.text_color.r,
+                    r1.text_color.g,
+                    r1.text_color.b,
+                    r1.text_alpha,
+                ),
+                btn_cell(
+                    "Primary/Danger",
+                    r2.font_size,
+                    r2.text_color.r,
+                    r2.text_color.g,
+                    r2.text_color.b,
+                    r2.text_alpha,
+                ),
             ))
             .style(|s| s.gap(8.0)),
             h_stack((
-                btn_cell("Ghost/Neutral/Sm", r3.font_size, r3.text_color.r, r3.text_color.g, r3.text_color.b, r3.text_alpha),
-                btn_cell("Primary/Neutral/Lg", r4.font_size, r4.text_color.r, r4.text_color.g, r4.text_color.b, r4.text_alpha),
+                btn_cell(
+                    "Ghost/Neutral/Sm",
+                    r3.font_size,
+                    r3.text_color.r,
+                    r3.text_color.g,
+                    r3.text_color.b,
+                    r3.text_alpha,
+                ),
+                btn_cell(
+                    "Primary/Neutral/Lg",
+                    r4.font_size,
+                    r4.text_color.r,
+                    r4.text_color.g,
+                    r4.text_color.b,
+                    r4.text_alpha,
+                ),
             ))
             .style(|s| s.gap(8.0)),
             label(|| "States").style(|s| s.font_size(16.0).margin_top(12.0).margin_bottom(8.0)),
             h_stack((
-                btn_cell("Disabled", r_disabled.font_size, r_disabled.text_color.r, r_disabled.text_color.g, r_disabled.text_color.b, r_disabled.text_alpha),
-                btn_cell("Loading (semi-transparent)", r_loading.font_size, r_loading.text_color.r, r_loading.text_color.g, r_loading.text_color.b, r_loading.text_alpha),
+                btn_cell(
+                    "Disabled",
+                    r_disabled.font_size,
+                    r_disabled.text_color.r,
+                    r_disabled.text_color.g,
+                    r_disabled.text_color.b,
+                    r_disabled.text_alpha,
+                ),
+                btn_cell(
+                    "Loading (semi-transparent)",
+                    r_loading.font_size,
+                    r_loading.text_color.r,
+                    r_loading.text_color.g,
+                    r_loading.text_color.b,
+                    r_loading.text_alpha,
+                ),
             ))
             .style(|s| s.gap(8.0)),
         ))

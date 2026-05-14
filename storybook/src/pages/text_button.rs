@@ -1,6 +1,7 @@
-use floem::peniko::Color as PenikoColor;
-use floem::views::{h_stack, label, scroll, v_stack, Decorators};
 use floem::IntoView;
+use floem::peniko::Color as PenikoColor;
+use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
+use floem::views::{Decorators, h_stack, label, scroll, v_stack};
 use katana_ui_widget::composite::button::text::{Size, TextButton, Tone, Variant};
 use katana_ui_widget::theme::Theme;
 
@@ -15,10 +16,17 @@ fn resolve(theme: &Theme, variant: Variant, tone: Tone, size: Size) -> (f32, u8,
         .tone(tone)
         .size(size)
         .resolve(theme);
-    (r.font_size, r.text_color.r, r.text_color.g, r.text_color.b, r.text_alpha)
+    (
+        r.font_size,
+        r.text_color.r,
+        r.text_color.g,
+        r.text_color.b,
+        r.text_alpha,
+    )
 }
 
 fn page_content(theme: &Theme) -> impl IntoView + use<> {
+    let click_log = create_rw_signal("未クリック".to_string());
     let (fs0, r0, g0, b0, a0) = resolve(theme, Variant::Primary, Tone::Accent, Size::Md);
     let (fs1, r1, g1, b1, a1) = resolve(theme, Variant::Primary, Tone::Danger, Size::Md);
     let (fs2, r2, g2, b2, a2) = resolve(theme, Variant::Secondary, Tone::Accent, Size::Md);
@@ -55,7 +63,12 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
             TextButton::new("Clickable")
                 .variant(Variant::Primary)
                 .tone(Tone::Accent)
-                .view(theme.clone(), || {}),
+                .view(theme.clone(), {
+                    let click_log = click_log;
+                    move || click_log.set("クリック: Primary/Accent".to_string())
+                }),
+            label(move || format!("callback log: {}", click_log.get()))
+                .style(|s| s.font_size(12.0)),
             h_stack((
                 btn_cell("Primary/Accent/Md", fs0, r0, g0, b0, a0),
                 btn_cell("Primary/Danger/Md", fs1, r1, g1, b1, a1),

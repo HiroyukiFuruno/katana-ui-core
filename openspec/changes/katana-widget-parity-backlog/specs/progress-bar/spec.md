@@ -2,7 +2,7 @@
 
 ### Requirement: ProgressBar widget
 
-ProgressBar は確定進捗と未確定進捗を表示できること。
+ProgressBar は確定進捗と未確定進捗を表示できることを MUST とする。
 
 #### Scenario: 確定進捗を表示する
 

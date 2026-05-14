@@ -1,11 +1,19 @@
-use floem::peniko::Color as PenikoColor;
-use floem::views::{h_stack, h_stack_from_iter, label, scroll, v_stack, Decorators,
-};
 use floem::IntoView;
+use floem::peniko::Color as PenikoColor;
+use floem::views::{Decorators, h_stack, h_stack_from_iter, label, scroll, v_stack};
 use katana_ui_widget::composite::indicator::key_cap::{KeyCap, KeyCombo, KeyLabel, NamedKey};
 use katana_ui_widget::theme::Theme;
 
-fn cap_view(display: String, bg_r: u8, bg_g: u8, bg_b: u8, text_r: u8, text_g: u8, text_b: u8, font_sz: f32) -> impl IntoView {
+fn cap_view(
+    display: String,
+    bg_r: u8,
+    bg_g: u8,
+    bg_b: u8,
+    text_r: u8,
+    text_g: u8,
+    text_b: u8,
+    font_sz: f32,
+) -> impl IntoView {
     let bg = PenikoColor::rgb8(bg_r, bg_g, bg_b);
     let text_color = PenikoColor::rgb8(text_r, text_g, text_b);
     label(move || display.clone()).style(move |s| {
@@ -26,14 +34,24 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     let r_enter = KeyCap::new(KeyLabel::Named(NamedKey::Enter)).resolve(theme);
     let r_esc = KeyCap::new(KeyLabel::Named(NamedKey::Escape)).resolve(theme);
 
-    let combo = KeyCombo::new(vec![KeyLabel::Cmd, KeyLabel::Shift, KeyLabel::Char('p')]).resolve(theme);
+    let combo =
+        KeyCombo::new(vec![KeyLabel::Cmd, KeyLabel::Shift, KeyLabel::Char('p')]).resolve(theme);
     let combo2 = KeyCombo::new(vec![KeyLabel::Ctrl, KeyLabel::Char('c')]).resolve(theme);
 
     let bg = PenikoColor::rgb8(theme.color.bg.r, theme.color.bg.g, theme.color.bg.b);
     let text_col = PenikoColor::rgb8(theme.color.text.r, theme.color.text.g, theme.color.text.b);
 
     let cap = |r: &katana_ui_widget::composite::indicator::key_cap::ResolvedKeyCap| {
-        cap_view(r.display.clone(), r.bg_color.r, r.bg_color.g, r.bg_color.b, r.text_color.r, r.text_color.g, r.text_color.b, r.font_size)
+        cap_view(
+            r.display.clone(),
+            r.bg_color.r,
+            r.bg_color.g,
+            r.bg_color.b,
+            r.text_color.r,
+            r.text_color.g,
+            r.text_color.b,
+            r.font_size,
+        )
     };
 
     let combo_row = |caps: Vec<katana_ui_widget::composite::indicator::key_cap::ResolvedKeyCap>| {
@@ -56,14 +74,18 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
                     cap(&r_f1),
                     cap(&r_enter),
                     cap(&r_esc),
-                )).style(|s| s.gap(4.0)),
-            )).style(|s| s.gap(4.0)),
+                ))
+                .style(|s| s.gap(4.0)),
+            ))
+            .style(|s| s.gap(4.0)),
             v_stack((
                 label(|| "Combos").style(|s| s.font_size(12.0)),
                 combo_row(combo.caps),
                 combo_row(combo2.caps),
-            )).style(|s| s.gap(4.0)),
-            label(|| "Note: Cmd shows ⌘ on macOS, Ctrl elsewhere").style(|s| s.font_size(11.0).margin_top(8.0)),
+            ))
+            .style(|s| s.gap(4.0)),
+            label(|| "Note: Cmd shows ⌘ on macOS, Ctrl elsewhere")
+                .style(|s| s.font_size(11.0).margin_top(8.0)),
         ))
         .style(move |s| {
             s.gap(12.0)

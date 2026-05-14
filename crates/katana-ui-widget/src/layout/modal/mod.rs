@@ -1,107 +1,34 @@
+mod native_window;
 mod ops;
+mod overlay_dialog;
+mod placement;
+mod resolved;
 mod types;
 mod view;
 
 pub use ops::FocusTransition;
-pub use types::{ModalProps, ModalSize};
+pub use overlay_dialog::OverlayDialog;
+pub use resolved::ResolvedModal;
+pub use types::{
+    ModalParentInteraction, ModalProps, ModalSize, ModalWindowPlacement, OverlayDialogProps,
+};
 
 use crate::theme::Theme;
-use crate::theme::color::Color;
+use floem::peniko::kurbo::Point;
+use floem::window::WindowId;
 use std::rc::Rc;
-use view::{overlay_view, title_color};
-
-fn noop_close() {}
-fn noop_focus_return() {}
-
-/// Resolved visual and behavioral properties for `Modal`.
-#[derive(Clone)]
-pub struct ResolvedModal {
-    pub open: bool,
-    pub title: Option<String>,
-    pub dismiss_on_backdrop: bool,
-    pub dismiss_on_esc: bool,
-    pub overlay_color: Color,
-    pub dialog_bg: Color,
-    pub dialog_border: Color,
-    pub dialog_width: f32,
-    pub corner_radius: f32,
-    pub padding: f32,
-    pub content_gap: f32,
-    pub footer_gap: f32,
-    pub title_font_size: f32,
-    pub title_color: Color,
-    pub children: Option<String>,
-    pub footer: Option<String>,
-    pub on_close: Rc<dyn Fn()>,
-    pub on_focus_return: Rc<dyn Fn()>,
-    pub trap_focus: bool,
-    pub focus_on_open: FocusTransition,
-    pub focus_on_close: FocusTransition,
-}
-
-impl ResolvedModal {
-    /// Returns whether the modal should be closed by backdrop click.
-    #[must_use]
-    pub fn should_close_with_backdrop(&self) -> bool {
-        self.open && self.dismiss_on_backdrop
-    }
-
-    /// Returns whether the modal should be closed by Esc key.
-    #[must_use]
-    pub fn should_close_with_esc(&self) -> bool {
-        self.open && self.dismiss_on_esc
-    }
-
-    /// Tries to close by backdrop click and returns whether close was executed.
-    pub fn close_with_backdrop(&self) -> bool {
-        if self.should_close_with_backdrop() {
-            (self.on_close)();
-            (self.on_focus_return)();
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Tries to close by Esc key and returns whether close was executed.
-    pub fn close_with_esc(&self) -> bool {
-        if self.should_close_with_esc() {
-            (self.on_close)();
-            (self.on_focus_return)();
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Indicates whether focus can be returned to the trigger after close.
-    #[must_use]
-    pub fn focus_returns_to_trigger(&self) -> bool {
-        !self.open
-    }
-}
 
 /// Builder for the Modal layout widget.
 #[derive(Clone)]
 pub struct Modal {
-    props: ModalProps,
+    pub(super) props: ModalProps,
 }
 
 impl Modal {
     #[must_use]
     pub fn new() -> Self {
         Self {
-            props: ModalProps {
-                open: false,
-                title: None,
-                size: ModalSize::default(),
-                dismiss_on_backdrop: true,
-                dismiss_on_esc: true,
-                children: None,
-                footer: None,
-                on_close: Rc::new(noop_close),
-                on_focus_return: Rc::new(noop_focus_return),
-            },
+            props: ModalProps::default(),
         }
     }
 
@@ -136,6 +63,28 @@ impl Modal {
     }
 
     #[must_use]
+    pub fn window_placement(mut self, placement: ModalWindowPlacement) -> Self {
+        self.props.window_placement = placement;
+        self
+    }
+
+    #[must_use]
+    pub fn window_position(self, position: Point) -> Self {
+        self.window_placement(ModalWindowPlacement::At(position))
+    }
+
+    #[must_use]
+    pub fn same_display_as(self, parent_window_id: WindowId) -> Self {
+        self.window_placement(ModalWindowPlacement::SameDisplayAs(parent_window_id))
+    }
+
+    #[must_use]
+    pub fn parent_interaction(mut self, parent_interaction: ModalParentInteraction) -> Self {
+        self.props.parent_interaction = parent_interaction;
+        self
+    }
+
+    #[must_use]
     pub fn dismiss_on_backdrop(mut self, v: bool) -> Self {
         self.props.dismiss_on_backdrop = v;
         self
@@ -144,6 +93,12 @@ impl Modal {
     #[must_use]
     pub fn dismiss_on_esc(mut self, v: bool) -> Self {
         self.props.dismiss_on_esc = v;
+        self
+    }
+
+    #[must_use]
+    pub fn on_open(mut self, on_open: impl Fn() + 'static) -> Self {
+        self.props.on_open = Rc::new(on_open);
         self
     }
 
@@ -160,32 +115,15 @@ impl Modal {
     }
 
     #[must_use]
-    pub fn resolve(&self, theme: &Theme) -> ResolvedModal {
-        let overlay = overlay_view(theme);
-        let dialog_view = view::dialog_view(theme, &self.props.size);
-        ResolvedModal {
-            open: self.props.open,
-            title: self.props.title.clone(),
-            dismiss_on_backdrop: ops::should_dismiss_on_backdrop(&self.props),
-            dismiss_on_esc: ops::should_dismiss_on_esc(&self.props),
-            overlay_color: overlay.background,
-            dialog_bg: dialog_view.background,
-            dialog_border: dialog_view.border_color,
-            dialog_width: dialog_view.width,
-            corner_radius: dialog_view.corner_radius,
-            padding: dialog_view.padding,
-            content_gap: dialog_view.content_gap,
-            footer_gap: dialog_view.footer_gap,
-            title_font_size: dialog_view.title_font_size,
-            title_color: title_color(theme),
-            children: self.props.children.clone(),
-            footer: self.props.footer.clone(),
-            on_close: Rc::clone(&self.props.on_close),
-            on_focus_return: Rc::clone(&self.props.on_focus_return),
-            trap_focus: ops::should_trap_focus(&self.props),
-            focus_on_open: ops::focus_transition(false, self.props.open),
-            focus_on_close: ops::focus_transition(self.props.open, false),
+    pub fn as_overlay_dialog(&self) -> OverlayDialog {
+        OverlayDialog {
+            props: self.props.clone(),
         }
+    }
+
+    #[must_use]
+    pub fn resolve(&self, theme: &Theme) -> ResolvedModal {
+        self.as_overlay_dialog().resolve(theme)
     }
 }
 

@@ -1,21 +1,20 @@
-# LoadingDots Widget Spec
+## ADDED Requirements
 
-## 概要
+### Requirement: LoadingDots widget
 
-アニメーション付きドットインジケーター。Spinner (04) とは異なる「テキスト横の点滅ドット」パターン。
+LoadingDots は dot の点滅アニメーションで非同期処理中を表示できることを MUST とする。
 
-## 出典
+#### Scenario: dots を表示する
 
-- `../katana-chat-ui/crates/katana-chat-ui-floem/src/widget/thinking_indicator.rs`
+- **WHEN** dot_count が指定される
+- **THEN** 指定数の dot を横並びで表示する
 
-## 階層配置
+#### Scenario: active animation を表示する
 
-`primitive/loading_dots`
+- **WHEN** active が true
+- **THEN** dot が animation_speed_ms に従って点滅または拡縮する
 
-## 依存
+#### Scenario: label 付きで表示する
 
-- Theme tokens のみ（最小依存）
-
-## API 概要（TBD）
-
-- `LoadingDots`: dot_count, dot_size (idle / active), animation_speed_ms, label (Option), tone
+- **WHEN** label が渡される
+- **THEN** label と dots を同じ行に表示する

@@ -1,14 +1,5 @@
+pub use crate::layout::popover::{FreePlacement, Placement};
 use crate::theme::color::Color;
-
-/// Position of the tooltip relative to its anchor.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Placement {
-    #[default]
-    Top,
-    Bottom,
-    Start,
-    End,
-}
 
 /// Properties for `Tooltip`.
 #[derive(Debug, Clone)]
@@ -19,6 +10,8 @@ pub struct TooltipProps {
     pub max_width: f32,
     pub dismiss_on_pointer_leave: bool,
     pub dismiss_on_focus_loss: bool,
+    pub show_arrow: bool,
+    pub visible: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -34,6 +27,8 @@ pub struct ResolvedTooltip {
     pub text_color: Color,
     pub dismiss_on_pointer_leave: bool,
     pub dismiss_on_focus_loss: bool,
+    pub show_arrow: bool,
+    pub visible: bool,
 }
 
 #[derive(Debug, Clone)]

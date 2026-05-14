@@ -1,23 +1,22 @@
-# ComboBox Widget Spec
+## ADDED Requirements
 
-## 概要
+### Requirement: ComboBox widget
 
-テキスト入力 + ドロップダウン選択を組み合わせた入力 widget。SelectBox (10) の上位互換。
+ComboBox は TextInput と Popover を組み合わせ、入力による選択肢フィルタリングと選択を扱えることを MUST とする。
 
-## 出典
+#### Scenario: 入力で選択肢を絞り込む
 
-- `../katana/crates/katana-ui/src/widgets/combo_box/`
+- **WHEN** 利用者が input に文字を入力する
+- **THEN** 選択肢 list が入力値で絞り込まれる
+- **AND** `on_input_change` callback が呼ばれる
 
-## 階層配置
+#### Scenario: 選択肢を選択する
 
-`composite/input/combo`
+- **WHEN** 利用者が選択肢 item を押す
+- **THEN** selected value が更新される
+- **AND** `on_select` callback が呼ばれる
 
-## 依存
+#### Scenario: strict mode で自由入力を拒否する
 
-- TextInput (12)
-- Popover (21)
-
-## API 概要（TBD）
-
-- `ComboBoxItem`: label, value
-- `ComboBox`: items, selected, on_select, on_input_change, strict_mode, placeholder
+- **WHEN** `strict_mode` が true
+- **THEN** item に存在しない値は確定値として扱わない

@@ -4,7 +4,7 @@
 
 ## 進行ルール
 
-- 番号は **0 埋め 2 桁の実施順序**（00 → 21）。前提が後段にあるため上から順に着手する。
+- 番号は **0 埋め 2 桁の実施順序**（00 → 24）。前提が後段にあるため上から順に着手する。
 - 階層は `theme / primitive / composite{button,selector,input,indicator} / layout`。階層命名はディレクトリのみ、widget 名にカテゴリ語（atom 等）は付けない。
 - 依存方向は ast-lint (00 で導入) で機械的に強制: `theme ← primitive ← composite ← layout`。`composite` 配下のサブカテゴリ間（button / selector / input / indicator）は横断不可。同一サブカテゴリ内の sub-widget 間は許可。
 - すべての widget change は **Storybook ページ追加** を DoD に含める。Storybook はリポジトリルート `/storybook/` の独立 Cargo プロジェクト（`crates/` 外、workspace member ではない）。
@@ -39,6 +39,9 @@
 | 19 | split-pane | layout/split | 2 ペイン可変サイズ分割 |
 | 20 | modal-overlay | layout/modal | 全画面ダイアログ + フォーカストラップ |
 | 21 | popover | layout/popover | アンカー型 overlay (10 / 14 を内部置換) |
+| 22 | rgba-color-picker | composite/selector/color_picker | RGBA 編集できる色選択 UI |
+| 23 | color-picker-complete-parity | composite/selector/color_picker | ColorPicker を実用水準へ作り直す追従 change |
+| 24 | code-diff | composite/code_diff | 2つのコード文字列を見比べる汎用差分表示 |
 
 ## 除外（Katana domain）
 
@@ -47,7 +50,7 @@
 - markdown 描画 / KME 連携 (`markdown_hooks`, `markdown` widget)
 - AI vendor 制御 (`vendor_ui`, `vendor_controls`, `vendor_control_parts`)
 - chat 専用 (`composer/thinking/usage/output_cards`)
-- diff / linter 表示 (`diff_viewer`, `problems`, lint 関連)
+- Katana 固有の diff / linter 表示 (`diff_viewer`, `problems`, lint 関連)。ただし、2つのコード文字列だけを見比べる汎用 `CodeDiff` は `24-code-diff` で扱う。
 - workspace ファイルツリー / エディタ / プレビュー / TOC など Katana ワークスペース固有
 - アプリ frame (`breadcrumbs`, `tab_toolbar`, `title_bar`, `status_bar`, `command_palette` の domain ロジック)
 

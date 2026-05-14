@@ -1,56 +1,19 @@
-use super::Accordion;
-use super::types::{AccordionProps, IndicatorPosition};
+use super::{Accordion, render, view_helpers};
 use crate::theme::Theme;
-use crate::theme::color::Color;
 use floem::IntoView;
-use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
-use floem::views::{Decorators, button, container, dyn_container, empty, label, v_stack};
+use floem::View;
+use floem::reactive::create_effect;
+use floem::views::{Decorators, container, dyn_container, empty, v_stack_from_iter};
 use std::rc::Rc;
 
-const HEADER_FONT_SIZE: f32 = 13.0;
-const HEADER_PAD_V: f32 = 8.0;
-const HEADER_PAD_H: f32 = 12.0;
-const ANIMATION_MS: u32 = 180;
+use super::trigger::make_trigger_target;
+use render::{HeaderRowStyle, make_body_view, make_header_row, make_trigger_wrapper};
+
+use view_helpers::{HEADER_GAP, animate_open, make_open_state, open_state_get, open_state_set};
+
 const ACCORDION_GAP: f32 = crate::floem_view::GAP_XS;
-
-pub(super) fn header_font_size() -> f32 {
-    HEADER_FONT_SIZE
-}
-
-pub(super) fn header_padding() -> (f32, f32) {
-    (HEADER_PAD_V, HEADER_PAD_H)
-}
-
-pub(super) fn animation_ms() -> u32 {
-    ANIMATION_MS
-}
-
-pub(super) fn chevron_symbol(expanded: bool, position: IndicatorPosition) -> Option<&'static str> {
-    match position {
-        IndicatorPosition::None => None,
-        _ => Some(if expanded { "▲" } else { "▼" }),
-    }
-}
-
-pub(super) fn header_bg(disabled: bool, theme: &Theme) -> Color {
-    if disabled {
-        theme.color.surface
-    } else {
-        theme.color.bg
-    }
-}
-
-pub(super) fn header_text(disabled: bool, theme: &Theme) -> Color {
-    if disabled {
-        theme.color.text_disabled
-    } else {
-        theme.color.text
-    }
-}
-
-pub(super) fn border_color(theme: &Theme) -> Color {
-    theme.color.border
-}
+const ACCORDION_ROWS_OPEN: usize = 3;
+const ACCORDION_ROWS_CLOSED: usize = 2;
 
 impl Accordion {
     #[must_use]
@@ -59,67 +22,127 @@ impl Accordion {
         theme: Theme,
         child: impl Fn() -> IV + Clone + 'static,
     ) -> impl IntoView {
-        let expanded = create_rw_signal(self.props.expanded);
-        let disabled = self.props.disabled;
-        let on_toggle = Rc::clone(&self.props.on_toggle);
-        let header = self.props.header.clone();
-        let indicator = self.props.indicator;
+        let props = self.props.clone();
+        let open = make_open_state(&props);
+        let open_ratio =
+            floem::reactive::create_rw_signal(if open_state_get(&open) { 1.0 } else { 0.0 });
+        let animation_token = floem::reactive::create_rw_signal(0_u32);
+
+        let open_for_effect = open.clone();
+        create_effect(move |_| {
+            animate_open(
+                open_ratio,
+                animation_token,
+                props.reduced_motion,
+                props.animation_ms,
+                open_state_get(&open_for_effect),
+            );
+        });
+
+        let open_for_action = open.clone();
+        let on_toggle = Rc::clone(&props.on_toggle);
+        let disabled_for_action = props.disabled;
+
+        let header_click: Rc<dyn Fn()> = Rc::new(move || {
+            if disabled_for_action {
+                return;
+            }
+            let next = !open_state_get(&open_for_action);
+            open_state_set(&open_for_action, next);
+            on_toggle(next);
+        });
+
+        let child = Rc::new(child);
 
         dyn_container(
-            move || expanded.get(),
-            move |is_expanded| {
-                let probe = Accordion {
-                    props: AccordionProps {
-                        header: header.clone(),
-                        expanded: is_expanded,
-                        disabled,
-                        indicator,
-                        on_toggle: Rc::clone(&on_toggle),
+            move || open_state_get(&open),
+            move |is_open| {
+                let mut next = props.clone();
+                next.expanded = is_open;
+                let resolved = Accordion { props: next }.resolve(&theme);
+
+                let line_color = crate::floem_view::FloemColor::from_token(theme.color.border);
+                let bg = crate::floem_view::FloemColor::from_token(
+                    if resolved.tree_selected
+                        && resolved.tree_mode == super::AccordionTreeMode::Enabled
+                    {
+                        theme.color.accent_muted
+                    } else {
+                        resolved.header_bg
                     },
-                };
-                let resolved = probe.resolve(&theme);
-                let bg = crate::floem_view::FloemColor::from_token(resolved.header_bg);
-                let text = crate::floem_view::FloemColor::from_token(resolved.header_text);
+                );
+                let text_color = crate::floem_view::FloemColor::from_token(resolved.header_text);
                 let border = crate::floem_view::FloemColor::from_token(resolved.border_color);
-                let chevron = resolved.chevron.unwrap_or("");
-                let on_toggle_for_action = Rc::clone(&on_toggle);
-                let body = if is_expanded {
-                    child().into_any()
-                } else {
-                    container(empty())
-                        .style(|style| {
-                            style
-                                .width(crate::floem_view::EMPTY_SIZE)
-                                .height(crate::floem_view::EMPTY_SIZE)
-                        })
-                        .into_any()
+                let hover = crate::floem_view::FloemColor::from_token(theme.color.accent_muted);
+
+                let icon: Option<&'static str> = match resolved.indicator {
+                    super::IndicatorPosition::None => None,
+                    _ => resolved.chevron,
                 };
 
-                v_stack((
-                    button(
-                        label(move || format!("{chevron} {}", resolved.header)).style(
-                            move |style| style.font_size(resolved.header_font_size).color(text),
-                        ),
-                    )
-                    .action(move || {
-                        if !disabled {
-                            let next = !expanded.get_untracked();
-                            expanded.set(next);
-                            on_toggle_for_action(next);
-                        }
-                    })
-                    .style(move |style| {
-                        style
-                            .background(bg)
-                            .border(1.0)
-                            .border_color(border)
-                            .padding_vert(resolved.header_pad_v)
-                            .padding_horiz(resolved.header_pad_h)
-                    }),
-                    body,
-                ))
-                .style(|style| style.gap(ACCORDION_GAP))
+                let trigger_target = make_trigger_target(super::trigger::TriggerTargetConfig {
+                    header: props.header_view.clone(),
+                    header_font_size: resolved.header_font_size,
+                    text_color,
+                    icon,
+                    indicator: resolved.indicator,
+                    trigger_area: resolved.trigger_area,
+                    disabled: resolved.disabled,
+                    on_toggle: Rc::clone(&header_click),
+                });
+
+                let trigger = make_trigger_wrapper(
+                    trigger_target,
+                    resolved.tree_mode,
+                    resolved.tree_depth,
+                    resolved.tree_show_lines,
+                    line_color,
+                );
+
+                let header_row = make_header_row(
+                    trigger,
+                    HeaderRowStyle {
+                        header_bg: bg,
+                        border_color: border,
+                        pad_v: resolved.header_pad_v,
+                        pad_h: resolved.header_pad_h,
+                        disabled: resolved.disabled,
+                        hover_color: hover,
+                        gap: HEADER_GAP,
+                    },
+                );
+
+                let body_view = make_body_view(
+                    || child(),
+                    open_ratio,
+                    resolved.body_max_height,
+                    resolved.header_pad_h,
+                    resolved.header_pad_v,
+                    resolved.body_border,
+                    border,
+                );
+
+                let mut rows = Vec::<Box<dyn View>>::with_capacity(if is_open {
+                    ACCORDION_ROWS_OPEN
+                } else {
+                    ACCORDION_ROWS_CLOSED
+                });
+                rows.push(header_row.into_any());
+                if is_open {
+                    rows.push(
+                        container(empty())
+                            .style(|style| style.height(ACCORDION_GAP))
+                            .into_any(),
+                    );
+                }
+                rows.push(body_view.into_any());
+                v_stack_from_iter(rows)
             },
         )
     }
 }
+
+pub(super) use view_helpers::{
+    animation_ms, body_max_height, border_color, chevron_symbol, header_bg, header_font_size,
+    header_padding, header_text,
+};

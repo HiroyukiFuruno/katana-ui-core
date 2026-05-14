@@ -43,7 +43,7 @@ Storybook では、進捗値の変更が bar 幅と label の両方に反映さ�
 
 タブは content あり / なしを分ける。
 content ありでは選択 tab に対応する node を表示し、content なしでは選択 callback で外部 UI を更新できるようにする。
-katana の tab 実装を移植対象として確認し、閉じる、並び替え、overflow、未保存状態の表現が必要かを実装前に分類する。
+katana の tab 実装から、閉じる、overflow、未保存状態の表現を採用する。並び替えはこの change では採用しない。
 
 ### Breadcrumb
 
@@ -52,10 +52,13 @@ katana の tab 実装を移植対象として確認し、閉じる、並び替�
 
 ### SideMenu
 
-左右配置、幅（width）指定、幅 0、hover 展開、固定展開を扱う。
-SVG icon 配列を受け取り、icon ごとに click callback と pop content を設定する。
-pop は modal 風、popover 風、領域拡張型を選べるようにする。
-SideMenu 自体が popover / modal / overlay に依存しすぎないよう、pop 表示方式は enum と content slot で切り替える。
+KatanA のアクティビティバー（activity rail）/ プレビュー側パネル（preview side panel）と同じく、主表示は細い暗色の縦アイコンバー（icon rail）とする。
+左右配置、クリック（click）固定表示、ホバー（hover）一時表示、ホバー遅延、外側へポインターが離れたときの解除（pointer leave）を扱う。
+SVGアイコン（SVG icon）配列を受け取り、アイコンごとにクリック処理（click callback）とポップ内容（pop content）を設定する。
+左配置では内容パネル（panel）をバー右側へ、右配置ではバー左側へ表示する。
+アイコンは上寄せグループ（group）と下寄せグループを持ち、選択中または内容表示中のアイコンはアクティブ背景（active background）で示す。
+ポップ表示（pop）はモーダル風（modal）、ポップオーバー風（popover）、領域拡張型を選べるようにする。
+SideMenu 自体がポップオーバー / モーダル / 重ね表示（overlay）に依存しすぎないよう、ポップ表示方式は列挙型（enum）と内容スロット（content slot）で切り替える。
 
 ### SelectionList
 
@@ -78,17 +81,17 @@ item の表示内容は上位から node として渡せるようにする。
 katana の AlignCenter と同じ用途で、子要素を縦横中央に置く wrapper とする。
 幅、高さ、padding、gap、disabled 時の扱いを指定可能にする。
 
-## Open Questions
+## 決定事項
 
-- katana-chat-ui の対象 repo path は横断調査 task で確定する。
+- katana-chat-ui の対象 repo path は `../katana-chat-ui/crates/katana-chat-ui-floem/src/widget/` とする。
 - Modal の別ウィンドウ化と同一ウィンドウ overlay の分離は、既存 `20-modal-overlay` の design で扱う。
+- 採用判定は 0/1 のみとし、未判定状態を作らない。
 
 ---
 
 ## 横断調査で追加された widget（2026-05-11）
 
-以下は katana / katana-chat-ui のソースコード横断調査で発見された汎用 widget 候補。
-README 除外リストでドメイン固有として除外されていた UI のうち、「ドメインロジックを分離すれば汎用構造として再利用可能」と判断されたもの。
+以下は katana / katana-chat-ui のソースコード横断調査で採用判定を 1 とした汎用 widget である。
 
 ### TreeView
 
@@ -113,7 +116,7 @@ katana の `widgets/combo_box/` で実装済み。SelectBox (10) が検索なし
 **widget 構造:**
 - TextInput (12) + Popover (21) の組み合わせ。
 - 入力によるフィルタリング、自由入力許可 / 不許可（strict mode）を API として持つ。
-- 選択候補は label + value のペア。
+- 選択肢は label + value のペア。
 - on_select、on_input_change callback を持つ。
 - 階層: `composite/input/combo`。TextInput (12)、Popover (21) に依存。
 
@@ -208,3 +211,21 @@ katana の StatusBar の status type パターン（Error / Warning / Success / 
 - 複数トーストのスタック表示（上 / 下 / 右上など position 指定）。
 - on_dismiss、on_action callback を持つ。
 - 階層: `layout/toast`。Modal (20) / Popover (21) とは独立した overlay layer。
+
+## Codex-5.3-Spark 実装順
+
+Spark には依存が浅い順に渡す。
+
+1. `AlignCenterWrapper`、`LoadingDots`、`ProgressBar`
+2. `Toolbar`、`StatusBar`、`NotificationToast`
+3. `SelectionList`、`SlideControl`、`DynamicArrayEditor`
+4. `Tabs`、`Breadcrumb`、`TreeView`
+5. `MenuButton`、`SideMenu`
+6. `ComboBox`
+7. `CommandPalette`
+
+各バッチの完了条件:
+
+- widget API、ops、view、Storybook を同じバッチで実装する。
+- `just storybook-check` と `RUSTFLAGS="-D warnings" cargo test -p katana-ui-widget` を通す。
+- `just ast-lint` が失敗した場合は除外ではなく設計分割で解消する。

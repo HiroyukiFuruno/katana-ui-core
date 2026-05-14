@@ -6,7 +6,7 @@ pub use types::{TextAlign, TextProps, TextRole};
 use crate::theme::Theme;
 use crate::theme::color::Color;
 use floem::IntoView;
-use floem::views::{Decorators, label};
+use floem::views::{Decorators, h_stack, label};
 use view::{resolve_color, resolve_style};
 
 /// Builder for the Text primitive.
@@ -73,15 +73,46 @@ impl Text {
     #[must_use]
     pub fn view(self, theme: Theme) -> impl IntoView {
         let resolved = self.resolve(&theme);
+        let content = visible_content(&resolved.content, resolved.max_lines);
         let text_color = floem::peniko::Color::rgba8(
             resolved.color_r,
             resolved.color_g,
             resolved.color_b,
             resolved.color_a,
         );
-        label(move || resolved.content.clone())
-            .style(move |style| style.font_size(resolved.font_size).color(text_color))
+        h_stack((label(move || content.clone())
+            .style(move |style| style.font_size(resolved.font_size).color(text_color)),))
+        .style(move |style| {
+            let style = style.width_full();
+            match resolved.align {
+                TextAlign::Start => style.justify_start(),
+                TextAlign::Center => style.justify_center(),
+                TextAlign::End => style.justify_end(),
+            }
+        })
     }
+}
+
+fn visible_content(content: &str, max_lines: Option<usize>) -> String {
+    let Some(max_lines) = max_lines else {
+        return content.to_string();
+    };
+    if max_lines == 0 {
+        return String::new();
+    }
+
+    let total_lines = content.lines().count();
+    let mut lines: Vec<String> = content
+        .lines()
+        .take(max_lines)
+        .map(str::to_string)
+        .collect();
+    if total_lines > max_lines
+        && let Some(last) = lines.last_mut()
+    {
+        last.push_str(" ...");
+    }
+    lines.join("\n")
 }
 
 /// Resolved, ready-to-render text properties.

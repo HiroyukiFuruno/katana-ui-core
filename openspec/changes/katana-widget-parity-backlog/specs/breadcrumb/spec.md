@@ -2,7 +2,7 @@
 
 ### Requirement: Breadcrumb widget
 
-Breadcrumb は階層 path を crumb 配列として表示し、各 crumb の click を扱えること。
+Breadcrumb は階層 path を crumb 配列として表示し、各 crumb の click を扱えることを MUST とする。
 
 #### Scenario: crumb を選択する
 

@@ -1,25 +1,21 @@
-# NotificationToast Widget Spec
+## ADDED Requirements
 
-## 概要
+### Requirement: NotificationToast widget
 
-severity 付きメッセージの一時表示 widget。自動消去、手動 dismiss、スタック表示を扱う。
+NotificationToast は severity 付き message を一時表示し、自動消去、手動 dismiss、stack 表示を扱えることを MUST とする。
 
-## 出典
+#### Scenario: toast を表示する
 
-- `../katana/crates/katana-ui/src/views/top_bar/status_bar.rs` (severity pattern)
-- `../katana/crates/katana-ui/src/app_state.rs` (StatusType enum)
+- **WHEN** toast が追加される
+- **THEN** severity に対応する icon、message、optional action を表示する
 
-## 階層配置
+#### Scenario: duration 後に自動消去する
 
-`layout/toast`
+- **WHEN** duration が設定されている
+- **THEN** 指定時間後に toast を閉じる
+- **AND** `on_dismiss` callback が呼ばれる
 
-## 依存
+#### Scenario: 複数 toast を stack 表示する
 
-- Icon (03)
-- Modal (20) / Popover (21) とは独立した overlay layer
-
-## API 概要（TBD）
-
-- `Severity`: Error | Warning | Success | Info
-- `Toast`: message, severity, duration (Option), action_label (Option), on_dismiss, on_action
-- `ToastStack`: position (TopRight | BottomRight | TopCenter ...), max_visible, toasts
+- **WHEN** 複数 toast が同時に存在する
+- **THEN** position と max_visible に従って stack 表示する

@@ -2,7 +2,7 @@
 
 ### Requirement: Tabs widget
 
-Tabs は content を内部に持つ用途と、外部 UI を callback で切り替える用途の両方を扱えること。
+Tabs は content を内部に持つ用途と、外部 UI を callback で切り替える用途の両方を扱えることを MUST とする。
 
 #### Scenario: content あり tab を表示する
 

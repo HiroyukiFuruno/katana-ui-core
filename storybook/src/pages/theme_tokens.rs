@@ -1,6 +1,6 @@
-use floem::peniko::Color as PenikoColor;
-use floem::views::{container, empty, h_stack, label, scroll, v_stack, Decorators};
 use floem::IntoView;
+use floem::peniko::Color as PenikoColor;
+use floem::views::{Decorators, container, empty, h_stack, label, scroll, v_stack};
 use katana_ui_widget::theme::{ColorTokens, SpacingTokens, Theme, TypographyTokens};
 
 fn token_color(r: u8, g: u8, b: u8) -> PenikoColor {

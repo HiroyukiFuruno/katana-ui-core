@@ -6,6 +6,7 @@ pub mod primitive;
 pub mod theme;
 
 mod floem_view;
+mod overlay_lifecycle;
 
 /// Registry marker for shared widget components.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]

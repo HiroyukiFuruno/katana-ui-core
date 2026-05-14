@@ -1,74 +1,251 @@
-use floem::peniko::Color as PenikoColor;
-use floem::views::{label, scroll, v_stack, Decorators};
 use floem::IntoView;
+use floem::peniko::Color as PenikoColor;
+use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
+use floem::views::{Decorators, h_stack, label, scroll, v_stack};
+use katana_ui_widget::composite::button::text::TextButton;
+use katana_ui_widget::composite::indicator::badge::{Badge, BadgeTone, BadgeVariant};
+use katana_ui_widget::composite::input::text::TextInput;
+use katana_ui_widget::layout::accordion::Accordion;
 use katana_ui_widget::layout::card::{Card, CardPadding, CardVariant};
 use katana_ui_widget::theme::Theme;
 
 fn card_row(
     heading: &'static str,
-    bg_r: u8,
-    bg_g: u8,
-    bg_b: u8,
+    color: (u8, u8, u8),
     has_border: bool,
     has_shadow: bool,
     pad: f32,
     radius: f32,
     interactive: bool,
+    with_slots: bool,
 ) -> impl IntoView {
-    let bg = PenikoColor::rgb8(bg_r, bg_g, bg_b);
-    let border_w = if has_border { 1.0_f32 } else { 0.0_f32 };
-    let shadow_tag = if has_shadow { " [shadow]" } else { "" };
-    let interactive_tag = if interactive { " [interactive]" } else { "" };
-    let desc = format!("pad={pad} radius={radius}{shadow_tag}{interactive_tag}");
+    let bg = PenikoColor::rgb8(color.0, color.1, color.2);
+    let desc = [
+        format!("pad={pad} radius={radius}"),
+        if has_shadow {
+            " [shadow]".to_string()
+        } else {
+            String::new()
+        },
+        if interactive {
+            " [interactive]".to_string()
+        } else {
+            String::new()
+        },
+        if with_slots {
+            " [slots]".to_string()
+        } else {
+            String::new()
+        },
+    ]
+    .join("");
     v_stack((
         label(move || heading).style(|s| s.font_size(12.0).margin_bottom(2.0)),
         label(move || desc.clone()).style(move |s| {
             s.background(bg)
-                .border(border_w)
+                .border(if has_border { 1.0_f32 } else { 0.0_f32 })
                 .border_radius(radius)
                 .padding(pad)
-                .min_width(200.0)
         }),
     ))
     .style(|s| s.gap(4.0))
 }
 
-fn page_content(theme: &Theme) -> impl IntoView + use<> {
-    let r_plain = Card::new().variant(CardVariant::Plain).resolve(theme);
-    let r_elevated = Card::new().variant(CardVariant::Elevated).resolve(theme);
-    let r_outlined = Card::new().variant(CardVariant::Outlined).resolve(theme);
-    let r_no_pad = Card::new().variant(CardVariant::Outlined).padding(CardPadding::None).resolve(theme);
-    let r_lg_pad = Card::new().variant(CardVariant::Outlined).padding(CardPadding::Lg).resolve(theme);
-    let r_interactive = Card::new().variant(CardVariant::Elevated).interactive(true).resolve(theme);
+fn page_content(theme: Theme) -> impl IntoView + use<> {
+    let page_background = PenikoColor::rgb8(theme.color.bg.r, theme.color.bg.g, theme.color.bg.b);
+    let page_text = PenikoColor::rgb8(theme.color.text.r, theme.color.text.g, theme.color.text.b);
 
-    let bg = PenikoColor::rgb8(theme.color.bg.r, theme.color.bg.g, theme.color.bg.b);
-    let text_col = PenikoColor::rgb8(theme.color.text.r, theme.color.text.g, theme.color.text.b);
+    let samples = [
+        Card::new().variant(CardVariant::Plain).resolve(&theme),
+        Card::new().variant(CardVariant::Elevated).resolve(&theme),
+        Card::new().variant(CardVariant::Outlined).resolve(&theme),
+        Card::new()
+            .variant(CardVariant::Outlined)
+            .padding(CardPadding::None)
+            .resolve(&theme),
+        Card::new()
+            .variant(CardVariant::Outlined)
+            .padding(CardPadding::Lg)
+            .resolve(&theme),
+        Card::new()
+            .variant(CardVariant::Elevated)
+            .interactive(true)
+            .resolve(&theme),
+    ];
+
+    let card_clicks = create_rw_signal(0_i32);
+    let button_clicks = create_rw_signal(0_i32);
+    let text_input_value = create_rw_signal(String::new());
+    let accordion_open = create_rw_signal(false);
+
+    let complex_card = {
+        Card::new()
+            .variant(CardVariant::Outlined)
+            .padding(CardPadding::Lg)
+            .interactive(true)
+            .on_click({
+                let card_clicks = card_clicks;
+                move || card_clicks.update(|value| *value += 1)
+            })
+            .header(h_stack((
+                label(|| "User Profile").style(|s| s.font_size(14.0)),
+                Badge::new("Interactive")
+                    .tone(BadgeTone::Info)
+                    .variant(BadgeVariant::Solid)
+                    .view(theme.clone()),
+            )))
+            .body(v_stack((
+                label(|| "Body slot with form controls"),
+                TextInput::new("Name")
+                    .on_change({
+                        let text_input_value = text_input_value;
+                        move |value| text_input_value.set(value)
+                    })
+                    .view(theme.clone()),
+                label(|| "Inputs and buttons are placed in Card slots."),
+            )))
+            .content(
+                Accordion::new("Details")
+                    .expanded(false)
+                    .on_toggle({
+                        let accordion_open = accordion_open;
+                        move |open| accordion_open.set(open)
+                    })
+                    .view(theme.clone(), || {
+                        label(|| "Content slot: place nested layout freely.")
+                            .style(|s| s.font_size(12.0).line_height(1.4))
+                    }),
+            )
+            .actions(h_stack((
+                TextButton::new("Save").view(theme.clone(), {
+                    let button_clicks = button_clicks;
+                    move || button_clicks.update(|value| *value += 1)
+                }),
+                TextButton::new("Clear").view(theme.clone(), || {
+                    let _ = 1;
+                }),
+            )))
+            .footer(label(move || {
+                let open = if accordion_open.get() {
+                    "open"
+                } else {
+                    "closed"
+                };
+                format!(
+                    "card click: {} / button click: {} / input: {} / accordion: {}",
+                    card_clicks.get(),
+                    button_clicks.get(),
+                    text_input_value.get(),
+                    open,
+                )
+            }))
+            .view(theme.clone(), label(|| ""))
+    };
+
+    let rows = v_stack((
+        card_row(
+            "Plain",
+            (
+                samples[0].bg_color.r,
+                samples[0].bg_color.g,
+                samples[0].bg_color.b,
+            ),
+            samples[0].border_color.is_some(),
+            samples[0].has_shadow,
+            samples[0].padding,
+            samples[0].corner_radius,
+            samples[0].interactive,
+            false,
+        ),
+        card_row(
+            "Elevated",
+            (
+                samples[1].bg_color.r,
+                samples[1].bg_color.g,
+                samples[1].bg_color.b,
+            ),
+            samples[1].border_color.is_some(),
+            samples[1].has_shadow,
+            samples[1].padding,
+            samples[1].corner_radius,
+            samples[1].interactive,
+            false,
+        ),
+        card_row(
+            "Outlined",
+            (
+                samples[2].bg_color.r,
+                samples[2].bg_color.g,
+                samples[2].bg_color.b,
+            ),
+            samples[2].border_color.is_some(),
+            samples[2].has_shadow,
+            samples[2].padding,
+            samples[2].corner_radius,
+            samples[2].interactive,
+            false,
+        ),
+        card_row(
+            "Padding None",
+            (
+                samples[3].bg_color.r,
+                samples[3].bg_color.g,
+                samples[3].bg_color.b,
+            ),
+            samples[3].border_color.is_some(),
+            samples[3].has_shadow,
+            samples[3].padding,
+            samples[3].corner_radius,
+            samples[3].interactive,
+            false,
+        ),
+        card_row(
+            "Padding Lg",
+            (
+                samples[4].bg_color.r,
+                samples[4].bg_color.g,
+                samples[4].bg_color.b,
+            ),
+            samples[4].border_color.is_some(),
+            samples[4].has_shadow,
+            samples[4].padding,
+            samples[4].corner_radius,
+            samples[4].interactive,
+            false,
+        ),
+        card_row(
+            "Interactive",
+            (
+                samples[5].bg_color.r,
+                samples[5].bg_color.g,
+                samples[5].bg_color.b,
+            ),
+            samples[5].border_color.is_some(),
+            samples[5].has_shadow,
+            samples[5].padding,
+            samples[5].corner_radius,
+            samples[5].interactive,
+            true,
+        ),
+    ));
 
     scroll(
         v_stack((
             label(|| "Card Samples").style(|s| s.font_size(16.0).margin_bottom(8.0)),
-            label(|| "Live widget").style(|s| s.font_size(13.0)),
-            Card::new()
-                .variant(CardVariant::Outlined)
-                .view(theme.clone(), label(|| "Card::view content")),
-            card_row("Plain", r_plain.bg_color.r, r_plain.bg_color.g, r_plain.bg_color.b, r_plain.border_color.is_some(), r_plain.has_shadow, r_plain.padding, r_plain.corner_radius, r_plain.interactive),
-            card_row("Elevated (shadow)", r_elevated.bg_color.r, r_elevated.bg_color.g, r_elevated.bg_color.b, r_elevated.border_color.is_some(), r_elevated.has_shadow, r_elevated.padding, r_elevated.corner_radius, r_elevated.interactive),
-            card_row("Outlined (border)", r_outlined.bg_color.r, r_outlined.bg_color.g, r_outlined.bg_color.b, r_outlined.border_color.is_some(), r_outlined.has_shadow, r_outlined.padding, r_outlined.corner_radius, r_outlined.interactive),
-            card_row("Padding None", r_no_pad.bg_color.r, r_no_pad.bg_color.g, r_no_pad.bg_color.b, r_no_pad.border_color.is_some(), r_no_pad.has_shadow, r_no_pad.padding, r_no_pad.corner_radius, r_no_pad.interactive),
-            card_row("Padding Lg", r_lg_pad.bg_color.r, r_lg_pad.bg_color.g, r_lg_pad.bg_color.b, r_lg_pad.border_color.is_some(), r_lg_pad.has_shadow, r_lg_pad.padding, r_lg_pad.corner_radius, r_lg_pad.interactive),
-            label(|| "Interactive").style(|s| s.font_size(16.0).margin_top(12.0).margin_bottom(8.0)),
-            card_row("Elevated + interactive", r_interactive.bg_color.r, r_interactive.bg_color.g, r_interactive.bg_color.b, r_interactive.border_color.is_some(), r_interactive.has_shadow, r_interactive.padding, r_interactive.corner_radius, r_interactive.interactive),
+            v_stack((label(|| "Live widget"), complex_card)).style(|s| s.gap(8.0)),
+            rows,
         ))
         .style(move |s| {
-            s.gap(8.0)
+            s.gap(12.0)
                 .padding(16.0)
-                .background(bg)
-                .color(text_col)
+                .background(page_background)
+                .color(page_text)
                 .min_width_full()
         }),
     )
+    .style(|style| style.width_full().height_full().flex_grow(1.0))
 }
 
 pub fn card_page(theme: Theme) -> impl IntoView {
-    page_content(&theme)
+    page_content(theme)
 }

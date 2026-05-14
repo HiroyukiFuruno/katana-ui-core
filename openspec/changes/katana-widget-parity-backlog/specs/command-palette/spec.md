@@ -1,24 +1,27 @@
-# CommandPalette Widget Spec
+## ADDED Requirements
 
-## 概要
+### Requirement: CommandPalette widget
 
-検索入力 + フィルタ可能な結果リスト + キーボードナビゲーションを持つオーバーレイ widget。
+CommandPalette は検索入力、結果 list、キーボード操作、provider 注入を持つ overlay widget として動作することを MUST とする。
 
-## 出典
+#### Scenario: query を入力する
 
-- `../katana/crates/katana-ui/src/views/modals/command_palette.rs`
+- **WHEN** 利用者が検索 query を入力する
+- **THEN** `on_search` または provider callback が呼ばれる
+- **AND** 結果 list が更新される
 
-## 階層配置
+#### Scenario: keyboard で結果を移動する
 
-`layout/command_palette`
+- **WHEN** 利用者が ArrowUp または ArrowDown を押す
+- **THEN** active result が移動する
 
-## 依存
+#### Scenario: active result を実行する
 
-- Modal (20)
-- TextInput (12)
+- **WHEN** 利用者が Enter を押す
+- **THEN** active result の payload を `on_select` callback に渡す
 
-## API 概要（TBD）
+#### Scenario: palette を閉じる
 
-- `PaletteResult`: label, icon (Option), shortcut (Option), score, payload
-- `CommandPalette`: on_search, on_select, on_dismiss, results, keyboard_nav (↑↓ Enter Esc)
-- Provider trait で検索ロジックを外部注入
+- **WHEN** 利用者が Escape を押す
+- **THEN** overlay が閉じる
+- **AND** `on_dismiss` callback が呼ばれる

@@ -1,5 +1,9 @@
 pub mod accordion;
+pub mod align_center;
 pub mod card;
 pub mod modal;
 pub mod popover;
+pub mod side_menu;
 pub mod split;
+pub mod status_bar;
+pub mod toolbar;

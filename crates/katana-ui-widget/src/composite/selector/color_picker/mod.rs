@@ -1,233 +1,31 @@
+mod builders;
+mod hsva;
 mod ops;
 mod types;
 mod view;
 
+pub use hsva::ColorPickerHsva;
 pub use types::{
-    ColorPickerAlpha, ColorPickerRgba, ColorPickerRgbaProps, InlineColorPicker,
-    InlineColorPickerProps, LabeledColorPicker, LabeledColorPickerProps, ResolvedColorPickerRgba,
+    ColorPickerAlpha, ColorPickerBlendMode, ColorPickerRgba, ColorPickerRgbaProps,
+    ColorPickerTriggerSize, ColorPickerValue, InlineColorPicker, InlineColorPickerProps,
+    LabeledColorPicker, LabeledColorPickerProps, ResolvedColorPickerRgba,
     ResolvedInlineColorPicker, ResolvedLabeledColorPicker, RgbaChannel,
 };
-
-use crate::theme::Theme;
-use crate::theme::color::Color;
-use std::rc::Rc;
 
 pub const COLOR_LABEL_WIDTH: f32 = 130.0;
 pub const COLOR_SPACING: f32 = 16.0;
 pub const COLOR_OFFSET_Y: f32 = -2.0;
-
-fn noop_change(_: Color) {}
-
-impl InlineColorPicker {
-    #[must_use]
-    pub fn new(value: Color, a11y_label: impl Into<String>) -> Self {
-        Self {
-            props: InlineColorPickerProps {
-                value,
-                alpha: ColorPickerAlpha::Opaque,
-                disabled: false,
-                readonly: false,
-                a11y_label: a11y_label.into(),
-                on_change: Rc::new(noop_change),
-            },
-        }
-    }
-
-    #[must_use]
-    pub fn rgba(mut self, is_rgba: bool) -> Self {
-        self.props.alpha = if is_rgba {
-            ColorPickerAlpha::BlendOrAdditive
-        } else {
-            ColorPickerAlpha::Opaque
-        };
-        self.props.value = ops::resolve_value(self.props.value, self.props.alpha);
-        self
-    }
-
-    #[must_use]
-    pub fn disabled(mut self, disabled: bool) -> Self {
-        self.props.disabled = disabled;
-        self
-    }
-
-    #[must_use]
-    pub fn readonly(mut self, readonly: bool) -> Self {
-        self.props.readonly = readonly;
-        self
-    }
-
-    #[must_use]
-    pub fn on_change(mut self, on_change: impl Fn(Color) + 'static) -> Self {
-        self.props.on_change = Rc::new(on_change);
-        self
-    }
-
-    #[must_use]
-    pub fn resolve(&self, _theme: &Theme) -> ResolvedInlineColorPicker {
-        ResolvedInlineColorPicker {
-            value: ops::resolve_value(self.props.value, self.props.alpha),
-            alpha: self.props.alpha,
-            disabled: self.props.disabled,
-            readonly: self.props.readonly,
-            a11y_label: self.props.a11y_label.clone(),
-            on_change: Rc::clone(&self.props.on_change),
-        }
-    }
-
-    pub fn set_channel(&self, channel: RgbaChannel, value: u8) -> Option<Color> {
-        if self.props.disabled || self.props.readonly {
-            return None;
-        }
-
-        let next = ops::set_channel(self.props.value, channel, value, self.props.alpha);
-        (self.props.on_change)(next);
-        Some(next)
-    }
-
-    pub fn adjust_channel(&self, channel: RgbaChannel, delta: i16) -> Option<Color> {
-        if self.props.disabled || self.props.readonly {
-            return None;
-        }
-
-        let next = ops::adjust_channel(self.props.value, channel, delta, self.props.alpha);
-        (self.props.on_change)(next);
-        Some(next)
-    }
-}
-
-impl LabeledColorPicker {
-    #[must_use]
-    pub fn new(label: impl Into<String>, value: Color) -> Self {
-        let label = label.into();
-        Self {
-            props: LabeledColorPickerProps {
-                label: label.clone(),
-                label_width: COLOR_LABEL_WIDTH,
-                spacing: COLOR_SPACING,
-                offset_y: COLOR_OFFSET_Y,
-                picker: InlineColorPicker::new(value, label).props,
-            },
-        }
-    }
-
-    #[must_use]
-    pub fn rgba(mut self, is_rgba: bool) -> Self {
-        self.props.picker.alpha = if is_rgba {
-            ColorPickerAlpha::BlendOrAdditive
-        } else {
-            ColorPickerAlpha::Opaque
-        };
-        self.props.picker.value =
-            ops::resolve_value(self.props.picker.value, self.props.picker.alpha);
-        self
-    }
-
-    #[must_use]
-    pub fn label_width(mut self, width: f32) -> Self {
-        self.props.label_width = width;
-        self
-    }
-
-    #[must_use]
-    pub fn spacing(mut self, spacing: f32) -> Self {
-        self.props.spacing = spacing;
-        self
-    }
-
-    #[must_use]
-    pub fn offset_y(mut self, offset: f32) -> Self {
-        self.props.offset_y = offset;
-        self
-    }
-
-    #[must_use]
-    pub fn disabled(mut self, disabled: bool) -> Self {
-        self.props.picker.disabled = disabled;
-        self
-    }
-
-    #[must_use]
-    pub fn readonly(mut self, readonly: bool) -> Self {
-        self.props.picker.readonly = readonly;
-        self
-    }
-
-    #[must_use]
-    pub fn on_change(mut self, on_change: impl Fn(Color) + 'static) -> Self {
-        self.props.picker.on_change = Rc::new(on_change);
-        self
-    }
-
-    #[must_use]
-    pub fn resolve(&self, theme: &Theme) -> ResolvedLabeledColorPicker {
-        let picker = InlineColorPicker {
-            props: self.props.picker.clone(),
-        }
-        .resolve(theme);
-        ResolvedLabeledColorPicker {
-            label: self.props.label.clone(),
-            label_width: self.props.label_width,
-            spacing: self.props.spacing,
-            offset_y: self.props.offset_y,
-            picker,
-        }
-    }
-}
-
-impl ColorPickerRgba {
-    #[must_use]
-    pub fn new(value: Color, a11y_label: impl Into<String>) -> Self {
-        Self {
-            props: InlineColorPicker::new(value, a11y_label).rgba(true).props,
-        }
-    }
-
-    #[must_use]
-    pub fn disabled(mut self, disabled: bool) -> Self {
-        self.props.disabled = disabled;
-        self
-    }
-
-    #[must_use]
-    pub fn readonly(mut self, readonly: bool) -> Self {
-        self.props.readonly = readonly;
-        self
-    }
-
-    #[must_use]
-    pub fn on_change(mut self, on_change: impl Fn(Color) + 'static) -> Self {
-        self.props.on_change = Rc::new(on_change);
-        self
-    }
-
-    #[must_use]
-    pub fn resolve(&self, theme: &Theme) -> ResolvedColorPickerRgba {
-        InlineColorPicker {
-            props: self.props.clone(),
-        }
-        .resolve(theme)
-    }
-
-    pub fn set_channel(&self, channel: RgbaChannel, value: u8) -> Option<Color> {
-        InlineColorPicker {
-            props: self.props.clone(),
-        }
-        .set_channel(channel, value)
-    }
-
-    pub fn adjust_channel(&self, channel: RgbaChannel, delta: i16) -> Option<Color> {
-        InlineColorPicker {
-            props: self.props.clone(),
-        }
-        .adjust_channel(channel, delta)
-    }
-}
+pub const COLOR_PICKER_DEFAULT_PANEL_SCALE: f32 = 0.75;
+pub const COLOR_PICKER_MIN_PANEL_SCALE: f32 = 0.75;
+pub const COLOR_PICKER_MAX_PANEL_SCALE: f32 = 1.5;
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::theme::Theme;
+    use crate::theme::color::Color;
     use std::cell::RefCell;
+    use std::rc::Rc;
 
     fn base() -> Color {
         Color {
@@ -292,5 +90,23 @@ mod tests {
     fn resolve_preserves_alpha() {
         let resolved = ColorPickerRgba::new(base(), "Color").resolve(&Theme::default_light());
         assert_eq!(resolved.value.a, 40);
+    }
+
+    #[test]
+    fn state_hue_survives_grayscale_selection() {
+        let state = ops::ColorPickerOps::new_value(base(), ColorPickerAlpha::BlendOrAdditive);
+        let gray = ops::ColorPickerOps::set_hue_saturation_value(state, 0.72, 0.0, 0.5);
+
+        assert_eq!(gray.color.r, gray.color.g);
+        assert_eq!(gray.color.g, gray.color.b);
+        assert!((ops::ColorPickerOps::state_hue(gray) - 0.72).abs() < 0.001);
+    }
+
+    #[test]
+    fn additive_blend_ignores_alpha_like_egui() {
+        let state = ops::ColorPickerOps::new_value(base(), ColorPickerAlpha::BlendOrAdditive);
+        let next = ops::ColorPickerOps::set_blend_mode(state, ColorPickerBlendMode::Additive);
+
+        assert_eq!(next.color.a, u8::MAX);
     }
 }

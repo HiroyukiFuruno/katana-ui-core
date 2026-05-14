@@ -1,21 +1,20 @@
-# Toolbar Widget Spec
+## ADDED Requirements
 
-## 概要
+### Requirement: Toolbar widget
 
-SVG アイコンアクションの水平配置 widget。leading / trailing セクションに分離。
+Toolbar は leading slot と trailing slot を左右に分け、任意 node を配置できることを MUST とする。
 
-## 出典
+#### Scenario: leading と trailing を表示する
 
-- `../katana-chat-ui/crates/katana-chat-ui-floem/src/widget/toolbar.rs`
+- **WHEN** leading slot と trailing slot が渡される
+- **THEN** leading を左側、trailing を右側に表示する
 
-## 階層配置
+#### Scenario: alignment を変更する
 
-`layout/toolbar`
+- **WHEN** alignment が Center / Top / Bottom のいずれか
+- **THEN** 子要素の垂直位置が指定に従う
 
-## 依存
+#### Scenario: gap を変更する
 
-- Theme tokens のみ（最小依存）
-
-## API 概要（TBD）
-
-- `Toolbar`: leading_slot (node), trailing_slot (node), gap, alignment (Center | Top | Bottom)
+- **WHEN** gap が指定される
+- **THEN** 子要素間の spacing が指定値に従う
