@@ -9,6 +9,7 @@ on:
       - 'Cargo.lock'
       - 'Justfile'
       - '.github/workflows/**'
+      - '.gitattributes'
       - 'README.md'
       - 'docs/**'
       - 'openspec/**'
