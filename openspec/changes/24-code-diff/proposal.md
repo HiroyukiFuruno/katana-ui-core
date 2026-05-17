@@ -1,5 +1,7 @@
 # コード差分（CodeDiff）
 
+> Archive candidate: CodeDiff の KUC 実装要件は `openspec/changes/establish-kuc-atoms-molecules-catalog/` へ移管する。この change は要件移管後に archive 候補として扱う。
+
 ## 目的
 
 2つのコード文字列を受け取り、変更前と変更後の差分を読むための汎用画面部品（widget）を追加する。

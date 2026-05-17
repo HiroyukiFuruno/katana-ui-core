@@ -17,7 +17,7 @@ KUC core に入れてよい依存と、adapter crate に閉じる依存を分け
 | `floem_renderer` | no | yes | Floem rendering 実装に属するため core dependency にしない | `cargo tree -p katana-ui-core --locked` |
 | `gpui` | no | yes | GPUI adapter に閉じる framework dependency | `cargo tree -p katana-ui-core --locked` |
 | `egui` | no | yes | egui compatibility adapter に閉じる framework dependency | `cargo tree -p katana-ui-core --locked` |
-| `fontdue` | no | storybook only | Storybook visual snapshot の文字描画にだけ使う。core API と adapter API には入れない | `cargo tree -p katana-ui-core --locked` |
+| `cosmic-text` | no | storybook only | Storybook visual snapshot で日本語、絵文字、font fallback、multi-platform text shaping を確認するためにだけ使う。core API と adapter API には入れない | `cargo tree -p katana-ui-core --locked` |
 | `image` | no | storybook only | Storybook visual snapshot の PNG 出力にだけ使う。core API と adapter API には入れない | `cargo tree -p katana-ui-core --locked` |
 | `minifb` | no | storybook only | Storybook visual snapshot の framebuffer window にだけ使う。UI framework adapter として扱わない | `cargo tree -p katana-ui-core --locked` |
 | `serde` | yes | yes | neutral DTO serialization に使う場合のみ core で許可 | `cargo tree -p katana-ui-core --locked` |

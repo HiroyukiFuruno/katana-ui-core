@@ -1,5 +1,7 @@
 # ColorPicker 完全版への作り直し
 
+> Archive candidate: ColorPicker の KUC 実装要件は `openspec/changes/establish-kuc-atoms-molecules-catalog/` へ移管する。この change は要件移管後に archive 候補として扱う。
+
 ## 目的
 
 `ColorPickerRgba` を、色見本ではなく RGB / RGBA を実際に編集できる色選択 UI として成立させる。
@@ -23,4 +25,3 @@ KatanA 側では `egui` の色選択 UI により実用できる挙動が存在�
 - OS 標準カラーピッカーとの連携
 - スポイト機能の実 OS 取得
 - `egui` コンポーネントの直接埋め込み
-

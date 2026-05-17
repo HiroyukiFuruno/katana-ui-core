@@ -25,7 +25,10 @@
 画面部品（widget）だけでなく、起動、窓、描画面、テーマ、イベント、描画モデル、変換層契約（adapter contract）を扱います。
 Floem / GPUI / egui は中核（core）の依存ではなく、変換層（adapter）で扱います。
 UI ごとの状態（state）は component 内部 model で管理し、同じ種類・同じ label の UI が複数あっても一意に識別します。
-旧 Floem 実装は参照資料に限定し、対象 UI は同等範囲 + runtime / window / surface などの +α としてゼロから作り直します。
+
+現在の主な実装対象は、利用側が組み合わせて UI を構築するための最小部品（atoms）と組み合わせ部品（molecules）です。
+画面（pages）や画面ひな形（templates）は将来の拡張対象であり、現時点の公開スコープではありません。
+次フェーズの正本は [`openspec/changes/establish-kuc-atoms-molecules-catalog/`](openspec/changes/establish-kuc-atoms-molecules-catalog/) です。
 
 ## Core 階層と依存方向
 
@@ -68,9 +71,9 @@ primary adapter の決定は [`docs/adr/katana-ui-primary-adapter.md`](docs/adr/
 
 ## Storybook
 
-`katana-ui-core` の中核 model を検証する独立アプリです。
-Floem / GPUI / egui や adapter crate は経由せず、`katana-ui-core` の `UiTree`、状態（state）の一意性、catalog coverage だけを確認します。
-互換 adapter ごとの Storybook smoke は行いません。
+`katana-ui-core` が提供する部品を実画面で確認する部品カタログです。
+左ペインは KUC 自身の TreeView で部品を分類表示し、各部品ページは preview、settings、Tabs による preset 切替、状態（state）・イベント（event）・操作（action）の履歴を持ちます。
+Storybook は操作確認と目視確認の場であり、部品の正しさは自動テスト、画像回帰、入力回帰、静的検査（guard）で判定します。
 
 ```bash
 # Storybook を起動
@@ -92,6 +95,7 @@ just ast-lint-install
 
 ## ドキュメント
 
+- [`openspec/changes/establish-kuc-atoms-molecules-catalog/`](openspec/changes/establish-kuc-atoms-molecules-catalog/) — atoms / molecules と部品カタログ実装の正本 change
 - [`docs/architecture/ui-separation/root-plan-source.md`](docs/architecture/ui-separation/root-plan-source.md) — KUC repo内にコピーしたroot計画
 - [`docs/architecture/ui-separation/implementation-notes.md`](docs/architecture/ui-separation/implementation-notes.md) — workspace 構成と旧 Floem 実装の扱い
 - [`docs/adr/0002-katana-ui-core-rename.md`](docs/adr/0002-katana-ui-core-rename.md) — KUC renameとruntime/window/surface責務
@@ -104,5 +108,5 @@ just ast-lint-install
 
 ## 作業入口
 
-新規実装は [`openspec/changes/ui-core-root-plan/`](openspec/changes/ui-core-root-plan/) を先に読む。
-旧 KUW 時代の workflow skill は履歴用途に限定し、新規判断の根拠にしない。
+新規実装は [`openspec/changes/ui-core-root-plan/`](openspec/changes/ui-core-root-plan/) で親設計を確認した後、[`openspec/changes/establish-kuc-atoms-molecules-catalog/`](openspec/changes/establish-kuc-atoms-molecules-catalog/) を実装元にする。
+旧個別 change の完了チェックは履歴であり、現在の KUC 完了根拠にしない。

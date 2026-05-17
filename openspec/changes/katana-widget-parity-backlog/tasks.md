@@ -1,5 +1,7 @@
 # Tasks — katana-widget-parity-backlog
 
+> Superseded: 01〜24 と追加 UI の要件は `openspec/changes/establish-kuc-atoms-molecules-catalog/` へ移管する。このファイルの `[x]` は履歴であり、現在の KUC atoms / molecules 完了の根拠にしない。
+
 ## 1. 横断調査
 
 - [x] 1.1 katana で複数回利用されている UI を洗い出し、widget 化対象を一覧化する。

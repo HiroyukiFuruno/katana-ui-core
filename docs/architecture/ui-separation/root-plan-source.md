@@ -220,7 +220,7 @@ primary に選ばれていない framework 向けに互換 adapter を併設す�
 目的は外部利用者が既存環境へ KUC を差し込めるようにすること。
 品質 gate は primary より緩くできるが、core crate への依存漏れは禁止する。
 ただし UI をゼロから確立する現在段階では、KUC core と primary adapter 候補を先に固める。
-egui / GPUI 互換 crate の作成は後続段階に送る。
+egui / GPUI 互換 adapter は本実装ではなく、骨組み（skeleton）・compile gate・support policy までをこの段階の完了範囲にする。
 
 - P1-K-001: `katana-ui-core-egui` 互換 adapter crate を新設する。
 - P1-K-002: `katana-ui-core-gpui` 互換 adapter crate を新設する。

@@ -1,5 +1,7 @@
 ## Why
 
+> Superseded: この backlog は要件の入力元として残す。現在の実装正本は `openspec/changes/establish-kuc-atoms-molecules-catalog/` であり、この change の完了チェックは KUC atoms / molecules 完了の根拠にしない。
+
 katana と katana-chat-ui で繰り返し使われる UI が widget 化されておらず、Storybook 上にも利用者視点の部品契約が不足している。
 このまま個別実装を進めると、見せかけのサンプルや再利用できない UI が増えるため、先に汎用 widget の対象と要件を固定する。
 

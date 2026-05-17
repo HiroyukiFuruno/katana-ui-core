@@ -2,49 +2,48 @@
 
 ## 結論
 
-`ui-core-root-plan` の既存タスク完了だけでは、旧 Floem 実装と同等+αの UI 実装完了とは言えない。
-旧 Storybook 対象名は core catalog に並んでいたが、多くは `label + children` だけの薄いモデルで、UIごとの最低構造を検査していなかった。
+`ui-core-root-plan`、`katana-widget-parity-backlog`、`ui-core-interaction-visual-parity` の完了記録だけでは、01〜24 が KUC の実用 atoms / molecules として完了したとは扱わない。
+これらの記録は旧基準の証跡であり、現在の完了条件は `establish-kuc-atoms-molecules-catalog` に移す。
 
-## 是正方針
+## 旧基準で確認済みだったこと
 
-- Storybook は `katana-ui-core` の中核モデルだけを検査する。
-- Storybook は Floem / adapter crate を経由しない。
-- 検査は story 数だけでなく、各 story の最低 node 構造、必須 page 欠落、state conflict を見る。
-- UIごとの状態は component 内部で作り、重複 UI でも `UiStateId` が一意であることを確認する。
+| 項目 | 旧基準の扱い |
+| --- | --- |
+| root architecture | framework-neutral core、adapter 境界、runtime / window / surface の親設計 |
+| 最低構造 | 必須 story、最低 node 構造、state id 衝突の確認 |
+| Storybook visual | panel screenshot、light / dark、操作後差分、modal window 証跡 |
+| interaction report | story selection、theme switch、operation sequence、callback log |
+| visual fallback | generic fallback を完了根拠にしない方針 |
 
-## 現在の最低検査
+上記は有用な履歴だが、新基準では部品ごとの option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページを満たす必要がある。
 
-`storybook/src/requirements.rs` が旧 Storybook 対象を必須 page として持つ。
-`storybook/src/catalog.rs` は以下を検査する。
+## 新基準で未完了扱いに戻す理由
 
-- `state_conflicts=0`
-- `structure_failures=0`
-- `missing_required_pages=0`
-- `stories == validated`
-- Storybook 自体は `katana-ui-core::panel::Panel` で構成する。
-- panel は `ThemeSnapshot` を受け取り、左ナビと右プレビューの両方で theme 設定済みであることを検査する。
-- KUC core は純 Rust の部品（component）合成と、CSS 的な後付け見た目設定（style sheet）を分離して扱う。
-- 旧 Floem Storybook や静的HTML export は完了根拠にしない。
-- Modal の別窓表示は `ModalWindowPlacement::same_display(...)` で親表示領域（display bounds）内に配置し、成功時は `frontmost=true` を必須にする。
-- Storybook は `--runtime-regression` と `--open-modal-window` で、状態反映、重ね表示（overlay）描画、別ネイティブ画面（native window）描画を検査する。
+- Storybook は部品カタログであり、部品の正しさを単独で証明しない。
+- 自動テスト、layout regression、visual regression、input regression、guard を CI/CD 品質ゲートにする必要がある。
+- 日本語入力（IME）、OS 絵文字、英日混在テキストの上下中央揃えは core 基盤の契約として検証する必要がある。
+- 旧個別 change の完了チェックは現在の KUC 公開 API 形状を保証しない。
 
-`UiInteractionState` は旧実装で状態を持っていた複合UIの最低状態を表す。
-`CommandPalette`、`ComboBox`、`ColorPicker`、`MenuButton`、`ModalOverlay`、`TreeView` などは、外部 store ではなく component 内部状態から `open`、`selected_index`、`item_count`、`value` を neutral tree へ出す。
+## 移管先
 
-## UI別再判定状況
+| 旧記録 | 移管先 |
+| --- | --- |
+| 01〜24 の部品要件 | `establish-kuc-atoms-molecules-catalog/tasks.md` |
+| Storybook 操作面 | `specs/kuc-storybook-catalog/spec.md` |
+| 自動品質ゲート | `specs/kuc-quality-gates/spec.md` |
+| core theme / font / text / input / event / state / layout | `specs/kuc-core-foundation/spec.md` |
+| atoms / molecules 公開境界 | `specs/kuc-widget-layer/spec.md` |
 
-| 対象 | 現状 | 次の判定 |
-|---|---|---|
-| Theme / Panel theme | `ThemeSnapshot`、panel theme id、light / dark panel gate は実装済み。 | UI 別 theme props は各 UI の再判定で確認する。 |
-| Text / Icon / Spinner | Storybook catalog の最低構造と panel theme 適用は確認済み。 | atom 別の accessibility props は後続 UI 詳細で確認する。 |
-| SvgButton / TextButton / IconTextButton | Storybook catalog の最低構造と同一 label の state 一意性は確認済み。 | 実操作結果の反映は後続 UI 詳細で確認する。 |
-| Toggle / SegmentedToggle / SelectBox / ColorSwatch / TextInput | 選択・入力 state は内部 state から中立モデルへ出る。 | 実際の UI 操作再生は後続 adapter / visual gate で確認する。 |
-| SearchBox / Tooltip / Badge / KeyCap / Card | 入力、hover 相当の開閉、補助情報、配置構造は KUC model で確認済み。 | 実 hover 操作と視覚密度は後続 adapter / visual gate で確認する。 |
-| Accordion / SplitPane / Modal / Popover | 開閉 state と分割値は KUC model に出る。Modal は同一 display 配置計画、前面表示、別 native window 起動を Storybook visual gate で確認済み。 | Popover などの実 hover 操作密度は後続 adapter / visual gate で確認する。 |
-| ColorPicker / CodeDiff | 色選択 value、open state、差分 item count は KUC model で確認済み。 | 表示密度と行単位 props は後続 UI 詳細で確認する。 |
-| 追加 UI 群 | KUC model、内部 state、Storybook panel、theme gate の最低線は確認済み。 | 実操作と見た目密度は UI 別の後続詳細で確認する。 |
+## 次の判定
 
-## 残るリスク
+次に完了を判断する時は、次の順で見る。
 
-この是正後も、各 UI の詳細な操作意味まではまだ完全ではない。
-次の段階では `CodeDiff`、`ColorPicker`、`TreeView`、`CommandPalette`、`DynamicArrayEditor` などに、UI別の専用 props を増やす。
+1. `openspec validate establish-kuc-atoms-molecules-catalog --strict`
+2. core / atoms / molecules の契約テスト
+3. layout regression
+4. visual regression
+5. input regression
+6. guard
+7. Storybook 部品カタログの実画面確認
+
+Storybook のスクリーンショットは最後の補助証跡であり、1〜6 の代替にしない。

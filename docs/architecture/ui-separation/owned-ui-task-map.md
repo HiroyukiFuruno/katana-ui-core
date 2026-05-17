@@ -2,52 +2,89 @@
 
 ## 結論
 
-archive 済みの 01〜24 は、そのまま完了扱いで復帰しない。
-旧実装は Floem Storybook 前提を含むため、KUC では `katana-ui-core` の中立 model、内部 state、panel Storybook、theme 設定を必須条件に組み替える。
+01〜24 は `establish-kuc-atoms-molecules-catalog` へ移管する。
+旧個別 change の完了チェックは履歴であり、現在の KUC 実装完了の根拠にしない。
 
-## 復帰元
+現在の目標は、利用側が最小部品（atoms）と組み合わせ部品（molecules）を組み合わせて UI を構築できることに置く。
+画面（pages）、画面ひな形（templates）、公開用の大きな画面単位（organisms）は今回の実装正本に含めない。
+ただし Storybook 自身の shell / navigation / inspector などは内部構成部品として作ってよい。
 
-| 旧 change | KUC 独自UI task |
-|---|---|
-| 01-theme-tokens | Theme / Panel theme |
-| 02-text-primitive | Text |
-| 03-icon-primitive | Icon |
-| 04-spinner-primitive | Spinner |
-| 05-svg-button | SvgButton |
-| 06-text-button | TextButton |
-| 07-icon-text-button | IconTextButton |
-| 08-toggle | Toggle |
-| 09-segmented-toggle | SegmentedToggle |
-| 10-select-box | SelectBox |
-| 11-color-swatch | ColorSwatch |
-| 12-text-input | TextInput |
-| 13-search-box | SearchBox |
-| 14-tooltip | Tooltip |
-| 15-badge | Badge |
-| 16-key-cap | KeyCap |
-| 17-card | Card |
-| 18-accordion | Accordion |
-| 19-split-pane | SplitPane |
-| 20-modal-overlay | Modal / ModalOverlay |
-| 21-popover | Popover |
-| 22-rgba-color-picker | ColorPicker |
-| 23-color-picker-complete-parity | ColorPicker parity |
-| 24-code-diff | CodeDiff |
+## 正本
 
-## 新しい完了条件
+| 種別 | 正本 |
+| --- | --- |
+| root architecture | `openspec/changes/ui-core-root-plan/` |
+| atoms / molecules / Storybook catalog | `openspec/changes/establish-kuc-atoms-molecules-catalog/` |
+| 旧changeの入力元 | `openspec/changes/archive/`、active `18` / `23` / `24` |
 
-各UIは以下を満たすまで完了にしない。
+## 01〜24 再分類
 
-- `katana-ui-core` の中立 model として表現する。
-- UIごとの状態を component 内部で持ち、重複UIでも `UiStateId` が一意である。
-- Storybook は `katana-ui-core::panel::Panel` で左ナビと右プレビューを構成する。
-- Panel は `ThemeSnapshot` を受け取り、theme 設定済みである。
-- Storybook gate は story 数だけでなく、必須UI、最低構造、状態衝突、panel theme を検査する。
-- Floem adapter は検証対象にしてよいが、Storybook の描画経路にはしない。
+各 UI は `option`、`action`、`event`、`state`、`preset`、`preview`、`settings`、`automated-test`、`visual-regression`、`storybook-page` を満たすまで完了にしない。
 
-## 現在の扱い
+| # | 旧 change | KUC 分類 | 現在の対象 |
+| --- | --- | --- | --- |
+| 01 | theme-tokens | core foundation | Theme / Panel theme |
+| 02 | text-primitive | atom | Text |
+| 03 | icon-primitive | atom | Icon |
+| 04 | spinner-primitive | atom | Spinner / LoadingDots |
+| 05 | svg-button | atom / molecule | SvgButton |
+| 06 | text-button | atom / molecule | TextButton |
+| 07 | icon-text-button | atom / molecule | IconTextButton |
+| 08 | toggle | atom / molecule | Toggle |
+| 09 | segmented-toggle | molecule | SegmentedToggle |
+| 10 | select-box | molecule | SelectBox |
+| 11 | color-swatch | atom / molecule | ColorSwatch |
+| 12 | text-input | atom | Input / TextInput |
+| 13 | search-box | molecule | SearchBox |
+| 14 | tooltip | molecule | Tooltip |
+| 15 | badge | atom | Badge |
+| 16 | key-cap | atom | KeyCap |
+| 17 | card | molecule | Card |
+| 18 | accordion | molecule | Accordion |
+| 19 | split-pane | molecule / layout | SplitPane |
+| 20 | modal-overlay | molecule | ModalOverlay / Modal |
+| 21 | popover | molecule | Popover |
+| 22 | rgba-color-picker | molecule | ColorPicker |
+| 23 | color-picker-complete-parity | molecule | ColorPicker parity |
+| 24 | code-diff | molecule | CodeDiff |
 
-- root / navigation / preview の表示枠（panel）は KUC core model の対象にする。
-- 表示枠（panel）の見た目テーマ（theme）は必須要件であり、未設定なら gate 失敗にする。
-- 旧 01〜24 の完了 checkbox は KUC 完了証跡として使わない。
-- 各 UI は `openspec/changes/katana-widget-parity-backlog/tasks.md` の `28. KUC 独自 UI parity reset` で再判定する。
+## 追加 UI の扱い
+
+`katana-widget-parity-backlog` で採用した追加 UI は、同じ基準で `establish-kuc-atoms-molecules-catalog` へ移す。
+
+| UI | KUC 分類 | 備考 |
+| --- | --- | --- |
+| ProgressBar | atom | 進捗表示 |
+| Tabs | molecule | Storybook preset 切替にも使う |
+| Breadcrumb | molecule | 階層パス表示 |
+| SideMenu | molecule | shell に近いが MVP では molecules 側 |
+| SelectionList | molecule | section / marker / selected row |
+| SlideControl | molecule | 数値調整 |
+| DynamicArrayEditor | molecule | 配列編集 |
+| AlignCenterWrapper | layout / molecule | 中央配置 |
+| TreeView | molecule | Storybook 左ペインにも使う |
+| ComboBox | molecule | input + option list |
+| MenuButton | molecule | trigger + menu |
+| CommandPalette | molecule | provider を domain 外へ出す |
+| StatusBar | molecule | severity message |
+| Toolbar | molecule | action rail |
+| NotificationToast | molecule | transient message |
+
+## Storybook internal
+
+Storybook 自身を構成するため、次は内部構成部品として許可する。
+公開 widget API としての organisms / templates ではない。
+
+| 内部構成 | 役割 |
+| --- | --- |
+| catalog shell | 画面全体の分割 |
+| navigation tree | TreeView による部品一覧 |
+| preview workspace | 選択部品の表示領域 |
+| settings inspector | option 変更、state、event、action 履歴 |
+
+## 完了判定
+
+- Storybook は部品カタログであり、正しさの主根拠ではない。
+- 部品の正しさは自動テスト、layout regression、visual regression、input regression、guard で判定する。
+- `kal` 側へ KUC 固有ルールを追記しない。
+- `katana-widget-parity-backlog` と `ui-core-interaction-visual-parity` は、この文書と新 change へ要件を移した後は superseded として扱う。

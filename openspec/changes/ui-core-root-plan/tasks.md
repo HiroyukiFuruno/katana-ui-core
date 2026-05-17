@@ -1,5 +1,7 @@
 # Tasks — ui-core-root-plan
 
+> Note: この change は KUC の親設計と依存境界を固定する。01〜24 の atoms / molecules と部品カタログの実装完了は `openspec/changes/establish-kuc-atoms-molecules-catalog/` で判定する。
+
 ## 1. 前提と境界の固定
 
 - [x] 1.1 P0-B-007: `docs/adr/0002-katana-ui-core-rename.md` の「決定 6」と `docs/architecture/ui-separation/root-plan-source.md` の「1. KUC の責務」を根拠として、`README.md` と `docs/ui-separation-plan.md` に `katana-ui-core` はフレームワーク非依存（framework-neutral）UI Core であることを明記する。
@@ -136,7 +138,7 @@
 
 ## 6. Adapter migration
 
-注: UI をゼロから確立する現在段階では KUC core と primary adapter 候補を先に固める。6.13 以降の egui / GPUI 互換 adapter は後続段階まで未完了のまま残す。
+注: UI をゼロから確立する現在段階では KUC core と primary adapter 候補を先に固める。6.13 以降の egui / GPUI 互換 adapter は本実装ではなく、skeleton / compile gate / support policy までを完了範囲にする。
 
 - [x] 6.1 P1-I-001: `katana-ui-core-floem` crate を作る。
 - [x] 6.2 P1-I-002: core の `UiTree` を Floem view に変換する adapter skeleton を作る。

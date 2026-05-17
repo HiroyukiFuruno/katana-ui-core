@@ -12,8 +12,8 @@
 - `crates/katana-ui-core-gpui`
 - `crates/katana-ui-core-storybook`
 
-egui / GPUI 互換 adapter crate は skeleton のみ作成した。
-framework-native 実装は、KUC core と primary adapter 候補を確立した後続段階で扱う。
+egui / GPUI 互換 adapter crate は骨組み（skeleton）・compile gate・support policy までを作成した。
+framework-native 実装はこの change の完了範囲に含めない。
 Storybook smoke は `katana-ui-core` core-only の検証に固定し、Floem 経由にはしない。
 
 ## Legacy Floem implementation

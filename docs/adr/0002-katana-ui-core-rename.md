@@ -95,7 +95,7 @@ platform menu / IME / drag & drop は標準 API には入れず、変換層（ad
 
 ## 検証
 
-- [ ] 新規 docs と新規 OpenSpec change で `katana-ui-widget` 表記を増やしていない。ただし履歴説明は除外する。
-- [ ] 略語表に KUC が登録され、新規 docs で KUW を使っていない。
-- [ ] window / runtime / surface module が `root-plan-source.md` と `ui-core-root-plan` tasks に含まれている。
-- [ ] P0-B に rename 実施タスクが明記されている。
+- [x] 新規 docs と新規 OpenSpec change で `katana-ui-widget` 表記を増やしていない。ただし履歴説明は除外する。
+- [x] 略語表に KUC が登録され、新規 docs で KUW を使っていない。
+- [x] window / runtime / surface module が `root-plan-source.md` と `ui-core-root-plan` tasks に含まれている。
+- [x] P0-B に rename 実施タスクが明記されている。

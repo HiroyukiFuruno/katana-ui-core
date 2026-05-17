@@ -9,21 +9,34 @@ root 計画の根拠は `openspec/changes/ui-core-root-plan/` と `docs/architec
 | order | change | 役割 | 着手条件 |
 | --- | --- | --- | --- |
 | root | `ui-core-root-plan` | KUC をフレームワーク非依存（framework-neutral）UI Core として再定義し、runtime / window / surface / adapter 境界を固定する親 change | この change を先に読む |
+| implementation | `establish-kuc-atoms-molecules-catalog` | 01〜24 を KUC の atoms / molecules と部品カタログへ移管し、自動品質ゲートを正本化する change | `ui-core-root-plan` の境界を確認後に読む |
 
 ## 進行ルール
 
 - 新規作業では `katana-ui-core` / `KUC` 表記を使う。
-- 旧 `katana-ui-widget` / `KUW` 表記は archive 済み change の履歴説明だけに残す。
+- 旧リポジトリ名や旧略称は archive 済み change の履歴説明だけに残す。
 - repo 外の実装挙動が必要な場合は、先に `docs/inventory/<topic>.md` へ画面・操作・入力・出力・状態遷移をコピーしてから実装する。
 - 中核 crate（core crate）は `floem` / `egui` / `gpui` を直接依存に持たない。
 - 画面フレームワーク（UI framework）固有の型は変換層 crate（adapter crate）に閉じる。
-- Storybook は選択済み adapter 経由で描画し、中核 crate に framework dependency を戻さない。
+- Storybook は KUC の部品カタログであり、KUC の中立 model と専用 visual surface で表示する。
+- 部品の正しさは Storybook 目視ではなく、自動テスト、画像回帰、入力回帰、静的検査を主根拠にする。
 - 依存境界は `docs/dependency-policy.md` と `docs/directory-structure.md` を基準にする。
+
+## Superseded / archive candidates
+
+| change | 現在の扱い |
+| --- | --- |
+| `katana-widget-parity-backlog` | 01〜24 と追加 UI の入力元。要件は `establish-kuc-atoms-molecules-catalog` へ移管し、実装正本にはしない。 |
+| `ui-core-interaction-visual-parity` | 旧 interaction / visual gate の入力元。Storybook 目視寄りの完了扱いは新 change の品質ゲートへ移す。 |
+| `18-accordion` | 要件移管後の archive 候補。 |
+| `23-color-picker-complete-parity` | 要件移管後の archive 候補。 |
+| `24-code-diff` | 要件移管後の archive 候補。 |
 
 ## Archive change group
 
-以下は旧 KUW 時代の画面部品（widget）抽出 change 群である。
+以下は旧画面部品（widget）抽出 change 群である。
 履歴として残すが、新規実装の優先境界は `ui-core-root-plan` に従う。
+01〜24 の現在の実装正本は `establish-kuc-atoms-molecules-catalog` である。
 
 | # | change | 旧階層 | 現在の扱い |
 | --- | --- | --- | --- |

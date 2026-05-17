@@ -3,6 +3,9 @@
 `katana-ui-core` は現在、crate 名と repository 名は KUC に寄っているが、実装はまだ Floem を core dependency として持つ。
 既存 OpenSpec 変更単位（OpenSpec change）も、画面部品（widget）単位の抽出計画が中心で、root 側の UI 分離計画とは粒度が違う。
 
+この change は親設計の正本である。01〜24 の atoms / molecules と部品カタログの実装正本は `establish-kuc-atoms-molecules-catalog` へ分ける。
+そのため、この change の完了は 01〜24 の部品実装完了を意味しない。
+
 repo 内にコピーした root 計画では、KUC は「KatanA 専用の画面部品（widget）集」ではなく、起動・窓・描画面・イベント・描画モデル・テーマ・画面部品を持つフレームワーク非依存（framework-neutral）な UI Core と定義されている。
 この change は、その方針を KUC repo の OpenSpec として実装可能な単位に固定する。
 
@@ -22,7 +25,7 @@ repo 内にコピーした root 計画では、KUC は「KatanA 専用の画面�
 - Floem は最初に整備する主系変換層（primary adapter）候補として扱うが、中核依存（core dependency）にはしない。
 - 互換変換層（compatibility adapter）として egui / gpui の入口を持てる構造にする。
 - Storybook は `katana-ui-core` の中核（core）model だけで検証し、リリース検査（release gate）では adapter 経由にしない。
-- UI をゼロから確立する現段階では、KUC core と primary adapter 候補を先に固める。egui / GPUI 互換 crate の作成は後続段階へ送る。
+- UI をゼロから確立する現段階では、KUC core と primary adapter 候補を先に固める。egui / GPUI 互換 crate は本実装ではなく、skeleton / compile gate / support policy までをこの change の範囲で整備する。
 - JSX / TSX 互換ではなく、純 Rust の部品（component）合成 API として React に近い使い心地を目指す。
 - component 構造と見た目設定（style）を分離し、CSS のように後から class / rule / declaration を差し替えられることを KUC 独自実装の強みにする。
 

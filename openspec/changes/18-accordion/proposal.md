@@ -1,5 +1,7 @@
 ## Why
 
+> Archive candidate: Accordion の KUC 実装要件は `openspec/changes/establish-kuc-atoms-molecules-catalog/` へ移管する。この change は要件移管後に archive 候補として扱う。
+
 設定パネル / FAQ / セクション分割で「ヘッダクリックで本体を折り畳む」UI が要る。
 root plan 適用後は repo 外の実装を直接読まず、必要な挙動を `docs/inventory/accordion.md` にコピーしてから KUC の中立 model と adapter 経由で実装する。
 `docs/inventory/accordion.md` が未作成の間は、この change 単独で実装を開始しない。

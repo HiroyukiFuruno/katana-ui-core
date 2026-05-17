@@ -18,6 +18,8 @@ KUC は Floem 専用 crate ではなく、フレームワーク非依存（frame
 4. **Theme-token based**: 色、余白、角丸、影、z-index を theme token 経由で扱う。
 5. **Adapter-ready**: Floem / GPUI / egui adapter が変換できる DTO / trait 境界を持つ。
 6. **Repo-local evidence**: repo 外の実装を直接読まず、`docs/inventory/*.md` または OpenSpec change にコピー済みの根拠から実装できる。
+7. **Catalog-ready**: preview、settings、preset、state、event、action 履歴を部品カタログで表現できる。
+8. **Test-gated**: Storybook 目視ではなく、自動テスト、画像回帰、入力回帰、guard で完了判定できる。
 
 ## 除外条件
 
@@ -63,7 +65,16 @@ KUC core は neutral DTO / trait を提供する。
 Floem / GPUI / egui 固有の描画は adapter crate に置く。
 対応範囲と未対応機能は [`docs/compat-adapters.md`](compat-adapters.md) に記録する。
 
-## 旧KUW由来の扱い
+## Atomic design の扱い
 
-旧 `katana-ui-widget` / `KUW` 時代の文書や OpenSpec archive は履歴として残す。
+MVP の公開対象は最小部品（atoms）と組み合わせ部品（molecules）である。
+大きな画面単位（organisms）、画面ひな形（templates）、画面（pages）は今は公開対象にしない。
+
+ただし、Storybook 自身を構成する catalog shell、navigation、preview workspace、settings inspector は内部構成部品として許可する。
+これらを公開 widget API へ昇格させる場合は、別 OpenSpec change で目的、対象、利用側 API を定義する。
+
+## 旧個別 change の扱い
+
+旧文書や OpenSpec archive は履歴として残す。
 新規作業では `katana-ui-core` / `KUC` と framework-neutral 方針を使う。
+01〜24 の現在の実装正本は `openspec/changes/establish-kuc-atoms-molecules-catalog/` である。
