@@ -1,0 +1,20 @@
+[package]
+name = "katana-ui-core-storybook"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Core-only Storybook support metadata for katana-ui-core"
+authors.workspace = true
+publish = false
+
+[dependencies]
+fontdue.workspace = true
+image.workspace = true
+katana-ui-core.workspace = true
+minifb.workspace = true
+
+[[bin]]
+name = "katana-ui-core-storybook"
+path = "src/main.rs"

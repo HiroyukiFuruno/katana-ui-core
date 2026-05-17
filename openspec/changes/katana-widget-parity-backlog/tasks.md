@@ -417,5 +417,25 @@
   - 2026-05-14: 各 widget の `OverlayLifecycle` 呼び出しに `OverlayLifetime` を渡し、破棄済み owner への遅延追加・focus を止める構成にした。
 - [/] 27.6 Storybook requirement gate は、marker だけでなく、ページ切り替えを連続実行して `view_state` crash を検知する。
   - 2026-05-14: `overview:select-page-cycle:all-pages-stable` scenario を追加し、Tooltip / Popover / MenuButton / ComboBox / ColorPicker / SideMenu / CommandPalette / Toolbar / TreeView / Overview を連続で表示切り替えする。
-- [ ] 27.7 Modal の同一 display 配置は未完成扱いに戻す。未対応を fallback で隠さず、別 native window が確実に前面かつ親と同じ display に出る実装で完了にする。
-- [ ] 27.8 Storybook の「起動した」「marker が出た」だけを品質根拠にしない。UI操作後に落ちないこと、状態が画面に反映されること、別 window / overlay が実際に出ることを回帰条件にする。
+- [x] 27.7 Modal の同一 display 配置は未完成扱いに戻す。未対応を fallback で隠さず、別 native window が確実に前面かつ親と同じ display に出る実装で完了にする。
+  - 2026-05-17: `ModalWindowPlacement::same_display(...)` を KUC core model として追加し、親表示領域（display bounds）外や大きすぎる modal を成功扱いにしない。Storybook は `--open-modal-window` で別 native window を実際に開き、`same_display=true` と `frontmost=true` を gate にした。
+- [x] 27.8 Storybook の「起動した」「marker が出た」だけを品質根拠にしない。UI操作後に落ちないこと、状態が画面に反映されること、別 window / overlay が実際に出ることを回帰条件にする。
+  - 2026-05-17: 静的HTML export は完了根拠にしない。KUC の中核（core）UIと表示枠（panel）で動く可視 Storybook、操作後 state 反映、overlay / window 実描画を回帰条件にする。
+  - 2026-05-17: `--runtime-regression` で `state_reflected=true`、`overlay_rendered=true`、`modal_plan_same_display=true`、`modal_plan_frontmost=true` を確認し、`storybook-requirement-gate` で別 window 実描画まで実行する。
+
+## 28. KUC 独自 UI parity reset（2026-05-17）
+
+- [x] 28.1 archive 済み 01〜24 を KUC 独自 UI task へ読み替える対応表を `docs/architecture/ui-separation/owned-ui-task-map.md` に作成する。
+- [x] 28.2 Storybook は `katana-ui-core::panel::Panel` で root、navigation、preview を表現し、Floem 経由では描画しない。
+- [x] 28.3 表示枠（panel）は `ThemeSnapshot` を必ず受け取り、`storybook-requirement-gate` で `panel_theme_configured=true` を必須にする。
+- [x] 28.4 UI ごとの状態（state）を component 内部に閉じ、重複 UI の `UiStateId` 衝突を gate で検知する。
+- [x] 28.5 旧 01 `Theme / Panel theme`: theme token、`ThemeSnapshot`、panel theme id、light / dark 差分を KUC core model と Storybook panel 上で再確認する。
+- [x] 28.6 旧 02〜04 `Text` / `Icon` / `Spinner`: atom として中立 `UiNode` 化し、Storybook panel 上で最低構造と theme 適用を確認する。
+- [x] 28.7 旧 05〜07 `SvgButton` / `TextButton` / `IconTextButton`: button 系を KUC atom / molecule として整理し、同一 label 複数配置時の state 一意性を確認する。
+- [x] 28.8 旧 08〜12 `Toggle` / `SegmentedToggle` / `SelectBox` / `ColorSwatch` / `TextInput`: 選択・入力 state を内部 state として持たせ、Storybook panel 上で反映先を確認する。
+- [x] 28.9 旧 13〜17 `SearchBox` / `Tooltip` / `Badge` / `KeyCap` / `Card`: 表示だけでなく、入力、hover、補助情報、配置構造を KUC core model で確認する。
+- [x] 28.10 旧 18〜21 `Accordion` / `SplitPane` / `Modal` / `Popover`: 開閉、分割、重ね表示、別窓相当の状態を KUC model と adapter 境界に分けて再定義する。
+- [x] 28.11 旧 22〜24 `ColorPicker` / `ColorPicker parity` / `CodeDiff`: 色選択と差分表示を KUC 独自 UI として再確認し、旧 Floem 実装の完了扱いを引き継がない。
+- [x] 28.12 追加 UI `Tabs` / `Breadcrumb` / `SideMenu` / `SelectionList` / `SlideControl` / `DynamicArrayEditor` / `TreeView` / `ComboBox` / `MenuButton` / `CommandPalette` / `StatusBar` / `Toolbar` / `LoadingDots` / `NotificationToast` を、KUC core model、内部 state、Storybook panel、theme gate の 4 条件で再判定する。
+- [x] 28.13 旧 Floem Storybook の目視完了記録は参考情報に限定し、KUC Storybook panel 上で確認できない UI は未完了として扱う。
+- [x] 28.14 `docs/architecture/ui-separation/ui-core-parity-gap.md` を UI ごとの未完了 / 完了証跡表として更新し、`just storybook-regression` の marker だけを品質根拠にしない。

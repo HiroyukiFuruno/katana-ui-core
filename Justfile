@@ -50,12 +50,19 @@ ast-lint-install:
 # Run shared KatanA Rust syntax checks
 ast-lint:
     kal check
+    python3 scripts/assert-kuc-state-ownership.py
     python3 scripts/assert-storybook-page-layout.py
 
 # Run katana-ui-core specific guardrails
-kuw-guardrails:
-    python3 scripts/test_kuw_guardrails.py
-    python3 scripts/assert-kuw-guardrails.py
+kuc-guardrails:
+    python3 scripts/test_kuc_guardrails.py
+    python3 scripts/assert-kuc-guardrails.py
+    bash scripts/assert-core-dependency-boundary.sh
+    bash scripts/assert-core-public-api-neutral.sh
+    python3 scripts/assert-root-plan-task-drift.py
+
+# Backward-compatible alias for older local workflows
+kuw-guardrails: kuc-guardrails
 
 # Run Storybook page structure checks
 storybook-ast-lint:
@@ -81,7 +88,7 @@ coverage:
     {{CARGO}} llvm-cov --workspace --all-features --locked --summary-only --fail-under-lines {{COVERAGE_MIN_LINES}}
 
 # Run the local quality gate
-check: fmt-check check-types lint unit-test ast-lint kuw-guardrails overlay-lifecycle-lint menu-button-contract
+check: fmt-check check-types lint unit-test ast-lint kuc-guardrails overlay-lifecycle-lint menu-button-contract
     @echo "checks passed"
 
 # Sweep old build artifacts locally (older than 7 days)
@@ -103,11 +110,15 @@ update:
 
 # Run the Storybook (independent Cargo project)
 storybook:
-    cd storybook && RUSTFLAGS="-D warnings" cargo run
+    RUSTFLAGS="-D warnings" {{CARGO}} run -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked
 
 # Check that Storybook compiles without running
 storybook-check:
-    cd storybook && RUSTFLAGS="-D warnings" cargo check
+    RUSTFLAGS="-D warnings" {{CARGO}} check -p katana-ui-core-storybook --all-targets --locked
+
+# Render the KUC Storybook panel to a PNG snapshot.
+storybook-visual-snapshot:
+    RUSTFLAGS="-D warnings" {{CARGO}} run -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- --visual-snapshot target/storybook-panel.png
 
 # Check Storybook pages can build without opening visible windows.
 storybook-smoke:
@@ -123,6 +134,7 @@ release-verify: check coverage
     bash scripts/release/verify-version.sh "{{VERSION}}"
     {{CARGO}} package -p katana-ui-core --locked --allow-dirty
     {{CARGO}} publish -p katana-ui-core --dry-run --locked --allow-dirty
+    bash scripts/release/verify-primary-adapter-release.sh "{{VERSION}}"
 
 # Verify release branch readiness before merging
 release-check: release-target-check release-verify
@@ -145,4 +157,4 @@ cargo-test:
     RUSTFLAGS="-D warnings" cargo test --workspace --all-targets
 
 # Run the full Storybook regression gate used before publishing.
-storybook-regression: cargo-test storybook-check ast-lint kuw-guardrails overlay-lifecycle-lint menu-button-contract storybook-smoke storybook-interaction-smoke storybook-requirement-gate
+storybook-regression: cargo-test storybook-check ast-lint kuc-guardrails overlay-lifecycle-lint menu-button-contract storybook-smoke storybook-interaction-smoke storybook-requirement-gate storybook-visual-snapshot

@@ -2,18 +2,18 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ALLOWED_FILE="$ROOT_DIR/crates/katana-ui-core/src/overlay_lifecycle.rs"
+ALLOWED_FILE="$ROOT_DIR/crates/katana-ui-core-floem/src/overlay_lifecycle.rs"
 
 violations="$(
   rg -n "\\b(add_overlay|remove_overlay)\\b" \
-    "$ROOT_DIR/crates/katana-ui-core/src" \
+    "$ROOT_DIR/crates/katana-ui-core-floem/src" \
     "$ROOT_DIR/storybook/src" \
     --glob '*.rs' \
     | awk -F: -v allowed="$ALLOWED_FILE" '$1 != allowed { print }'
 )" || true
 
 if [ -n "$violations" ]; then
-  echo "overlay lifecycle violation: use OverlayLifecycle instead of direct add_overlay/remove_overlay"
+  echo "overlay lifecycle violation: use Floem adapter OverlayLifecycle instead of direct add_overlay/remove_overlay"
   echo "$violations"
   exit 1
 fi

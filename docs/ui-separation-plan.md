@@ -1,14 +1,14 @@
 # katana-ui-core — UI 分離計画 抜粋
 
-作成日: 2026-05-17  
-更新日: 2026-05-17 (rename: `katana-ui-widget` → `katana-ui-core` / ADR-0002 / runtime/window/surface 追加)  
-canonical: [`katana/docs/architecture/ui-separation/detailed-design-and-tasks.md`](../../katana/docs/architecture/ui-separation/detailed-design-and-tasks.md)
+作成日: 2026-05-17
+更新日: 2026-05-17 (rename: `katana-ui-widget` → `katana-ui-core` / ADR-0002 / runtime/window/surface 追加)
+repo-local source: [`docs/architecture/ui-separation/root-plan-source.md`](architecture/ui-separation/root-plan-source.md)
 
-> **注**: 本 repo は GitHub 上はまだ `katana-ui-widget` の名前で配置されているが、ADR-0002 によりリネーム済み (master / 抜粋文書 / Cargo.toml 上)。GitHub repo / ローカルディレクトリの rename はこの PR でまとめて実施。
+> **注**: この repo での作業は repo 外の文書を読まずに完結させる。root 計画のうち KUC に必要な根拠は [`root-plan-source.md`](architecture/ui-separation/root-plan-source.md) と [`ADR-0002`](adr/0002-katana-ui-core-rename.md) にコピー済み。
 
 ## このファイルの位置付け
 
-本ファイルは KatanA ecosystem の **UI 分離構想 master** から `katana-ui-core` (KUC) 担当部分を抜粋したもの。task ID は master と同一。**master が単一情報源**であり、本ファイル単独で task を追加・修正してはならない。
+本ファイルは KUC 担当分を repo 内で実装するための作業入口である。task ID は [`root-plan-source.md`](architecture/ui-separation/root-plan-source.md) と同一に保つ。作業者は repo 外の親ディレクトリや sibling repository を読まない。
 
 ## Repository の役割
 
@@ -20,7 +20,7 @@ canonical: [`katana/docs/architecture/ui-separation/detailed-design-and-tasks.md
 - atoms / molecules / layout primitive / theme token / event model / render model / accessibility / adapter contract を提供する。
 - KatanA 固有の概念を持たない (KDV / KLE / KMM 等の domain crate に依存しない)。
 
-詳細: master [`5.1 katana-ui-core` 詳細設計](../../katana/docs/architecture/ui-separation/detailed-design-and-tasks.md#51-katana-ui-core-詳細設計)
+詳細: [`root-plan-source.md` 1. KUC の責務](architecture/ui-separation/root-plan-source.md#1-kuc-の責務)
 
 ## 担当 Phase
 
@@ -28,7 +28,7 @@ canonical: [`katana/docs/architecture/ui-separation/detailed-design-and-tasks.md
 - **P4-0**: Primary adapter 選定 (KatanA 側で決定するが、本 repo の release / 品質ゲートに直結)
 - **横断**: P0 (governance / naming / ADR)
 
-依存グラフ抜粋: master [`6.5 Phase 依存グラフ`](../../katana/docs/architecture/ui-separation/detailed-design-and-tasks.md#65-phase-依存グラフ) より
+依存グラフ抜粋: [`root-plan-source.md` 4. Phase 依存](architecture/ui-separation/root-plan-source.md#4-phase-依存)
 
 ```
 P0 → P1 (本 repo)
@@ -58,11 +58,11 @@ P0 → P1 (本 repo)
 - [ ] P1-A-002: `crates/katana-ui-core` を core crate として再定義する。
 - [ ] P1-A-003: `crates/katana-ui-core-floem` を追加する。
 - [ ] P1-A-004: `crates/katana-ui-core-storybook` を追加する。
-- [ ] P1-A-005: root `workspace.dependencies` の neutral deps と adapter-specific deps を分けて整理する。core crate がどの shared entry を参照してよいか policy 化する。
+- [ ] P1-A-005: root `workspace.dependencies` の neutral deps と adapter-specific deps を分けて整理する。`docs/dependency-policy.md` に `dependency`、`allowed in core`、`allowed in adapter`、`reason`、`verification command` 列を持つ分類表を作る。
 - [ ] P1-A-006: `floem` / `floem_reactive` / `floem_renderer` を adapter crate dependency に移す。
 - [ ] P1-A-007: core crate の package description を「framework-neutral」に変更する。
 - [ ] P1-A-008: Floem 前提の README 文言を削除する。
-- [ ] P1-A-009: adapter 方針を README に追加する。
+- [ ] P1-A-009: README に adapter policy 節を追加する。必須項目は primary adapter、compatibility adapter、core dependency 禁止、Storybook 経路、release gate、`docs/compat-adapters.md` へのリンク。
 - [ ] P1-A-010: release metadata に adapter crate を含める。
 
 ### P1-B. Core module skeleton
@@ -149,8 +149,8 @@ P0 → P1 (本 repo)
 - [ ] P1-G-004: `FocusEvent` を定義する。
 - [ ] P1-G-005: `CommandEvent` を定義する。
 - [ ] P1-G-006: `UiNodeId` を event target に使う。
-- [ ] P1-G-007: event bubbling policy を定義する。
-- [ ] P1-G-008: event capture policy を定義する。
+- [ ] P1-G-007: event bubbling policy を定義する。必須項目は parent traversal order、stop propagation、disabled node の扱い、nested molecule の伝播、serialization test。
+- [ ] P1-G-008: event capture policy を定義する。必須項目は root-to-target order、target 到達前 cancellation、capture listener の登録単位、bubbling との実行順、ordering test。
 - [ ] P1-G-009: event serialization test を作る。
 - [ ] P1-G-010: event ordering test を作る。
 
@@ -187,15 +187,16 @@ Floem は primary adapter 候補として最初に整備する。P4-0 で primar
 ### P1-K. 互換 adapter (egui / gpui)
 
 primary に選ばれていない framework 向けの互換 adapter を併設する。外部利用者が既存環境に `katana-ui-core` を差し込めるようにするのが目的。品質ゲートは primary より緩いが、core crate に依存リークさせない原則は同じ。
+現在段階では UI をゼロから確立するため、KUC core と primary adapter 候補を先に固める。egui / GPUI 互換 crate の作成は後続段階に送る。
 
 - [ ] P1-K-001: `katana-ui-core-egui` 互換 adapter crate を新設する。
 - [ ] P1-K-002: `katana-ui-core-gpui` 互換 adapter crate を新設する。
 - [ ] P1-K-003: 各互換 adapter で `UiTree` -> framework view 変換 skeleton を作る (Text / Button / Row / Column を最低ライン)。
 - [ ] P1-K-004: 各互換 adapter の対応 widget / 未対応機能 / フォールバック挙動を README に明記する。
 - [ ] P1-K-005: 各互換 adapter に opt-in feature gate (`workspace.dependencies` の optional 化) を設定し、`katana-ui-core` core compile に引き込まれないことを保証する。
-- [ ] P1-K-006: 各互換 adapter の最低品質ゲート (compile test + storybook smoke) を CI に追加する。primary より緩く許容する。
-- [ ] P1-K-007: 互換 adapter の release が primary release を止めない policy を CI / release script に反映する。
-- [ ] P1-K-008: 互換 adapter のサポート範囲・SemVer minor 追加縮小 policy を `docs/release/compat-adapters.md` (KatanA repo) に記録する。
+- [ ] P1-K-006: 各互換 adapter の最低品質ゲート (compile test) を CI に追加する。Storybook は `katana-ui-core` の core-only 確認だけを必須にし、adapter 経由にはしない。
+- [ ] P1-K-007: 互換 adapter の release が primary release を止めない条件を `docs/compat-adapters.md` の Release blocking rule に明記し、CI / release script はその条件を参照して判定する。
+- [ ] P1-K-008: 互換 adapter のサポート範囲・SemVer minor 追加縮小 policy を `docs/compat-adapters.md` と `docs/release.md` に記録する。
 
 ### P1-L. Runtime / Window / Surface API
 
@@ -227,21 +228,21 @@ neutral 化の粒度は **「中」**: title / size / close / focus / fullscreen
 - [ ] P1-J-002: core crate が `gpui` を含まないことを script で検査する。
 - [ ] P1-J-003: core crate が `katana-*` domain crate を含まないことを script で検査する。
 - [ ] P1-J-004: `just check` に dependency leak guard を追加する。
-- [ ] P1-J-005: Storybook gate を adapter crate 対象に変更する。
+- [ ] P1-J-005: Storybook gate を `katana-ui-core` core-only 対象に変更する。
 - [ ] P1-J-006: release dry-run に core crate を含める。
 - [ ] P1-J-007: release dry-run に Floem adapter crate を含める。
-- [ ] P1-J-008: README に adapter policy を追加する。
+- [ ] P1-J-008: README に adapter policy 節を追加する。内容は `docs/compat-adapters.md` と同じ primary / compatibility / release blocking の概要に限定し、詳細は `docs/compat-adapters.md` へリンクする。
 
 ## P4-0 (primary adapter 選定) との接点
 
-P4-0 は `katana-ui` 側 (KatanA repo) で決定するが、本 repo の release / 品質ゲートに直結する。
+P4-0 は primary adapter の選定を扱う。実装者が repo 外を読まなくて済むよう、比較 ADR はこの repo の `docs/adr/katana-ui-primary-adapter.md` に作る。
 
-- KatanA が起動時に使う primary adapter として何を選ぶか (floem / gpui / egui / agnostic 継続) を ADR `docs/adr/katana-ui-primary-adapter.md` (KatanA repo) で決める。
+- primary adapter として何を選ぶか (floem / gpui / egui / agnostic 継続) を ADR `docs/adr/katana-ui-primary-adapter.md` で決める。
 - 選ばれた primary adapter の crate (`katana-ui-core-<primary>`) は core と同等の品質ゲートを通す。
 - primary に選ばれていない framework は P1-K の互換 adapter として維持する。
 - primary 切り替え発生時、旧 primary は互換 adapter (P1-K 水準) に降格する。
 
-詳細: master [`P4-0. Primary adapter 選定`](../../katana/docs/architecture/ui-separation/detailed-design-and-tasks.md#p4-0-primary-adapter-選定)
+詳細: [`root-plan-source.md` 14. P4-0: primary adapter decision](architecture/ui-separation/root-plan-source.md#14-p4-0-primary-adapter-decision)
 
 ## 前提 (depends on) / 出力 (provides)
 
@@ -262,7 +263,7 @@ P4-0 は `katana-ui` 側 (KatanA repo) で決定するが、本 repo の release
 
 ## Done criteria
 
-本 repo に関する master 9 章 Done criteria のうち、該当項目:
+本 repo に関する [`root-plan-source.md` 15. KUC done criteria](architecture/ui-separation/root-plan-source.md#15-kuc-done-criteria) の該当項目:
 
 - [ ] `katana-ui-core` core が Floem なしで compile できる
 - [ ] core crate が `floem` / `gpui` / `egui` を含まない (P1-J-001〜002 script 通過)
@@ -273,14 +274,14 @@ P4-0 は `katana-ui` 側 (KatanA repo) で決定するが、本 repo の release
 
 ## drift 検出
 
-- 本ファイルの task ID は master と完全一致する。task の追加・削除・変更時は master を先に更新する。
-- P8-A-001 の CI script が master と本ファイルの task ID 一致を検査する。
+- 本ファイルの task ID は [`root-plan-source.md`](architecture/ui-separation/root-plan-source.md) と完全一致させる。
+- task の追加・削除・変更時は、まず `root-plan-source.md` を更新し、その後に本ファイルと `openspec/changes/ui-core-root-plan/tasks.md` を更新する。
+- P8-A-001 の CI script は `root-plan-source.md`、本ファイル、`ui-core-root-plan/tasks.md` の task ID 一致を検査する。
 
 ## 参照リンク
 
-- [master detailed-design-and-tasks.md](../../katana/docs/architecture/ui-separation/detailed-design-and-tasks.md)
-- [master principles.md](../../katana/docs/architecture/ui-separation/principles.md)
-- [overview README](../../katana/docs/architecture/ui-separation/README.md)
+- [UI Core root plan source](architecture/ui-separation/root-plan-source.md)
+- [ADR-0002: katana-ui-core rename](adr/0002-katana-ui-core-rename.md)
 - [既存 docs/widget-extraction-policy.md](widget-extraction-policy.md)
 - [既存 docs/directory-structure.md](directory-structure.md)
 - [既存 docs/release.md](release.md)

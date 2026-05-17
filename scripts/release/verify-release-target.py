@@ -213,14 +213,14 @@ def fail(message: str) -> int:
     print(f"Release target sanity check failed: {message}", file=sys.stderr)
     print(
         "If this is an intentional corrective release, stop and get explicit user confirmation. "
-        "Then rerun with KUW_RELEASE_ALLOW_VERSION_LINE_OVERRIDE=1 and document the reason.",
+        "Then rerun with KUC_RELEASE_ALLOW_VERSION_LINE_OVERRIDE=1 and document the reason.",
         file=sys.stderr,
     )
     return 1
 
 
 def verify(target: StableVersion, latest: StableVersion | None) -> int:
-    if os.environ.get("KUW_RELEASE_ALLOW_VERSION_LINE_OVERRIDE") == "1":
+    if os.environ.get("KUC_RELEASE_ALLOW_VERSION_LINE_OVERRIDE") == "1":
         print("Release target sanity check override is enabled.")
         return 0
     if latest is None:

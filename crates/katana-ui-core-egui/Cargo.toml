@@ -1,0 +1,13 @@
+[package]
+name = "katana-ui-core-egui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "egui compatibility adapter skeleton for katana-ui-core"
+authors.workspace = true
+publish = false
+
+[dependencies]
+katana-ui-core.workspace = true

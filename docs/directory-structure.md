@@ -1,111 +1,130 @@
 # Directory Structure
 
-## Crate Hierarchy
+作成日: 2026-05-17
+対象: `katana-ui-core` の中核 crate（core crate）と変換層 crate（adapter crate）
 
-```
-crates/katana-ui-core/src/
-├── lib.rs
-├── theme/                         # Design tokens — no deps
-│   ├── color/mod.rs
-│   ├── spacing/mod.rs
-│   └── typography/mod.rs
-├── primitive/                     # Atomic widgets — may use theme only
-│   ├── icon/mod.rs
-│   ├── spinner/mod.rs
-│   └── text/mod.rs
-├── composite/                     # Composed widgets — may use theme + primitive
-│   ├── button/
-│   │   ├── svg/mod.rs
-│   │   ├── text/mod.rs
-│   │   └── icon_text/mod.rs
-│   ├── selector/
-│   │   ├── toggle/mod.rs
-│   │   ├── segmented/mod.rs
-│   │   ├── select/mod.rs
-│   │   └── color/mod.rs
-│   ├── input/
-│   │   ├── text/mod.rs
-│   │   └── search/mod.rs
-│   └── indicator/
-│       ├── tooltip/mod.rs
-│       ├── badge/mod.rs
-│       └── key_cap/mod.rs
-└── layout/                        # Layout containers — may use theme + primitive + composite
-    ├── card/mod.rs
-    ├── accordion/mod.rs
-    ├── split/mod.rs
-    ├── modal/mod.rs
-    └── popover/mod.rs
+## 目的
+
+KUC の中核 crate を、特定の画面フレームワーク（UI framework）に依存しない形で保つ。
+この文書は README の階層説明と、`ui-core-root-plan` の依存方向タスクの判定基準として使う。
+
+## Crate hierarchy
+
+```text
+crates/
+├── katana-ui-core/
+│   └── src/
+│       ├── lib.rs
+│       ├── theme/
+│       ├── event/
+│       ├── render_model/
+│       ├── atom/
+│       ├── molecule/
+│       ├── layout/
+│       ├── runtime/
+│       ├── window/
+│       └── surface/
+├── katana-ui-core-floem/
+├── katana-ui-core-egui/
+└── katana-ui-core-gpui/
 ```
 
-## Dependency Direction
+## Core dependency direction
 
-```
-theme  ←  primitive  ←  composite  ←  layout
-               ↑              ↑
-           (may use)      (may use)
-             theme       theme + primitive
-```
-
-Rules:
-- **`theme/`** depends on nothing within this crate.
-- **`primitive/`** may depend on `theme/` only.
-- **`composite/<category>/`** may depend on `theme/` and `primitive/`. Cross-subcategory references (e.g., `button/` → `selector/`) are **forbidden**. Intra-subcategory references (e.g., `input/search/` → `input/text/`) are allowed.
-- **`layout/`** may depend on `theme/`, `primitive/`, and any `composite/` subcategory.
-
-Enforcement: by code review and convention. Mechanical enforcement (via `katana-ast-lint` dependency direction rule) is planned for a future kal release.
-
-## Theme Token Convention
-
-**Never hard-code numeric values (colors, sizes, spacing) directly in widget code.**
-
-All widgets must reference values through `theme/` tokens:
-
-```rust
-// ❌ Forbidden
-.style(|s| s.background(Color::rgb8(59, 130, 246)).padding(8.0))
-
-// ✅ Required
-let theme = use_theme();
-.style(move |s| {
-    s.background(/* convert theme.color.accent */)
-     .padding(theme.spacing.sm)
-})
+```text
+theme
+event
+render_model
+  <- atom
+  <- molecule
+  <- layout
+runtime / window / surface
 ```
 
-- Color values → `theme.color.*`
-- Spacing values → `theme.spacing.*`
-- Font sizes / weights → `theme.typography.*`
+| layer | path | allowed dependency |
+| --- | --- | --- |
+| `theme` | `crates/katana-ui-core/src/theme/` | KUC DTO のみ |
+| `event` | `crates/katana-ui-core/src/event/` | KUC DTO のみ |
+| `render_model` | `crates/katana-ui-core/src/render_model/` | `theme`, `event` |
+| `atom` | `crates/katana-ui-core/src/atom/` | `theme`, `event`, `render_model` |
+| `molecule` | `crates/katana-ui-core/src/molecule/` | `theme`, `event`, `render_model`, `atom` |
+| `layout` | `crates/katana-ui-core/src/layout/` | `theme`, `event`, `render_model`, `atom`, `molecule` |
+| `runtime` | `crates/katana-ui-core/src/runtime/` | KUC DTO / trait のみ |
+| `window` | `crates/katana-ui-core/src/window/` | `runtime`, KUC DTO / trait |
+| `surface` | `crates/katana-ui-core/src/surface/` | `runtime`, `window`, KUC DTO / trait |
 
-Violation detection is planned via `katana-ast-lint` in a future kal release.
+## Forbidden core dependencies
+
+中核 crate（core crate）は次を直接依存に持たない。
+
+- `floem`
+- `floem_reactive`
+- `floem_renderer`
+- `egui`
+- `gpui`
+- KatanA application domain crate
+
+判定表は [`dependency-policy.md`](dependency-policy.md) に固定する。
+
+## Adapter crate responsibility
+
+変換層 crate（adapter crate）は、KUC の `render_model` / `runtime` / `window` / `surface` を受け取り、対象フレームワークの型へ変換する。
+
+| adapter crate | owns |
+| --- | --- |
+| `katana-ui-core-floem` | Floem view conversion, Floem runtime bridge |
+| `katana-ui-core-egui` | egui compatibility conversion, egui smoke rendering |
+| `katana-ui-core-gpui` | GPUI compatibility conversion, GPUI smoke rendering |
+
+adapter crate は framework-native 型を公開してよい。
+中核 crate（core crate）は framework-native 型を公開しない。
+
+## Module layout
+
+各 UI 要素は責務で分ける。
+1 ファイルが大きくなる場合は、行数だけで切らず、次の単位で分割する。
+
+```text
+<component>/
+├── mod.rs
+├── types.rs
+├── model.rs
+├── event.rs
+├── render.rs
+└── tests.rs
+```
+
+| file | responsibility |
+| --- | --- |
+| `types.rs` | public DTO, enum, identifier |
+| `model.rs` | state model and immutable update operation |
+| `event.rs` | KUC event input and output |
+| `render.rs` | `UiNode` / `UiTree` generation |
+| `tests.rs` | model, event, render serialization tests |
+
+`view.rs` は中核 crate（core crate）では使わない。
+framework-native view construction は adapter crate に置く。
 
 ## Storybook
 
-```
-storybook/                         # Independent Cargo project — NOT a workspace member
-├── Cargo.toml                     # [workspace] + bin crate
-├── Cargo.lock                     # committed — independent lock from crates/
-└── src/
-    ├── main.rs                    # Floem app entry (sidebar + content area)
-    └── pages/
-        ├── mod.rs                 # re-exports one pub fn per page
-        └── welcome.rs             # placeholder welcome page
+Storybook は目視確認用の独立アプリである。
+Storybook は中核 crate（core crate）の model を直接検証し、選択済み adapter crate を通さない。
+
+```bash
+just storybook
+just storybook-check
 ```
 
-**Convention:** one widget = one page (`pages/<widget_name>.rs`).
+Storybook は `floem` / `egui` / `gpui` を使わない。adapter ごとの検証は各 adapter crate の compile / unit test に閉じる。
+中核 crate（core crate）の dependency tree に framework dependency が出たら失敗とする。
 
-Run: `just storybook`  
-Check (CI): `just storybook-check`
+## Verification
 
-## Per-Widget Module Layout
+変更時は次を確認する。
 
-When a widget directory grows beyond 10 files, split by concern:
-
+```bash
+cargo tree -p katana-ui-core --locked
+just check
 ```
-<widget>/
-├── mod.rs      # pub re-exports only
-├── types.rs    # data types, enums, constants
-├── ops.rs      # state management, business logic
-├── view.rs     # Floem view construction
-└── tests.rs    # unit tests (or inline #[cfg(test)])
-```
+
+`cargo tree -p katana-ui-core --locked` に `floem` / `egui` / `gpui` / KatanA application domain crate が出てはいけない。

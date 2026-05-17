@@ -1,18 +1,25 @@
-//! KatanA ecosystem shared UI widgets.
+//! KatanA ecosystem framework-neutral UI Core.
 
-pub mod composite;
+pub mod accessibility;
+pub mod adapter_contract;
+pub mod atom;
+pub mod component;
+pub mod event;
 pub mod layout;
-pub mod primitive;
+pub mod molecule;
+pub mod panel;
+pub mod render_model;
+pub mod runtime;
+pub mod style;
+pub mod surface;
 pub mod theme;
+pub mod window;
 
-mod floem_view;
-mod overlay_lifecycle;
-
-/// Registry marker for shared widget components.
+/// Registry marker for KUC-owned neutral UI capabilities.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct WidgetRegistry;
+pub struct CoreRegistry;
 
-impl WidgetRegistry {
+impl CoreRegistry {
     /// Creates an empty registry marker.
     #[must_use]
     pub const fn new() -> Self {
@@ -22,10 +29,10 @@ impl WidgetRegistry {
 
 #[cfg(test)]
 mod tests {
-    use super::WidgetRegistry;
+    use super::CoreRegistry;
 
     #[test]
     fn new_returns_empty_registry_marker() {
-        assert_eq!(WidgetRegistry::new(), WidgetRegistry);
+        assert_eq!(CoreRegistry::new(), CoreRegistry);
     }
 }

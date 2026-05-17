@@ -1,6 +1,8 @@
 ## Why
 
-設定パネル / FAQ / セクション分割で「ヘッダクリックで本体を折り畳む」UI が要る。`../katana/crates/katana-ui/src/widgets/accordion/` の役割を Floem に移植。アニメーション付き高さ可変を素直な API で提供する。
+設定パネル / FAQ / セクション分割で「ヘッダクリックで本体を折り畳む」UI が要る。
+root plan 適用後は repo 外の実装を直接読まず、必要な挙動を `docs/inventory/accordion.md` にコピーしてから KUC の中立 model と adapter 経由で実装する。
+`docs/inventory/accordion.md` が未作成の間は、この change 単独で実装を開始しない。
 
 ## What Changes
 

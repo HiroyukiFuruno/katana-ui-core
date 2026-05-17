@@ -1,7 +1,7 @@
 [workspace]
 
 [package]
-name = "katana-ui-core-storybook"
+name = "katana-ui-core-storybook-wrapper"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
@@ -13,5 +13,4 @@ name = "storybook"
 path = "src/main.rs"
 
 [dependencies]
-katana-ui-core = { path = "../crates/katana-ui-core" }
-floem = { version = "0.2.0", git = "https://github.com/lapce/floem.git", rev = "ec7ea2077cf867e58e9684209291881217023f74" }
+katana-ui-core-storybook = { path = "../crates/katana-ui-core-storybook" }

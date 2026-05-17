@@ -83,7 +83,7 @@ katana の AlignCenter と同じ用途で、子要素を縦横中央に置く wr
 
 ## 決定事項
 
-- katana-chat-ui の対象 repo path は `../katana-chat-ui/crates/katana-chat-ui-floem/src/widget/` とする。
+- repo 外の対象 path は実装者に読ませない。必要な挙動は `docs/inventory/<widget>.md` にコピーしてから実装する。
 - Modal の別ウィンドウ化と同一ウィンドウ overlay の分離は、既存 `20-modal-overlay` の design で扱う。
 - 採用判定は 0/1 のみとし、未判定状態を作らない。
 
@@ -229,3 +229,21 @@ Spark には依存が浅い順に渡す。
 - widget API、ops、view、Storybook を同じバッチで実装する。
 - `just storybook-check` と `RUSTFLAGS="-D warnings" cargo test -p katana-ui-widget` を通す。
 - `just ast-lint` が失敗した場合は除外ではなく設計分割で解消する。
+
+## KUC core 再編成（2026-05-17）
+
+この backlog は、旧 `katana-ui-widget` / Floem Storybook の完了記録をそのまま KUC 完了として扱わない。
+archive 済みの 01〜24 は参考資料であり、KUC では `katana-ui-core` の中立モデル（neutral model）として作り直す。
+
+新しい完了条件:
+
+- UI ごとの状態（state）は component 内部で管理し、同じ UI が複数あっても `UiStateId` が一意になる。
+- Storybook は `katana-ui-core::panel::Panel` で左ナビ表示枠と右プレビュー表示枠を構成する。
+- 表示枠（panel）は `ThemeSnapshot` を必ず受け取り、見た目テーマ（theme）未設定を成功扱いにしない。
+- Storybook は Floem / GPUI / egui の変換層（adapter）を経由しない。
+- gate は story 数だけでなく、必須 UI、最低構造、状態衝突、panel theme を検査する。
+- Modal の別ネイティブ画面（native window）は、親表示領域（display bounds）内の同一 display 配置と前面表示を KUC core model で計画し、未対応を fallback で隠さない。
+- Storybook の回帰条件は marker だけにせず、操作後 state 反映、重ね表示（overlay）描画、別 window 実描画まで含める。
+
+旧 01〜24 の archive を復帰させる場合も、旧 task の checkbox は引き継がない。
+`docs/architecture/ui-separation/owned-ui-task-map.md` の対応表を入口にして、KUC 独自 UI task として再作成する。
