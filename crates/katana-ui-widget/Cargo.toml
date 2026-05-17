@@ -9,6 +9,6 @@ description = "Floem向け共通UI widget の共通基盤"
 authors.workspace = true
 
 [dependencies]
-floem = "0.2.0"
-floem_reactive = "0.2.0"
-floem_renderer = "0.2.0"
+floem = { version = "0.2.0", git = "https://github.com/lapce/floem.git", rev = "ec7ea2077cf867e58e9684209291881217023f74" }
+floem_reactive = { version = "0.2.0", git = "https://github.com/lapce/floem.git", rev = "ec7ea2077cf867e58e9684209291881217023f74" }
+floem_renderer = { version = "0.2.0", git = "https://github.com/lapce/floem.git", rev = "ec7ea2077cf867e58e9684209291881217023f74" }

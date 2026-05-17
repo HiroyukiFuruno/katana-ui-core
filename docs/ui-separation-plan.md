@@ -1,0 +1,286 @@
+# katana-ui-core — UI 分離計画 抜粋
+
+作成日: 2026-05-17  
+更新日: 2026-05-17 (rename: `katana-ui-widget` → `katana-ui-core` / ADR-0002 / runtime/window/surface 追加)  
+canonical: [`katana/docs/architecture/ui-separation/detailed-design-and-tasks.md`](../../katana/docs/architecture/ui-separation/detailed-design-and-tasks.md)
+
+> **注**: 本 repo はまだ `katana-ui-widget` のディレクトリ名で配置されているが、ADR-0002 によりリネーム済み (master / 抜粋文書上)。実際の GitHub repo / Cargo.toml の rename は P0-B-012〜017 で別 PR 実施。
+
+## このファイルの位置付け
+
+本ファイルは KatanA ecosystem の **UI 分離構想 master** から `katana-ui-core` (KUC) 担当部分を抜粋したもの。task ID は master と同一。**master が単一情報源**であり、本ファイル単独で task を追加・修正してはならない。
+
+## Repository の役割
+
+`katana-ui-core` (KUC、旧 `katana-ui-widget`) は **framework-neutral な UI Core** として位置付ける。
+
+- 独自 UI 表現 (Component model / DSL) を持つ。
+- **runtime / window / surface API も core が持つ** (Application::new().window(...).run() のような起動 entry / multi-window / fullscreen / icon を neutral 化)。
+- Floem / GPUI / egui / native-renderer は **adapter (出力先)** として後ろに置く。core crate に framework 依存を持ち込まない。
+- atoms / molecules / layout primitive / theme token / event model / render model / accessibility / adapter contract を提供する。
+- KatanA 固有の概念を持たない (KDV / KLE / KMM 等の domain crate に依存しない)。
+
+詳細: master [`5.1 katana-ui-core` 詳細設計](../../katana/docs/architecture/ui-separation/detailed-design-and-tasks.md#51-katana-ui-core-詳細設計)
+
+## 担当 Phase
+
+- **Phase 1**: KUC neutral core 化 (本 repo のメイン作業)
+- **P4-0**: Primary adapter 選定 (KatanA 側で決定するが、本 repo の release / 品質ゲートに直結)
+- **横断**: P0 (governance / naming / ADR)
+
+依存グラフ抜粋: master [`6.5 Phase 依存グラフ`](../../katana/docs/architecture/ui-separation/detailed-design-and-tasks.md#65-phase-依存グラフ) より
+
+```
+P0 → P1 (本 repo)
+       ↓ provides: render model / theme token / event model / adapter contract
+     P4 (katana-ui composition がこの output を消費)
+```
+
+## Phase 1 概要
+
+目的: 既存の Floem 前提 crate を framework-neutral UI Core に再定義する。
+
+設計原則 (master 5.1.1):
+
+- Framework-neutral
+- Katana domain-neutral
+- State-light
+- Render-model oriented
+- Adapter contract first
+- Theme token first
+- Accessibility DTO を最初から持つ
+
+## Task list (master 抜粋)
+
+### P1-A. Workspace restructuring
+
+- [ ] P1-A-001: `katana-ui-core` root Cargo.toml の current members を確認する。
+- [ ] P1-A-002: `crates/katana-ui-core` を core crate として再定義する。
+- [ ] P1-A-003: `crates/katana-ui-core-floem` を追加する。
+- [ ] P1-A-004: `crates/katana-ui-core-storybook` を追加する。
+- [ ] P1-A-005: root `workspace.dependencies` の neutral deps と adapter-specific deps を分けて整理する。core crate がどの shared entry を参照してよいか policy 化する。
+- [ ] P1-A-006: `floem` / `floem_reactive` / `floem_renderer` を adapter crate dependency に移す。
+- [ ] P1-A-007: core crate の package description を「framework-neutral」に変更する。
+- [ ] P1-A-008: Floem 前提の README 文言を削除する。
+- [ ] P1-A-009: adapter 方針を README に追加する。
+- [ ] P1-A-010: release metadata に adapter crate を含める。
+
+### P1-B. Core module skeleton
+
+- [ ] P1-B-001: `atom` module を作る。
+- [ ] P1-B-002: `molecule` module を作る。
+- [ ] P1-B-003: `layout` module を neutral 化する。
+- [ ] P1-B-004: `theme` module を neutral 化する。
+- [ ] P1-B-005: `event` module を作る。
+- [ ] P1-B-006: `render_model` module を作る。
+- [ ] P1-B-007: `accessibility` module を作る。
+- [ ] P1-B-008: `adapter_contract` module を作る。
+- [ ] P1-B-009: `primitive` module を `atom` へ段階移行する。
+- [ ] P1-B-010: `composite` module を `molecule` へ段階移行する。
+- [ ] P1-B-011: `floem_view` module を core から削除する。
+- [ ] P1-B-012: `overlay_lifecycle` module を Floem adapter へ移す。
+
+### P1-C. Theme tokens
+
+- [ ] P1-C-001: `ColorToken` を定義する。
+- [ ] P1-C-002: `FontToken` を定義する。
+- [ ] P1-C-003: `SpacingToken` を定義する。
+- [ ] P1-C-004: `RadiusToken` を定義する。
+- [ ] P1-C-005: `ShadowToken` を定義する。
+- [ ] P1-C-006: `BorderToken` を定義する。
+- [ ] P1-C-007: `ZIndexToken` を定義する。
+- [ ] P1-C-008: `ThemeSnapshot` を定義する。
+- [ ] P1-C-009: `ThemeId` を定義する。
+- [ ] P1-C-010: light theme fixture を作る。
+- [ ] P1-C-011: dark theme fixture を作る。
+- [ ] P1-C-012: theme serialization test を作る。
+- [ ] P1-C-013: theme diff test を作る。
+
+### P1-D. Layout primitives
+
+- [ ] P1-D-001: `SizePolicy` を定義する。
+- [ ] P1-D-002: `Length` を定義する。
+- [ ] P1-D-003: `EdgeInsets` を定義する。
+- [ ] P1-D-004: `Alignment` を定義する。
+- [ ] P1-D-005: `Row` model を定義する。
+- [ ] P1-D-006: `Column` model を定義する。
+- [ ] P1-D-007: `Stack` model を定義する。
+- [ ] P1-D-008: `Grid` model を定義する。
+- [ ] P1-D-009: `ScrollArea` model を定義する。
+- [ ] P1-D-010: `SplitPane` model を定義する。
+- [ ] P1-D-011: layout snapshot test を作る。
+- [ ] P1-D-012: layout serialization test を作る。
+
+### P1-E. Atom widgets
+
+- [ ] P1-E-001: `Text` atom を定義する。
+- [ ] P1-E-002: `Icon` atom を定義する。
+- [ ] P1-E-003: `Button` atom を定義する。
+- [ ] P1-E-004: `Input` atom を定義する。
+- [ ] P1-E-005: `Checkbox` atom を定義する。
+- [ ] P1-E-006: `Radio` atom を定義する。
+- [ ] P1-E-007: `Badge` atom を定義する。
+- [ ] P1-E-008: `Divider` atom を定義する。
+- [ ] P1-E-009: `Spacer` atom を定義する。
+- [ ] P1-E-010: disabled state を atom 共通に追加する。
+- [ ] P1-E-011: focusable state を atom 共通に追加する。
+- [ ] P1-E-012: accessibility label を atom 共通に追加する。
+- [ ] P1-E-013: atom render model snapshot を作る。
+
+### P1-F. Molecule widgets
+
+- [ ] P1-F-001: `Card` molecule を定義する。
+- [ ] P1-F-002: `List` molecule を定義する。
+- [ ] P1-F-003: `Menu` molecule を定義する。
+- [ ] P1-F-004: `Tooltip` molecule を定義する。
+- [ ] P1-F-005: `Modal` molecule を定義する。
+- [ ] P1-F-006: `Tabs` molecule を定義する。
+- [ ] P1-F-007: `Toolbar` molecule を定義する。
+- [ ] P1-F-008: `FormField` molecule を定義する。
+- [ ] P1-F-009: `Breadcrumb` molecule を定義する。
+- [ ] P1-F-010: molecule event routing を定義する。
+- [ ] P1-F-011: molecule snapshot test を作る。
+
+### P1-G. Event model
+
+- [ ] P1-G-001: `UiEvent` を定義する。
+- [ ] P1-G-002: `PointerEvent` を定義する。
+- [ ] P1-G-003: `KeyboardEvent` を定義する。
+- [ ] P1-G-004: `FocusEvent` を定義する。
+- [ ] P1-G-005: `CommandEvent` を定義する。
+- [ ] P1-G-006: `UiNodeId` を event target に使う。
+- [ ] P1-G-007: event bubbling policy を定義する。
+- [ ] P1-G-008: event capture policy を定義する。
+- [ ] P1-G-009: event serialization test を作る。
+- [ ] P1-G-010: event ordering test を作る。
+
+### P1-H. Render model
+
+- [ ] P1-H-001: `UiNodeId` を定義する。
+- [ ] P1-H-002: `UiNodeKind` を定義する。
+- [ ] P1-H-003: `UiProps` を定義する。
+- [ ] P1-H-004: `UiNode` を定義する。
+- [ ] P1-H-005: `UiTree` を定義する。
+- [ ] P1-H-006: `UiTreeDiff` を定義する。
+- [ ] P1-H-007: `UiCommand` を定義する。
+- [ ] P1-H-008: `RenderContext` を定義する。
+- [ ] P1-H-009: render model snapshot test を作る。
+- [ ] P1-H-010: render model no-framework compile test を作る。
+
+### P1-I. Primary adapter (Floem) migration
+
+Floem は primary adapter 候補として最初に整備する。P4-0 で primary 確定後、本セクションを正式に primary として扱う。Floem が primary に選ばれなかった場合は本セクションのタスクを互換 adapter (P1-K) と同水準に降格する。
+
+- [ ] P1-I-001: `katana-ui-core-floem` crate を作る。
+- [ ] P1-I-002: core の `UiTree` を Floem view に変換する adapter skeleton を作る。
+- [ ] P1-I-003: `Text` adapter を実装する。
+- [ ] P1-I-004: `Button` adapter を実装する。
+- [ ] P1-I-005: `Input` adapter を実装する。
+- [ ] P1-I-006: `Row` / `Column` adapter を実装する。
+- [ ] P1-I-007: `Tabs` adapter を実装する。
+- [ ] P1-I-008: `Toolbar` adapter を実装する。
+- [ ] P1-I-009: `SplitPane` adapter を実装する。
+- [ ] P1-I-010: overlay lifecycle guard を Floem adapter 側に移す。
+- [ ] P1-I-011: menu button contract を Floem adapter 側に移す。
+- [ ] P1-I-012: adapter compile test を作る。
+
+### P1-K. 互換 adapter (egui / gpui)
+
+primary に選ばれていない framework 向けの互換 adapter を併設する。外部利用者が既存環境に `katana-ui-core` を差し込めるようにするのが目的。品質ゲートは primary より緩いが、core crate に依存リークさせない原則は同じ。
+
+- [ ] P1-K-001: `katana-ui-core-egui` 互換 adapter crate を新設する。
+- [ ] P1-K-002: `katana-ui-core-gpui` 互換 adapter crate を新設する。
+- [ ] P1-K-003: 各互換 adapter で `UiTree` -> framework view 変換 skeleton を作る (Text / Button / Row / Column を最低ライン)。
+- [ ] P1-K-004: 各互換 adapter の対応 widget / 未対応機能 / フォールバック挙動を README に明記する。
+- [ ] P1-K-005: 各互換 adapter に opt-in feature gate (`workspace.dependencies` の optional 化) を設定し、`katana-ui-core` core compile に引き込まれないことを保証する。
+- [ ] P1-K-006: 各互換 adapter の最低品質ゲート (compile test + storybook smoke) を CI に追加する。primary より緩く許容する。
+- [ ] P1-K-007: 互換 adapter の release が primary release を止めない policy を CI / release script に反映する。
+- [ ] P1-K-008: 互換 adapter のサポート範囲・SemVer minor 追加縮小 policy を `docs/release/compat-adapters.md` (KatanA repo) に記録する。
+
+### P1-L. Runtime / Window / Surface API
+
+KUC を framework-neutral UI Core として完成させるために、起動 entry / window 管理 / 描画 surface の neutral API を整備する。adapter (Floem / GPUI / 互換 egui / gpui) はこの neutral API を変換する責務だけを持つ。
+
+neutral 化の粒度は **「中」**: title / size / close / focus / fullscreen / multi-window / icon を共通サポートする。platform menu / IME / drag&drop は adapter 経由 escape hatch (`adapter_contract` 拡張) で対応。
+
+- [ ] P1-L-001: `Application` を定義する (`Application::new() -> ApplicationBuilder`、`run(self) -> AppExitCode`)。
+- [ ] P1-L-002: `AppConfig` を定義する (識別子 / persistence path / locale / accessibility option)。
+- [ ] P1-L-003: `AppHandle` を定義する (`spawn_window` / `dispatch_command` / `current_windows`)。
+- [ ] P1-L-004: `AppLifecycle` event (`Started` / `Suspended` / `Resumed` / `ShuttingDown`) を定義する。
+- [ ] P1-L-005: `RuntimeAdapter` trait を定義する (event loop を adapter に委譲)。
+- [ ] P1-L-006: `Window` / `WindowId` を定義する。
+- [ ] P1-L-007: `WindowConfig` を定義する (title / size / min_size / max_size / icon / decorations / fullscreen)。
+- [ ] P1-L-008: `WindowEvent` enum を定義する (Close / Resize / Move / Focus / Minimize / Maximize / Restore / DisplayChanged)。
+- [ ] P1-L-009: `WindowCommand` enum を定義する (SetTitle / SetSize / SetPosition / Focus / Minimize / Maximize / Close / Fullscreen)。
+- [ ] P1-L-010: `WindowManager` を定義する (multi-window 作成 / iteration / 1 window 終了でアプリ終了するかの policy)。
+- [ ] P1-L-011: `DisplayInfo` DTO を定義する (multi-monitor read-only 情報)。
+- [ ] P1-L-012: `Surface` / `FrameHandle` / `PaintRequest` / `SurfaceMetrics` を定義する。
+- [ ] P1-L-013: runtime / window / surface module に対する framework 非依存 snapshot test を作る (Noop adapter で起動できることを確認)。
+- [ ] P1-L-014: runtime / window / surface module の public API が adapter 型を返さないことを script で検査する。
+- [ ] P1-L-015: primary adapter (Floem) で runtime / window / surface を実装する (`katana-ui-core-floem`)。
+- [ ] P1-L-016: 互換 adapter (egui / gpui) で runtime / window / surface を実装する (機能差異を README に明記)。
+- [ ] P1-L-017: platform menu / IME / drag&drop の escape hatch を `adapter_contract` 拡張として定義する (KUC 標準 API には入れない)。
+
+### P1-J. Quality gate update
+
+- [ ] P1-J-001: core crate が `floem` を含まないことを script で検査する。
+- [ ] P1-J-002: core crate が `gpui` を含まないことを script で検査する。
+- [ ] P1-J-003: core crate が `katana-*` domain crate を含まないことを script で検査する。
+- [ ] P1-J-004: `just check` に dependency leak guard を追加する。
+- [ ] P1-J-005: Storybook gate を adapter crate 対象に変更する。
+- [ ] P1-J-006: release dry-run に core crate を含める。
+- [ ] P1-J-007: release dry-run に Floem adapter crate を含める。
+- [ ] P1-J-008: README に adapter policy を追加する。
+
+## P4-0 (primary adapter 選定) との接点
+
+P4-0 は `katana-ui` 側 (KatanA repo) で決定するが、本 repo の release / 品質ゲートに直結する。
+
+- KatanA が起動時に使う primary adapter として何を選ぶか (floem / gpui / egui / agnostic 継続) を ADR `docs/adr/katana-ui-primary-adapter.md` (KatanA repo) で決める。
+- 選ばれた primary adapter の crate (`katana-ui-core-<primary>`) は core と同等の品質ゲートを通す。
+- primary に選ばれていない framework は P1-K の互換 adapter として維持する。
+- primary 切り替え発生時、旧 primary は互換 adapter (P1-K 水準) に降格する。
+
+詳細: master [`P4-0. Primary adapter 選定`](../../katana/docs/architecture/ui-separation/detailed-design-and-tasks.md#p4-0-primary-adapter-選定)
+
+## 前提 (depends on) / 出力 (provides)
+
+- **前提 (P0 完了)**:
+  - `katana-ui-core` を framework-neutral core とする ADR 記録 (P0-B-007)
+  - `Floem` / `GPUI` を adapter 対象とする ADR 記録 (P0-B-008, P0-B-009)
+  - `egui` を新規 core API に入れない方針 (P0-B-010)
+  - dependency leak guard (P0-C-002, P0-C-003)
+
+- **出力 (Phase 1 完了で他 Phase に提供するもの)**:
+  - `UiTree` / `UiNode` / `UiNodeKind` / `UiProps` (render model)
+  - `ThemeSnapshot` / 各 token (theme)
+  - `UiEvent` / `PointerEvent` / `KeyboardEvent` / `FocusEvent` / `CommandEvent` (event model)
+  - atom (Text / Icon / Button / Input / Checkbox / Radio / Badge / Divider / Spacer)
+  - molecule (Card / List / Menu / Tooltip / Modal / Tabs / Toolbar / FormField / SplitPane 等)
+  - primary adapter crate (`katana-ui-core-<primary>`) と互換 adapter crate 群
+  - adapter contract trait
+
+## Done criteria
+
+本 repo に関する master 9 章 Done criteria のうち、該当項目:
+
+- [ ] `katana-ui-core` core が Floem なしで compile できる
+- [ ] core crate が `floem` / `gpui` / `egui` を含まない (P1-J-001〜002 script 通過)
+- [ ] core crate が `katana-*` domain crate を含まない (P1-J-003)
+- [ ] Floem は adapter 対象であり core dependency ではない
+- [ ] GPUI は adapter 対象であり core dependency ではない
+- [ ] egui は compatibility adapter 以外に残らない
+
+## drift 検出
+
+- 本ファイルの task ID は master と完全一致する。task の追加・削除・変更時は master を先に更新する。
+- P8-A-001 の CI script が master と本ファイルの task ID 一致を検査する。
+
+## 参照リンク
+
+- [master detailed-design-and-tasks.md](../../katana/docs/architecture/ui-separation/detailed-design-and-tasks.md)
+- [master principles.md](../../katana/docs/architecture/ui-separation/principles.md)
+- [overview README](../../katana/docs/architecture/ui-separation/README.md)
+- [既存 docs/widget-extraction-policy.md](widget-extraction-policy.md)
+- [既存 docs/directory-structure.md](directory-structure.md)
+- [既存 docs/release.md](release.md)

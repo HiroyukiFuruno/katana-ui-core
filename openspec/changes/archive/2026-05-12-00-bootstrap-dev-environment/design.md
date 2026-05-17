@@ -89,7 +89,7 @@ theme  ←  primitive  ←  composite  ←  layout
 ## widget 抽出可否の判断軸（docs/widget-extraction-policy.md に格納）
 
 - ✅ 抽出対象: Katana domain に依存しない、Floem 単体で完結する、汎用 UI 部品として他プロジェクトでも使えるもの
-- ❌ 除外: markdown 描画 / KME / chat 用 vendor 制御 / linter 結果表示 / workspace ファイルツリーなど Katana 固有の domain ロジックを含むもの
+- ❌ 除外: markdown 描画 / KMM / chat 用 vendor 制御 / linter 結果表示 / workspace ファイルツリーなど Katana 固有の domain ロジックを含むもの
 - 抽出元の参考実装（移植不可、仕様抽出のみ）:
   - `../katana/crates/katana-ui/src/widgets/` (egui)
   - `../katana/crates/katana-ui/src/views/` (egui)

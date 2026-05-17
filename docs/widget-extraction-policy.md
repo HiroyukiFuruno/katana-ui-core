@@ -16,7 +16,7 @@ The following are explicitly **out of scope**, regardless of reuse potential:
 
 | Widget / Feature | Reason for exclusion |
 |-----------------|----------------------|
-| Markdown rendering panel | Depends on KME (Katana Markdown Engine) |
+| Markdown rendering panel | Depends on KMM (Katana Markdown Model) |
 | Chat composer | Vendor UI control with Katana-specific protocol |
 | Linter result list | Katana AST lint domain object |
 | Workspace file tree | Katana project model |

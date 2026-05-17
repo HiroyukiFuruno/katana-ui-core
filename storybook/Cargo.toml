@@ -14,4 +14,4 @@ path = "src/main.rs"
 
 [dependencies]
 katana-ui-widget = { path = "../crates/katana-ui-widget" }
-floem = "0.2.0"
+floem = { version = "0.2.0", git = "https://github.com/lapce/floem.git", rev = "ec7ea2077cf867e58e9684209291881217023f74" }

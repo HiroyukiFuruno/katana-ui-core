@@ -47,7 +47,7 @@
 
 以下は本 widget crate のスコープ外。消費側（katana / katana-chat-ui）で自前実装するか、`katana-ui-katana-domain` 等のドメインクレートで管理する。
 
-- markdown 描画 / KME 連携 (`markdown_hooks`, `markdown` widget)
+- markdown 描画 / KMM 連携 (`markdown_hooks`, `markdown` widget)
 - AI vendor 制御 (`vendor_ui`, `vendor_controls`, `vendor_control_parts`)
 - chat 専用 (`composer/thinking/usage/output_cards`)
 - Katana 固有の diff / linter 表示 (`diff_viewer`, `problems`, lint 関連)。ただし、2つのコード文字列だけを見比べる汎用 `CodeDiff` は `24-code-diff` で扱う。

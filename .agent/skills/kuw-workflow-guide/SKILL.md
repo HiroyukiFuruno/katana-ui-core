@@ -39,7 +39,7 @@ theme  ←  primitive  ←  composite  ←  layout
 - Could be useful in other Floem-based projects
 
 ❌ **Do NOT extract** widgets that involve:
-- Markdown rendering / KME integration
+- Markdown rendering / KMM integration
 - Chat composer / vendor UI controls
 - Linter result display
 - Workspace file tree or Katana-specific panels
