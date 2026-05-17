@@ -42,7 +42,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--latest-version", help="Override latest stable version for tests")
     parser.add_argument(
         "--repo",
-        default="HiroyukiFuruno/katana-ui-widget",
+        default="HiroyukiFuruno/katana-ui-core",
         help="GitHub repository used to resolve published stable releases",
     )
     parser.add_argument(
@@ -57,7 +57,7 @@ def github_request_headers() -> dict[str, str]:
     headers = {
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28",
-        "User-Agent": "katana-ui-widget-release-target-check",
+        "User-Agent": "katana-ui-core-release-target-check",
     }
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     if token:

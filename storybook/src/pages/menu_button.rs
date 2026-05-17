@@ -2,11 +2,11 @@ use floem::IntoView;
 use floem::reactive::{RwSignal, SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::Decorators;
 use floem::views::{button, container, h_stack, label, scroll, v_stack};
-use katana_ui_widget::composite::menu_button::{
+use katana_ui_core::composite::menu_button::{
     MenuButton, MenuButtonCloseCallback, MenuButtonPlacement, MenuButtonVariant,
 };
-use katana_ui_widget::primitive::icon::IconSource;
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::primitive::icon::IconSource;
+use katana_ui_core::theme::Theme;
 use floem::View;
 use std::rc::Rc;
 

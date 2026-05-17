@@ -27,7 +27,7 @@ GitHub のブランチ保護（branch protection）では、KML と同じ形で�
 - `Cargo.toml` の版番号（version）とブランチ版番号（branch version）の一致
 - 対象版番号（version）が公開済みrelease lineから自然な次版であること
 - 対象版番号（version）がcrates.ioに未公開であること
-- `katana-ui-widget` の梱包（package）と公開の事前実行（publish dry-run）
+- `katana-ui-core` の梱包（package）と公開の事前実行（publish dry-run）
 
 ## 公開順序
 
@@ -37,7 +37,7 @@ GitHub のブランチ保護（branch protection）では、KML と同じ形で�
 1. `just VERSION=vX.Y.Z release-check`
 2. リリースタグ（release tag）作成
 3. GitHubリリース（GitHub Release）作成
-4. `katana-ui-widget` をcrates.ioに公開
+4. `katana-ui-core` をcrates.ioに公開
 
 ## 必要な秘匿値
 
@@ -45,7 +45,7 @@ GitHub のブランチ保護（branch protection）では、KML と同じ形で�
 値はcrates.ioの API トークン（API token）を使う。
 
 ```bash
-cd /Users/hiroyuki_furuno/works/private/katana-ui-widget
+cd /Users/hiroyuki_furuno/works/private/katana-ui-core
 gh secret set CARGO_REGISTRY_TOKEN
 ```
 

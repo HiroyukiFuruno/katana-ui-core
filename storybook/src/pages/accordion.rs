@@ -5,11 +5,11 @@ use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{
     Decorators, button, container, empty, h_stack, label, scroll, v_stack, v_stack_from_iter,
 };
-use katana_ui_widget::layout::accordion::{
+use katana_ui_core::layout::accordion::{
     Accordion, AccordionGroup, AccordionGroupItem, AccordionTreeMode, AccordionTriggerArea,
     IndicatorPosition,
 };
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::theme::Theme;
 
 fn body_row(title: &'static str, body: &'static str) -> impl IntoView {
     v_stack((

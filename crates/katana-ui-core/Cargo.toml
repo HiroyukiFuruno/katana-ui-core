@@ -1,11 +1,11 @@
 [package]
-name = "katana-ui-widget"
+name = "katana-ui-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 repository.workspace = true
-description = "Floem向け共通UI widget の共通基盤"
+description = "Framework-neutral UI Core for the KatanA ecosystem (runtime / window / surface / widgets)"
 authors.workspace = true
 
 [dependencies]

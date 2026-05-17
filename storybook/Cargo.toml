@@ -1,11 +1,11 @@
 [workspace]
 
 [package]
-name = "katana-ui-widget-storybook"
+name = "katana-ui-core-storybook"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-description = "Interactive storybook for katana-ui-widget components"
+description = "Interactive storybook for katana-ui-core components"
 publish = false
 
 [[bin]]
@@ -13,5 +13,5 @@ name = "storybook"
 path = "src/main.rs"
 
 [dependencies]
-katana-ui-widget = { path = "../crates/katana-ui-widget" }
+katana-ui-core = { path = "../crates/katana-ui-core" }
 floem = { version = "0.2.0", git = "https://github.com/lapce/floem.git", rev = "ec7ea2077cf867e58e9684209291881217023f74" }

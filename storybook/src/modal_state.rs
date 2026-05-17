@@ -1,5 +1,5 @@
 use floem::reactive::{RwSignal, SignalGet, SignalUpdate};
-use katana_ui_widget::layout::modal::{ModalParentInteraction, ModalSize};
+use katana_ui_core::layout::modal::{ModalParentInteraction, ModalSize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum FooterSample {

@@ -2,8 +2,8 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, h_stack, label, scroll, v_stack};
-use katana_ui_widget::composite::button::text::{Size, TextButton, Tone, Variant};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::button::text::{Size, TextButton, Tone, Variant};
+use katana_ui_core::theme::Theme;
 
 fn btn_cell(lbl: &'static str, font_sz: f32, r: u8, g: u8, b: u8, a: u8) -> impl IntoView {
     let color = PenikoColor::rgba8(r, g, b, a);

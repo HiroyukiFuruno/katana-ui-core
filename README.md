@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="assets/kuw-icon.png" width="128" alt="katana-ui-widget icon">
+  <img src="assets/kuw-icon.png" width="128" alt="katana-ui-core icon">
 </p>
 
-<h1 align="center">katana-ui-widget</h1>
+<h1 align="center">katana-ui-core</h1>
 
 <p align="center">
   Floem-first shared UI widgets for the KatanA ecosystem.
@@ -10,17 +10,17 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
-  <a href="https://github.com/HiroyukiFuruno/katana-ui-widget/actions/workflows/test-and-build.yml"><img src="https://github.com/HiroyukiFuruno/katana-ui-widget/actions/workflows/test-and-build.yml/badge.svg" alt="CI"></a>
-  <a href="https://github.com/HiroyukiFuruno/katana-ui-widget/releases/latest"><img src="https://img.shields.io/github/v/release/HiroyukiFuruno/katana-ui-widget" alt="Latest Release"></a>
-  <a href="https://crates.io/crates/katana-ui-widget"><img src="https://img.shields.io/crates/v/katana-ui-widget.svg" alt="crates.io"></a>
-  <a href="https://docs.rs/katana-ui-widget"><img src="https://img.shields.io/badge/docs.rs-katana--ui--widget-blue" alt="docs.rs"></a>
+  <a href="https://github.com/HiroyukiFuruno/katana-ui-core/actions/workflows/test-and-build.yml"><img src="https://github.com/HiroyukiFuruno/katana-ui-core/actions/workflows/test-and-build.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/HiroyukiFuruno/katana-ui-core/releases/latest"><img src="https://img.shields.io/github/v/release/HiroyukiFuruno/katana-ui-core" alt="Latest Release"></a>
+  <a href="https://crates.io/crates/katana-ui-core"><img src="https://img.shields.io/crates/v/katana-ui-core.svg" alt="crates.io"></a>
+  <a href="https://docs.rs/katana-ui-core"><img src="https://img.shields.io/badge/docs.rs-katana--ui--widget-blue" alt="docs.rs"></a>
 </p>
 
 ---
 
 ## 目的
 
-`katana-ui-widget` は、KatanAエコシステム向けの共有UI部品を管理するリポジトリです。
+`katana-ui-core` は、KatanAエコシステム向けの共有UI部品を管理するリポジトリです。
 
 **Floem前提**です。`egui` 互換層や egui 固有の部品は対象外です。
 

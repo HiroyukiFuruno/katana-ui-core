@@ -2,12 +2,12 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, container, h_stack, label, scroll, v_stack};
-use katana_ui_widget::composite::button::icon_text::{IconPosition, IconTextButton};
-use katana_ui_widget::composite::button::svg::{SvgButton, Tone, Variant};
-use katana_ui_widget::composite::button::text::Size;
-use katana_ui_widget::layout::toolbar::{Toolbar, ToolbarAlignment};
-use katana_ui_widget::primitive::icon::{Icon, IconSize, IconSource};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::button::icon_text::{IconPosition, IconTextButton};
+use katana_ui_core::composite::button::svg::{SvgButton, Tone, Variant};
+use katana_ui_core::composite::button::text::Size;
+use katana_ui_core::layout::toolbar::{Toolbar, ToolbarAlignment};
+use katana_ui_core::primitive::icon::{Icon, IconSize, IconSource};
+use katana_ui_core::theme::Theme;
 
 const ICON_SAVE: &[u8] =
     b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2 2h10l2 2v10a2 2 0 0 1-2 2H2zm0 3v9h12V6l-1-1H7V5H2'/><path d='M6 2v2h5v1H6z'/></svg>";

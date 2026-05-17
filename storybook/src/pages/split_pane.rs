@@ -1,8 +1,8 @@
 use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::views::{Decorators, h_stack, label, scroll, v_stack};
-use katana_ui_widget::layout::split::{Direction, SplitPane};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::layout::split::{Direction, SplitPane};
+use katana_ui_core::theme::Theme;
 
 const DEMO_WIDTH: f32 = 360.0;
 const DEMO_HEIGHT: f32 = 82.0;
@@ -66,7 +66,7 @@ fn handle_strip(
 fn split_row(
     heading: &'static str,
     direction: Direction,
-    resolved: katana_ui_widget::layout::split::ResolvedSplitPane,
+    resolved: katana_ui_core::layout::split::ResolvedSplitPane,
     width: f32,
     height: f32,
     text_color: (u8, u8, u8),

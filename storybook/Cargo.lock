@@ -1775,7 +1775,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "katana-ui-widget"
+name = "katana-ui-core"
 version = "0.1.0"
 dependencies = [
  "floem",
@@ -1784,11 +1784,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "katana-ui-widget-storybook"
+name = "katana-ui-core-storybook"
 version = "0.1.0"
 dependencies = [
  "floem",
- "katana-ui-widget",
+ "katana-ui-core",
 ]
 
 [[package]]

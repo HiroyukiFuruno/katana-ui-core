@@ -34,7 +34,7 @@
 
 ## 4. 完了確認
 
-- [x] 4.1 `cargo check -p katana-ui-widget`
+- [x] 4.1 `cargo check -p katana-ui-core`
 - [x] 4.2 `just storybook` で accordion ページが想定通り表示
   - 2026-05-11: `KATANA_UI_WIDGET_STORYBOOK_PAGE=accordion` で起動し、katana方式の `screencapture -l <window_id>` でAccordionページのウィンドウ単体表示を確認。
 - [x] 4.3 ast-lint 通過

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 version="$(bash "$(dirname "$0")/verify-version.sh" "${1:-}" | awk -F= '$1 == "version_bare" { print $2 }')"
-package="katana-ui-widget"
+package="katana-ui-core"
 
 if [[ -z "${CARGO_REGISTRY_TOKEN:-}" ]]; then
   echo "CARGO_REGISTRY_TOKEN is required." >&2

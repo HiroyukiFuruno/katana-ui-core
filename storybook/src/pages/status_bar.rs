@@ -2,9 +2,9 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, container, label, scroll, v_stack};
-use katana_ui_widget::layout::status_bar::{StatusBar, StatusSeverity};
-use katana_ui_widget::primitive::spinner::{Spinner, SpinnerSize};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::layout::status_bar::{StatusBar, StatusSeverity};
+use katana_ui_core::primitive::spinner::{Spinner, SpinnerSize};
+use katana_ui_core::theme::Theme;
 
 fn sample_statuses(theme: Theme) -> impl IntoView {
     v_stack((

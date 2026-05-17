@@ -2,11 +2,11 @@ use floem::IntoView;
 use floem::peniko::Color;
 use floem::reactive::{RwSignal, SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, container, label, scroll, v_stack};
-use katana_ui_widget::composite::command_palette::{
+use katana_ui_core::composite::command_palette::{
     CallbackCommandPaletteProvider, CommandPalette, CommandPaletteItem,
 };
-use katana_ui_widget::primitive::icon::IconSource;
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::primitive::icon::IconSource;
+use katana_ui_core::theme::Theme;
 
 const FILE_ICON: &[u8] = b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='currentColor' d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><polyline fill='none' stroke='currentColor' stroke-width='2' points='14 2 14 8 20 8'/></svg>";
 const CMD_ICON: &[u8] = b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='currentColor' d='M12 2l3.5 7.5L23 10l-6 3.5L14 21l-2-6.5L7 21l.9-7.5L2 10l7.5-0.5L12 2z'/></svg>";
@@ -17,7 +17,7 @@ fn file_items(query: &str) -> Vec<CommandPaletteItem<String>> {
         "src/lib.rs",
         "README.md",
         "Cargo.toml",
-        "crates/katana-ui-widget/src/composite/command_palette/view.rs",
+        "crates/katana-ui-core/src/composite/command_palette/view.rs",
         "storybook/src/main.rs",
         "storybook/src/main.rs",
     ];

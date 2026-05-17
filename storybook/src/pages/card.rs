@@ -2,12 +2,12 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, h_stack, label, scroll, v_stack};
-use katana_ui_widget::composite::button::text::TextButton;
-use katana_ui_widget::composite::indicator::badge::{Badge, BadgeTone, BadgeVariant};
-use katana_ui_widget::composite::input::text::TextInput;
-use katana_ui_widget::layout::accordion::Accordion;
-use katana_ui_widget::layout::card::{Card, CardPadding, CardVariant};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::button::text::TextButton;
+use katana_ui_core::composite::indicator::badge::{Badge, BadgeTone, BadgeVariant};
+use katana_ui_core::composite::input::text::TextInput;
+use katana_ui_core::layout::accordion::Accordion;
+use katana_ui_core::layout::card::{Card, CardPadding, CardVariant};
+use katana_ui_core::theme::Theme;
 
 fn card_row(
     heading: &'static str,

@@ -2,8 +2,8 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{RwSignal, SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, button, container, dyn_container, h_stack, label, scroll, v_stack};
-use katana_ui_widget::composite::indicator::tooltip::{Tooltip, TooltipPlacement};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::indicator::tooltip::{Tooltip, TooltipPlacement};
+use katana_ui_core::theme::Theme;
 
 fn placement_label(placement: TooltipPlacement) -> &'static str {
     match placement {

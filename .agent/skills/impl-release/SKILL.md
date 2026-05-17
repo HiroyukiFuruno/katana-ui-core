@@ -1,6 +1,6 @@
 ---
 name: impl-release
-description: katana-ui-widgetで指定バージョンのOpenSpec実装、品質確認、リリースPR、GitHub Release、crates.io publish、事後整理までを一気通貫で進めるときに使う。/impl-release vX.Y.Z と同等のリリース実装ワークフロー。
+description: katana-ui-coreで指定バージョンのOpenSpec実装、品質確認、リリースPR、GitHub Release、crates.io publish、事後整理までを一気通貫で進めるときに使う。/impl-release vX.Y.Z と同等のリリース実装ワークフロー。
 ---
 
 # impl-release

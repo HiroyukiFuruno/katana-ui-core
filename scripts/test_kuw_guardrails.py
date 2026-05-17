@@ -33,7 +33,7 @@ class KuwGuardrailsTest(unittest.TestCase):
     def test_detects_runtime_api_gated_by_test_cfg(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            ops = root / "crates/katana-ui-widget/src/layout/split/ops.rs"
+            ops = root / "crates/katana-ui-core/src/layout/split/ops.rs"
             ops.parent.mkdir(parents=True)
             ops.write_text(
                 "#[cfg(test)]\npub(super) fn drag_ratio() -> f32 { 1.0 }\n",
@@ -48,7 +48,7 @@ class KuwGuardrailsTest(unittest.TestCase):
     def test_detects_missing_interactive_callback(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            types = root / "crates/katana-ui-widget/src/composite/selector/toggle/types.rs"
+            types = root / "crates/katana-ui-core/src/composite/selector/toggle/types.rs"
             types.parent.mkdir(parents=True)
             types.write_text("pub struct ToggleProps { pub value: bool }\n", encoding="utf-8")
 
@@ -60,13 +60,13 @@ class KuwGuardrailsTest(unittest.TestCase):
     def test_detects_file_length_without_review_evidence(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            source = root / "crates/katana-ui-widget/src/layout/card/types.rs"
+            source = root / "crates/katana-ui-core/src/layout/card/types.rs"
             source.parent.mkdir(parents=True)
             source.write_text("pub struct X;\n" * 260, encoding="utf-8")
             task = root / "openspec/changes/sample/tasks.md"
             task.parent.mkdir(parents=True)
             task.write_text(
-                "- [x] 1.1 file-length 対応で `crates/katana-ui-widget/src/layout/card/types.rs` を追加\n",
+                "- [x] 1.1 file-length 対応で `crates/katana-ui-core/src/layout/card/types.rs` を追加\n",
                 encoding="utf-8",
             )
 

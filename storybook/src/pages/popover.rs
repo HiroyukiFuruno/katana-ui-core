@@ -4,8 +4,8 @@ use floem::views::{
     Decorators, button, dyn_container, h_stack, label, scroll, v_stack, v_stack_from_iter,
 };
 use floem::{IntoView, View};
-use katana_ui_widget::layout::popover::{AnchorRect, AnchorRef, Placement, Popover};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::layout::popover::{AnchorRect, AnchorRef, Placement, Popover};
+use katana_ui_core::theme::Theme;
 
 fn placement_row(title: &'static str, placement: Placement, x: f32, y: f32) -> impl IntoView {
     let tag = match placement {

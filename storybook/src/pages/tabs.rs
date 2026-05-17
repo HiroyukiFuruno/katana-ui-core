@@ -2,9 +2,9 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, label, scroll, v_stack};
-use katana_ui_widget::composite::tabs::{TabItem, Tabs};
-use katana_ui_widget::primitive::icon::IconSource;
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::tabs::{TabItem, Tabs};
+use katana_ui_core::primitive::icon::IconSource;
+use katana_ui_core::theme::Theme;
 
 const ICON_CLOCK: &[u8] = b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='6.5' fill='none' stroke='currentColor' stroke-width='1.2'/><path d='M8 4.5v3l2 1' fill='none' stroke='currentColor' stroke-width='1.2' stroke-linecap='round'/></svg>";
 const ICON_DOC: &[u8] = b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M4 2h6l2 2v10H4z' fill='none' stroke='currentColor' stroke-width='1.2'/><path d='M9 2v3h3' fill='none' stroke='currentColor' stroke-width='1.2'/></svg>";

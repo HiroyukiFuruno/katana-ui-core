@@ -1,9 +1,9 @@
 use floem::IntoView;
 use floem::reactive::{RwSignal, SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, h_stack, label, scroll, v_stack};
-use katana_ui_widget::composite::breadcrumb::{Breadcrumb, BreadcrumbCrumb};
-use katana_ui_widget::primitive::icon::IconSource;
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::breadcrumb::{Breadcrumb, BreadcrumbCrumb};
+use katana_ui_core::primitive::icon::IconSource;
+use katana_ui_core::theme::Theme;
 
 const ICON_FOLDER: &[u8] =
     b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2 4h5l2 2h5v7H2z' fill='none' stroke='currentColor' stroke-width='1.2'/></svg>";
@@ -90,9 +90,9 @@ pub fn breadcrumb_page(theme: Theme) -> impl IntoView {
     let long_path = Breadcrumb::new(vec![
         BreadcrumbCrumb::new("workspace").on_click(with_label(long_log, "workspace")),
         BreadcrumbCrumb::new("apps").on_click(with_label(long_log, "apps")),
-        BreadcrumbCrumb::new("katana-ui-widget").on_click(with_label(long_log, "katana-ui-widget")),
+        BreadcrumbCrumb::new("katana-ui-core").on_click(with_label(long_log, "katana-ui-core")),
         BreadcrumbCrumb::new("crates").on_click(with_label(long_log, "crates")),
-        BreadcrumbCrumb::new("katana-ui-widget").on_click(with_label(long_log, "crate")),
+        BreadcrumbCrumb::new("katana-ui-core").on_click(with_label(long_log, "crate")),
         BreadcrumbCrumb::new("src").on_click(with_label(long_log, "src")),
         BreadcrumbCrumb::new("composite").on_click(with_label(long_log, "composite")),
         BreadcrumbCrumb::new("navigation").disabled(true),

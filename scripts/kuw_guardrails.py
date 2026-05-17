@@ -169,7 +169,7 @@ class KuwGuardrails:
 def main() -> int:
     failures = KuwGuardrails(Path.cwd()).run()
     if failures:
-        print("katana-ui-widget guardrails failed", file=sys.stderr)
+        print("katana-ui-core guardrails failed", file=sys.stderr)
         for failure in failures:
             print(f"- {failure}", file=sys.stderr)
         return 1

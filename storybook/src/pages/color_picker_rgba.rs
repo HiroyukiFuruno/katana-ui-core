@@ -2,11 +2,11 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, dyn_container, h_stack, label, scroll, v_stack};
-use katana_ui_widget::composite::selector::color_picker::{
+use katana_ui_core::composite::selector::color_picker::{
     ColorPickerRgba, ColorPickerTriggerSize, InlineColorPicker, LabeledColorPicker,
 };
-use katana_ui_widget::theme::Theme;
-use katana_ui_widget::theme::color::Color;
+use katana_ui_core::theme::Theme;
+use katana_ui_core::theme::color::Color;
 
 fn sample_color() -> Color {
     Color {

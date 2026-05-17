@@ -1,9 +1,9 @@
 use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::views::{Decorators, container, h_stack, label, scroll, v_stack};
-use katana_ui_widget::primitive::text::{Text, TextAlign, TextRole};
-use katana_ui_widget::theme::Theme;
-use katana_ui_widget::theme::color::Color;
+use katana_ui_core::primitive::text::{Text, TextAlign, TextRole};
+use katana_ui_core::theme::Theme;
+use katana_ui_core::theme::color::Color;
 
 fn role_row(desc: &'static str, size: f32) -> impl IntoView {
     h_stack((

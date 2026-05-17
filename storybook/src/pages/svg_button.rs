@@ -2,9 +2,9 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, h_stack, label, scroll, svg, v_stack};
-use katana_ui_widget::composite::button::svg::{SvgButton, Tone, Variant};
-use katana_ui_widget::primitive::icon::{IconSize, IconSource};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::button::svg::{SvgButton, Tone, Variant};
+use katana_ui_core::primitive::icon::{IconSize, IconSource};
+use katana_ui_core::theme::Theme;
 
 const ICON_CHECK: &[u8] = b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='currentColor'><path d='M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z'/></svg>";
 
@@ -49,7 +49,7 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
                 .variant(variant)
                 .tone(*tone)
                 .resolve(theme);
-            let icon_svg = katana_ui_widget::primitive::icon::Icon::new(r.icon_source)
+            let icon_svg = katana_ui_core::primitive::icon::Icon::new(r.icon_source)
                 .size(IconSize::Lg)
                 .resolve(theme);
             let desc = format!("{vname}/{tname}");
@@ -68,7 +68,7 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     let disabled_r = SvgButton::new(IconSource::SvgBytes(ICON_CHECK), "check disabled")
         .disabled(true)
         .resolve(theme);
-    let disabled_icon = katana_ui_widget::primitive::icon::Icon::new(disabled_r.icon_source)
+    let disabled_icon = katana_ui_core::primitive::icon::Icon::new(disabled_r.icon_source)
         .size(IconSize::Lg)
         .resolve(theme);
 

@@ -39,7 +39,7 @@
 
 ## 3. 表示部品
 
-- [x] 3.1 `crates/katana-ui-widget/src/composite/code_diff/` を追加する。
+- [x] 3.1 `crates/katana-ui-core/src/composite/code_diff/` を追加する。
 - [x] 3.2 `mod.rs` で公開 API を整理する。
 - [x] 3.3 行番号、記号、コードセル、省略行を責務分離して実装する。
 - [x] 3.4 テーマトークン（theme token）に追従した通常、追加、削除、省略の見た目（style）解決を実装する。
@@ -76,12 +76,12 @@
 
 ## 7. 完了条件（Definition of Done / DoD）
 
-- [x] 7.1 `cargo test -p katana-ui-widget code_diff`
+- [x] 7.1 `cargo test -p katana-ui-core code_diff`
   - 追加、削除、置換、差分なし、末尾改行、空行、空白（space）、タブ（tab）、複数バイト文字、行数不一致、空行を挟む類似行ペアリングを含める。
 - [x] 7.2 `just storybook-check`
 - [x] 7.3 `just check`
   - 2026-05-12: `just check` 通過。`cargo check`、`clippy -D warnings`、`fmt-check` を含めて成功。
 - [x] 7.4 Storybook で CodeDiff ページを開き、表示モード、省略展開、末尾改行差分、空白記号、長い行、左右同期、差分なしを確認する。
   - 2026-05-12: `STORYBOOK_SMOKE_PAGES="code-diff tree-view breadcrumb tabs tooltip toolbar command-palette popover color-picker-rgba card align-center accordion" just storybook-smoke` と全ページ `just storybook-smoke` 通過。
-- [x] 7.5 `git diff --check -- openspec/changes/24-code-diff storybook/src/pages/code_diff.rs crates/katana-ui-widget/src/composite/code_diff` が通る。
+- [x] 7.5 `git diff --check -- openspec/changes/24-code-diff storybook/src/pages/code_diff.rs crates/katana-ui-core/src/composite/code_diff` が通る。
   - 2026-05-12: 指定コマンド通過。

@@ -8,7 +8,7 @@ use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, button, h_stack, label, scroll, v_stack};
 use floem::window::WindowId;
 use floem::{Application, IntoView, View};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::theme::Theme;
 use pages::accordion::accordion_page;
 use pages::align_center::align_center_page;
 use pages::badge::badge_page;

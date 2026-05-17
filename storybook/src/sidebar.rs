@@ -2,9 +2,9 @@ use floem::IntoView;
 use floem::action::exec_after;
 use floem::reactive::{RwSignal, SignalGet, SignalUpdate};
 use floem::views::Decorators;
-use katana_ui_widget::composite::tree_view::{TreeView, TreeViewExpandTrigger, TreeViewItem};
-use katana_ui_widget::primitive::icon::IconSource;
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::tree_view::{TreeView, TreeViewExpandTrigger, TreeViewItem};
+use katana_ui_core::primitive::icon::IconSource;
+use katana_ui_core::theme::Theme;
 use std::time::Duration;
 
 use crate::Page;

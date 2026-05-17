@@ -2,8 +2,8 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, dyn_container, label, scroll, v_stack};
-use katana_ui_widget::composite::slide_control::{SlideControl, SlideValueFormat};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::slide_control::{SlideControl, SlideValueFormat};
+use katana_ui_core::theme::Theme;
 
 fn decimal_row(theme: Theme) -> impl IntoView {
     let gamma = create_rw_signal(0.0);

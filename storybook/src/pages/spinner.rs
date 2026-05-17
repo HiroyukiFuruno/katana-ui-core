@@ -4,8 +4,8 @@ use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{
     Decorators, button, container, dyn_container, empty, h_stack, label, scroll, v_stack,
 };
-use katana_ui_widget::primitive::spinner::{Spinner, SpinnerSize};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::primitive::spinner::{Spinner, SpinnerSize};
+use katana_ui_core::theme::Theme;
 
 fn spinner_row(desc: &'static str, spinner: impl IntoView + 'static) -> impl IntoView {
     h_stack((
@@ -67,7 +67,7 @@ fn page_content(
         .reduced_motion(reduced_motion)
         .view(theme.clone());
     let danger_spinner = {
-        use katana_ui_widget::theme::color::Color;
+        use katana_ui_core::theme::color::Color;
         Spinner::new()
             .size(SpinnerSize::Lg)
             .color_override(Color {

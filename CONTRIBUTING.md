@@ -1,4 +1,4 @@
-# Contributing to katana-ui-widget
+# Contributing to katana-ui-core
 
 Thank you for your interest in contributing!
 

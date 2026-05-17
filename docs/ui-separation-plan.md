@@ -4,7 +4,7 @@
 更新日: 2026-05-17 (rename: `katana-ui-widget` → `katana-ui-core` / ADR-0002 / runtime/window/surface 追加)  
 canonical: [`katana/docs/architecture/ui-separation/detailed-design-and-tasks.md`](../../katana/docs/architecture/ui-separation/detailed-design-and-tasks.md)
 
-> **注**: 本 repo はまだ `katana-ui-widget` のディレクトリ名で配置されているが、ADR-0002 によりリネーム済み (master / 抜粋文書上)。実際の GitHub repo / Cargo.toml の rename は P0-B-012〜017 で別 PR 実施。
+> **注**: 本 repo は GitHub 上はまだ `katana-ui-widget` の名前で配置されているが、ADR-0002 によりリネーム済み (master / 抜粋文書 / Cargo.toml 上)。GitHub repo / ローカルディレクトリの rename はこの PR でまとめて実施。
 
 ## このファイルの位置付け
 

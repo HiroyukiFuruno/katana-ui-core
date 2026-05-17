@@ -9,7 +9,7 @@ cd "$ROOT_DIR/storybook"
 RUSTFLAGS="-D warnings" cargo build
 
 binary="$ROOT_DIR/storybook/target/debug/storybook"
-tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/katana-ui-widget-storybook-requirement.XXXXXX")"
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/katana-ui-core-storybook-requirement.XXXXXX")"
 
 pids=()
 logs=()

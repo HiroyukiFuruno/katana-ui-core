@@ -1,6 +1,6 @@
 # kuw-workflow-guide
 
-Operational rules and conventions for the `katana-ui-widget` repository.
+Operational rules and conventions for the `katana-ui-core` repository.
 
 ## Framework
 
@@ -81,7 +81,7 @@ let theme = use_theme();
 | Spacing     | `theme.spacing.*`      | `xxs=2`, `xs=4`, `sm=8`, `md=12`, ...  |
 | Typography  | `theme.typography.*`   | `body`, `heading_1`, `code`, ...        |
 
-Use `use_theme()` from `katana_ui_widget::theme` to read the current theme from the Floem reactive context. Inject the theme at app root with `provide_theme(Theme::default_light())`.
+Use `use_theme()` from `katana_ui_core::theme` to read the current theme from the Floem reactive context. Inject the theme at app root with `provide_theme(Theme::default_light())`.
 
 ## Per-Widget Change Checklist (DoD)
 

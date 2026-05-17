@@ -2,9 +2,9 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, container, dyn_container, h_stack, label, scroll, v_stack};
-use katana_ui_widget::composite::selector::color::{ColorSwatch, SwatchShape, SwatchSize};
-use katana_ui_widget::theme::Theme;
-use katana_ui_widget::theme::color::Color;
+use katana_ui_core::composite::selector::color::{ColorSwatch, SwatchShape, SwatchSize};
+use katana_ui_core::theme::Theme;
+use katana_ui_core::theme::color::Color;
 
 fn six_palette() -> Vec<Color> {
     vec![

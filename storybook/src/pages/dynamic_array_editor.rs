@@ -2,10 +2,10 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, container, label, scroll, v_stack};
-use katana_ui_widget::composite::dynamic_array_editor::{
+use katana_ui_core::composite::dynamic_array_editor::{
     DynamicArrayEditor, DynamicArrayEditorItem,
 };
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::theme::Theme;
 
 const MAX_ITEMS: usize = 4;
 

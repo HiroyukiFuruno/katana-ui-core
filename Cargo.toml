@@ -1,12 +1,12 @@
 [workspace]
-members = ["crates/katana-ui-widget"]
+members = ["crates/katana-ui-core"]
 resolver = "2"
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-repository = "https://github.com/HiroyukiFuruno/katana-ui-widget"
+repository = "https://github.com/HiroyukiFuruno/katana-ui-core"
 rust-version = "1.95.0"
 authors = ["Hiroyuki Furuno"]
 

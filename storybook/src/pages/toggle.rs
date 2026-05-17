@@ -2,8 +2,8 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, label, scroll, v_stack};
-use katana_ui_widget::composite::selector::toggle::{Toggle, ToggleSize};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::selector::toggle::{Toggle, ToggleSize};
+use katana_ui_core::theme::Theme;
 
 fn page_content(theme: &Theme) -> impl IntoView + use<> {
     let bg = PenikoColor::rgb8(theme.color.bg.r, theme.color.bg.g, theme.color.bg.b);

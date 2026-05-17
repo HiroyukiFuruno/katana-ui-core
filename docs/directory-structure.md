@@ -3,7 +3,7 @@
 ## Crate Hierarchy
 
 ```
-crates/katana-ui-widget/src/
+crates/katana-ui-core/src/
 ├── lib.rs
 ├── theme/                         # Design tokens — no deps
 │   ├── color/mod.rs

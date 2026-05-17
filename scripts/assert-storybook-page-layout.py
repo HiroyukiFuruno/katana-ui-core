@@ -116,7 +116,7 @@ def check_standard_page(path: Path, source: str) -> list[str]:
 
 
 def widget_dirs() -> dict[str, str]:
-    source_root = Path("crates/katana-ui-widget/src")
+    source_root = Path("crates/katana-ui-core/src")
     results: dict[str, str] = {}
     for root in ("primitive", "layout", "composite"):
         for directory in sorted((source_root / root).glob("*")):

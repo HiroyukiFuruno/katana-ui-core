@@ -3,8 +3,8 @@ use floem::peniko::Color as PenikoColor;
 use floem::views::{
     Decorators, h_stack, h_stack_from_iter, label, scroll, v_stack, v_stack_from_iter,
 };
-use katana_ui_widget::composite::indicator::badge::{Badge, BadgeSize, BadgeTone, BadgeVariant};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::indicator::badge::{Badge, BadgeSize, BadgeTone, BadgeVariant};
+use katana_ui_core::theme::Theme;
 
 fn badge_cell(
     lbl: impl Into<String> + 'static,

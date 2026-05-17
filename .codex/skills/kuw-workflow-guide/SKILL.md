@@ -1,6 +1,6 @@
 # kuw-workflow-guide
 
-Operational rules and conventions for the `katana-ui-widget` repository.
+Operational rules and conventions for the `katana-ui-core` repository.
 
 ## Framework
 

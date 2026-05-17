@@ -1,15 +1,15 @@
 use crate::{Page, interaction, page_view};
-use katana_ui_widget::composite::menu_button::{
+use katana_ui_core::composite::menu_button::{
     MenuButtonInteractionState, MenuButtonPlacement, MenuButtonTransition,
 };
-use katana_ui_widget::composite::indicator::tooltip::{
+use katana_ui_core::composite::indicator::tooltip::{
     Tooltip, TooltipInteractionState, TooltipPlacement, TooltipTransition,
 };
-use katana_ui_widget::layout::popover::{
+use katana_ui_core::layout::popover::{
     AnchorRect, AnchorRef, Placement, PlacementOrigin, PlacementResolver, Popover,
     PopoverInteractionState, PopoverTransition,
 };
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::theme::Theme;
 use std::process;
 
 const ARG_HEADLESS_PAGE: &str = "--headless-page";

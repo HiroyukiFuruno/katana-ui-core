@@ -1,4 +1,4 @@
-# OpenSpec Changes — katana-ui-widget v0.1 ロードマップ
+# OpenSpec Changes — katana-ui-core v0.1 ロードマップ
 
 `../katana` (egui) と `../katana-chat-ui` (Floem) の中で「Katana domain に依存しない汎用 UI 部品」を抽出し、Floem 前提の共通 widget として独立させるための change 群。
 

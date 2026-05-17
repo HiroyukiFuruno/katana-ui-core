@@ -1,5 +1,5 @@
 # ============================================================
-# katana-ui-widget - Development Justfile
+# katana-ui-core - Development Justfile
 # ============================================================
 # Stable local, CI/CD, and release task entrypoint.
 # Usage:
@@ -18,7 +18,7 @@ CARGO := env_var_or_default("CARGO", RTK_CMD + "cargo")
 VERSION := env_var_or_default("VERSION", `awk -F '"' '/^version = / { print $2; exit }' Cargo.toml`)
 VERSION_BARE := replace(VERSION, "v", "")
 COVERAGE_MIN_LINES := env_var_or_default("COVERAGE_MIN_LINES", "64")
-RELEASE_REPO := env_var_or_default("RELEASE_REPO", "HiroyukiFuruno/katana-ui-widget")
+RELEASE_REPO := env_var_or_default("RELEASE_REPO", "HiroyukiFuruno/katana-ui-core")
 KAL_VERSION := env_var_or_default("KAL_VERSION", "0.5.1")
 
 default: help
@@ -52,7 +52,7 @@ ast-lint:
     kal check
     python3 scripts/assert-storybook-page-layout.py
 
-# Run katana-ui-widget specific guardrails
+# Run katana-ui-core specific guardrails
 kuw-guardrails:
     python3 scripts/test_kuw_guardrails.py
     python3 scripts/assert-kuw-guardrails.py
@@ -121,8 +121,8 @@ release-target-check:
 # Verify package metadata and dry-run the publishable crate
 release-verify: check coverage
     bash scripts/release/verify-version.sh "{{VERSION}}"
-    {{CARGO}} package -p katana-ui-widget --locked --allow-dirty
-    {{CARGO}} publish -p katana-ui-widget --dry-run --locked --allow-dirty
+    {{CARGO}} package -p katana-ui-core --locked --allow-dirty
+    {{CARGO}} publish -p katana-ui-core --dry-run --locked --allow-dirty
 
 # Verify release branch readiness before merging
 release-check: release-target-check release-verify

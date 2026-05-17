@@ -1,8 +1,8 @@
 use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::views::{Decorators, h_stack, h_stack_from_iter, label, scroll, v_stack};
-use katana_ui_widget::composite::indicator::key_cap::{KeyCap, KeyCombo, KeyLabel, NamedKey};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::indicator::key_cap::{KeyCap, KeyCombo, KeyLabel, NamedKey};
+use katana_ui_core::theme::Theme;
 
 fn cap_view(
     display: String,
@@ -41,7 +41,7 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
     let bg = PenikoColor::rgb8(theme.color.bg.r, theme.color.bg.g, theme.color.bg.b);
     let text_col = PenikoColor::rgb8(theme.color.text.r, theme.color.text.g, theme.color.text.b);
 
-    let cap = |r: &katana_ui_widget::composite::indicator::key_cap::ResolvedKeyCap| {
+    let cap = |r: &katana_ui_core::composite::indicator::key_cap::ResolvedKeyCap| {
         cap_view(
             r.display.clone(),
             r.bg_color.r,
@@ -54,7 +54,7 @@ fn page_content(theme: &Theme) -> impl IntoView + use<> {
         )
     };
 
-    let combo_row = |caps: Vec<katana_ui_widget::composite::indicator::key_cap::ResolvedKeyCap>| {
+    let combo_row = |caps: Vec<katana_ui_core::composite::indicator::key_cap::ResolvedKeyCap>| {
         let views: Vec<_> = caps.iter().map(cap).collect();
         h_stack_from_iter(views).style(|s| s.gap(2.0).items_center())
     };

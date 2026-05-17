@@ -2,13 +2,13 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, label, scroll, v_stack};
-use katana_ui_widget::composite::input::search::{
+use katana_ui_core::composite::input::search::{
     SearchBox, SearchBoxControl, SearchBoxControlMode, SearchBoxIconMode, SearchBoxIconPreset,
     SearchBoxIconSlot,
 };
-use katana_ui_widget::composite::input::text::InputSize;
-use katana_ui_widget::primitive::icon::IconSource;
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::input::text::InputSize;
+use katana_ui_core::primitive::icon::IconSource;
+use katana_ui_core::theme::Theme;
 
 const CUSTOM_ICON: &[u8] = b"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 16 16\"><path d=\"M8 2l2 4 4 .5-3 3 .8 4.5L8 12l-3.8 2 .8-4.5-3-3L6 6z\" fill=\"currentColor\"/></svg>";
 

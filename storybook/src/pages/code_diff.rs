@@ -1,10 +1,10 @@
 use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::views::{Decorators, label, scroll, v_stack};
-use katana_ui_widget::composite::code_diff::{
+use katana_ui_core::composite::code_diff::{
     CodeDiff, CodeDiffCollapseOptions, CodeDiffMode, CodeDiffSource, CodeDiffSplitOrientation,
 };
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::theme::Theme;
 
 fn source(text: &'static str, first_line_number: usize) -> CodeDiffSource {
     CodeDiffSource::new(text, first_line_number, line_count(text))

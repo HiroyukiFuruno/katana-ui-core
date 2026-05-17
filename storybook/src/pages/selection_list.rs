@@ -2,10 +2,10 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{RwSignal, SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, label, scroll, v_stack};
-use katana_ui_widget::composite::selection_list::{
+use katana_ui_core::composite::selection_list::{
     SelectionList, SelectionListItem, SelectionListSection,
 };
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::theme::Theme;
 
 fn set_log(log: RwSignal<String>, value: &'static str) -> impl Fn() + 'static {
     move || {

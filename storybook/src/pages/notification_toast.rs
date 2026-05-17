@@ -2,10 +2,10 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, label, scroll, v_stack};
-use katana_ui_widget::composite::notification_toast::{
+use katana_ui_core::composite::notification_toast::{
     NotificationToast, NotificationToastPosition, NotificationToastSeverity, NotificationToastStack,
 };
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::theme::Theme;
 
 fn severity_samples(theme: Theme) -> impl IntoView {
     v_stack((

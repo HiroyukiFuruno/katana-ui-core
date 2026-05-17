@@ -1,7 +1,7 @@
 # kuw-ast-lint-guardrails Specification
 
 ## Purpose
-katana-ui-widget 固有の Storybook、OpenSpec、widget 責務境界の検査は、汎用 `kal check` ではなく、この repository の local guardrail で担保する。
+katana-ui-core 固有の Storybook、OpenSpec、widget 責務境界の検査は、汎用 `kal check` ではなく、この repository の local guardrail で担保する。
 
 ## Requirements
 

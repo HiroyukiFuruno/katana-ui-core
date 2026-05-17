@@ -14,7 +14,7 @@ SCENARIOS=(
 
 cd "$ROOT_DIR"
 RUSTFLAGS="-D warnings" "${CARGO_CMD[@]}" test \
-  -p katana-ui-widget \
+  -p katana-ui-core \
   --all-features \
   composite::menu_button \
   -- --nocapture

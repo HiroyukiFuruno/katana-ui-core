@@ -1,9 +1,9 @@
 use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::views::{Decorators, h_stack, label, scroll, svg, v_stack};
-use katana_ui_widget::primitive::icon::{Icon, IconSize, IconSource};
-use katana_ui_widget::theme::Theme;
-use katana_ui_widget::theme::color::Color;
+use katana_ui_core::primitive::icon::{Icon, IconSize, IconSource};
+use katana_ui_core::theme::Theme;
+use katana_ui_core::theme::color::Color;
 
 const ICON_CHECK: &[u8] = b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='currentColor'><path d='M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 1 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0z'/></svg>";
 const ICON_ARROW: &[u8] = b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='currentColor'><path d='M8 1a.75.75 0 0 1 .75.75v10.19l3.47-3.47a.75.75 0 1 1 1.06 1.06l-4.75 4.75a.75.75 0 0 1-1.06 0L2.72 9.53a.75.75 0 0 1 1.06-1.06L7.25 11.94V1.75A.75.75 0 0 1 8 1z'/></svg>";

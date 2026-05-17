@@ -1,6 +1,6 @@
 # Widget Extraction Policy
 
-This document defines the criteria for which widgets are in scope for `katana-ui-widget`.
+This document defines the criteria for which widgets are in scope for `katana-ui-core`.
 
 ## Extraction Criteria
 

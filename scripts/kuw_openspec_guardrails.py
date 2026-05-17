@@ -86,7 +86,7 @@ class KuwOpenSpecGuardrails:
         path = Path(self.normalize_token(token))
         if path.is_absolute():
             return path
-        for base in (self.root, self.root / "crates/katana-ui-widget/src", self.root / "storybook/src"):
+        for base in (self.root, self.root / "crates/katana-ui-core/src", self.root / "storybook/src"):
             candidate = base / path
             if candidate.exists():
                 return candidate

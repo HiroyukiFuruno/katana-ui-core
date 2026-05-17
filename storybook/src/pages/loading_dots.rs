@@ -4,9 +4,9 @@ use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{
     Decorators, dyn_container, h_stack, h_stack_from_iter, label, scroll, toggle_button, v_stack,
 };
-use katana_ui_widget::primitive::loading_dots::LoadingDots;
-use katana_ui_widget::theme::Theme;
-use katana_ui_widget::theme::color::Color;
+use katana_ui_core::primitive::loading_dots::LoadingDots;
+use katana_ui_core::theme::Theme;
+use katana_ui_core::theme::color::Color;
 
 fn loading_row(desc: &'static str, dots: impl IntoView + 'static) -> impl IntoView {
     h_stack((

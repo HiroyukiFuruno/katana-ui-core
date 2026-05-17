@@ -1,4 +1,4 @@
-# katana-ui-widget への貢献
+# katana-ui-core への貢献
 
 ご貢献いただきありがとうございます！
 

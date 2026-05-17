@@ -2,11 +2,11 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ALLOWED_FILE="$ROOT_DIR/crates/katana-ui-widget/src/overlay_lifecycle.rs"
+ALLOWED_FILE="$ROOT_DIR/crates/katana-ui-core/src/overlay_lifecycle.rs"
 
 violations="$(
   rg -n "\\b(add_overlay|remove_overlay)\\b" \
-    "$ROOT_DIR/crates/katana-ui-widget/src" \
+    "$ROOT_DIR/crates/katana-ui-core/src" \
     "$ROOT_DIR/storybook/src" \
     --glob '*.rs' \
     | awk -F: -v allowed="$ALLOWED_FILE" '$1 != allowed { print }'

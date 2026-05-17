@@ -2,8 +2,8 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, label, scroll, v_stack};
-use katana_ui_widget::composite::selector::segmented::{Segment, SegmentedSize, SegmentedToggle};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::selector::segmented::{Segment, SegmentedSize, SegmentedToggle};
+use katana_ui_core::theme::Theme;
 
 #[derive(Debug, Clone, PartialEq)]
 enum ViewMode {

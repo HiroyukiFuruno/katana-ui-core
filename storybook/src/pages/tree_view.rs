@@ -2,11 +2,11 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{RwSignal, SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, label, scroll, v_stack};
-use katana_ui_widget::composite::tree_view::{
+use katana_ui_core::composite::tree_view::{
     TreeView, TreeViewExpandTrigger, TreeViewLineKind, TreeViewLineStyle, TreeViewNode,
 };
-use katana_ui_widget::primitive::icon::IconSource;
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::primitive::icon::IconSource;
+use katana_ui_core::theme::Theme;
 
 const ICON_FOLDER: &[u8] = b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2 3h5l2 2h6a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z' fill='none' stroke='currentColor' stroke-width='1.2'/><path d='M6 3v2h6' fill='none' stroke='currentColor' stroke-width='1.2'/></svg>";
 const ICON_FILE: &[u8] = b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M3 2h6l3 3v7a1 1 0 0 1-1 1H3z' fill='none' stroke='currentColor' stroke-width='1.2'/><path d='M9 2v3h3' fill='none' stroke='currentColor' stroke-width='1.2'/></svg>";

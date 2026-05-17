@@ -8,7 +8,7 @@ description: 指定バージョンのOpenSpec実装、品質確認、リリー�
 
 ## 前提
 
-- 作業対象 repository は `katana-ui-widget`
+- 作業対象 repository は `katana-ui-core`
 - default branch は `master`
 - release branch は `release/vX.Y.Z`
 - 公開は `release/vX.Y.Z` から `master` へ merge された後の GitHub Actions を正とする
@@ -104,7 +104,7 @@ merge 後、Release workflow と crates.io 公開結果を確認する。
 git switch master
 git pull --ff-only origin master
 just release-status
-gh run list --repo HiroyukiFuruno/katana-ui-widget --workflow Release --limit 5
+gh run list --repo HiroyukiFuruno/katana-ui-core --workflow Release --limit 5
 ```
 
 ## 完了条件
@@ -113,5 +113,5 @@ gh run list --repo HiroyukiFuruno/katana-ui-widget --workflow Release --limit 5
 - [ ] `just VERSION=vX.Y.Z release-check` が成功している
 - [ ] release PR が `master` に merge されている
 - [ ] Release workflow が成功している
-- [ ] `katana-ui-widget` の公開状態を確認している
+- [ ] `katana-ui-core` の公開状態を確認している
 - [ ] branch hygiene が完了している

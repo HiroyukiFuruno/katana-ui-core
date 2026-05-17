@@ -3,8 +3,8 @@ use floem::peniko::Color as PenikoColor;
 use floem::reactive::{RwSignal, SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, button, h_stack, label, scroll, v_stack};
 use floem::window::WindowId;
-use katana_ui_widget::layout::modal::{Modal, ModalParentInteraction, ModalSize};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::layout::modal::{Modal, ModalParentInteraction, ModalSize};
+use katana_ui_core::theme::Theme;
 
 use crate::modal_state::{
     FooterSample, ModalOpenSnapshot, ModalSettingAction, ModalStateSignals, apply_modal_setting,

@@ -2,9 +2,9 @@ use floem::IntoView;
 use floem::peniko::Color as PenikoColor;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, h_stack, label, scroll, v_stack};
-use katana_ui_widget::layout::side_menu::{SideMenu, SideMenuItem, SideMenuPopMode, SideMenuSide};
-use katana_ui_widget::primitive::icon::IconSource;
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::layout::side_menu::{SideMenu, SideMenuItem, SideMenuPopMode, SideMenuSide};
+use katana_ui_core::primitive::icon::IconSource;
+use katana_ui_core::theme::Theme;
 
 const ICON_PLUS: &[u8] = b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.4' stroke-linecap='round'><path d='M12 5v14M5 12h14'/></svg>";
 const ICON_FOLDER: &[u8] = b"<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.1' stroke-linejoin='round'><path d='M3 7h7l2 3h9v9H3z'/></svg>";

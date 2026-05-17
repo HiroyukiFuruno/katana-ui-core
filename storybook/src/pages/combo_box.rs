@@ -1,8 +1,8 @@
 use floem::IntoView;
 use floem::reactive::{SignalGet, SignalUpdate, create_rw_signal};
 use floem::views::{Decorators, h_stack, label, scroll, v_stack};
-use katana_ui_widget::composite::combo_box::{ComboBox, ComboBoxOption, ComboBoxPlacement};
-use katana_ui_widget::theme::Theme;
+use katana_ui_core::composite::combo_box::{ComboBox, ComboBoxOption, ComboBoxPlacement};
+use katana_ui_core::theme::Theme;
 
 fn font_options() -> Vec<ComboBoxOption<String>> {
     vec![
