@@ -44,6 +44,10 @@ class KucGuardrails:
         failures.extend(self.callback_failures())
         failures.extend(self.storybook_leak_failures())
         failures.extend(self.helper_only_view_failures())
+        failures.extend(self.typed_action_model_failures())
+        failures.extend(self.storybook_panel_evidence_failures())
+        failures.extend(self.visual_fallback_policy_failures())
+        failures.extend(self.repo_local_guardrail_policy_failures())
         failures.extend(self.openspec_evidence_failures())
         failures.extend(self.file_length_review_failures())
         return failures
@@ -58,6 +62,9 @@ class KucGuardrails:
 
     def read(self, path: Path) -> str:
         return path.read_text(encoding="utf-8")
+
+    def read_rust_dir(self, path: Path) -> str:
+        return "\n".join(self.read(source) for source in self.rust_files(path))
 
     def runtime_api_failures(self) -> list[str]:
         failures: list[str] = []
@@ -164,6 +171,135 @@ class KucGuardrails:
 
     def file_length_review_failures(self) -> list[str]:
         return KucOpenSpecGuardrails(self.root).file_length_review_failures()
+
+    def repo_local_guardrail_policy_failures(self) -> list[str]:
+        required_files = (
+            self.root / "docs/architecture/ui-separation/owned-ui-task-map.md",
+            self.root / "openspec/changes/ui-core-interaction-visual-parity/tasks.md",
+            self.root
+            / "openspec/changes/ui-core-interaction-visual-parity/specs/ui-core-interaction-visual-parity/spec.md",
+            self.root / "tmp/reports/2026-05-17-overnight-residual-scope.md",
+        )
+        missing_files = [path for path in required_files if not path.exists()]
+        if missing_files:
+            return [
+                f"{self.relative(path)}: KUC repo-local guardrail policy file is missing"
+                for path in missing_files
+            ]
+
+        combined = "\n".join(self.read(path) for path in required_files)
+        required_tokens = (
+            "KUC repo",
+            "`scripts/`",
+            "`kal` 側",
+            "no `kal` repository changes are required",
+            "KUC-specific UI ownership and Storybook rules MUST be implemented inside this repository",
+        )
+        failures = [
+            f"KUC repo-local guardrail policy missing token: {token}"
+            for token in required_tokens
+            if token not in combined
+        ]
+        forbidden_tokens = (
+            "../kal",
+            "../katana",
+            "/works/private/katana/",
+            "kal.json に追記",
+            "kal repository changes are required",
+        )
+        failures.extend(
+            f"KUC guardrail policy must not require kal-side edits: {token}"
+            for token in forbidden_tokens
+            if token in combined
+        )
+        return failures
+
+    def storybook_panel_evidence_failures(self) -> list[str]:
+        docs = self.guard_docs_source()
+        required_tokens = (
+            "storybook-panel-interaction-report.json",
+            "story_selection",
+            "theme_switch",
+            "operation_sequence",
+            "callback log",
+            "target state id",
+            "before / after summary",
+        )
+        return [
+            f"storybook panel evidence missing token: {token}"
+            for token in required_tokens
+            if token not in docs
+        ]
+
+    def visual_fallback_policy_failures(self) -> list[str]:
+        docs = self.guard_docs_source()
+        required_tokens = (
+            "required_ui_fallbacks=0",
+            "generic `node` fallback",
+            "完了根拠にしない",
+        )
+        return [
+            f"visual fallback policy missing token: {token}"
+            for token in required_tokens
+            if token not in docs
+        ]
+
+    def guard_docs_source(self) -> str:
+        paths = (
+            self.root / "docs/architecture/ui-separation/ui-core-parity-gap.md",
+            self.root / "docs/architecture/ui-separation/owned-ui-task-map.md",
+            self.root / "tmp/reports/2026-05-17-overnight-residual-scope.md",
+        )
+        return "\n".join(self.read(path) for path in paths if path.exists())
+
+    def typed_action_model_failures(self) -> list[str]:
+        required_files = (
+            self.root / "crates/katana-ui-core/src/interaction/mod.rs",
+            self.root / "crates/katana-ui-core/src/component.rs",
+            self.root / "crates/katana-ui-core/tests/interaction_contract.rs",
+        )
+        missing_files = [path for path in required_files if not path.exists()]
+        if missing_files:
+            return [
+                f"{self.relative(path)}: typed action model file is missing"
+                for path in missing_files
+            ]
+
+        combined = "\n".join(
+            (
+                self.read_rust_dir(self.root / "crates/katana-ui-core/src/interaction"),
+                self.read(self.root / "crates/katana-ui-core/src/component.rs"),
+                self.read(self.root / "crates/katana-ui-core/tests/interaction_contract.rs"),
+            )
+        )
+        required_tokens = (
+            "pub enum UiAction",
+            "pub struct UiActionResult",
+            "pub struct UiCallbackLog",
+            "pub trait ComponentAction",
+            "apply_action",
+            "action_targets_only_the_matching_component_state",
+            "action_result_is_serializable_snapshot",
+        )
+        failures = [
+            f"typed action model missing token: {token}"
+            for token in required_tokens
+            if token not in combined
+        ]
+        forbidden_tokens = (
+            "ExternalStore",
+            "GlobalStore",
+            "external_store",
+            "OnceLock",
+            "static mut",
+            "lazy_static",
+        )
+        failures.extend(
+            f"typed action model must not require external store: {token}"
+            for token in forbidden_tokens
+            if token in combined
+        )
+        return failures
 
 
 def main() -> int:

@@ -1,3 +1,4 @@
+use crate::interaction::{UiAction, UiActionResult};
 use crate::render_model::{UiNode, UiTree};
 
 pub trait Component: Sized {
@@ -7,6 +8,10 @@ pub trait Component: Sized {
     fn class(self, name: impl Into<String>) -> StyledComponent<Self> {
         StyledComponent::new(self).class(name)
     }
+}
+
+pub trait ComponentAction {
+    fn apply_action(&mut self, action: &UiAction) -> UiActionResult;
 }
 
 impl<T> Component for T

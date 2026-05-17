@@ -1,6 +1,6 @@
-use katana_ui_core_storybook::{StorybookSummary, StorybookVisual};
+use katana_ui_core_storybook::{StoryCatalog, StorybookPanel, StorybookSummary, StorybookVisual};
 use std::path::Path;
-use std::{env, process};
+use std::{env, fs, process};
 
 const DEFAULT_WINDOW_FRAMES: usize = 0;
 
@@ -12,6 +12,7 @@ fn main() {
             "--open-window" => open_window(&args),
             "--open-modal-window" => open_modal_window(&args),
             "--runtime-regression" => print_runtime_regression(),
+            "--headless-scenario" => run_headless_scenario(),
             _ => print_summary(),
         }
         return;
@@ -69,4 +70,74 @@ fn print_runtime_regression() {
         "katana-ui-core-storybook-runtime: {}",
         StorybookVisual.runtime_report().summary()
     );
+}
+
+fn run_headless_scenario() {
+    let catalog = StoryCatalog;
+    let examples = catalog.examples();
+    let panel_report = StorybookPanel::interaction_report(&examples);
+    let visual_report = StorybookVisual.coverage_report();
+    write_json(
+        Path::new("target/storybook-panel-interaction-report.json"),
+        &panel_report,
+        "failed to write panel interaction report",
+    );
+    write_json(
+        Path::new("target/storybook-visual-coverage.json"),
+        &visual_report,
+        "failed to write visual coverage report",
+    );
+    save_scenario_png("target/storybook-panel-light.png", "light", "button", false);
+    save_scenario_png("target/storybook-panel-dark.png", "dark", "button", false);
+    save_scenario_png(
+        "target/storybook-panel-after-operation.png",
+        "dark",
+        "button",
+        true,
+    );
+    save_modal_png("target/storybook-panel-modal-window.png");
+    println!(
+        "katana-ui-core-storybook-headless: {} {} {}",
+        StorybookSummary.render(),
+        panel_report.summary(),
+        visual_report.summary()
+    );
+}
+
+fn write_json<T: serde::Serialize>(path: &Path, value: &T, failure: &str) {
+    let Some(parent) = path.parent() else {
+        eprintln!("{failure}: missing parent directory");
+        process::exit(2);
+    };
+    if let Err(error) = fs::create_dir_all(parent) {
+        eprintln!("{failure}: {error}");
+        process::exit(2);
+    }
+    let json = match serde_json::to_string_pretty(value) {
+        Ok(it) => it,
+        Err(error) => {
+            eprintln!("{failure}: {error}");
+            process::exit(2);
+        }
+    };
+    if let Err(error) = fs::write(path, json) {
+        eprintln!("{failure}: {error}");
+        process::exit(2);
+    }
+}
+
+fn save_modal_png(path: &str) {
+    if let Err(error) = StorybookVisual.save_modal_png(Path::new(path)) {
+        eprintln!("failed to write modal snapshot: {error}");
+        process::exit(2);
+    }
+}
+
+fn save_scenario_png(path: &str, theme_id: &str, selected_page: &str, operation: bool) {
+    if let Err(error) =
+        StorybookVisual.save_scenario_png(Path::new(path), theme_id, selected_page, operation)
+    {
+        eprintln!("failed to write scenario snapshot: {error}");
+        process::exit(2);
+    }
 }

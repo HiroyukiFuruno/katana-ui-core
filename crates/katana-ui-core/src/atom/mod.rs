@@ -1,27 +1,14 @@
-use crate::render_model::{UiInteractionState, UiNode, UiNodeKind, UiStateId};
+mod state;
+#[cfg(test)]
+mod tests;
+mod typed;
+
+use crate::interaction::{UiAction, UiActionResult};
+use crate::render_model::{
+    UiNode, UiNodeKind, UiProgressMode, UiSize, UiStateId, UiTone, UiVariant, UiVisualRole,
+};
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-struct AtomState {
-    state_id: UiStateId,
-    disabled: bool,
-    focusable: bool,
-    accessibility_label: String,
-    interaction: UiInteractionState,
-}
-
-impl AtomState {
-    #[must_use]
-    pub fn enabled(kind: UiNodeKind) -> Self {
-        Self {
-            state_id: UiStateId::next_for(kind),
-            disabled: false,
-            focusable: false,
-            accessibility_label: String::new(),
-            interaction: UiInteractionState::default(),
-        }
-    }
-}
+use state::AtomState;
 
 macro_rules! atom_model {
     ($name:ident, $kind:expr) => {
@@ -62,6 +49,7 @@ macro_rules! atom_model {
             pub fn selected(mut self, value: bool) -> Self {
                 self.state.interaction.has_selection = value;
                 self.state.interaction.selected_index = usize::from(value);
+                self.state.checked = value;
                 self
             }
 
@@ -70,15 +58,104 @@ macro_rules! atom_model {
                 self.state.interaction.value = value.into();
                 self
             }
+
+            #[must_use]
+            pub fn font_role(mut self, value: impl Into<String>) -> Self {
+                self.state.font_role = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn visual_role(mut self, value: UiVisualRole) -> Self {
+                self.state.visual_role = value;
+                self
+            }
+
+            #[must_use]
+            pub fn variant(mut self, value: UiVariant) -> Self {
+                self.state.variant = value;
+                self.state.status.variant = value;
+                self
+            }
+
+            #[must_use]
+            pub fn tone(mut self, value: UiTone) -> Self {
+                self.state.tone = value;
+                self
+            }
+
+            #[must_use]
+            pub fn size(mut self, value: UiSize) -> Self {
+                self.state.size = value;
+                self
+            }
+
+            #[must_use]
+            pub fn loading(mut self, value: bool) -> Self {
+                self.state.loading = value;
+                self
+            }
+
+            #[must_use]
+            pub fn readonly(mut self, value: bool) -> Self {
+                self.state.readonly = value;
+                self
+            }
+
+            #[must_use]
+            pub fn invalid(mut self, value: bool) -> Self {
+                self.state.invalid = value;
+                self
+            }
+
+            #[must_use]
+            pub fn placeholder(mut self, value: impl Into<String>) -> Self {
+                self.state.placeholder = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn checked(mut self, value: bool) -> Self {
+                self.state.checked = value;
+                self.state.interaction.has_selection = value;
+                self.state.interaction.selected_index = usize::from(value);
+                self
+            }
+
+            #[must_use]
+            pub fn progress(mut self, determinate: bool, percent: u8) -> Self {
+                self.state.determinate = determinate;
+                self.state.progress_percent = percent;
+                self.state.loading_indicator.mode = if determinate {
+                    UiProgressMode::Determinate
+                } else {
+                    UiProgressMode::Indeterminate
+                };
+                self
+            }
+
+            #[must_use]
+            pub fn severity(mut self, value: UiTone) -> Self {
+                self.state.severity = value;
+                self.state.status.severity = value;
+                self
+            }
+
+            #[must_use]
+            pub fn state_id(&self) -> &UiStateId {
+                &self.state.state_id
+            }
+        }
+
+        impl crate::component::ComponentAction for $name {
+            fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
+                self.state.apply_action(action)
+            }
         }
 
         impl From<$name> for UiNode {
             fn from(value: $name) -> Self {
-                UiNode::from_state($kind, value.label, value.state.state_id)
-                    .disabled(value.state.disabled)
-                    .focusable(value.state.focusable)
-                    .accessibility_label(value.state.accessibility_label)
-                    .interaction(value.state.interaction)
+                value.state.node($kind, value.label)
             }
         }
     };
@@ -103,21 +180,3 @@ atom_model!(SlideControl, UiNodeKind::SlideControl);
 atom_model!(SvgButton, UiNodeKind::SvgButton);
 atom_model!(TextButton, UiNodeKind::TextButton);
 atom_model!(IconTextButton, UiNodeKind::IconTextButton);
-
-#[cfg(test)]
-mod tests {
-    use super::{Button, Text};
-    use crate::render_model::{UiNodeKind, UiTree};
-
-    #[test]
-    fn atom_snapshot_uses_neutral_node_kind() {
-        let tree = UiTree::new(Button::new("Save"));
-        assert_eq!(UiNodeKind::Button, tree.root().kind());
-    }
-
-    #[test]
-    fn text_atom_can_be_tree_root() {
-        let tree = UiTree::new(Text::new("Title"));
-        assert_eq!(UiNodeKind::Text, tree.root().kind());
-    }
-}

@@ -977,7 +977,7 @@ checksum = "34a6da831b3b6bfeec4f988a1224fa8219de42fe438e27b8a7f7af8e29cbb166"
 dependencies = [
  "cosmic-text",
  "euclid",
- "fontdue 0.8.0",
+ "fontdue",
  "rect_packer",
  "wgpu",
 ]
@@ -1102,16 +1102,6 @@ checksum = "9099a2f86b8e674b75d03ff154b3fe4c5208ed249ced8d69cc313a9fa40bb488"
 dependencies = [
  "hashbrown 0.14.5",
  "ttf-parser 0.20.0",
-]
-
-[[package]]
-name = "fontdue"
-version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2e57e16b3fe8ff4364c0661fdaac543fb38b29ea9bc9c2f45612d90adf931d2b"
-dependencies = [
- "hashbrown 0.15.5",
- "ttf-parser 0.21.1",
 ]
 
 [[package]]
@@ -1577,8 +1567,6 @@ version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
- "allocator-api2",
- "equivalent",
  "foldhash",
 ]
 
@@ -1851,10 +1839,12 @@ dependencies = [
 name = "katana-ui-core-storybook"
 version = "0.1.0"
 dependencies = [
- "fontdue 0.9.3",
+ "cosmic-text",
  "image",
  "katana-ui-core",
  "minifb",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

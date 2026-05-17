@@ -1,23 +1,36 @@
 use crate::visual::canvas::Canvas;
-use fontdue::{Font, FontSettings};
-use std::fs;
+use cosmic_text::{
+    Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, SwashCache, Weight, Wrap,
+};
+use katana_ui_core::facade::UiCoreFacade;
+use katana_ui_core::theme::{FontFamily, FontToken};
+use std::cell::RefCell;
 
-const FALLBACK_FONT: &str = "/System/Library/Fonts/SFNS.ttf";
-const GLYPH_ALPHA_THRESHOLD: u8 = 32;
-const FALLBACK_ADVANCE: usize = 7;
-const FALLBACK_WIDTH: usize = 4;
-const FALLBACK_HEIGHT: usize = 8;
+const TEXT_BUFFER_WIDTH: f32 = 4096.0;
+const LINE_HEIGHT_RATIO: f32 = 1.45;
+const REGULAR_WEIGHT: u16 = 400;
+const FALLBACK_FONT_SIZE: f32 = 14.0;
+const RED_SHIFT: u32 = 16;
+const GREEN_SHIFT: u32 = 8;
+const CHANNEL_MASK: u32 = 0xff;
+const OPAQUE_ALPHA: u8 = 0xff;
+const FALLBACK_FONT_NAME: &str = "body";
+const CODE_FONT_ROLE: &str = "code";
+const SHORTCUT_FONT_ROLE: &str = "shortcut";
 
 pub(crate) struct TextRenderer {
-    font: Option<Font>,
+    font_system: RefCell<FontSystem>,
+    swash_cache: RefCell<SwashCache>,
+    font: FontToken,
 }
 
 impl TextRenderer {
-    pub(crate) fn load() -> Self {
+    pub(crate) fn load(facade: &UiCoreFacade, role: &str) -> Self {
+        let font = resolve_font(facade, role);
         Self {
-            font: fs::read(FALLBACK_FONT)
-                .ok()
-                .and_then(|bytes| Font::from_bytes(bytes, FontSettings::default()).ok()),
+            font_system: RefCell::new(FontSystem::new()),
+            swash_cache: RefCell::new(SwashCache::new()),
+            font,
         }
     }
 
@@ -30,77 +43,152 @@ impl TextRenderer {
         size: f32,
         color: u32,
     ) {
-        if let Some(font) = self.font.as_ref() {
-            draw_font_text(canvas, font, text, x, y, size, color);
-        } else {
-            draw_fallback_text(canvas, text, x, y, color);
-        }
-    }
-}
-
-fn draw_font_text(
-    canvas: &mut Canvas,
-    font: &Font,
-    text: &str,
-    x: usize,
-    y: usize,
-    size: f32,
-    color: u32,
-) {
-    let mut cursor = x as i32;
-    for character in text.chars() {
-        let (metrics, bitmap) = font.rasterize(character, size);
-        for row in 0..metrics.height {
-            for column in 0..metrics.width {
-                draw_glyph_pixel(
-                    canvas,
-                    GlyphPixel {
-                        bitmap: &bitmap,
-                        metrics: &metrics,
-                        cursor,
-                        origin_y: y,
-                        row,
-                        column,
-                        color,
-                    },
-                );
-            }
-        }
-        cursor += metrics.advance_width.ceil() as i32;
-    }
-}
-
-struct GlyphPixel<'a> {
-    bitmap: &'a [u8],
-    metrics: &'a fontdue::Metrics,
-    cursor: i32,
-    origin_y: usize,
-    row: usize,
-    column: usize,
-    color: u32,
-}
-
-fn draw_glyph_pixel(canvas: &mut Canvas, pixel: GlyphPixel<'_>) {
-    let alpha = pixel.bitmap[pixel.row * pixel.metrics.width + pixel.column];
-    if alpha <= GLYPH_ALPHA_THRESHOLD {
-        return;
-    }
-    let current_x = pixel.cursor + pixel.column as i32 + pixel.metrics.xmin;
-    let current_y = pixel.origin_y as i32 + pixel.row as i32;
-    if current_x < 0 || current_y < 0 {
-        return;
-    }
-    canvas.set(current_x as usize, current_y as usize, pixel.color);
-}
-
-fn draw_fallback_text(canvas: &mut Canvas, text: &str, x: usize, y: usize, color: u32) {
-    for (index, _) in text.chars().enumerate() {
-        canvas.fill_rect(
-            x + index * FALLBACK_ADVANCE,
+        self.draw_layout(
+            canvas,
+            text,
+            x,
             y,
-            FALLBACK_WIDTH,
-            FALLBACK_HEIGHT,
-            color,
+            TextStyle::new(size, size * LINE_HEIGHT_RATIO, color),
         );
     }
+
+    pub(crate) fn draw_centered(
+        &self,
+        canvas: &mut Canvas,
+        text: &str,
+        x: usize,
+        vertical_box: TextVerticalBox,
+        size: f32,
+        color: u32,
+    ) {
+        self.draw_layout(
+            canvas,
+            text,
+            x,
+            vertical_box.y,
+            TextStyle::new(size, vertical_box.height, color),
+        );
+    }
+
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn font_family(&self) -> FontFamily {
+        self.font.family
+    }
+
+    fn draw_layout(&self, canvas: &mut Canvas, text: &str, x: usize, y: usize, style: TextStyle) {
+        let metrics = Metrics::new(style.size, style.line_height);
+        let mut font_system = self.font_system.borrow_mut();
+        let mut swash_cache = self.swash_cache.borrow_mut();
+        let mut buffer = Buffer::new(&mut font_system, metrics);
+        let mut buffer = buffer.borrow_with(&mut font_system);
+        buffer.set_wrap(Wrap::None);
+        buffer.set_size(Some(TEXT_BUFFER_WIDTH), Some(metrics.line_height));
+        buffer.set_text(text, attrs(&self.font), Shaping::Advanced);
+        buffer.shape_until_scroll(true);
+        buffer.draw(
+            &mut swash_cache,
+            text_color(style.color),
+            |left, top, _, _, color| {
+                draw_text_pixel(canvas, left, top, x, y, color);
+            },
+        );
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct TextVerticalBox {
+    y: usize,
+    height: f32,
+}
+
+impl TextVerticalBox {
+    pub(crate) fn new(y: usize, height: f32) -> Self {
+        Self { y, height }
+    }
+}
+
+struct TextStyle {
+    size: f32,
+    line_height: f32,
+    color: u32,
+}
+
+impl TextStyle {
+    fn new(size: f32, line_height: f32, color: u32) -> Self {
+        Self {
+            size,
+            line_height,
+            color,
+        }
+    }
+}
+
+fn resolve_font(facade: &UiCoreFacade, role: &str) -> FontToken {
+    if let Some(font) = facade.theme().font(role) {
+        return font.clone();
+    }
+    if role == SHORTCUT_FONT_ROLE
+        && let Some(font) = facade.theme().font(CODE_FONT_ROLE)
+    {
+        return font.clone();
+    }
+    if let Some(font) = facade.font(facade.default_font_role()) {
+        return font.clone();
+    }
+    FontToken {
+        name: FALLBACK_FONT_NAME.to_string(),
+        family: FontFamily::Proportional,
+        size: FALLBACK_FONT_SIZE,
+        weight: REGULAR_WEIGHT,
+    }
+}
+
+fn attrs(font: &FontToken) -> Attrs<'_> {
+    Attrs::new()
+        .family(family(font.family))
+        .weight(Weight(font.weight.max(REGULAR_WEIGHT)))
+}
+
+fn family(family: FontFamily) -> Family<'static> {
+    match family {
+        FontFamily::Proportional => Family::SansSerif,
+        FontFamily::Monospace => Family::Monospace,
+    }
+}
+
+fn text_color(color: u32) -> Color {
+    Color::rgba(red(color), green(color), blue(color), OPAQUE_ALPHA)
+}
+
+fn draw_text_pixel(
+    canvas: &mut Canvas,
+    left: i32,
+    top: i32,
+    origin_x: usize,
+    origin_y: usize,
+    color: Color,
+) {
+    let x = left + origin_x as i32;
+    let y = top + origin_y as i32;
+    if x < 0 || y < 0 {
+        return;
+    }
+    canvas.blend(x as usize, y as usize, rgb(color), color.a());
+}
+
+fn rgb(color: Color) -> u32 {
+    ((color.r() as u32) << RED_SHIFT) | ((color.g() as u32) << GREEN_SHIFT) | color.b() as u32
+}
+
+fn red(color: u32) -> u8 {
+    ((color >> RED_SHIFT) & CHANNEL_MASK) as u8
+}
+
+fn green(color: u32) -> u8 {
+    ((color >> GREEN_SHIFT) & CHANNEL_MASK) as u8
+}
+
+fn blue(color: u32) -> u8 {
+    (color & CHANNEL_MASK) as u8
 }

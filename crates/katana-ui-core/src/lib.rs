@@ -5,6 +5,8 @@ pub mod adapter_contract;
 pub mod atom;
 pub mod component;
 pub mod event;
+pub mod facade;
+pub mod interaction;
 pub mod layout;
 pub mod molecule;
 pub mod panel;

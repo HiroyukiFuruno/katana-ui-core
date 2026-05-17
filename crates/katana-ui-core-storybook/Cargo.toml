@@ -10,10 +10,12 @@ authors.workspace = true
 publish = false
 
 [dependencies]
-fontdue.workspace = true
+cosmic-text.workspace = true
 image.workspace = true
 katana-ui-core.workspace = true
 minifb.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 [[bin]]
 name = "katana-ui-core-storybook"

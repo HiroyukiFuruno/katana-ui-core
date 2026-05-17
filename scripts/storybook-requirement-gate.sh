@@ -9,7 +9,7 @@ RUSTFLAGS="-D warnings" cargo build -p katana-ui-core-storybook --bin katana-ui-
 binary="$ROOT_DIR/target/debug/katana-ui-core-storybook"
 output="$("$binary" --headless-scenario)"
 case "$output" in
-  *"stories="*"validated="*"state_conflicts=0"*"structure_failures=0"*"missing_required_pages=0"*"nodes="*"panel_nodes=3"*"panel_theme_configured=true"*"panel_theme_variants=2"*"themed_story_roots=53"*"styled_story_roots=53"*) ;;
+  *"stories="*"validated="*"state_conflicts=0"*"structure_failures=0"*"missing_required_pages=0"*"nodes="*"panel_nodes=3"*"panel_theme_configured=true"*"panel_theme_variants=2"*"themed_story_roots=53"*"styled_story_roots=53"*"story_selection=button"*"theme_switch=light->dark"*"theme_control=true"*"operation_sequence=1"*"selector_operations=7"*"overlay_dismissals=3"*"color_picker_updates=3"*"callback_log=1"*"required_ui_fallbacks=0"*"initial_visible_fallbacks=0"*"modal_required=true"*"non_empty_pixels="*"theme_difference_pixels="*"operation_difference_pixels="*) ;;
   *)
     echo "storybook requirement gate failed"
     echo "$output"
@@ -17,10 +17,53 @@ case "$output" in
     ;;
 esac
 
+panel_report="$ROOT_DIR/target/storybook-panel-interaction-report.json"
+coverage_report="$ROOT_DIR/target/storybook-visual-coverage.json"
+if [[ ! -s "$panel_report" || ! -s "$coverage_report" ]]; then
+  echo "storybook headless report failed"
+  exit 1
+fi
+if ! grep -q '"required_ui_fallbacks": 0' "$coverage_report" \
+  || ! grep -q '"initial_visible_fallbacks": 0' "$coverage_report"; then
+  echo "storybook visual coverage failed"
+  cat "$coverage_report"
+  exit 1
+fi
+if ! grep -q '"theme_control": true' "$panel_report"; then
+  echo "storybook theme control marker failed"
+  cat "$panel_report"
+  exit 1
+fi
+if ! grep -q '"required_ui": 16' "$coverage_report" \
+  || ! grep -q '"modal_required": true' "$coverage_report"; then
+  echo "storybook modal coverage failed"
+  cat "$coverage_report"
+  exit 1
+fi
+if ! grep -q '"selector_operations":' "$panel_report" \
+  || ! grep -q '"overlay_dismissals":' "$panel_report" \
+  || ! grep -q '"color_picker_updates":' "$panel_report"; then
+  echo "storybook panel interaction markers failed"
+  cat "$panel_report"
+  exit 1
+fi
+if ! grep -Eq '"non_empty_pixels": [1-9][0-9]*' "$coverage_report" \
+  || ! grep -Eq '"theme_difference_pixels": [1-9][0-9]*' "$coverage_report" \
+  || ! grep -Eq '"operation_difference_pixels": [1-9][0-9]*' "$coverage_report"; then
+  echo "storybook visual pixel markers failed"
+  cat "$coverage_report"
+  exit 1
+fi
+
 snapshot="$ROOT_DIR/target/storybook-panel.png"
+modal_snapshot="$ROOT_DIR/target/storybook-panel-modal-window.png"
 "$binary" --visual-snapshot "$snapshot" >/dev/null
 if [[ ! -s "$snapshot" ]]; then
   echo "storybook visual snapshot failed"
+  exit 1
+fi
+if [[ ! -s "$modal_snapshot" ]]; then
+  echo "storybook modal visual snapshot failed"
   exit 1
 fi
 

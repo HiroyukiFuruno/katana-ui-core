@@ -1,43 +1,9 @@
-use super::{UiNodeId, UiNodeKind, UiStateId};
+use super::{
+    UiInteractionState, UiLoadingProps, UiNodeId, UiNodeKind, UiProps, UiSize, UiStateId,
+    UiStatusProps, UiTextEntryProps, UiTone, UiVariant, UiVisualRole,
+};
 use crate::theme::ThemeSnapshot;
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiProps {
-    pub label: String,
-    pub state_id: UiStateId,
-    pub disabled: bool,
-    pub focusable: bool,
-    pub accessibility_label: String,
-    pub interaction: UiInteractionState,
-    pub theme_id: String,
-    pub style_classes: Vec<String>,
-}
-
-impl UiProps {
-    #[must_use]
-    pub fn new(label: impl Into<String>, state_id: UiStateId) -> Self {
-        Self {
-            label: label.into(),
-            state_id,
-            disabled: false,
-            focusable: false,
-            accessibility_label: String::new(),
-            interaction: UiInteractionState::default(),
-            theme_id: String::new(),
-            style_classes: Vec::new(),
-        }
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiInteractionState {
-    pub open: bool,
-    pub has_selection: bool,
-    pub selected_index: usize,
-    pub item_count: usize,
-    pub value: String,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiNode {
@@ -97,6 +63,97 @@ impl UiNode {
     }
 
     #[must_use]
+    pub fn font_role(mut self, value: impl Into<String>) -> Self {
+        self.props.font_role = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn visual_role(mut self, value: UiVisualRole) -> Self {
+        self.props.visual_role = value;
+        self
+    }
+
+    #[must_use]
+    pub fn variant(mut self, value: UiVariant) -> Self {
+        self.props.variant = value;
+        self
+    }
+
+    #[must_use]
+    pub fn tone(mut self, value: UiTone) -> Self {
+        self.props.tone = value;
+        self
+    }
+
+    #[must_use]
+    pub fn size(mut self, value: UiSize) -> Self {
+        self.props.size = value;
+        self
+    }
+
+    #[must_use]
+    pub fn loading(mut self, value: bool) -> Self {
+        self.props.loading = value;
+        self
+    }
+
+    #[must_use]
+    pub fn readonly(mut self, value: bool) -> Self {
+        self.props.readonly = value;
+        self
+    }
+
+    #[must_use]
+    pub fn invalid(mut self, value: bool) -> Self {
+        self.props.invalid = value;
+        self
+    }
+
+    #[must_use]
+    pub fn placeholder(mut self, value: impl Into<String>) -> Self {
+        self.props.placeholder = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn checked(mut self, value: bool) -> Self {
+        self.props.checked = value;
+        self
+    }
+
+    #[must_use]
+    pub fn progress(mut self, determinate: bool, percent: u8) -> Self {
+        self.props.determinate = determinate;
+        self.props.progress_percent = percent;
+        self
+    }
+
+    #[must_use]
+    pub fn severity(mut self, value: UiTone) -> Self {
+        self.props.severity = value;
+        self
+    }
+
+    #[must_use]
+    pub fn text_entry(mut self, value: UiTextEntryProps) -> Self {
+        self.props.text_entry = value;
+        self
+    }
+
+    #[must_use]
+    pub fn status(mut self, value: UiStatusProps) -> Self {
+        self.props.status = value;
+        self
+    }
+
+    #[must_use]
+    pub fn loading_indicator(mut self, value: UiLoadingProps) -> Self {
+        self.props.loading_indicator = value;
+        self
+    }
+
+    #[must_use]
     pub fn style_class(mut self, value: impl Into<String>) -> Self {
         self.props.style_classes.push(value.into());
         self
@@ -132,22 +189,5 @@ impl UiNode {
     #[must_use]
     pub fn props(&self) -> &UiProps {
         &self.props
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiTree {
-    root: UiNode,
-}
-
-impl UiTree {
-    #[must_use]
-    pub fn new(root: impl Into<UiNode>) -> Self {
-        Self { root: root.into() }
-    }
-
-    #[must_use]
-    pub fn root(&self) -> &UiNode {
-        &self.root
     }
 }

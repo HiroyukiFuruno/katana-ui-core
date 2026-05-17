@@ -1,11 +1,12 @@
 use super::canvas::Canvas;
-use super::render::{ACCENT, BACKGROUND, BORDER, MUTED, PANEL, SURFACE, TEXT};
+use super::palette::{DEFAULT_BACKGROUND, VisualPalette};
 use super::text::TextRenderer;
+use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::{atom, molecule};
 
 pub(super) const MODAL_WIDTH: usize = 420;
 pub(super) const MODAL_HEIGHT: usize = 260;
-pub(super) const MODAL_BACKGROUND: u32 = BACKGROUND;
+pub(super) const MODAL_BACKGROUND: u32 = DEFAULT_BACKGROUND;
 
 const PADDING: usize = 24;
 const TITLE_Y: usize = 24;
@@ -26,17 +27,19 @@ const BUTTON_TEXT_SIZE: f32 = 13.0;
 const MIN_RENDERED_PIXELS: usize = 1000;
 
 pub(super) fn render_modal_canvas() -> Canvas {
-    let text = TextRenderer::load();
-    let mut canvas = Canvas::new(MODAL_WIDTH, MODAL_HEIGHT, MODAL_BACKGROUND);
-    canvas.fill_rect(0, 0, MODAL_WIDTH, MODAL_HEIGHT, SURFACE);
-    canvas.stroke_rect(0, 0, MODAL_WIDTH, MODAL_HEIGHT, ACCENT);
+    let facade = UiCoreFacade::default();
+    let palette = VisualPalette::from_theme(facade.theme());
+    let text = TextRenderer::load(&facade, facade.default_font_role());
+    let mut canvas = Canvas::new(MODAL_WIDTH, MODAL_HEIGHT, palette.background);
+    canvas.fill_rect(0, 0, MODAL_WIDTH, MODAL_HEIGHT, palette.surface);
+    canvas.stroke_rect(0, 0, MODAL_WIDTH, MODAL_HEIGHT, palette.accent);
     text.draw(
         &mut canvas,
         "Modal window",
         PADDING,
         TITLE_Y,
         TITLE_SIZE,
-        TEXT,
+        palette.text,
     );
     text.draw(
         &mut canvas,
@@ -44,21 +47,21 @@ pub(super) fn render_modal_canvas() -> Canvas {
         PADDING,
         META_Y,
         META_SIZE,
-        MUTED,
+        palette.muted,
     );
     canvas.fill_rect(
         PADDING,
         BODY_Y,
         MODAL_WIDTH - PADDING * 2,
         BODY_HEIGHT,
-        PANEL,
+        palette.panel,
     );
     canvas.stroke_rect(
         PADDING,
         BODY_Y,
         MODAL_WIDTH - PADDING * 2,
         BODY_HEIGHT,
-        BORDER,
+        palette.border,
     );
     text.draw(
         &mut canvas,
@@ -66,16 +69,22 @@ pub(super) fn render_modal_canvas() -> Canvas {
         PADDING + BODY_TEXT_X,
         BODY_Y + BODY_TEXT_Y,
         BODY_TEXT_SIZE,
-        TEXT,
+        palette.text,
     );
-    canvas.fill_rect(PADDING, BUTTON_Y, BUTTON_WIDTH, BUTTON_HEIGHT, ACCENT);
+    canvas.fill_rect(
+        PADDING,
+        BUTTON_Y,
+        BUTTON_WIDTH,
+        BUTTON_HEIGHT,
+        palette.accent,
+    );
     text.draw(
         &mut canvas,
         "close",
         PADDING + BUTTON_TEXT_X,
         BUTTON_Y + BUTTON_TEXT_Y,
         BUTTON_TEXT_SIZE,
-        BACKGROUND,
+        palette.background,
     );
     canvas
 }

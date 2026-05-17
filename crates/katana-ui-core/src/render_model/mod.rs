@@ -1,12 +1,21 @@
 mod command;
 mod identity;
 mod kind;
+mod props;
 mod tree;
+mod tree_model;
+mod typed;
 
 pub use command::{RenderContext, UiCommand, UiTreeDiff};
 pub use identity::{UiNodeId, UiStateId};
 pub use kind::UiNodeKind;
-pub use tree::{UiInteractionState, UiNode, UiProps, UiTree};
+pub use props::{UiInteractionState, UiProps, UiSize, UiTone, UiVariant, UiVisualRole};
+pub use tree::UiNode;
+pub use tree_model::UiTree;
+pub use typed::{
+    UiAnimationState, UiClearActionSpec, UiDismissAction, UiLoadingProps, UiProgressMode,
+    UiSlotPlacement, UiSlotSpec, UiStatusProps, UiTextEntryProps,
+};
 
 #[cfg(test)]
 mod tests {

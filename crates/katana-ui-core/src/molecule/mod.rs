@@ -1,83 +1,27 @@
-use crate::event::EventRoute;
-mod complex;
+mod basic;
+mod color;
+mod diff;
+mod disclosure;
+mod selection;
+mod state;
+mod structured;
 
-use crate::render_model::UiNodeId;
-use crate::render_model::{UiNode, UiNodeKind, UiStateId};
-pub use complex::{
-    Accordion, CodeDiff, ColorPicker, ComboBox, CommandPalette, DynamicArrayEditor, MenuButton,
-    Modal, ModalOverlay, NotificationToast, Popover, SearchBox, SegmentedToggle, SelectBox,
-    Tooltip, TreeView,
+pub use basic::{Card, FormField, List, Menu, MoleculeEventRouting, StatusBar, Toolbar};
+pub use color::{ColorBlendingMode, ColorPicker, RgbaColor};
+pub use diff::{
+    CodeDiff, CodeDiffDirection, CodeDiffLine, CodeDiffLineKind, CodeDiffMode, CodeDiffSource,
+    CodeDiffWhitespace, CollapsedBlock, HighlightRange,
 };
-use serde::{Deserialize, Serialize};
-
-macro_rules! molecule_model {
-    ($name:ident, $kind:expr) => {
-        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-        pub struct $name {
-            label: String,
-            state_id: UiStateId,
-            children: Vec<UiNode>,
-        }
-
-        impl $name {
-            #[must_use]
-            pub fn new(label: impl Into<String>) -> Self {
-                Self {
-                    label: label.into(),
-                    state_id: UiStateId::next_for($kind),
-                    children: Vec::new(),
-                }
-            }
-
-            #[must_use]
-            pub fn child(mut self, child: impl Into<UiNode>) -> Self {
-                self.children.push(child.into());
-                self
-            }
-
-            #[must_use]
-            pub fn children(&self) -> &[UiNode] {
-                &self.children
-            }
-        }
-
-        impl From<$name> for UiNode {
-            fn from(value: $name) -> Self {
-                let mut node = UiNode::from_state($kind, value.label, value.state_id);
-                for child in value.children {
-                    node = node.child(child);
-                }
-                node
-            }
-        }
-    };
-}
-
-molecule_model!(Card, UiNodeKind::Card);
-molecule_model!(List, UiNodeKind::List);
-molecule_model!(Menu, UiNodeKind::Menu);
-molecule_model!(Tabs, UiNodeKind::Tabs);
-molecule_model!(Toolbar, UiNodeKind::Toolbar);
-molecule_model!(FormField, UiNodeKind::FormField);
-molecule_model!(Breadcrumb, UiNodeKind::Breadcrumb);
-molecule_model!(SelectionList, UiNodeKind::SelectionList);
-molecule_model!(SideMenu, UiNodeKind::SideMenu);
-molecule_model!(StatusBar, UiNodeKind::StatusBar);
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MoleculeEventRouting;
-
-impl MoleculeEventRouting {
-    #[must_use]
-    pub fn bubble_nested(
-        target: UiNodeId,
-        molecule: UiNodeId,
-        root: UiNodeId,
-        disabled: bool,
-    ) -> EventRoute {
-        EventRoute::bubble(target, vec![molecule, root], disabled)
-    }
-}
+pub use disclosure::{
+    Accordion, Modal, ModalOverlay, NotificationToast, Popover, SearchBox, SegmentedToggle,
+    SlideControl, Tooltip,
+};
+pub use selection::{
+    Breadcrumb, ChoiceItem, ComboBox, MenuButton, SelectBox, SelectionList, SideMenu, Tabs,
+};
+pub use structured::{
+    ArrayEditorItem, CommandItem, CommandPalette, DynamicArrayEditor, TreeNode, TreeView,
+};
 
 #[cfg(test)]
 mod tests {

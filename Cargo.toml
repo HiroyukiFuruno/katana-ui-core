@@ -24,7 +24,7 @@ katana-ui-core = { version = "0.1.0", path = "crates/katana-ui-core" }
 katana-ui-core-egui = { version = "0.1.0", path = "crates/katana-ui-core-egui" }
 katana-ui-core-floem = { version = "0.1.0", path = "crates/katana-ui-core-floem" }
 katana-ui-core-gpui = { version = "0.1.0", path = "crates/katana-ui-core-gpui" }
-fontdue = "0.9.3"
+cosmic-text = "0.12.1"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 minifb = "0.28.0"
 serde = { version = "1.0.228", features = ["derive"] }

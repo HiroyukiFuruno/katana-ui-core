@@ -5,9 +5,12 @@ mod panel;
 mod requirements;
 mod visual;
 
-pub use catalog::{StoryCatalog, StoryCatalogReport, StoryExample};
+pub use catalog::{
+    StoryCatalog, StoryCatalogReport, StoryExample, StorybookPanelInteractionReport,
+    StorybookPanelReport, StorybookStyleSheet,
+};
 use katana_ui_core::theme::ThemeSnapshot;
-pub use panel::{StorybookPanel, StorybookPanelReport, StorybookStyleSheet};
+pub use panel::StorybookPanel;
 pub use visual::{
     Canvas, StorybookRuntimeReport, StorybookVisual, StorybookVisualError, StorybookWindowRun,
 };
