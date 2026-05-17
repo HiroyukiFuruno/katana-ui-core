@@ -2,7 +2,7 @@ use katana_ui_core_storybook::{StorybookSummary, StorybookVisual};
 use std::path::Path;
 use std::{env, process};
 
-const DEFAULT_WINDOW_FRAMES: usize = 120;
+const DEFAULT_WINDOW_FRAMES: usize = 0;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

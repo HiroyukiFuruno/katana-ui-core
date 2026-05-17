@@ -108,9 +108,17 @@ update:
     {{RTK_CMD}}cargo upgrade -i
     {{RTK_CMD}}cargo update
 
-# Run the Storybook (independent Cargo project)
+# Run the visible KUC Storybook panel window
 storybook:
+    RUSTFLAGS="-D warnings" {{CARGO}} run -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- --open-window 0
+
+# Print the KUC Storybook validation summary without opening a window
+storybook-summary:
     RUSTFLAGS="-D warnings" {{CARGO}} run -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked
+
+# Run the visible KUC Storybook panel plus modal native window
+storybook-modal:
+    RUSTFLAGS="-D warnings" {{CARGO}} run -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- --open-modal-window 0
 
 # Check that Storybook compiles without running
 storybook-check:

@@ -10,7 +10,6 @@ use katana_ui_core::window::{
 use minifb::{Key, Window, WindowOptions};
 use std::thread;
 use std::time::Duration;
-
 const DISPLAY_PADDING: f32 = 256.0;
 const SAMPLE_PARENT_X: f32 = 80.0;
 const SAMPLE_PARENT_Y: f32 = 80.0;
@@ -19,7 +18,6 @@ const SAMPLE_DISPLAY_HEIGHT: f32 = 1200.0;
 const SAMPLE_DISPLAY_SCALE: f32 = 2.0;
 const MAIN_WINDOW_TITLE: &str = "katana-ui-core Storybook";
 const MODAL_WINDOW_TITLE: &str = "katana-ui-core Modal";
-
 impl StorybookVisual {
     pub fn open_window(self, frames: usize) -> Result<(), minifb::Error> {
         let frame = render::render_storybook_canvas();
@@ -88,12 +86,14 @@ fn run_single_window(
     frame: &Canvas,
     frames: usize,
 ) -> Result<(), minifb::Error> {
-    for _ in 0..frames {
+    let mut frame_index = 0;
+    while frames == 0 || frame_index < frames {
         if !window.is_open() || window.is_key_down(Key::Escape) {
             break;
         }
         window.update_with_buffer(frame.pixels(), frame.width(), frame.height())?;
         thread::sleep(Duration::from_millis(render::FRAME_DELAY_MS));
+        frame_index += 1;
     }
     Ok(())
 }
@@ -105,7 +105,8 @@ fn run_window_pair(
     modal_frame: &Canvas,
     frames: usize,
 ) -> Result<(), minifb::Error> {
-    for _ in 0..frames {
+    let mut frame_index = 0;
+    while frames == 0 || frame_index < frames {
         if !main.is_open() || !modal_window.is_open() || main.is_key_down(Key::Escape) {
             break;
         }
@@ -116,6 +117,7 @@ fn run_window_pair(
             modal_frame.height(),
         )?;
         thread::sleep(Duration::from_millis(render::FRAME_DELAY_MS));
+        frame_index += 1;
     }
     Ok(())
 }
