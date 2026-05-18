@@ -3,11 +3,13 @@ use super::modal;
 use super::render;
 use super::runtime::{StorybookRuntimeReport, StorybookVisualError, StorybookWindowRun};
 use super::types::StorybookVisual;
+use super::window_interaction::{StorybookWindowState, apply_mouse_click, apply_scroll};
+use super::window_options::{main_window_options, modal_window_options};
 use katana_ui_core::window::{
     DisplayBounds, ModalWindowPlacement, ModalWindowPlacementError, WindowId, WindowPoint,
     WindowRect, WindowSize,
 };
-use minifb::{Key, Window, WindowOptions};
+use minifb::{Key, Window};
 use std::thread;
 use std::time::Duration;
 const DISPLAY_PADDING: f32 = 256.0;
@@ -18,16 +20,18 @@ const SAMPLE_DISPLAY_HEIGHT: f32 = 1200.0;
 const SAMPLE_DISPLAY_SCALE: f32 = 2.0;
 const MAIN_WINDOW_TITLE: &str = "katana-ui-core Storybook";
 const MODAL_WINDOW_TITLE: &str = "katana-ui-core Modal";
+
 impl StorybookVisual {
     pub fn open_window(self, frames: usize) -> Result<(), minifb::Error> {
-        let frame = render::render_storybook_canvas();
+        let state = StorybookWindowState::default();
+        let frame = render_frame(&state);
         let mut window = Window::new(
             MAIN_WINDOW_TITLE,
             frame.width(),
             frame.height(),
-            WindowOptions::default(),
+            main_window_options(),
         )?;
-        run_single_window(&mut window, &frame, frames)
+        run_single_window(&mut window, frame, frames)
     }
 
     pub fn open_modal_window(
@@ -73,29 +77,47 @@ impl StorybookVisual {
 }
 
 fn create_window(title: &str, frame: &Canvas) -> Result<Window, minifb::Error> {
-    Window::new(
-        title,
-        frame.width(),
-        frame.height(),
-        WindowOptions::default(),
-    )
+    let options = if title == MAIN_WINDOW_TITLE {
+        main_window_options()
+    } else {
+        modal_window_options()
+    };
+    Window::new(title, frame.width(), frame.height(), options)
 }
 
 fn run_single_window(
     window: &mut Window,
-    frame: &Canvas,
+    mut frame: Canvas,
     frames: usize,
 ) -> Result<(), minifb::Error> {
     let mut frame_index = 0;
+    let mut state = StorybookWindowState::default();
+    let mut mouse_was_down = false;
     while frames == 0 || frame_index < frames {
         if !window.is_open() || window.is_key_down(Key::Escape) {
             break;
+        }
+        if apply_scroll(window, &mut state)
+            || apply_mouse_click(window, &mut state, &mut mouse_was_down)
+        {
+            frame = render_frame(&state);
         }
         window.update_with_buffer(frame.pixels(), frame.width(), frame.height())?;
         thread::sleep(Duration::from_millis(render::FRAME_DELAY_MS));
         frame_index += 1;
     }
     Ok(())
+}
+
+fn render_frame(state: &StorybookWindowState) -> Canvas {
+    render::render_storybook_canvas_with_options(
+        state.theme_id,
+        state.selected_page,
+        state.preset_index,
+        state.scroll_y,
+        state.scrollbar_visible,
+        state.tree_expansion,
+    )
 }
 
 fn run_window_pair(

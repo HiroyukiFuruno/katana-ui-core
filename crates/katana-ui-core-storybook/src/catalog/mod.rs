@@ -12,6 +12,7 @@ use std::collections::BTreeSet;
 
 pub use panel_interaction::StorybookPanelInteractionReport;
 pub(crate) use panel_operations::StorybookOperationSequences;
+pub(crate) use panel_report::StorybookPanelReportFields;
 pub use panel_report::{StorybookPanelReport, StorybookStyleSheet};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,6 +21,18 @@ pub struct StoryExample {
     pub tree: UiTree,
     pub minimum_nodes: usize,
     pub callback_logs: Vec<UiCallbackLog>,
+    pub contract: StoryPageContract,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StoryPageContract {
+    pub preview: bool,
+    pub settings: bool,
+    pub state_summary: bool,
+    pub event_history: bool,
+    pub action_history: bool,
+    pub preset_tabs: bool,
+    pub requirement_status: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,6 +42,7 @@ pub struct StoryCatalogReport {
     pub state_conflicts: usize,
     pub structure_failures: usize,
     pub missing_required_pages: usize,
+    pub page_contract_failures: usize,
     pub nodes: usize,
 }
 
@@ -66,12 +80,20 @@ impl StoryCatalog {
             .iter()
             .filter(|it| !present.contains(**it))
             .count();
+        let page_contract_failures = examples
+            .iter()
+            .filter(|it| !it.contract.is_complete())
+            .count();
         StoryCatalogReport {
             stories: examples.len(),
-            validated: examples.len() - state_conflicts - structure_failures,
+            validated: examples.len()
+                - state_conflicts
+                - structure_failures
+                - page_contract_failures,
             state_conflicts,
             structure_failures,
             missing_required_pages,
+            page_contract_failures,
             nodes: examples
                 .iter()
                 .map(|it| Self::node_count(it.tree.root()))
@@ -85,6 +107,7 @@ impl StoryCatalog {
             tree: UiTree::new(root),
             minimum_nodes: StoryRequirements::minimum_nodes_for(page),
             callback_logs: Vec::new(),
+            contract: StoryPageContract::complete(),
         }
     }
 
@@ -98,6 +121,7 @@ impl StoryCatalog {
             tree: UiTree::new(root),
             minimum_nodes: StoryRequirements::minimum_nodes_for(page),
             callback_logs,
+            contract: StoryPageContract::complete(),
         }
     }
 
@@ -124,14 +148,41 @@ impl StoryCatalogReport {
     #[must_use]
     pub fn summary(&self) -> String {
         format!(
-            "stories={} validated={} state_conflicts={} structure_failures={} missing_required_pages={} nodes={}",
+            "stories={} validated={} state_conflicts={} structure_failures={} missing_required_pages={} page_contract_failures={} nodes={}",
             self.stories,
             self.validated,
             self.state_conflicts,
             self.structure_failures,
             self.missing_required_pages,
+            self.page_contract_failures,
             self.nodes
         )
+    }
+}
+
+impl StoryPageContract {
+    #[must_use]
+    pub fn complete() -> Self {
+        Self {
+            preview: true,
+            settings: true,
+            state_summary: true,
+            event_history: true,
+            action_history: true,
+            preset_tabs: true,
+            requirement_status: true,
+        }
+    }
+
+    #[must_use]
+    pub fn is_complete(self) -> bool {
+        self.preview
+            && self.settings
+            && self.state_summary
+            && self.event_history
+            && self.action_history
+            && self.preset_tabs
+            && self.requirement_status
     }
 }
 

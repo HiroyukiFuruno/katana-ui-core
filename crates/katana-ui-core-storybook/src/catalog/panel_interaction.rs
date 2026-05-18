@@ -66,6 +66,7 @@ impl StorybookPanelInteractionReport {
             .iter()
             .find(|it| it.page == SELECTED_PAGE)
             .or_else(|| examples.first());
+        let selected_label = selected_story.map(|it| it.tree.root().props().label.as_str());
         let callback_log = selected_story
             .map(|it| report_callback_logs(&it.callback_logs))
             .unwrap_or_default();
@@ -73,7 +74,7 @@ impl StorybookPanelInteractionReport {
         Self {
             story_selection: StorySelectionReport {
                 selected_page: SELECTED_PAGE.to_string(),
-                preview_page: preview_page(preview).unwrap_or_default(),
+                preview_page: preview_page(preview, selected_label).unwrap_or_default(),
                 navigation_items: examples.len(),
             },
             theme_switch: ThemeSwitchReport {
@@ -83,7 +84,7 @@ impl StorybookPanelInteractionReport {
                 root_theme_id: root.props().theme_id.clone(),
                 navigation_theme_id: panel_theme(root, NAVIGATION_LABEL).unwrap_or_default(),
                 preview_theme_id: panel_theme(root, PREVIEW_LABEL).unwrap_or_default(),
-                story_root_theme_id: story_root_theme(preview).unwrap_or_default(),
+                story_root_theme_id: story_root_theme(preview, selected_label).unwrap_or_default(),
             },
             operation_sequence: operation_sequence(&callback_log),
             selector_operations: StorybookOperationSequences::selector_operations(examples),
@@ -132,16 +133,25 @@ fn panel_theme(root: &UiNode, label: &str) -> Option<String> {
     panel_child(root, label).map(|it| it.props().theme_id.clone())
 }
 
-fn preview_page(preview: Option<&UiNode>) -> Option<String> {
+fn preview_page(preview: Option<&UiNode>, selected_label: Option<&str>) -> Option<String> {
     preview
-        .and_then(|it| it.children().first())
+        .and_then(|it| story_child(it, selected_label))
         .map(|it| it.props().label.clone())
 }
 
-fn story_root_theme(preview: Option<&UiNode>) -> Option<String> {
+fn story_root_theme(preview: Option<&UiNode>, selected_label: Option<&str>) -> Option<String> {
     preview
-        .and_then(|it| it.children().first())
+        .and_then(|it| story_child(it, selected_label))
         .map(|it| it.props().theme_id.clone())
+}
+
+fn story_child<'a>(preview: &'a UiNode, selected_label: Option<&str>) -> Option<&'a UiNode> {
+    let selected_label = selected_label?;
+    preview
+        .children()
+        .iter()
+        .find(|it| it.props().label == selected_label)
+        .or_else(|| preview.children().first())
 }
 
 fn report_callback_logs(callback_logs: &[UiCallbackLog]) -> Vec<CallbackLogReport> {

@@ -72,7 +72,7 @@
 
 ## 6. Storybook 部品カタログ
 
-- [x] 6.1 左ペインを KUC TreeView で実装し、atoms / molecules / Storybook internal をカテゴリ別のネスト構造で表示する。
+- [x] 6.1 左ペインを KUC TreeView で実装し、atoms / molecules / Storybook internal をカテゴリ別のネスト構造で表示し、カテゴリ開閉と選択中表示を同じ状態から描画する。
 - [x] 6.2 各部品ページに preview、settings、state 表示、event 履歴、action 履歴を配置する。
 - [x] 6.3 settings から option 値を変更し、preview に即時反映する操作経路を定義する。
 - [x] 6.4 各部品ページの preset 切替を KUC Tabs で実装する。
@@ -96,3 +96,30 @@
 - [x] 8.4 01〜24 が tasks に漏れなく移管されていることを確認する。
 - [x] 8.5 Storybook が検証の主役ではなく、操作確認と目視確認の場として定義されていることを確認する。
 - [x] 8.6 品質ゲートが自動テスト中心で定義されていることを確認する。
+
+## 9. 構成不能な基盤欠落の是正
+
+- [x] 9.1 P0: SVG アイコン atom を、画像そのものではなく `SvgIcon` 相当の typed props として core に持たせる。
+- [x] 9.2 P0: Button 専用ではない汎用クリック event を core action と callback log に持たせる。
+- [x] 9.3 P0: TreeView が directory / file icon、開閉 icon、font role、theme id を option として持てるようにする。
+- [x] 9.4 P0: TreeView が空領域右クリック時の context menu 表示可否と action を持てるようにする。
+- [x] 9.5 P0: TreeView が既定の開閉状態、開閉対象領域、垂直線の有無・種類・太さを持てるようにする。
+- [x] 9.6 P1: Text 表示と AlignCenter などの汎用配置 node を、Storybook 専用ではなく core の構成部品として検証する。
+- [x] 9.7 P1: Accordion の開閉制御を TreeView と共有できる disclosure foundation として整理する。
+- [x] 9.8 P1: Storybook 左ペインを上記 TreeView option で操作できる確認画面に更新する。
+
+## 10. Storybook 品質検証の堅牢化
+
+- [x] 10.1 macOS の最大化ボタンが効くように、Storybook のメインウィンドウをサイズ変更可能にする。
+- [x] 10.2 preset tab の高さ、幅、間隔、選択状態を数値で固定し、表示崩れを自動テストで検出する。
+- [x] 10.3 navigation、preview、inspector、component card が重ならないことをレイアウト自動テストで検証する。
+- [x] 10.4 theme 切替、preset 切替、navigation 選択のクリック操作を state 変化と描画差分で自動検証する。
+- [x] 10.5 Storybook のスクリーンショットを再生成し、目視だけでなく pixel 差分とレイアウト契約を品質ゲートに含める。
+- [x] 10.6 固定パスのスクリーンショット生成前に旧ファイルを削除し、生成ログにサイズと更新時刻を出して古い画像参照を検出できるようにする。
+- [x] 10.7 preset tab をボタン列ではなく、Katana app に寄せた隙間なし・同一高さ・下辺アクセントの連結タブとして表現し、pixel test で検証する。
+- [x] 10.8 preset tab の 3 個目・4 個目も選択できるように、preset 状態を bool ではなく index として管理する。
+- [x] 10.9 Storybook 全体を縦スクロール可能にし、スクロール後の viewport 差分を自動テストで検証する。
+- [x] 10.10 操作確認用の Storybook 起動と固定SS生成を release binary に切り替え、debug 実行による重さを避ける。
+- [x] 10.11 TreeView のカテゴリ行を開閉可能にし、クリック範囲、カレント表示、アイコンと文字の上下中央揃えを自動テストで検証する。
+- [x] 10.12 スクロールバーの表示・非表示を Storybook state、画面操作、スナップショット引数で制御できるようにする。
+- [x] 10.13 各部品ページに option / action / event / state / preset / preview / settings / test / visual の実情報を表示し、見せかけだけのページを guard で失敗扱いにする。

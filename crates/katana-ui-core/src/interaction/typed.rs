@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UiActionSource {
     Generic,
+    Click,
     Button,
     Input,
     Checkbox,
@@ -16,6 +17,7 @@ pub enum UiActionSource {
 impl UiActionSource {
     pub(crate) fn press_name(self) -> &'static str {
         match self {
+            Self::Click => "click",
             Self::Button => "button_press",
             _ => "press",
         }
@@ -114,6 +116,7 @@ macro_rules! target_action {
 }
 
 target_action!(ButtonAction);
+target_action!(ClickAction);
 target_action!(RadioAction);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

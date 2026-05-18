@@ -2,6 +2,7 @@ use super::model::{
     Accordion, Modal, ModalOverlay, NotificationToast, Popover, SearchBox, SegmentedToggle,
     SlideControl, Tooltip,
 };
+use crate::molecule::DisclosureTriggerArea;
 
 macro_rules! disclosure_accessors {
     ($name:ident) => {
@@ -59,6 +60,16 @@ macro_rules! disclosure_accessors {
             #[must_use]
             pub fn indicator_position_model(&self) -> &str {
                 &self.model.indicator_position
+            }
+
+            #[must_use]
+            pub fn trigger_area_model(&self) -> DisclosureTriggerArea {
+                self.model.trigger_area
+            }
+
+            #[must_use]
+            pub fn toggle_icon_model(&self) -> &str {
+                &self.model.toggle_icon
             }
 
             #[must_use]

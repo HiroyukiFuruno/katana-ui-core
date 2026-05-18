@@ -16,7 +16,8 @@ impl StorybookPanel {
                 self.theme.clone(),
             )
             .child(self.navigation_panel(examples))
-            .child(self.preview_panel(examples, selected_page)),
+            .child(self.preview_panel(examples, selected_page))
+            .child(self.details_panel(examples, selected_page)),
         )
     }
 }

@@ -1,15 +1,21 @@
 use super::canvas::Canvas;
 use super::card;
+use super::layout_metrics::{
+    PREVIEW_FIRST_CARD_Y, PREVIEW_VISIBLE_STORIES, PREVIEW_X, STORY_CARD_COLUMNS,
+    STORY_CARD_STEP_X, STORY_CARD_STEP_Y,
+};
 use super::palette::VisualPalette;
+use super::preset_tabs;
+use super::preview_contract::PreviewContract;
+use super::preview_detail;
 use super::render_context::{PreviewContext, RenderContext, ScenarioContext};
 use super::text::{TextRenderer, TextVerticalBox};
 use katana_ui_core::render_model::{UiNode, UiNodeKind};
 
-const PREVIEW_X: usize = 310;
 const PREVIEW_TITLE_Y: usize = 24;
 const PREVIEW_META_Y: usize = 54;
 const FONT_SAMPLE_Y: usize = 72;
-const PREVIEW_FIRST_CARD_Y: usize = 112;
+const GRID_TITLE_Y: usize = 424;
 const PREVIEW_TITLE_SIZE: f32 = 22.0;
 const PREVIEW_META_SIZE: f32 = 13.0;
 const FONT_SAMPLE_HEIGHT: usize = 24;
@@ -17,10 +23,6 @@ const FONT_SAMPLE_WIDTH: usize = 132;
 const FONT_SAMPLE_GAP: usize = 10;
 const FONT_SAMPLE_PADDING_X: usize = 8;
 const FONT_SAMPLE_SIZE: f32 = 12.0;
-const PREVIEW_VISIBLE_STORIES: usize = 24;
-const STORY_CARD_STEP_X: usize = 228;
-const STORY_CARD_WRAP_X: usize = 1040;
-const STORY_CARD_STEP_Y: usize = 144;
 
 pub(super) fn draw(
     canvas: &mut Canvas,
@@ -31,6 +33,8 @@ pub(super) fn draw(
     draw_header(canvas, render, scenario);
     draw_font_alignment_samples(canvas, render.text, render.code_text, render.palette);
     if let Some(preview) = panel_child(root, "Preview") {
+        preset_tabs::draw(canvas, render, scenario);
+        preview_detail::draw_selected_hero(canvas, render, preview, scenario);
         draw_preview_stories(
             canvas,
             PreviewContext {
@@ -39,6 +43,7 @@ pub(super) fn draw(
                 selected_page: scenario.selected_page,
             },
         );
+        PreviewContract::draw(canvas, preview, render, scenario);
     }
 }
 
@@ -62,7 +67,7 @@ fn draw_header(canvas: &mut Canvas, render: RenderContext<'_>, scenario: Scenari
 }
 
 fn preview_meta(scenario: ScenarioContext<'_>) -> &'static str {
-    if scenario.operation {
+    if scenario.preset_index > 0 {
         return "operation after / callback log visible";
     }
     "core-only / pure Rust / late-bound style"
@@ -102,8 +107,17 @@ fn draw_font_alignment_samples(
 }
 
 fn draw_preview_stories(canvas: &mut Canvas, context: PreviewContext<'_>) {
+    context.render.text.draw(
+        canvas,
+        "All components",
+        PREVIEW_X,
+        GRID_TITLE_Y,
+        PREVIEW_META_SIZE,
+        context.render.palette.text,
+    );
     let mut x = PREVIEW_X;
     let mut y = PREVIEW_FIRST_CARD_Y;
+    let mut column = 0;
     for (child, example) in ordered_stories(&context).take(PREVIEW_VISIBLE_STORIES) {
         let context = card::StoryCardContext {
             text: context.render.text,
@@ -113,10 +127,13 @@ fn draw_preview_stories(canvas: &mut Canvas, context: PreviewContext<'_>) {
         };
         let frame = card::StoryCardFrame { x, y };
         card::draw_story_card(canvas, &context, child, &example.callback_logs, frame);
-        x += STORY_CARD_STEP_X;
-        if x > STORY_CARD_WRAP_X {
+        column += 1;
+        if column == STORY_CARD_COLUMNS {
+            column = 0;
             x = PREVIEW_X;
             y += STORY_CARD_STEP_Y;
+        } else {
+            x += STORY_CARD_STEP_X;
         }
     }
 }

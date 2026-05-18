@@ -1,3 +1,4 @@
+use crate::molecule::disclosure_foundation::DisclosureTriggerArea;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -13,6 +14,8 @@ pub(super) struct DisclosureTypedModel {
     pub controlled: bool,
     pub multiple: bool,
     pub indicator_position: String,
+    pub trigger_area: DisclosureTriggerArea,
+    pub toggle_icon: String,
     pub tree_mode: bool,
     pub minimum: i32,
     pub maximum: i32,
@@ -34,6 +37,8 @@ impl Default for DisclosureTypedModel {
             controlled: false,
             multiple: false,
             indicator_position: String::new(),
+            trigger_area: DisclosureTriggerArea::default(),
+            toggle_icon: String::new(),
             tree_mode: false,
             minimum: 0,
             maximum: 100,

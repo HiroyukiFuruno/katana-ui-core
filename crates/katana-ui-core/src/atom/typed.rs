@@ -1,6 +1,6 @@
-use super::{Badge, Input, LoadingDots, ProgressBar, Spinner};
+use super::{Badge, Icon, Input, LoadingDots, ProgressBar, Spinner, SvgButton};
 use crate::render_model::{
-    UiAnimationState, UiClearActionSpec, UiDismissAction, UiSlotPlacement, UiSlotSpec,
+    UiAnimationState, UiClearActionSpec, UiDismissAction, UiIconProps, UiSlotPlacement, UiSlotSpec,
 };
 
 impl Input {
@@ -31,6 +31,39 @@ impl Badge {
         self
     }
 }
+
+macro_rules! svg_icon_atom {
+    ($name:ident) => {
+        impl $name {
+            #[must_use]
+            pub fn svg_source(mut self, value: impl Into<String>) -> Self {
+                self.state.icon.svg_source = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn svg_icon(mut self, value: UiIconProps) -> Self {
+                self.state.icon = value;
+                self
+            }
+
+            #[must_use]
+            pub fn icon_role(mut self, value: impl Into<String>) -> Self {
+                self.state.icon.role = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn icon_color_token(mut self, value: impl Into<String>) -> Self {
+                self.state.icon.color_token = value.into();
+                self
+            }
+        }
+    };
+}
+
+svg_icon_atom!(Icon);
+svg_icon_atom!(SvgButton);
 
 macro_rules! loading_atom {
     ($name:ident) => {

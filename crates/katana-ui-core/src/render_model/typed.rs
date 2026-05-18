@@ -44,6 +44,36 @@ pub struct UiTextEntryProps {
     pub clear_action: Option<UiClearActionSpec>,
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiIconProps {
+    pub svg_source: String,
+    pub role: String,
+    pub color_token: String,
+}
+
+impl UiIconProps {
+    #[must_use]
+    pub fn new(svg_source: impl Into<String>) -> Self {
+        Self {
+            svg_source: svg_source.into(),
+            role: String::new(),
+            color_token: String::new(),
+        }
+    }
+
+    #[must_use]
+    pub fn role(mut self, value: impl Into<String>) -> Self {
+        self.role = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn color_token(mut self, value: impl Into<String>) -> Self {
+        self.color_token = value.into();
+        self
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UiDismissAction {
     None,

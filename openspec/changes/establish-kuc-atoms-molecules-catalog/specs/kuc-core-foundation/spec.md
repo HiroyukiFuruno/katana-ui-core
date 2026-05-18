@@ -95,3 +95,25 @@ Storybook screenshots MUST remain supporting evidence and MUST NOT replace layou
 - **WHEN** layout regression tests run for required components
 - **THEN** the tests verify dimensions, alignment, overflow, and overlay bounds
 - **AND** Storybook screenshots are not the only layout evidence
+
+### Requirement: Core action model supports generic click events
+
+KUC は Button 専用の press だけでなく、任意の component が利用できる汎用 click action を MUST とする。
+汎用 click action は target state id、action source、callback log の action name を保持し、TreeView row、Accordion header、Icon、Text などの開閉・選択操作に使える必要がある。
+
+#### Scenario: non-button component handles click
+
+- **WHEN** TreeView row や Accordion header が汎用 click action を受け取る
+- **THEN** callback log は `click` と target state id を記録する
+- **AND** Button 専用の `button_press` と混同しない
+
+### Requirement: Core carries SVG icon primitives as typed props
+
+KUC は SVG アイコンを単なる文字や style class ではなく、core が扱える typed props として MUST で持つ。
+SVG アイコン atom は source、role、size、color token、accessibility label を持ち、TreeView directory / file icon、Accordion indicator、toolbar icon に再利用できる必要がある。
+
+#### Scenario: icon consumer inspects SVG props
+
+- **WHEN** Icon または SvgButton が SVG source を指定される
+- **THEN** render model は SVG source と accessibility label を typed props として保持する
+- **AND** Storybook の代替文字だけでは完了扱いにしない

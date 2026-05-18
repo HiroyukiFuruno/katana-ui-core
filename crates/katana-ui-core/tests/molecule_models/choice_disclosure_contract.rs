@@ -1,8 +1,8 @@
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::molecule::{
-    Accordion, Breadcrumb, ChoiceItem, ComboBox, MenuButton, ModalOverlay, Popover, SelectBox,
-    SelectionList, SideMenu, SlideControl, Tabs, Tooltip,
+    Accordion, Breadcrumb, ChoiceItem, ComboBox, DisclosureTriggerArea, MenuButton, ModalOverlay,
+    Popover, SelectBox, SelectionList, SideMenu, SlideControl, Tabs, Tooltip,
 };
 use katana_ui_core::render_model::UiTree;
 
@@ -126,6 +126,8 @@ fn disclosure_molecules_update_open_value_and_dismiss_state() {
         .disabled(true)
         .multiple(true)
         .indicator_position("start")
+        .trigger_area(DisclosureTriggerArea::IconAndText)
+        .toggle_icon("<svg data-icon=\"chevron\"/>")
         .tree_mode(true);
     let slide_model = SlideControl::new("Opacity")
         .value("0.75")
@@ -146,6 +148,14 @@ fn disclosure_molecules_update_open_value_and_dismiss_state() {
     assert!(UiTree::new(accordion_model.clone()).root().props().disabled);
     assert!(accordion_model.allows_multiple());
     assert_eq!("start", accordion_model.indicator_position_model());
+    assert_eq!(
+        DisclosureTriggerArea::IconAndText,
+        accordion_model.trigger_area_model()
+    );
+    assert_eq!(
+        "<svg data-icon=\"chevron\"/>",
+        accordion_model.toggle_icon_model()
+    );
     assert!(accordion_model.is_tree_mode());
     assert_eq!(
         (RANGE_MINIMUM, RANGE_MAXIMUM, RANGE_STEP),

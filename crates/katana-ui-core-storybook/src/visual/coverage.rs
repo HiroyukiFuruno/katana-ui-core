@@ -1,28 +1,11 @@
 use crate::catalog::StoryExample;
+use crate::requirements::StoryRequirements;
 use katana_ui_core::render_model::UiNodeKind;
 use serde::{Deserialize, Serialize};
 
 use super::palette;
 use super::render;
 
-const REQUIRED_VISUAL_PAGES: &[&str] = &[
-    "button",
-    "text-input",
-    "select-box",
-    "toggle",
-    "badge",
-    "progress-bar",
-    "notification-toast",
-    "popover",
-    "tooltip",
-    "modal",
-    "modal-overlay",
-    "code-diff",
-    "color-picker-rgba",
-    "tree-view",
-    "command-palette",
-    "dynamic-array-editor",
-];
 const INITIAL_VISIBLE_STORIES: usize = 24;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -59,7 +42,7 @@ pub(super) fn visual_coverage_report(examples: &[StoryExample]) -> StorybookVisu
     let mut dedicated_ui = 0;
     let mut missing_pages = Vec::new();
 
-    for page in REQUIRED_VISUAL_PAGES {
+    for page in StoryRequirements::required_pages() {
         let example = examples.iter().find(|it| it.page == *page);
         match example {
             Some(it) if has_dedicated_renderer(it.tree.root().kind()) => {
@@ -74,11 +57,11 @@ pub(super) fn visual_coverage_report(examples: &[StoryExample]) -> StorybookVisu
     let operation_after = render::render_storybook_canvas_for("dark", "button", true);
 
     StorybookVisualCoverageReport {
-        required_ui: REQUIRED_VISUAL_PAGES.len(),
+        required_ui: StoryRequirements::required_pages().len(),
         dedicated_ui,
         required_ui_fallbacks: missing_pages.len(),
         initial_visible_fallbacks: initial_visible_fallbacks(examples),
-        modal_required: REQUIRED_VISUAL_PAGES.contains(&"modal"),
+        modal_required: StoryRequirements::required_pages().contains(&"modal"),
         non_empty_pixels: dark.non_background_pixels(palette::DEFAULT_BACKGROUND),
         theme_difference_pixels: pixel_difference(dark.pixels(), light.pixels()),
         operation_difference_pixels: pixel_difference(dark.pixels(), operation_after.pixels()),
@@ -136,13 +119,25 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::IconTextButton
             | UiNodeKind::Card
             | UiNodeKind::List
+            | UiNodeKind::Menu
             | UiNodeKind::Tabs
             | UiNodeKind::Toolbar
             | UiNodeKind::FormField
             | UiNodeKind::Breadcrumb
+            | UiNodeKind::Accordion
+            | UiNodeKind::ComboBox
+            | UiNodeKind::MenuButton
             | UiNodeKind::SearchBox
+            | UiNodeKind::SegmentedToggle
             | UiNodeKind::SelectionList
             | UiNodeKind::SideMenu
             | UiNodeKind::StatusBar
+            | UiNodeKind::Row
+            | UiNodeKind::Column
+            | UiNodeKind::Stack
+            | UiNodeKind::Grid
+            | UiNodeKind::ScrollArea
+            | UiNodeKind::SplitPane
+            | UiNodeKind::AlignCenter
     )
 }

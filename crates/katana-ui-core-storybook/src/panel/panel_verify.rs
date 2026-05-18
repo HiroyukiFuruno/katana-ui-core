@@ -1,5 +1,5 @@
 use super::StorybookPanel;
-use crate::catalog::{StoryExample, StorybookPanelReport};
+use crate::catalog::{StoryExample, StorybookPanelReport, StorybookPanelReportFields};
 use katana_ui_core::render_model::{UiNode, UiNodeKind};
 use katana_ui_core::theme::ThemeSnapshot;
 use std::collections::BTreeSet;
@@ -9,14 +9,16 @@ impl StorybookPanel {
         let tree = self.build(examples);
         let mut theme_ids = BTreeSet::new();
         Self::collect_panel_theme_ids(tree.root(), &mut theme_ids);
-        StorybookPanelReport::new(
-            Self::panel_count(tree.root()),
-            Self::panel_theme_is_configured(tree.root()),
-            theme_ids.len(),
-            Self::themed_story_root_count(tree.root()),
-            self.styled_story_root_count(tree.root()),
-            theme_ids,
-        )
+        StorybookPanelReport::new(StorybookPanelReportFields {
+            panel_nodes: Self::panel_count(tree.root()),
+            panel_theme_configured: Self::panel_theme_is_configured(tree.root()),
+            panel_theme_variants: theme_ids.len(),
+            themed_story_roots: Self::themed_story_root_count(tree.root()),
+            styled_story_roots: self.styled_story_root_count(tree.root()),
+            details_panel_configured: details_panel(tree.root()).is_some(),
+            detail_sections: details_panel(tree.root()).map_or(0, |it| it.children().len()),
+            panel_theme_ids: theme_ids,
+        })
     }
 
     pub fn verify_theme_variants(
@@ -81,6 +83,8 @@ struct PanelVerificationSummary {
     panel_theme_configured: bool,
     themed_story_roots: usize,
     styled_story_roots: usize,
+    details_panel_configured: bool,
+    detail_sections: usize,
 }
 
 impl Default for PanelVerificationSummary {
@@ -91,6 +95,8 @@ impl Default for PanelVerificationSummary {
             panel_theme_configured: true,
             themed_story_roots: 0,
             styled_story_roots: 0,
+            details_panel_configured: true,
+            detail_sections: 0,
         }
     }
 }
@@ -101,18 +107,23 @@ impl PanelVerificationSummary {
         self.panel_theme_configured = self.panel_theme_configured && report.panel_theme_configured;
         self.themed_story_roots = self.themed_story_roots.max(report.themed_story_roots);
         self.styled_story_roots = self.styled_story_roots.max(report.styled_story_roots);
+        self.details_panel_configured =
+            self.details_panel_configured && report.details_panel_configured;
+        self.detail_sections = self.detail_sections.max(report.detail_sections);
         self.theme_ids.extend(report.panel_theme_ids);
     }
 
     fn into_report(self) -> StorybookPanelReport {
-        StorybookPanelReport::new(
-            self.panel_nodes,
-            self.panel_theme_configured,
-            self.theme_ids.len(),
-            self.themed_story_roots,
-            self.styled_story_roots,
-            self.theme_ids,
-        )
+        StorybookPanelReport::new(StorybookPanelReportFields {
+            panel_nodes: self.panel_nodes,
+            panel_theme_configured: self.panel_theme_configured,
+            panel_theme_variants: self.theme_ids.len(),
+            themed_story_roots: self.themed_story_roots,
+            styled_story_roots: self.styled_story_roots,
+            details_panel_configured: self.details_panel_configured,
+            detail_sections: self.detail_sections,
+            panel_theme_ids: self.theme_ids,
+        })
     }
 }
 
@@ -120,4 +131,10 @@ fn preview_panel(root: &UiNode) -> Option<&UiNode> {
     root.children()
         .iter()
         .find(|it| it.kind() == UiNodeKind::Panel && it.props().label == "Preview")
+}
+
+fn details_panel(root: &UiNode) -> Option<&UiNode> {
+    root.children()
+        .iter()
+        .find(|it| it.kind() == UiNodeKind::Panel && it.props().label == "Details")
 }

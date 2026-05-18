@@ -1,7 +1,8 @@
 use super::items::{ArrayEditorItem, CommandItem, TreeNode};
-use super::types::StructuredTypedModel;
+use super::types::{StructuredTypedModel, TreeLineStyle};
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult};
+use crate::molecule::DisclosureTriggerArea;
 use crate::molecule::state::MoleculeState;
 use crate::render_model::{UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
@@ -82,6 +83,73 @@ macro_rules! structured_molecule {
             }
 
             #[must_use]
+            pub fn line_style(mut self, value: TreeLineStyle) -> Self {
+                self.model.line_style = value;
+                self
+            }
+
+            #[must_use]
+            pub fn line_width(mut self, value: u8) -> Self {
+                self.model.line_width = value;
+                self
+            }
+
+            #[must_use]
+            pub fn icons_visible(mut self, value: bool) -> Self {
+                self.model.icons_visible = value;
+                self
+            }
+
+            #[must_use]
+            pub fn directory_icon(mut self, value: impl Into<String>) -> Self {
+                self.model.directory_icon = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn file_icon(mut self, value: impl Into<String>) -> Self {
+                self.model.file_icon = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn tree_font_role(mut self, value: impl Into<String>) -> Self {
+                self.model.font_role = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn tree_theme_id(mut self, value: impl Into<String>) -> Self {
+                self.model.theme_id = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn empty_area_context_menu(mut self, value: bool) -> Self {
+                self.model.empty_area_context_menu = value;
+                self
+            }
+
+            #[must_use]
+            pub fn default_open(mut self, value: bool) -> Self {
+                self.model.default_open = value;
+                self.state.open = value;
+                self
+            }
+
+            #[must_use]
+            pub fn toggle_icon(mut self, value: impl Into<String>) -> Self {
+                self.model.toggle_icon = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn toggle_trigger_area(mut self, value: DisclosureTriggerArea) -> Self {
+                self.model.toggle_trigger_area = value;
+                self
+            }
+
+            #[must_use]
             pub fn query(mut self, value: impl Into<String>) -> Self {
                 self.model.query = value.into();
                 self
@@ -150,7 +218,11 @@ macro_rules! structured_molecule {
 
         impl From<$name> for UiNode {
             fn from(value: $name) -> Self {
+                let font_role = value.model.font_role.clone();
                 let mut node = value.state.node($kind, value.label);
+                if !font_role.is_empty() {
+                    node = node.font_role(font_role);
+                }
                 for child in value.children {
                     node = node.child(child);
                 }

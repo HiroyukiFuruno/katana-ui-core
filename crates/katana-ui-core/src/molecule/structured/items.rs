@@ -1,10 +1,18 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TreeNodeKind {
+    #[default]
+    File,
+    Directory,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TreeNode {
     pub id: String,
     pub label: String,
     pub depth: usize,
+    pub kind: TreeNodeKind,
     pub expanded: bool,
     pub selected: bool,
     pub active: bool,
@@ -17,6 +25,7 @@ impl TreeNode {
             id: id.into(),
             label: label.into(),
             depth,
+            kind: TreeNodeKind::File,
             expanded: false,
             selected: false,
             active: false,
@@ -26,6 +35,30 @@ impl TreeNode {
     #[must_use]
     pub fn active(mut self, value: bool) -> Self {
         self.active = value;
+        self
+    }
+
+    #[must_use]
+    pub fn directory(mut self) -> Self {
+        self.kind = TreeNodeKind::Directory;
+        self
+    }
+
+    #[must_use]
+    pub fn file(mut self) -> Self {
+        self.kind = TreeNodeKind::File;
+        self
+    }
+
+    #[must_use]
+    pub fn expanded(mut self, value: bool) -> Self {
+        self.expanded = value;
+        self
+    }
+
+    #[must_use]
+    pub fn selected(mut self, value: bool) -> Self {
+        self.selected = value;
         self
     }
 }

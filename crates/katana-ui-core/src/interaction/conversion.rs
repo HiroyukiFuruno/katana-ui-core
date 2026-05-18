@@ -1,6 +1,6 @@
 use crate::interaction::{
-    ButtonAction, CheckboxAction, ColorDragAction, InputAction, ProgressAction, RadioAction,
-    ToggleAction, UiAction, UiActionSource,
+    ButtonAction, CheckboxAction, ClickAction, ColorDragAction, InputAction, ProgressAction,
+    RadioAction, ToggleAction, UiAction, UiActionSource,
 };
 
 impl From<ButtonAction> for UiAction {
@@ -8,6 +8,15 @@ impl From<ButtonAction> for UiAction {
         Self::Press {
             target: value.target,
             source: UiActionSource::Button,
+        }
+    }
+}
+
+impl From<ClickAction> for UiAction {
+    fn from(value: ClickAction) -> Self {
+        Self::Press {
+            target: value.target,
+            source: UiActionSource::Click,
         }
     }
 }

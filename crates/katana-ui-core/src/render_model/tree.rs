@@ -1,6 +1,6 @@
 use super::{
-    UiInteractionState, UiLoadingProps, UiNodeId, UiNodeKind, UiProps, UiSize, UiStateId,
-    UiStatusProps, UiTextEntryProps, UiTone, UiVariant, UiVisualRole,
+    UiIconProps, UiInteractionState, UiLoadingProps, UiNodeId, UiNodeKind, UiProps, UiSize,
+    UiStateId, UiStatusProps, UiTextEntryProps, UiTone, UiVariant, UiVisualRole,
 };
 use crate::theme::ThemeSnapshot;
 use serde::{Deserialize, Serialize};
@@ -150,6 +150,12 @@ impl UiNode {
     #[must_use]
     pub fn loading_indicator(mut self, value: UiLoadingProps) -> Self {
         self.props.loading_indicator = value;
+        self
+    }
+
+    #[must_use]
+    pub fn icon(mut self, value: UiIconProps) -> Self {
+        self.props.icon = value;
         self
     }
 

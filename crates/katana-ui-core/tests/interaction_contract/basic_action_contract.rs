@@ -21,6 +21,17 @@ fn action_targets_only_the_matching_component_state() {
 }
 
 #[test]
+fn generic_click_action_is_not_button_specific() {
+    let mut text = katana_ui_core::atom::Text::new("Tree row");
+    let action = UiAction::click(text.state_id().clone());
+    let result = text.apply_action(&action);
+
+    assert!(result.handled);
+    assert_eq!("click", result.callback_log[0].action);
+    assert_eq!(text.state_id(), &result.callback_log[0].target);
+}
+
+#[test]
 fn state_id_is_unique_and_value_updates_only_matching_target() {
     let mut first = Input::new("Name");
     let mut second = Input::new("Name");

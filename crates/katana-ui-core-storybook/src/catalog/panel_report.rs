@@ -11,38 +11,48 @@ pub struct StorybookPanelReport {
     pub panel_theme_variants: usize,
     pub themed_story_roots: usize,
     pub styled_story_roots: usize,
+    pub details_panel_configured: bool,
+    pub detail_sections: usize,
+    pub(crate) panel_theme_ids: BTreeSet<String>,
+}
+
+pub(crate) struct StorybookPanelReportFields {
+    pub(crate) panel_nodes: usize,
+    pub(crate) panel_theme_configured: bool,
+    pub(crate) panel_theme_variants: usize,
+    pub(crate) themed_story_roots: usize,
+    pub(crate) styled_story_roots: usize,
+    pub(crate) details_panel_configured: bool,
+    pub(crate) detail_sections: usize,
     pub(crate) panel_theme_ids: BTreeSet<String>,
 }
 
 impl StorybookPanelReport {
     #[must_use]
-    pub fn new(
-        panel_nodes: usize,
-        panel_theme_configured: bool,
-        panel_theme_variants: usize,
-        themed_story_roots: usize,
-        styled_story_roots: usize,
-        panel_theme_ids: BTreeSet<String>,
-    ) -> Self {
+    pub(crate) fn new(fields: StorybookPanelReportFields) -> Self {
         Self {
-            panel_nodes,
-            panel_theme_configured,
-            panel_theme_variants,
-            themed_story_roots,
-            styled_story_roots,
-            panel_theme_ids,
+            panel_nodes: fields.panel_nodes,
+            panel_theme_configured: fields.panel_theme_configured,
+            panel_theme_variants: fields.panel_theme_variants,
+            themed_story_roots: fields.themed_story_roots,
+            styled_story_roots: fields.styled_story_roots,
+            details_panel_configured: fields.details_panel_configured,
+            detail_sections: fields.detail_sections,
+            panel_theme_ids: fields.panel_theme_ids,
         }
     }
 
     #[must_use]
     pub fn summary(&self) -> String {
         format!(
-            "panel_nodes={} panel_theme_configured={} panel_theme_variants={} themed_story_roots={} styled_story_roots={}",
+            "panel_nodes={} panel_theme_configured={} panel_theme_variants={} themed_story_roots={} styled_story_roots={} details_panel_configured={} detail_sections={}",
             self.panel_nodes,
             self.panel_theme_configured,
             self.panel_theme_variants,
             self.themed_story_roots,
-            self.styled_story_roots
+            self.styled_story_roots,
+            self.details_panel_configured,
+            self.detail_sections
         )
     }
 }

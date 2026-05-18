@@ -1,73 +1,111 @@
 use super::canvas::Canvas;
+use super::layout_metrics::{
+    NAV_FIRST_ROW_Y, NAV_ROW_HEIGHT, NAV_ROW_STEP, NAV_ROW_WIDTH, NAV_ROW_X,
+};
+use super::navigation_icons::{draw_disclosure, draw_file_icon, draw_folder_icon};
+use super::navigation_tree::{NavigationGroup, NavigationRow, TreeExpansionState, visible_rows};
 use super::palette::VisualPalette;
-use super::text::TextRenderer;
-use katana_ui_core::render_model::{UiNode, UiNodeKind};
+use super::text::{TextRenderer, TextVerticalBox};
 
-const NAV_FIRST_ROW_Y: usize = 104;
-const NAV_VISIBLE_ROWS: usize = 36;
-const NAV_ROW_X: usize = 14;
-const NAV_ROW_Y_OFFSET: usize = 5;
-const NAV_ROW_WIDTH: usize = 248;
-const NAV_ROW_HEIGHT: usize = 24;
-const NAV_TEXT_X: usize = 24;
+const PAGE_LINE_X: usize = 44;
+const GROUP_TEXT_X: usize = 62;
+const PAGE_TEXT_X: usize = 78;
 const NAV_TEXT_SIZE: f32 = 12.0;
-const NAV_ROW_STEP: usize = 28;
+const NAV_GROUP_TEXT_SIZE: f32 = 11.0;
+const TREE_LINE_WIDTH: usize = 1;
+const SELECTED_ACCENT_WIDTH: usize = 3;
 
 pub(super) fn draw(
     canvas: &mut Canvas,
     text: &TextRenderer,
-    root: &UiNode,
     palette: &VisualPalette,
     selected_page: &str,
+    expansion: TreeExpansionState,
 ) {
-    let Some(nav) = panel_child(root, "Navigation") else {
-        return;
-    };
-    let mut y = NAV_FIRST_ROW_Y;
-    for child in nav.children().iter().take(NAV_VISIBLE_ROWS) {
-        draw_row(canvas, text, palette, selected_page, child, y);
-        y += NAV_ROW_STEP;
+    let mut row_y = NAV_FIRST_ROW_Y;
+    for row in visible_rows(expansion) {
+        match row {
+            NavigationRow::Group(group) => {
+                draw_group(
+                    canvas,
+                    text,
+                    palette,
+                    group,
+                    expansion.is_open(group),
+                    row_y,
+                );
+            }
+            NavigationRow::Page { page, .. } => {
+                draw_page(canvas, text, palette, page, page == selected_page, row_y);
+            }
+        }
+        row_y += NAV_ROW_STEP;
     }
 }
 
-fn draw_row(
+fn draw_group(
     canvas: &mut Canvas,
     text: &TextRenderer,
     palette: &VisualPalette,
-    selected_page: &str,
-    child: &UiNode,
+    group: NavigationGroup,
+    open: bool,
     y: usize,
 ) {
-    let selected = child.props().label == selected_page;
-    let fill = if selected {
-        palette.accent
-    } else {
-        palette.panel
-    };
-    let color = if selected {
-        palette.background
-    } else {
-        palette.text
-    };
-    canvas.fill_rect(
-        NAV_ROW_X,
-        y - NAV_ROW_Y_OFFSET,
-        NAV_ROW_WIDTH,
-        NAV_ROW_HEIGHT,
-        fill,
-    );
-    text.draw(
+    canvas.fill_rect(NAV_ROW_X, y, NAV_ROW_WIDTH, NAV_ROW_HEIGHT, palette.surface);
+    draw_disclosure(canvas, palette, open, y);
+    draw_folder_icon(canvas, palette, y);
+    text.draw_centered(
         canvas,
-        &child.props().label,
-        NAV_TEXT_X,
-        y,
-        NAV_TEXT_SIZE,
-        color,
+        group.label(),
+        GROUP_TEXT_X,
+        TextVerticalBox::new(y, NAV_ROW_HEIGHT as f32),
+        NAV_GROUP_TEXT_SIZE,
+        palette.muted,
     );
 }
 
-fn panel_child<'a>(root: &'a UiNode, label: &str) -> Option<&'a UiNode> {
-    root.children()
-        .iter()
-        .find(|it| it.kind() == UiNodeKind::Panel && it.props().label == label)
+fn draw_page(
+    canvas: &mut Canvas,
+    text: &TextRenderer,
+    palette: &VisualPalette,
+    page: &str,
+    selected: bool,
+    y: usize,
+) {
+    let fill = if selected {
+        palette.panel
+    } else {
+        palette.surface
+    };
+    let text_color = if selected {
+        palette.text
+    } else {
+        palette.muted
+    };
+    canvas.fill_rect(NAV_ROW_X, y, NAV_ROW_WIDTH, NAV_ROW_HEIGHT, fill);
+    if selected {
+        canvas.fill_rect(
+            NAV_ROW_X,
+            y,
+            SELECTED_ACCENT_WIDTH,
+            NAV_ROW_HEIGHT,
+            palette.accent,
+        );
+    }
+    canvas.fill_rect(
+        PAGE_LINE_X,
+        y,
+        TREE_LINE_WIDTH,
+        NAV_ROW_HEIGHT + NAV_ROW_STEP / 2,
+        palette.border,
+    );
+    draw_file_icon(canvas, palette, y, selected);
+    text.draw_centered(
+        canvas,
+        page,
+        PAGE_TEXT_X,
+        TextVerticalBox::new(y, NAV_ROW_HEIGHT as f32),
+        NAV_TEXT_SIZE,
+        text_color,
+    );
 }

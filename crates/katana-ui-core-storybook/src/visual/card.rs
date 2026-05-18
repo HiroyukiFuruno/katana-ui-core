@@ -1,21 +1,22 @@
 use super::canvas::Canvas;
 use super::dedicated;
+use super::layout_metrics::{STORY_CARD_HEIGHT, STORY_CARD_WIDTH};
 use super::palette::VisualPalette;
 use super::text::TextRenderer;
 use katana_ui_core::interaction::UiCallbackLog;
 use katana_ui_core::render_model::UiNode;
 
-const STORY_CARD_WIDTH: usize = 206;
-const STORY_CARD_HEIGHT: usize = 122;
 const STORY_TEXT_X: usize = 12;
 const STORY_TITLE_Y: usize = 12;
 const STORY_KIND_Y: usize = 36;
-const STORY_PROPS_Y: usize = 54;
-const STORY_LOG_Y: usize = 72;
-const STORY_HINT_Y: usize = 90;
+const STORY_PROPS_Y: usize = 58;
+const STORY_LOG_Y: usize = 78;
+const STORY_HINT_Y: usize = 92;
 const STORY_TITLE_SIZE: f32 = 14.0;
 const STORY_KIND_SIZE: f32 = 11.0;
 const STORY_META_SIZE: f32 = 10.0;
+const HEADER_HEIGHT: usize = 42;
+const ACCENT_STRIP_WIDTH: usize = 4;
 const CODE_FONT_ROLE: &str = "code";
 
 pub(super) struct StoryCardContext<'a> {
@@ -49,6 +50,20 @@ pub(super) fn draw_story_card(
         STORY_CARD_WIDTH,
         STORY_CARD_HEIGHT,
         context.palette.panel,
+    );
+    canvas.fill_rect(
+        frame.x,
+        frame.y,
+        STORY_CARD_WIDTH,
+        HEADER_HEIGHT,
+        context.palette.surface,
+    );
+    canvas.fill_rect(
+        frame.x,
+        frame.y,
+        ACCENT_STRIP_WIDTH,
+        STORY_CARD_HEIGHT,
+        edge,
     );
     canvas.stroke_rect(frame.x, frame.y, STORY_CARD_WIDTH, STORY_CARD_HEIGHT, edge);
     renderer_for(node, context).draw(

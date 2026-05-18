@@ -2,7 +2,7 @@ use katana_ui_core::adapter_contract::{AdapterExtension, EventSink, HostHandle};
 use katana_ui_core::atom::{Button, Text};
 use katana_ui_core::component::{Component, ComponentTree};
 use katana_ui_core::event::{CommandEvent, EventRoute, PointerEvent, PointerEventKind, UiEvent};
-use katana_ui_core::layout::{Alignment, Column, Length, Row};
+use katana_ui_core::layout::{AlignCenter, Alignment, Column, Length, Row};
 use katana_ui_core::molecule::Card;
 use katana_ui_core::panel::{Panel, PanelRegion};
 use katana_ui_core::render_model::{RenderContext, UiNodeId, UiNodeKind, UiTree};
@@ -61,6 +61,15 @@ fn layout_models_keep_stable_dimensions() {
     let column = Column::new().child(row);
 
     assert_eq!(1, column.children().len());
+}
+
+#[test]
+fn text_and_align_center_are_core_building_blocks() {
+    let tree = UiTree::new(AlignCenter::new().child(Text::new("日本語 Text 🔷").font_role("body")));
+
+    assert_eq!(UiNodeKind::AlignCenter, tree.root().kind());
+    assert_eq!(UiNodeKind::Text, tree.root().children()[0].kind());
+    assert_eq!("body", tree.root().children()[0].props().font_role);
 }
 
 #[test]

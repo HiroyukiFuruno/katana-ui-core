@@ -1,5 +1,5 @@
 use super::UiStateId;
-use super::{UiLoadingProps, UiStatusProps, UiTextEntryProps};
+use super::{UiIconProps, UiLoadingProps, UiStatusProps, UiTextEntryProps};
 use crate::facade::DEFAULT_FONT_ROLE;
 use serde::{Deserialize, Serialize};
 
@@ -87,6 +87,7 @@ pub struct UiProps {
     pub text_entry: UiTextEntryProps,
     pub status: UiStatusProps,
     pub loading_indicator: UiLoadingProps,
+    pub icon: UiIconProps,
 }
 
 impl UiProps {
@@ -117,6 +118,7 @@ impl UiProps {
             text_entry: UiTextEntryProps::default(),
             status: UiStatusProps::default(),
             loading_indicator: UiLoadingProps::default(),
+            icon: UiIconProps::default(),
         }
     }
 }

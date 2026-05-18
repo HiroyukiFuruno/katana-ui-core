@@ -2,6 +2,7 @@ mod basic;
 mod color;
 mod diff;
 mod disclosure;
+mod disclosure_foundation;
 mod selection;
 mod state;
 mod structured;
@@ -16,11 +17,13 @@ pub use disclosure::{
     Accordion, Modal, ModalOverlay, NotificationToast, Popover, SearchBox, SegmentedToggle,
     SlideControl, Tooltip,
 };
+pub use disclosure_foundation::DisclosureTriggerArea;
 pub use selection::{
     Breadcrumb, ChoiceItem, ComboBox, MenuButton, SelectBox, SelectionList, SideMenu, Tabs,
 };
 pub use structured::{
-    ArrayEditorItem, CommandItem, CommandPalette, DynamicArrayEditor, TreeNode, TreeView,
+    ArrayEditorItem, CommandItem, CommandPalette, DynamicArrayEditor, TreeLineStyle, TreeNode,
+    TreeNodeKind, TreeView,
 };
 
 #[cfg(test)]

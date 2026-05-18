@@ -83,6 +83,22 @@ impl Canvas {
         }
     }
 
+    #[must_use]
+    pub fn viewport_y(&self, offset_y: usize, height: usize, fill: u32) -> Self {
+        let mut viewport = Self::new(self.width, height, fill);
+        for target_y in 0..height {
+            let source_y = offset_y + target_y;
+            if source_y >= self.height {
+                break;
+            }
+            let source_start = source_y * self.width;
+            let target_start = target_y * self.width;
+            viewport.pixels[target_start..target_start + self.width]
+                .copy_from_slice(&self.pixels[source_start..source_start + self.width]);
+        }
+        viewport
+    }
+
     pub fn blend(&mut self, x: usize, y: usize, color: u32, alpha: u8) {
         if x >= self.width || y >= self.height {
             return;

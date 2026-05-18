@@ -1,8 +1,9 @@
 use crate::facade::DEFAULT_FONT_ROLE;
 use crate::interaction::{ProgressAction, UiAction, UiActionResult, UiActionSource};
 use crate::render_model::{
-    UiAnimationState, UiInteractionState, UiLoadingProps, UiNode, UiNodeKind, UiProgressMode,
-    UiSize, UiStateId, UiStatusProps, UiTextEntryProps, UiTone, UiVariant, UiVisualRole,
+    UiAnimationState, UiIconProps, UiInteractionState, UiLoadingProps, UiNode, UiNodeKind,
+    UiProgressMode, UiSize, UiStateId, UiStatusProps, UiTextEntryProps, UiTone, UiVariant,
+    UiVisualRole,
 };
 use serde::{Deserialize, Serialize};
 
@@ -29,6 +30,7 @@ pub(super) struct AtomState {
     pub text_entry: UiTextEntryProps,
     pub status: UiStatusProps,
     pub loading_indicator: UiLoadingProps,
+    pub icon: UiIconProps,
 }
 
 impl AtomState {
@@ -55,6 +57,7 @@ impl AtomState {
             text_entry: UiTextEntryProps::default(),
             status: UiStatusProps::default(),
             loading_indicator: default_loading_props(kind),
+            icon: UiIconProps::default(),
         }
     }
 
@@ -79,6 +82,7 @@ impl AtomState {
             .text_entry(self.text_entry)
             .status(self.status)
             .loading_indicator(self.loading_indicator)
+            .icon(self.icon)
     }
 
     pub(super) fn apply_action(&mut self, action: &UiAction) -> UiActionResult {

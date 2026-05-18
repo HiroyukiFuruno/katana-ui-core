@@ -13,8 +13,8 @@ pub use props::{UiInteractionState, UiProps, UiSize, UiTone, UiVariant, UiVisual
 pub use tree::UiNode;
 pub use tree_model::UiTree;
 pub use typed::{
-    UiAnimationState, UiClearActionSpec, UiDismissAction, UiLoadingProps, UiProgressMode,
-    UiSlotPlacement, UiSlotSpec, UiStatusProps, UiTextEntryProps,
+    UiAnimationState, UiClearActionSpec, UiDismissAction, UiIconProps, UiLoadingProps,
+    UiProgressMode, UiSlotPlacement, UiSlotSpec, UiStatusProps, UiTextEntryProps,
 };
 
 #[cfg(test)]

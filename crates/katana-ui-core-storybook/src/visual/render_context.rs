@@ -1,3 +1,4 @@
+use super::navigation_tree::TreeExpansionState;
 use super::palette::VisualPalette;
 use super::text::TextRenderer;
 use crate::catalog::StoryExample;
@@ -16,7 +17,9 @@ pub(super) struct RenderContext<'a> {
 #[derive(Clone, Copy)]
 pub(super) struct ScenarioContext<'a> {
     pub(super) selected_page: &'a str,
-    pub(super) operation: bool,
+    pub(super) preset_index: usize,
+    pub(super) tree_expansion: TreeExpansionState,
+    pub(super) scrollbar_visible: bool,
 }
 
 #[derive(Clone, Copy)]

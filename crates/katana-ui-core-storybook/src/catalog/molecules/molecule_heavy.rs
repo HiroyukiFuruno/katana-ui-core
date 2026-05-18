@@ -1,7 +1,9 @@
 use super::super::{StoryCatalog, StoryExample};
+use katana_ui_core::component::ComponentAction;
+use katana_ui_core::interaction::UiAction;
 use katana_ui_core::molecule::{
     CodeDiffLine, CodeDiffLineKind, CodeDiffMode, CodeDiffSource, CollapsedBlock,
-    ColorBlendingMode, HighlightRange, RgbaColor,
+    ColorBlendingMode, DisclosureTriggerArea, HighlightRange, RgbaColor, TreeLineStyle, TreeNode,
 };
 use katana_ui_core::{atom, molecule};
 
@@ -65,13 +67,33 @@ pub(super) fn examples() -> Vec<StoryExample> {
                 .child(atom::Button::new("Add"))
                 .child(atom::Text::new("Item")),
         ),
-        StoryCatalog::story(
-            "tree-view",
-            molecule::TreeView::new("Tree view")
-                .open(true)
-                .item_count(2)
-                .child(atom::Text::new("Parent"))
-                .child(atom::Text::new("Child")),
-        ),
+        tree_view_story(),
     ]
+}
+
+fn tree_view_story() -> StoryExample {
+    let mut tree = molecule::TreeView::new("Tree view")
+        .default_open(true)
+        .line_display(true)
+        .line_style(TreeLineStyle::Solid)
+        .line_width(1)
+        .icons_visible(true)
+        .directory_icon("<svg data-icon=\"folder\"/>")
+        .file_icon("<svg data-icon=\"file\"/>")
+        .tree_font_role("body")
+        .tree_theme_id("dark")
+        .empty_area_context_menu(true)
+        .toggle_icon("<svg data-icon=\"chevron\"/>")
+        .toggle_trigger_area(DisclosureTriggerArea::IconAndText)
+        .item(
+            TreeNode::new("atoms", "Atoms", 0)
+                .directory()
+                .expanded(true),
+        )
+        .item(TreeNode::new("button", "Button", 1).file().selected(true))
+        .item_count(2)
+        .child(atom::Text::new("Parent"))
+        .child(atom::Text::new("Child"));
+    let result = tree.apply_action(&UiAction::click(tree.state_id().clone()));
+    StoryCatalog::interactive_story("tree-view", tree, result.callback_log)
 }

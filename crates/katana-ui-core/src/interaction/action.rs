@@ -48,6 +48,11 @@ impl UiAction {
     }
 
     #[must_use]
+    pub fn click(target: UiStateId) -> Self {
+        crate::interaction::ClickAction::new(target).into()
+    }
+
+    #[must_use]
     pub fn set_open(target: UiStateId, open: bool) -> Self {
         Self::SetOpen { target, open }
     }

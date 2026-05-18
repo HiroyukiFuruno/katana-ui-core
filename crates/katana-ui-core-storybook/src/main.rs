@@ -1,8 +1,21 @@
+mod snapshot_output;
+
 use katana_ui_core_storybook::{StoryCatalog, StorybookPanel, StorybookSummary, StorybookVisual};
+use snapshot_output::SnapshotOutput;
 use std::path::Path;
 use std::{env, fs, process};
 
 const DEFAULT_WINDOW_FRAMES: usize = 0;
+const SNAPSHOT_PAGE_ARG: usize = 3;
+const SNAPSHOT_THEME_ARG: usize = 4;
+const SNAPSHOT_OPERATION_ARG: usize = 5;
+const SNAPSHOT_SCROLL_ARG: usize = 6;
+const SNAPSHOT_SCROLLBAR_ARG: usize = 7;
+const DEFAULT_PRESET_INDEX: usize = 0;
+const DEFAULT_SCROLL_Y: usize = 0;
+const INTERACTIVE_PRESET_INDEX: usize = 1;
+const EDGE_PRESET_INDEX: usize = 2;
+const THEME_PRESET_INDEX: usize = 3;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -24,16 +37,69 @@ fn print_summary() {
     println!("katana-ui-core-storybook: {}", StorybookSummary.render());
 }
 
+fn snapshot_preset_index(value: &str) -> usize {
+    match value {
+        "operation" | "interactive" | "preset-1" => INTERACTIVE_PRESET_INDEX,
+        "edge" | "preset-2" => EDGE_PRESET_INDEX,
+        "theme" | "preset-3" => THEME_PRESET_INDEX,
+        _ => DEFAULT_PRESET_INDEX,
+    }
+}
+
+fn snapshot_scroll_y(value: &str) -> usize {
+    value.parse::<usize>().ok().unwrap_or(DEFAULT_SCROLL_Y)
+}
+
+fn snapshot_scrollbar_visible(value: &str) -> bool {
+    !matches!(
+        value,
+        "false" | "hidden" | "hide-scrollbar" | "scrollbar-off" | "off"
+    )
+}
+
 fn save_snapshot(args: &[String]) {
     let output = args
         .get(2)
         .map(String::as_str)
         .unwrap_or("target/storybook-panel.png");
-    if let Err(error) = StorybookVisual.save_png(Path::new(output)) {
+    let selected_page = args
+        .get(SNAPSHOT_PAGE_ARG)
+        .map(String::as_str)
+        .unwrap_or("button");
+    let theme_id = args
+        .get(SNAPSHOT_THEME_ARG)
+        .map(String::as_str)
+        .unwrap_or("dark");
+    let preset_index = args
+        .get(SNAPSHOT_OPERATION_ARG)
+        .map(String::as_str)
+        .map(snapshot_preset_index)
+        .unwrap_or(DEFAULT_PRESET_INDEX);
+    let scroll_y = args
+        .get(SNAPSHOT_SCROLL_ARG)
+        .map(String::as_str)
+        .map(snapshot_scroll_y)
+        .unwrap_or(DEFAULT_SCROLL_Y);
+    let scrollbar_visible = args
+        .get(SNAPSHOT_SCROLLBAR_ARG)
+        .map(String::as_str)
+        .map(snapshot_scrollbar_visible)
+        .unwrap_or(true);
+    let output_path = Path::new(output);
+    prepare_or_exit(output_path, "failed to prepare visual snapshot");
+    if let Err(error) = StorybookVisual.save_preset_scrolled_png_with_scrollbar(
+        output_path,
+        theme_id,
+        selected_page,
+        preset_index,
+        scroll_y,
+        scrollbar_visible,
+    ) {
         eprintln!("failed to write visual snapshot: {error}");
         process::exit(2);
     }
-    println!("katana-ui-core-storybook-snapshot: {output}");
+    let evidence = snapshot_evidence_or_exit(output_path, "failed to inspect visual snapshot");
+    println!("katana-ui-core-storybook-snapshot: {output} {evidence}");
 }
 
 fn open_window(args: &[String]) {
@@ -127,17 +193,38 @@ fn write_json<T: serde::Serialize>(path: &Path, value: &T, failure: &str) {
 }
 
 fn save_modal_png(path: &str) {
-    if let Err(error) = StorybookVisual.save_modal_png(Path::new(path)) {
+    let output_path = Path::new(path);
+    prepare_or_exit(output_path, "failed to prepare modal snapshot");
+    if let Err(error) = StorybookVisual.save_modal_png(output_path) {
         eprintln!("failed to write modal snapshot: {error}");
         process::exit(2);
     }
 }
 
 fn save_scenario_png(path: &str, theme_id: &str, selected_page: &str, operation: bool) {
+    let output_path = Path::new(path);
+    prepare_or_exit(output_path, "failed to prepare scenario snapshot");
     if let Err(error) =
-        StorybookVisual.save_scenario_png(Path::new(path), theme_id, selected_page, operation)
+        StorybookVisual.save_scenario_png(output_path, theme_id, selected_page, operation)
     {
         eprintln!("failed to write scenario snapshot: {error}");
         process::exit(2);
+    }
+}
+
+fn prepare_or_exit(path: &Path, failure: &str) {
+    if let Err(error) = SnapshotOutput::prepare(path) {
+        eprintln!("{failure}: {error}");
+        process::exit(2);
+    }
+}
+
+fn snapshot_evidence_or_exit(path: &Path, failure: &str) -> String {
+    match SnapshotOutput::evidence(path) {
+        Ok(evidence) => evidence,
+        Err(error) => {
+            eprintln!("{failure}: {error}");
+            process::exit(2);
+        }
     }
 }

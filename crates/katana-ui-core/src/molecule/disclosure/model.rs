@@ -1,6 +1,7 @@
 use super::types::DisclosureTypedModel;
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult};
+use crate::molecule::DisclosureTriggerArea;
 use crate::molecule::state::MoleculeState;
 use crate::render_model::{UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
@@ -135,6 +136,18 @@ macro_rules! disclosure_molecule {
             #[must_use]
             pub fn indicator_position(mut self, value: impl Into<String>) -> Self {
                 self.model.indicator_position = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn trigger_area(mut self, value: DisclosureTriggerArea) -> Self {
+                self.model.trigger_area = value;
+                self
+            }
+
+            #[must_use]
+            pub fn toggle_icon(mut self, value: impl Into<String>) -> Self {
+                self.model.toggle_icon = value.into();
                 self
             }
 

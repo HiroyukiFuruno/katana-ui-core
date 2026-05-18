@@ -68,3 +68,26 @@ Molecules MUST preserve parent and child state identities separately in automate
 - **WHEN** a molecule is proposed as complete
 - **THEN** its contract covers open, close, select, input, drag, dismiss, or mode switch behavior where applicable
 - **AND** missing action, event, state, preset, test, visual regression, or Storybook coverage blocks completion
+
+### Requirement: TreeView exposes configurable tree behavior
+
+TreeView は Storybook navigation に使えるだけでなく、通常の molecule として構成できる option を MUST とする。
+TreeView は垂直線の有無、垂直線の種類、太さ、directory icon、file icon、icon 表示可否、font role、theme id、空領域 context menu 表示可否、既定の開閉状態、開閉用 SVG icon、開閉発火領域を typed API として持つ必要がある。
+
+#### Scenario: tree display options are configured
+
+- **WHEN** consumer configures vertical lines, icons, font, theme, and default open state
+- **THEN** TreeView keeps those values in typed model accessors
+- **AND** Storybook can expose the same values in settings without ad hoc string parsing
+
+#### Scenario: tree directory toggles like an accordion
+
+- **WHEN** a directory node receives a configured toggle action
+- **THEN** it expands or collapses according to the configured trigger area
+- **AND** Accordion and TreeView can share the same disclosure semantics for icon only, icon + text, whole element, or text only triggers
+
+#### Scenario: tree empty area context menu is controlled
+
+- **WHEN** right click occurs on the empty area
+- **THEN** TreeView opens a context menu only when that option is enabled
+- **AND** disabling the option prevents hidden state mutation

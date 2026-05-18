@@ -1,10 +1,10 @@
 use katana_ui_core::atom::{
     Badge, Button, Checkbox, ColorSwatch, Divider, Icon, Input, KeyCap, LoadingDots, ProgressBar,
-    Radio, SlideControl, Spinner, Text, Toggle,
+    Radio, SlideControl, Spinner, SvgButton, Text, Toggle,
 };
 use katana_ui_core::render_model::{
-    UiAnimationState, UiDismissAction, UiNode, UiNodeKind, UiProgressMode, UiSize, UiSlotPlacement,
-    UiTone, UiVariant, UiVisualRole,
+    UiAnimationState, UiDismissAction, UiIconProps, UiNode, UiNodeKind, UiProgressMode, UiSize,
+    UiSlotPlacement, UiTone, UiVariant, UiVisualRole,
 };
 
 #[test]
@@ -156,4 +156,35 @@ fn structural_atom_props_do_not_need_style_classes() {
     assert!(divider.props().style_classes.is_empty());
     assert_eq!(UiVisualRole::Control, slide.props().visual_role);
     assert_eq!("0.8", slide.props().interaction.value);
+}
+
+#[test]
+fn svg_icon_atoms_keep_typed_svg_props() {
+    let icon = UiNode::from(
+        Icon::new("Folder")
+            .svg_source("<svg data-icon=\"folder\"/>")
+            .icon_role("directory")
+            .icon_color_token("accent")
+            .accessibility_label("Directory"),
+    );
+    let button = UiNode::from(
+        SvgButton::new("Expand")
+            .svg_icon(
+                UiIconProps::new("<svg data-icon=\"chevron\"/>")
+                    .role("toggle")
+                    .color_token("text"),
+            )
+            .accessibility_label("Expand directory"),
+    );
+
+    assert_eq!("<svg data-icon=\"folder\"/>", icon.props().icon.svg_source);
+    assert_eq!("directory", icon.props().icon.role);
+    assert_eq!("accent", icon.props().icon.color_token);
+    assert_eq!("Directory", icon.props().accessibility_label);
+    assert_eq!(
+        "<svg data-icon=\"chevron\"/>",
+        button.props().icon.svg_source
+    );
+    assert_eq!("toggle", button.props().icon.role);
+    assert_eq!("Expand directory", button.props().accessibility_label);
 }
