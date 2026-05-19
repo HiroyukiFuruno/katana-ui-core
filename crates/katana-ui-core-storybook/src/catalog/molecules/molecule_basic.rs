@@ -1,12 +1,11 @@
 use super::super::{StoryCatalog, StoryExample};
+use katana_ui_core::component::ComponentAction;
+use katana_ui_core::interaction::UiAction;
 use katana_ui_core::{atom, molecule};
 
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
-        StoryCatalog::story(
-            "card",
-            molecule::Card::new("Card").child(atom::Text::new("Body")),
-        ),
+        card_story(),
         StoryCatalog::story(
             "list",
             molecule::List::new("List")
@@ -37,13 +36,7 @@ pub(super) fn examples() -> Vec<StoryExample> {
                 .child(atom::Text::new("Root"))
                 .child(atom::Text::new("Leaf")),
         ),
-        StoryCatalog::story(
-            "search-box",
-            molecule::SearchBox::new("Search box")
-                .value("query")
-                .child(atom::Input::new("Query"))
-                .child(atom::Button::new("Clear")),
-        ),
+        search_box_story(),
         StoryCatalog::story(
             "selection-list",
             molecule::SelectionList::new("Selection list")
@@ -63,4 +56,28 @@ pub(super) fn examples() -> Vec<StoryExample> {
                 .child(atom::Text::new("Ln 1")),
         ),
     ]
+}
+
+fn card_story() -> StoryExample {
+    let mut card = molecule::Card::new("Card")
+        .interactive(true)
+        .header(atom::Text::new("Header"))
+        .child(atom::Text::new("Body"))
+        .footer(atom::Button::new("Open"));
+    let target = card.state_id().clone();
+    let result = card.apply_action(&UiAction::click(target));
+    StoryCatalog::interactive_story("card", card, result.callback_log)
+}
+
+fn search_box_story() -> StoryExample {
+    let mut search = molecule::SearchBox::new("Search box")
+        .placeholder("Search")
+        .value("query")
+        .clear_action("Clear")
+        .submit_on_enter(true)
+        .child(atom::Input::new("Query"))
+        .child(atom::Button::new("Clear"));
+    let target = search.state_id().clone();
+    let result = search.apply_action(&UiAction::search_submitted(target));
+    StoryCatalog::interactive_story("search-box", search, result.callback_log)
 }

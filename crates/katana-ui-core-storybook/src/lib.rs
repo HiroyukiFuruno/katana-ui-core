@@ -6,8 +6,8 @@ mod requirements;
 mod visual;
 
 pub use catalog::{
-    StoryCatalog, StoryCatalogReport, StoryExample, StorybookPanelInteractionReport,
-    StorybookPanelReport, StorybookStyleSheet,
+    StoryCatalog, StoryCatalogReport, StoryDetailContent, StoryExample,
+    StorybookPanelInteractionReport, StorybookPanelReport, StorybookStyleSheet,
 };
 use katana_ui_core::theme::ThemeSnapshot;
 pub use panel::StorybookPanel;
@@ -81,8 +81,9 @@ mod tests {
     #[test]
     fn storybook_routes_cover_core_and_legacy_targets() {
         let routes = StorybookRoutes.default_routes();
-        assert_eq!(53, routes.len());
+        assert_eq!(54, routes.len());
         assert!(routes.iter().any(|route| route.page == "code-diff"));
+        assert!(routes.iter().any(|route| route.page == "context-menu"));
         assert!(routes.iter().any(|route| route.page == "grid"));
     }
 
@@ -91,6 +92,8 @@ mod tests {
         let summary = StorybookSummary.render();
 
         assert!(summary.contains("panel_theme_configured=true"));
-        assert!(summary.contains("styled_story_roots=53"));
+        assert!(summary.contains("panel_scroll_configured=true"));
+        assert!(summary.contains("independent_panel_scrolls=4"));
+        assert!(summary.contains("styled_story_roots=1"));
     }
 }

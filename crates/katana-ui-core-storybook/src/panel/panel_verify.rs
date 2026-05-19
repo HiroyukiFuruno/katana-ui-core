@@ -17,6 +17,8 @@ impl StorybookPanel {
             styled_story_roots: self.styled_story_root_count(tree.root()),
             details_panel_configured: details_panel(tree.root()).is_some(),
             detail_sections: details_panel(tree.root()).map_or(0, |it| it.children().len()),
+            panel_scroll_configured: Self::panel_scroll_is_configured(tree.root()),
+            independent_panel_scrolls: Self::panel_scroll_count(tree.root()),
             panel_theme_ids: theme_ids,
         })
     }
@@ -53,6 +55,27 @@ impl StorybookPanel {
         }
     }
 
+    fn panel_scroll_is_configured(node: &UiNode) -> bool {
+        if node.kind() == UiNodeKind::Panel && node.props().panel.viewport_height == 0 {
+            return false;
+        }
+        node.children().iter().all(Self::panel_scroll_is_configured)
+    }
+
+    fn panel_scroll_count(node: &UiNode) -> usize {
+        let current = usize::from(
+            node.kind() == UiNodeKind::Panel
+                && node.props().panel.vertical_scrollbar_visible
+                && node.props().panel.content_height > node.props().panel.viewport_height,
+        );
+        current
+            + node
+                .children()
+                .iter()
+                .map(Self::panel_scroll_count)
+                .sum::<usize>()
+    }
+
     fn themed_story_root_count(node: &UiNode) -> usize {
         preview_panel(node)
             .map(|it| {
@@ -85,6 +108,8 @@ struct PanelVerificationSummary {
     styled_story_roots: usize,
     details_panel_configured: bool,
     detail_sections: usize,
+    panel_scroll_configured: bool,
+    independent_panel_scrolls: usize,
 }
 
 impl Default for PanelVerificationSummary {
@@ -97,6 +122,8 @@ impl Default for PanelVerificationSummary {
             styled_story_roots: 0,
             details_panel_configured: true,
             detail_sections: 0,
+            panel_scroll_configured: true,
+            independent_panel_scrolls: 0,
         }
     }
 }
@@ -110,6 +137,11 @@ impl PanelVerificationSummary {
         self.details_panel_configured =
             self.details_panel_configured && report.details_panel_configured;
         self.detail_sections = self.detail_sections.max(report.detail_sections);
+        self.panel_scroll_configured =
+            self.panel_scroll_configured && report.panel_scroll_configured;
+        self.independent_panel_scrolls = self
+            .independent_panel_scrolls
+            .max(report.independent_panel_scrolls);
         self.theme_ids.extend(report.panel_theme_ids);
     }
 
@@ -122,6 +154,8 @@ impl PanelVerificationSummary {
             styled_story_roots: self.styled_story_roots,
             details_panel_configured: self.details_panel_configured,
             detail_sections: self.detail_sections,
+            panel_scroll_configured: self.panel_scroll_configured,
+            independent_panel_scrolls: self.independent_panel_scrolls,
             panel_theme_ids: self.theme_ids,
         })
     }

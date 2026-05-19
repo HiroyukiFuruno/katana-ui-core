@@ -51,6 +51,13 @@ pub struct UiCoreFacade {
     default_font_role: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiFacadeChangeLog {
+    pub field: String,
+    pub before: String,
+    pub after: String,
+}
+
 impl UiCoreFacade {
     #[must_use]
     pub fn new(theme: ThemeSnapshot) -> Self {
@@ -86,6 +93,35 @@ impl UiCoreFacade {
     pub fn with_default_font_role(mut self, role: impl Into<String>) -> Self {
         self.default_font_role = role.into();
         self
+    }
+
+    pub fn set_theme(&mut self, theme: ThemeSnapshot) -> UiFacadeChangeLog {
+        let before = self.theme.id.as_str().to_string();
+        let after = theme.id.as_str().to_string();
+        self.global_state.active_theme_id = theme.id.clone();
+        self.theme = theme;
+        UiFacadeChangeLog::new("theme", before, after)
+    }
+
+    pub fn set_style_sheet(&mut self, style_sheet: StyleSheet) -> UiFacadeChangeLog {
+        let before = self.style_sheet.rule_count().to_string();
+        let after = style_sheet.rule_count().to_string();
+        self.style_sheet = style_sheet;
+        UiFacadeChangeLog::new("style_sheet", before, after)
+    }
+
+    pub fn set_global_state(&mut self, global_state: UiGlobalState) -> UiFacadeChangeLog {
+        let before = self.global_state.active_theme_id.as_str().to_string();
+        let after = global_state.active_theme_id.as_str().to_string();
+        self.global_state = global_state;
+        UiFacadeChangeLog::new("global_state", before, after)
+    }
+
+    pub fn set_default_font_role(&mut self, role: impl Into<String>) -> UiFacadeChangeLog {
+        let before = self.default_font_role.clone();
+        let after = role.into();
+        self.default_font_role = after.clone();
+        UiFacadeChangeLog::new("default_font_role", before, after)
     }
 
     #[must_use]
@@ -127,6 +163,21 @@ impl UiCoreFacade {
             viewport_width,
             viewport_height,
         )
+    }
+}
+
+impl UiFacadeChangeLog {
+    #[must_use]
+    pub fn new(
+        field: impl Into<String>,
+        before: impl Into<String>,
+        after: impl Into<String>,
+    ) -> Self {
+        Self {
+            field: field.into(),
+            before: before.into(),
+            after: after.into(),
+        }
     }
 }
 

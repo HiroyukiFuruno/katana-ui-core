@@ -71,9 +71,9 @@ primary adapter の決定は [`docs/adr/katana-ui-primary-adapter.md`](docs/adr/
 
 ## Storybook
 
-`katana-ui-core` が提供する部品を実画面で確認する部品カタログです。
+`katana-ui-core` が提供する部品を実画面で触り、見た目、操作感、設定変更時の振る舞いへフィードバックするための画面です。
 左ペインは KUC 自身の TreeView で部品を分類表示し、各部品ページは preview、settings、Tabs による preset 切替、状態（state）・イベント（event）・操作（action）の履歴を持ちます。
-Storybook は操作確認と目視確認の場であり、部品の正しさは自動テスト、画像回帰、入力回帰、静的検査（guard）で判定します。
+Storybook は完了判定の根拠ではありません。部品の正しさは自動テスト、数値化された layout / rendering contract、入力回帰、静的検査（guard）で判定します。
 
 ```bash
 # Storybook を起動
@@ -95,7 +95,7 @@ just ast-lint-install
 
 ## ドキュメント
 
-- [`openspec/changes/establish-kuc-atoms-molecules-catalog/`](openspec/changes/establish-kuc-atoms-molecules-catalog/) — atoms / molecules と部品カタログ実装の正本 change
+- [`openspec/changes/establish-kuc-atoms-molecules-catalog/`](openspec/changes/establish-kuc-atoms-molecules-catalog/) — atoms / molecules と Storybook 実装の正本 change
 - [`docs/architecture/ui-separation/root-plan-source.md`](docs/architecture/ui-separation/root-plan-source.md) — KUC repo内にコピーしたroot計画
 - [`docs/architecture/ui-separation/implementation-notes.md`](docs/architecture/ui-separation/implementation-notes.md) — workspace 構成と旧 Floem 実装の扱い
 - [`docs/adr/0002-katana-ui-core-rename.md`](docs/adr/0002-katana-ui-core-rename.md) — KUC renameとruntime/window/surface責務

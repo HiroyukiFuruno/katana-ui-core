@@ -121,23 +121,33 @@ fn color_picker_keeps_rgba_hue_alpha_and_blending_model() {
         .alpha(MODEL_ALPHA)
         .blending(ColorBlendingMode::Multiply)
         .color_area("saturation/value square")
-        .trigger_size(UiSize::Large)
+        .trigger_size(UiSize::XLarge)
         .title("Brand color")
+        .rgba_mode(true)
+        .trigger_border(false)
+        .eyedropper_callback("pick-screen-color")
         .readonly(true);
-    let result = picker.apply_action(&UiAction::set_value(
+    let result = picker.apply_action(&UiAction::color_drag(
         picker.state_id().clone(),
-        "rgba(0, 0, 0, 1)",
+        katana_ui_core::interaction::RgbaActionValue::new(0, 0, 0, 255),
+        BRAND_HUE,
+        true,
     ));
+    let open = picker.apply_action(&UiAction::set_open(picker.state_id().clone(), true));
 
     assert!(!result.handled);
+    assert!(open.handled);
     assert_eq!(MODEL_ALPHA, picker.color_value().alpha);
     assert_eq!(BRAND_HUE, picker.hue_value());
     assert_eq!(MODEL_ALPHA, picker.alpha_value());
     assert_eq!(ColorBlendingMode::Multiply, picker.blending_mode());
     assert!(picker.previews_color());
     assert_eq!("saturation/value square", picker.color_area_model());
-    assert_eq!(UiSize::Large, picker.trigger_size_model());
+    assert_eq!(UiSize::XLarge, picker.trigger_size_model());
     assert_eq!("Brand color", picker.title_model());
+    assert!(picker.uses_rgba_mode());
+    assert!(!picker.has_trigger_border());
+    assert_eq!("pick-screen-color", picker.eyedropper_callback_model());
 }
 
 #[test]

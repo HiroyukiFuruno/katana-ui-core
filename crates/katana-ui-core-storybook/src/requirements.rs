@@ -21,6 +21,7 @@ const REQUIRED_PAGES: &[&str] = &[
     "card",
     "list",
     "menu",
+    "context-menu",
     "tooltip",
     "modal",
     "tabs",
@@ -77,6 +78,7 @@ impl StoryRequirements {
             | "scroll-area" | "split-pane" | "align-center" => MIN_CHILDREN_NODE,
             "list"
             | "menu"
+            | "context-menu"
             | "tabs"
             | "toolbar"
             | "form-field"

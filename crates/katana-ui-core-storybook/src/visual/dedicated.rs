@@ -3,10 +3,92 @@ use super::coverage;
 use super::dedicated_atoms;
 use super::dedicated_basic;
 use super::dedicated_complex;
+use super::dedicated_context_menu;
+use super::dedicated_dod_atoms;
+use super::dedicated_dod_forms;
+use super::dedicated_dod_molecules;
 use super::dedicated_feedback;
 use super::palette::VisualPalette;
+use super::render_context::ScenarioContext;
 use super::text::TextRenderer;
 use katana_ui_core::render_model::{UiNode, UiNodeKind};
+
+pub(super) struct DedicatedPageRequest<'a> {
+    pub(super) text: &'a TextRenderer,
+    pub(super) page: &'a str,
+    pub(super) node: &'a UiNode,
+    pub(super) palette: &'a VisualPalette,
+    pub(super) scenario: ScenarioContext<'a>,
+    pub(super) x: usize,
+    pub(super) y: usize,
+}
+
+pub(super) fn draw_page(canvas: &mut Canvas, request: DedicatedPageRequest<'_>) {
+    let DedicatedPageRequest {
+        text,
+        page,
+        node,
+        palette,
+        scenario,
+        x,
+        y,
+    } = request;
+    match page {
+        "theme-tokens" => dedicated_dod_atoms::theme(canvas, text, palette, scenario, x, y),
+        "text" => dedicated_dod_atoms::text_grid(canvas, text, palette, scenario, x, y),
+        "icon" => dedicated_dod_atoms::icon_grid(canvas, text, palette, scenario, x, y),
+        "loading-dots" => dedicated_dod_atoms::loading_dots(canvas, text, palette, scenario, x, y),
+        "spinner" => dedicated_dod_atoms::spinner(canvas, text, palette, scenario, x, y),
+        "progress-bar" => dedicated_dod_atoms::progress(canvas, text, palette, scenario, x, y),
+        "button" => {
+            dedicated_dod_atoms::button_matrix(canvas, text, palette, scenario, x, y, "Button");
+        }
+        "text-button" => {
+            dedicated_dod_atoms::button_matrix(canvas, text, palette, scenario, x, y, "TextButton");
+        }
+        "svg-button" => {
+            dedicated_dod_atoms::button_matrix(canvas, text, palette, scenario, x, y, "SvgButton");
+        }
+        "icon-text-button" => {
+            dedicated_dod_atoms::button_matrix(
+                canvas,
+                text,
+                palette,
+                scenario,
+                x,
+                y,
+                "IconTextButton",
+            );
+        }
+        "toggle" => dedicated_dod_atoms::toggle(canvas, text, palette, scenario, x, y),
+        "segmented-toggle" => dedicated_dod_forms::segmented(canvas, text, palette, scenario, x, y),
+        "select-box" => dedicated_dod_forms::select_box(canvas, text, palette, scenario, x, y),
+        "color-swatch" => dedicated_dod_atoms::swatch(canvas, text, palette, scenario, x, y),
+        "text-input" => dedicated_dod_forms::input(canvas, text, palette, scenario, x, y),
+        "search-box" => dedicated_dod_forms::search(canvas, text, palette, scenario, x, y),
+        "checkbox" => dedicated_dod_forms::checkbox(canvas, text, palette, scenario, x, y),
+        "radio" => dedicated_dod_forms::radio(canvas, text, palette, scenario, x, y),
+        "tooltip" => dedicated_dod_forms::tooltip(canvas, text, palette, scenario, x, y),
+        "badge" => dedicated_dod_molecules::badge(canvas, text, palette, scenario, x, y),
+        "key-cap" => dedicated_dod_molecules::key_cap(canvas, text, palette, scenario, x, y),
+        "card" => dedicated_dod_molecules::card(canvas, text, palette, scenario, x, y),
+        "accordion" => dedicated_dod_molecules::accordion(canvas, text, palette, scenario, x, y),
+        "tree-view" => dedicated_dod_molecules::tree_view(canvas, text, node, palette, x, y),
+        "context-menu" => {
+            dedicated_context_menu::context_menu(canvas, text, palette, scenario, x, y);
+        }
+        "split-pane" => dedicated_dod_molecules::split_pane(canvas, text, palette, scenario, x, y),
+        "modal" | "modal-overlay" => {
+            dedicated_dod_molecules::modal(canvas, text, palette, scenario, x, y);
+        }
+        "popover" => dedicated_dod_forms::popover(canvas, text, palette, scenario, x, y),
+        "color-picker-rgba" => {
+            dedicated_dod_molecules::color_picker(canvas, text, palette, scenario, x, y);
+        }
+        "code-diff" => dedicated_dod_molecules::code_diff(canvas, text, palette, scenario, x, y),
+        _ => draw(canvas, text, node, palette, x, y),
+    }
+}
 
 pub(super) fn draw(
     canvas: &mut Canvas,
@@ -86,6 +168,7 @@ fn label_for(kind: UiNodeKind) -> &'static str {
         UiNodeKind::CodeDiff => "+/- diff",
         UiNodeKind::ColorPicker => "rgba picker",
         UiNodeKind::TreeView => "tree nodes",
+        UiNodeKind::ContextMenu => "context menu",
         UiNodeKind::CommandPalette => "command list",
         UiNodeKind::DynamicArrayEditor => "array edit",
         UiNodeKind::Text => "text content",

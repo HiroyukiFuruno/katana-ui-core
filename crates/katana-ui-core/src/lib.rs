@@ -15,6 +15,7 @@ pub mod runtime;
 pub mod style;
 pub mod surface;
 pub mod theme;
+pub mod widget;
 pub mod window;
 
 /// Registry marker for KUC-owned neutral UI capabilities.

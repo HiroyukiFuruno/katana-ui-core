@@ -1,5 +1,6 @@
 use super::StorybookPanel;
 use crate::catalog::StoryExample;
+use crate::panel::{ROOT_SCROLL_CONTENT, ROOT_SCROLL_VIEWPORT};
 use katana_ui_core::panel::{Panel, PanelRegion};
 use katana_ui_core::render_model::UiTree;
 
@@ -15,6 +16,7 @@ impl StorybookPanel {
                 PanelRegion::Root,
                 self.theme.clone(),
             )
+            .vertical_scroll(0, ROOT_SCROLL_VIEWPORT, ROOT_SCROLL_CONTENT, true)
             .child(self.navigation_panel(examples))
             .child(self.preview_panel(examples, selected_page))
             .child(self.details_panel(examples, selected_page)),

@@ -1,4 +1,6 @@
-use katana_ui_core::atom::{Button, Checkbox, Input, ProgressBar, Radio, Toggle};
+use katana_ui_core::atom::{
+    Badge, Button, Checkbox, Input, ProgressBar, Radio, SlideControl, Toggle,
+};
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::render_model::UiNode;
@@ -21,14 +23,16 @@ fn action_targets_only_the_matching_component_state() {
 }
 
 #[test]
-fn generic_click_action_is_not_button_specific() {
+fn passive_text_ignores_click_but_button_accepts_generic_click() {
     let mut text = katana_ui_core::atom::Text::new("Tree row");
-    let action = UiAction::click(text.state_id().clone());
-    let result = text.apply_action(&action);
+    let mut button = Button::new("Open row");
+    let text_result = text.apply_action(&UiAction::click(text.state_id().clone()));
+    let button_result = button.apply_action(&UiAction::click(button.state_id().clone()));
 
-    assert!(result.handled);
-    assert_eq!("click", result.callback_log[0].action);
-    assert_eq!(text.state_id(), &result.callback_log[0].target);
+    assert!(!text_result.handled);
+    assert!(button_result.handled);
+    assert_eq!("click", button_result.callback_log[0].action);
+    assert_eq!(button.state_id(), &button_result.callback_log[0].target);
 }
 
 #[test]
@@ -74,6 +78,45 @@ fn readonly_input_rejects_value_mutation_actions() {
     assert!(input_value_result.callback_log.is_empty());
     assert!(clear_value_result.callback_log.is_empty());
     assert_eq!("locked", node.props().interaction.value);
+}
+
+#[test]
+fn focus_hover_active_and_cursor_state_are_owned_by_target_component() {
+    let mut button = Button::new("Save").focusable(true);
+    let mut input = Input::new("Text input");
+
+    let focus_result = button.apply_action(&UiAction::focus(button.state_id().clone()));
+    let hover_result = button.apply_action(&UiAction::hover(button.state_id().clone(), true));
+    let active_result = button.apply_action(&UiAction::active(button.state_id().clone(), true));
+    let cursor_result = input.apply_action(&UiAction::cursor_selection(
+        input.state_id().clone(),
+        3,
+        1,
+        3,
+    ));
+
+    let button_node = UiNode::from(button);
+    let input_node = UiNode::from(input);
+
+    assert!(focus_result.handled);
+    assert!(hover_result.handled);
+    assert!(active_result.handled);
+    assert!(cursor_result.handled);
+    assert!(button_node.props().interaction.focused);
+    assert!(button_node.props().interaction.hovered);
+    assert!(button_node.props().interaction.active);
+    assert_eq!(3, input_node.props().interaction.cursor);
+    assert_eq!(1, input_node.props().interaction.selection_start);
+    assert_eq!(3, input_node.props().interaction.selection_end);
+}
+
+#[test]
+fn loading_button_suppresses_press_until_loading_finishes() {
+    let mut button = Button::new("Save").loading(true);
+    let result = button.apply_action(&UiAction::button_press(button.state_id().clone()));
+
+    assert!(!result.handled);
+    assert!(result.callback_log.is_empty());
 }
 
 #[test]
@@ -133,4 +176,25 @@ fn progress_action_updates_typed_progress_props() {
     assert!(node.props().determinate);
     assert_eq!(PROGRESS_PERCENT, node.props().progress_percent);
     assert_eq!("progress_changed", result.callback_log[0].action);
+}
+
+#[test]
+fn slide_action_updates_value_with_component_specific_event_name() {
+    let mut slide = SlideControl::new("Opacity");
+    let result = slide.apply_action(&UiAction::slide_changed(slide.state_id().clone(), "0.72"));
+    let node = UiNode::from(slide);
+
+    assert!(result.handled);
+    assert_eq!("0.72", node.props().interaction.value);
+    assert_eq!("slide_changed", result.callback_log[0].action);
+}
+
+#[test]
+fn badge_dismiss_action_exposes_action_history() {
+    let mut badge = Badge::new("Ready");
+    let result = badge.apply_action(&UiAction::dismiss(badge.state_id().clone()));
+
+    assert!(result.handled);
+    assert_eq!("dismiss", result.callback_log[0].action);
+    assert_eq!(badge.state_id(), &result.callback_log[0].target);
 }

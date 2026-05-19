@@ -62,13 +62,19 @@ molecules は複数の atoms と model state を組み合わせる部品とし�
 | UI | option | action | event | state | preset | test | Storybook page |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Card | variant、padding、interactive、header、body、footer、actions | click、child click、focus | card click、focus、child event | hover、active、focused、child state ids | plain、outlined、interactive、form card | child operation isolation、theme | card with child controls |
-| Accordion | header、expanded、disabled、controlled、indicator、multiple、tree mode | toggle、group expand / collapse | toggle、focus、callback | expanded、selected、depth、callback | closed、open、disabled、multiple、tree | controlled / uncontrolled、disabled、tree mode | live accordion page |
+| Accordion | header、expanded、disabled、controlled、indicator、multiple、tree mode、shared disclosure foundation | toggle、group expand / collapse | toggle、focus、callback | expanded、selected、depth、callback、shared disclosure state | closed、open、disabled、multiple、tree | controlled / uncontrolled、disabled、tree mode、TreeView 共有開閉 state | live accordion page |
 | SplitPane | direction、ratio、min sizes、handle width、reset | drag handle、double-click reset、keyboard ratio | ratio change、drag lifecycle | ratio、dragging、hover handle | horizontal、vertical、min clamp、nested | clamp、reset、orientation | draggable split page |
-| Tabs | selected tab、tabs、disabled tab、orientation | select tab、keyboard navigation | tab change、focus | selected index、focused tab、child page state | horizontal、vertical、disabled tab | keyboard、state persistence | preset tabs sample |
+| Tabs | selected tab、tabs、disabled tab、orientation、closeable、pinned、group id、dirty marker、icon | select tab、close tab、pin / unpin、move within group、keyboard navigation | tab change、tab close、pin change、group change、dirty marker event、focus | selected index、focused tab、closed tab ids、pinned ids、group state、dirty ids、child page state | horizontal、vertical、disabled tab、closeable、pinned、grouped、dirty、icon tabs | keyboard、state persistence、close / pin / group / dirty / icon marker | preset tabs sample |
 | Breadcrumb | items、active item、separator、overflow | select crumb、open overflow | navigation event、overflow open | active item、overflow state | simple、long、overflow、disabled | item command、overflow | hierarchy navigation page |
 | SideMenu | sections、selected item、collapsed、icon mode | select item、collapse、expand、hover | selection、collapse change | selected item、collapsed、hover expansion | expanded、collapsed、nested | selection persistence、keyboard | side navigation page |
 | Toolbar | actions、groups、disabled action、overflow | press action、open overflow、keyboard | command、overflow open | active action、overflow state、child state ids | dense、grouped、overflow、disabled | command routing、child state | action rail page |
 | StatusBar | severity、message、actions、dismiss | dismiss、press action | dismiss、command | severity、visible、callback log | info、warning、error、with action | severity style、dismiss | status examples page |
+
+Accordion と TreeView は disclosure foundation を共有する。
+ただし表示上の indent、line、folder/file icon、trigger area は部品ごとの option として分離し、開閉 state と event routing だけを共通化する。
+
+Tabs は単なる preset 切替だけではなく、アプリ UI の tab bar として必要な close、pin、group、dirty、icon を core 契約に含める。
+Storybook preset tabs はこの契約の利用例であり、アプリ側で同じ部品を再利用できる必要がある。
 
 ## 5.5 Structured navigation and command molecules
 

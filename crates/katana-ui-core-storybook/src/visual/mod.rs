@@ -1,37 +1,88 @@
+mod button_options;
+mod button_options_draw;
 mod canvas;
-mod card;
 mod coverage;
+mod coverage_markers;
 mod dedicated;
 mod dedicated_atoms;
 mod dedicated_basic;
 mod dedicated_common;
 mod dedicated_complex;
+mod dedicated_context_menu;
+mod dedicated_context_menu_anchor;
+mod dedicated_context_menu_labels;
+mod dedicated_context_menu_metrics;
+mod dedicated_context_menu_popup;
+mod dedicated_dod_atom_button_live;
+mod dedicated_dod_atom_button_live_status;
+mod dedicated_dod_atom_button_live_surface;
+mod dedicated_dod_atom_buttons;
+mod dedicated_dod_atom_motion;
+mod dedicated_dod_atom_primitives;
+mod dedicated_dod_atom_swatch_live;
+mod dedicated_dod_atoms;
+mod dedicated_dod_common;
+mod dedicated_dod_form_binary_choice_live;
+mod dedicated_dod_form_choice_marks;
+mod dedicated_dod_form_choice_status;
+mod dedicated_dod_form_input_live;
+mod dedicated_dod_form_inputs;
+mod dedicated_dod_form_overlays;
+mod dedicated_dod_form_segmented_live;
+mod dedicated_dod_form_select_live;
+mod dedicated_dod_forms;
+mod dedicated_dod_metrics;
+mod dedicated_dod_molecule_basic;
+mod dedicated_dod_molecule_color_diff;
+mod dedicated_dod_molecule_disclosure;
+mod dedicated_dod_molecule_key_cap;
+mod dedicated_dod_molecule_surfaces;
+mod dedicated_dod_molecule_tree;
+mod dedicated_dod_molecule_tree_parts;
+mod dedicated_dod_molecules;
 mod dedicated_feedback;
 mod inspector;
+mod inspector_rows;
+mod interaction_spec;
 mod layout_metrics;
 mod modal;
 mod navigation;
 mod navigation_icons;
 mod navigation_tree;
 mod palette;
+#[cfg(test)]
+mod panel_scroll_interaction_tests;
+mod panel_scroll_state;
+mod panel_scrollbars;
 mod preset_tabs;
 mod preview;
 mod preview_contract;
 mod preview_contract_rows;
 mod preview_detail;
+mod preview_effects;
 mod render;
 mod render_context;
 mod runtime;
+mod screen_state;
 mod scrollbar;
+mod scrollbar_model;
 mod shell;
+mod switch_control;
 mod text;
 #[cfg(test)]
 mod text_tests;
 mod types;
 #[cfg(test)]
+mod visual_interaction_button_tests;
+#[cfg(test)]
+mod visual_interaction_test_support;
+#[cfg(test)]
+mod visual_interaction_tests;
+#[cfg(test)]
 mod visual_tests;
 mod window;
 mod window_interaction;
+mod window_modal_plan;
 mod window_options;
 
 pub use canvas::Canvas;
@@ -108,6 +159,25 @@ impl StorybookVisual {
         .save_png(path)
     }
 
+    pub fn save_clicked_preset_scrolled_png_with_scrollbar(
+        self,
+        path: &Path,
+        theme_id: &str,
+        selected_page: &str,
+        preset_index: usize,
+        scroll_y: usize,
+        scrollbar_visible: bool,
+    ) -> image::ImageResult<()> {
+        self.render_clicked_preset_with_scrollbar(
+            theme_id,
+            selected_page,
+            preset_index,
+            scroll_y,
+            scrollbar_visible,
+        )
+        .save_png(path)
+    }
+
     #[must_use]
     pub fn render_scrolled(
         self,
@@ -139,14 +209,39 @@ impl StorybookVisual {
         scroll_y: usize,
         scrollbar_visible: bool,
     ) -> Canvas {
-        render::render_storybook_canvas_with_options(
+        render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
             theme_id,
             selected_page,
             preset_index,
             scroll_y,
             scrollbar_visible,
-            navigation_tree::TreeExpansionState::default(),
-        )
+            panel_scroll: panel_scroll_state::PanelScrollOffsets::default(),
+            tree_expansion: navigation_tree::TreeExpansionState::default(),
+            screen_state: screen_state::StorybookScreenState::default(),
+        })
+    }
+
+    #[must_use]
+    pub fn render_clicked_preset_with_scrollbar(
+        self,
+        theme_id: &str,
+        selected_page: &str,
+        preset_index: usize,
+        scroll_y: usize,
+        scrollbar_visible: bool,
+    ) -> Canvas {
+        let mut screen_state = screen_state::StorybookScreenState::default();
+        screen_state.register_preview_action(selected_page);
+        render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
+            theme_id,
+            selected_page,
+            preset_index,
+            scroll_y,
+            scrollbar_visible,
+            panel_scroll: panel_scroll_state::PanelScrollOffsets::default(),
+            tree_expansion: navigation_tree::TreeExpansionState::default(),
+            screen_state,
+        })
     }
 
     pub fn save_modal_png(self, path: &Path) -> image::ImageResult<()> {

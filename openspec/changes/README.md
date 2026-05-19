@@ -9,7 +9,37 @@ root 計画の根拠は `openspec/changes/ui-core-root-plan/` と `docs/architec
 | order | change | 役割 | 着手条件 |
 | --- | --- | --- | --- |
 | root | `ui-core-root-plan` | KUC をフレームワーク非依存（framework-neutral）UI Core として再定義し、runtime / window / surface / adapter 境界を固定する親 change | この change を先に読む |
-| implementation | `establish-kuc-atoms-molecules-catalog` | 01〜24 を KUC の atoms / molecules と部品カタログへ移管し、自動品質ゲートを正本化する change | `ui-core-root-plan` の境界を確認後に読む |
+| implementation | `establish-kuc-atoms-molecules-catalog` | 01〜24 を KUC の atoms / molecules と Storybook へ移管し、自動品質ゲートを正本化する change | `ui-core-root-plan` の境界を確認後に読む |
+
+## sibling parity 拡張 — `NN-add-*` 系列
+
+`katana` / `katana-chat-ui` の機能群を KUC に取り込むための、優先度順 (`01` が最優先) の機能追加 change。
+prefix の数字は優先度を表すもので、`18-accordion` などの旧 archive 候補 change（命名がそのまま prefix 番号を持つ）とは別系列。
+旧系列は機能名そのもの (`18-accordion`)、新系列は `NN-add-*` 形式で識別する。
+KDV (`katana-document-viewer`) / KLE (`katana-language-editor`) が担う「ドキュメントプレビュー」「ドキュメント編集器」は対象外。
+
+| priority | change | 主 capability | 主な依存 |
+| --- | --- | --- | --- |
+| 01 | `01-add-context-menu` | `kuc-context-menu` | — |
+| 02 | `02-add-drag-drop-primitive` | `kuc-drag-drop` | — |
+| 03 | `03-add-workspace-tab-bar` | `kuc-workspace-tab-bar` | 01, 02 |
+| 04 | `04-add-rich-popover-and-hover-card` | `kuc-hover-card`, `kuc-placement-engine` | — |
+| 05 | `05-add-toolbar-overflow` | `kuc-toolbar-overflow` | 01, 04 |
+| 06 | `06-add-multiline-text-input` | `kuc-text-area-atom` | — |
+| 07 | `07-add-chip-and-attachment-chip` | `kuc-chip-atom`, `kuc-attachment-chip` | 02 (opt-in reorder) |
+| 08 | `08-add-diagnostics-list` | `kuc-diagnostics-list` | 09, 17 (embed) |
+| 09 | `09-add-empty-state` | `kuc-empty-state` | — |
+| 10 | `10-add-inline-banner-alert` | `kuc-banner` | — |
+| 11 | `11-add-toast-stack-manager` | `kuc-toast-stack-manager` | — |
+| 12 | `12-add-multi-segment-status-bar` | `kuc-status-bar-segments` | 04 |
+| 13 | `13-add-shortcut-combo-display` | `kuc-shortcut-combo-atom`, `kuc-shortcut-cheatsheet` | — |
+| 14 | `14-add-sectioned-settings-form` | `kuc-settings-list` | 09 |
+| 15 | `15-add-collapsible-sidebar-shell` | `kuc-collapsible-sidebar`, `kuc-app-shell` | — |
+| 16 | `16-add-virtualized-list-and-tree` | `kuc-virtualization` | — |
+| 17 | `17-add-skeleton-loader` | `kuc-skeleton-atom`, `kuc-skeleton-cluster` | 18 (motion) |
+| 18 | `18-add-animation-primitives` | `kuc-motion` | — |
+| 19 | `19-add-title-bar-window-chrome` | `kuc-title-bar` | — |
+| 20 | `20-add-splash-screen-template` | `kuc-splash-screen` | 18 |
 
 ## 進行ルール
 
@@ -18,8 +48,8 @@ root 計画の根拠は `openspec/changes/ui-core-root-plan/` と `docs/architec
 - repo 外の実装挙動が必要な場合は、先に `docs/inventory/<topic>.md` へ画面・操作・入力・出力・状態遷移をコピーしてから実装する。
 - 中核 crate（core crate）は `floem` / `egui` / `gpui` を直接依存に持たない。
 - 画面フレームワーク（UI framework）固有の型は変換層 crate（adapter crate）に閉じる。
-- Storybook は KUC の部品カタログであり、KUC の中立 model と専用 visual surface で表示する。
-- 部品の正しさは Storybook 目視ではなく、自動テスト、画像回帰、入力回帰、静的検査を主根拠にする。
+- Storybook は KUC の部品を実画面で触ってフィードバックするための画面であり、KUC の中立 model と専用 surface で表示する。
+- 部品の正しさは Storybook や手動操作ではなく、自動テスト、数値化された layout / rendering contract、入力回帰、静的検査を主根拠にする。
 - 依存境界は `docs/dependency-policy.md` と `docs/directory-structure.md` を基準にする。
 
 ## Superseded / archive candidates

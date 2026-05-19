@@ -1,4 +1,5 @@
-use crate::interaction::{ColorDragAction, ProgressAction, RgbaActionValue, UiActionSource};
+use super::action_name::value_name;
+use crate::interaction::{ColorDragAction, ProgressAction, UiActionSource};
 use crate::render_model::UiStateId;
 use serde::{Deserialize, Serialize};
 
@@ -7,6 +8,36 @@ pub enum UiAction {
     Press {
         target: UiStateId,
         source: UiActionSource,
+    },
+    SetFocus {
+        target: UiStateId,
+        focused: bool,
+    },
+    SetHover {
+        target: UiStateId,
+        hovered: bool,
+    },
+    SetActive {
+        target: UiStateId,
+        active: bool,
+    },
+    SetDragging {
+        target: UiStateId,
+        dragging: bool,
+    },
+    AnimationTick {
+        target: UiStateId,
+        phase: u16,
+    },
+    SetReducedMotion {
+        target: UiStateId,
+        reduced_motion: bool,
+    },
+    SetCursorSelection {
+        target: UiStateId,
+        cursor: usize,
+        selection_start: usize,
+        selection_end: usize,
     },
     SetOpen {
         target: UiStateId,
@@ -35,93 +66,16 @@ pub enum UiAction {
 
 impl UiAction {
     #[must_use]
-    pub fn press(target: UiStateId) -> Self {
-        Self::Press {
-            target,
-            source: UiActionSource::Generic,
-        }
-    }
-
-    #[must_use]
-    pub fn button_press(target: UiStateId) -> Self {
-        crate::interaction::ButtonAction::new(target).into()
-    }
-
-    #[must_use]
-    pub fn click(target: UiStateId) -> Self {
-        crate::interaction::ClickAction::new(target).into()
-    }
-
-    #[must_use]
-    pub fn set_open(target: UiStateId, open: bool) -> Self {
-        Self::SetOpen { target, open }
-    }
-
-    #[must_use]
-    pub fn set_selected_index(target: UiStateId, selected_index: usize) -> Self {
-        Self::SetSelectedIndex {
-            target,
-            selected_index,
-            selected: true,
-            source: UiActionSource::Generic,
-        }
-    }
-
-    #[must_use]
-    pub fn checkbox_checked(target: UiStateId, checked: bool) -> Self {
-        crate::interaction::CheckboxAction::new(target, checked).into()
-    }
-
-    #[must_use]
-    pub fn radio_selected(target: UiStateId) -> Self {
-        crate::interaction::RadioAction::new(target).into()
-    }
-
-    #[must_use]
-    pub fn toggle_checked(target: UiStateId, checked: bool) -> Self {
-        crate::interaction::ToggleAction::new(target, checked).into()
-    }
-
-    #[must_use]
-    pub fn set_value(target: UiStateId, value: impl Into<String>) -> Self {
-        Self::SetValue {
-            target,
-            value: value.into(),
-            source: UiActionSource::Generic,
-            progress: None,
-            color_drag: None,
-        }
-    }
-
-    #[must_use]
-    pub fn input_value(target: UiStateId, value: impl Into<String>) -> Self {
-        crate::interaction::InputAction::new(target, value).into()
-    }
-
-    #[must_use]
-    pub fn progress_changed(target: UiStateId, determinate: bool, percent: u8) -> Self {
-        ProgressAction::new(target, determinate, percent).into()
-    }
-
-    #[must_use]
-    pub fn color_drag(target: UiStateId, value: RgbaActionValue, hue: u16, preview: bool) -> Self {
-        ColorDragAction::new(target, value, hue, preview).into()
-    }
-
-    #[must_use]
-    pub fn clear_value(target: UiStateId) -> Self {
-        Self::ClearValue { target }
-    }
-
-    #[must_use]
-    pub fn dismiss(target: UiStateId) -> Self {
-        Self::Dismiss { target }
-    }
-
-    #[must_use]
     pub fn target(&self) -> &UiStateId {
         match self {
             Self::Press { target, .. }
+            | Self::SetFocus { target, .. }
+            | Self::SetHover { target, .. }
+            | Self::SetActive { target, .. }
+            | Self::SetDragging { target, .. }
+            | Self::AnimationTick { target, .. }
+            | Self::SetReducedMotion { target, .. }
+            | Self::SetCursorSelection { target, .. }
             | Self::SetOpen { target, .. }
             | Self::SetSelectedIndex { target, .. }
             | Self::SetValue { target, .. }
@@ -134,6 +88,37 @@ impl UiAction {
     pub fn name(&self) -> &'static str {
         match self {
             Self::Press { source, .. } => source.press_name(),
+            Self::SetFocus { focused, .. } => {
+                if *focused {
+                    "focus"
+                } else {
+                    "blur"
+                }
+            }
+            Self::SetHover { hovered, .. } => {
+                if *hovered {
+                    "hover_start"
+                } else {
+                    "hover_end"
+                }
+            }
+            Self::SetActive { active, .. } => {
+                if *active {
+                    "active_start"
+                } else {
+                    "active_end"
+                }
+            }
+            Self::SetDragging { dragging, .. } => {
+                if *dragging {
+                    "drag_start"
+                } else {
+                    "drag_end"
+                }
+            }
+            Self::AnimationTick { .. } => "animation_tick",
+            Self::SetReducedMotion { .. } => "reduced_motion_toggle",
+            Self::SetCursorSelection { .. } => "cursor_selection_changed",
             Self::SetSelectedIndex { source, .. } => source.selection_name(),
             Self::SetValue {
                 source,
@@ -141,26 +126,15 @@ impl UiAction {
                 color_drag,
                 ..
             } => value_name(*source, progress, color_drag),
-            Self::SetOpen { .. } => "set_open",
+            Self::SetOpen { open, .. } => {
+                if *open {
+                    "open"
+                } else {
+                    "close"
+                }
+            }
             Self::ClearValue { .. } => "clear_value",
             Self::Dismiss { .. } => "dismiss",
         }
-    }
-}
-
-fn value_name(
-    source: UiActionSource,
-    progress: &Option<ProgressAction>,
-    color_drag: &Option<ColorDragAction>,
-) -> &'static str {
-    if progress.is_some() {
-        return "progress_changed";
-    }
-    if color_drag.is_some() {
-        return "color_drag";
-    }
-    match source {
-        UiActionSource::Input => "input_value",
-        _ => "set_value",
     }
 }

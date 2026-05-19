@@ -1,11 +1,16 @@
+mod action_policy;
+mod defaults;
+mod options;
 mod state;
+mod state_actions;
 #[cfg(test)]
 mod tests;
 mod typed;
 
 use crate::interaction::{UiAction, UiActionResult};
 use crate::render_model::{
-    UiNode, UiNodeKind, UiProgressMode, UiSize, UiStateId, UiTone, UiVariant, UiVisualRole,
+    UiCommonProps, UiCursor, UiDimension, UiDisplay, UiNode, UiNodeKind, UiPointerEvents,
+    UiPosition, UiProgressMode, UiSize, UiStateId, UiTone, UiVariant, UiVisualRole, UiZIndex,
 };
 use serde::{Deserialize, Serialize};
 use state::AtomState;
@@ -30,18 +35,91 @@ macro_rules! atom_model {
             #[must_use]
             pub fn disabled(mut self, value: bool) -> Self {
                 self.state.disabled = value;
+                self.state.common.disabled = value;
                 self
             }
 
             #[must_use]
             pub fn focusable(mut self, value: bool) -> Self {
                 self.state.focusable = value;
+                self.state.common.focusable = value;
                 self
             }
 
             #[must_use]
             pub fn accessibility_label(mut self, value: impl Into<String>) -> Self {
-                self.state.accessibility_label = value.into();
+                let label = value.into();
+                self.state.accessibility_label = label.clone();
+                self.state.common.accessibility_label = label;
+                self
+            }
+
+            #[must_use]
+            pub fn common(mut self, value: UiCommonProps) -> Self {
+                self.state.disabled = value.disabled;
+                self.state.focusable = value.focusable;
+                self.state.accessibility_label = value.accessibility_label.clone();
+                self.state.common = value;
+                self
+            }
+
+            #[must_use]
+            pub fn visible(mut self, value: bool) -> Self {
+                self.state.common.visible = value;
+                self
+            }
+
+            #[must_use]
+            pub fn width(mut self, value: UiDimension) -> Self {
+                self.state.common.width = value;
+                self
+            }
+
+            #[must_use]
+            pub fn height(mut self, value: UiDimension) -> Self {
+                self.state.common.height = value;
+                self
+            }
+
+            #[must_use]
+            pub fn display(mut self, value: UiDisplay) -> Self {
+                self.state.common.display = value;
+                self
+            }
+
+            #[must_use]
+            pub fn position(mut self, value: UiPosition) -> Self {
+                self.state.common.position = value;
+                self
+            }
+
+            #[must_use]
+            pub fn tab_index(mut self, value: i16) -> Self {
+                self.state.common.tab_index = Some(value);
+                self
+            }
+
+            #[must_use]
+            pub fn z_index(mut self, value: UiZIndex) -> Self {
+                self.state.common.z_index = value;
+                self
+            }
+
+            #[must_use]
+            pub fn cursor(mut self, value: UiCursor) -> Self {
+                self.state.common.cursor = value;
+                self
+            }
+
+            #[must_use]
+            pub fn pointer_events(mut self, value: UiPointerEvents) -> Self {
+                self.state.common.pointer_events = value;
+                self
+            }
+
+            #[must_use]
+            pub fn selectable(mut self, value: bool) -> Self {
+                self.state.common.selectable = value;
                 self
             }
 
@@ -149,7 +227,7 @@ macro_rules! atom_model {
 
         impl crate::component::ComponentAction for $name {
             fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
-                self.state.apply_action(action)
+                self.state.apply_action_for_kind($kind, action)
             }
         }
 

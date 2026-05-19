@@ -43,6 +43,21 @@ impl ColorPicker {
     }
 
     #[must_use]
+    pub const fn uses_rgba_mode(&self) -> bool {
+        self.rgba_mode
+    }
+
+    #[must_use]
+    pub const fn has_trigger_border(&self) -> bool {
+        self.trigger_border
+    }
+
+    #[must_use]
+    pub fn eyedropper_callback_model(&self) -> &str {
+        &self.eyedropper_callback
+    }
+
+    #[must_use]
     pub fn state_id(&self) -> &UiStateId {
         &self.state.state_id
     }

@@ -13,6 +13,8 @@ pub struct StorybookPanelReport {
     pub styled_story_roots: usize,
     pub details_panel_configured: bool,
     pub detail_sections: usize,
+    pub panel_scroll_configured: bool,
+    pub independent_panel_scrolls: usize,
     pub(crate) panel_theme_ids: BTreeSet<String>,
 }
 
@@ -24,6 +26,8 @@ pub(crate) struct StorybookPanelReportFields {
     pub(crate) styled_story_roots: usize,
     pub(crate) details_panel_configured: bool,
     pub(crate) detail_sections: usize,
+    pub(crate) panel_scroll_configured: bool,
+    pub(crate) independent_panel_scrolls: usize,
     pub(crate) panel_theme_ids: BTreeSet<String>,
 }
 
@@ -38,6 +42,8 @@ impl StorybookPanelReport {
             styled_story_roots: fields.styled_story_roots,
             details_panel_configured: fields.details_panel_configured,
             detail_sections: fields.detail_sections,
+            panel_scroll_configured: fields.panel_scroll_configured,
+            independent_panel_scrolls: fields.independent_panel_scrolls,
             panel_theme_ids: fields.panel_theme_ids,
         }
     }
@@ -45,14 +51,16 @@ impl StorybookPanelReport {
     #[must_use]
     pub fn summary(&self) -> String {
         format!(
-            "panel_nodes={} panel_theme_configured={} panel_theme_variants={} themed_story_roots={} styled_story_roots={} details_panel_configured={} detail_sections={}",
+            "panel_nodes={} panel_theme_configured={} panel_theme_variants={} themed_story_roots={} styled_story_roots={} details_panel_configured={} detail_sections={} panel_scroll_configured={} independent_panel_scrolls={}",
             self.panel_nodes,
             self.panel_theme_configured,
             self.panel_theme_variants,
             self.themed_story_roots,
             self.styled_story_roots,
             self.details_panel_configured,
-            self.detail_sections
+            self.detail_sections,
+            self.panel_scroll_configured,
+            self.independent_panel_scrolls
         )
     }
 }

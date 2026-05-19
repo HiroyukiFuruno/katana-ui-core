@@ -14,12 +14,12 @@
 | 種別 | 正本 |
 | --- | --- |
 | root architecture | `openspec/changes/ui-core-root-plan/` |
-| atoms / molecules / Storybook catalog | `openspec/changes/establish-kuc-atoms-molecules-catalog/` |
+| atoms / molecules / Storybook | `openspec/changes/establish-kuc-atoms-molecules-catalog/` |
 | 旧changeの入力元 | `openspec/changes/archive/`、active `18` / `23` / `24` |
 
 ## 01〜24 再分類
 
-各 UI は `option`、`action`、`event`、`state`、`preset`、`preview`、`settings`、`automated-test`、`visual-regression`、`storybook-page` を満たすまで完了にしない。
+各 UI は `option`、`action`、`event`、`state`、`preset`、`preview`、`settings`、`automated-test`、`numeric-rendering-contract`、`storybook-page` を満たすまで完了にしない。
 
 | # | 旧 change | KUC 分類 | 現在の対象 |
 | --- | --- | --- | --- |
@@ -77,14 +77,17 @@ Storybook 自身を構成するため、次は内部構成部品として許可�
 
 | 内部構成 | 役割 |
 | --- | --- |
-| catalog shell | 画面全体の分割 |
+| storybook shell | 画面全体の分割 |
 | navigation tree | TreeView による部品一覧 |
-| preview workspace | 選択部品の表示領域 |
-| settings inspector | option 変更、state、event、action 履歴 |
+| preview workspace | 選択部品の layout、rendering、contract、status 表示領域 |
+| settings inspector | option 変更、state、event、action、quality 履歴 |
+| panel scroll state | Navigation / Preview / Details の独立縦スクロール |
 
 ## 完了判定
 
-- Storybook は部品カタログであり、正しさの主根拠ではない。
-- 部品の正しさは自動テスト、layout regression、visual regression、input regression、guard で判定する。
+- Storybook は静的見本帳ではなく、選択中 UI の layout / option / action / event / state / rendering / panel 独立 scroll を実画面で扱うフィードバック用の画面である。
+- 左 TreeView は探索と選択のために使い、中央本文に全件 component card を毎回出す構成は採用しない。
+- Storybook は正しさの主根拠ではない。
+- 部品の正しさは自動テスト、数値化された layout / rendering contract、input regression、state / event / action contract、guard で判定する。
 - `kal` 側へ KUC 固有ルールを追記しない。
 - `katana-widget-parity-backlog` と `ui-core-interaction-visual-parity` は、この文書と新 change へ要件を移した後は superseded として扱う。

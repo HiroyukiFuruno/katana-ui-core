@@ -57,7 +57,7 @@ The regression MUST measure line box, baseline, ascent, descent, and visual cent
 
 - **WHEN** text samples for English, Japanese, mixed English/Japanese, and emoji are rendered in equal-height boxes
 - **THEN** their visual centers align within the accepted regression threshold
-- **AND** the test records line metrics, not only screenshots
+- **AND** the test records line metrics directly
 
 ### Requirement: Input supports key, IME, and emoji text
 
@@ -88,13 +88,13 @@ Storybook state, event, and action logs MUST include the target state identifier
 
 KUC MUST expose layout results for size, spacing, alignment, scroll bounds, and overlay placement so automated tests can verify layout correctness.
 Layout regression MUST verify dimensions, padding, gap, border width, vertical and horizontal centering, baseline placement, scroll bounds, overflow, overlay anchor, overlay z-index, and unintended overlap.
-Storybook screenshots MUST remain supporting evidence and MUST NOT replace layout regression.
+Storybook output MUST NOT replace layout regression.
 
 #### Scenario: layout regression is executed
 
 - **WHEN** layout regression tests run for required components
 - **THEN** the tests verify dimensions, alignment, overflow, and overlay bounds
-- **AND** Storybook screenshots are not the only layout evidence
+- **AND** Storybook output is not accepted as layout evidence
 
 ### Requirement: Core action model supports generic click events
 

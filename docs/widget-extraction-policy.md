@@ -18,8 +18,8 @@ KUC は Floem 専用 crate ではなく、フレームワーク非依存（frame
 4. **Theme-token based**: 色、余白、角丸、影、z-index を theme token 経由で扱う。
 5. **Adapter-ready**: Floem / GPUI / egui adapter が変換できる DTO / trait 境界を持つ。
 6. **Repo-local evidence**: repo 外の実装を直接読まず、`docs/inventory/*.md` または OpenSpec change にコピー済みの根拠から実装できる。
-7. **Catalog-ready**: preview、settings、preset、state、event、action 履歴を部品カタログで表現できる。
-8. **Test-gated**: Storybook 目視ではなく、自動テスト、画像回帰、入力回帰、guard で完了判定できる。
+7. **Storybook-ready**: preview、settings、preset、state、event、action 履歴を Storybook で表現できる。静的見本ではなく、layout、option、action、event、state、rendering、panel 独立 scroll を実画面で扱える。
+8. **Test-gated**: Storybook や手動操作ではなく、自動テスト、数値化された layout / rendering contract、入力回帰、guard で完了判定できる。
 
 ## 除外条件
 
@@ -70,7 +70,8 @@ Floem / GPUI / egui 固有の描画は adapter crate に置く。
 MVP の公開対象は最小部品（atoms）と組み合わせ部品（molecules）である。
 大きな画面単位（organisms）、画面ひな形（templates）、画面（pages）は今は公開対象にしない。
 
-ただし、Storybook 自身を構成する catalog shell、navigation、preview workspace、settings inspector は内部構成部品として許可する。
+ただし、Storybook 自身を構成する shell、navigation、preview workspace、settings inspector、panel scroll state は内部構成部品として許可する。
+Storybook は中央本文に全 UI のカード一覧を並べる静的見本帳ではなく、左 TreeView で選んだ UI の操作、状態、描画差分を扱う画面として扱う。
 これらを公開 widget API へ昇格させる場合は、別 OpenSpec change で目的、対象、利用側 API を定義する。
 
 ## 旧個別 change の扱い

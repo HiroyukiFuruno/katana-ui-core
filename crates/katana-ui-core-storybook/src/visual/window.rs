@@ -4,20 +4,11 @@ use super::render;
 use super::runtime::{StorybookRuntimeReport, StorybookVisualError, StorybookWindowRun};
 use super::types::StorybookVisual;
 use super::window_interaction::{StorybookWindowState, apply_mouse_click, apply_scroll};
+use super::window_modal_plan;
 use super::window_options::{main_window_options, modal_window_options};
-use katana_ui_core::window::{
-    DisplayBounds, ModalWindowPlacement, ModalWindowPlacementError, WindowId, WindowPoint,
-    WindowRect, WindowSize,
-};
 use minifb::{Key, Window};
 use std::thread;
 use std::time::Duration;
-const DISPLAY_PADDING: f32 = 256.0;
-const SAMPLE_PARENT_X: f32 = 80.0;
-const SAMPLE_PARENT_Y: f32 = 80.0;
-const SAMPLE_DISPLAY_WIDTH: f32 = 1920.0;
-const SAMPLE_DISPLAY_HEIGHT: f32 = 1200.0;
-const SAMPLE_DISPLAY_SCALE: f32 = 2.0;
 const MAIN_WINDOW_TITLE: &str = "katana-ui-core Storybook";
 const MODAL_WINDOW_TITLE: &str = "katana-ui-core Modal";
 
@@ -43,7 +34,7 @@ impl StorybookVisual {
         let modal_frame = modal::render_modal_canvas();
         let mut main = create_window(MAIN_WINDOW_TITLE, &main_frame)?;
         main.update_with_buffer(main_frame.pixels(), main_frame.width(), main_frame.height())?;
-        let plan = modal_plan_from_main_window(&main, &main_frame, &modal_frame)?;
+        let plan = window_modal_plan::from_main_window(&main, &main_frame, &modal_frame)?;
         let mut modal_window = create_window(MODAL_WINDOW_TITLE, &modal_frame)?;
         modal_window.set_position(plan.position.x as isize, plan.position.y as isize);
         modal_window.topmost(plan.frontmost);
@@ -66,7 +57,7 @@ impl StorybookVisual {
 
     #[must_use]
     pub fn runtime_report(self) -> StorybookRuntimeReport {
-        let plan = sample_modal_plan();
+        let plan = window_modal_plan::sample();
         StorybookRuntimeReport {
             state_reflected: modal::state_reflected_after_operation(),
             overlay_rendered: modal::overlay_rendered(),
@@ -92,13 +83,19 @@ fn run_single_window(
 ) -> Result<(), minifb::Error> {
     let mut frame_index = 0;
     let mut state = StorybookWindowState::default();
-    let mut mouse_was_down = false;
+    let mut left_mouse_was_down = false;
+    let mut right_mouse_was_down = false;
     while frames == 0 || frame_index < frames {
         if !window.is_open() || window.is_key_down(Key::Escape) {
             break;
         }
         if apply_scroll(window, &mut state)
-            || apply_mouse_click(window, &mut state, &mut mouse_was_down)
+            || apply_mouse_click(
+                window,
+                &mut state,
+                &mut left_mouse_was_down,
+                &mut right_mouse_was_down,
+            )
         {
             frame = render_frame(&state);
         }
@@ -110,14 +107,16 @@ fn run_single_window(
 }
 
 fn render_frame(state: &StorybookWindowState) -> Canvas {
-    render::render_storybook_canvas_with_options(
-        state.theme_id,
-        state.selected_page,
-        state.preset_index,
-        state.scroll_y,
-        state.scrollbar_visible,
-        state.tree_expansion,
-    )
+    render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
+        theme_id: state.theme_id,
+        selected_page: state.selected_page,
+        preset_index: state.preset_index,
+        scroll_y: state.scroll_y,
+        scrollbar_visible: state.scrollbar_visible,
+        panel_scroll: state.panel_scroll,
+        tree_expansion: state.tree_expansion,
+        screen_state: state.screen_state,
+    })
 }
 
 fn run_window_pair(
@@ -142,67 +141,6 @@ fn run_window_pair(
         frame_index += 1;
     }
     Ok(())
-}
-
-fn modal_plan_from_main_window(
-    main: &Window,
-    main_frame: &Canvas,
-    modal_frame: &Canvas,
-) -> Result<katana_ui_core::window::ModalWindowPlan, ModalWindowPlacementError> {
-    let (x, y) = main.get_position();
-    let parent_rect = WindowRect::new(
-        WindowPoint::new(x as f32, y as f32),
-        WindowSize::new(main_frame.width() as f32, main_frame.height() as f32),
-    );
-    let modal_size = WindowSize::new(modal_frame.width() as f32, modal_frame.height() as f32);
-    let display = display_around_parent(parent_rect);
-    ModalWindowPlacement::same_display(
-        WindowId::new("storybook-main"),
-        WindowId::new("storybook-modal"),
-        parent_rect,
-        modal_size,
-        display,
-    )
-    .resolve()
-}
-
-fn display_around_parent(parent_rect: WindowRect) -> DisplayBounds {
-    DisplayBounds::new(
-        "parent-display",
-        WindowRect::new(
-            WindowPoint::new(
-                parent_rect.origin.x - DISPLAY_PADDING,
-                parent_rect.origin.y - DISPLAY_PADDING,
-            ),
-            WindowSize::new(
-                parent_rect.size.width + DISPLAY_PADDING * 2.0,
-                parent_rect.size.height + DISPLAY_PADDING * 2.0,
-            ),
-        ),
-        1.0,
-    )
-}
-
-fn sample_modal_plan() -> Result<katana_ui_core::window::ModalWindowPlan, ModalWindowPlacementError>
-{
-    ModalWindowPlacement::same_display(
-        WindowId::new("storybook-main"),
-        WindowId::new("storybook-modal"),
-        WindowRect::new(
-            WindowPoint::new(SAMPLE_PARENT_X, SAMPLE_PARENT_Y),
-            WindowSize::new(render::WIDTH as f32, render::HEIGHT as f32),
-        ),
-        WindowSize::new(modal::MODAL_WIDTH as f32, modal::MODAL_HEIGHT as f32),
-        DisplayBounds::new(
-            "main",
-            WindowRect::new(
-                WindowPoint::new(0.0, 0.0),
-                WindowSize::new(SAMPLE_DISPLAY_WIDTH, SAMPLE_DISPLAY_HEIGHT),
-            ),
-            SAMPLE_DISPLAY_SCALE,
-        ),
-    )
-    .resolve()
 }
 
 #[cfg(test)]

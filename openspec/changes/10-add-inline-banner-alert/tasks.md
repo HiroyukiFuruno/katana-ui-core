@@ -1,0 +1,46 @@
+# Tasks — add-inline-banner-alert-10
+
+## 1. 設計確定
+
+- [ ] 1.1 severity × icon × tone マッピングを確定する。
+- [ ] 1.2 expanded_details の挙動（折りたたみ / max-height / scroll）を確定する。
+- [ ] 1.3 actions / dismiss / accessibility role を確定する。
+
+## 2. 中核実装
+
+- [ ] 2.1 `molecule/disclosure/banner.rs` を新設する。
+- [ ] 2.2 option / action / event / state を実装する。
+- [ ] 2.3 `widget::molecules` の re-export に `Banner` を追加する。
+
+## 3. 自動テスト
+
+- [ ] 3.1 severity 切替えで icon / tone / role が連動して変わることを検証する。
+- [ ] 3.2 dismiss action で visible=false かつ `BannerDismissed` 発火を検証する。
+- [ ] 3.3 expanded_details の toggle が `details_open` を切替えることを検証する。
+- [ ] 3.4 actions（primary / secondary）の typed event 発火と disabled 抑止を検証する。
+- [ ] 3.5 accessibility role（status / alert）が severity から正しく導出されることを検証する。
+
+## 4. 画像回帰
+
+- [ ] 4.1 severity 5 種 × density 2 種 × actions 0/1/2 の主要 subset を回帰する。
+- [ ] 4.2 expanded_details open / closed を回帰する。
+- [ ] 4.3 dismissible 表示と長文 message の折返しを回帰する。
+- [ ] 4.4 light / dark theme を回帰する。
+
+## 5. Storybook ページ
+
+- [ ] 5.1 `Disclosure > Banner` ノードを追加する。
+- [ ] 5.2 preset「保存失敗」「vendor 未接続」「添付サイズ超過」「成功通知」「details 展開」を実装する。
+- [ ] 5.3 settings で severity / density / actions / details / dismissible を切替えできるようにする。
+
+## 6. ドキュメント
+
+- [ ] 6.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に Banner 行を追加する。
+- [ ] 6.2 `NotificationToast` と `StatusBar` のドキュメントから Banner との責務境界を相互参照する。
+
+## 7. 品質ゲート
+
+- [ ] 7.1 `cargo test -p katana-ui-core` をパスする。
+- [ ] 7.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。
+- [ ] 7.3 `openspec validate add-inline-banner-alert-10 --strict` をパスする。
+- [ ] 7.4 画像回帰の CI gate をパスする。

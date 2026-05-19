@@ -1,6 +1,6 @@
 use super::super::{StoryCatalog, StoryExample};
 use katana_ui_core::component::ComponentAction;
-use katana_ui_core::interaction::UiAction;
+use katana_ui_core::interaction::{RgbaActionValue, UiAction};
 use katana_ui_core::molecule::{
     CodeDiffLine, CodeDiffLineKind, CodeDiffMode, CodeDiffSource, CollapsedBlock,
     ColorBlendingMode, DisclosureTriggerArea, HighlightRange, RgbaColor, TreeLineStyle, TreeNode,
@@ -9,47 +9,8 @@ use katana_ui_core::{atom, molecule};
 
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
-        StoryCatalog::story(
-            "code-diff",
-            molecule::CodeDiff::new("Code diff")
-                .source(CodeDiffSource::Unified {
-                    text: "- old\n+ new".to_string(),
-                })
-                .mode(CodeDiffMode::Inline)
-                .line(CodeDiffLine {
-                    old_number: Some(1),
-                    new_number: None,
-                    kind: CodeDiffLineKind::Removed,
-                    text: "old".to_string(),
-                })
-                .line(CodeDiffLine {
-                    old_number: None,
-                    new_number: Some(1),
-                    kind: CodeDiffLineKind::Added,
-                    text: "new".to_string(),
-                })
-                .highlight(HighlightRange {
-                    start_line: 1,
-                    end_line: 2,
-                })
-                .collapsed_block(CollapsedBlock {
-                    start_line: 3,
-                    line_count: 4,
-                })
-                .child(atom::Text::new("- old"))
-                .child(atom::Text::new("+ new")),
-        ),
-        StoryCatalog::story(
-            "color-picker-rgba",
-            molecule::ColorPicker::new("Color picker")
-                .open(true)
-                .rgba(RgbaColor::new(64, 128, 255, 204))
-                .hue(214)
-                .alpha(204)
-                .blending(ColorBlendingMode::Screen)
-                .child(atom::ColorSwatch::new("Preview").value("rgba(64, 128, 255, 204)"))
-                .child(atom::SlideControl::new("Alpha").value("204")),
-        ),
+        code_diff_story(),
+        color_picker_story(),
         StoryCatalog::story(
             "command-palette",
             molecule::CommandPalette::new("Command palette")
@@ -69,6 +30,74 @@ pub(super) fn examples() -> Vec<StoryExample> {
         ),
         tree_view_story(),
     ]
+}
+
+const OLD_LINE_NUMBER: usize = 1;
+const NEW_LINE_NUMBER: usize = 1;
+const HIGHLIGHT_END_LINE: usize = 2;
+const COLLAPSED_START_LINE: usize = 3;
+const COLLAPSED_LINE_COUNT: usize = 4;
+const COLOR_RED: u8 = 64;
+const COLOR_GREEN: u8 = 128;
+const COLOR_BLUE: u8 = 255;
+const COLOR_ALPHA: u8 = 204;
+const COLOR_HUE: u16 = 214;
+
+fn code_diff_story() -> StoryExample {
+    let mut diff = molecule::CodeDiff::new("Code diff")
+        .source(CodeDiffSource::Unified {
+            text: "- old\n+ new".to_string(),
+        })
+        .mode(CodeDiffMode::Inline)
+        .line(CodeDiffLine {
+            old_number: Some(OLD_LINE_NUMBER),
+            new_number: None,
+            kind: CodeDiffLineKind::Removed,
+            text: "old".to_string(),
+        })
+        .line(CodeDiffLine {
+            old_number: None,
+            new_number: Some(NEW_LINE_NUMBER),
+            kind: CodeDiffLineKind::Added,
+            text: "new".to_string(),
+        })
+        .highlight(HighlightRange {
+            start_line: OLD_LINE_NUMBER,
+            end_line: HIGHLIGHT_END_LINE,
+        })
+        .collapsed_block(CollapsedBlock {
+            start_line: COLLAPSED_START_LINE,
+            line_count: COLLAPSED_LINE_COUNT,
+        })
+        .child(atom::Text::new("- old"))
+        .child(atom::Text::new("+ new"));
+    let target = diff.state_id().clone();
+    let result = diff.apply_action(&UiAction::code_diff_mode(target, "Split"));
+    StoryCatalog::interactive_story("code-diff", diff, result.callback_log)
+}
+
+fn color_picker_story() -> StoryExample {
+    let mut picker = molecule::ColorPicker::new("Color picker")
+        .open(true)
+        .rgba(RgbaColor::new(
+            COLOR_RED,
+            COLOR_GREEN,
+            COLOR_BLUE,
+            COLOR_ALPHA,
+        ))
+        .hue(COLOR_HUE)
+        .alpha(COLOR_ALPHA)
+        .blending(ColorBlendingMode::Screen)
+        .child(atom::ColorSwatch::new("Preview").value("rgba(64, 128, 255, 204)"))
+        .child(atom::SlideControl::new("Alpha").value(COLOR_ALPHA.to_string()));
+    let target = picker.state_id().clone();
+    let result = picker.apply_action(&UiAction::color_drag(
+        target,
+        RgbaActionValue::new(COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_ALPHA),
+        COLOR_HUE,
+        true,
+    ));
+    StoryCatalog::interactive_story("color-picker-rgba", picker, result.callback_log)
 }
 
 fn tree_view_story() -> StoryExample {

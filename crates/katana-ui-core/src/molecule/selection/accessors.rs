@@ -30,6 +30,26 @@ macro_rules! selection_accessors {
             }
 
             #[must_use]
+            pub fn placement_model(&self) -> &str {
+                &self.model.placement
+            }
+
+            #[must_use]
+            pub fn highlighted_index_model(&self) -> usize {
+                self.model.highlighted_index
+            }
+
+            #[must_use]
+            pub fn is_long_list(&self) -> bool {
+                self.model.long_list
+            }
+
+            #[must_use]
+            pub fn dismisses_on_outside_click(&self) -> bool {
+                self.model.outside_click_dismiss
+            }
+
+            #[must_use]
             pub fn framed_model(&self) -> bool {
                 self.model.framed
             }

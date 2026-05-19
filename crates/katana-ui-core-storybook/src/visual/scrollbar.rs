@@ -8,12 +8,27 @@ const SCROLLBAR_TRACK_RIGHT_INSET: usize = 10;
 const SCROLLBAR_TRACK_Y: usize = 12;
 const SCROLLBAR_TRACK_BOTTOM_INSET: usize = 12;
 const SCROLLBAR_THUMB_MIN_HEIGHT: usize = 64;
+const SCROLLBAR_RADIUS: usize = 3;
 
 pub(super) fn draw(canvas: &mut Canvas, palette: &VisualPalette, scroll_y: usize) {
     let track = track_rect();
-    canvas.fill_rect(track.x, track.y, track.width, track.height, palette.border);
+    canvas.fill_round_rect(
+        track.x,
+        track.y,
+        track.width,
+        track.height,
+        SCROLLBAR_RADIUS,
+        palette.code_background,
+    );
     let thumb = thumb_rect(scroll_y);
-    canvas.fill_rect(thumb.x, thumb.y, thumb.width, thumb.height, palette.accent);
+    canvas.fill_round_rect(
+        thumb.x,
+        thumb.y,
+        thumb.width,
+        thumb.height,
+        SCROLLBAR_RADIUS,
+        palette.accent,
+    );
 }
 
 pub(super) fn track_rect() -> LayoutRect {

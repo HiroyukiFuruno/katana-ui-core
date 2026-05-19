@@ -1,0 +1,61 @@
+# Tasks — 16-add-virtualized-list-and-tree
+
+## 1. 設計確定
+
+- [ ] 1.1 `VirtualizationConfig` の typed option を確定する。
+- [ ] 1.2 `RowHeightProvider` の Fixed / Variable / Estimated を確定する。
+- [ ] 1.3 `keep_focused_in_window` の挙動を確定する。
+- [ ] 1.4 accessibility-aware aria (`aria-setsize` / `aria-posinset`) の規約を確定する。
+
+## 2. 共通 virtualization 実装
+
+- [ ] 2.1 `interaction/virtualization.rs` に `compute_visible_range` 純関数を実装する。
+- [ ] 2.2 `measured_overrides` の merge と scroll 補正を実装する。
+- [ ] 2.3 単体テストで Fixed / Variable / Estimated の 3 providers を網羅する。
+
+## 3. 各 molecule への組み込み
+
+- [ ] 3.1 `List` に virtualization option を追加する。
+- [ ] 3.2 `SelectionList` に virtualization option を追加する（section header は常時描画）。
+- [ ] 3.3 `TreeView` に virtualization option を追加する（展開ノードのフラット化を考慮）。
+- [ ] 3.4 `CommandPalette` に virtualization option を追加する（filtered list を対象）。
+- [ ] 3.5 `DiagnosticsList` に virtualization option を追加する（group + item flat 列を対象）。
+
+## 4. accessibility
+
+- [ ] 4.1 aria-setsize / aria-posinset を virtualization 中でも正しく報告することを実装する。
+- [ ] 4.2 keep_focused_in_window で focused row が virtual_range 外でも描画されることを実装する。
+- [ ] 4.3 screen reader announce が `n of total` 形式で出ることを実装する。
+
+## 5. 自動テスト
+
+- [ ] 5.1 `compute_visible_range` の純関数テスト（境界 / overscan / Variable）を作る。
+- [ ] 5.2 scroll で virtual_range が更新され、event は項目 id ベースで安定であることを検証する。
+- [ ] 5.3 keep_focused_in_window が focus 維持を保証することを検証する。
+- [ ] 5.4 aria-setsize / aria-posinset の announce 値を検証する。
+- [ ] 5.5 既存 preset は virtualization=disabled で挙動が変わらないことを回帰する。
+- [ ] 5.6 各 molecule に 10k 件入力のスナップショットを取り、描画行数が overscan + viewport に収まることを検証する。
+
+## 6. 画像回帰
+
+- [ ] 6.1 List 10k 件、TreeView 1万 node、CommandPalette 1万 item の scroll 位置別スナップショットを回帰する。
+- [ ] 6.2 keep_focused_in_window の有効 / 無効の差を回帰する。
+- [ ] 6.3 SelectionList の section header 常時描画 + virtual row を回帰する。
+
+## 7. Storybook ページ
+
+- [ ] 7.1 各 molecule のページに「Virtualization」preset を追加する。
+- [ ] 7.2 settings で virtualization を enable / disable、overscan、row height provider を切替えできるようにする。
+- [ ] 7.3 visible range と total count の表示 inspector を追加する。
+
+## 8. ドキュメント
+
+- [ ] 8.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に Virtualization 行を追加する。
+- [ ] 8.2 adapter 責務（row 測定）を `docs/compat-adapters.md` に追記する。
+
+## 9. 品質ゲート
+
+- [ ] 9.1 `cargo test -p katana-ui-core` をパスする。
+- [ ] 9.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。
+- [ ] 9.3 `openspec validate 16-add-virtualized-list-and-tree --strict` をパスする。
+- [ ] 9.4 画像 / 入力回帰 CI gate をパスする。

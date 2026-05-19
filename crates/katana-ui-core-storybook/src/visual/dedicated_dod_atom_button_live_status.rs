@@ -1,0 +1,106 @@
+use super::canvas::Canvas;
+use super::dedicated_dod_metrics as m;
+use super::palette::VisualPalette;
+use super::render_context::ScenarioContext;
+use super::text::TextRenderer;
+
+const STATUS_X: usize = 210;
+const STATUS_Y: usize = 32;
+const STATUS_WIDTH: usize = 116;
+const STATUS_HEIGHT: usize = 16;
+const STATUS_GAP: usize = 4;
+const STATUS_TEXT_X: usize = 8;
+const STATUS_TEXT_Y: usize = 5;
+#[cfg(test)]
+const MAX_LABEL_CHARS: usize = 14;
+
+pub(super) fn draw_status_rows(
+    canvas: &mut Canvas,
+    text: &TextRenderer,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    x: usize,
+    y: usize,
+) {
+    let rows = [
+        action_label(scenario).to_string(),
+        event_label(scenario).to_string(),
+        state_label(scenario).to_string(),
+        common_props_label(scenario),
+    ];
+    for (index, label) in rows.into_iter().enumerate() {
+        let row_y = y + STATUS_Y + index * (STATUS_HEIGHT + STATUS_GAP);
+        canvas.fill_rect(
+            x + STATUS_X,
+            row_y,
+            STATUS_WIDTH,
+            STATUS_HEIGHT,
+            palette.panel,
+        );
+        canvas.stroke_rect(
+            x + STATUS_X,
+            row_y,
+            STATUS_WIDTH,
+            STATUS_HEIGHT,
+            palette.border,
+        );
+        text.draw(
+            canvas,
+            &label,
+            x + STATUS_X + STATUS_TEXT_X,
+            row_y + STATUS_TEXT_Y,
+            m::FONT_8,
+            palette.muted,
+        );
+    }
+}
+
+fn action_label(scenario: ScenarioContext<'_>) -> &'static str {
+    match scenario.screen_state.last_action {
+        "none" => "action ready",
+        "button_press" | "text_button_press" | "svg_button_press" | "icon_text_button_press" => {
+            "press"
+        }
+        "button_press_blocked" => "blocked",
+        "button_option_apply" => "option apply",
+        "settings_option_changed" => "settings edit",
+        _ => scenario.screen_state.last_action,
+    }
+}
+
+fn event_label(scenario: ScenarioContext<'_>) -> &'static str {
+    match scenario.screen_state.last_event {
+        "none" => "event ready",
+        "button_clicked"
+        | "text_button_clicked"
+        | "svg_button_clicked"
+        | "icon_text_button_clicked" => "clicked",
+        "button_disabled_ignored" => "ignored",
+        "button_option_changed" => "option change",
+        "button_settings_changed" => "settings event",
+        _ => scenario.screen_state.last_event,
+    }
+}
+
+fn state_label(scenario: ScenarioContext<'_>) -> &'static str {
+    if scenario.screen_state.state_label == "idle" {
+        return "state idle";
+    }
+    scenario.screen_state.state_label
+}
+
+fn common_props_label(scenario: ScenarioContext<'_>) -> String {
+    scenario.screen_state.button_options.compact_props_label()
+}
+
+#[cfg(test)]
+pub(super) fn status_rows_fit_for_test(scenario: ScenarioContext<'_>) -> bool {
+    [
+        action_label(scenario).to_string(),
+        event_label(scenario).to_string(),
+        state_label(scenario).to_string(),
+        common_props_label(scenario),
+    ]
+    .into_iter()
+    .all(|label| label.chars().count() <= MAX_LABEL_CHARS)
+}

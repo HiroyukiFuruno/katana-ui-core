@@ -6,6 +6,7 @@ use super::layout_metrics::{
     light_theme_rect, scrollbar_off_rect, scrollbar_on_rect,
 };
 use super::navigation;
+use super::panel_scrollbars;
 use super::preview;
 use super::render::CANVAS_HEIGHT;
 use super::render_context::ShellContext;
@@ -47,13 +48,16 @@ pub(super) fn draw(canvas: &mut Canvas, context: ShellContext<'_>) {
         palette,
         context.scenario.selected_page,
         context.scenario.tree_expansion,
+        context.scenario.panel_scroll.navigation_y,
     );
     preview::draw(canvas, context.root, context.render, context.scenario);
     inspector::draw(
         canvas,
         context.render,
         selected_story(context.root, context.render, context.scenario),
+        context.scenario,
     );
+    panel_scrollbars::draw(canvas, palette, context.scenario.panel_scroll);
 }
 
 fn draw_theme_control(canvas: &mut Canvas, context: &ShellContext<'_>) {
@@ -165,20 +169,16 @@ fn draw_theme_option(
 }
 
 fn selected_story<'a>(
-    root: &'a katana_ui_core::render_model::UiNode,
+    _root: &'a katana_ui_core::render_model::UiNode,
     render: super::render_context::RenderContext<'a>,
     scenario: super::render_context::ScenarioContext<'_>,
 ) -> Option<(
     &'a katana_ui_core::render_model::UiNode,
     &'a crate::catalog::StoryExample,
 )> {
-    let preview = root.children().iter().find(|it| {
-        it.kind() == katana_ui_core::render_model::UiNodeKind::Panel
-            && it.props().label == "Preview"
-    })?;
-    preview
-        .children()
+    render
+        .examples
         .iter()
-        .zip(render.examples.iter())
-        .find(|(_, example)| example.page == scenario.selected_page)
+        .find(|example| example.page == scenario.selected_page)
+        .map(|example| (example.tree.root(), example))
 }

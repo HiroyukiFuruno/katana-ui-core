@@ -11,7 +11,7 @@ repo-local source: [`docs/architecture/ui-separation/root-plan-source.md`](archi
 本ファイルは KUC 担当分を repo 内で実装するための作業入口である。task ID は [`root-plan-source.md`](architecture/ui-separation/root-plan-source.md) と同一に保つ。作業者は repo 外の親ディレクトリや sibling repository を読まない。
 
 `ui-core-root-plan` は親設計の正本であり、01〜24 の部品実装完了を意味しない。
-atoms / molecules と部品カタログの実装正本は [`openspec/changes/establish-kuc-atoms-molecules-catalog/`](../openspec/changes/establish-kuc-atoms-molecules-catalog/) とする。
+atoms / molecules と Storybook の実装正本は [`openspec/changes/establish-kuc-atoms-molecules-catalog/`](../openspec/changes/establish-kuc-atoms-molecules-catalog/) とする。
 このファイルには root architecture と依存境界だけを置き、部品ごとの option / action / event / state / preset / test は新 change 側で管理する。
 
 ## Repository の役割
@@ -277,7 +277,7 @@ P4-0 は primary adapter の選定を扱う。実装者が repo 外を読まな�
 - [x] egui は compatibility adapter 以外に残らない
 
 上記は core architecture の完了条件であり、部品ごとの実装完了条件ではない。
-01〜24 の UI は `establish-kuc-atoms-molecules-catalog` の自動テスト、画像回帰、入力回帰、Storybook 部品カタログ条件を満たすまで完了にしない。
+01〜24 の UI は `establish-kuc-atoms-molecules-catalog` の自動テスト、数値化された layout / rendering contract、入力回帰、Storybook 条件を満たすまで完了にしない。
 
 ## drift 検出
 

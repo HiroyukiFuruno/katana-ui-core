@@ -1,7 +1,10 @@
 use katana_ui_core::atom::{Button, IconTextButton, SvgButton, Text, TextButton};
 use katana_ui_core::layout::Row;
-use katana_ui_core::render_model::{UiNodeKind, UiTree};
+use katana_ui_core::molecule::Toolbar;
+use katana_ui_core::panel::{Panel, PanelRegion};
+use katana_ui_core::render_model::{UiCommonProps, UiDimension, UiNodeKind, UiTree};
 use katana_ui_core::runtime::{AppConfig, AppHandle, AppLifecycle, Application, RuntimeAdapter};
+use katana_ui_core::theme::ThemeSnapshot;
 use katana_ui_core::window::WindowConfig;
 
 #[derive(Default)]
@@ -37,6 +40,27 @@ fn neutral_tree_can_represent_atoms_and_layout() {
 
     assert_eq!(UiNodeKind::Row, tree.root().kind());
     assert_eq!(2, tree.root().children().len());
+}
+
+#[test]
+fn common_props_are_available_to_atoms_molecules_and_panels() {
+    let common = UiCommonProps::default()
+        .width(UiDimension::percent(100))
+        .height(UiDimension::px(48))
+        .accessibility_label("Shared surface");
+    let tree = UiTree::new(
+        Panel::new("Root", PanelRegion::Root, ThemeSnapshot::dark())
+            .common(common.clone())
+            .child(Toolbar::new("Actions").common(common.clone()))
+            .child(Button::new("Save").common(common.clone())),
+    );
+    let toolbar = &tree.root().children()[0];
+    let button = &tree.root().children()[1];
+
+    assert_eq!(UiDimension::percent(100), tree.root().props().common.width);
+    assert_eq!(UiDimension::percent(100), toolbar.props().common.width);
+    assert_eq!(UiDimension::percent(100), button.props().common.width);
+    assert_eq!("Shared surface", button.props().accessibility_label);
 }
 
 #[test]

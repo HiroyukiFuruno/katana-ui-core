@@ -22,13 +22,13 @@ pub(super) const SCROLLBAR_CONTROL_WIDTH: usize = 86;
 pub(super) const SCROLLBAR_CONTROL_HEIGHT: usize = 22;
 pub(super) const PREVIEW_X: usize = 310;
 pub(super) const PRESET_ACTIVE_Y: usize = 104;
-pub(super) const PRESET_INACTIVE_Y: usize = 104;
+pub(super) const PRESET_INACTIVE_Y: usize = PRESET_ACTIVE_Y;
 pub(super) const PRESET_WIDTH: usize = 132;
 pub(super) const PRESET_ACTIVE_HEIGHT: usize = 32;
-pub(super) const PRESET_INACTIVE_HEIGHT: usize = 32;
+pub(super) const PRESET_INACTIVE_HEIGHT: usize = PRESET_ACTIVE_HEIGHT;
 pub(super) const PRESET_GAP: usize = 0;
 pub(super) const PRESET_TEXT_X_OFFSET: usize = 14;
-pub(super) const PRESET_TAB_COUNT: usize = 4;
+pub(super) const PRESET_TAB_COUNT: usize = 5;
 #[cfg(test)]
 pub(super) const PRESET_INTERACTIVE_INDEX: usize = 1;
 #[cfg(test)]
@@ -38,13 +38,10 @@ pub(super) const INSPECTOR_X: usize = 1072;
 pub(super) const INSPECTOR_Y: usize = 22;
 pub(super) const INSPECTOR_WIDTH: usize = 334;
 pub(super) const INSPECTOR_HEIGHT: usize = VIEWPORT_HEIGHT - 44;
-pub(super) const STORY_CARD_WIDTH: usize = 206;
-pub(super) const STORY_CARD_HEIGHT: usize = 122;
-pub(super) const STORY_CARD_STEP_X: usize = 236;
-pub(super) const STORY_CARD_STEP_Y: usize = 144;
-pub(super) const STORY_CARD_COLUMNS: usize = 3;
-pub(super) const PREVIEW_FIRST_CARD_Y: usize = 458;
-pub(super) const PREVIEW_VISIBLE_STORIES: usize = 9;
+const INSPECTOR_SECTION_X_OFFSET: usize = 28;
+const INSPECTOR_FIRST_ROW_Y_OFFSET: usize = 112;
+const INSPECTOR_SETTING_ROW_WIDTH_OFFSET: usize = 56;
+const INSPECTOR_SETTING_ROW_HEIGHT: usize = 22;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct LayoutRect {
@@ -175,69 +172,19 @@ pub(super) fn navigation_hit_rect(row_y: usize) -> LayoutRect {
     LayoutRect::new(NAV_ROW_X, row_y, NAV_ROW_WIDTH, NAV_ROW_HEIGHT)
 }
 
+pub(super) fn button_setting_hit_rect() -> LayoutRect {
+    LayoutRect::new(
+        INSPECTOR_X + INSPECTOR_SECTION_X_OFFSET,
+        INSPECTOR_Y + INSPECTOR_FIRST_ROW_Y_OFFSET,
+        INSPECTOR_WIDTH - INSPECTOR_SETTING_ROW_WIDTH_OFFSET,
+        INSPECTOR_SETTING_ROW_HEIGHT,
+    )
+}
+
 #[cfg(test)]
 pub(super) fn inspector_rect() -> LayoutRect {
     LayoutRect::new(INSPECTOR_X, INSPECTOR_Y, INSPECTOR_WIDTH, INSPECTOR_HEIGHT)
 }
 
 #[cfg(test)]
-pub(super) fn story_card_rect(index: usize) -> LayoutRect {
-    let column = index % STORY_CARD_COLUMNS;
-    let row = index / STORY_CARD_COLUMNS;
-    LayoutRect::new(
-        PREVIEW_X + column * STORY_CARD_STEP_X,
-        PREVIEW_FIRST_CARD_Y + row * STORY_CARD_STEP_Y,
-        STORY_CARD_WIDTH,
-        STORY_CARD_HEIGHT,
-    )
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn preset_tabs_are_measured_and_do_not_overlap() {
-        let container = preset_container_rect();
-
-        for index in 0..PRESET_TAB_COUNT {
-            let rect = preset_tab_rect(index);
-            let active = preset_tab_visual_rect(index, true);
-            let inactive = preset_tab_visual_rect(index, false);
-            assert!(rect.inside_canvas());
-            assert!(active.inside_canvas());
-            assert!(inactive.inside_canvas());
-            assert_eq!(active.y, inactive.y);
-            assert_eq!(active.height, inactive.height);
-            assert!(container.contains(rect.x, rect.y));
-            assert!(container.contains(rect.right() - 1, rect.bottom() - 1));
-            if index > 0 {
-                assert_eq!(preset_tab_rect(index - 1).right(), rect.x);
-            }
-        }
-    }
-
-    #[test]
-    fn storybook_regions_stay_inside_canvas_without_overlap() {
-        let navigation = LayoutRect::new(0, 0, NAV_WIDTH, CONTENT_HEIGHT);
-        let preview = LayoutRect::new(PREVIEW_X, 0, INSPECTOR_X - PREVIEW_X, CONTENT_HEIGHT);
-        let inspector = inspector_rect();
-
-        assert!(navigation.inside_content());
-        assert!(preview.inside_content());
-        assert!(inspector.inside_canvas());
-        assert!(!navigation.overlaps(preview));
-        assert!(!preview.overlaps(inspector));
-    }
-
-    #[test]
-    fn preview_cards_do_not_collide_with_inspector() {
-        let inspector = inspector_rect();
-
-        for index in 0..PREVIEW_VISIBLE_STORIES {
-            let rect = story_card_rect(index);
-            assert!(rect.inside_canvas());
-            assert!(!rect.overlaps(inspector));
-        }
-    }
-}
+mod tests;

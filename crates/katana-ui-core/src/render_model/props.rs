@@ -1,5 +1,9 @@
 use super::UiStateId;
-use super::{UiIconProps, UiLoadingProps, UiStatusProps, UiTextEntryProps};
+use super::{
+    UiButtonProps, UiColorSwatchProps, UiCommonProps, UiContextMenuProps, UiIconProps,
+    UiLoadingProps, UiPanelProps, UiShortcutProps, UiStatusProps, UiTextEntryProps, UiTextProps,
+    UiTreeProps,
+};
 use crate::facade::DEFAULT_FONT_ROLE;
 use serde::{Deserialize, Serialize};
 
@@ -37,9 +41,11 @@ pub enum UiTone {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UiSize {
+    XSmall,
     Small,
     Medium,
     Large,
+    XLarge,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -49,14 +55,38 @@ pub struct UiInteractionState {
     pub selected_index: usize,
     pub item_count: usize,
     pub value: String,
+    pub hovered: bool,
+    pub active: bool,
+    pub focused: bool,
+    pub dragging: bool,
+    pub reduced_motion: bool,
+    pub animation_phase: u16,
+    pub cursor: usize,
+    pub selection_start: usize,
+    pub selection_end: usize,
+    pub dismiss_reason: String,
 }
 
 impl UiInteractionState {
     #[must_use]
     pub fn summary(&self) -> String {
         format!(
-            "open={} selected={} index={} count={} value={}",
-            self.open, self.has_selection, self.selected_index, self.item_count, self.value
+            "open={} selected={} index={} count={} value={} hover={} active={} focus={} dragging={} reduced_motion={} phase={} cursor={} selection={}:{} dismiss={}",
+            self.open,
+            self.has_selection,
+            self.selected_index,
+            self.item_count,
+            self.value,
+            self.hovered,
+            self.active,
+            self.focused,
+            self.dragging,
+            self.reduced_motion,
+            self.animation_phase,
+            self.cursor,
+            self.selection_start,
+            self.selection_end,
+            self.dismiss_reason
         )
     }
 }
@@ -65,6 +95,7 @@ impl UiInteractionState {
 pub struct UiProps {
     pub label: String,
     pub state_id: UiStateId,
+    pub common: UiCommonProps,
     pub disabled: bool,
     pub focusable: bool,
     pub accessibility_label: String,
@@ -84,10 +115,17 @@ pub struct UiProps {
     pub determinate: bool,
     pub progress_percent: u8,
     pub severity: UiTone,
+    pub text: UiTextProps,
+    pub button: UiButtonProps,
+    pub color_swatch: UiColorSwatchProps,
+    pub shortcut: UiShortcutProps,
     pub text_entry: UiTextEntryProps,
     pub status: UiStatusProps,
     pub loading_indicator: UiLoadingProps,
     pub icon: UiIconProps,
+    pub panel: UiPanelProps,
+    pub tree: UiTreeProps,
+    pub context_menu: UiContextMenuProps,
 }
 
 impl UiProps {
@@ -96,6 +134,7 @@ impl UiProps {
         Self {
             label: label.into(),
             state_id,
+            common: UiCommonProps::default(),
             disabled: false,
             focusable: false,
             accessibility_label: String::new(),
@@ -115,10 +154,17 @@ impl UiProps {
             determinate: false,
             progress_percent: 0,
             severity: UiTone::Neutral,
+            text: UiTextProps::default(),
+            button: UiButtonProps::default(),
+            color_swatch: UiColorSwatchProps::default(),
+            shortcut: UiShortcutProps::default(),
             text_entry: UiTextEntryProps::default(),
             status: UiStatusProps::default(),
             loading_indicator: UiLoadingProps::default(),
             icon: UiIconProps::default(),
+            panel: UiPanelProps::default(),
+            tree: UiTreeProps::default(),
+            context_menu: UiContextMenuProps::default(),
         }
     }
 }

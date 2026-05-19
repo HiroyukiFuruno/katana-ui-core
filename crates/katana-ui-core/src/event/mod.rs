@@ -13,9 +13,37 @@ pub struct PointerEvent {
 pub enum PointerEventKind {
     Down,
     Up,
+    Click,
     Move,
     Enter,
     Leave,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ClickEvent {
+    pub target: UiNodeId,
+    pub x: f32,
+    pub y: f32,
+    pub source: ClickEventSource,
+}
+
+impl ClickEvent {
+    #[must_use]
+    pub fn new(target: UiNodeId, x: f32, y: f32, source: ClickEventSource) -> Self {
+        Self {
+            target,
+            x,
+            y,
+            source,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ClickEventSource {
+    Pointer,
+    Keyboard,
+    Programmatic,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -40,6 +68,7 @@ pub struct CommandEvent {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum UiEvent {
     Pointer(PointerEvent),
+    Click(ClickEvent),
     Keyboard(KeyboardEvent),
     Focus(FocusEvent),
     Command(CommandEvent),
@@ -85,7 +114,7 @@ impl EventRoute {
 
 #[cfg(test)]
 mod tests {
-    use super::EventRoute;
+    use super::{ClickEvent, ClickEventSource, EventRoute, UiEvent};
     use crate::render_model::UiNodeId;
 
     #[test]
@@ -103,5 +132,24 @@ mod tests {
     fn capture_can_stop_before_target() {
         let route = EventRoute::capture(vec![UiNodeId::new("root")], true);
         assert!(route.stopped());
+    }
+
+    #[test]
+    fn click_event_is_component_agnostic() {
+        let event = UiEvent::Click(ClickEvent::new(
+            UiNodeId::new("any-clickable"),
+            12.0,
+            24.0,
+            ClickEventSource::Pointer,
+        ));
+
+        assert!(matches!(&event, UiEvent::Click(_)));
+        let click = if let UiEvent::Click(click) = event {
+            click
+        } else {
+            return;
+        };
+        assert_eq!("any-clickable", click.target.as_str());
+        assert_eq!(ClickEventSource::Pointer, click.source);
     }
 }

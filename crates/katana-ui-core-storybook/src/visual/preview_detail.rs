@@ -1,68 +1,72 @@
 use super::canvas::Canvas;
 use super::dedicated;
-use super::layout_metrics::PREVIEW_X;
+use super::layout_metrics::{LayoutRect, PREVIEW_X};
+use super::preview_effects;
 use super::render_context::{RenderContext, ScenarioContext};
 use katana_ui_core::render_model::UiNode;
 
-const HERO_Y: usize = 140;
+const HERO_Y: usize = 136;
 const HERO_WIDTH: usize = 710;
 const HERO_HEIGHT: usize = 244;
 const HERO_INSET: usize = 24;
 const HERO_PREVIEW_X: usize = PREVIEW_X + 34;
 const HERO_PREVIEW_Y: usize = HERO_Y + 86;
 const HERO_ACCENT_WIDTH: usize = 5;
-const HERO_PRESET_BAND_HEIGHT: usize = 18;
 const HERO_TITLE_Y_OFFSET: usize = 24;
 const HERO_META_Y_OFFSET: usize = 58;
 const HERO_TITLE_SIZE: f32 = 24.0;
 const PRESET_TEXT_SIZE: f32 = 12.0;
-const CHIP_WIDTH: usize = 146;
-const CHIP_HEIGHT: usize = 30;
-const CHIP_GAP: usize = 10;
-const CHIP_Y_OFFSET_FROM_BOTTOM: usize = 52;
-const CHIP_TEXT_X_OFFSET: usize = 10;
-const CHIP_TEXT_Y_OFFSET: usize = 9;
-const CHIP_TEXT_SIZE: f32 = 10.0;
-const INTERACTIVE_PRESET_INDEX: usize = 1;
-const EDGE_PRESET_INDEX: usize = 2;
-const THEME_PRESET_INDEX: usize = 3;
-
+const ACTION_TEXT_SIZE: f32 = 10.0;
+const TEXT_BUTTON_REL_X: usize = 16;
+const TEXT_BUTTON_REL_Y: usize = 50;
+const BUTTON_WIDTH: usize = 106;
+const TEXT_BUTTON_WIDTH: usize = 106;
+const TEXT_BUTTON_HEIGHT: usize = 40;
+const SVG_BUTTON_REL_X: usize = 22;
+const SVG_BUTTON_REL_Y: usize = 50;
+const SVG_BUTTON_WIDTH: usize = 44;
+const SVG_BUTTON_HEIGHT: usize = 40;
+const ICON_TEXT_BUTTON_REL_X: usize = 20;
+const ICON_TEXT_BUTTON_REL_Y: usize = 50;
+const ICON_TEXT_BUTTON_WIDTH: usize = 138;
+const ICON_TEXT_BUTTON_HEIGHT: usize = 40;
+const TOGGLE_REL_X: usize = 18;
+const TOGGLE_REL_Y: usize = 36;
+const TOGGLE_ROW_WIDTH: usize = 294;
+const TOGGLE_ROW_HEIGHT: usize = 34;
+const GENERIC_ACTION_WIDTH: usize = 344;
+const GENERIC_ACTION_HEIGHT: usize = 108;
+const ACTION_MARKER_HEIGHT: usize = 4;
+const ACTION_LABEL_X_OFFSET: usize = 18;
+const ACTION_LABEL_Y_OFFSET: usize = 18;
 pub(super) fn draw_selected_hero(
     canvas: &mut Canvas,
     render: RenderContext<'_>,
-    preview: &UiNode,
+    _preview: &UiNode,
     scenario: ScenarioContext<'_>,
 ) {
-    let Some((node, example)) = selected_pair(preview, render.examples, scenario.selected_page)
-    else {
+    let Some(example) = selected_example(render.examples, scenario.selected_page) else {
         return;
     };
+    let node = example.tree.root();
+    let hero_y = HERO_Y.saturating_sub(scenario.panel_scroll.preview_y);
     canvas.fill_rect(
         PREVIEW_X,
-        HERO_Y,
+        hero_y,
         HERO_WIDTH,
         HERO_HEIGHT,
         render.palette.surface,
     );
-    if scenario.preset_index > 0 {
-        canvas.fill_rect(
-            PREVIEW_X,
-            HERO_Y,
-            HERO_WIDTH,
-            HERO_PRESET_BAND_HEIGHT,
-            render.palette.accent,
-        );
-    }
     canvas.stroke_rect(
         PREVIEW_X,
-        HERO_Y,
+        hero_y,
         HERO_WIDTH,
         HERO_HEIGHT,
         render.palette.border,
     );
     canvas.fill_rect(
         PREVIEW_X,
-        HERO_Y,
+        hero_y,
         HERO_ACCENT_WIDTH,
         HERO_HEIGHT,
         render.palette.accent,
@@ -71,7 +75,7 @@ pub(super) fn draw_selected_hero(
         canvas,
         &node.props().label,
         PREVIEW_X + HERO_INSET,
-        HERO_Y + HERO_TITLE_Y_OFFSET,
+        hero_y + HERO_TITLE_Y_OFFSET,
         HERO_TITLE_SIZE,
         render.palette.text,
     );
@@ -79,78 +83,149 @@ pub(super) fn draw_selected_hero(
         canvas,
         &format!("page={} / kind={:?}", example.page, node.kind()),
         PREVIEW_X + HERO_INSET,
-        HERO_Y + HERO_META_Y_OFFSET,
+        hero_y + HERO_META_Y_OFFSET,
         PRESET_TEXT_SIZE,
         render.palette.muted,
     );
-    dedicated::draw(
+    dedicated::draw_page(
         canvas,
-        render.text,
-        node,
-        render.palette,
-        HERO_PREVIEW_X,
-        HERO_PREVIEW_Y,
+        dedicated::DedicatedPageRequest {
+            text: render.text,
+            page: example.page,
+            node,
+            palette: render.palette,
+            scenario,
+            x: HERO_PREVIEW_X,
+            y: hero_y + (HERO_PREVIEW_Y - HERO_Y),
+        },
     );
-    draw_option_chips(canvas, render, node, scenario.preset_index);
+    preview_effects::draw(
+        canvas,
+        render,
+        scenario,
+        component_action_hit_rect(scenario.selected_page),
+    );
+    draw_runtime_state(canvas, render, scenario);
 }
 
-fn draw_option_chips(
+fn draw_runtime_state(
     canvas: &mut Canvas,
     render: RenderContext<'_>,
-    node: &UiNode,
-    preset_index: usize,
+    scenario: ScenarioContext<'_>,
 ) {
-    let chips = [
-        format!("preset {}", preset_label(preset_index)),
-        format!("state {}", node.props().state_id.as_str()),
-        format!("variant {:?}", node.props().variant),
-        format!("tone {:?}", node.props().tone),
-    ];
-    let mut x = PREVIEW_X + HERO_INSET;
-    let y = HERO_Y + HERO_HEIGHT - CHIP_Y_OFFSET_FROM_BOTTOM;
-    for (index, chip) in chips.iter().enumerate() {
-        let active_preset = index == 0 && preset_index > 0;
-        let fill = if active_preset {
-            render.palette.accent
-        } else {
-            render.palette.panel
-        };
-        let text_color = if active_preset {
-            render.palette.background
-        } else {
-            render.palette.muted
-        };
-        canvas.fill_rect(x, y, CHIP_WIDTH, CHIP_HEIGHT, fill);
-        canvas.stroke_rect(x, y, CHIP_WIDTH, CHIP_HEIGHT, render.palette.border);
-        render.code_text.draw(
-            canvas,
-            chip,
-            x + CHIP_TEXT_X_OFFSET,
-            y + CHIP_TEXT_Y_OFFSET,
-            CHIP_TEXT_SIZE,
-            text_color,
+    if is_button_page(scenario.selected_page) {
+        return;
+    }
+    let rect = component_action_hit_rect(scenario.selected_page);
+    if rect.width == 0 {
+        return;
+    }
+    if scenario.screen_state.has_settings_override() {
+        canvas.stroke_rect(
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height,
+            render.palette.accent,
         );
-        x += CHIP_WIDTH + CHIP_GAP;
+    }
+    if !scenario.screen_state.has_widget_action() {
+        return;
+    }
+    canvas.fill_rect(
+        rect.x,
+        rect.bottom() - ACTION_MARKER_HEIGHT,
+        rect.width,
+        ACTION_MARKER_HEIGHT,
+        render.palette.accent,
+    );
+    render.code_text.draw(
+        canvas,
+        &format!("clicked {}", scenario.screen_state.action_count),
+        rect.x + ACTION_LABEL_X_OFFSET,
+        rect.bottom().saturating_sub(ACTION_LABEL_Y_OFFSET),
+        ACTION_TEXT_SIZE,
+        render.palette.text,
+    );
+}
+
+fn is_button_page(page: &str) -> bool {
+    matches!(
+        page,
+        "button" | "text-button" | "svg-button" | "icon-text-button"
+    )
+}
+
+pub(super) fn button_action_hit_rect(page: &str) -> LayoutRect {
+    match page {
+        "svg-button" => LayoutRect::new(
+            HERO_PREVIEW_X + SVG_BUTTON_REL_X,
+            HERO_PREVIEW_Y + SVG_BUTTON_REL_Y,
+            SVG_BUTTON_WIDTH,
+            SVG_BUTTON_HEIGHT,
+        ),
+        "icon-text-button" => LayoutRect::new(
+            HERO_PREVIEW_X + ICON_TEXT_BUTTON_REL_X,
+            HERO_PREVIEW_Y + ICON_TEXT_BUTTON_REL_Y,
+            ICON_TEXT_BUTTON_WIDTH,
+            ICON_TEXT_BUTTON_HEIGHT,
+        ),
+        "text-button" => LayoutRect::new(
+            HERO_PREVIEW_X + TEXT_BUTTON_REL_X,
+            HERO_PREVIEW_Y + TEXT_BUTTON_REL_Y,
+            TEXT_BUTTON_WIDTH,
+            TEXT_BUTTON_HEIGHT,
+        ),
+        "button" => LayoutRect::new(
+            HERO_PREVIEW_X + TEXT_BUTTON_REL_X,
+            HERO_PREVIEW_Y + TEXT_BUTTON_REL_Y,
+            BUTTON_WIDTH,
+            TEXT_BUTTON_HEIGHT,
+        ),
+        _ => LayoutRect::new(0, 0, 0, 0),
     }
 }
 
-fn preset_label(index: usize) -> &'static str {
-    match index {
-        INTERACTIVE_PRESET_INDEX => "interactive",
-        EDGE_PRESET_INDEX => "edge",
-        THEME_PRESET_INDEX => "theme",
-        _ => "default",
+pub(super) fn component_action_hit_rect(page: &str) -> LayoutRect {
+    let button = button_action_hit_rect(page);
+    if button.width > 0 {
+        return button;
     }
+    if page == "toggle" {
+        return LayoutRect::new(
+            HERO_PREVIEW_X + TOGGLE_REL_X,
+            HERO_PREVIEW_Y + TOGGLE_REL_Y,
+            TOGGLE_ROW_WIDTH,
+            TOGGLE_ROW_HEIGHT,
+        );
+    }
+    LayoutRect::new(
+        HERO_PREVIEW_X,
+        HERO_PREVIEW_Y,
+        GENERIC_ACTION_WIDTH,
+        GENERIC_ACTION_HEIGHT,
+    )
 }
 
-fn selected_pair<'a>(
-    preview: &'a UiNode,
+pub(super) const fn selected_hero_y() -> usize {
+    HERO_Y
+}
+
+#[cfg(test)]
+pub(super) const HERO_PREVIEW_X_FOR_TEST: usize = HERO_PREVIEW_X;
+
+#[cfg(test)]
+pub(super) const HERO_PREVIEW_Y_FOR_TEST: usize = HERO_PREVIEW_Y;
+
+pub(super) const fn selected_hero_rect() -> (usize, usize, usize, usize) {
+    (PREVIEW_X, HERO_Y, HERO_WIDTH, HERO_HEIGHT)
+}
+
+fn selected_example<'a>(
     examples: &'a [crate::catalog::StoryExample],
     selected_page: &str,
-) -> Option<(&'a UiNode, &'a crate::catalog::StoryExample)> {
-    preview
-        .children()
+) -> Option<&'a crate::catalog::StoryExample> {
+    examples
         .iter()
-        .zip(examples.iter())
-        .find(|(_, example)| example.page == selected_page)
+        .find(|example| example.page == selected_page)
 }

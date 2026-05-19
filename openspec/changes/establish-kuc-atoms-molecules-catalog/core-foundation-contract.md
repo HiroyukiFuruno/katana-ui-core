@@ -57,7 +57,7 @@ font role は `body` を Proportional、`code` を Monospace とする。
 | 英日混在 | `Katana 設定 Panel` |
 | 絵文字混在 | `保存 ✅` |
 
-自動テストは screenshot だけに頼らず、line box、baseline、ascent、descent、visual center を計測する。
+自動テストは line box、baseline、ascent、descent、visual center を計測する。
 既定 theme / 既定 font role の text center 差は 1px 以内を目標値にする。
 環境差で 1px を超える場合は、font resolver の差分として記録し、しきい値の引き下げで通さない。
 
@@ -106,5 +106,20 @@ state ID の生成は決定的な外部 key だけに依存しない。
 | overlay | anchor、placement、z-index、viewport 内収まり |
 | overlap | 意図しない text / control の重なり |
 
-Storybook の screenshot は目視補助に限定する。
-完了判定は layout report、画像回帰、入力回帰、guard の通過を主根拠にする。
+完了判定は layout report、数値化された rendering contract、入力回帰、guard の通過を主根拠にする。
+
+## 3.7 Panel scroll と drag
+
+Panel は画面全体のスクロールに従うだけではなく、Panel ごとに独立した scroll state を持つ。
+Navigation、Preview、Details、TreeView preview のように入れ子になった panel でも、どの panel を操作したかを state と event で区別できる必要がある。
+
+| 対象 | 契約 |
+| --- | --- |
+| panel scroll state | panel id、axis、offset、visible range、content size、viewport size を持つ。 |
+| scrollbar model | thumb bounds、track bounds、visibility、overlay / reserved、always / auto / hidden を持つ。 |
+| drag | drag start、drag move、drag end、cancel、pointer capture target を event として記録する。 |
+| nested panel | 子 panel の scroll / drag が親 panel の scroll state を変えない。 |
+| rendering contract | scrollbar の表示方式、thumb 位置、drag 後の差分、panel 間の独立性を数値化して検査する。 |
+
+scrollbar は表示飾りではなく拡張可能な model として扱う。
+将来の overlay scrollbar、常時表示 scrollbar、細幅 scrollbar、preview 用の強制表示を同じ contract で扱えるようにする。

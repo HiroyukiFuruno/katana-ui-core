@@ -49,3 +49,22 @@ fn facade_global_state_does_not_replace_component_owned_state() {
     assert_eq!("dark", facade.global_state().active_theme_id.as_str());
     assert_ne!(tree.root().props().state_id.as_str(), "global");
 }
+
+#[test]
+fn facade_settings_mutate_theme_and_font_with_change_logs() {
+    let mut facade = UiCoreFacade::default();
+    let component = Text::new("Title");
+    let state_id = component.state_id().clone();
+
+    let theme_log = facade.set_theme(ThemeSnapshot::light());
+    let font_log = facade.set_default_font_role("code");
+
+    assert_eq!("theme", theme_log.field);
+    assert_eq!("dark", theme_log.before);
+    assert_eq!("light", theme_log.after);
+    assert_eq!("default_font_role", font_log.field);
+    assert_eq!("body", font_log.before);
+    assert_eq!("code", font_log.after);
+    assert_eq!("light", facade.global_state().active_theme_id.as_str());
+    assert_eq!(state_id, component.state_id().clone());
+}

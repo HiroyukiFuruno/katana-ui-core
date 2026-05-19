@@ -20,6 +20,9 @@ pub struct ColorPicker {
     pub(super) color_area: String,
     pub(super) trigger_size: UiSize,
     pub(super) title: String,
+    pub(super) rgba_mode: bool,
+    pub(super) trigger_border: bool,
+    pub(super) eyedropper_callback: String,
     children: Vec<UiNode>,
 }
 
@@ -42,6 +45,9 @@ impl ColorPicker {
             color_area: String::new(),
             trigger_size: UiSize::Medium,
             title: String::new(),
+            rgba_mode: true,
+            trigger_border: true,
+            eyedropper_callback: String::new(),
             children: Vec::new(),
         }
     }
@@ -105,6 +111,24 @@ impl ColorPicker {
     }
 
     #[must_use]
+    pub fn rgba_mode(mut self, value: bool) -> Self {
+        self.rgba_mode = value;
+        self
+    }
+
+    #[must_use]
+    pub fn trigger_border(mut self, value: bool) -> Self {
+        self.trigger_border = value;
+        self
+    }
+
+    #[must_use]
+    pub fn eyedropper_callback(mut self, value: impl Into<String>) -> Self {
+        self.eyedropper_callback = value.into();
+        self
+    }
+
+    #[must_use]
     pub fn readonly(mut self, value: bool) -> Self {
         self.state.readonly = value;
         self
@@ -126,7 +150,10 @@ impl ColorPicker {
 impl ComponentAction for ColorPicker {
     fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
         let before = self.state.interaction();
-        if action.target() != &self.state.state_id || self.state.disabled || self.state.readonly {
+        if action.target() != &self.state.state_id || self.state.disabled {
+            return UiActionResult::ignored(self.state.state_id.clone(), before);
+        }
+        if self.state.readonly && color_change_action(action) {
             return UiActionResult::ignored(self.state.state_id.clone(), before);
         }
         if let UiAction::SetValue {
@@ -148,6 +175,16 @@ impl ComponentAction for ColorPicker {
         }
         self.state.apply_action(action, false)
     }
+}
+
+fn color_change_action(action: &UiAction) -> bool {
+    matches!(
+        action,
+        UiAction::SetValue {
+            color_drag: Some(_),
+            ..
+        }
+    )
 }
 
 impl From<ColorPicker> for UiNode {

@@ -1,3 +1,4 @@
+use super::actions::apply_disclosure_action;
 use super::types::DisclosureTypedModel;
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult};
@@ -174,7 +175,7 @@ macro_rules! disclosure_molecule {
 
         impl ComponentAction for $name {
             fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
-                self.state.apply_action(action, false)
+                apply_disclosure_action(&mut self.state, &self.model, $kind, action)
             }
         }
 
@@ -192,10 +193,7 @@ macro_rules! disclosure_molecule {
 
 disclosure_molecule!(Accordion, UiNodeKind::Accordion);
 disclosure_molecule!(Modal, UiNodeKind::Modal);
-disclosure_molecule!(ModalOverlay, UiNodeKind::ModalOverlay);
 disclosure_molecule!(Popover, UiNodeKind::Popover);
 disclosure_molecule!(Tooltip, UiNodeKind::Tooltip);
 disclosure_molecule!(NotificationToast, UiNodeKind::NotificationToast);
-disclosure_molecule!(SearchBox, UiNodeKind::SearchBox);
-disclosure_molecule!(SegmentedToggle, UiNodeKind::SegmentedToggle);
 disclosure_molecule!(SlideControl, UiNodeKind::SlideControl);

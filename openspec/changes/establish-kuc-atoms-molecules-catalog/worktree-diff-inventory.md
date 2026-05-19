@@ -57,9 +57,9 @@ docs 正本化とは混ぜず、次の実装フェーズで契約テストと合
 - `crates/katana-ui-core/src/theme/**`
 - `crates/katana-ui-core/tests/**`
 
-### D. Storybook catalog / visual surface 実装差分
+### D. Storybook / rendering surface 実装差分
 
-部品カタログの実装候補。
+Storybook の実装候補。
 Storybook は品質ゲートの代替ではないため、C と guard / regression の整合を確認してから扱う。
 
 - `crates/katana-ui-core-storybook/Cargo.toml`

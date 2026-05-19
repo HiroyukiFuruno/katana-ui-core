@@ -1,5 +1,9 @@
 use super::{StoryCatalog, StoryExample};
+use katana_ui_core::component::ComponentAction;
+use katana_ui_core::interaction::UiAction;
 use katana_ui_core::{atom, layout, molecule};
+
+const SPLIT_PANE_RESIZE_PERCENT: u8 = 64;
 
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
@@ -22,13 +26,7 @@ pub(super) fn examples() -> Vec<StoryExample> {
             "scroll-area",
             layout::ScrollArea::new().child(atom::Text::new("Scroll item")),
         ),
-        StoryCatalog::story(
-            "split-pane",
-            layout::SplitPane::new()
-                .value("0.5")
-                .child(atom::Text::new("Left"))
-                .child(atom::Text::new("Right")),
-        ),
+        split_pane_story(),
         StoryCatalog::story(
             "align-center",
             layout::AlignCenter::new().child(atom::Text::new("Centered")),
@@ -40,4 +38,17 @@ pub(super) fn examples() -> Vec<StoryExample> {
                 .child(atom::ColorSwatch::new("Accent")),
         ),
     ]
+}
+
+fn split_pane_story() -> StoryExample {
+    let mut split = layout::SplitPane::new()
+        .value("0.5")
+        .child(atom::Text::new("Left"))
+        .child(atom::Text::new("Right"));
+    let target = split.state_id().clone();
+    let result = split.apply_action(&UiAction::split_pane_resized(
+        target,
+        SPLIT_PANE_RESIZE_PERCENT,
+    ));
+    StoryCatalog::interactive_story("split-pane", split, result.callback_log)
 }

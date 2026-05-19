@@ -2,8 +2,6 @@ use super::{
     CodeDiffDirection, CodeDiffLine, CodeDiffMode, CodeDiffSource, CodeDiffWhitespace,
     CollapsedBlock, HighlightRange,
 };
-use crate::component::ComponentAction;
-use crate::interaction::{UiAction, UiActionResult};
 use crate::molecule::state::MoleculeState;
 use crate::render_model::{UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
@@ -11,17 +9,18 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CodeDiff {
     label: String,
-    state: MoleculeState,
-    source: Option<CodeDiffSource>,
-    mode: CodeDiffMode,
-    direction: CodeDiffDirection,
-    lines: Vec<CodeDiffLine>,
-    highlights: Vec<HighlightRange>,
-    collapsed_blocks: Vec<CollapsedBlock>,
-    whitespace: Option<CodeDiffWhitespace>,
-    long_line_column: Option<usize>,
-    trailing_newline_difference: bool,
-    children: Vec<UiNode>,
+    pub(super) state: MoleculeState,
+    pub(super) source: Option<CodeDiffSource>,
+    pub(super) mode: CodeDiffMode,
+    pub(super) direction: CodeDiffDirection,
+    pub(super) lines: Vec<CodeDiffLine>,
+    pub(super) highlights: Vec<HighlightRange>,
+    pub(super) collapsed_blocks: Vec<CollapsedBlock>,
+    pub(super) whitespace: Option<CodeDiffWhitespace>,
+    pub(super) long_line_column: Option<usize>,
+    pub(super) trailing_newline_difference: bool,
+    pub(super) scroll_sync_enabled: bool,
+    pub(super) children: Vec<UiNode>,
 }
 
 impl CodeDiff {
@@ -39,6 +38,7 @@ impl CodeDiff {
             whitespace: None,
             long_line_column: None,
             trailing_newline_difference: false,
+            scroll_sync_enabled: false,
             children: Vec::new(),
         }
     }
@@ -158,14 +158,13 @@ impl CodeDiff {
     }
 
     #[must_use]
+    pub fn scroll_sync_enabled(&self) -> bool {
+        self.scroll_sync_enabled
+    }
+
+    #[must_use]
     pub fn state_id(&self) -> &UiStateId {
         &self.state.state_id
-    }
-}
-
-impl ComponentAction for CodeDiff {
-    fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
-        self.state.apply_action(action, false)
     }
 }
 

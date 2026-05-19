@@ -1,20 +1,34 @@
 use super::canvas::Canvas;
 use super::navigation_tree::TreeExpansionState;
 use super::palette::VisualPalette;
+use super::panel_scroll_state::PanelScrollOffsets;
 use super::render_context::{RenderContext, ScenarioContext, ShellContext};
+use super::screen_state::StorybookScreenState;
 use super::scrollbar;
 use super::shell;
 use super::text::TextRenderer;
-use crate::catalog::{StoryCatalog, StorybookStyleSheet};
+use crate::catalog::StoryCatalog;
 use crate::panel::StorybookPanel;
 use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::theme::ThemeSnapshot;
 
 pub(super) const WIDTH: usize = 1440;
 pub(super) const VIEWPORT_HEIGHT: usize = 920;
-pub(super) const CANVAS_HEIGHT: usize = 1840;
+pub(super) const CANVAS_HEIGHT: usize = 3840;
 pub(super) const HEIGHT: usize = VIEWPORT_HEIGHT;
 pub(super) const FRAME_DELAY_MS: u64 = 16;
+
+#[derive(Clone, Copy)]
+pub(super) struct StorybookRenderOptions<'a> {
+    pub(super) theme_id: &'a str,
+    pub(super) selected_page: &'a str,
+    pub(super) preset_index: usize,
+    pub(super) scroll_y: usize,
+    pub(super) scrollbar_visible: bool,
+    pub(super) panel_scroll: PanelScrollOffsets,
+    pub(super) tree_expansion: TreeExpansionState,
+    pub(super) screen_state: StorybookScreenState,
+}
 
 pub(super) fn render_storybook_canvas() -> Canvas {
     render_storybook_canvas_for("dark", "button", false)
@@ -43,31 +57,25 @@ pub(super) fn render_storybook_canvas_for_preset(
     preset_index: usize,
     scroll_y: usize,
 ) -> Canvas {
-    render_storybook_canvas_with_options(
+    render_storybook_canvas_with_options(StorybookRenderOptions {
         theme_id,
         selected_page,
         preset_index,
         scroll_y,
-        true,
-        TreeExpansionState::default(),
-    )
+        scrollbar_visible: true,
+        panel_scroll: PanelScrollOffsets::default(),
+        tree_expansion: TreeExpansionState::default(),
+        screen_state: StorybookScreenState::default(),
+    })
 }
 
-pub(super) fn render_storybook_canvas_with_options(
-    theme_id: &str,
-    selected_page: &str,
-    preset_index: usize,
-    scroll_y: usize,
-    scrollbar_visible: bool,
-    tree_expansion: TreeExpansionState,
-) -> Canvas {
+pub(super) fn render_storybook_canvas_with_options(options: StorybookRenderOptions<'_>) -> Canvas {
     let catalog = StoryCatalog;
     let examples = catalog.examples();
-    let theme = theme_for(theme_id);
+    let theme = theme_for(options.theme_id);
     let facade = UiCoreFacade::new(theme.clone());
     let palette = VisualPalette::from_theme(facade.theme());
     let tree = StorybookPanel::new(theme).build(&examples);
-    let style_sheet = StorybookStyleSheet::default_sheet();
     let text = TextRenderer::load(&facade, facade.default_font_role());
     let code_text = TextRenderer::load(&facade, "code");
     let mut canvas = Canvas::new(WIDTH, CANVAS_HEIGHT, palette.background);
@@ -75,14 +83,15 @@ pub(super) fn render_storybook_canvas_with_options(
         text: &text,
         code_text: &code_text,
         examples: &examples,
-        style_sheet: &style_sheet,
         palette: &palette,
     };
     let scenario = ScenarioContext {
-        selected_page,
-        preset_index,
-        tree_expansion,
-        scrollbar_visible,
+        selected_page: options.selected_page,
+        preset_index: options.preset_index,
+        tree_expansion: options.tree_expansion,
+        scrollbar_visible: options.scrollbar_visible,
+        panel_scroll: options.panel_scroll,
+        screen_state: options.screen_state,
     };
     shell::draw(
         &mut canvas,
@@ -92,11 +101,30 @@ pub(super) fn render_storybook_canvas_with_options(
             scenario,
         },
     );
-    let mut viewport = canvas.viewport_y(scroll_y, VIEWPORT_HEIGHT, palette.background);
-    if scrollbar_visible {
-        scrollbar::draw(&mut viewport, &palette, scroll_y);
+    let mut viewport = canvas.viewport_y(options.scroll_y, VIEWPORT_HEIGHT, palette.background);
+    if options.scrollbar_visible {
+        scrollbar::draw(&mut viewport, &palette, options.scroll_y);
     }
     viewport
+}
+
+#[cfg(test)]
+pub(super) fn render_storybook_canvas_with_screen_state(
+    theme_id: &str,
+    selected_page: &str,
+    preset_index: usize,
+    screen_state: StorybookScreenState,
+) -> Canvas {
+    render_storybook_canvas_with_options(StorybookRenderOptions {
+        theme_id,
+        selected_page,
+        preset_index,
+        scroll_y: 0,
+        scrollbar_visible: true,
+        panel_scroll: PanelScrollOffsets::default(),
+        tree_expansion: TreeExpansionState::default(),
+        screen_state,
+    })
 }
 
 fn theme_for(theme_id: &str) -> ThemeSnapshot {

@@ -52,7 +52,14 @@ fn choice_molecules_keep_typed_items_and_apply_selection_actions() {
         .item(ChoiceItem::new("open", "Open"));
     let tabs = Tabs::new("Tabs")
         .icon_action("pin-tab")
-        .item(ChoiceItem::new("preview", "Preview"))
+        .item(
+            ChoiceItem::new("preview", "Preview")
+                .pinned(true)
+                .closeable(true)
+                .dirty(true)
+                .group("work")
+                .svg_icon("<svg data-icon=\"markdown\"/>"),
+        )
         .selected_index(0);
     let breadcrumb = Breadcrumb::new("Path")
         .crumb_action("navigate-root")
@@ -86,6 +93,11 @@ fn choice_molecules_keep_typed_items_and_apply_selection_actions() {
     assert_eq!("icon button trigger", menu.trigger_model());
     assert_eq!("open", menu.select_action_model());
     assert_eq!("preview", tabs.items()[0].value);
+    assert!(tabs.items()[0].pinned);
+    assert!(tabs.items()[0].closeable);
+    assert!(tabs.items()[0].dirty);
+    assert_eq!("work", tabs.items()[0].group);
+    assert_eq!("<svg data-icon=\"markdown\"/>", tabs.items()[0].svg_icon);
     assert_eq!("pin-tab", tabs.icon_action_model());
     assert_eq!("/", breadcrumb.items()[0].value);
     assert_eq!("navigate-root", breadcrumb.crumb_action_model());

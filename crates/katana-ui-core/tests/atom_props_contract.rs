@@ -3,8 +3,10 @@ use katana_ui_core::atom::{
     Radio, SlideControl, Spinner, SvgButton, Text, Toggle,
 };
 use katana_ui_core::render_model::{
-    UiAnimationState, UiDismissAction, UiIconProps, UiNode, UiNodeKind, UiProgressMode, UiSize,
-    UiSlotPlacement, UiTone, UiVariant, UiVisualRole,
+    UiAlignItems, UiAnimationState, UiCommonProps, UiCursor, UiDimension, UiDismissAction,
+    UiDisplay, UiEdgeInsets, UiIconProps, UiJustifyContent, UiNode, UiNodeKind, UiPointerEvents,
+    UiPosition, UiProgressMode, UiSize, UiSlotPlacement, UiSvgPaintPolicy, UiTone, UiVariant,
+    UiVisualRole, UiZIndex,
 };
 
 #[test]
@@ -38,6 +40,47 @@ fn button_props_are_typed_and_action_ready() {
     assert_eq!(UiTone::Accent, node.props().tone);
     assert_eq!(UiSize::Large, node.props().size);
     assert!(node.props().loading);
+    assert!(node.props().focusable);
+}
+
+#[test]
+fn atoms_share_common_layout_and_interaction_props() {
+    let common = UiCommonProps::default()
+        .visible(false)
+        .width(UiDimension::percent(100))
+        .height(UiDimension::px(40))
+        .padding(UiEdgeInsets::axis(UiDimension::px(12), UiDimension::px(8)))
+        .display(UiDisplay::Flex)
+        .position(UiPosition::Relative)
+        .align_items(UiAlignItems::Center)
+        .justify_content(UiJustifyContent::Start)
+        .tab_index(0)
+        .z_index(UiZIndex::token("popover"))
+        .cursor(UiCursor::Pointer)
+        .pointer_events(UiPointerEvents::Auto)
+        .selectable(true)
+        .accessibility_label("Save command");
+    let node = UiNode::from(
+        Button::new("Save")
+            .common(common)
+            .disabled(true)
+            .focusable(true),
+    );
+
+    assert!(!node.props().common.visible);
+    assert!(node.props().common.disabled);
+    assert!(node.props().common.focusable);
+    assert!(node.props().common.selectable);
+    assert_eq!(UiDimension::percent(100), node.props().common.width);
+    assert_eq!(UiDimension::px(40), node.props().common.height);
+    assert_eq!(UiDisplay::Flex, node.props().common.display);
+    assert_eq!(UiPosition::Relative, node.props().common.position);
+    assert_eq!(Some(0), node.props().common.tab_index);
+    assert_eq!(UiZIndex::token("popover"), node.props().common.z_index);
+    assert_eq!(UiCursor::Pointer, node.props().common.cursor);
+    assert_eq!(UiPointerEvents::Auto, node.props().common.pointer_events);
+    assert_eq!("Save command", node.props().accessibility_label);
+    assert!(node.props().disabled);
     assert!(node.props().focusable);
 }
 
@@ -163,28 +206,43 @@ fn svg_icon_atoms_keep_typed_svg_props() {
     let icon = UiNode::from(
         Icon::new("Folder")
             .svg_source("<svg data-icon=\"folder\"/>")
+            .icon_view_box("0 0 16 16")
+            .icon_path_summary("folder outline")
+            .icon_paint_policy(UiSvgPaintPolicy::StrokeOnly)
             .icon_role("directory")
             .icon_color_token("accent")
+            .icon_theme_token("accent")
             .accessibility_label("Directory"),
     );
     let button = UiNode::from(
         SvgButton::new("Expand")
             .svg_icon(
                 UiIconProps::new("<svg data-icon=\"chevron\"/>")
+                    .view_box("0 0 12 12")
+                    .path_summary("chevron right")
+                    .paint_policy(UiSvgPaintPolicy::CurrentColor)
                     .role("toggle")
-                    .color_token("text"),
+                    .color_token("text")
+                    .theme_token("text"),
             )
             .accessibility_label("Expand directory"),
     );
 
     assert_eq!("<svg data-icon=\"folder\"/>", icon.props().icon.svg_source);
+    assert_eq!("0 0 16 16", icon.props().icon.view_box);
+    assert_eq!("folder outline", icon.props().icon.path_summary);
+    assert_eq!(UiSvgPaintPolicy::StrokeOnly, icon.props().icon.paint_policy);
     assert_eq!("directory", icon.props().icon.role);
     assert_eq!("accent", icon.props().icon.color_token);
+    assert_eq!("accent", icon.props().icon.theme_token);
     assert_eq!("Directory", icon.props().accessibility_label);
     assert_eq!(
         "<svg data-icon=\"chevron\"/>",
         button.props().icon.svg_source
     );
+    assert_eq!("0 0 12 12", button.props().icon.view_box);
+    assert_eq!("chevron right", button.props().icon.path_summary);
     assert_eq!("toggle", button.props().icon.role);
+    assert_eq!("text", button.props().icon.theme_token);
     assert_eq!("Expand directory", button.props().accessibility_label);
 }

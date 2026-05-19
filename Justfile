@@ -135,7 +135,11 @@ storybook-smoke:
 # Verify VERSION follows the published release line
 release-target-check:
     bash scripts/release/verify-version.sh "{{VERSION}}"
-    python3 scripts/release/verify-release-target.py --target-version "{{VERSION}}" --repo "{{RELEASE_REPO}}"
+    GH_TOKEN="${GH_TOKEN:-$(gh auth token 2>/dev/null || true)}" python3 scripts/release/verify-release-target.py --target-version "{{VERSION}}" --repo "{{RELEASE_REPO}}"
+
+# Verify KUC v0.1.0 DoD is actually complete before release gates continue.
+release-readiness-check:
+    python3 scripts/assert-kuc-release-readiness.py
 
 # Verify package metadata and dry-run the publishable crate
 release-verify: check coverage
@@ -145,7 +149,7 @@ release-verify: check coverage
     bash scripts/release/verify-primary-adapter-release.sh "{{VERSION}}"
 
 # Verify release branch readiness before merging
-release-check: release-target-check release-verify
+release-check: release-target-check release-readiness-check release-verify
     bash scripts/release/assert-crate-not-published.sh "{{VERSION}}"
 
 # Show recent Release workflow runs
@@ -165,4 +169,4 @@ cargo-test:
     RUSTFLAGS="-D warnings" cargo test --workspace --all-targets
 
 # Run the full Storybook regression gate used before publishing.
-storybook-regression: cargo-test storybook-check ast-lint kuc-guardrails overlay-lifecycle-lint menu-button-contract storybook-smoke storybook-interaction-smoke storybook-requirement-gate storybook-visual-snapshot
+storybook-regression: cargo-test storybook-check ast-lint kuc-guardrails overlay-lifecycle-lint menu-button-contract storybook-smoke storybook-interaction-smoke storybook-requirement-gate

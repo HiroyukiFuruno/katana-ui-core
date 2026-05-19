@@ -1,28 +1,23 @@
 use super::canvas::Canvas;
-use super::card;
-use super::layout_metrics::{
-    PREVIEW_FIRST_CARD_Y, PREVIEW_VISIBLE_STORIES, PREVIEW_X, STORY_CARD_COLUMNS,
-    STORY_CARD_STEP_X, STORY_CARD_STEP_Y,
-};
-use super::palette::VisualPalette;
+use super::layout_metrics::PREVIEW_X;
 use super::preset_tabs;
-use super::preview_contract::PreviewContract;
 use super::preview_detail;
-use super::render_context::{PreviewContext, RenderContext, ScenarioContext};
-use super::text::{TextRenderer, TextVerticalBox};
+use super::render_context::{RenderContext, ScenarioContext};
+use super::text::TextVerticalBox;
+use crate::catalog::StoryPresetLabels;
 use katana_ui_core::render_model::{UiNode, UiNodeKind};
 
 const PREVIEW_TITLE_Y: usize = 24;
 const PREVIEW_META_Y: usize = 54;
-const FONT_SAMPLE_Y: usize = 72;
-const GRID_TITLE_Y: usize = 424;
+const SUMMARY_Y: usize = 72;
 const PREVIEW_TITLE_SIZE: f32 = 22.0;
 const PREVIEW_META_SIZE: f32 = 13.0;
-const FONT_SAMPLE_HEIGHT: usize = 24;
-const FONT_SAMPLE_WIDTH: usize = 132;
-const FONT_SAMPLE_GAP: usize = 10;
-const FONT_SAMPLE_PADDING_X: usize = 8;
-const FONT_SAMPLE_SIZE: f32 = 12.0;
+const SUMMARY_HEIGHT: usize = 24;
+const SUMMARY_WIDTH: usize = 168;
+const SUMMARY_GAP: usize = 10;
+const SUMMARY_PADDING_X: usize = 8;
+const SUMMARY_SIZE: f32 = 10.0;
+const SUMMARY_COUNT: usize = 4;
 
 pub(super) fn draw(
     canvas: &mut Canvas,
@@ -31,19 +26,10 @@ pub(super) fn draw(
     scenario: ScenarioContext<'_>,
 ) {
     draw_header(canvas, render, scenario);
-    draw_font_alignment_samples(canvas, render.text, render.code_text, render.palette);
+    draw_summary_controls(canvas, render, scenario);
     if let Some(preview) = panel_child(root, "Preview") {
         preset_tabs::draw(canvas, render, scenario);
         preview_detail::draw_selected_hero(canvas, render, preview, scenario);
-        draw_preview_stories(
-            canvas,
-            PreviewContext {
-                preview,
-                render,
-                selected_page: scenario.selected_page,
-            },
-        );
-        PreviewContract::draw(canvas, preview, render, scenario);
     }
 }
 
@@ -73,85 +59,67 @@ fn preview_meta(scenario: ScenarioContext<'_>) -> &'static str {
     "core-only / pure Rust / late-bound style"
 }
 
-fn draw_font_alignment_samples(
+fn draw_summary_controls(
     canvas: &mut Canvas,
-    text: &TextRenderer,
-    code_text: &TextRenderer,
-    palette: &VisualPalette,
+    render: RenderContext<'_>,
+    scenario: ScenarioContext<'_>,
 ) {
+    let labels = StoryPresetLabels::for_page(scenario.selected_page);
+    let preset = labels
+        .get(scenario.preset_index)
+        .copied()
+        .unwrap_or(labels[0]);
+    let setting = if scenario.screen_state.last_setting == "none" {
+        "none"
+    } else {
+        scenario.screen_state.last_setting
+    };
     let samples = [
-        ("English UI", text),
-        ("日本語 UI", text),
-        ("Text 日本語", text),
-        ("⌘ K", code_text),
+        format!("preset {}", short_value(preset)),
+        format!("state {}", short_value(scenario.screen_state.state_label)),
+        format!("setting {}", short_value(setting)),
+        format!("count {}", scenario.screen_state.action_count),
     ];
     let mut x = PREVIEW_X;
-    for (sample, renderer) in samples {
+    for sample in samples.into_iter().take(SUMMARY_COUNT) {
         canvas.stroke_rect(
             x,
-            FONT_SAMPLE_Y,
-            FONT_SAMPLE_WIDTH,
-            FONT_SAMPLE_HEIGHT,
-            palette.border,
+            SUMMARY_Y,
+            SUMMARY_WIDTH,
+            SUMMARY_HEIGHT,
+            render.palette.border,
         );
-        renderer.draw_centered(
+        render.code_text.draw_centered(
             canvas,
-            sample,
-            x + FONT_SAMPLE_PADDING_X,
-            TextVerticalBox::new(FONT_SAMPLE_Y, FONT_SAMPLE_HEIGHT as f32),
-            FONT_SAMPLE_SIZE,
-            palette.muted,
+            &sample,
+            x + SUMMARY_PADDING_X,
+            TextVerticalBox::new(SUMMARY_Y, SUMMARY_HEIGHT as f32),
+            SUMMARY_SIZE,
+            render.palette.muted,
         );
-        x += FONT_SAMPLE_WIDTH + FONT_SAMPLE_GAP;
+        x += SUMMARY_WIDTH + SUMMARY_GAP;
     }
 }
 
-fn draw_preview_stories(canvas: &mut Canvas, context: PreviewContext<'_>) {
-    context.render.text.draw(
-        canvas,
-        "All components",
-        PREVIEW_X,
-        GRID_TITLE_Y,
-        PREVIEW_META_SIZE,
-        context.render.palette.text,
-    );
-    let mut x = PREVIEW_X;
-    let mut y = PREVIEW_FIRST_CARD_Y;
-    let mut column = 0;
-    for (child, example) in ordered_stories(&context).take(PREVIEW_VISIBLE_STORIES) {
-        let context = card::StoryCardContext {
-            text: context.render.text,
-            code_text: context.render.code_text,
-            style_sheet: context.render.style_sheet,
-            palette: context.render.palette,
-        };
-        let frame = card::StoryCardFrame { x, y };
-        card::draw_story_card(canvas, &context, child, &example.callback_logs, frame);
-        column += 1;
-        if column == STORY_CARD_COLUMNS {
-            column = 0;
-            x = PREVIEW_X;
-            y += STORY_CARD_STEP_Y;
-        } else {
-            x += STORY_CARD_STEP_X;
-        }
+fn short_value(value: &str) -> String {
+    const MAX_CHARS: usize = 12;
+    const SUFFIX: &str = "...";
+    if value.chars().count() <= MAX_CHARS {
+        return value.to_string();
     }
+    let keep = MAX_CHARS - SUFFIX.len();
+    let prefix: String = value.chars().take(keep).collect();
+    format!("{prefix}{SUFFIX}")
 }
 
-fn ordered_stories<'a>(
-    context: &PreviewContext<'a>,
-) -> impl Iterator<Item = (&'a UiNode, &'a crate::catalog::StoryExample)> {
-    let pairs = context
-        .preview
-        .children()
-        .iter()
-        .zip(context.render.examples.iter());
-    let selected = pairs
-        .clone()
-        .find(|(_, example)| example.page == context.selected_page);
-    selected
-        .into_iter()
-        .chain(pairs.filter(move |(_, example)| example.page != context.selected_page))
+#[cfg(test)]
+pub(super) const fn summary_controls_right_edge() -> usize {
+    PREVIEW_X + SUMMARY_COUNT * SUMMARY_WIDTH + (SUMMARY_COUNT - 1) * SUMMARY_GAP
+}
+
+#[cfg(test)]
+pub(super) const fn summary_control_height() -> usize {
+    SUMMARY_HEIGHT
 }
 
 fn panel_child<'a>(root: &'a UiNode, label: &str) -> Option<&'a UiNode> {

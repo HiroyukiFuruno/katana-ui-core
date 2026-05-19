@@ -123,9 +123,11 @@ Storybook 自身を構成する shell / navigation / inspector は内部構成�
 
 ## Storybook
 
-Storybook は KUC の部品カタログである。
+Storybook は KUC の部品を実画面で触ってフィードバックするための画面であり、静的見本帳ではない。
 左ペインは KUC TreeView、preset 切替は KUC Tabs、各部品ページは preview と settings を持つ。
-Storybook は操作確認と目視確認の場であり、部品の正しさは自動テストと guard で判定する。
+中央本文は全件カード一覧ではなく、選択中 UI の layout、option、action、event、state、rendering を扱う場にする。
+Navigation / Preview / Details は panel ごとに独立した縦スクロール state を持つ。
+Storybook は完了判定の根拠ではない。部品の正しさは自動テスト、数値化された layout / rendering contract、入力回帰、guard で判定する。
 
 ```bash
 just storybook

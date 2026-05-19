@@ -1,7 +1,7 @@
 use crate::event::EventRoute;
-use crate::render_model::UiNodeId;
 use crate::render_model::{
-    UiDismissAction, UiNode, UiNodeKind, UiStateId, UiStatusProps, UiTone, UiVariant,
+    UiCommonProps, UiDismissAction, UiNode, UiNodeId, UiNodeKind, UiStateId, UiStatusProps, UiTone,
+    UiVariant,
 };
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +11,7 @@ macro_rules! molecule_model {
         pub struct $name {
             label: String,
             state_id: UiStateId,
+            common: UiCommonProps,
             children: Vec<UiNode>,
         }
 
@@ -20,8 +21,15 @@ macro_rules! molecule_model {
                 Self {
                     label: label.into(),
                     state_id: UiStateId::next_for($kind),
+                    common: UiCommonProps::default(),
                     children: Vec::new(),
                 }
+            }
+
+            #[must_use]
+            pub fn common(mut self, value: UiCommonProps) -> Self {
+                self.common = value;
+                self
             }
 
             #[must_use]
@@ -38,7 +46,8 @@ macro_rules! molecule_model {
 
         impl From<$name> for UiNode {
             fn from(value: $name) -> Self {
-                let mut node = UiNode::from_state($kind, value.label, value.state_id);
+                let mut node =
+                    UiNode::from_state($kind, value.label, value.state_id).common(value.common);
                 for child in value.children {
                     node = node.child(child);
                 }
@@ -48,7 +57,6 @@ macro_rules! molecule_model {
     };
 }
 
-molecule_model!(Card, UiNodeKind::Card);
 molecule_model!(List, UiNodeKind::List);
 molecule_model!(Menu, UiNodeKind::Menu);
 molecule_model!(Toolbar, UiNodeKind::Toolbar);
@@ -58,6 +66,7 @@ molecule_model!(FormField, UiNodeKind::FormField);
 pub struct StatusBar {
     label: String,
     state_id: UiStateId,
+    common: UiCommonProps,
     status: UiStatusProps,
     children: Vec<UiNode>,
 }
@@ -68,6 +77,7 @@ impl StatusBar {
         Self {
             label: label.into(),
             state_id: UiStateId::next_for(UiNodeKind::StatusBar),
+            common: UiCommonProps::default(),
             status: UiStatusProps::default(),
             children: Vec::new(),
         }
@@ -92,6 +102,12 @@ impl StatusBar {
     }
 
     #[must_use]
+    pub fn common(mut self, value: UiCommonProps) -> Self {
+        self.common = value;
+        self
+    }
+
+    #[must_use]
     pub fn child(mut self, child: impl Into<UiNode>) -> Self {
         self.children.push(child.into());
         self
@@ -101,6 +117,7 @@ impl StatusBar {
 impl From<StatusBar> for UiNode {
     fn from(value: StatusBar) -> Self {
         let mut node = UiNode::from_state(UiNodeKind::StatusBar, value.label, value.state_id)
+            .common(value.common)
             .status(value.status);
         for child in value.children {
             node = node.child(child);

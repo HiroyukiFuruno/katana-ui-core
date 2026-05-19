@@ -77,6 +77,31 @@ impl Canvas {
         );
     }
 
+    pub fn fill_round_rect(
+        &mut self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        radius: usize,
+        color: u32,
+    ) {
+        if width == 0 || height == 0 {
+            return;
+        }
+        let radius = radius.min(width / 2).min(height / 2);
+        for row in 0..height {
+            let inset = rounded_row_inset(row, height, radius);
+            self.fill_rect(
+                x + inset,
+                y + row,
+                width.saturating_sub(inset * 2),
+                1,
+                color,
+            );
+        }
+    }
+
     pub fn set(&mut self, x: usize, y: usize, color: u32) {
         if x < self.width && y < self.height {
             self.pixels[y * self.width + x] = color;
@@ -120,6 +145,25 @@ impl Canvas {
         }
         image.save(path)
     }
+}
+
+fn rounded_row_inset(row: usize, height: usize, radius: usize) -> usize {
+    if radius == 0 {
+        return 0;
+    }
+    if row < radius {
+        return radius - rounded_edge_width(row, radius);
+    }
+    let bottom_row = height.saturating_sub(row + 1);
+    if bottom_row < radius {
+        return radius - rounded_edge_width(bottom_row, radius);
+    }
+    0
+}
+
+fn rounded_edge_width(row: usize, radius: usize) -> usize {
+    let distance = radius.saturating_sub(row + 1);
+    radius.saturating_sub(distance * distance / radius.max(1))
 }
 
 fn blend_color(destination: u32, source: u32, alpha: u8) -> u32 {
