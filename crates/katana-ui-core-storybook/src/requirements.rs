@@ -45,6 +45,7 @@ const REQUIRED_PAGES: &[&str] = &[
     "popover",
     "hover-card",
     "search-box",
+    "search-control-strip",
     "segmented-toggle",
     "select-box",
     "selection-list",
@@ -130,6 +131,7 @@ impl StoryRequirements {
             | "modal-overlay"
             | "notification-toast"
             | "search-box"
+            | "search-control-strip"
             | "segmented-toggle"
             | "select-box"
             | "selection-list"

@@ -1,4 +1,6 @@
 use super::CommandItem;
+use super::command_launcher_results::CommandResultRow;
+use crate::interaction::VirtualizationConfig;
 use crate::molecule::disclosure_foundation::DisclosureTriggerArea;
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +30,9 @@ pub(super) struct StructuredTypedModel {
     pub query: String,
     pub filtered_actions: Vec<CommandItem>,
     pub keyboard_action: String,
+    pub command_result_rows: Vec<CommandResultRow>,
+    pub command_highlighted_index: Option<usize>,
+    pub command_virtualization: Option<VirtualizationConfig>,
     pub add_action: String,
     pub delete_action: String,
     pub reorder_action: String,

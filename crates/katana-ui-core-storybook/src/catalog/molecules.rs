@@ -1,5 +1,6 @@
 mod molecule_app_primitives;
 mod molecule_basic;
+mod molecule_command_search;
 mod molecule_heavy;
 mod molecule_interaction;
 mod molecule_platform_primitives;
@@ -12,6 +13,7 @@ pub(super) fn examples() -> Vec<StoryExample> {
     let mut examples = Vec::new();
     examples.extend(molecule_basic::examples());
     examples.extend(molecule_app_primitives::examples());
+    examples.extend(molecule_command_search::examples());
     examples.extend(molecule_heavy::examples());
     examples.extend(molecule_interaction::examples());
     examples.extend(molecule_platform_primitives::examples());

@@ -115,11 +115,18 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "selected=1",
         )),
         "command-palette" => Some(spec(
-            "command_execute",
-            "command_executed",
+            "command_query_changed",
+            "command_result_highlighted",
             "interaction.value",
-            "Open",
-            "command=open",
+            "theme",
+            "highlighted=theme",
+        )),
+        "search-control-strip" => Some(spec(
+            "search_query_changed",
+            "search_query_changed",
+            "search_control.query",
+            "heading",
+            "regex=true",
         )),
         "dynamic-array-editor" => Some(spec(
             "array_add",

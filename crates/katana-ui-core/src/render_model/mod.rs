@@ -40,10 +40,11 @@ pub use tree_props::{
     UiTreeLineStyle, UiTreeNodeKind, UiTreeNodeProps, UiTreeProps, UiTreeToggleTriggerArea,
 };
 pub use typed::{
-    UiAnimationState, UiButtonProps, UiClearActionSpec, UiColorSwatchProps, UiDismissAction,
-    UiIconProps, UiLoadingProps, UiPanelProps, UiProgressMode, UiRect, UiScrollbarDragState,
-    UiScrollbarModel, UiScrollbarPlacement, UiScrollbarVisibility, UiShortcutProps,
-    UiSlotPlacement, UiSlotSpec, UiStatusProps, UiSvgPaintPolicy, UiTextEntryProps, UiTextProps,
+    UiAnimationState, UiButtonProps, UiClearActionSpec, UiColorSwatchProps, UiCommandResultProps,
+    UiDismissAction, UiIconProps, UiLoadingProps, UiPanelProps, UiProgressMode, UiRect,
+    UiScrollbarDragState, UiScrollbarModel, UiScrollbarPlacement, UiScrollbarVisibility,
+    UiSearchControlProps, UiSearchReplaceMode, UiShortcutProps, UiSlotPlacement, UiSlotSpec,
+    UiStatusProps, UiSvgPaintPolicy, UiTextEntryProps, UiTextProps,
 };
 
 #[cfg(test)]

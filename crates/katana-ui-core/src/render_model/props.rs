@@ -1,8 +1,8 @@
 use super::UiStateId;
 use super::{
-    UiButtonProps, UiColorSwatchProps, UiCommonProps, UiContextMenuProps, UiIconProps,
-    UiLoadingProps, UiPanelProps, UiShortcutProps, UiStatusProps, UiTextAreaProps,
-    UiTextEntryProps, UiTextProps, UiTreeProps,
+    UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiCommonProps, UiContextMenuProps,
+    UiIconProps, UiLoadingProps, UiPanelProps, UiSearchControlProps, UiShortcutProps,
+    UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTreeProps,
 };
 use crate::facade::DEFAULT_FONT_ROLE;
 use serde::{Deserialize, Serialize};
@@ -118,7 +118,9 @@ pub struct UiProps {
     pub text: UiTextProps,
     pub button: UiButtonProps,
     pub color_swatch: UiColorSwatchProps,
+    pub command_result: UiCommandResultProps,
     pub shortcut: UiShortcutProps,
+    pub search_control: UiSearchControlProps,
     pub text_entry: UiTextEntryProps,
     pub text_area: UiTextAreaProps,
     pub status: UiStatusProps,
@@ -158,7 +160,9 @@ impl UiProps {
             text: UiTextProps::default(),
             button: UiButtonProps::default(),
             color_swatch: UiColorSwatchProps::default(),
+            command_result: UiCommandResultProps::default(),
             shortcut: UiShortcutProps::default(),
+            search_control: UiSearchControlProps::default(),
             text_entry: UiTextEntryProps::default(),
             text_area: UiTextAreaProps::default(),
             status: UiStatusProps::default(),

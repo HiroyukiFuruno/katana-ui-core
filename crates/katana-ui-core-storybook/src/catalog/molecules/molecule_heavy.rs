@@ -15,16 +15,6 @@ pub(super) fn examples() -> Vec<StoryExample> {
         color_picker_story(),
         diagnostics_list_story(),
         StoryCatalog::story(
-            "command-palette",
-            molecule::CommandPalette::new("Command palette")
-                .open(true)
-                .selected_index(0)
-                .item_count(1)
-                .child(molecule::SearchBox::new("Search"))
-                .child(molecule::SelectionList::new("Commands"))
-                .child(atom::Text::new("Action")),
-        ),
-        StoryCatalog::story(
             "dynamic-array-editor",
             molecule::DynamicArrayEditor::new("Dynamic array")
                 .item_count(1)

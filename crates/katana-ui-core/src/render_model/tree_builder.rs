@@ -1,7 +1,8 @@
 use super::{
-    UiButtonProps, UiColorSwatchProps, UiContextMenuProps, UiIconProps, UiInteractionState,
-    UiLoadingProps, UiNode, UiPanelProps, UiShortcutProps, UiSize, UiStatusProps, UiTextAreaProps,
-    UiTextEntryProps, UiTextProps, UiTone, UiTreeProps, UiVariant, UiVisualRole,
+    UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiContextMenuProps, UiIconProps,
+    UiInteractionState, UiLoadingProps, UiNode, UiPanelProps, UiSearchControlProps,
+    UiShortcutProps, UiSize, UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTone,
+    UiTreeProps, UiVariant, UiVisualRole,
 };
 use crate::theme::ThemeSnapshot;
 
@@ -116,8 +117,20 @@ impl UiNode {
     }
 
     #[must_use]
+    pub fn command_result(mut self, value: UiCommandResultProps) -> Self {
+        self.props.command_result = value;
+        self
+    }
+
+    #[must_use]
     pub fn shortcut(mut self, value: UiShortcutProps) -> Self {
         self.props.shortcut = value;
+        self
+    }
+
+    #[must_use]
+    pub fn search_control(mut self, value: UiSearchControlProps) -> Self {
+        self.props.search_control = value;
         self
     }
 

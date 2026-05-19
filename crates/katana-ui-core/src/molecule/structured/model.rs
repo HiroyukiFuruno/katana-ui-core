@@ -1,3 +1,4 @@
+use super::command_launcher_results::CommandPaletteRenderer;
 use super::items::{ArrayEditorItem, CommandItem, TreeNode, TreeNodeKind};
 use super::types::{StructuredTypedModel, TreeLineStyle};
 use crate::component::ComponentAction;
@@ -14,11 +15,11 @@ macro_rules! structured_molecule {
     ($name:ident, $item:ty, $kind:expr) => {
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub struct $name {
-            label: String,
+            pub(super) label: String,
             pub(super) state: MoleculeState,
             pub(super) items: Vec<$item>,
             pub(super) model: StructuredTypedModel,
-            children: Vec<UiNode>,
+            pub(super) children: Vec<UiNode>,
         }
 
         impl $name {
@@ -104,10 +105,7 @@ impl From<TreeView> for UiNode {
 
 impl From<CommandPalette> for UiNode {
     fn from(value: CommandPalette) -> Self {
-        structured_node(
-            value.state.node(UiNodeKind::CommandPalette, value.label),
-            value.children,
-        )
+        CommandPaletteRenderer::render(value)
     }
 }
 

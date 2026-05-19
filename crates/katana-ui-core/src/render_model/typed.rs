@@ -2,12 +2,18 @@ use super::button_layout::UiButtonLayoutDto;
 use super::{UiTone, UiVariant};
 use serde::{Deserialize, Serialize};
 
+#[path = "typed_command.rs"]
+mod typed_command;
 #[path = "typed_panel.rs"]
 mod typed_panel;
+#[path = "typed_search.rs"]
+mod typed_search;
+pub use typed_command::UiCommandResultProps;
 pub use typed_panel::{
     UiPanelProps, UiRect, UiScrollbarDragState, UiScrollbarModel, UiScrollbarPlacement,
     UiScrollbarVisibility,
 };
+pub use typed_search::{UiSearchControlProps, UiSearchReplaceMode};
 
 const DEFAULT_LOADING_SPEED_MS: u16 = 900;
 const DEFAULT_DOT_COUNT: u8 = 3;

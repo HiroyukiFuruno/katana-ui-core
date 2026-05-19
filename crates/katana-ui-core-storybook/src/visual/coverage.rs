@@ -174,6 +174,7 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::TreeView
             | UiNodeKind::ContextMenu
             | UiNodeKind::CommandPalette
+            | UiNodeKind::CommandResultRow
             | UiNodeKind::DynamicArrayEditor
             | UiNodeKind::SvgButton
             | UiNodeKind::TextButton
@@ -189,6 +190,7 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::ComboBox
             | UiNodeKind::MenuButton
             | UiNodeKind::SearchBox
+            | UiNodeKind::SearchControlStrip
             | UiNodeKind::SegmentedToggle
             | UiNodeKind::SelectionList
             | UiNodeKind::SideMenu
