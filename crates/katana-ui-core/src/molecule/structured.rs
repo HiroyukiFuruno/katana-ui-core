@@ -6,6 +6,7 @@ mod model;
 mod options;
 mod options_actions;
 mod options_extra;
+pub mod startup_state_panel;
 mod types;
 mod workspace_tab_bar;
 
@@ -22,6 +23,10 @@ pub use diagnostics_list::{
 };
 pub use items::{ArrayEditorItem, CommandItem, TreeNode, TreeNodeKind};
 pub use model::{CommandPalette, DynamicArrayEditor, TreeView};
+pub use startup_state_panel::{
+    StartupState, StartupStatePanel, StartupStatePanelAction, StartupStatePanelEvent,
+    StartupStatePanelOptions,
+};
 pub use types::TreeLineStyle;
 pub use workspace_tab_bar::{
     CLOSEABLE_TAB_DRAG_TAG, CloseableTab, CloseableTabChildState, CloseableTabContextCommand,

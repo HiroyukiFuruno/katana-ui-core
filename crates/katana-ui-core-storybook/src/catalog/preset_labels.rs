@@ -150,6 +150,13 @@ impl StoryPresetLabels {
                 "reduced motion",
                 "disabled context",
             ],
+            "window-control-button-group" => &[
+                "macos leading",
+                "windows trailing",
+                "fullscreen hover",
+                "close only",
+            ],
+            "startup-state-panel" => &["app boot", "session init", "update install", "error retry"],
             "attachment-chip" => &["file", "image", "uploading", "error retry"],
             "chip-group" => &["wrap", "overflow menu", "scroll row", "reorder"],
             "diagnostics-list" => &["lint result", "severity filter", "fix preview", "bulk fix"],

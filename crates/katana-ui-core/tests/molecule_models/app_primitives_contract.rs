@@ -1,7 +1,7 @@
 use katana_ui_core::atom::Text;
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
-use katana_ui_core::render_model::{UiNodeKind, UiSize, UiTree, UiVariant};
+use katana_ui_core::render_model::{UiNodeKind, UiTree, UiVariant};
 use katana_ui_core::widget::atoms::{
     KeyCombo, KeyKind, KeyModifiers, RuntimePlatform, ShortcutCombo, Skeleton, SkeletonAnimation,
     SkeletonShape,
@@ -12,9 +12,11 @@ use katana_ui_core::widget::molecules::{
     SettingsControl, SettingsDirtyVisualization, SettingsField, SettingsList, SettingsListEvent,
     SettingsSection, SettingsValue, ShortcutCheatsheet, ShortcutCheatsheetAction,
     ShortcutCheatsheetEvent, ShortcutCheatsheetGroup, ShortcutCheatsheetItem, SidebarEvent,
-    SidebarMode, SkeletonCluster, SplashEvent, SplashScreen, SplashSize, SplashStatus, TitleBar,
-    TitleBarEvent, TitleBarStyle, VirtualizationConfig, VirtualizedEvent, VirtualizedList,
-    VirtualizedTree, WindowControlKind, WindowControlsPosition,
+    SidebarMode, SkeletonCluster, StartupState, StartupStatePanel, StartupStatePanelAction,
+    StartupStatePanelEvent, VirtualizationConfig, VirtualizedEvent, VirtualizedList,
+    VirtualizedTree, WindowControlButtonGroup, WindowControlButtonGroupAction,
+    WindowControlButtonGroupEvent, WindowControlButtonGroupOptions, WindowControlKind,
+    WindowControlSize, WindowControlVisibility, WindowControlsPosition,
 };
 
 #[test]
@@ -173,40 +175,46 @@ fn skeleton_and_motion_make_passive_and_reduced_motion_contract_explicit() {
 }
 
 #[test]
-fn title_bar_window_chrome_and_splash_screen_emit_window_events() {
-    let mut title = TitleBar::new("Window").options(
-        TitleBarStyle::Unified,
-        WindowControlsPosition::Trailing,
-        UiSize::Small,
-    );
-    let close = UiAction::set_selected_index(title.state_id().clone(), 0);
-    assert!(title.apply_action(&close).handled);
+fn window_control_group_and_startup_panel_emit_typed_events() {
+    let mut controls =
+        WindowControlButtonGroup::new("Window controls").options(WindowControlButtonGroupOptions {
+            position: WindowControlsPosition::Trailing,
+            visibility: WindowControlVisibility::Always,
+            size: WindowControlSize::Compact,
+            controls: vec![WindowControlKind::Close, WindowControlKind::Restore],
+        });
+    let control_events = controls.apply_action(WindowControlButtonGroupAction::Press(
+        WindowControlKind::Close,
+    ));
     assert_eq!(
-        TitleBarEvent::ControlPressed(WindowControlKind::Close),
-        *title.last_event()
+        [WindowControlButtonGroupEvent::ControlPressed {
+            which: WindowControlKind::Close
+        }],
+        control_events.as_slice()
     );
-    let title_tree = UiTree::new(title);
-    assert_eq!(UiVariant::Filled, title_tree.root().props().variant);
+    let controls_tree = UiTree::new(controls);
+    assert_eq!(
+        UiNodeKind::WindowControlButtonGroup,
+        controls_tree.root().kind()
+    );
+    assert_eq!(
+        UiVariant::Icon,
+        controls_tree.root().children()[0].props().variant
+    );
 
-    let spec = MotionSpec {
-        primitive: MotionPrimitiveKind::Fade,
-        duration_ms: 120,
-        distance_px: 0,
-        policy: ReducedMotionPolicy::ForceReduced,
-        disable_in: Vec::new(),
-    };
-    let mut splash = SplashScreen::new("Boot", spec)
-        .status(SplashStatus::Error)
-        .progress(Some(40))
-        .size(SplashSize::Window);
-    assert_eq!("alert", splash.accessibility_role());
-    let retry = UiAction::button_press(splash.state_id().clone());
-    assert!(splash.apply_action(&retry).handled);
-    assert_eq!(SplashEvent::Retried, *splash.last_event());
+    let mut startup = StartupStatePanel::new("Boot").state(StartupState::error(
+        "Could not open workspace",
+        true,
+        true,
+    ));
+    assert_eq!("alert", startup.accessibility_role());
+    let retried = startup.apply_action(StartupStatePanelAction::Retry);
+    assert_eq!([StartupStatePanelEvent::StartupRetried], retried.as_slice());
 
-    let splash_tree = UiTree::new(splash);
-    assert_eq!(UiNodeKind::SplashScreen, splash_tree.root().kind());
-    assert_eq!(40, splash_tree.root().props().progress_percent);
+    let startup_tree =
+        UiTree::new(startup.state(StartupState::loading(Some(40), Some("Booting workspace"))));
+    assert_eq!(UiNodeKind::StartupStatePanel, startup_tree.root().kind());
+    assert_eq!(40, startup_tree.root().props().progress_percent);
 }
 
 #[test]

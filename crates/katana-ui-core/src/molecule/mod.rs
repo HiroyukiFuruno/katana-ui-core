@@ -9,7 +9,7 @@ mod disclosure;
 mod disclosure_foundation;
 mod empty_state;
 mod segmented_toggle;
-mod selection;
+pub mod selection;
 pub mod shortcut_cheatsheet;
 mod skeleton_cluster;
 mod state;
@@ -23,10 +23,8 @@ pub use app_primitives::{
     MotionPrimitiveKind, MotionSpec, ReducedMotionPolicy, ResizableWidth, RowHeightProvider,
     SettingsControl, SettingsControlKind, SettingsControlOption, SettingsDirtyVisualization,
     SettingsField, SettingsKeyboardInput, SettingsList, SettingsListAction, SettingsListEvent,
-    SettingsSection, SettingsValue, SidebarEvent, SidebarMode, SplashBackground, SplashEvent,
-    SplashScreen, SplashSize, SplashStatus, TitleBar, TitleBarEvent, TitleBarStyle, VirtualRange,
-    VirtualizationConfig, VirtualizedEvent, VirtualizedList, VirtualizedTree, WindowChrome,
-    WindowControlKind, WindowControlsPosition,
+    SettingsSection, SettingsValue, SidebarEvent, SidebarMode, VirtualRange, VirtualizationConfig,
+    VirtualizedEvent, VirtualizedList, VirtualizedTree,
 };
 pub use attachment_chip::{
     AttachmentChip, AttachmentChipAction, AttachmentChipEvent, AttachmentKind, AttachmentMeta,
@@ -63,7 +61,10 @@ pub use selection::{
     ContextMenuKeyboardInput, ContextMenuKeyboardIntent, ContextMenuKeyboardNavigator,
     ContextMenuPlacement, ContextMenuPlacementResolver, ContextMenuPlacementResult,
     ContextMenuRect, ContextMenuSize, ContextMenuTypeAheadBuffer, ContextMenuViewport, MenuButton,
-    SelectBox, SelectionList, SideMenu, Tabs,
+    SelectBox, SelectionList, SideMenu, Tabs, WindowControlButtonGroup,
+    WindowControlButtonGroupAction, WindowControlButtonGroupEvent, WindowControlButtonGroupOptions,
+    WindowControlButtonGroupState, WindowControlKind, WindowControlSize, WindowControlVisibility,
+    WindowControlsPosition,
 };
 pub use shortcut_cheatsheet::{
     ShortcutCheatsheet, ShortcutCheatsheetAction, ShortcutCheatsheetEvent, ShortcutCheatsheetGroup,
@@ -90,8 +91,9 @@ pub use structured::{
     DiagnosticLocation, DiagnosticSeverity, DiagnosticsGroup, DiagnosticsGroupBy, DiagnosticsList,
     DiagnosticsListAction, DiagnosticsListEvent, DiagnosticsListOptions, DiagnosticsListPlanner,
     DiagnosticsListState, DiagnosticsSortBy, DiagnosticsVisibleSnapshot, DynamicArrayEditor,
-    MeasuredCloseableTab, PanelMode, PanelSide, TabGroup, TabGroupId, TabGroupTarget, TabId,
-    TreeLineStyle, TreeNode, TreeNodeKind, TreeView,
+    MeasuredCloseableTab, PanelMode, PanelSide, StartupState, StartupStatePanel,
+    StartupStatePanelAction, StartupStatePanelEvent, StartupStatePanelOptions, TabGroup,
+    TabGroupId, TabGroupTarget, TabId, TreeLineStyle, TreeNode, TreeNodeKind, TreeView,
 };
 pub use toast_stack_manager::{
     ActiveToast, ToastAction, ToastActionKind, ToastDedupStrategy, ToastDismissReason,

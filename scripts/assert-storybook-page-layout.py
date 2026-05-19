@@ -18,6 +18,7 @@ STORYBOOK_FILES = (
     Path("crates/katana-ui-core-storybook/src/catalog/molecules/molecule_basic.rs"),
     Path("crates/katana-ui-core-storybook/src/catalog/molecules/molecule_heavy.rs"),
     Path("crates/katana-ui-core-storybook/src/catalog/molecules/molecule_interaction.rs"),
+    Path("crates/katana-ui-core-storybook/src/catalog/molecules/molecule_platform_primitives.rs"),
     Path("crates/katana-ui-core-storybook/src/catalog/molecules/molecule_runtime_primitives.rs"),
     Path("crates/katana-ui-core-storybook/src/catalog/layouts.rs"),
     Path("crates/katana-ui-core-storybook/src/catalog/panel_interaction.rs"),

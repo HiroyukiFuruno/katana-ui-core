@@ -81,12 +81,17 @@ mod tests {
     #[test]
     fn storybook_routes_cover_core_and_legacy_targets() {
         let routes = StorybookRoutes.default_routes();
-        assert_eq!(73, routes.len());
+        assert_eq!(75, routes.len());
         assert!(routes.iter().any(|route| route.page == "code-diff"));
         assert!(routes.iter().any(|route| route.page == "context-menu"));
         assert!(routes.iter().any(|route| route.page == "banner"));
         assert!(routes.iter().any(|route| route.page == "settings-list"));
         assert!(routes.iter().any(|route| route.page == "collapsible-panel"));
+        assert!(
+            routes
+                .iter()
+                .any(|route| route.page == "window-control-button-group")
+        );
         assert!(routes.iter().any(|route| route.page == "grid"));
     }
 

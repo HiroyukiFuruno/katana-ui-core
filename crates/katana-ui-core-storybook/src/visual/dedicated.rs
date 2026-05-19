@@ -208,6 +208,8 @@ fn label_for(kind: UiNodeKind) -> &'static str {
         UiNodeKind::VirtualizedTree => "virtual tree",
         UiNodeKind::SkeletonCluster => "skeleton cluster",
         UiNodeKind::MotionPrimitive => "motion primitive",
+        UiNodeKind::WindowControlButtonGroup => "window controls",
+        UiNodeKind::StartupStatePanel => "startup state",
         UiNodeKind::Row => "row layout",
         UiNodeKind::Column => "column layout",
         UiNodeKind::Stack => "stack layout",

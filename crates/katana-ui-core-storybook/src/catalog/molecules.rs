@@ -2,6 +2,7 @@ mod molecule_app_primitives;
 mod molecule_basic;
 mod molecule_heavy;
 mod molecule_interaction;
+mod molecule_platform_primitives;
 mod molecule_runtime_primitives;
 mod molecule_workspace;
 
@@ -13,6 +14,7 @@ pub(super) fn examples() -> Vec<StoryExample> {
     examples.extend(molecule_app_primitives::examples());
     examples.extend(molecule_heavy::examples());
     examples.extend(molecule_interaction::examples());
+    examples.extend(molecule_platform_primitives::examples());
     examples.extend(molecule_runtime_primitives::examples());
     examples.extend(molecule_workspace::examples());
     examples

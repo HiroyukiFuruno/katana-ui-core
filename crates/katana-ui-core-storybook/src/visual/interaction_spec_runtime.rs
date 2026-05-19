@@ -30,6 +30,20 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "true",
             "instant=true",
         )),
+        "window-control-button-group" => Some(spec(
+            "window_control_press",
+            "window_control_pressed",
+            "window_controls.position",
+            "Leading",
+            "pressed=Close",
+        )),
+        "startup-state-panel" => Some(spec(
+            "startup_state_error",
+            "startup_state_changed",
+            "startup.state",
+            "Error",
+            "retry=true",
+        )),
         _ => None,
     }
 }

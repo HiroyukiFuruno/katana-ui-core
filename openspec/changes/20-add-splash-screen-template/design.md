@@ -1,17 +1,18 @@
-# Design — SplashScreen molecule
+# Design — StartupStatePanel composition
 
 ## 目的
 
-アプリ起動時の splash 画面を統一テンプレートで提供する。
+アプリ起動時や初期化中の状態表示を、KUC の atoms / molecules で組めるようにする。
+KUC は splash 画面テンプレートを公開しない。
 
 ## 採用方針
 
 ### 1. status
 
 ```text
-SplashStatus =
+StartupState =
   | Idle
-  | Loading { progress: Option<f32>, label: Option<String> }
+  | Loading { progress: Option<u8>, label: Option<String> }
   | Error { message: String, retry: bool }
 ```
 
@@ -19,45 +20,42 @@ SplashStatus =
 - `Loading`: progress=None で indeterminate、Some(f32) で determinate
 - `Error`: error メッセージと retry button
 
-### 2. background
+### 2. composition
 
 ```text
-SplashBackground =
-  | Solid(ColorToken)
-  | Gradient { from: ColorToken, to: ColorToken, direction: GradientDirection }
-  | Image { source: ImageSource, opacity: f32 }
+StartupStatePanel =
+  heading + body + optional version
+  optional icon
+  ProgressBar or LoadingDots
+  optional retry / cancel actions
 ```
 
-### 3. size
+### 3. キーボード / accessibility
 
-- `Embedded`: 親 container 内に配置
-- `Window`: 全画面、layout は中央寄せ
-
-### 4. キーボード / accessibility
-
-- splash 表示中、Enter で retry（Error 時）/ Esc で cancel
+- Error 時、Enter で retry / Esc で cancel を event として返す
 - role=status（Loading / Idle）、role=alert（Error）
 - live region announce: 状態変化時に label を読み上げ
 
-### 5. アニメーション
+### 4. アニメーション
 
-- `add-animation-primitives-18` の MotionSpec を使って logo の fade-in / pulse
-- reduced-motion で fade-in は Instant、pulse は無効化
+- `18-add-animation-primitives` の MotionSpec を使える
+- reduced-motion で loading animation を無効化できる
 
 ## 代替案と却下理由
 
 | 代替 | 却下理由 |
 | --- | --- |
-| `EmptyState` を splash 代わりに使う | EmptyState は「空表示」の責務。アプリ起動の loading / error / retry / version を持たない。 |
-| `Modal` をフルスクリーン化する | Modal は overlay 概念。アプリ起動 splash は overlay ではなく root view。 |
+| SplashScreen template を KUC に入れる | template / page に近く、KUC の atoms / molecules 境界を超える。 |
+| `EmptyState` だけで済ませる | loading / progress / retry / live region の契約が不足する。 |
 
 ## Out of scope
 
-- 起動シーケンスのライフサイクル管理：consumer 責務
-- スプラッシュ消滅のトランジション：consumer がアニメーションを叩く
-- マルチウィンドウの splash 同期：consumer 責務
+- 起動シーケンスのライフサイクル管理
+- full-screen / window / centered layout
+- logo placement / background image / brand template
+- マルチウィンドウの splash 同期
 
 ## 影響範囲
 
-- consumer の splash 実装を統一
-- 動作は KUC `Application` / `Window` の起動シーケンスと並走
+- consumer は startup template を自前で組む
+- KUC は状態表示の atoms / molecules と event contract だけを統一する

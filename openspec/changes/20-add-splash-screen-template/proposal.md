@@ -1,30 +1,33 @@
 ## Why
 
-`katana` の `views/splash.rs`、`katana-chat-ui` のセッション初期化中の chrome 表示、各 sibling crate の起動時画面など、「アプリ起動の数百ms〜数秒の間に表示する splash 画面」需要が共通している。logo + アプリ名 + version + loading + 進行 progress + 失敗時 retry の組み合わせは似通っているが、現状 consumer ごとに別々に実装されている。
+`katana` の splash、`katana-chat-ui` のセッション初期化中表示、KDV / KLE の初期 loading では、loading / error / retry / version などの状態表示が必要になる。
+
+ただし splash 画面テンプレートは KUC の公開対象ではない。
+KUC は画面ひな形（templates）を持たず、利用側が `EmptyState`、`Banner`、`ProgressBar`、`Skeleton`、`Button` を組み合わせて startup state を構築できる contract だけを持つ。
 
 ## What Changes
 
-- `widget::molecules` に `SplashScreen` molecule を追加する:
+- `widget::molecules` に `StartupStatePanel` molecule を追加する:
   - option:
-    - `logo: Option<SvgIcon | ImageSource>`
-    - `title: String`
-    - `subtitle: Option<String>`
-    - `version: Option<String>`
-    - `status: SplashStatus = Idle | Loading { progress: Option<f32>, label: Option<String> } | Error { message, retry }`
-    - `background: Option<SplashBackground>`（Solid token / Gradient / Image）
-    - `size: SplashSize = Embedded | Window`
+    - `heading: String`
+    - `body: Option<String>`
+    - `version_label: Option<String>`
+    - `state: Idle | Loading { progress: Option<u8>, label: Option<String> } | Error { message: String, retry: bool }`
+    - `icon: Option<Icon>`
+    - `actions: Vec<ButtonSpec>`
   - action: `Retry` / `Cancel`
-  - event: `SplashRetried` / `SplashCancelled` / `SplashStatusChanged`
-  - state: status, callback_log
+  - event: `StartupRetried` / `StartupCancelled` / `StartupStateChanged`
+  - state: state, callback_log
+- full-screen layout、background image、logo placement、起動 lifecycle は consumer が持つ。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `kuc-splash-screen`: SplashScreen molecule の完了条件を定義する。
+- `kuc-startup-state-composition`: StartupStatePanel molecule と既存 atoms / molecules の組合せ条件を定義する。
 
 ## Impact
 
-- `crates/katana-ui-core/src/molecule/structured/splash_screen.rs` 新設。
-- consumer (`katana` splash、各 sibling 起動画面) は KUC molecule に統一可能。
-- background option には theme tokens を使う。
+- `crates/katana-ui-core/src/molecule/structured/startup_state_panel.rs` 新設、または `EmptyState` / `Banner` / `ProgressBar` の composition contract として実装する。
+- consumer (`katana` splash、各 sibling 起動画面) は KUC atoms / molecules を組み合わせて template を自前実装する。
+- background / full-screen / logo layout option は KUC に入れない。

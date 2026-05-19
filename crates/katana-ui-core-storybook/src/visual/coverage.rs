@@ -201,6 +201,8 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::VirtualizedTree
             | UiNodeKind::SkeletonCluster
             | UiNodeKind::MotionPrimitive
+            | UiNodeKind::WindowControlButtonGroup
+            | UiNodeKind::StartupStatePanel
             | UiNodeKind::Row
             | UiNodeKind::Column
             | UiNodeKind::Stack

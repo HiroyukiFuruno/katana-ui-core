@@ -57,6 +57,8 @@ const REQUIRED_PAGES: &[&str] = &[
     "virtualization",
     "skeleton-cluster",
     "motion",
+    "window-control-button-group",
+    "startup-state-panel",
     "attachment-chip",
     "chip-group",
     "diagnostics-list",
@@ -110,7 +112,8 @@ impl StoryRequirements {
             | "banner"
             | "shortcut-cheatsheet"
             | "skeleton-cluster"
-            | "collapsible-panel" => MIN_CHILDREN_NODE,
+            | "collapsible-panel"
+            | "startup-state-panel" => MIN_CHILDREN_NODE,
             "list"
             | "menu"
             | "context-menu"
@@ -134,6 +137,7 @@ impl StoryRequirements {
             | "status-bar"
             | "toast-stack-manager"
             | "settings-list"
+            | "window-control-button-group"
             | "attachment-chip"
             | "chip-group"
             | "diagnostics-list"
