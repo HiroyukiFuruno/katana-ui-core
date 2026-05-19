@@ -1,5 +1,5 @@
-use super::StoryCatalog;
 use super::StoryPageContract;
+use super::{StoryCatalog, StoryPresetLabels};
 use katana_ui_core::render_model::{UiNodeKind, UiVisualRole};
 use katana_ui_core::{atom, render_model::UiTree};
 
@@ -56,6 +56,57 @@ fn story_page_contract_is_derived_from_materialized_evidence() {
     assert!(!incomplete.is_complete());
     assert!(passive.action_history);
     assert!(passive.event_history);
+}
+
+#[test]
+fn color_picker_and_code_diff_stories_materialize_required_controls() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let color_picker =
+        page_children(&examples, "color-picker-rgba").ok_or("color picker page missing")?;
+    let code_diff = page_children(&examples, "code-diff").ok_or("code diff page missing")?;
+
+    assert!(color_picker.iter().any(|it| it.contains("trigger")));
+    assert!(color_picker.iter().any(|it| it.contains("floating")));
+    assert!(color_picker.iter().any(|it| it.contains("R=64")));
+    assert!(code_diff.iter().any(|it| it.contains("split / inline")));
+    assert!(code_diff.iter().any(|it| it.contains("collapse")));
+    assert!(code_diff.iter().any(|it| it.contains("日本語")));
+    Ok(())
+}
+
+#[test]
+fn color_picker_and_code_diff_presets_are_dod_specific() {
+    assert_eq!(
+        &[
+            "rgba panel",
+            "color trigger",
+            "size presets",
+            "borderless",
+            "floating panel"
+        ],
+        StoryPresetLabels::for_page("color-picker-rgba")
+    );
+    assert_eq!(
+        &[
+            "split left-right",
+            "split top-bottom",
+            "inline",
+            "collapsed",
+            "japanese whitespace"
+        ],
+        StoryPresetLabels::for_page("code-diff")
+    );
+}
+
+fn page_children(examples: &[super::StoryExample], page: &str) -> Option<Vec<String>> {
+    examples.iter().find(|it| it.page == page).map(|it| {
+        it.tree
+            .root()
+            .children()
+            .iter()
+            .map(|child| child.props().label.clone())
+            .collect()
+    })
 }
 
 fn is_atom_kind(kind: UiNodeKind) -> bool {

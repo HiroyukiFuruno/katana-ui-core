@@ -108,8 +108,20 @@ impl StoryPresetLabels {
                 "rich content",
                 "actions",
             ],
-            "color-picker-rgba" => &["rgba panel", "drag plane", "alpha edge", "theme preview"],
-            "code-diff" => &["inline", "mode switch", "collapsed", "theme japanese"],
+            "color-picker-rgba" => &[
+                "rgba panel",
+                "color trigger",
+                "size presets",
+                "borderless",
+                "floating panel",
+            ],
+            "code-diff" => &[
+                "split left-right",
+                "split top-bottom",
+                "inline",
+                "collapsed",
+                "japanese whitespace",
+            ],
             "command-palette" => &[
                 "command palette",
                 "search results",

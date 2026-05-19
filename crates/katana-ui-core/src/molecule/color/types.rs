@@ -1,6 +1,8 @@
 use crate::interaction::RgbaActionValue;
 use serde::{Deserialize, Serialize};
 
+const OPAQUE_ALPHA: u8 = 255;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RgbaColor {
     pub red: u8,
@@ -26,6 +28,16 @@ impl RgbaColor {
             "rgba({}, {}, {}, {})",
             self.red, self.green, self.blue, self.alpha
         )
+    }
+
+    #[must_use]
+    pub const fn opaque(self) -> Self {
+        Self {
+            red: self.red,
+            green: self.green,
+            blue: self.blue,
+            alpha: OPAQUE_ALPHA,
+        }
     }
 }
 

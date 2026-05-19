@@ -104,7 +104,7 @@ fn code_diff_is_not_complete_with_only_generic_value_or_item_count() {
     assert!(diff.lines().is_empty());
     assert!(diff.collapsed_blocks().is_empty());
     assert!(diff.whitespace_model().is_none());
-    assert_eq!(CodeDiffMode::Inline, diff.mode_model());
+    assert_eq!(CodeDiffMode::Split, diff.mode_model());
     assert_eq!(CodeDiffDirection::Horizontal, diff.direction_model());
 }
 

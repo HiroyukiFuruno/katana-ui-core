@@ -38,8 +38,9 @@ pub use chip_group::{
 };
 pub use color::{ColorBlendingMode, ColorPicker, RgbaColor};
 pub use diff::{
-    CodeDiff, CodeDiffDirection, CodeDiffLine, CodeDiffLineKind, CodeDiffMode, CodeDiffSource,
-    CodeDiffWhitespace, CollapsedBlock, HighlightRange,
+    CodeDiff, CodeDiffBuildError, CodeDiffDirection, CodeDiffLine, CodeDiffLineHighlight,
+    CodeDiffLineKind, CodeDiffMode, CodeDiffSide, CodeDiffSource, CodeDiffSummary,
+    CodeDiffTextSource, CodeDiffWhitespace, CollapsedBlock, HighlightRange,
 };
 pub use disclosure::{
     Accordion, Banner, BannerAccessibilityRole, BannerAction, BannerActionKind, BannerCommand,

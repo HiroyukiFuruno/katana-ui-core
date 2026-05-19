@@ -5,6 +5,7 @@ mod molecule_models {
     mod context_menu_contract;
     mod diff_action_contract;
     mod diff_color_contract;
+    mod diff_core_contract;
     mod disclosure_option_contract;
     mod modal_overlay_contract;
     mod search_box_contract;

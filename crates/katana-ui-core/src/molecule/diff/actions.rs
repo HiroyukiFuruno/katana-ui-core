@@ -63,10 +63,17 @@ impl CodeDiff {
     }
 
     fn expand_first_block(&mut self) -> bool {
-        if self.collapsed_blocks.is_empty() {
-            return false;
+        if let Some(block) = self.collapsed_blocks.first().copied() {
+            self.collapsed_blocks.remove(0);
+            self.expanded_blocks.push(block);
+            self.state.item_count = self.lines.len();
+            return true;
         }
-        self.collapsed_blocks.remove(0);
+        let Some(block) = self.expanded_blocks.pop() else {
+            return false;
+        };
+        self.collapsed_blocks.push(block);
+        self.collapsed_blocks.sort_by_key(|block| block.start_line);
         self.state.item_count = self.lines.len();
         true
     }

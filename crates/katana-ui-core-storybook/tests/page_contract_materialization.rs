@@ -126,6 +126,8 @@ fn expected_preset_count(page: &str) -> usize {
         page,
         "context-menu"
             | "command-palette"
+            | "code-diff"
+            | "color-picker-rgba"
             | "drag-and-drop"
             | "hover-card"
             | "search-control-strip"
