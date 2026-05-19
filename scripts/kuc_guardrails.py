@@ -48,6 +48,8 @@ class KucGuardrails:
         failures.extend(self.storybook_panel_evidence_failures())
         failures.extend(self.visual_fallback_policy_failures())
         failures.extend(self.repo_local_guardrail_policy_failures())
+        failures.extend(self.agent_stop_policy_failures())
+        failures.extend(self.agent_hook_policy_failures())
         failures.extend(self.openspec_evidence_failures())
         failures.extend(self.file_length_review_failures())
         return failures
@@ -213,6 +215,55 @@ class KucGuardrails:
             if token in combined
         )
         return failures
+
+    def agent_stop_policy_failures(self) -> list[str]:
+        agents = self.root / "AGENTS.md"
+        if not agents.exists():
+            return ["AGENTS.md: runner stop policy is missing"]
+
+        source = self.read(agents)
+        required_tokens = (
+            "## runner 停止条件",
+            "v0.1.0 release readiness が未達",
+            "ローカル保存（commit）",
+            "停止理由にしない",
+            "push confirmation required",
+            "release confirmation required",
+            "destructive operation confirmation required",
+            "次の未完了タスク",
+        )
+        return [
+            f"agent runner stop policy missing token: {token}"
+            for token in required_tokens
+            if token not in source
+        ]
+
+    def agent_hook_policy_failures(self) -> list[str]:
+        hook = self.root / ".githooks/pre-commit"
+        installer = self.root / "scripts/install-git-hooks.sh"
+        agents = self.root / "AGENTS.md"
+        missing_files = [path for path in (hook, installer, agents) if not path.exists()]
+        if missing_files:
+            return [
+                f"{self.relative(path)}: agent stop hook policy file is missing"
+                for path in missing_files
+            ]
+
+        combined = "\n".join(self.read(path) for path in (hook, installer, agents))
+        required_tokens = (
+            "core.hooksPath .githooks",
+            "just kuc-guardrails",
+            "fix-and-continue",
+            "push confirmation required",
+            "release confirmation required",
+            "destructive operation confirmation required",
+            "ユーザー確認で止まらず",
+        )
+        return [
+            f"agent stop hook policy missing token: {token}"
+            for token in required_tokens
+            if token not in combined
+        ]
 
     def storybook_panel_evidence_failures(self) -> list[str]:
         docs = self.guard_docs_source()

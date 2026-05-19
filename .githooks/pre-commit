@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+echo "KUC pre-commit guard: local failures are fix-and-continue work, not a reason to ask the user."
+echo "Stop only for push confirmation required / release confirmation required / destructive operation confirmation required."
+
+just kuc-guardrails

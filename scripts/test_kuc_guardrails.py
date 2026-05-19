@@ -128,6 +128,63 @@ class KucGuardrailsTest(unittest.TestCase):
             self.assertEqual(1, len(failures))
             self.assertIn("kal-side edits", failures[0])
 
+    def test_requires_agent_stop_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            failures = KucGuardrails(root).agent_stop_policy_failures()
+
+            self.assertEqual(1, len(failures))
+
+    def test_accepts_agent_stop_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "AGENTS.md",
+                "## runner 停止条件\n"
+                "v0.1.0 release readiness が未達\n"
+                "ローカル保存（commit）\n"
+                "停止理由にしない\n"
+                "push confirmation required\n"
+                "release confirmation required\n"
+                "destructive operation confirmation required\n"
+                "次の未完了タスク\n",
+            )
+
+            failures = KucGuardrails(root).agent_stop_policy_failures()
+
+            self.assertEqual([], failures)
+
+    def test_requires_agent_stop_hook_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            failures = KucGuardrails(root).agent_hook_policy_failures()
+
+            self.assertEqual(3, len(failures))
+
+    def test_accepts_agent_stop_hook_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / ".githooks/pre-commit",
+                "just kuc-guardrails\n"
+                "fix-and-continue\n"
+                "push confirmation required\n"
+                "release confirmation required\n"
+                "destructive operation confirmation required\n"
+                "ユーザー確認で止まらず\n",
+            )
+            write_text(
+                root / "scripts/install-git-hooks.sh",
+                "git config core.hooksPath .githooks\n",
+            )
+            write_text(root / "AGENTS.md", "repository hook\n")
+
+            failures = KucGuardrails(root).agent_hook_policy_failures()
+
+            self.assertEqual([], failures)
+
     def test_checks_storybook_panel_evidence_markers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

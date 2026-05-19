@@ -163,3 +163,17 @@ v0.1.0 の DoD は、`katana` と `katana-chat-ui` が `katana-ui-core` だけ�
 
 KUC 固有の制約はこの repository の OpenSpec、docs、`scripts/`、Rust tests に固定する。
 KUC 固有の都合を `kal` 側へ追記してはならない。
+
+## runner 停止条件
+
+v0.1.0 release readiness が未達の間、runner は未完了の 01〜24 / Storybook / 自動テスト / guard を自律的に消化し続ける。
+ローカル実装、テスト、静的検査（lint）、OpenSpec 更新、ローカル保存（commit）は、ユーザーが「続けて」と明示している作業では停止理由にしない。
+
+停止して確認するのは、外部へ影響する送信（push）、公開（release）、破壊的操作、または repository 外の実装へ踏み出す場合だけとする。
+push confirmation required / release confirmation required / destructive operation confirmation required を停止条件の合言葉として扱う。
+それ以外で作業が残っている場合は、次の未完了タスクを選び、実装と自動テストへ進む。
+
+## repository hook
+
+`.githooks/pre-commit` は `just kuc-guardrails` を実行し、停止条件の誤り、Storybook の完了根拠化、KUC 固有 guard の欠落を commit 前に検出する。
+hook が失敗した場合はユーザー確認で止まらず、失敗内容を修正して続行する。

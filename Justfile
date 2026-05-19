@@ -64,6 +64,10 @@ kuc-guardrails:
 # Backward-compatible alias for older local workflows
 kuw-guardrails: kuc-guardrails
 
+# Install repository-local git hooks
+install-hooks:
+    bash scripts/install-git-hooks.sh
+
 # Run Storybook page structure checks
 storybook-ast-lint:
     python3 scripts/assert-storybook-page-layout.py
