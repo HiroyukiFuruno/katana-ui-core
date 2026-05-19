@@ -140,7 +140,9 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
         UiNodeKind::Button
             | UiNodeKind::Text
             | UiNodeKind::Icon
+            | UiNodeKind::Chip
             | UiNodeKind::Input
+            | UiNodeKind::TextArea
             | UiNodeKind::Checkbox
             | UiNodeKind::Radio
             | UiNodeKind::SelectBox
@@ -158,6 +160,10 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::Popover
             | UiNodeKind::HoverCard
             | UiNodeKind::Tooltip
+            | UiNodeKind::AttachmentChip
+            | UiNodeKind::ChipGroup
+            | UiNodeKind::DiagnosticsList
+            | UiNodeKind::EmptyState
             | UiNodeKind::Modal
             | UiNodeKind::ModalOverlay
             | UiNodeKind::CodeDiff

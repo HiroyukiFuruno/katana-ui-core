@@ -3,6 +3,10 @@ use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::{UiAction, UiCallbackLog};
 use katana_ui_core::render_model::UiStateId;
 use katana_ui_core::{atom, molecule};
+use molecule::{
+    AttachmentChipAction, AttachmentKind, AttachmentProgress, AttachmentStatus, ChipGroupAction,
+    ChipGroupOverflow, EmptyStateAction, EmptyStateActionId, EmptyStateTone,
+};
 
 const TOOLBAR_AVAILABLE_WIDTH: u32 = 110;
 const TOOLBAR_OVERFLOW_TRIGGER_WIDTH: u32 = 10;
@@ -10,6 +14,10 @@ const TOOLBAR_MEASURED_ACTION_WIDTH: u32 = 40;
 const TOOLBAR_PRIMARY_PRIORITY: i32 = 100;
 const TOOLBAR_SECONDARY_PRIORITY: i32 = 10;
 const TOOLBAR_UTILITY_PRIORITY: i32 = 50;
+const CHIP_GROUP_AVAILABLE_WIDTH: u16 = 88;
+const CHIP_GROUP_TRIGGER_WIDTH: u16 = 24;
+const CHIP_GROUP_CHIP_WIDTH: u16 = 42;
+const ATTACHMENT_UPLOAD_PROGRESS: u16 = 4_200;
 
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
@@ -27,6 +35,9 @@ pub(super) fn examples() -> Vec<StoryExample> {
                 .child(atom::Text::new("Panel")),
         ),
         toolbar_story(),
+        attachment_chip_story(),
+        chip_group_story(),
+        empty_state_story(),
         StoryCatalog::story(
             "form-field",
             molecule::FormField::new("Form field")
@@ -59,6 +70,65 @@ pub(super) fn examples() -> Vec<StoryExample> {
                 .child(atom::Text::new("Ln 1")),
         ),
     ]
+}
+
+fn attachment_chip_story() -> StoryExample {
+    let mut attachment = molecule::AttachmentChip::new(AttachmentKind::Image, "screenshot.png")
+        .progress(AttachmentProgress::from_basis_points(
+            ATTACHMENT_UPLOAD_PROGRESS,
+        ))
+        .status(AttachmentStatus::Uploading);
+    let target = attachment.chip().state_id().clone();
+    let events = attachment.apply_action(AttachmentChipAction::TransitionStatus(
+        AttachmentStatus::Error,
+    ));
+    let log = UiCallbackLog::new(
+        target,
+        "attachment_status",
+        "status=uploading",
+        format!("events={events:?}"),
+    );
+    StoryCatalog::interactive_story("attachment-chip", attachment, vec![log])
+}
+
+fn chip_group_story() -> StoryExample {
+    let first = atom::Chip::new("lint").dismissible(true);
+    let first_id = first.state_id().clone();
+    let second = atom::Chip::new("format").dismissible(true);
+    let third = atom::Chip::new("docs").dismissible(true);
+    let mut group = molecule::ChipGroup::new("Chip group")
+        .chip(first, CHIP_GROUP_CHIP_WIDTH)
+        .chip(second, CHIP_GROUP_CHIP_WIDTH)
+        .chip(third, CHIP_GROUP_CHIP_WIDTH)
+        .wrap(false)
+        .available_width(CHIP_GROUP_AVAILABLE_WIDTH)
+        .overflow_trigger_width(CHIP_GROUP_TRIGGER_WIDTH)
+        .overflow(ChipGroupOverflow::Menu)
+        .reorder(true);
+    let events = group.apply_action(ChipGroupAction::OpenOverflow);
+    let log = UiCallbackLog::new(
+        first_id,
+        "chip_group_overflow",
+        "hidden=0",
+        format!("events={events:?}"),
+    );
+    StoryCatalog::interactive_story("chip-group", group, vec![log])
+}
+
+fn empty_state_story() -> StoryExample {
+    let empty = molecule::EmptyState::new("No diagnostics")
+        .body("日本語 mixed text is centered.")
+        .tone(EmptyStateTone::Accent)
+        .primary_action(EmptyStateAction::new("reload", "Reload"));
+    let target = empty.state_id().clone();
+    let event = empty.apply_action(EmptyStateActionId::Primary);
+    let log = UiCallbackLog::new(
+        target,
+        "empty_state_action",
+        "action=none",
+        format!("event={event:?}"),
+    );
+    StoryCatalog::interactive_story("empty-state", empty, vec![log])
 }
 
 fn toolbar_story() -> StoryExample {

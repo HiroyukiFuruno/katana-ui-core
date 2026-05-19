@@ -1,10 +1,12 @@
 mod action_policy;
+pub mod chip;
 mod defaults;
 mod options;
 mod state;
 mod state_actions;
 #[cfg(test)]
 mod tests;
+pub mod text_area;
 mod typed;
 
 use crate::interaction::{UiAction, UiActionResult};
@@ -12,8 +14,15 @@ use crate::render_model::{
     UiCommonProps, UiCursor, UiDimension, UiDisplay, UiNode, UiNodeKind, UiPointerEvents,
     UiPosition, UiProgressMode, UiSize, UiStateId, UiTone, UiVariant, UiVisualRole, UiZIndex,
 };
+pub use chip::{Chip, ChipAction, ChipEvent, ChipKeyboardInput, ChipSize, ChipTone, ChipVariant};
 use serde::{Deserialize, Serialize};
 use state::AtomState;
+pub use text_area::{
+    TextArea, TextAreaAction, TextAreaActionOutcome, TextAreaCaretMove, TextAreaCompositionPhase,
+    TextAreaCompositionState, TextAreaEvent, TextAreaKey, TextAreaKeyChord, TextAreaNewlineKey,
+    TextAreaOptions, TextAreaResizeEvent, TextAreaSelection, TextAreaState, TextAreaSubmitKey,
+    TextAreaTabBehavior, TextAreaValidationError, TextAreaWrapPolicy,
+};
 
 macro_rules! atom_model {
     ($name:ident, $kind:expr) => {

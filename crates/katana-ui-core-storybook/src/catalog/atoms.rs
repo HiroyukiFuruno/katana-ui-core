@@ -6,11 +6,13 @@ pub(super) fn examples() -> Vec<StoryExample> {
     vec![
         atom_interactions::text(),
         atom_interactions::icon(),
+        atom_interactions::chip(),
         atom_interactions::button(),
         atom_interactions::text_button(),
         atom_interactions::svg_button(),
         atom_interactions::icon_text_button(),
         atom_interactions::input(),
+        atom_interactions::text_area(),
         atom_interactions::checkbox(),
         atom_interactions::radio(),
         atom_interactions::badge(),

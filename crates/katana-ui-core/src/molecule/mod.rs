@@ -1,10 +1,13 @@
 mod app_primitives;
+mod attachment_chip;
 mod basic;
 mod card;
+mod chip_group;
 mod color;
 mod diff;
 mod disclosure;
 mod disclosure_foundation;
+mod empty_state;
 mod segmented_toggle;
 mod selection;
 mod state;
@@ -22,8 +25,16 @@ pub use app_primitives::{
     VirtualizationConfig, VirtualizedEvent, VirtualizedList, VirtualizedTree, WindowChrome,
     WindowControlKind, WindowControlsPosition,
 };
+pub use attachment_chip::{
+    AttachmentChip, AttachmentChipAction, AttachmentChipEvent, AttachmentKind, AttachmentMeta,
+    AttachmentProgress, AttachmentStatus, AttachmentThumbnail,
+};
 pub use basic::{FormField, List, Menu, MoleculeEventRouting, StatusBar, Toolbar};
 pub use card::Card;
+pub use chip_group::{
+    ChipGroup, ChipGroupAction, ChipGroupEvent, ChipGroupFocusTarget, ChipGroupLayout,
+    ChipGroupOverflow, MeasuredChip,
+};
 pub use color::{ColorBlendingMode, ColorPicker, RgbaColor};
 pub use diff::{
     CodeDiff, CodeDiffDirection, CodeDiffLine, CodeDiffLineKind, CodeDiffMode, CodeDiffSource,
@@ -35,6 +46,11 @@ pub use disclosure::{
     PopoverFocusManagement, PopoverSlots, SearchBox, SlideControl, Tooltip,
 };
 pub use disclosure_foundation::DisclosureTriggerArea;
+pub use empty_state::{
+    EmptyState, EmptyStateAction, EmptyStateActionId, EmptyStateAlignment,
+    EmptyStateContractViolation, EmptyStateEvent, EmptyStateLayoutSnapshot, EmptyStateSize,
+    EmptyStateTone,
+};
 pub use segmented_toggle::SegmentedToggle;
 pub use selection::{
     Breadcrumb, ChoiceItem, ComboBox, ContextMenu, ContextMenuAction, ContextMenuAnchor,
@@ -45,16 +61,20 @@ pub use selection::{
     SelectBox, SelectionList, SideMenu, Tabs,
 };
 pub use structured::{
-    ArrayEditorItem, CLOSEABLE_TAB_DRAG_TAG, CloseableTab, CloseableTabChildState,
-    CloseableTabContextCommand, CloseableTabContextMenu, CloseableTabDropPosition,
-    CloseableTabDropRules, CloseableTabGroup, CloseableTabGroupContextCommand, CloseableTabGroupId,
-    CloseableTabGroupTarget, CloseableTabId, CloseableTabKey, CloseableTabKeyboardController,
-    CloseableTabKeyboardInput, CloseableTabKeyboardShortcut, CloseableTabOverflowConfig,
-    CloseableTabOverflowPlan, CloseableTabOverflowPlanner, CloseableTabStrip,
-    CloseableTabStripAction, CloseableTabStripEvent, CloseableTabStripOptions,
-    CloseableTabStripState, CloseableTabTone, CommandItem, CommandPalette, DynamicArrayEditor,
-    MeasuredCloseableTab, TabGroup, TabGroupId, TabGroupTarget, TabId, TreeLineStyle, TreeNode,
-    TreeNodeKind, TreeView,
+    ArrayEditorItem, BulkFixSkipReason, CLOSEABLE_TAB_DRAG_TAG, CloseableTab,
+    CloseableTabChildState, CloseableTabContextCommand, CloseableTabContextMenu,
+    CloseableTabDropPosition, CloseableTabDropRules, CloseableTabGroup,
+    CloseableTabGroupContextCommand, CloseableTabGroupId, CloseableTabGroupTarget, CloseableTabId,
+    CloseableTabKey, CloseableTabKeyboardController, CloseableTabKeyboardInput,
+    CloseableTabKeyboardShortcut, CloseableTabOverflowConfig, CloseableTabOverflowPlan,
+    CloseableTabOverflowPlanner, CloseableTabStrip, CloseableTabStripAction,
+    CloseableTabStripEvent, CloseableTabStripOptions, CloseableTabStripState, CloseableTabTone,
+    CommandItem, CommandPalette, DiagnosticAction, DiagnosticFixPreview, DiagnosticId,
+    DiagnosticItem, DiagnosticKeyboardInput, DiagnosticLocation, DiagnosticSeverity,
+    DiagnosticsGroup, DiagnosticsGroupBy, DiagnosticsList, DiagnosticsListAction,
+    DiagnosticsListEvent, DiagnosticsListOptions, DiagnosticsListPlanner, DiagnosticsListState,
+    DiagnosticsSortBy, DiagnosticsVisibleSnapshot, DynamicArrayEditor, MeasuredCloseableTab,
+    TabGroup, TabGroupId, TabGroupTarget, TabId, TreeLineStyle, TreeNode, TreeNodeKind, TreeView,
 };
 
 #[cfg(test)]

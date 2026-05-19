@@ -50,7 +50,7 @@
 - [ ] 7.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に Chip / AttachmentChip / ChipGroup 行を追加する。
 - [ ] 7.2 `Badge` Storybook ページに「dismiss / interactive は Chip」リンクを追記する。
 
-## 8. 品質ゲート
+## 8. 品質ゲート / DoD
 
 - [ ] 8.1 `cargo test -p katana-ui-core` をパスする。
 - [ ] 8.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。

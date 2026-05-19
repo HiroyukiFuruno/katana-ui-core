@@ -124,7 +124,7 @@ fn detail_text<'a>(details: &'a UiNode, label: &str) -> Option<&'a str> {
 fn expected_preset_count(page: &str) -> usize {
     if matches!(
         page,
-        "context-menu" | "drag-and-drop" | "hover-card" | "toolbar"
+        "context-menu" | "drag-and-drop" | "hover-card" | "text-area" | "toolbar"
     ) {
         return 5;
     }

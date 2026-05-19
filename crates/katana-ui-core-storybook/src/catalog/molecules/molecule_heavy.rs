@@ -3,7 +3,9 @@ use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::{RgbaActionValue, UiAction};
 use katana_ui_core::molecule::{
     CodeDiffLine, CodeDiffLineKind, CodeDiffMode, CodeDiffSource, CollapsedBlock,
-    ColorBlendingMode, DisclosureTriggerArea, HighlightRange, RgbaColor, TreeLineStyle, TreeNode,
+    ColorBlendingMode, DiagnosticAction, DiagnosticFixPreview, DiagnosticItem, DiagnosticLocation,
+    DiagnosticSeverity, DiagnosticsGroupBy, DiagnosticsListAction, DiagnosticsListOptions,
+    DiagnosticsSortBy, DisclosureTriggerArea, HighlightRange, RgbaColor, TreeLineStyle, TreeNode,
 };
 use katana_ui_core::{atom, molecule};
 
@@ -11,6 +13,7 @@ pub(super) fn examples() -> Vec<StoryExample> {
     vec![
         code_diff_story(),
         color_picker_story(),
+        diagnostics_list_story(),
         StoryCatalog::story(
             "command-palette",
             molecule::CommandPalette::new("Command palette")
@@ -42,6 +45,11 @@ const COLOR_GREEN: u8 = 128;
 const COLOR_BLUE: u8 = 255;
 const COLOR_ALPHA: u8 = 204;
 const COLOR_HUE: u16 = 214;
+const DIAGNOSTIC_ERROR_LINE: u32 = 12;
+const DIAGNOSTIC_ERROR_DIFF_LINE: usize = 12;
+const DIAGNOSTIC_ERROR_COLUMN: u32 = 9;
+const DIAGNOSTIC_WARNING_LINE: u32 = 24;
+const DIAGNOSTIC_WARNING_COLUMN: u32 = 5;
 
 fn code_diff_story() -> StoryExample {
     let mut diff = molecule::CodeDiff::new("Code diff")
@@ -98,6 +106,77 @@ fn color_picker_story() -> StoryExample {
         true,
     ));
     StoryCatalog::interactive_story("color-picker-rgba", picker, result.callback_log)
+}
+
+fn diagnostics_list_story() -> StoryExample {
+    let mut diagnostics = molecule::DiagnosticsList::new("Diagnostics")
+        .option(DiagnosticsListOptions {
+            group_by: DiagnosticsGroupBy::Severity,
+            sort_by: DiagnosticsSortBy::Severity,
+            severity_filter: [DiagnosticSeverity::Error, DiagnosticSeverity::Warning]
+                .into_iter()
+                .collect(),
+            ..DiagnosticsListOptions::default()
+        })
+        .item(diagnostic_error())
+        .item(diagnostic_warning())
+        .empty_slot(atom::Text::new("No diagnostics"))
+        .bulk_preview(
+            molecule::ModalOverlay::new("Bulk fix preview")
+                .child(atom::Text::new("Apply all safe quick fixes")),
+        );
+    let target = diagnostics.state_id().clone();
+    let events = diagnostics.apply_action(DiagnosticsListAction::ToggleFixPreview(
+        molecule::DiagnosticId::new("syntax-error"),
+    ));
+    let log = katana_ui_core::interaction::UiCallbackLog::new(
+        target,
+        "diagnostic_fix_preview",
+        "expanded=false",
+        format!("events={events:?}"),
+    );
+    StoryCatalog::interactive_story("diagnostics-list", diagnostics, vec![log])
+}
+
+fn diagnostic_error() -> DiagnosticItem {
+    DiagnosticItem::new(
+        "syntax-error",
+        DiagnosticSeverity::Error,
+        "Missing semicolon",
+        DiagnosticLocation::new(
+            "crates/katana-ui-core/src/lib.rs",
+            DIAGNOSTIC_ERROR_LINE,
+            DIAGNOSTIC_ERROR_COLUMN,
+        ),
+    )
+    .source("rustc")
+    .quickfix(DiagnosticAction::new(
+        "insert-semicolon",
+        "Insert semicolon",
+    ))
+    .fix_preview(DiagnosticFixPreview::new(
+        molecule::CodeDiff::new("Fix preview").line(CodeDiffLine {
+            old_number: Some(DIAGNOSTIC_ERROR_DIFF_LINE),
+            new_number: Some(DIAGNOSTIC_ERROR_DIFF_LINE),
+            kind: CodeDiffLineKind::Added,
+            text: "let value = compute();".to_string(),
+        }),
+    ))
+}
+
+fn diagnostic_warning() -> DiagnosticItem {
+    DiagnosticItem::new(
+        "unused-import",
+        DiagnosticSeverity::Warning,
+        "Unused import",
+        DiagnosticLocation::new(
+            "crates/katana-ui-core/src/story.rs",
+            DIAGNOSTIC_WARNING_LINE,
+            DIAGNOSTIC_WARNING_COLUMN,
+        ),
+    )
+    .source("clippy")
+    .quickfix(DiagnosticAction::new("remove-import", "Remove import"))
 }
 
 fn tree_view_story() -> StoryExample {

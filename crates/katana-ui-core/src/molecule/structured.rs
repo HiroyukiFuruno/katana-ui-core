@@ -1,4 +1,5 @@
 mod accessors;
+mod diagnostics_list;
 mod items;
 mod model;
 mod options;
@@ -7,6 +8,13 @@ mod options_extra;
 mod types;
 mod workspace_tab_bar;
 
+pub use diagnostics_list::{
+    BulkFixSkipReason, DiagnosticAction, DiagnosticFixPreview, DiagnosticId, DiagnosticItem,
+    DiagnosticKeyboardInput, DiagnosticLocation, DiagnosticSeverity, DiagnosticsGroup,
+    DiagnosticsGroupBy, DiagnosticsList, DiagnosticsListAction, DiagnosticsListEvent,
+    DiagnosticsListOptions, DiagnosticsListPlanner, DiagnosticsListState, DiagnosticsSortBy,
+    DiagnosticsVisibleSnapshot,
+};
 pub use items::{ArrayEditorItem, CommandItem, TreeNode, TreeNodeKind};
 pub use model::{CommandPalette, DynamicArrayEditor, TreeView};
 pub use types::TreeLineStyle;

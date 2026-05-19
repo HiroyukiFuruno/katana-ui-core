@@ -38,7 +38,7 @@
 
 - [ ] 7.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に EmptyState 行を追加する。
 
-## 8. 品質ゲート
+## 8. 品質ゲート / DoD
 
 - [ ] 8.1 `cargo test -p katana-ui-core` をパスする。
 - [ ] 8.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。

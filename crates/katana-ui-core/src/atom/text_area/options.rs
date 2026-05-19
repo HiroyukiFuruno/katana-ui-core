@@ -1,0 +1,150 @@
+use super::{TextAreaKey, TextAreaKeyChord};
+use crate::facade::DEFAULT_FONT_ROLE;
+use crate::render_model::{UiSlotSpec, UiTextAreaProps, UiTextEntryProps};
+use serde::{Deserialize, Serialize};
+
+const DEFAULT_MIN_ROWS: u16 = 2;
+const DEFAULT_MAX_ROWS: u16 = 6;
+
+pub use crate::render_model::{
+    UiTextAreaNewlineKey as TextAreaNewlineKey, UiTextAreaSubmitKey as TextAreaSubmitKey,
+    UiTextAreaTabBehavior as TextAreaTabBehavior, UiTextAreaWrapPolicy as TextAreaWrapPolicy,
+};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TextAreaValidationError {
+    ConflictingKeyBindings,
+    MinRowsMustBePositive,
+    MaxRowsBelowMinRows,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TextAreaOptions {
+    pub value: String,
+    pub placeholder: String,
+    pub font_role: String,
+    pub disabled: bool,
+    pub readonly: bool,
+    pub invalid: bool,
+    pub min_rows: u16,
+    pub max_rows: u16,
+    pub auto_grow: bool,
+    pub wrap_policy: TextAreaWrapPolicy,
+    pub submit_key: TextAreaSubmitKey,
+    pub newline_key: TextAreaNewlineKey,
+    pub tab_behavior: TextAreaTabBehavior,
+    pub ime_enabled: bool,
+    pub leading_slot: Option<UiSlotSpec>,
+    pub trailing_slot: Option<UiSlotSpec>,
+}
+
+impl Default for TextAreaOptions {
+    fn default() -> Self {
+        Self {
+            value: String::new(),
+            placeholder: String::new(),
+            font_role: DEFAULT_FONT_ROLE.to_string(),
+            disabled: false,
+            readonly: false,
+            invalid: false,
+            min_rows: DEFAULT_MIN_ROWS,
+            max_rows: DEFAULT_MAX_ROWS,
+            auto_grow: true,
+            wrap_policy: TextAreaWrapPolicy::Soft,
+            submit_key: TextAreaSubmitKey::Enter,
+            newline_key: TextAreaNewlineKey::ShiftEnter,
+            tab_behavior: TextAreaTabBehavior::MoveFocus,
+            ime_enabled: true,
+            leading_slot: None,
+            trailing_slot: None,
+        }
+    }
+}
+
+impl TextAreaOptions {
+    pub fn validate(&self) -> Result<(), TextAreaValidationError> {
+        if self.min_rows == 0 {
+            return Err(TextAreaValidationError::MinRowsMustBePositive);
+        }
+        if self.max_rows < self.min_rows {
+            return Err(TextAreaValidationError::MaxRowsBelowMinRows);
+        }
+        if submit_chord(self.submit_key).is_some_and(|submit| {
+            newline_chord(self.newline_key).is_some_and(|newline| submit == newline)
+        }) {
+            return Err(TextAreaValidationError::ConflictingKeyBindings);
+        }
+        Ok(())
+    }
+
+    pub(super) fn text_area_props(&self, rows: u16, internal_scroll: bool) -> UiTextAreaProps {
+        UiTextAreaProps {
+            min_rows: self.min_rows,
+            max_rows: self.max_rows,
+            auto_grow: self.auto_grow,
+            wrap_policy: self.wrap_policy,
+            submit_key: self.submit_key,
+            newline_key: self.newline_key,
+            tab_behavior: self.tab_behavior,
+            ime_enabled: self.ime_enabled,
+            measured_rows: rows,
+            internal_scroll,
+        }
+    }
+
+    pub(super) fn text_entry_props(&self) -> UiTextEntryProps {
+        UiTextEntryProps {
+            leading_slot: self.leading_slot.clone(),
+            trailing_slot: self.trailing_slot.clone(),
+            ime_enabled: self.ime_enabled,
+            emoji_enabled: true,
+            ..UiTextEntryProps::default()
+        }
+    }
+}
+
+pub(super) fn submit_chord(value: TextAreaSubmitKey) -> Option<TextAreaKeyChord> {
+    match value {
+        TextAreaSubmitKey::Enter => Some(TextAreaKeyChord::enter()),
+        TextAreaSubmitKey::ModEnter => Some(TextAreaKeyChord::mod_enter()),
+        TextAreaSubmitKey::Disabled => None,
+    }
+}
+
+pub(super) fn newline_chord(value: TextAreaNewlineKey) -> Option<TextAreaKeyChord> {
+    match value {
+        TextAreaNewlineKey::Enter => Some(TextAreaKeyChord::enter()),
+        TextAreaNewlineKey::ShiftEnter => Some(TextAreaKeyChord::shift_enter()),
+        TextAreaNewlineKey::Disabled => None,
+    }
+}
+
+impl TextAreaKeyChord {
+    #[must_use]
+    pub const fn enter() -> Self {
+        Self::new(TextAreaKey::Enter, false, false)
+    }
+
+    #[must_use]
+    pub const fn shift_enter() -> Self {
+        Self::new(TextAreaKey::Enter, true, false)
+    }
+
+    #[must_use]
+    pub const fn mod_enter() -> Self {
+        Self::new(TextAreaKey::Enter, false, true)
+    }
+
+    #[must_use]
+    pub const fn tab() -> Self {
+        Self::new(TextAreaKey::Tab, false, false)
+    }
+
+    const fn new(key: TextAreaKey, shift: bool, primary_modifier: bool) -> Self {
+        Self {
+            key,
+            shift,
+            primary_modifier,
+        }
+    }
+}

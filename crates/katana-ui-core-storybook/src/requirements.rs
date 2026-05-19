@@ -1,11 +1,13 @@
 const REQUIRED_PAGES: &[&str] = &[
     "text",
     "icon",
+    "chip",
     "button",
     "text-button",
     "svg-button",
     "icon-text-button",
     "text-input",
+    "text-area",
     "checkbox",
     "radio",
     "badge",
@@ -45,6 +47,10 @@ const REQUIRED_PAGES: &[&str] = &[
     "selection-list",
     "side-menu",
     "status-bar",
+    "attachment-chip",
+    "chip-group",
+    "diagnostics-list",
+    "empty-state",
     "tree-view",
     "drag-and-drop",
     "closeable-tab-strip",
@@ -74,11 +80,15 @@ impl StoryRequirements {
     pub(crate) fn minimum_nodes_for(page: &str) -> usize {
         match page {
             "text" | "icon" | "divider" | "spacer" | "key-cap" | "loading-dots" | "spinner"
-            | "progress-bar" | "color-swatch" | "toggle" | "slide-control" => MIN_SINGLE_NODE,
+            | "progress-bar" | "color-swatch" | "toggle" | "slide-control" | "chip" => {
+                MIN_SINGLE_NODE
+            }
             "button" | "text-button" | "svg-button" | "icon-text-button" | "text-input"
-            | "checkbox" | "radio" | "badge" => MIN_SINGLE_NODE,
-            "card" | "tooltip" | "modal" | "popover" | "hover-card" | "row" | "column"
-            | "stack" | "grid" | "scroll-area" | "split-pane" | "align-center" => MIN_CHILDREN_NODE,
+            | "text-area" | "checkbox" | "radio" | "badge" => MIN_SINGLE_NODE,
+            "card" | "tooltip" | "modal" | "popover" | "hover-card" | "empty-state" | "row"
+            | "column" | "stack" | "grid" | "scroll-area" | "split-pane" | "align-center" => {
+                MIN_CHILDREN_NODE
+            }
             "list"
             | "menu"
             | "context-menu"
@@ -100,6 +110,9 @@ impl StoryRequirements {
             | "selection-list"
             | "side-menu"
             | "status-bar"
+            | "attachment-chip"
+            | "chip-group"
+            | "diagnostics-list"
             | "tree-view"
             | "drag-and-drop"
             | "closeable-tab-strip"

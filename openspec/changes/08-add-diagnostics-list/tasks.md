@@ -20,8 +20,8 @@
 
 - [ ] 3.1 fix preview に既存 `CodeDiff` molecule を使う。
 - [ ] 3.2 severity filter に `Chip`（`07-add-chip-and-attachment-chip`）を使う。
-- [ ] 3.3 empty state に `EmptyState`（`09-add-empty-state`）を embed する。
-- [ ] 3.4 loading state に `Skeleton`（`add-skeleton-loader-17`）を embed する。
+- [ ] 3.3 empty state を `empty_slot: Option<UiTree>` として受け取れるようにする。
+- [ ] 3.4 loading state を `loading_slot: Option<UiTree>` として受け取れるようにする。
 
 ## 4. 自動テスト
 
@@ -51,7 +51,7 @@
 
 - [ ] 7.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に DiagnosticsList 行を追加する。
 
-## 8. 品質ゲート
+## 8. 品質ゲート / DoD
 
 - [ ] 8.1 `cargo test -p katana-ui-core` をパスする。
 - [ ] 8.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。

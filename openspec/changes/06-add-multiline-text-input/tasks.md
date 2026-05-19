@@ -58,7 +58,7 @@
 - [ ] 8.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に TextArea 行を追加する。
 - [ ] 8.2 `docs/widget-extraction-policy.md` に Input vs TextArea の責務境界を追記する。
 
-## 9. 品質ゲート
+## 9. 品質ゲート / DoD
 
 - [ ] 9.1 `cargo test -p katana-ui-core` をパスする。
 - [ ] 9.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。

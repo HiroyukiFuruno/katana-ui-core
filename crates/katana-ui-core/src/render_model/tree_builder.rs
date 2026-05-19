@@ -1,7 +1,7 @@
 use super::{
     UiButtonProps, UiColorSwatchProps, UiContextMenuProps, UiIconProps, UiInteractionState,
-    UiLoadingProps, UiNode, UiPanelProps, UiShortcutProps, UiSize, UiStatusProps, UiTextEntryProps,
-    UiTextProps, UiTone, UiTreeProps, UiVariant, UiVisualRole,
+    UiLoadingProps, UiNode, UiPanelProps, UiShortcutProps, UiSize, UiStatusProps, UiTextAreaProps,
+    UiTextEntryProps, UiTextProps, UiTone, UiTreeProps, UiVariant, UiVisualRole,
 };
 use crate::theme::ThemeSnapshot;
 
@@ -124,6 +124,12 @@ impl UiNode {
     #[must_use]
     pub fn text_entry(mut self, value: UiTextEntryProps) -> Self {
         self.props.text_entry = value;
+        self
+    }
+
+    #[must_use]
+    pub fn text_area(mut self, value: UiTextAreaProps) -> Self {
+        self.props.text_area = value;
         self
     }
 

@@ -104,8 +104,10 @@ pub(super) fn draw(
             dedicated_basic::button(canvas, text, palette, x, y, label);
         }
         UiNodeKind::SvgButton => dedicated_atoms::icon_button(canvas, text, palette, x, y, label),
-        UiNodeKind::Badge => dedicated_feedback::badge(canvas, text, palette, x, y, label),
-        UiNodeKind::Input | UiNodeKind::SelectBox => {
+        UiNodeKind::Badge | UiNodeKind::Chip | UiNodeKind::AttachmentChip => {
+            dedicated_feedback::badge(canvas, text, palette, x, y, label);
+        }
+        UiNodeKind::Input | UiNodeKind::TextArea | UiNodeKind::SelectBox => {
             dedicated_basic::outlined_control(canvas, text, palette, x, y, label);
         }
         UiNodeKind::Checkbox | UiNodeKind::Radio => {
@@ -146,7 +148,9 @@ fn label_for(kind: UiNodeKind) -> &'static str {
     match kind {
         UiNodeKind::Button | UiNodeKind::TextButton | UiNodeKind::IconTextButton => "button action",
         UiNodeKind::SvgButton => "svg icon action",
+        UiNodeKind::Chip => "chip filter",
         UiNodeKind::Input => "input value",
+        UiNodeKind::TextArea => "textarea value",
         UiNodeKind::SelectBox => "select option",
         UiNodeKind::Checkbox => "checkbox state",
         UiNodeKind::Radio => "radio choice",
@@ -164,6 +168,10 @@ fn label_for(kind: UiNodeKind) -> &'static str {
         UiNodeKind::Popover => "popover layer",
         UiNodeKind::HoverCard => "hover card layer",
         UiNodeKind::Tooltip => "tooltip layer",
+        UiNodeKind::AttachmentChip => "attachment chip",
+        UiNodeKind::ChipGroup => "chip group",
+        UiNodeKind::DiagnosticsList => "diagnostics list",
+        UiNodeKind::EmptyState => "empty state",
         UiNodeKind::Modal => "modal layer",
         UiNodeKind::ModalOverlay => "modal overlay",
         UiNodeKind::CodeDiff => "+/- diff",

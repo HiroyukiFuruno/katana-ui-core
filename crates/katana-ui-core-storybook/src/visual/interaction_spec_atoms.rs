@@ -23,6 +23,13 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "custom-svg",
             "svg=custom",
         )),
+        "chip" => Some(spec(
+            "chip_dismiss",
+            "chip_dismissed",
+            "chip.dismissible",
+            "true",
+            "dismissed=true",
+        )),
         "loading-dots" => Some(spec(
             "animation_tick",
             "loading_phase_changed",
@@ -78,6 +85,13 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "interaction.value",
             "typed 日本語",
             "value=typed",
+        )),
+        "text-area" => Some(spec(
+            "text_area_type",
+            "text_area_changed",
+            "text_area.auto_grow",
+            "true",
+            "rows=auto",
         )),
         "checkbox" => Some(spec(
             "checkbox_toggle",

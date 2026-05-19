@@ -7,6 +7,7 @@ mod context_menu_props;
 mod identity;
 mod kind;
 mod props;
+mod text_area_props;
 mod tree;
 mod tree_builder;
 mod tree_model;
@@ -29,6 +30,10 @@ pub use context_menu_props::{
 pub use identity::{UiNodeId, UiStateId};
 pub use kind::UiNodeKind;
 pub use props::{UiInteractionState, UiProps, UiSize, UiTone, UiVariant, UiVisualRole};
+pub use text_area_props::{
+    UiTextAreaNewlineKey, UiTextAreaProps, UiTextAreaSubmitKey, UiTextAreaTabBehavior,
+    UiTextAreaWrapPolicy,
+};
 pub use tree::UiNode;
 pub use tree_model::UiTree;
 pub use tree_props::{
