@@ -1,31 +1,8 @@
 use crate::component::ComponentAction;
-use crate::interaction::{UiAction, UiActionResult};
+pub use crate::interaction::{RowHeightProvider, VirtualRange, VirtualizationConfig};
+use crate::interaction::{UiAction, UiActionResult, VirtualizationPlanner};
 use crate::render_model::{UiInteractionState, UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum RowHeightProvider {
-    Fixed(u16),
-    Estimated(u16),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct VirtualizationConfig {
-    pub total_count: usize,
-    pub viewport_height: u16,
-    pub scroll_y: u32,
-    pub overscan: usize,
-    pub row_height: RowHeightProvider,
-    pub keep_focused_in_window: bool,
-    pub focused_index: Option<usize>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct VirtualRange {
-    pub start: usize,
-    pub end: usize,
-    pub aria_set_size: usize,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VirtualizedEvent {
@@ -53,22 +30,7 @@ pub struct VirtualizedTree {
 impl VirtualizationConfig {
     #[must_use]
     pub fn visible_range(&self) -> VirtualRange {
-        let row_height = match self.row_height {
-            RowHeightProvider::Fixed(value) | RowHeightProvider::Estimated(value) => value.max(1),
-        };
-        let first = (self.scroll_y / u32::from(row_height)) as usize;
-        let visible = usize::from(self.viewport_height / row_height).max(1);
-        let mut start = first.saturating_sub(self.overscan);
-        let mut end = (first + visible + self.overscan).min(self.total_count);
-        if let (true, Some(focused)) = (self.keep_focused_in_window, self.focused_index) {
-            start = start.min(focused);
-            end = end.max((focused + 1).min(self.total_count));
-        }
-        VirtualRange {
-            start,
-            end,
-            aria_set_size: self.total_count,
-        }
+        VirtualizationPlanner::compute_visible_range(self)
     }
 }
 
@@ -107,7 +69,8 @@ impl ComponentAction for VirtualizedList {
         }
         match action {
             UiAction::SetValue { value, .. } => {
-                self.config.scroll_y = value.parse::<u32>().unwrap_or(self.config.scroll_y);
+                self.config.viewport_offset =
+                    value.parse::<u32>().unwrap_or(self.config.viewport_offset);
                 self.last_event = VirtualizedEvent::Scrolled(self.visible_range());
             }
             UiAction::SetSelectedIndex { selected_index, .. } => {
@@ -162,7 +125,7 @@ fn state(config: &VirtualizationConfig) -> UiInteractionState {
     UiInteractionState {
         selected_index: range.start,
         item_count: range.end.saturating_sub(range.start),
-        value: config.scroll_y.to_string(),
+        value: config.viewport_offset.to_string(),
         has_selection: config.focused_index.is_some(),
         ..UiInteractionState::default()
     }

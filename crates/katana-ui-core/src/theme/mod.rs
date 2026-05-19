@@ -2,8 +2,8 @@ mod preset;
 mod tokens;
 
 pub use tokens::{
-    BorderToken, ColorToken, FontFamily, FontToken, RadiusToken, Rgba, ShadowToken, SpacingToken,
-    ThemeDiff, ThemeId, ZIndexToken,
+    BorderToken, ColorToken, FontFamily, FontToken, MotionToken, RadiusToken, Rgba, ShadowToken,
+    SpacingToken, ThemeDiff, ThemeId, ZIndexToken,
 };
 
 use preset::ThemePreset;
@@ -19,6 +19,7 @@ pub struct ThemeSnapshot {
     pub shadows: Vec<ShadowToken>,
     pub borders: Vec<BorderToken>,
     pub z_indexes: Vec<ZIndexToken>,
+    pub motion: Vec<MotionToken>,
 }
 
 impl ThemeSnapshot {
@@ -57,6 +58,9 @@ impl ThemeSnapshot {
         if self.spacing != other.spacing {
             changed_sections.push("spacing".to_string());
         }
+        if self.motion != other.motion {
+            changed_sections.push("motion".to_string());
+        }
         ThemeDiff::new(changed_sections)
     }
 }
@@ -91,5 +95,6 @@ mod tests {
             Some(FontFamily::Monospace),
             dark.font("code").map(|it| it.family)
         );
+        assert!(dark.motion.iter().any(|it| it.name == "fast"));
     }
 }

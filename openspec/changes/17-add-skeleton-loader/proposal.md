@@ -29,4 +29,5 @@
 - `crates/katana-ui-core/src/atom/skeleton.rs` 新設。
 - `crates/katana-ui-core/src/molecule/skeleton_cluster.rs` 新設。
 - DiagnosticsList / SelectionList / TreeView 等の loading 表示で embed 可能。
-- アニメーション本体は `add-animation-primitives-18` の reduced-motion 設定に従う。
+- Skeleton 自身は `animation` option と reduced-motion downgrade を持つ。
+- `18-add-animation-primitives` が実装済みの場合は motion token を利用できるが、本 change の必須依存にはしない。

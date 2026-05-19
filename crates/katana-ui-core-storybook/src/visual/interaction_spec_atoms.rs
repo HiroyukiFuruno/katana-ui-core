@@ -135,6 +135,13 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "macos",
             "platform=macos",
         )),
+        "skeleton" => Some(spec(
+            "reduced_motion_toggle",
+            "skeleton_animation_changed",
+            "skeleton.animation",
+            "None",
+            "reduced_motion=true",
+        )),
         "color-swatch" => Some(spec(
             "color_select",
             "color_changed",

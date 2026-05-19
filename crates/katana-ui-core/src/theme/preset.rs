@@ -1,6 +1,6 @@
 use super::{
-    BorderToken, ColorToken, FontFamily, FontToken, RadiusToken, Rgba, ShadowToken, SpacingToken,
-    ThemeId, ThemeSnapshot, ZIndexToken,
+    BorderToken, ColorToken, FontFamily, FontToken, MotionToken, RadiusToken, Rgba, ShadowToken,
+    SpacingToken, ThemeId, ThemeSnapshot, ZIndexToken,
 };
 
 const LIGHT_BACKGROUND: Rgba = [255, 255, 255, 255];
@@ -29,6 +29,10 @@ const RADIUS_SM: f32 = 4.0;
 const SHADOW_NONE: f32 = 0.0;
 const BORDER_THIN: f32 = 1.0;
 const Z_INDEX_OVERLAY: i32 = 100;
+const MOTION_FAST_MS: u16 = 120;
+const MOTION_STANDARD_MS: u16 = 180;
+const MOTION_DISTANCE_SM: u16 = 8;
+const MOTION_DISTANCE_MD: u16 = 12;
 
 pub(super) struct ThemePreset {
     id: &'static str,
@@ -100,6 +104,7 @@ impl ThemePreset {
                 name: "overlay".to_string(),
                 value: Z_INDEX_OVERLAY,
             }],
+            motion: motion_tokens(),
         }
     }
 
@@ -116,6 +121,23 @@ impl ThemePreset {
             color_token("selection", self.selection),
         ]
     }
+}
+
+fn motion_tokens() -> Vec<MotionToken> {
+    vec![
+        MotionToken {
+            name: "fast".to_string(),
+            duration_ms: MOTION_FAST_MS,
+            easing: "standard".to_string(),
+            distance_px: MOTION_DISTANCE_SM,
+        },
+        MotionToken {
+            name: "standard".to_string(),
+            duration_ms: MOTION_STANDARD_MS,
+            easing: "emphasized".to_string(),
+            distance_px: MOTION_DISTANCE_MD,
+        },
+    ]
 }
 
 fn color_token(name: &str, rgba: Rgba) -> ColorToken {

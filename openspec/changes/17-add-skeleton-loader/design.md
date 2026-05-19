@@ -68,7 +68,7 @@ cluster は children の skeleton を内部 `Row` / `Column` で配置。
 ## Out of scope
 
 - 自動 measure（real content と完全に合致する skeleton 生成）：v2 以降
-- アニメーションのカスタム curve：`add-animation-primitives-18` で扱う
+- アニメーションのカスタム curve：`18-add-animation-primitives` で扱う
 
 ## 影響範囲
 

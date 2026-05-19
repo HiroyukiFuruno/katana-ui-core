@@ -1,4 +1,5 @@
 mod accessors;
+pub mod collapsible_panel;
 mod diagnostics_list;
 mod items;
 mod model;
@@ -8,6 +9,10 @@ mod options_extra;
 mod types;
 mod workspace_tab_bar;
 
+pub use collapsible_panel::{
+    CollapsiblePanel, CollapsiblePanelAction, CollapsiblePanelEvent, CollapsiblePanelOptions,
+    CollapsiblePanelState, PanelMode, PanelSide, ResizableWidth as CollapsiblePanelWidth,
+};
 pub use diagnostics_list::{
     BulkFixSkipReason, DiagnosticAction, DiagnosticFixPreview, DiagnosticId, DiagnosticItem,
     DiagnosticKeyboardInput, DiagnosticLocation, DiagnosticSeverity, DiagnosticsGroup,

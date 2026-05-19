@@ -14,6 +14,7 @@ const REQUIRED_PAGES: &[&str] = &[
     "divider",
     "spacer",
     "key-cap",
+    "skeleton",
     "loading-dots",
     "spinner",
     "progress-bar",
@@ -52,6 +53,10 @@ const REQUIRED_PAGES: &[&str] = &[
     "shortcut-combo",
     "shortcut-cheatsheet",
     "settings-list",
+    "collapsible-panel",
+    "virtualization",
+    "skeleton-cluster",
+    "motion",
     "attachment-chip",
     "chip-group",
     "diagnostics-list",
@@ -86,7 +91,7 @@ impl StoryRequirements {
         match page {
             "text" | "icon" | "divider" | "spacer" | "key-cap" | "loading-dots" | "spinner"
             | "progress-bar" | "color-swatch" | "toggle" | "slide-control" | "chip"
-            | "shortcut-combo" => MIN_SINGLE_NODE,
+            | "shortcut-combo" | "skeleton" | "virtualization" | "motion" => MIN_SINGLE_NODE,
             "button" | "text-button" | "svg-button" | "icon-text-button" | "text-input"
             | "text-area" | "checkbox" | "radio" | "badge" => MIN_SINGLE_NODE,
             "card"
@@ -103,7 +108,9 @@ impl StoryRequirements {
             | "split-pane"
             | "align-center"
             | "banner"
-            | "shortcut-cheatsheet" => MIN_CHILDREN_NODE,
+            | "shortcut-cheatsheet"
+            | "skeleton-cluster"
+            | "collapsible-panel" => MIN_CHILDREN_NODE,
             "list"
             | "menu"
             | "context-menu"

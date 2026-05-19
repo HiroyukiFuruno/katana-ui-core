@@ -71,6 +71,14 @@ pub struct ZIndexToken {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MotionToken {
+    pub name: String,
+    pub duration_ms: u16,
+    pub easing: String,
+    pub distance_px: u16,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ThemeDiff {
     changed_sections: Vec<String>,
 }

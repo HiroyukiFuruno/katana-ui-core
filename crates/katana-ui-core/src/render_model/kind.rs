@@ -61,6 +61,7 @@ pub enum UiNodeKind {
     ShortcutCheatsheet,
     SettingsList,
     CollapsibleSidebar,
+    CollapsiblePanel,
     AppShell,
     VirtualizedList,
     VirtualizedTree,

@@ -11,9 +11,10 @@ mod empty_state;
 mod segmented_toggle;
 mod selection;
 pub mod shortcut_cheatsheet;
+mod skeleton_cluster;
 mod state;
 pub mod status_bar;
-mod structured;
+pub mod structured;
 mod toast_stack_manager;
 pub mod toolbar;
 
@@ -22,11 +23,10 @@ pub use app_primitives::{
     MotionPrimitiveKind, MotionSpec, ReducedMotionPolicy, ResizableWidth, RowHeightProvider,
     SettingsControl, SettingsControlKind, SettingsControlOption, SettingsDirtyVisualization,
     SettingsField, SettingsKeyboardInput, SettingsList, SettingsListAction, SettingsListEvent,
-    SettingsSection, SettingsValue, SidebarEvent, SidebarMode, Skeleton, SkeletonAnimation,
-    SkeletonCluster, SkeletonShape, SplashBackground, SplashEvent, SplashScreen, SplashSize,
-    SplashStatus, TitleBar, TitleBarEvent, TitleBarStyle, VirtualRange, VirtualizationConfig,
-    VirtualizedEvent, VirtualizedList, VirtualizedTree, WindowChrome, WindowControlKind,
-    WindowControlsPosition,
+    SettingsSection, SettingsValue, SidebarEvent, SidebarMode, SplashBackground, SplashEvent,
+    SplashScreen, SplashSize, SplashStatus, TitleBar, TitleBarEvent, TitleBarStyle, VirtualRange,
+    VirtualizationConfig, VirtualizedEvent, VirtualizedList, VirtualizedTree, WindowChrome,
+    WindowControlKind, WindowControlsPosition,
 };
 pub use attachment_chip::{
     AttachmentChip, AttachmentChipAction, AttachmentChipEvent, AttachmentKind, AttachmentMeta,
@@ -69,6 +69,7 @@ pub use shortcut_cheatsheet::{
     ShortcutCheatsheet, ShortcutCheatsheetAction, ShortcutCheatsheetEvent, ShortcutCheatsheetGroup,
     ShortcutCheatsheetItem, ShortcutCheatsheetLayout,
 };
+pub use skeleton_cluster::{SkeletonCluster, SkeletonClusterPreset};
 pub use status_bar::{
     ProgressMeterShape, ProgressMeterSpec, StatusBar, StatusBarAction, StatusBarContractViolation,
     StatusBarEvent, StatusBarMode, StatusBarPopoverSpec, StatusBarSegment,
@@ -83,12 +84,14 @@ pub use structured::{
     CloseableTabKeyboardShortcut, CloseableTabOverflowConfig, CloseableTabOverflowPlan,
     CloseableTabOverflowPlanner, CloseableTabStrip, CloseableTabStripAction,
     CloseableTabStripEvent, CloseableTabStripOptions, CloseableTabStripState, CloseableTabTone,
-    CommandItem, CommandPalette, DiagnosticAction, DiagnosticFixPreview, DiagnosticId,
-    DiagnosticItem, DiagnosticKeyboardInput, DiagnosticLocation, DiagnosticSeverity,
-    DiagnosticsGroup, DiagnosticsGroupBy, DiagnosticsList, DiagnosticsListAction,
-    DiagnosticsListEvent, DiagnosticsListOptions, DiagnosticsListPlanner, DiagnosticsListState,
-    DiagnosticsSortBy, DiagnosticsVisibleSnapshot, DynamicArrayEditor, MeasuredCloseableTab,
-    TabGroup, TabGroupId, TabGroupTarget, TabId, TreeLineStyle, TreeNode, TreeNodeKind, TreeView,
+    CollapsiblePanel, CollapsiblePanelAction, CollapsiblePanelEvent, CollapsiblePanelOptions,
+    CollapsiblePanelState, CollapsiblePanelWidth, CommandItem, CommandPalette, DiagnosticAction,
+    DiagnosticFixPreview, DiagnosticId, DiagnosticItem, DiagnosticKeyboardInput,
+    DiagnosticLocation, DiagnosticSeverity, DiagnosticsGroup, DiagnosticsGroupBy, DiagnosticsList,
+    DiagnosticsListAction, DiagnosticsListEvent, DiagnosticsListOptions, DiagnosticsListPlanner,
+    DiagnosticsListState, DiagnosticsSortBy, DiagnosticsVisibleSnapshot, DynamicArrayEditor,
+    MeasuredCloseableTab, PanelMode, PanelSide, TabGroup, TabGroupId, TabGroupTarget, TabId,
+    TreeLineStyle, TreeNode, TreeNodeKind, TreeView,
 };
 pub use toast_stack_manager::{
     ActiveToast, ToastAction, ToastActionKind, ToastDedupStrategy, ToastDismissReason,

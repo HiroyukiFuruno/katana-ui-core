@@ -3,7 +3,8 @@ use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::render_model::{UiNodeKind, UiSize, UiTree, UiVariant};
 use katana_ui_core::widget::atoms::{
-    KeyCombo, KeyKind, KeyModifiers, RuntimePlatform, ShortcutCombo,
+    KeyCombo, KeyKind, KeyModifiers, RuntimePlatform, ShortcutCombo, Skeleton, SkeletonAnimation,
+    SkeletonShape,
 };
 use katana_ui_core::widget::molecules::{
     AppShell, AppShellSlot, AppShellSlotKind, CollapsibleSidebar, MotionPrimitive,
@@ -11,10 +12,9 @@ use katana_ui_core::widget::molecules::{
     SettingsControl, SettingsDirtyVisualization, SettingsField, SettingsList, SettingsListEvent,
     SettingsSection, SettingsValue, ShortcutCheatsheet, ShortcutCheatsheetAction,
     ShortcutCheatsheetEvent, ShortcutCheatsheetGroup, ShortcutCheatsheetItem, SidebarEvent,
-    SidebarMode, Skeleton, SkeletonAnimation, SkeletonCluster, SkeletonShape, SplashEvent,
-    SplashScreen, SplashSize, SplashStatus, TitleBar, TitleBarEvent, TitleBarStyle,
-    VirtualizationConfig, VirtualizedEvent, VirtualizedList, VirtualizedTree, WindowControlKind,
-    WindowControlsPosition,
+    SidebarMode, SkeletonCluster, SplashEvent, SplashScreen, SplashSize, SplashStatus, TitleBar,
+    TitleBarEvent, TitleBarStyle, VirtualizationConfig, VirtualizedEvent, VirtualizedList,
+    VirtualizedTree, WindowControlKind, WindowControlsPosition,
 };
 
 #[test]
@@ -121,17 +121,22 @@ fn sidebar_and_app_shell_expose_width_mode_and_slot_contract() {
 #[test]
 fn virtualized_list_and_tree_compute_stable_visible_ranges() {
     let config = VirtualizationConfig {
+        enabled: true,
         total_count: 10_000,
+        viewport_offset: 900,
         viewport_height: 100,
-        scroll_y: 900,
         overscan: 2,
-        row_height: RowHeightProvider::Fixed(20),
+        row_height_provider: RowHeightProvider::Fixed { height: 20 },
         keep_focused_in_window: true,
         focused_index: Some(80),
     };
     let mut list = VirtualizedList::new("Rows", config.clone());
     assert_eq!(43, list.visible_range().start);
-    assert_eq!(81, list.visible_range().end);
+    assert_eq!(52, list.visible_range().end);
+    assert_eq!(
+        Some(80),
+        list.visible_range().focused_row.map(|it| it.index)
+    );
 
     let scroll = UiAction::set_value(list.state_id().clone(), "1000");
     assert!(list.apply_action(&scroll).handled);
@@ -159,6 +164,7 @@ fn skeleton_and_motion_make_passive_and_reduced_motion_contract_explicit() {
         duration_ms: 180,
         distance_px: 12,
         policy: ReducedMotionPolicy::Respect,
+        disable_in: Vec::new(),
     };
     let mut motion = MotionPrimitive::new("Panel motion", spec);
     let reduce = UiAction::reduced_motion(motion.state_id().clone(), true);
@@ -187,6 +193,7 @@ fn title_bar_window_chrome_and_splash_screen_emit_window_events() {
         duration_ms: 120,
         distance_px: 0,
         policy: ReducedMotionPolicy::ForceReduced,
+        disable_in: Vec::new(),
     };
     let mut splash = SplashScreen::new("Boot", spec)
         .status(SplashStatus::Error)

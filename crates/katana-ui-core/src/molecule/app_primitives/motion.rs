@@ -1,30 +1,10 @@
 use crate::component::ComponentAction;
-use crate::interaction::{UiAction, UiActionResult};
+use crate::interaction::{
+    MotionContext, MotionDisableContext, MotionResolver, MotionSnapshot, MotionSpec, UiAction,
+    UiActionResult,
+};
 use crate::render_model::{UiInteractionState, UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum MotionPrimitiveKind {
-    Fade,
-    Slide,
-    Scale,
-    Shimmer,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ReducedMotionPolicy {
-    Respect,
-    ForceReduced,
-    Ignore,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MotionSpec {
-    pub primitive: MotionPrimitiveKind,
-    pub duration_ms: u16,
-    pub distance_px: u16,
-    pub policy: ReducedMotionPolicy,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MotionPrimitive {
@@ -54,10 +34,18 @@ impl MotionPrimitive {
 
     #[must_use]
     pub fn effective_duration_ms(&self) -> u16 {
-        match (self.spec.policy, self.reduced_motion) {
-            (ReducedMotionPolicy::ForceReduced, _) | (ReducedMotionPolicy::Respect, true) => 0,
-            _ => self.spec.duration_ms,
-        }
+        self.motion_snapshot().duration_ms
+    }
+
+    #[must_use]
+    pub fn motion_snapshot(&self) -> MotionSnapshot {
+        MotionResolver::compute(
+            &self.spec,
+            MotionContext {
+                reduced_motion: self.reduced_motion,
+                surface: MotionDisableContext::Storybook,
+            },
+        )
     }
 }
 
@@ -90,7 +78,7 @@ impl From<MotionPrimitive> for UiNode {
 fn state(value: &MotionPrimitive) -> UiInteractionState {
     UiInteractionState {
         animation_phase: value.phase,
-        reduced_motion: value.effective_duration_ms() == 0,
+        reduced_motion: value.motion_snapshot().instant,
         ..UiInteractionState::default()
     }
 }

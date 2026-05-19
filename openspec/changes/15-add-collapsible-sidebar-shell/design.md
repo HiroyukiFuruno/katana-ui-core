@@ -1,15 +1,16 @@
-# Design — CollapsibleSidebar + AppShell
+# Design — CollapsiblePanel
 
 ## 目的
 
-「サイドバー + メインコンテンツ + 永続バー」を持つアプリ shell を統一する。
+利用側が app shell を自前で組むための、折りたたみ可能な panel molecule を定義する。
+KUC は app shell、page、template を公開しない。
 
 ## 採用方針
 
 ### 1. mode
 
 ```text
-SidebarMode = Expanded | IconOnly | Collapsed | FloatingOverlay
+PanelMode = Expanded | IconOnly | Collapsed | FloatingOverlay
 ```
 
 - `Expanded`: 通常の幅で表示
@@ -35,26 +36,15 @@ SidebarMode = Expanded | IconOnly | Collapsed | FloatingOverlay
 - ドラッグで width 変更、min / max に clamp
 - ダブルクリックで default に戻す
 
-### 5. AppShell の構造
+### 5. consumer shell との関係
 
-```text
-AppShell {
-  top_bar: Option<UiTree>,
-  leading_sidebar: Option<CollapsibleSidebar>,
-  main: UiTree,
-  trailing_sidebar: Option<CollapsibleSidebar>,
-  bottom_bar: Option<UiTree>,
-}
-```
-
-- top / bottom bar は高さ固定 or auto
-- 内部レイアウトは Grid model（layout primitive `Grid` を使う）
-- sidebar の mode 変化で main の available width が動的に変わる
-- FloatingOverlay の sidebar は z-index 上層に絶対配置
+- KUC は `AppShell` を提供しない
+- consumer は `SplitPane`、`Grid`、`Toolbar`、`StatusBar`、`CollapsiblePanel` を組み合わせて shell を構築する
+- `FloatingOverlay` の panel は z-index と placement を KUC の panel state として出すが、どの領域へ mount するかは consumer が決める
 
 ### 6. accessibility
 
-- sidebar header に role=banner 相当
+- panel header に role=banner 相当
 - ToggleExpand action は keyboard shortcut（Cmd/Ctrl + B 等）を accelerator で受けられる（accelerator は consumer の listener に任せる）
 - screen reader: 「Sidebar expanded」「Sidebar collapsed」announce
 
@@ -79,5 +69,5 @@ AppShell {
 
 ## 影響範囲
 
-- consumer 側 shell 実装を KUC で統一
-- 内部で `SplitPane`、`SideMenu`、layout `Grid` を使う
+- consumer 側 shell 実装は残す
+- KUC は折りたたみ panel の state / action / event / render model だけを統一する

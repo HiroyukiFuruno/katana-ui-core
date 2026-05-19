@@ -27,6 +27,7 @@ pub(super) fn examples() -> Vec<StoryExample> {
                 .size(UiSize::Large),
         ),
         atom_interactions::key_cap(),
+        atom_motion_interactions::skeleton(),
         atom_motion_interactions::loading_dots(),
         atom_motion_interactions::spinner(),
         atom_motion_interactions::progress_bar(),

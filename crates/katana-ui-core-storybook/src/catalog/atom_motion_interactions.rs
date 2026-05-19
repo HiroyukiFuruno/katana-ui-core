@@ -2,7 +2,7 @@ use super::{StoryCatalog, StoryExample};
 use katana_ui_core::atom;
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::{RgbaActionValue, UiAction};
-use katana_ui_core::render_model::{UiAnimationState, UiVisualRole};
+use katana_ui_core::render_model::{UiAnimationState, UiDimension, UiVisualRole};
 
 const PROGRESS_PERCENT: u8 = 64;
 const SLIDE_VALUE: &str = "42";
@@ -13,6 +13,20 @@ const COLOR_SWATCH_ALPHA: u8 = 255;
 const COLOR_SWATCH_HUE: u16 = 210;
 const LOADING_PHASE: u16 = 2;
 const SPINNER_PHASE: u16 = 3;
+const SKELETON_WIDTH_PX: u16 = 220;
+const SKELETON_HEIGHT_PX: u16 = 44;
+
+pub(super) fn skeleton() -> StoryExample {
+    let mut skeleton = atom::Skeleton::new("Skeleton", atom::SkeletonShape::Rounded)
+        .size(atom::SkeletonSize::Fixed {
+            width: UiDimension::Px(SKELETON_WIDTH_PX),
+            height: UiDimension::Px(SKELETON_HEIGHT_PX),
+        })
+        .animation(atom::SkeletonAnimation::Shimmer);
+    let target = skeleton.state_id().clone();
+    let result = skeleton.apply_action(&UiAction::reduced_motion(target, true));
+    StoryCatalog::interactive_story("skeleton", skeleton, result.callback_log)
+}
 
 pub(super) fn loading_dots() -> StoryExample {
     let mut loading = atom::LoadingDots::new("Loading dots")

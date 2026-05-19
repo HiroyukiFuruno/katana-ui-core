@@ -1,9 +1,10 @@
 ## ADDED Requirements
 
-### Requirement: CollapsibleSidebar exposes four typed modes
+### Requirement: CollapsiblePanel exposes four typed modes
 
-`CollapsibleSidebar` MUST expose `mode = Expanded | IconOnly | Collapsed | FloatingOverlay`.
+`CollapsiblePanel` MUST expose `mode = Expanded | IconOnly | Collapsed | FloatingOverlay`.
 The transition between modes MUST be observable via `ModeChanged` events.
+`CollapsiblePanel` MUST NOT expose app shell, page, or template slots.
 
 #### Scenario: switching modes emits events
 
@@ -17,9 +18,9 @@ The transition between modes MUST be observable via `ModeChanged` events.
 - **THEN** the sibling main content's available width is unchanged
 - **AND** the sidebar renders as an overlay on top of the main content with a higher z-index
 
-### Requirement: CollapsibleSidebar supports resizable width with optional persistence
+### Requirement: CollapsiblePanel supports resizable width with optional persistence
 
-`CollapsibleSidebar` MUST expose `width = ResizableWidth { min, max, default, persist_id }`.
+`CollapsiblePanel` MUST expose `width = ResizableWidth { min, max, default, persist_id }`.
 With `resize_handle = true`, dragging the handle MUST clamp the width to `[min, max]` and emit `WidthChanged`.
 Double-clicking the handle MUST reset width to `default`.
 
@@ -35,9 +36,9 @@ Double-clicking the handle MUST reset width to `default`.
 - **THEN** `width` returns to `default`
 - **AND** `WidthChanged { width: default }` is emitted
 
-### Requirement: CollapsibleSidebar supports expand-on-hover when unpinned
+### Requirement: CollapsiblePanel supports expand-on-hover when unpinned
 
-`CollapsibleSidebar` MUST allow `pinned = false` together with `expand_on_hover = true`.
+`CollapsiblePanel` MUST allow `pinned = false` together with `expand_on_hover = true`.
 Hovering the sidebar trigger area MUST temporarily expand to `Expanded` mode.
 Leaving the hover area MUST revert to the prior mode.
 
@@ -53,9 +54,9 @@ Leaving the hover area MUST revert to the prior mode.
 - **THEN** hover does not change the rendered mode
 - **AND** `state.hover_open` remains false
 
-### Requirement: CollapsibleSidebar persistence id is opaque to KUC
+### Requirement: CollapsiblePanel persistence id is opaque to KUC
 
-`CollapsibleSidebar` MUST accept `persist_id: Option<String>` and report `WidthChanged` for the consumer to store.
+`CollapsiblePanel` MUST accept `persist_id: Option<String>` and report `WidthChanged` for the consumer to store.
 KUC MUST NOT touch storage; persistence is the consumer's responsibility.
 
 #### Scenario: consumer subscribes to WidthChanged

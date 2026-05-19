@@ -1,12 +1,15 @@
 ## Why
 
-`katana` の workspace shell（app_frame/sidebar/explorer + central_content + status_bar）、`katana-chat-ui` の history panel + chat content、Storybook 自身の navigation + preview など、いずれも「左サイドバー（または右サイドバー）+ メインコンテンツ + オプションのサブパネル」のシェルレイアウトを取る。
+`katana` の explorer / preview side panel、`katana-chat-ui` の history panel、KDV の TOC / export panel、KLE の find / diagnostics panel は、いずれも「折りたたみ、hover 一時展開、幅変更、固定」を持つパネルを必要とする。
 
-KUC は `SideMenu` molecule、`SplitPane` molecule、`SideMenu` で部分的にカバーするが、「collapse / expand / icon-only mode / persistence の起点 / ホバーで一時展開 / drag による幅変更 / pin / floating overlay」を統合的に持つ shell molecule がない。
+KUC は `SideMenu` molecule と `SplitPane` layout で部分的にカバーできるが、「collapse / expand / icon-only mode / persistence の起点 / ホバーで一時展開 / drag による幅変更 / pin / floating overlay」を domain-free に表す panel molecule がない。
+
+KUC は app shell や画面テンプレートを提供しない。
+この change は、利用側が shell を組むための collapsible panel molecule だけを扱う。
 
 ## What Changes
 
-- `widget::molecules` に `CollapsibleSidebar` molecule を追加する:
+- `widget::molecules` に `CollapsiblePanel` molecule を追加する:
   - option:
     - `side: Leading | Trailing`
     - `mode: Expanded | IconOnly | Collapsed | FloatingOverlay`
@@ -20,22 +23,21 @@ KUC は `SideMenu` molecule、`SplitPane` molecule、`SideMenu` で部分的に�
   - action: SetMode / ToggleExpand / Pin / Unpin / ResizeWidth / FloatingOpen / FloatingClose
   - event: ModeChanged / WidthChanged / PinChanged / FloatingShown / FloatingHidden
   - state: mode, width, pinned, hover_open, callback_log
-- 横並びの shell layout を支える `AppShell` molecule（leading sidebar + main + trailing sidebar + top bar + bottom bar）を追加する。
+- `SplitPane`、`SideMenu`、`TreeView`、`Toolbar` を child として受け取れる slot contract を定義する。
+- `AppShell` は追加しない。top / bottom bar / main / leading / trailing の組み合わせは consumer が実装する。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `kuc-collapsible-sidebar`: CollapsibleSidebar molecule の完了条件を定義する。
-- `kuc-app-shell`: AppShell molecule の完了条件を定義する。
+- `kuc-collapsible-panel`: CollapsiblePanel molecule の完了条件を定義する。
 
 ### Modified Capabilities
 
-- `kuc-widget-layer`: `SideMenu`（メニュー）と `CollapsibleSidebar`（シェル境界の panel）と `SplitPane`（汎用分割）の責務境界を明記する。
+- `kuc-widget-layer`: `SideMenu`（メニュー）と `CollapsiblePanel`（折りたたみ可能な panel）と `SplitPane`（汎用分割）の責務境界を明記する。
 
 ## Impact
 
-- `crates/katana-ui-core/src/molecule/structured/sidebar.rs` 新設。
-- `crates/katana-ui-core/src/molecule/structured/app_shell.rs` 新設。
-- consumer (`katana` workspace shell、`katana-chat-ui` history panel、Storybook navigation) は KUC molecule に統一可能になる。
+- `crates/katana-ui-core/src/molecule/structured/collapsible_panel.rs` 新設。
+- consumer (`katana` sidebar / TOC、`katana-chat-ui` history panel、KDV / KLE side panel) は KUC molecule を組み合わせて shell を構築できる。
 - `SplitPane`、`SideMenu` を内部で再利用。

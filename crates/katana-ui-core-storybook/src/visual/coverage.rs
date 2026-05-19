@@ -150,6 +150,7 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::Divider
             | UiNodeKind::Spacer
             | UiNodeKind::KeyCap
+            | UiNodeKind::Skeleton
             | UiNodeKind::LoadingDots
             | UiNodeKind::Spinner
             | UiNodeKind::Badge
@@ -195,6 +196,11 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::ShortcutCombo
             | UiNodeKind::ShortcutCheatsheet
             | UiNodeKind::SettingsList
+            | UiNodeKind::CollapsiblePanel
+            | UiNodeKind::VirtualizedList
+            | UiNodeKind::VirtualizedTree
+            | UiNodeKind::SkeletonCluster
+            | UiNodeKind::MotionPrimitive
             | UiNodeKind::Row
             | UiNodeKind::Column
             | UiNodeKind::Stack

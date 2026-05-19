@@ -3,6 +3,7 @@ pub mod chip;
 mod defaults;
 mod options;
 pub mod shortcut_combo;
+pub mod skeleton;
 mod state;
 mod state_actions;
 #[cfg(test)]
@@ -21,6 +22,7 @@ pub use shortcut_combo::{
     KeyCombo, KeyKind, KeyModifiers, NamedKey, RuntimePlatform, ShortcutCombo, ShortcutPlatform,
     ShortcutSeparator,
 };
+pub use skeleton::{Skeleton, SkeletonAnimation, SkeletonShape, SkeletonSize};
 use state::AtomState;
 pub use text_area::{
     TextArea, TextAreaAction, TextAreaActionOutcome, TextAreaCaretMove, TextAreaCompositionPhase,
