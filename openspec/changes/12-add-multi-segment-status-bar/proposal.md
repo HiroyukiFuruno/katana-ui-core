@@ -2,7 +2,8 @@
 
 `katana` の status bar（`top_bar/status_bar.rs`、`workspace_toolbar.rs`）、`katana-chat-ui` の usage / vendor 状態の表示、`katana-markdown-linter` の linter summary は、いずれも複数 segment を持つ status bar 構造を取る（leading に file info、center に lint summary、trailing に encoding / line:col / language 等）。
 
-KUC は `StatusBar` molecule を持つが、現状は「severity message 1 件 + dismiss + action」レベルで、複数 segment 構造（leading / center / trailing × 複数 segment、segment ごとの click / popover）を持たない。
+KUC は `StatusBar` molecule と `ProgressBar` atom を持つが、現状は「severity message 1 件 + dismiss + action」と線形 progress に留まる。
+複数 segment 構造（leading / center / trailing × 複数 segment、segment ごとの click / popover）と、`katana-chat-ui` の usage 表示で必要な ring / pie 型の progress meter を持たない。
 
 ## What Changes
 
@@ -17,7 +18,13 @@ KUC は `StatusBar` molecule を持つが、現状は「severity message 1 件 +
   - id, label, icon, tone, alignment（Leading | Center | Trailing）, tooltip
   - `interactive: bool`（クリック / popover trigger）
   - `popover: Option<PopoverSpec>`（segment クリックで popover を開く）
-  - `progress: Option<f32>`（progress 表示）
+- `ProgressMeter` atom を追加する、または `ProgressBar` を拡張する:
+  - `shape: Linear | Ring | Pie`
+  - `percent: u8`
+  - `label`
+  - `tone`
+  - `tooltip`
+- `StatusBarSegment` は `progress: Option<ProgressMeterSpec>` を持てる。
 - action: `SegmentPressed` / `SegmentPopoverOpened` / `SegmentPopoverClosed` / `Dismiss`（既存）
 - event: 同上 + `SegmentTooltipShown`
 
@@ -29,11 +36,11 @@ KUC は `StatusBar` molecule を持つが、現状は「severity message 1 件 +
 
 ### New Capabilities
 
-- `kuc-status-bar-segments`: status bar segment の option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページの完了条件を定義する。
+- `kuc-status-bar-segments`: status bar segment と progress meter の option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページの完了条件を定義する。
 
 ## Impact
 
-- `crates/katana-ui-core/src/molecule/basic.rs`（`StatusBar`）を拡張する。
+- `crates/katana-ui-core/src/molecule/basic.rs`（`StatusBar`）と progress atom を拡張する。
 - 既存 SingleMessage モードは default で動作維持。
 - consumer (`katana` workspace_toolbar、`katana-chat-ui` usage bar、`katana-markdown-linter` summary) は KUC StatusBar に統一できる。
 - segment popover は `add-rich-popover-and-hover-card-04` の共通 placement engine に依存。

@@ -1,7 +1,6 @@
 mod app_shell;
 mod motion;
 mod settings;
-mod shortcut;
 mod sidebar;
 mod skeleton;
 mod splash;
@@ -11,12 +10,9 @@ mod virtualization;
 pub use app_shell::{AppShell, AppShellSlot, AppShellSlotKind};
 pub use motion::{MotionPrimitive, MotionPrimitiveKind, MotionSpec, ReducedMotionPolicy};
 pub use settings::{
-    SettingsControlKind, SettingsDirtyVisualization, SettingsField, SettingsList,
-    SettingsListEvent, SettingsSection,
-};
-pub use shortcut::{
-    ShortcutCheatsheet, ShortcutCheatsheetEntry, ShortcutCheatsheetEvent, ShortcutCombo,
-    ShortcutPlatform,
+    SettingsControl, SettingsControlKind, SettingsControlOption, SettingsDirtyVisualization,
+    SettingsField, SettingsKeyboardInput, SettingsList, SettingsListAction, SettingsListEvent,
+    SettingsSection, SettingsValue,
 };
 pub use sidebar::{CollapsibleSidebar, ResizableWidth, SidebarEvent, SidebarMode};
 pub use skeleton::{Skeleton, SkeletonAnimation, SkeletonCluster, SkeletonShape};

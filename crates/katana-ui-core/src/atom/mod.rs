@@ -2,6 +2,7 @@ mod action_policy;
 pub mod chip;
 mod defaults;
 mod options;
+pub mod shortcut_combo;
 mod state;
 mod state_actions;
 #[cfg(test)]
@@ -16,6 +17,10 @@ use crate::render_model::{
 };
 pub use chip::{Chip, ChipAction, ChipEvent, ChipKeyboardInput, ChipSize, ChipTone, ChipVariant};
 use serde::{Deserialize, Serialize};
+pub use shortcut_combo::{
+    KeyCombo, KeyKind, KeyModifiers, NamedKey, RuntimePlatform, ShortcutCombo, ShortcutPlatform,
+    ShortcutSeparator,
+};
 use state::AtomState;
 pub use text_area::{
     TextArea, TextAreaAction, TextAreaActionOutcome, TextAreaCaretMove, TextAreaCompositionPhase,

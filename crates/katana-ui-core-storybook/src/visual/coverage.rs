@@ -157,6 +157,8 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::ColorSwatch
             | UiNodeKind::SlideControl
             | UiNodeKind::NotificationToast
+            | UiNodeKind::Banner
+            | UiNodeKind::ToastStackManager
             | UiNodeKind::Popover
             | UiNodeKind::HoverCard
             | UiNodeKind::Tooltip
@@ -190,6 +192,9 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::SelectionList
             | UiNodeKind::SideMenu
             | UiNodeKind::StatusBar
+            | UiNodeKind::ShortcutCombo
+            | UiNodeKind::ShortcutCheatsheet
+            | UiNodeKind::SettingsList
             | UiNodeKind::Row
             | UiNodeKind::Column
             | UiNodeKind::Stack

@@ -2,76 +2,93 @@ use katana_ui_core::atom::Text;
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::render_model::{UiNodeKind, UiSize, UiTree, UiVariant};
+use katana_ui_core::widget::atoms::{
+    KeyCombo, KeyKind, KeyModifiers, RuntimePlatform, ShortcutCombo,
+};
 use katana_ui_core::widget::molecules::{
     AppShell, AppShellSlot, AppShellSlotKind, CollapsibleSidebar, MotionPrimitive,
     MotionPrimitiveKind, MotionSpec, ReducedMotionPolicy, ResizableWidth, RowHeightProvider,
-    SettingsControlKind, SettingsDirtyVisualization, SettingsField, SettingsList,
-    SettingsListEvent, SettingsSection, ShortcutCheatsheet, ShortcutCheatsheetEntry,
-    ShortcutCheatsheetEvent, ShortcutCombo, ShortcutPlatform, SidebarEvent, SidebarMode, Skeleton,
-    SkeletonAnimation, SkeletonCluster, SkeletonShape, SplashEvent, SplashScreen, SplashSize,
-    SplashStatus, TitleBar, TitleBarEvent, TitleBarStyle, VirtualizationConfig, VirtualizedEvent,
-    VirtualizedList, VirtualizedTree, WindowControlKind, WindowControlsPosition,
+    SettingsControl, SettingsDirtyVisualization, SettingsField, SettingsList, SettingsListEvent,
+    SettingsSection, SettingsValue, ShortcutCheatsheet, ShortcutCheatsheetAction,
+    ShortcutCheatsheetEvent, ShortcutCheatsheetGroup, ShortcutCheatsheetItem, SidebarEvent,
+    SidebarMode, Skeleton, SkeletonAnimation, SkeletonCluster, SkeletonShape, SplashEvent,
+    SplashScreen, SplashSize, SplashStatus, TitleBar, TitleBarEvent, TitleBarStyle,
+    VirtualizationConfig, VirtualizedEvent, VirtualizedList, VirtualizedTree, WindowControlKind,
+    WindowControlsPosition,
 };
 
 #[test]
 fn shortcut_combo_and_cheatsheet_keep_typed_query_and_selection_event() {
-    let combo = ShortcutCombo::new("Save", ["Command", "S"]).platform(ShortcutPlatform::MacOs);
-    let mut sheet = ShortcutCheatsheet::new("Shortcuts").entry(ShortcutCheatsheetEntry {
-        id: "save".to_string(),
-        label: "Save file".to_string(),
-        combo,
-    });
+    let combo = KeyCombo::new(
+        KeyModifiers {
+            command: true,
+            ..KeyModifiers::default()
+        },
+        KeyKind::Char('s'),
+    );
+    let mut sheet =
+        ShortcutCheatsheet::new("Shortcuts").group(ShortcutCheatsheetGroup::new("File").item(
+            ShortcutCheatsheetItem::new("save", "Save file", combo.clone()),
+        ));
 
-    let query = UiAction::set_value(sheet.state_id().clone(), "Save");
-    assert!(sheet.apply_action(&query).handled);
-    assert_eq!(1, sheet.filtered_entries().len());
+    let query = sheet.apply_action(ShortcutCheatsheetAction::SetQuery("Save".to_string()));
     assert_eq!(
-        ShortcutCheatsheetEvent::QueryChanged("Save".to_string()),
-        *sheet.last_event()
+        Some(ShortcutCheatsheetEvent::QueryChanged("Save".to_string())),
+        query
+    );
+    assert_eq!(1, sheet.visible_items().len());
+
+    let select = sheet.apply_action(ShortcutCheatsheetAction::SelectShortcut("save".to_string()));
+    assert_eq!(
+        Some(ShortcutCheatsheetEvent::ShortcutSelected {
+            id: "save".to_string(),
+            combo: combo.clone()
+        }),
+        select
     );
 
-    let select = UiAction::set_selected_index(sheet.state_id().clone(), 0);
-    assert!(sheet.apply_action(&select).handled);
+    let tree = UiTree::new(sheet);
+    assert_eq!(UiNodeKind::ShortcutCheatsheet, tree.root().kind());
+    assert_eq!("⌘S", tree.root().children()[0].props().shortcut.combo);
     assert_eq!(
-        ShortcutCheatsheetEvent::ShortcutSelected("save".to_string()),
-        *sheet.last_event()
+        "Command + S",
+        ShortcutCombo::new("Save file", combo).accessibility_text(RuntimePlatform::MacOS)
     );
 }
 
 #[test]
 fn settings_list_filters_resets_and_collapses_with_typed_events() {
-    let field = SettingsField {
-        id: "theme".to_string(),
-        label: "Theme".to_string(),
-        control: SettingsControlKind::Select,
-        value: "Dark".to_string(),
-        default_value: "Light".to_string(),
-        dirty: true,
-    };
-    let section = SettingsSection {
-        id: "appearance".to_string(),
-        label: "Appearance".to_string(),
-        fields: vec![field],
-        collapsed: false,
-    };
+    let field = SettingsField::new(
+        "theme",
+        "Theme",
+        SettingsControl::Select {
+            options: Vec::new(),
+            selected: "Dark".to_string(),
+        },
+    )
+    .reset_to_default(SettingsValue::Text("Light".to_string()));
+    let section = SettingsSection::new("appearance", "Appearance")
+        .collapsible(true)
+        .field(field);
     let mut list = SettingsList::new("Settings")
-        .dirty_visualization(SettingsDirtyVisualization::ResetAction)
+        .dirty_visualization(SettingsDirtyVisualization::Marker)
         .section(section);
 
     assert_eq!(1, list.visible_fields().len());
     let reset = UiAction::clear_value(list.state_id().clone());
     assert!(list.apply_action(&reset).handled);
-    assert_eq!(
-        SettingsListEvent::FieldReset("theme".to_string()),
-        *list.last_event()
-    );
+    assert!(matches!(
+        list.last_event(),
+        Some(SettingsListEvent::FieldReset { field_id }) if field_id == "theme"
+    ));
 
     let collapse = UiAction::set_selected_index(list.state_id().clone(), 0);
     assert!(list.apply_action(&collapse).handled);
-    assert_eq!(
-        SettingsListEvent::SectionCollapsed("appearance".to_string(), true),
-        *list.last_event()
-    );
+    assert!(matches!(
+        list.last_event(),
+        Some(SettingsListEvent::SectionCollapsed { section_id, collapsed })
+            if section_id == "appearance" && *collapsed
+    ));
     assert!(list.visible_fields().is_empty());
 }
 

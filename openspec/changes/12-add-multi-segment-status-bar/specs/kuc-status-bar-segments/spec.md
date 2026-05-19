@@ -53,21 +53,28 @@ Segments with `popover = Some(...)` MUST open the configured popover using the s
 - **THEN** the popover opens at the segment anchor
 - **AND** `SegmentPopoverOpened { id }` is emitted
 
-### Requirement: StatusBar segment supports background progress overlay
+### Requirement: StatusBar segment supports progress meter
 
-`StatusBarSegment` MUST allow `progress: Option<f32>` clamped to `[0.0, 1.0]`.
-When set, the segment MUST render a thin progress overlay behind the label and icon.
+`StatusBarSegment` MUST allow `progress: Option<ProgressMeterSpec>`.
+`ProgressMeterSpec` MUST support `shape = Linear | Ring | Pie`, `percent: u8`, `label`, `tone`, and `tooltip`.
+`percent` MUST be clamped to `[0, 100]`.
 
-#### Scenario: progress at 0.6 renders 60% overlay
+#### Scenario: linear progress renders overlay
 
-- **WHEN** `progress = Some(0.6)` is set
+- **WHEN** `progress.shape = Linear` and `percent = 60` are set
 - **THEN** the segment renders a 60% width overlay using the configured progress tone
 - **AND** the label and icon remain readable on top of the overlay
 
-#### Scenario: progress unset hides overlay
+#### Scenario: ring progress renders usage meter
+
+- **WHEN** `progress.shape = Ring` and `percent = 75` are set
+- **THEN** the segment render model contains a ring meter at 75%
+- **AND** the optional tooltip can show usage details without encoding chat-specific fields
+
+#### Scenario: progress unset hides meter
 
 - **WHEN** `progress = None`
-- **THEN** no overlay is rendered
+- **THEN** no progress meter is rendered
 - **AND** segment layout matches the non-progress preset
 
 ### Requirement: StatusBar accessibility announces segments in reading order

@@ -2,25 +2,25 @@
 
 ## 1. 設計確定
 
-- [ ] 1.1 `StatusBarMode` enum と segment 構造を確定する。
-- [ ] 1.2 segment popover の typed spec を確定する。
-- [ ] 1.3 density / alignment / progress overlay を確定する。
+- [x] 1.1 `StatusBarMode` enum と segment 構造を確定する。
+- [x] 1.2 segment popover の typed spec を確定する。
+- [x] 1.3 density / alignment / progress overlay を確定する。
 
 ## 2. 中核実装
 
-- [ ] 2.1 `molecule/basic.rs` の `StatusBar` を mode 拡張する。
-- [ ] 2.2 `actions.rs` に `SegmentPressed` / `SegmentPopoverOpened` / `SegmentPopoverClosed` / `Dismiss` を追加する。
+- [x] 2.1 `molecule/status_bar.rs` として `StatusBar` を mode 拡張する。
+- [x] 2.2 `StatusBarAction` / `StatusBarEvent` に `SegmentPressed` / `SegmentPopoverOpened` / `SegmentPopoverClosed` を追加する。
 - [ ] 2.3 segment popover は共通 placement engine（`add-rich-popover-and-hover-card-04`）を使う。
-- [ ] 2.4 後方互換性のため SingleMessage モードのデフォルト挙動を維持する。
+- [x] 2.4 後方互換性のため SingleMessage モードのデフォルト挙動を維持する。
 
 ## 3. 自動テスト
 
-- [ ] 3.1 mode = SingleMessage は既存 API と同等であることを回帰する。
-- [ ] 3.2 mode = MultiSegment で segment が alignment 別に正しく配置されることを検証する。
-- [ ] 3.3 segment interactive=true で `SegmentPressed` 発火、popover あり segment でクリック→open を検証する。
-- [ ] 3.4 progress overlay が指定値（0..1）で描画 props に反映されることを検証する。
-- [ ] 3.5 mode と single message の同時設定が validation で reject されることを検証する。
-- [ ] 3.6 accessibility live region announce の順序を検証する。
+- [x] 3.1 mode = SingleMessage は既存 API と同等であることを回帰する。
+- [x] 3.2 mode = MultiSegment で segment が alignment 別に正しく配置されることを検証する。
+- [x] 3.3 segment interactive=true で `SegmentPressed` 発火、popover あり segment でクリック→open を検証する。
+- [x] 3.4 progress overlay が指定値で描画 props に反映されることを検証する。
+- [x] 3.5 mode と single message の同時設定が validation で reject されることを検証する。
+- [x] 3.6 accessibility live region announce の順序を検証する。
 
 ## 4. 画像回帰
 
@@ -32,7 +32,7 @@
 
 ## 5. Storybook ページ
 
-- [ ] 5.1 既存 `Surface > StatusBar` ページに「Multi-segment」preset を追加する。
+- [x] 5.1 既存 `Surface > StatusBar` ページに「Multi-segment」preset を追加する。
 - [ ] 5.2 preset「editor status bar」「chat usage bar」「linter summary」「progress segment」「popover segment」を実装する。
 - [ ] 5.3 settings で mode / segments / density を切替えできるようにする。
 
@@ -40,9 +40,9 @@
 
 - [ ] 6.1 `docs/architecture/ui-separation/owned-ui-task-map.md` の StatusBar 行に Multi-segment を追記する。
 
-## 7. 品質ゲート
+## 7. 品質ゲート / DoD
 
-- [ ] 7.1 `cargo test -p katana-ui-core` をパスする。
-- [ ] 7.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。
-- [ ] 7.3 `openspec validate add-multi-segment-status-bar-12 --strict` をパスする。
+- [x] 7.1 `cargo test -p katana-ui-core` をパスする。
+- [x] 7.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。
+- [x] 7.3 `openspec validate 12-add-multi-segment-status-bar --strict` をパスする。
 - [ ] 7.4 画像 / 入力回帰の CI gate をパスする。

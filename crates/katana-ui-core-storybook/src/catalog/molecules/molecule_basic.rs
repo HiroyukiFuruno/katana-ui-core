@@ -63,12 +63,6 @@ pub(super) fn examples() -> Vec<StoryExample> {
                 .child(atom::Button::new("Files"))
                 .child(atom::Button::new("Settings")),
         ),
-        StoryCatalog::story(
-            "status-bar",
-            molecule::StatusBar::new("Status bar")
-                .child(atom::Badge::new("Ready"))
-                .child(atom::Text::new("Ln 1")),
-        ),
     ]
 }
 

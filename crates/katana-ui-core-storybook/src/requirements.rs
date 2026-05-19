@@ -24,6 +24,8 @@ const REQUIRED_PAGES: &[&str] = &[
     "list",
     "menu",
     "context-menu",
+    "banner",
+    "toast-stack-manager",
     "tooltip",
     "modal",
     "tabs",
@@ -47,6 +49,9 @@ const REQUIRED_PAGES: &[&str] = &[
     "selection-list",
     "side-menu",
     "status-bar",
+    "shortcut-combo",
+    "shortcut-cheatsheet",
+    "settings-list",
     "attachment-chip",
     "chip-group",
     "diagnostics-list",
@@ -80,15 +85,25 @@ impl StoryRequirements {
     pub(crate) fn minimum_nodes_for(page: &str) -> usize {
         match page {
             "text" | "icon" | "divider" | "spacer" | "key-cap" | "loading-dots" | "spinner"
-            | "progress-bar" | "color-swatch" | "toggle" | "slide-control" | "chip" => {
-                MIN_SINGLE_NODE
-            }
+            | "progress-bar" | "color-swatch" | "toggle" | "slide-control" | "chip"
+            | "shortcut-combo" => MIN_SINGLE_NODE,
             "button" | "text-button" | "svg-button" | "icon-text-button" | "text-input"
             | "text-area" | "checkbox" | "radio" | "badge" => MIN_SINGLE_NODE,
-            "card" | "tooltip" | "modal" | "popover" | "hover-card" | "empty-state" | "row"
-            | "column" | "stack" | "grid" | "scroll-area" | "split-pane" | "align-center" => {
-                MIN_CHILDREN_NODE
-            }
+            "card"
+            | "tooltip"
+            | "modal"
+            | "popover"
+            | "hover-card"
+            | "empty-state"
+            | "row"
+            | "column"
+            | "stack"
+            | "grid"
+            | "scroll-area"
+            | "split-pane"
+            | "align-center"
+            | "banner"
+            | "shortcut-cheatsheet" => MIN_CHILDREN_NODE,
             "list"
             | "menu"
             | "context-menu"
@@ -110,6 +125,8 @@ impl StoryRequirements {
             | "selection-list"
             | "side-menu"
             | "status-bar"
+            | "toast-stack-manager"
+            | "settings-list"
             | "attachment-chip"
             | "chip-group"
             | "diagnostics-list"

@@ -1,3 +1,4 @@
+mod molecule_app_primitives;
 mod molecule_basic;
 mod molecule_heavy;
 mod molecule_interaction;
@@ -8,6 +9,7 @@ use super::StoryExample;
 pub(super) fn examples() -> Vec<StoryExample> {
     let mut examples = Vec::new();
     examples.extend(molecule_basic::examples());
+    examples.extend(molecule_app_primitives::examples());
     examples.extend(molecule_heavy::examples());
     examples.extend(molecule_interaction::examples());
     examples.extend(molecule_workspace::examples());

@@ -67,7 +67,7 @@ StatusBarSegment {
 ## Out of scope
 
 - 複数 status bar（ウィンドウ上下両方）：consumer 責務
-- グローバルアニメーション：`add-animation-primitives-18`
+- グローバルアニメーション：`18-add-animation-primitives`
 
 ## 影響範囲
 

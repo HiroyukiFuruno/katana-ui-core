@@ -10,26 +10,29 @@ mod disclosure_foundation;
 mod empty_state;
 mod segmented_toggle;
 mod selection;
+pub mod shortcut_cheatsheet;
 mod state;
+pub mod status_bar;
 mod structured;
+mod toast_stack_manager;
 pub mod toolbar;
 
 pub use app_primitives::{
     AppShell, AppShellSlot, AppShellSlotKind, CollapsibleSidebar, MotionPrimitive,
     MotionPrimitiveKind, MotionSpec, ReducedMotionPolicy, ResizableWidth, RowHeightProvider,
-    SettingsControlKind, SettingsDirtyVisualization, SettingsField, SettingsList,
-    SettingsListEvent, SettingsSection, ShortcutCheatsheet, ShortcutCheatsheetEntry,
-    ShortcutCheatsheetEvent, ShortcutCombo, ShortcutPlatform, SidebarEvent, SidebarMode, Skeleton,
-    SkeletonAnimation, SkeletonCluster, SkeletonShape, SplashBackground, SplashEvent, SplashScreen,
-    SplashSize, SplashStatus, TitleBar, TitleBarEvent, TitleBarStyle, VirtualRange,
-    VirtualizationConfig, VirtualizedEvent, VirtualizedList, VirtualizedTree, WindowChrome,
-    WindowControlKind, WindowControlsPosition,
+    SettingsControl, SettingsControlKind, SettingsControlOption, SettingsDirtyVisualization,
+    SettingsField, SettingsKeyboardInput, SettingsList, SettingsListAction, SettingsListEvent,
+    SettingsSection, SettingsValue, SidebarEvent, SidebarMode, Skeleton, SkeletonAnimation,
+    SkeletonCluster, SkeletonShape, SplashBackground, SplashEvent, SplashScreen, SplashSize,
+    SplashStatus, TitleBar, TitleBarEvent, TitleBarStyle, VirtualRange, VirtualizationConfig,
+    VirtualizedEvent, VirtualizedList, VirtualizedTree, WindowChrome, WindowControlKind,
+    WindowControlsPosition,
 };
 pub use attachment_chip::{
     AttachmentChip, AttachmentChipAction, AttachmentChipEvent, AttachmentKind, AttachmentMeta,
     AttachmentProgress, AttachmentStatus, AttachmentThumbnail,
 };
-pub use basic::{FormField, List, Menu, MoleculeEventRouting, StatusBar, Toolbar};
+pub use basic::{FormField, List, Menu, MoleculeEventRouting, Toolbar};
 pub use card::Card;
 pub use chip_group::{
     ChipGroup, ChipGroupAction, ChipGroupEvent, ChipGroupFocusTarget, ChipGroupLayout,
@@ -41,7 +44,9 @@ pub use diff::{
     CodeDiffWhitespace, CollapsedBlock, HighlightRange,
 };
 pub use disclosure::{
-    Accordion, HoverCard, HoverCardAction, HoverCardDelayState, HoverCardEvent, Modal,
+    Accordion, Banner, BannerAccessibilityRole, BannerAction, BannerActionKind, BannerCommand,
+    BannerDensity, BannerEvent, BannerLiveRegion, BannerPlacementHint, BannerSeverity, BannerState,
+    BannerVisualContract, HoverCard, HoverCardAction, HoverCardDelayState, HoverCardEvent, Modal,
     ModalOverlay, NotificationToast, Popover, PopoverActionSlot, PopoverArrowSpec,
     PopoverFocusManagement, PopoverSlots, SearchBox, SlideControl, Tooltip,
 };
@@ -60,6 +65,15 @@ pub use selection::{
     ContextMenuRect, ContextMenuSize, ContextMenuTypeAheadBuffer, ContextMenuViewport, MenuButton,
     SelectBox, SelectionList, SideMenu, Tabs,
 };
+pub use shortcut_cheatsheet::{
+    ShortcutCheatsheet, ShortcutCheatsheetAction, ShortcutCheatsheetEvent, ShortcutCheatsheetGroup,
+    ShortcutCheatsheetItem, ShortcutCheatsheetLayout,
+};
+pub use status_bar::{
+    ProgressMeterShape, ProgressMeterSpec, StatusBar, StatusBarAction, StatusBarContractViolation,
+    StatusBarEvent, StatusBarMode, StatusBarPopoverSpec, StatusBarSegment,
+    StatusBarSegmentAlignment, StatusBarState,
+};
 pub use structured::{
     ArrayEditorItem, BulkFixSkipReason, CLOSEABLE_TAB_DRAG_TAG, CloseableTab,
     CloseableTabChildState, CloseableTabContextCommand, CloseableTabContextMenu,
@@ -75,6 +89,12 @@ pub use structured::{
     DiagnosticsListEvent, DiagnosticsListOptions, DiagnosticsListPlanner, DiagnosticsListState,
     DiagnosticsSortBy, DiagnosticsVisibleSnapshot, DynamicArrayEditor, MeasuredCloseableTab,
     TabGroup, TabGroupId, TabGroupTarget, TabId, TreeLineStyle, TreeNode, TreeNodeKind, TreeView,
+};
+pub use toast_stack_manager::{
+    ActiveToast, ToastAction, ToastActionKind, ToastDedupStrategy, ToastDismissReason,
+    ToastPayload, ToastPosition, ToastReplaceKind, ToastStackAction, ToastStackDirection,
+    ToastStackEvent, ToastStackManager, ToastStackOptions, ToastStackState,
+    ToastStackVisualContract,
 };
 
 #[cfg(test)]
