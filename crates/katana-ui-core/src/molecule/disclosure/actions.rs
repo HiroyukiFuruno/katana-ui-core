@@ -96,6 +96,16 @@ fn apply_popover_action(
             source: UiActionSource::Popover,
             ..
         } => toggle_open(state),
+        UiAction::SetFocus { focused, .. } if model.keep_open_on_inner_focus => {
+            state.transient.focused = *focused;
+            if *focused {
+                state.open = true;
+            }
+            true
+        }
+        UiAction::Dismiss { .. } if model.keep_open_on_inner_focus && state.transient.focused => {
+            true
+        }
         UiAction::Dismiss { .. } => dismiss_if_allowed(state, true, "dismiss"),
         UiAction::Press {
             source: UiActionSource::ModalBackdrop,

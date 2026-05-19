@@ -1,4 +1,7 @@
+use super::rich_content::{PopoverArrowSpec, PopoverFocusManagement, PopoverSlots};
+use crate::interaction::placement::Placement;
 use crate::molecule::disclosure_foundation::DisclosureTriggerArea;
+use crate::render_model::UiNodeId;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -10,7 +13,13 @@ pub(super) struct DisclosureTypedModel {
     pub anchor_summary: String,
     pub backdrop: String,
     pub focus_return: String,
+    pub focus_return_target: Option<UiNodeId>,
     pub dismiss_policy: String,
+    pub arrow: PopoverArrowSpec,
+    pub slots: PopoverSlots,
+    pub focus_management: PopoverFocusManagement,
+    pub keep_open_on_inner_focus: bool,
+    pub auto_flip_priority: Vec<Placement>,
     pub title: String,
     pub size: String,
     pub footer: String,
@@ -49,7 +58,13 @@ impl Default for DisclosureTypedModel {
             anchor_summary: String::new(),
             backdrop: String::new(),
             focus_return: String::new(),
+            focus_return_target: None,
             dismiss_policy: String::new(),
+            arrow: PopoverArrowSpec::default(),
+            slots: PopoverSlots::default(),
+            focus_management: PopoverFocusManagement::default(),
+            keep_open_on_inner_focus: false,
+            auto_flip_priority: Vec::new(),
             title: String::new(),
             size: String::new(),
             footer: String::new(),

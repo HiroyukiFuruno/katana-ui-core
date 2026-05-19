@@ -162,6 +162,7 @@ fn label_for(kind: UiNodeKind) -> &'static str {
         UiNodeKind::SlideControl => "slider value",
         UiNodeKind::NotificationToast => "toast dismiss",
         UiNodeKind::Popover => "popover layer",
+        UiNodeKind::HoverCard => "hover card layer",
         UiNodeKind::Tooltip => "tooltip layer",
         UiNodeKind::Modal => "modal layer",
         UiNodeKind::ModalOverlay => "modal overlay",

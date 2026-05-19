@@ -1,9 +1,12 @@
 mod actions;
 mod events;
+mod item_state;
 mod keyboard;
 mod options;
 mod placement;
 mod state;
+#[cfg(test)]
+mod tests;
 mod types;
 
 use crate::component::ComponentAction;
@@ -11,8 +14,13 @@ use crate::interaction::{UiAction, UiActionResult};
 use crate::render_model::{UiNode, UiNodeKind};
 pub use actions::ContextMenuAction;
 pub use events::{ContextMenuCloseReason, ContextMenuEvent};
-pub use keyboard::{ContextMenuKeyboardInput, ContextMenuKeyboardNavigator};
-pub use placement::{ContextMenuPlacementResolver, ContextMenuSize, ContextMenuViewport};
+pub use keyboard::{
+    ContextMenuKeyboardInput, ContextMenuKeyboardIntent, ContextMenuKeyboardNavigator,
+    ContextMenuTypeAheadBuffer,
+};
+pub use placement::{
+    ContextMenuPlacementResolver, ContextMenuPlacementResult, ContextMenuSize, ContextMenuViewport,
+};
 use serde::{Deserialize, Serialize};
 pub use types::{
     ContextMenuAnchor, ContextMenuItem, ContextMenuItemKind, ContextMenuPlacement, ContextMenuRect,
@@ -54,8 +62,11 @@ impl ContextMenu {
     }
 
     pub fn apply_context_action(&mut self, action: &ContextMenuAction) -> ContextMenuEvent {
-        let event = self.state.apply(action, &mut self.props);
-        self.state.callback_log.push(event.clone());
+        let events = self.state.apply(action, &mut self.props);
+        let event = events.first().cloned().unwrap_or(ContextMenuEvent::Closed {
+            reason: ContextMenuCloseReason::OutsideClick,
+        });
+        self.state.callback_log.extend(events);
         event
     }
 

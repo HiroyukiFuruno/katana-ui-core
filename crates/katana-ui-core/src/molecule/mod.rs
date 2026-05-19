@@ -9,6 +9,7 @@ mod segmented_toggle;
 mod selection;
 mod state;
 mod structured;
+pub mod toolbar;
 
 pub use app_primitives::{
     AppShell, AppShellSlot, AppShellSlotKind, CollapsibleSidebar, MotionPrimitive,
@@ -29,19 +30,30 @@ pub use diff::{
     CodeDiffWhitespace, CollapsedBlock, HighlightRange,
 };
 pub use disclosure::{
-    Accordion, Modal, ModalOverlay, NotificationToast, Popover, SearchBox, SlideControl, Tooltip,
+    Accordion, HoverCard, HoverCardAction, HoverCardDelayState, HoverCardEvent, Modal,
+    ModalOverlay, NotificationToast, Popover, PopoverActionSlot, PopoverArrowSpec,
+    PopoverFocusManagement, PopoverSlots, SearchBox, SlideControl, Tooltip,
 };
 pub use disclosure_foundation::DisclosureTriggerArea;
 pub use segmented_toggle::SegmentedToggle;
 pub use selection::{
     Breadcrumb, ChoiceItem, ComboBox, ContextMenu, ContextMenuAction, ContextMenuAnchor,
     ContextMenuCloseReason, ContextMenuEvent, ContextMenuItem, ContextMenuItemKind,
-    ContextMenuKeyboardInput, ContextMenuKeyboardNavigator, ContextMenuPlacement,
-    ContextMenuPlacementResolver, ContextMenuRect, ContextMenuSize, ContextMenuViewport,
-    MenuButton, SelectBox, SelectionList, SideMenu, Tabs,
+    ContextMenuKeyboardInput, ContextMenuKeyboardIntent, ContextMenuKeyboardNavigator,
+    ContextMenuPlacement, ContextMenuPlacementResolver, ContextMenuPlacementResult,
+    ContextMenuRect, ContextMenuSize, ContextMenuTypeAheadBuffer, ContextMenuViewport, MenuButton,
+    SelectBox, SelectionList, SideMenu, Tabs,
 };
 pub use structured::{
-    ArrayEditorItem, CommandItem, CommandPalette, DynamicArrayEditor, TreeLineStyle, TreeNode,
+    ArrayEditorItem, CLOSEABLE_TAB_DRAG_TAG, CloseableTab, CloseableTabChildState,
+    CloseableTabContextCommand, CloseableTabContextMenu, CloseableTabDropPosition,
+    CloseableTabDropRules, CloseableTabGroup, CloseableTabGroupContextCommand, CloseableTabGroupId,
+    CloseableTabGroupTarget, CloseableTabId, CloseableTabKey, CloseableTabKeyboardController,
+    CloseableTabKeyboardInput, CloseableTabKeyboardShortcut, CloseableTabOverflowConfig,
+    CloseableTabOverflowPlan, CloseableTabOverflowPlanner, CloseableTabStrip,
+    CloseableTabStripAction, CloseableTabStripEvent, CloseableTabStripOptions,
+    CloseableTabStripState, CloseableTabTone, CommandItem, CommandPalette, DynamicArrayEditor,
+    MeasuredCloseableTab, TabGroup, TabGroupId, TabGroupTarget, TabId, TreeLineStyle, TreeNode,
     TreeNodeKind, TreeView,
 };
 

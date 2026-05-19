@@ -81,7 +81,7 @@ mod tests {
     #[test]
     fn storybook_routes_cover_core_and_legacy_targets() {
         let routes = StorybookRoutes.default_routes();
-        assert_eq!(54, routes.len());
+        assert_eq!(57, routes.len());
         assert!(routes.iter().any(|route| route.page == "code-diff"));
         assert!(routes.iter().any(|route| route.page == "context-menu"));
         assert!(routes.iter().any(|route| route.page == "grid"));

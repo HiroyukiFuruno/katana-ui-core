@@ -50,7 +50,7 @@
 - [ ] 7.1 `docs/architecture/ui-separation/owned-ui-task-map.md` の Toolbar 行に拡張内容を追記する。
 - [ ] 7.2 IconOnly 時の accessibility 必須化を `docs/widget-extraction-policy.md` に追記する。
 
-## 8. 品質ゲート
+## 8. 品質ゲート / DoD
 
 - [ ] 8.1 `cargo test -p katana-ui-core` をパスする。
 - [ ] 8.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。

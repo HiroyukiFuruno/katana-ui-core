@@ -1,6 +1,8 @@
 use super::actions::ContextMenuAction;
 use super::events::{ContextMenuCloseReason, ContextMenuEvent};
+use super::item_state::{apply_checked_state, command_for_path};
 use super::keyboard::{ContextMenuKeyboardInput, ContextMenuKeyboardNavigator};
+use super::placement::{ContextMenuPlacementResolver, ContextMenuSize, ContextMenuViewport};
 use crate::render_model::{
     UiContextMenuItem, UiContextMenuItemKind, UiContextMenuProps, UiInteractionState, UiNodeKind,
     UiStateId,
@@ -12,6 +14,7 @@ pub(super) struct ContextMenuState {
     pub(super) state_id: UiStateId,
     pub(super) open: bool,
     pub(super) item_count: usize,
+    pub(super) pending_submenu_path: Vec<usize>,
     pub(super) submenu_state_ids: Vec<UiStateId>,
     pub(super) callback_log: Vec<ContextMenuEvent>,
 }
@@ -22,6 +25,7 @@ impl ContextMenuState {
             state_id: UiStateId::next_for(UiNodeKind::ContextMenu),
             open: false,
             item_count: 0,
+            pending_submenu_path: Vec::new(),
             submenu_state_ids: Vec::new(),
             callback_log: Vec::new(),
         }
@@ -48,20 +52,27 @@ impl ContextMenuState {
         &mut self,
         action: &ContextMenuAction,
         props: &mut UiContextMenuProps,
-    ) -> ContextMenuEvent {
+    ) -> Vec<ContextMenuEvent> {
         match action {
-            ContextMenuAction::Open { anchor } => self.open(anchor.clone(), props),
-            ContextMenuAction::Close { reason } => self.close(*reason),
-            ContextMenuAction::Highlight { path } => self.highlight(path.clone(), props),
+            ContextMenuAction::Open { anchor } => vec![self.open(anchor.clone(), props, None)],
+            ContextMenuAction::OpenWithLayout {
+                anchor,
+                menu_size,
+                viewport,
+            } => vec![self.open(anchor.clone(), props, Some((*menu_size, *viewport)))],
+            ContextMenuAction::Close { reason } => vec![self.close(*reason)],
+            ContextMenuAction::Highlight { path } => vec![self.highlight(path.clone(), props)],
             ContextMenuAction::Activate { path } => self.activate(path.clone(), props),
             ContextMenuAction::OpenSubmenu { path } => {
+                self.pending_submenu_path = path.clone();
                 props.highlighted_path = path.clone();
-                ContextMenuEvent::SubmenuOpened { path: path.clone() }
+                vec![ContextMenuEvent::SubmenuOpened { path: path.clone() }]
             }
             ContextMenuAction::CloseSubmenu { path } => {
-                ContextMenuEvent::SubmenuClosed { path: path.clone() }
+                self.pending_submenu_path.clear();
+                vec![ContextMenuEvent::SubmenuClosed { path: path.clone() }]
             }
-            ContextMenuAction::TypeAhead { prefix } => self.typeahead(prefix, props),
+            ContextMenuAction::TypeAhead { prefix } => vec![self.typeahead(prefix, props)],
         }
     }
 
@@ -69,9 +80,19 @@ impl ContextMenuState {
         &mut self,
         anchor: crate::render_model::UiContextMenuAnchor,
         props: &mut UiContextMenuProps,
+        layout: Option<(ContextMenuSize, ContextMenuViewport)>,
     ) -> ContextMenuEvent {
         self.open = true;
         props.anchor = anchor.clone();
+        if let Some((menu_size, viewport)) = layout {
+            props.placement_used = ContextMenuPlacementResolver::resolve(
+                &anchor,
+                menu_size,
+                viewport,
+                &props.placement_priority,
+            )
+            .placement;
+        }
         props.highlighted_path = first_enabled_path(props);
         ContextMenuEvent::Opened {
             anchor,
@@ -81,6 +102,7 @@ impl ContextMenuState {
 
     fn close(&mut self, reason: ContextMenuCloseReason) -> ContextMenuEvent {
         self.open = false;
+        self.pending_submenu_path.clear();
         ContextMenuEvent::Closed { reason }
     }
 
@@ -89,13 +111,24 @@ impl ContextMenuState {
         ContextMenuEvent::ItemHighlighted { path }
     }
 
-    fn activate(&mut self, path: Vec<usize>, props: &mut UiContextMenuProps) -> ContextMenuEvent {
+    fn activate(
+        &mut self,
+        path: Vec<usize>,
+        props: &mut UiContextMenuProps,
+    ) -> Vec<ContextMenuEvent> {
         self.open = false;
         props.highlighted_path = path.clone();
-        ContextMenuEvent::ItemSelected {
-            command: command_for_path(props, &path),
-            path,
-        }
+        self.pending_submenu_path.clear();
+        apply_checked_state(props, &path);
+        vec![
+            ContextMenuEvent::ItemSelected {
+                command: command_for_path(props, &path),
+                path,
+            },
+            ContextMenuEvent::Closed {
+                reason: ContextMenuCloseReason::Selected,
+            },
+        ]
     }
 
     fn typeahead(&mut self, prefix: &str, props: &mut UiContextMenuProps) -> ContextMenuEvent {
@@ -128,19 +161,4 @@ fn first_enabled_path(props: &UiContextMenuProps) -> Vec<usize> {
         &ContextMenuKeyboardInput::Home,
     )
     .map_or(Vec::new(), |it| vec![it])
-}
-
-fn command_for_path(props: &UiContextMenuProps, path: &[usize]) -> String {
-    let Some(index) = path.first() else {
-        return String::new();
-    };
-    props.items.get(*index).map_or_else(String::new, |item| {
-        if matches!(
-            item.kind,
-            UiContextMenuItemKind::Divider | UiContextMenuItemKind::Section
-        ) {
-            return String::new();
-        }
-        item.id.clone()
-    })
 }

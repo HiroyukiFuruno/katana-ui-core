@@ -29,6 +29,9 @@ const PASSIVE_CONTRACT_PAGES: &[&str] = &[
     "status-bar",
     "command-palette",
     "dynamic-array-editor",
+    "drag-and-drop",
+    "closeable-tab-strip",
+    "hover-card",
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq)]

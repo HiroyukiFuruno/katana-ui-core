@@ -61,7 +61,13 @@ fn context_menu_open_highlight_activate_and_close_emit_events() {
         selected
     );
     assert_eq!("context_menu_closed", closed.name());
-    assert_eq!(4, menu.callback_log().len());
+    assert_eq!(5, menu.callback_log().len());
+    assert!(matches!(
+        menu.callback_log().get(3),
+        Some(ContextMenuEvent::Closed {
+            reason: ContextMenuCloseReason::Selected
+        })
+    ));
 }
 
 #[test]

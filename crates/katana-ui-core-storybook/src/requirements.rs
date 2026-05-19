@@ -38,6 +38,7 @@ const REQUIRED_PAGES: &[&str] = &[
     "modal-overlay",
     "notification-toast",
     "popover",
+    "hover-card",
     "search-box",
     "segmented-toggle",
     "select-box",
@@ -45,6 +46,8 @@ const REQUIRED_PAGES: &[&str] = &[
     "side-menu",
     "status-bar",
     "tree-view",
+    "drag-and-drop",
+    "closeable-tab-strip",
     "row",
     "column",
     "stack",
@@ -74,8 +77,8 @@ impl StoryRequirements {
             | "progress-bar" | "color-swatch" | "toggle" | "slide-control" => MIN_SINGLE_NODE,
             "button" | "text-button" | "svg-button" | "icon-text-button" | "text-input"
             | "checkbox" | "radio" | "badge" => MIN_SINGLE_NODE,
-            "card" | "tooltip" | "modal" | "popover" | "row" | "column" | "stack" | "grid"
-            | "scroll-area" | "split-pane" | "align-center" => MIN_CHILDREN_NODE,
+            "card" | "tooltip" | "modal" | "popover" | "hover-card" | "row" | "column"
+            | "stack" | "grid" | "scroll-area" | "split-pane" | "align-center" => MIN_CHILDREN_NODE,
             "list"
             | "menu"
             | "context-menu"
@@ -98,6 +101,8 @@ impl StoryRequirements {
             | "side-menu"
             | "status-bar"
             | "tree-view"
+            | "drag-and-drop"
+            | "closeable-tab-strip"
             | "theme-tokens" => MIN_COMPOSITE_NODE,
             "command-palette" => MIN_COMMAND_PALETTE_NODE,
             _ => MIN_CHILDREN_NODE,

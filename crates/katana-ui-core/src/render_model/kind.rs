@@ -40,6 +40,7 @@ pub enum UiNodeKind {
     ModalOverlay,
     NotificationToast,
     Popover,
+    HoverCard,
     SearchBox,
     SegmentedToggle,
     SelectBox,

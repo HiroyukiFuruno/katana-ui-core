@@ -1,8 +1,9 @@
 ## ADDED Requirements
 
-### Requirement: WorkspaceTabBar exposes pinned, closeable, dirty, groupable tabs
+### Requirement: CloseableTabStrip exposes pinned, closeable, dirty, groupable tabs
 
-`WorkspaceTabBar` molecule MUST expose tab options including `id`, `title`, `icon`, `dirty`, `pinned`, `closeable`, `tone`, `tooltip`, `group_id`, and `accessibility_label`.
+`CloseableTabStrip` molecule MUST expose tab options including `id`, `title`, `icon`, `dirty`, `pinned`, `closeable`, `tone`, `tooltip`, `group_id`, and `accessibility_label`.
+The public API MUST NOT use workspace, document, chat session, or file concepts.
 Pinned tabs MUST be anchored to the leading edge regardless of insertion order; close buttons on pinned tabs MUST be hidden.
 
 #### Scenario: pinned tab is anchored to the leading edge
@@ -17,9 +18,9 @@ Pinned tabs MUST be anchored to the leading edge regardless of insertion order; 
 - **THEN** the molecule emits `TabCloseRequested` (no immediate removal)
 - **AND** the consumer must dispatch `ConfirmClose` for `TabClosed` to fire and the tab to disappear
 
-### Requirement: WorkspaceTabBar overflows excess tabs into a menu
+### Requirement: CloseableTabStrip overflows excess tabs into a menu
 
-`WorkspaceTabBar` MUST compute hidden tabs deterministically from the measured strip width.
+`CloseableTabStrip` MUST compute hidden tabs deterministically from the measured strip width.
 Hidden tabs MUST be exposed via an overflow trigger that opens a menu listing hidden tabs with their icon, title, dirty indicator, and close action.
 
 #### Scenario: strip width shrinks below total tab width
@@ -34,9 +35,9 @@ Hidden tabs MUST be exposed via an overflow trigger that opens a menu listing hi
 - **THEN** the tab becomes active
 - **AND** the strip rerenders so the now-active tab is visible (other tabs may shift into the overflow)
 
-### Requirement: WorkspaceTabBar supports draggable reorder and grouping
+### Requirement: CloseableTabStrip supports draggable reorder and grouping
 
-`WorkspaceTabBar` MUST integrate with KUC drag-and-drop primitives to support reorder, group insertion, group reordering, and new-group creation by drop.
+`CloseableTabStrip` MUST integrate with KUC drag-and-drop primitives to support reorder, group insertion, group reordering, and new-group creation by drop.
 Drop indicators MUST distinguish `Before`, `After`, `InsideGroup`, and `NewGroup` positions.
 
 #### Scenario: tab dropped between two tabs inserts at that position
@@ -51,9 +52,9 @@ Drop indicators MUST distinguish `Before`, `After`, `InsideGroup`, and `NewGroup
 - **THEN** the group auto-expands
 - **AND** the drop indicator switches to `InsideGroup` once expansion completes
 
-### Requirement: WorkspaceTabBar supports keyboard navigation and shortcuts
+### Requirement: CloseableTabStrip supports keyboard navigation and shortcuts
 
-`WorkspaceTabBar` MUST handle `Cmd/Ctrl+Tab`, `Cmd/Ctrl+Shift+Tab`, `Cmd/Ctrl+W`, `Cmd/Ctrl+1..9`, and `Cmd/Ctrl+0` as standard shortcuts.
+`CloseableTabStrip` MUST expose keyboard intents for next tab, previous tab, close active tab request, and select visible index.
 Shortcut handling MUST respect platform display labels (e.g., `⌘` on macOS, `Ctrl` elsewhere) when exposed to KeyCap rendering.
 
 #### Scenario: Ctrl+W on the active dirty tab requests close
@@ -68,15 +69,15 @@ Shortcut handling MUST respect platform display labels (e.g., `⌘` on macOS, `C
 - **THEN** the first visible tab (pinned first, then unpinned) becomes active
 - **AND** `TabSelected` is emitted with that tab id
 
-### Requirement: WorkspaceTabBar opens a tab context menu via ContextMenu molecule
+### Requirement: CloseableTabStrip opens a tab context menu via ContextMenu molecule
 
-`WorkspaceTabBar` MUST open a `ContextMenu` for tab right-click and group-header right-click using the existing KUC `ContextMenu` molecule.
+`CloseableTabStrip` MUST open a `ContextMenu` for tab right-click and group-header right-click using the existing KUC `ContextMenu` molecule.
 The molecule MUST NOT embed its own custom menu rendering.
 
-#### Scenario: right-click on tab opens ContextMenu with standard items
+#### Scenario: right-click on tab opens ContextMenu with consumer-provided items
 
 - **WHEN** the user right-clicks a tab
-- **THEN** a `ContextMenu` opens at the pointer with items: Close, Close Others, Close to the Right, Close All, Pin/Unpin, Move to New Group, Move to Group (submenu)
+- **THEN** a `ContextMenu` opens at the pointer with consumer-provided items
 - **AND** the menu reports selected command via `ContextMenuItemSelected`
 
 #### Scenario: right-click on group header offers group operations

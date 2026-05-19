@@ -52,7 +52,7 @@
 - [ ] 7.2 `docs/widget-extraction-policy.md` に anchor 起動と pointer 起動の責務境界を追記する。
 - [ ] 7.3 `openspec/changes/README.md` の優先順位表に本 change を載せる。
 
-## 8. 品質ゲート
+## 8. 品質ゲート / DoD
 
 - [ ] 8.1 `cargo test -p katana-ui-core` をローカルでパスする。
 - [ ] 8.2 `cargo clippy -p katana-ui-core -p katana-ui-core-storybook --all-targets -- -D warnings` をパスする。

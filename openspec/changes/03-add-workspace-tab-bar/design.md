@@ -1,22 +1,22 @@
-# Design — WorkspaceTabBar molecule
+# Design — CloseableTabStrip molecule
 
 ## 目的
 
-ドキュメント / セッション / view を表す closeable / draggable / groupable な水平 tab strip を KUC molecule として提供する。`Tabs`（segmented control）とは別の molecule にする。
+ドキュメント / セッション / view のような利用側単位を表せる closeable / draggable / groupable な水平 tab strip を、domain-free な KUC molecule として提供する。`Tabs`（segmented control）とは別の molecule にする。
 
 ## 採用方針
 
 ### 1. データモデル
 
 ```text
-WorkspaceTabBar {
-  groups: Vec<WorkspaceTabGroup>,
-  tabs: Vec<WorkspaceTab>,
+CloseableTabStrip {
+  groups: Vec<TabGroup>,
+  tabs: Vec<CloseableTab>,
   active_tab_id: Option<TabId>,
   overflow_menu_visible: bool,
 }
 
-WorkspaceTab {
+CloseableTab {
   id: TabId,
   title: String,
   icon: Option<SvgIcon>,
@@ -29,7 +29,7 @@ WorkspaceTab {
   accessibility_label: Option<String>,
 }
 
-WorkspaceTabGroup {
+TabGroup {
   id: GroupId,
   label: String,
   color: ColorToken,
@@ -43,7 +43,7 @@ WorkspaceTabGroup {
 
 ### 2. drag & drop
 
-- DragSource: tab 単体（`tag = "katana-ui-core/workspace-tab"`, payload に `TabId`）
+- DragSource: tab 単体（`tag = "katana-ui-core/closeable-tab"`, payload に `TabId`）
 - DropTarget: tab 間（before / after）、グループ内（inside）、グループ間、新規グループ作成（far right）
 - pinned tab は移動の anchor として使えるが、unpinned tab は pinned 領域に挿入できない（accept で reject）
 - グループ collapsed 時はドロップ可能だが、ホバーで自動展開（500ms delay）
@@ -57,7 +57,8 @@ WorkspaceTabGroup {
 
 ### 4. context menu
 
-`ContextMenu` を使って次を提供:
+`ContextMenu` を使って、consumer が渡した menu item を表示する。
+KUC は次のような menu を表現できる必要があるが、item の意味は持たない。
 
 - `Close`
 - `Close Others`
@@ -92,7 +93,7 @@ WorkspaceTabGroup {
 
 ### 8. accessibility
 
-- `WorkspaceTabBar` 自体は role=tablist 相当
+- `CloseableTabStrip` 自体は role=tablist 相当
 - 各 tab は role=tab 相当、active は aria-selected=true 相当
 - group header は role=group 相当、collapsed は aria-expanded で表現
 - announce: 「Tab 3 of 7, Article.md, modified」のような形式（locale テンプレート）
@@ -103,7 +104,7 @@ WorkspaceTabGroup {
 | --- | --- |
 | `Tabs` molecule に `closeable` / `draggable` を増設 | segmented preset 切替え用途と option が混在し、画像 / 入力回帰の preset 数が膨張、契約が散らかる。 |
 | `SelectionList` + 横並びレイアウトで代用 | drag / drop / overflow / group / pin / context menu の組み合わせが contracted されず、consumer 毎に差が出る。 |
-| consumer 側に丸投げ | KatanA tab bar の `tab_bar/{drag,group_header,group_header_popup,tab_context_menu,tab_ghost,drop_indicator}` がそのまま consumer 内に残り、KUC の品質ゲート対象外になる。 |
+| consumer 側に丸投げ | KatanA tab bar の `tab_bar/{drag,group_header,group_header_popup,tab_context_menu,tab_ghost,drop_indicator}` のうち domain-free な挙動まで consumer 内に残り、KUC の品質ゲート対象外になる。 |
 
 ## Out of scope
 
@@ -115,4 +116,4 @@ WorkspaceTabGroup {
 
 - `02-add-drag-drop-primitive` と `01-add-context-menu` に依存
 - 既存 `Tabs` molecule は「segmented」用途に絞り、Storybook page タイトルに明記
-- consumer (`katana`) の `workspace_tab_bar.rs` を新 molecule で置き換える migration
+- consumer (`katana`) の workspace / document tab と `katana-chat-ui` の session tab 相当を新 molecule と自前 domain state で組む migration

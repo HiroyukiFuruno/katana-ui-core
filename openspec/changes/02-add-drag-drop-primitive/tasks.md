@@ -69,7 +69,7 @@
 - [ ] 10.2 `docs/widget-extraction-policy.md` に DnD 採用条件を追記する。
 - [ ] 10.3 README の adapter policy 節に native DnD escape hatch を明記する。
 
-## 11. 品質ゲート
+## 11. 品質ゲート / DoD
 
 - [ ] 11.1 `cargo test -p katana-ui-core` をパスする。
 - [ ] 11.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。

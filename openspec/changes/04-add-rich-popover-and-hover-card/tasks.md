@@ -63,7 +63,7 @@
 - [ ] 9.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に HoverCard 行を追加する。
 - [ ] 9.2 共通 placement engine の責務を `docs/widget-extraction-policy.md` に明記する。
 
-## 10. 品質ゲート
+## 10. 品質ゲート / DoD
 
 - [ ] 10.1 `cargo test -p katana-ui-core` をパスする。
 - [ ] 10.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。

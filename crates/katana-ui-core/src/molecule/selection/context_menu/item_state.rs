@@ -1,0 +1,73 @@
+use crate::render_model::{UiContextMenuItem, UiContextMenuItemKind, UiContextMenuProps};
+
+pub(super) fn command_for_path(props: &UiContextMenuProps, path: &[usize]) -> String {
+    item_for_path(&props.items, path).map_or_else(String::new, |item| {
+        if selectable(item) {
+            item.id.clone()
+        } else {
+            String::new()
+        }
+    })
+}
+
+pub(super) fn apply_checked_state(props: &mut UiContextMenuProps, path: &[usize]) {
+    let Some(target) = item_for_path(&props.items, path) else {
+        return;
+    };
+    let kind = target.kind;
+    let radio_group = target.radio_group.clone();
+    if kind == UiContextMenuItemKind::Toggle
+        && let Some(item) = item_for_path_mut(&mut props.items, path)
+    {
+        item.checked = !item.checked;
+    }
+    if kind == UiContextMenuItemKind::Radio {
+        set_radio_group(&mut props.items, path, &radio_group);
+    }
+}
+
+fn set_radio_group(items: &mut [UiContextMenuItem], path: &[usize], radio_group: &str) {
+    for item in &mut *items {
+        if item.kind == UiContextMenuItemKind::Radio && item.radio_group == radio_group {
+            item.checked = false;
+        }
+        set_radio_group(&mut item.children, path, radio_group);
+    }
+    if let Some(item) = item_for_path_mut(items, path) {
+        item.checked = true;
+    }
+}
+
+fn item_for_path<'a>(
+    items: &'a [UiContextMenuItem],
+    path: &[usize],
+) -> Option<&'a UiContextMenuItem> {
+    let (first, rest) = path.split_first()?;
+    let item = items.get(*first)?;
+    if rest.is_empty() {
+        Some(item)
+    } else {
+        item_for_path(&item.children, rest)
+    }
+}
+
+fn item_for_path_mut<'a>(
+    items: &'a mut [UiContextMenuItem],
+    path: &[usize],
+) -> Option<&'a mut UiContextMenuItem> {
+    let (first, rest) = path.split_first()?;
+    let item = items.get_mut(*first)?;
+    if rest.is_empty() {
+        Some(item)
+    } else {
+        item_for_path_mut(&mut item.children, rest)
+    }
+}
+
+fn selectable(item: &UiContextMenuItem) -> bool {
+    !item.disabled
+        && !matches!(
+            item.kind,
+            UiContextMenuItemKind::Divider | UiContextMenuItemKind::Section
+        )
+}

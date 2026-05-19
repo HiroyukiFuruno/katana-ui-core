@@ -122,8 +122,14 @@ fn detail_text<'a>(details: &'a UiNode, label: &str) -> Option<&'a str> {
 }
 
 fn expected_preset_count(page: &str) -> usize {
-    if page == "context-menu" {
+    if matches!(
+        page,
+        "context-menu" | "drag-and-drop" | "hover-card" | "toolbar"
+    ) {
         return 5;
+    }
+    if page == "closeable-tab-strip" {
+        return 6;
     }
     4
 }

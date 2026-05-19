@@ -1,6 +1,10 @@
 use crate::render_model::UiNodeId;
 use serde::{Deserialize, Serialize};
 
+pub mod drag;
+
+pub use drag::{DragEvent, DragEventRouteNode, DragEventRouting};
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PointerEvent {
     pub target: UiNodeId,
@@ -72,6 +76,7 @@ pub enum UiEvent {
     Keyboard(KeyboardEvent),
     Focus(FocusEvent),
     Command(CommandEvent),
+    Drag(DragEvent),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

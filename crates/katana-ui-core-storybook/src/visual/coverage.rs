@@ -156,6 +156,7 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::SlideControl
             | UiNodeKind::NotificationToast
             | UiNodeKind::Popover
+            | UiNodeKind::HoverCard
             | UiNodeKind::Tooltip
             | UiNodeKind::Modal
             | UiNodeKind::ModalOverlay

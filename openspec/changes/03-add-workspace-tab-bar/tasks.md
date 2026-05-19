@@ -2,14 +2,14 @@
 
 ## 1. 設計確定
 
-- [ ] 1.1 `WorkspaceTab` / `WorkspaceTabGroup` の typed option を確定する。
+- [ ] 1.1 `CloseableTab` / `TabGroup` の typed option を確定する。
 - [ ] 1.2 overflow menu のしきい値判定アルゴリズム（measured width + remaining width）を確定する。
 - [ ] 1.3 context menu 項目（close / close others / close right / pin / move to group / new group）を確定する。
 - [ ] 1.4 ドラッグ accept ルール（pinned vs unpinned、グループ collapsed auto-expand）を確定する。
 
 ## 2. 中核実装
 
-- [ ] 2.1 `molecule/structured/workspace_tab_bar/mod.rs` を新設し、`WorkspaceTabBar` 型を作る。
+- [ ] 2.1 `molecule/selection/closeable_tab_strip/mod.rs` を新設し、`CloseableTabStrip` 型を作る。
 - [ ] 2.2 `options.rs` で typed option を実装する。
 - [ ] 2.3 `actions.rs` で `SelectTab` / `CloseTab` / `PinTab` / `UnpinTab` / `MoveTab` / `MoveToGroup` / `ToggleGroupCollapse` / `OpenOverflow` / `ConfirmClose` を実装する。
 - [ ] 2.4 `events.rs` で `TabSelected` / `TabCloseRequested` / `TabClosed` / `TabReordered` / `GroupCollapseChanged` / `OverflowOpened` を実装する。
@@ -24,7 +24,7 @@
 
 ## 4. 公開境界
 
-- [ ] 4.1 `widget::molecules` の re-export に `WorkspaceTabBar` / `WorkspaceTab` / `WorkspaceTabGroup` を追加する。
+- [ ] 4.1 `widget::molecules` の re-export に `CloseableTabStrip` / `CloseableTab` / `TabGroup` を追加する。
 - [ ] 4.2 `Tabs` molecule のドキュメント文字列に segmented 用途であることを明記する。
 
 ## 5. 自動テスト
@@ -46,17 +46,17 @@
 
 ## 7. Storybook ページ
 
-- [ ] 7.1 `Structured > WorkspaceTabBar` ノードを catalog に追加する。
+- [ ] 7.1 `Selection > CloseableTabStrip` ノードを catalog に追加する。
 - [ ] 7.2 preset「default」「overflow」「pinned」「groups」「dirty」「dragging」を実装する。
 - [ ] 7.3 settings で tab 追加 / 削除 / pin / dirty 切替え / group 切替えを行えるようにする。
 - [ ] 7.4 event log と callback log を表示する。
 
 ## 8. ドキュメント
 
-- [ ] 8.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に WorkspaceTabBar 行を追加する。
-- [ ] 8.2 `docs/widget-extraction-policy.md` に Tabs / WorkspaceTabBar の責務境界を追記する。
+- [ ] 8.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に CloseableTabStrip 行を追加する。
+- [ ] 8.2 `docs/widget-extraction-policy.md` に Tabs / CloseableTabStrip の責務境界を追記する。
 
-## 9. 品質ゲート
+## 9. 品質ゲート / DoD
 
 - [ ] 9.1 `cargo test -p katana-ui-core` をパスする。
 - [ ] 9.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。

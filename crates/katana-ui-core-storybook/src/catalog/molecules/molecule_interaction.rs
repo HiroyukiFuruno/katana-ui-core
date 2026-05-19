@@ -12,6 +12,8 @@ const CONTEXT_MENU_Y: i32 = 128;
 const CONTEXT_MENU_MIN_WIDTH: u32 = 240;
 const CONTEXT_MENU_MAX_HEIGHT: u32 = 260;
 const CONTEXT_MENU_DELAY_MS: u16 = 180;
+const HOVER_CARD_OPEN_DELAY_MS: u16 = 100;
+const HOVER_CARD_CLOSE_DELAY_MS: u16 = 50;
 
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
@@ -30,6 +32,7 @@ pub(super) fn examples() -> Vec<StoryExample> {
         modal_overlay_story(),
         notification_toast_story(),
         popover_story(),
+        hover_card_story(),
         segmented_toggle_story(),
         select_box_story(),
     ]
@@ -237,6 +240,36 @@ fn popover_story() -> StoryExample {
     let target = popover.state_id().clone();
     let result = popover.apply_action(&UiAction::modal_escape(target));
     StoryCatalog::interactive_story("popover", popover, result.callback_log)
+}
+
+fn hover_card_story() -> StoryExample {
+    let mut hover_card = molecule::HoverCard::new("Hover card")
+        .open_delay_ms(HOVER_CARD_OPEN_DELAY_MS)
+        .close_delay_ms(HOVER_CARD_CLOSE_DELAY_MS)
+        .pointer_follow(true)
+        .slot_action(molecule::PopoverActionSlot::new(
+            "configure-action",
+            "Configure",
+        ));
+    let opened =
+        hover_card.apply_hover_card_action(molecule::HoverCardAction::AnchorPointerEntered);
+    let kept = hover_card.apply_hover_card_action(molecule::HoverCardAction::CardPointerEntered);
+    let target = katana_ui_core::render_model::UiStateId::new("state:HoverCard:storybook");
+    let logs = vec![
+        UiCallbackLog::new(
+            target.clone(),
+            "hover_card_open",
+            "open=false",
+            format!("event={opened:?}"),
+        ),
+        UiCallbackLog::new(
+            target,
+            "hover_card_keep_open",
+            "close=scheduled",
+            format!("event={kept:?}"),
+        ),
+    ];
+    StoryCatalog::interactive_story("hover-card", hover_card, logs)
 }
 
 fn segmented_toggle_story() -> StoryExample {

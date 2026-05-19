@@ -142,6 +142,13 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "true",
             "open=true",
         )),
+        "hover-card" => Some(spec(
+            "hover_card_open",
+            "hover_card_opened",
+            "interaction.open",
+            "true",
+            "open=true",
+        )),
         "search-box" => Some(spec(
             "search_submit",
             "search_submitted",
@@ -190,6 +197,20 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "interaction.open",
             "false",
             "open=false",
+        )),
+        "drag-and-drop" => Some(spec(
+            "drag_over",
+            "drag_over",
+            "drop_indicator.kind",
+            "after",
+            "dragging=true",
+        )),
+        "closeable-tab-strip" => Some(spec(
+            "select_tab",
+            "closeable_tab_selected",
+            "active_tab_id",
+            "settings",
+            "active=settings",
         )),
         _ => None,
     }
