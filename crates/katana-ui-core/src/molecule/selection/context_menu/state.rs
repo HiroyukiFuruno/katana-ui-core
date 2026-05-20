@@ -1,6 +1,6 @@
 use super::actions::ContextMenuAction;
 use super::events::{ContextMenuCloseReason, ContextMenuEvent};
-use super::item_state::{apply_checked_state, command_for_path};
+use super::item_state::{apply_checked_state, command_for_path, first_enabled_child_path};
 use super::keyboard::{ContextMenuKeyboardInput, ContextMenuKeyboardNavigator};
 use super::placement::{ContextMenuPlacementResolver, ContextMenuSize, ContextMenuViewport};
 use crate::render_model::{
@@ -65,11 +65,12 @@ impl ContextMenuState {
             ContextMenuAction::Activate { path } => self.activate(path.clone(), props),
             ContextMenuAction::OpenSubmenu { path } => {
                 self.pending_submenu_path = path.clone();
-                props.highlighted_path = path.clone();
+                props.highlighted_path = first_enabled_child_path(props, path);
                 vec![ContextMenuEvent::SubmenuOpened { path: path.clone() }]
             }
             ContextMenuAction::CloseSubmenu { path } => {
                 self.pending_submenu_path.clear();
+                props.highlighted_path = path.clone();
                 vec![ContextMenuEvent::SubmenuClosed { path: path.clone() }]
             }
             ContextMenuAction::TypeAhead { prefix } => vec![self.typeahead(prefix, props)],
@@ -84,14 +85,17 @@ impl ContextMenuState {
     ) -> ContextMenuEvent {
         self.open = true;
         props.anchor = anchor.clone();
+        default_focus_return(&anchor, props);
         if let Some((menu_size, viewport)) = layout {
-            props.placement_used = ContextMenuPlacementResolver::resolve(
+            let result = ContextMenuPlacementResolver::resolve(
                 &anchor,
                 menu_size,
                 viewport,
                 &props.placement_priority,
-            )
-            .placement;
+            );
+            props.placement_used = result.placement;
+            props.render_height = result.render_height;
+            props.vertical_scroll_enabled = result.scrollable;
         }
         props.highlighted_path = first_enabled_path(props);
         ContextMenuEvent::Opened {
@@ -141,6 +145,18 @@ impl ContextMenuState {
             prefix: prefix.to_string(),
             path,
         }
+    }
+}
+
+fn default_focus_return(
+    anchor: &crate::render_model::UiContextMenuAnchor,
+    props: &mut UiContextMenuProps,
+) {
+    if !props.focus_return_target.is_empty() {
+        return;
+    }
+    if let crate::render_model::UiContextMenuAnchor::NodeId(id) = anchor {
+        props.focus_return_target = id.clone();
     }
 }
 

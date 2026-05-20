@@ -1,3 +1,4 @@
+use super::context_menu_item::UiContextMenuItem;
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_CONTEXT_MENU_MIN_WIDTH: u32 = 180;
@@ -47,107 +48,6 @@ pub enum UiContextMenuPlacement {
     LeftStart,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum UiContextMenuItemKind {
-    Action,
-    Toggle,
-    Radio,
-    Submenu,
-    Section,
-    Divider,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiContextMenuItem {
-    pub id: String,
-    pub label: String,
-    pub kind: UiContextMenuItemKind,
-    pub leading_icon: String,
-    pub disabled: bool,
-    pub destructive: bool,
-    pub checked: bool,
-    pub radio_group: String,
-    pub shortcut: String,
-    pub accessibility_label: String,
-    pub children: Vec<UiContextMenuItem>,
-}
-
-impl UiContextMenuItem {
-    #[must_use]
-    pub fn action(id: impl Into<String>, label: impl Into<String>) -> Self {
-        Self::new(id, label, UiContextMenuItemKind::Action)
-    }
-
-    #[must_use]
-    pub fn new(
-        id: impl Into<String>,
-        label: impl Into<String>,
-        kind: UiContextMenuItemKind,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            label: label.into(),
-            kind,
-            leading_icon: String::new(),
-            disabled: false,
-            destructive: false,
-            checked: false,
-            radio_group: String::new(),
-            shortcut: String::new(),
-            accessibility_label: String::new(),
-            children: Vec::new(),
-        }
-    }
-
-    #[must_use]
-    pub fn leading_icon(mut self, value: impl Into<String>) -> Self {
-        self.leading_icon = value.into();
-        self
-    }
-
-    #[must_use]
-    pub fn disabled(mut self, value: bool) -> Self {
-        self.disabled = value;
-        self
-    }
-
-    #[must_use]
-    pub fn destructive(mut self, value: bool) -> Self {
-        self.destructive = value;
-        self
-    }
-
-    #[must_use]
-    pub fn checked(mut self, value: bool) -> Self {
-        self.checked = value;
-        self
-    }
-
-    #[must_use]
-    pub fn radio_group(mut self, value: impl Into<String>) -> Self {
-        self.radio_group = value.into();
-        self
-    }
-
-    #[must_use]
-    pub fn shortcut(mut self, value: impl Into<String>) -> Self {
-        self.shortcut = value.into();
-        self
-    }
-
-    #[must_use]
-    pub fn accessibility_label(mut self, value: impl Into<String>) -> Self {
-        self.accessibility_label = value.into();
-        self
-    }
-
-    #[must_use]
-    pub fn child(mut self, value: UiContextMenuItem) -> Self {
-        self.children.push(value);
-        self
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiContextMenuProps {
     pub anchor: UiContextMenuAnchor,
@@ -158,6 +58,8 @@ pub struct UiContextMenuProps {
     pub submenu_open_delay_ms: u16,
     pub highlighted_path: Vec<usize>,
     pub focus_return_target: String,
+    pub render_height: u32,
+    pub vertical_scroll_enabled: bool,
     pub items: Vec<UiContextMenuItem>,
 }
 
@@ -179,6 +81,8 @@ impl Default for UiContextMenuProps {
             submenu_open_delay_ms: DEFAULT_SUBMENU_OPEN_DELAY_MS,
             highlighted_path: Vec::new(),
             focus_return_target: String::new(),
+            render_height: 0,
+            vertical_scroll_enabled: false,
             items: Vec::new(),
         }
     }

@@ -23,7 +23,8 @@ pub use placement::{
 };
 use serde::{Deserialize, Serialize};
 pub use types::{
-    ContextMenuAnchor, ContextMenuItem, ContextMenuItemKind, ContextMenuPlacement, ContextMenuRect,
+    ContextMenuAnchor, ContextMenuDividerTone, ContextMenuItem, ContextMenuItemKind,
+    ContextMenuPlacement, ContextMenuRect,
 };
 
 use state::ContextMenuState;

@@ -10,6 +10,17 @@ pub(super) fn command_for_path(props: &UiContextMenuProps, path: &[usize]) -> St
     })
 }
 
+pub(super) fn first_enabled_child_path(props: &UiContextMenuProps, path: &[usize]) -> Vec<usize> {
+    let Some(item) = item_for_path(&props.items, path) else {
+        return path.to_vec();
+    };
+    item.children
+        .iter()
+        .enumerate()
+        .find_map(|(index, child)| selectable(child).then_some(child_path(path, index)))
+        .unwrap_or_else(|| path.to_vec())
+}
+
 pub(super) fn apply_checked_state(props: &mut UiContextMenuProps, path: &[usize]) {
     let Some(target) = item_for_path(&props.items, path) else {
         return;
@@ -24,6 +35,12 @@ pub(super) fn apply_checked_state(props: &mut UiContextMenuProps, path: &[usize]
     if kind == UiContextMenuItemKind::Radio {
         set_radio_group(&mut props.items, path, &radio_group);
     }
+}
+
+fn child_path(path: &[usize], child_index: usize) -> Vec<usize> {
+    let mut result = path.to_vec();
+    result.push(child_index);
+    result
 }
 
 fn set_radio_group(items: &mut [UiContextMenuItem], path: &[usize], radio_group: &str) {

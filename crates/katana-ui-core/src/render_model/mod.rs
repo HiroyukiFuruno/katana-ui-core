@@ -3,6 +3,7 @@ mod command;
 mod common;
 mod common_builder;
 mod common_types;
+mod context_menu_item;
 mod context_menu_props;
 mod identity;
 mod kind;
@@ -23,9 +24,9 @@ pub use common_types::{
     UiAlignItems, UiBorder, UiCursor, UiDimension, UiDisplay, UiEdgeInsets, UiJustifyContent,
     UiPointerEvents, UiPosition, UiZIndex,
 };
+pub use context_menu_item::{UiContextMenuDividerTone, UiContextMenuItem, UiContextMenuItemKind};
 pub use context_menu_props::{
-    UiContextMenuAnchor, UiContextMenuItem, UiContextMenuItemKind, UiContextMenuPlacement,
-    UiContextMenuProps, UiContextMenuRect,
+    UiContextMenuAnchor, UiContextMenuPlacement, UiContextMenuProps, UiContextMenuRect,
 };
 pub use identity::{UiNodeId, UiStateId};
 pub use kind::UiNodeKind;

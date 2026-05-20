@@ -39,6 +39,8 @@ pub struct ContextMenuPlacementResult {
     pub placement: ContextMenuPlacement,
     pub x: i32,
     pub y: i32,
+    pub render_height: u32,
+    pub scrollable: bool,
 }
 
 pub struct ContextMenuPlacementResolver;
@@ -52,15 +54,21 @@ impl ContextMenuPlacementResolver {
         priority: &[ContextMenuPlacement],
     ) -> ContextMenuPlacementResult {
         let anchor_rect = anchor_rect(anchor);
+        let fit_size = fit_size(menu_size, viewport);
         for placement in priority {
-            let candidate = candidate_for(anchor_rect, menu_size, *placement);
-            if fits(candidate, menu_size, viewport) {
+            let candidate = candidate_for(anchor_rect, fit_size, *placement, menu_size);
+            if fits(candidate, fit_size, viewport) {
                 return candidate;
             }
         }
         clamp(
-            candidate_for(anchor_rect, menu_size, ContextMenuPlacement::BelowStart),
-            menu_size,
+            candidate_for(
+                anchor_rect,
+                fit_size,
+                ContextMenuPlacement::BelowStart,
+                menu_size,
+            ),
+            fit_size,
             viewport,
         )
     }
@@ -76,13 +84,14 @@ fn anchor_rect(anchor: &ContextMenuAnchor) -> ContextMenuRect {
 
 fn candidate_for(
     anchor: ContextMenuRect,
-    menu_size: ContextMenuSize,
+    fit_size: ContextMenuSize,
     placement: ContextMenuPlacement,
+    original_size: ContextMenuSize,
 ) -> ContextMenuPlacementResult {
     let anchor_right = anchor.x + anchor.width as i32;
     let anchor_bottom = anchor.y + anchor.height as i32;
-    let menu_width = menu_size.width as i32;
-    let menu_height = menu_size.height as i32;
+    let menu_width = fit_size.width as i32;
+    let menu_height = fit_size.height as i32;
     let (x, y) = match placement {
         ContextMenuPlacement::BelowStart => (anchor.x, anchor_bottom),
         ContextMenuPlacement::BelowEnd => (anchor_right - menu_width, anchor_bottom),
@@ -91,7 +100,13 @@ fn candidate_for(
         ContextMenuPlacement::RightStart => (anchor_right, anchor.y),
         ContextMenuPlacement::LeftStart => (anchor.x - menu_width, anchor.y),
     };
-    ContextMenuPlacementResult { placement, x, y }
+    ContextMenuPlacementResult {
+        placement,
+        x,
+        y,
+        render_height: fit_size.height,
+        scrollable: fit_size.height < original_size.height,
+    }
 }
 
 fn fits(
@@ -120,5 +135,15 @@ fn clamp(
         placement: result.placement,
         x: result.x.clamp(margin, max_x.max(margin)),
         y: result.y.clamp(margin, max_y.max(margin)),
+        render_height: result.render_height,
+        scrollable: result.scrollable,
+    }
+}
+
+fn fit_size(menu_size: ContextMenuSize, viewport: ContextMenuViewport) -> ContextMenuSize {
+    let max_height = viewport.height.saturating_sub(viewport.margin * 2);
+    ContextMenuSize {
+        width: menu_size.width,
+        height: menu_size.height.min(max_height),
     }
 }
