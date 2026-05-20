@@ -91,6 +91,7 @@
 | CollapsiblePanel | molecule | 折りたたみ / hover / resize panel。AppShell は持たない |
 | CommandLauncherResults | molecule | query + result row + shortcut + keyboard selection |
 | Virtualization | interaction / molecule contract | List / SelectionList / TreeView / CommandPalette / DiagnosticsList が共有する visible range / overscan / row height / aria-setsize 契約 |
+| Skeleton / SkeletonCluster | atom / molecule | loading placeholder。shape / size / animation / reduced-motion / live region / preset layout を数値化された contract で持つ |
 
 ## Storybook internal
 

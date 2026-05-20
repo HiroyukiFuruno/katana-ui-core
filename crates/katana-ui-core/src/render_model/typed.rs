@@ -159,3 +159,48 @@ impl Default for UiLoadingProps {
         }
     }
 }
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UiSkeletonShape {
+    #[default]
+    Rect,
+    Circle,
+    Line,
+    Text,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UiSkeletonAnimation {
+    #[default]
+    None,
+    Pulse,
+    Shimmer,
+    Wave,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiSkeletonProps {
+    pub shape: UiSkeletonShape,
+    pub animation: UiSkeletonAnimation,
+    pub radius_px: u16,
+    pub line_count: usize,
+    pub last_line_percent: u8,
+    pub line_thickness_px: u16,
+    pub aspect_ratio_width: u16,
+    pub aspect_ratio_height: u16,
+}
+
+impl Default for UiSkeletonProps {
+    fn default() -> Self {
+        Self {
+            shape: UiSkeletonShape::Rect,
+            animation: UiSkeletonAnimation::None,
+            radius_px: 4,
+            line_count: 1,
+            last_line_percent: 100,
+            line_thickness_px: 12,
+            aspect_ratio_width: 0,
+            aspect_ratio_height: 0,
+        }
+    }
+}

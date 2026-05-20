@@ -153,7 +153,7 @@ fn skeleton_and_motion_make_passive_and_reduced_motion_contract_explicit() {
     let cluster = SkeletonCluster::new("Loading").item(skeleton);
     let tree = UiTree::new(cluster);
     assert_eq!(UiNodeKind::SkeletonCluster, tree.root().kind());
-    assert_eq!("loading", tree.root().props().accessibility_label);
+    assert_eq!("Loading", tree.root().props().accessibility_label);
 
     let spec = MotionSpec {
         primitive: MotionPrimitiveKind::Slide,

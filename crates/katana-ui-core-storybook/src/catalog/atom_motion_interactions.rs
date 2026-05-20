@@ -1,8 +1,9 @@
 use super::{StoryCatalog, StoryExample};
 use katana_ui_core::atom;
 use katana_ui_core::component::ComponentAction;
-use katana_ui_core::interaction::{RgbaActionValue, UiAction};
-use katana_ui_core::render_model::{UiAnimationState, UiDimension, UiVisualRole};
+use katana_ui_core::interaction::{RgbaActionValue, UiAction, UiCallbackLog};
+use katana_ui_core::render_model::{UiAnimationState, UiDimension, UiTone, UiVisualRole};
+use katana_ui_core::{atom::SkeletonAnimation, layout};
 
 const PROGRESS_PERCENT: u8 = 64;
 const SLIDE_VALUE: &str = "42";
@@ -17,15 +18,111 @@ const SKELETON_WIDTH_PX: u16 = 220;
 const SKELETON_HEIGHT_PX: u16 = 44;
 
 pub(super) fn skeleton() -> StoryExample {
-    let mut skeleton = atom::Skeleton::new("Skeleton", atom::SkeletonShape::Rounded)
+    let mut reduced_motion = skeleton_preset(
+        "reduced motion shape=Text size=220x44 animation=Shimmer tone=Neutral radius=6 reduced_motion=true accessibility_label=Reduced loading text",
+        atom::SkeletonShape::Text {
+            lines: 2,
+            last_line_ratio: 0.62,
+        },
+        SKELETON_WIDTH_PX,
+        SKELETON_HEIGHT_PX,
+        SkeletonAnimation::Shimmer,
+        UiTone::Neutral,
+        6,
+    );
+    let reduced_motion_target = reduced_motion.state_id().clone();
+    let reduced_motion_result = reduced_motion.apply_action(&UiAction::reduced_motion(
+        reduced_motion_target.clone(),
+        true,
+    ));
+    let shape_target = reduced_motion_target;
+    let mut logs = reduced_motion_result.callback_log;
+    logs.push(UiCallbackLog::new(
+        shape_target,
+        "skeleton_shape_changed",
+        "shape=Rect size=160x80 animation=Pulse tone=Neutral radius=4 reduced_motion=false accessibility_label=Loading block",
+        "shape=Text lines=2 last_line_ratio=0.62 size=220x44 animation=None tone=Neutral radius=6 reduced_motion=true accessibility_label=Reduced loading text",
+    ));
+    logs.push(UiCallbackLog::new(
+        reduced_motion.state_id().clone(),
+        "skeleton_animation_changed",
+        "animation=Shimmer reduced_motion=false",
+        "animation=None reduced_motion=true event=skeleton_animation_changed",
+    ));
+    StoryCatalog::interactive_story(
+        "skeleton",
+        layout::Column::new()
+            .child(skeleton_preset(
+                "text lines shape=Text size=220x44 animation=Shimmer tone=Neutral radius=4 reduced_motion=false accessibility_label=Loading text lines",
+                atom::SkeletonShape::Text {
+                    lines: 3,
+                    last_line_ratio: 0.58,
+                },
+                SKELETON_WIDTH_PX,
+                SKELETON_HEIGHT_PX,
+                SkeletonAnimation::Shimmer,
+                UiTone::Neutral,
+                4,
+            ))
+            .child(skeleton_preset(
+                "avatar circle shape=Circle size=44x44 animation=Pulse tone=Accent radius=22 reduced_motion=false accessibility_label=Loading avatar",
+                atom::SkeletonShape::Circle,
+                44,
+                44,
+                SkeletonAnimation::Pulse,
+                UiTone::Accent,
+                22,
+            ))
+            .child(skeleton_preset(
+                "rect shimmer shape=Rect size=220x44 animation=Shimmer tone=Neutral radius=8 reduced_motion=false accessibility_label=Loading rectangle",
+                atom::SkeletonShape::Rect,
+                SKELETON_WIDTH_PX,
+                SKELETON_HEIGHT_PX,
+                SkeletonAnimation::Shimmer,
+                UiTone::Neutral,
+                8,
+            ))
+            .child(skeleton_preset(
+                "line wave shape=Line thickness=8 size=220x44 animation=Wave tone=Success radius=4 reduced_motion=false accessibility_label=Loading line",
+                atom::SkeletonShape::Line { thickness: 8.0 },
+                SKELETON_WIDTH_PX,
+                SKELETON_HEIGHT_PX,
+                SkeletonAnimation::Wave,
+                UiTone::Success,
+                4,
+            ))
+            .child(reduced_motion)
+            .child(skeleton_preset(
+                "tone/radius shape=Rect size=220x44 animation=Pulse tone=Warning radius=14 reduced_motion=false accessibility_label=Loading warning block",
+                atom::SkeletonShape::Rect,
+                SKELETON_WIDTH_PX,
+                SKELETON_HEIGHT_PX,
+                SkeletonAnimation::Pulse,
+                UiTone::Warning,
+                14,
+            )),
+        logs,
+    )
+}
+
+fn skeleton_preset(
+    label: &'static str,
+    shape: atom::SkeletonShape,
+    width_px: u16,
+    height_px: u16,
+    animation: SkeletonAnimation,
+    tone: UiTone,
+    radius_px: u16,
+) -> atom::Skeleton {
+    atom::Skeleton::new(label, shape)
         .size(atom::SkeletonSize::Fixed {
-            width: UiDimension::Px(SKELETON_WIDTH_PX),
-            height: UiDimension::Px(SKELETON_HEIGHT_PX),
+            width: UiDimension::Px(width_px),
+            height: UiDimension::Px(height_px),
         })
-        .animation(atom::SkeletonAnimation::Shimmer);
-    let target = skeleton.state_id().clone();
-    let result = skeleton.apply_action(&UiAction::reduced_motion(target, true));
-    StoryCatalog::interactive_story("skeleton", skeleton, result.callback_log)
+        .animation(animation)
+        .tone(tone)
+        .radius_px(radius_px)
+        .accessibility_label(label)
 }
 
 pub(super) fn loading_dots() -> StoryExample {

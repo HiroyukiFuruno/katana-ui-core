@@ -34,31 +34,44 @@ fn skeleton_cluster_owns_single_live_region_and_preset() {
     let cluster = SkeletonCluster::new("Loading messages")
         .preset(SkeletonClusterPreset::Message)
         .item(Skeleton::new("avatar", SkeletonShape::Circle))
-        .item(Skeleton::new("line", SkeletonShape::Text));
+        .item(Skeleton::new(
+            "line",
+            SkeletonShape::Text {
+                lines: 1,
+                last_line_ratio: 1.0,
+            },
+        ));
     assert_eq!("loading", cluster.live_region_label());
 
     let tree = UiTree::new(cluster);
     assert_eq!(UiNodeKind::SkeletonCluster, tree.root().kind());
-    assert_eq!("loading", tree.root().props().accessibility_label);
+    assert_eq!("Loading messages", tree.root().props().accessibility_label);
     assert_eq!(2, tree.root().children().len());
 }
 
 #[test]
 fn skeleton_size_variants_map_to_common_dimensions() {
-    let auto = UiTree::new(Skeleton::new("auto", SkeletonShape::Text).size(SkeletonSize::Auto));
-    let fill = UiTree::new(Skeleton::new("fill", SkeletonShape::Text).size(SkeletonSize::Fill));
-    let fixed = UiTree::new(Skeleton::new("fixed", SkeletonShape::Text).size(
-        SkeletonSize::Fixed {
+    let auto = UiTree::new(Skeleton::new("auto", text_shape()).size(SkeletonSize::Auto));
+    let fill = UiTree::new(Skeleton::new("fill", text_shape()).size(SkeletonSize::Fill));
+    let fixed = UiTree::new(
+        Skeleton::new("fixed", text_shape()).size(SkeletonSize::Fixed {
             width: UiDimension::px(80),
             height: UiDimension::px(12),
-        },
-    ));
+        }),
+    );
 
     assert_eq!(UiDimension::Auto, auto.root().props().common.width);
     assert_eq!(UiDimension::Fill, fill.root().props().common.width);
     assert_eq!(UiDimension::Fill, fill.root().props().common.height);
     assert_eq!(UiDimension::px(80), fixed.root().props().common.width);
     assert_eq!(UiDimension::px(12), fixed.root().props().common.height);
+}
+
+fn text_shape() -> SkeletonShape {
+    SkeletonShape::Text {
+        lines: 1,
+        last_line_ratio: 1.0,
+    }
 }
 
 #[test]

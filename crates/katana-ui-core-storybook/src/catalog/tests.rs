@@ -305,6 +305,100 @@ fn toolbar_story_exposes_overflow_split_settings_and_logs() -> Result<(), &'stat
 }
 
 #[test]
+fn skeleton_stories_expose_presets_settings_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let skeleton = examples
+        .iter()
+        .find(|it| it.page == "skeleton")
+        .ok_or("skeleton page missing")?;
+    let cluster = examples
+        .iter()
+        .find(|it| it.page == "skeleton-cluster")
+        .ok_or("skeleton-cluster page missing")?;
+    let skeleton_labels = page_children(&examples, "skeleton").ok_or("skeleton page missing")?;
+    let cluster_labels =
+        page_children(&examples, "skeleton-cluster").ok_or("skeleton-cluster page missing")?;
+    let skeleton_details = super::StoryDetailContent::from_example(skeleton);
+    let cluster_details = super::StoryDetailContent::from_example(cluster);
+
+    assert_eq!(
+        &[
+            "text lines",
+            "avatar circle",
+            "rect shimmer",
+            "line wave",
+            "reduced motion",
+            "tone/radius"
+        ],
+        StoryPresetLabels::for_page("skeleton")
+    );
+    assert_eq!(
+        &[
+            "list loading",
+            "message loading",
+            "card loading",
+            "paragraph loading",
+            "code block loading",
+            "image card loading"
+        ],
+        StoryPresetLabels::for_page("skeleton-cluster")
+    );
+    for preset in StoryPresetLabels::for_page("skeleton") {
+        assert!(
+            skeleton_labels.iter().any(|it| it.contains(preset)),
+            "skeleton preview lacks preset {preset}"
+        );
+        assert!(
+            skeleton_details.preset.contains(preset),
+            "skeleton detail preset lacks {preset}"
+        );
+    }
+    for preset in StoryPresetLabels::for_page("skeleton-cluster") {
+        assert!(
+            cluster_labels.iter().any(|it| it.contains(preset)),
+            "skeleton-cluster preview lacks preset {preset}"
+        );
+        assert!(
+            cluster_details.preset.contains(preset),
+            "skeleton-cluster detail preset lacks {preset}"
+        );
+    }
+    for setting in [
+        "shape",
+        "size",
+        "animation",
+        "tone",
+        "radius",
+        "reduced_motion",
+        "accessibility_label",
+    ] {
+        assert!(
+            skeleton_details.settings.contains(setting),
+            "skeleton settings inspector lacks {setting}"
+        );
+    }
+    for setting in ["preset", "children", "live_region", "reduced_motion"] {
+        assert!(
+            cluster_details.settings.contains(setting),
+            "skeleton-cluster settings inspector lacks {setting}"
+        );
+    }
+    for action in ["skeleton_animation_changed", "skeleton_shape_changed"] {
+        assert!(
+            skeleton.callback_logs.iter().any(|it| it.action == action),
+            "skeleton callback log lacks action {action}"
+        );
+    }
+    for action in ["skeleton_cluster_preset_apply", "skeleton_cluster_changed"] {
+        assert!(
+            cluster.callback_logs.iter().any(|it| it.action == action),
+            "skeleton-cluster callback log lacks action {action}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn chip_attachment_stories_expose_settings_presets_and_logs() -> Result<(), &'static str> {
     let examples = StoryCatalog.examples();
     let chip = examples

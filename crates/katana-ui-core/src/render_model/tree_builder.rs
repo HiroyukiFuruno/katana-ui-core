@@ -1,8 +1,8 @@
 use super::{
     UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiContextMenuProps, UiIconProps,
     UiInteractionState, UiLoadingProps, UiNode, UiPanelProps, UiSearchControlProps,
-    UiShortcutProps, UiSize, UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTone,
-    UiTreeProps, UiVariant, UiVisualRole,
+    UiShortcutProps, UiSize, UiSkeletonProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps,
+    UiTextProps, UiTone, UiTreeProps, UiVariant, UiVisualRole,
 };
 use crate::theme::ThemeSnapshot;
 
@@ -155,6 +155,12 @@ impl UiNode {
     #[must_use]
     pub fn loading_indicator(mut self, value: UiLoadingProps) -> Self {
         self.props.loading_indicator = value;
+        self
+    }
+
+    #[must_use]
+    pub fn skeleton(mut self, value: UiSkeletonProps) -> Self {
+        self.props.skeleton = value;
         self
     }
 

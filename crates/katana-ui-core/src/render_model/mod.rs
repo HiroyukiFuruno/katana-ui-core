@@ -45,8 +45,8 @@ pub use typed::{
     UiDismissAction, UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiIconProps,
     UiLoadingProps, UiPanelProps, UiProgressMode, UiRect, UiScrollbarDragState, UiScrollbarModel,
     UiScrollbarPlacement, UiScrollbarVisibility, UiSearchControlProps, UiSearchReplaceMode,
-    UiShortcutProps, UiSlotPlacement, UiSlotSpec, UiStatusProps, UiSvgPaintPolicy,
-    UiTextEntryProps, UiTextProps,
+    UiShortcutProps, UiSkeletonAnimation, UiSkeletonProps, UiSkeletonShape, UiSlotPlacement,
+    UiSlotSpec, UiStatusProps, UiSvgPaintPolicy, UiTextEntryProps, UiTextProps,
 };
 
 #[cfg(test)]

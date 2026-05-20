@@ -73,6 +73,10 @@ impl StoryDetailContent {
             toolbar_settings_line(&marker)
         } else if example.page == "text-area" {
             text_area_settings_line(&marker)
+        } else if example.page == "skeleton" {
+            skeleton_settings_line(example, &marker)
+        } else if example.page == "skeleton-cluster" {
+            skeleton_cluster_settings_line(example, &marker)
         } else if is_virtualized_page(example.page) {
             virtualization_settings_line(example, &marker)
         } else {
@@ -182,6 +186,32 @@ fn toolbar_settings_line(marker: &str) -> String {
 fn text_area_settings_line(marker: &str) -> String {
     format!(
         "{marker} settings: submit/newline/tab/auto/wrap Enter,ShiftEnter,MoveFocus,true,Soft -> ModEnter,Enter,InsertTab,false,Hard"
+    )
+}
+
+fn skeleton_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: shape=Text size=220x44 animation=Shimmer tone=Neutral radius=4 reduced_motion=false accessibility_label=Loading text lines callback_log={} actions={actions} -> shape=Line size=220x44 animation=Wave tone=Success radius=4 reduced_motion=true accessibility_label=Reduced loading text",
+        example.callback_logs.len()
+    )
+}
+
+fn skeleton_cluster_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: preset=ListRow children=2 live_region=Loading list loading reduced_motion=false callback_log={} actions={actions} -> preset=ImageCard children=3 live_region=Loading image card loading reduced_motion=false",
+        example.callback_logs.len()
     )
 }
 
