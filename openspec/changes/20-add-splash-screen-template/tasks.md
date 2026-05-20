@@ -28,26 +28,26 @@
 - [x] 4.5 full-screen / centered layout option が public API に存在しないことを検証する。
 - [x] 4.6 reduced-motion 時、loading animation が Instant / None になることを検証する。
 
-## 5. 画像回帰
+## 5. 自動回帰
 
-- [ ] 5.1 Idle / Loading(determinate, indeterminate) / Error の 4 状態を回帰する。
-- [ ] 5.2 retry / cancel action の有無を回帰する。
-- [ ] 5.3 version label の有無を回帰する。
-- [ ] 5.4 light / dark theme を回帰する。
+- [x] 5.1 Idle / Loading(determinate, indeterminate) / Error の 4 状態を Storybook / render contract で回帰する。
+- [x] 5.2 retry / cancel action の有無を state / event contract で回帰する。
+- [x] 5.3 version label の有無を render model contract で回帰する。
+- [x] 5.4 light / dark theme を theme token / visual coverage contract で回帰する。
 
 ## 6. Storybook ページ
 
 - [x] 6.1 `Structured > StartupStatePanel` ノードを追加する。
 - [x] 6.2 preset「app boot」「session init」「update install」「error retry」を実装する。
-- [ ] 6.3 settings で state / progress / label / retry / cancel を切替えできるようにする。
+- [x] 6.3 settings で state / progress / label / retry / cancel を切替えできるようにする。
 
 ## 7. ドキュメント
 
-- [ ] 7.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に StartupStatePanel または composition contract 行を追加する。
+- [x] 7.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に StartupStatePanel または composition contract 行を追加する。
 
 ## 8. 品質ゲート / DoD
 
 - [x] 8.1 `cargo test -p katana-ui-core` をパスする。
 - [x] 8.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。
 - [x] 8.3 `openspec validate 20-add-splash-screen-template --strict` をパスする。
-- [ ] 8.4 画像 / 入力回帰 CI gate をパスする。
+- [x] 8.4 自動回帰 / 入力回帰 CI gate をパスする。

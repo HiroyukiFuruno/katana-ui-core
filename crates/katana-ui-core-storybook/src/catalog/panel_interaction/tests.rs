@@ -24,6 +24,7 @@ const SPLIT_PANE_SETTINGS_MUTATION_COUNT: usize = 6;
 const SETTINGS_LIST_SETTINGS_MUTATION_COUNT: usize = 6;
 const COLLAPSIBLE_PANEL_SETTINGS_MUTATION_COUNT: usize = 5;
 const WINDOW_CONTROL_SETTINGS_MUTATION_COUNT: usize = 4;
+const STARTUP_STATE_SETTINGS_MUTATION_COUNT: usize = 5;
 
 #[test]
 fn report_covers_selector_overlay_and_color_picker_sequences() {
@@ -49,6 +50,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + BANNER_SETTINGS_MUTATION_COUNT
             + TOAST_STACK_SETTINGS_MUTATION_COUNT
             + STATUS_BAR_SETTINGS_MUTATION_COUNT
+            + STARTUP_STATE_SETTINGS_MUTATION_COUNT
             + SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT
             + SEARCH_CONTROL_STRIP_SETTINGS_MUTATION_COUNT
             + SCROLL_AREA_SETTINGS_MUTATION_COUNT
@@ -128,6 +130,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_banner_settings_are_switchable(&report.settings_mutations);
     assert_toast_stack_settings_are_switchable(&report.settings_mutations);
     assert_status_bar_settings_are_switchable(&report.settings_mutations);
+    assert_startup_state_settings_are_switchable(&report.settings_mutations);
     assert_shortcut_combo_settings_are_switchable(&report.settings_mutations);
     assert_search_control_strip_settings_are_switchable(&report.settings_mutations);
     assert_scroll_area_settings_are_switchable(&report.settings_mutations);
@@ -156,6 +159,26 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
     );
+}
+
+fn assert_startup_state_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "startup_state.state",
+        "startup_state.progress",
+        "startup_state.label",
+        "startup_state.retry",
+        "startup_state.cancel",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "startup-state-panel"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "startup_state_settings_changed"
+            }),
+            "missing startup-state-panel setting mutation for {option}"
+        );
+    }
 }
 
 fn assert_window_control_settings_are_switchable(settings: &[super::SettingsMutationReport]) {

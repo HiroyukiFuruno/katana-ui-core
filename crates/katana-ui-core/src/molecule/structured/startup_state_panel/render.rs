@@ -22,6 +22,9 @@ impl From<StartupStatePanel> for UiNode {
                 cancel,
             } => node = render_error(node, message, *retry, *cancel),
         }
+        if let Some(version_label) = &value.options.version_label {
+            node = node.child(Text::new(version_label.as_str()));
+        }
         node
     }
 }

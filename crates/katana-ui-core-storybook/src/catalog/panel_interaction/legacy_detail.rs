@@ -94,6 +94,8 @@ impl StoryDetailContent {
             motion_settings_line(example, &marker)
         } else if example.page == "window-control-button-group" {
             window_control_button_group_settings_line(example, &marker)
+        } else if example.page == "startup-state-panel" {
+            startup_state_panel_settings_line(example, &marker)
         } else if is_virtualized_page(example.page) {
             virtualization_settings_line(example, &marker)
         } else {
@@ -406,6 +408,19 @@ fn window_control_button_group_settings_line(example: &StoryExample, marker: &st
         .join(",");
     format!(
         "{marker} settings: position=Leading/Trailing/Auto size=Compact/Default/Tall controls=Close+Minimize+Maximize+Restore visibility=Always/Hover/FullscreenHover callback_log={} actions={actions} state=visible event=ControlPressed+VisibilityChanged+FullscreenChanged action=window_control_press -> position=Trailing size=Tall controls=Close visibility=Hover",
+        example.callback_logs.len()
+    )
+}
+
+fn startup_state_panel_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: state=Idle/Loading/Error progress=None/64/100 label=Loading workspace retry=true/false cancel=true/false version_label=none/v0.1.0 callback_log={} actions={actions} event=StartupStateChanged+StartupRetried+StartupCanceled -> state=Error progress=100 label=Workspace failed retry=true cancel=true",
         example.callback_logs.len()
     )
 }
