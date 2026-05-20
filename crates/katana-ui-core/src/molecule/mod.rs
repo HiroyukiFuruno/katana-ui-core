@@ -20,12 +20,12 @@ mod toast_stack_manager;
 pub mod toolbar;
 
 pub use app_primitives::{
-    AppShell, AppShellSlot, AppShellSlotKind, CollapsibleSidebar, MotionPrimitive,
-    MotionPrimitiveKind, MotionSpec, ReducedMotionPolicy, ResizableWidth, RowHeightProvider,
-    SettingsControl, SettingsControlKind, SettingsControlOption, SettingsDirtyVisualization,
-    SettingsField, SettingsKeyboardInput, SettingsList, SettingsListAction, SettingsListDensity,
-    SettingsListEvent, SettingsSection, SettingsValue, SidebarEvent, SidebarMode, VirtualRange,
-    VirtualizationConfig, VirtualizedEvent, VirtualizedList, VirtualizedTree,
+    CollapsibleSidebar, MotionPrimitive, MotionPrimitiveKind, MotionSpec, ReducedMotionPolicy,
+    ResizableWidth, RowHeightProvider, SettingsControl, SettingsControlKind, SettingsControlOption,
+    SettingsDirtyVisualization, SettingsField, SettingsKeyboardInput, SettingsList,
+    SettingsListAction, SettingsListDensity, SettingsListEvent, SettingsSection, SettingsValue,
+    SidebarEvent, SidebarMode, VirtualRange, VirtualizationConfig, VirtualizedEvent,
+    VirtualizedList, VirtualizedTree,
 };
 pub use attachment_chip::{
     AttachmentChip, AttachmentChipAction, AttachmentChipEvent, AttachmentKind, AttachmentMeta,

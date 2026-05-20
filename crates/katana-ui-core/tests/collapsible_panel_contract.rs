@@ -126,6 +126,24 @@ fn floating_overlay_keeps_main_width_and_uses_overlay_z_index() {
 }
 
 #[test]
+fn rendered_width_matches_mode_without_image_regression() {
+    let cases = [
+        (PanelMode::Expanded, WIDTH_CURRENT, true),
+        (PanelMode::IconOnly, 56, true),
+        (PanelMode::Collapsed, 0, false),
+        (PanelMode::FloatingOverlay, WIDTH_CURRENT, true),
+    ];
+
+    for (mode, expected_width, expected_visible) in cases {
+        let tree = UiTree::new(panel().mode(mode));
+        let root = tree.root();
+
+        assert_eq!(UiDimension::Px(expected_width), root.props().common.width);
+        assert_eq!(expected_visible, root.props().common.visible);
+    }
+}
+
+#[test]
 fn content_slot_keeps_child_state_separate() {
     let tree = UiTree::new(panel().content(Text::new("Explorer")));
     let root = tree.root();

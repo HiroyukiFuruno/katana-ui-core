@@ -165,7 +165,13 @@ impl StoryPresetLabels {
                 "query filter",
                 "reset",
             ],
-            "collapsible-panel" => &["expanded", "icon only", "floating overlay", "resized width"],
+            "collapsible-panel" => &[
+                "Explorer panel",
+                "Chat history panel",
+                "TOC panel",
+                "Floating overlay",
+                "IconOnly",
+            ],
             "virtualization" => &[
                 "fixed rows",
                 "variable rows",

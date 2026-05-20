@@ -45,6 +45,8 @@ impl StoryDetailContent {
             shortcut_cheatsheet_settings_line(example, &marker)
         } else if example.page == "settings-list" {
             settings_list_settings_line(example, &marker)
+        } else if example.page == "collapsible-panel" {
+            collapsible_panel_settings_line(example, &marker)
         } else if example.page == "key-cap" {
             key_cap_settings_line(&marker)
         } else if example.page == "chip" {
@@ -315,6 +317,19 @@ fn closeable_tab_strip_settings_line(example: &StoryExample, marker: &str) -> St
         .join(",");
     format!(
         "{marker} settings: tab.count=6 pinned=false dirty=false group=docs actions={actions} callback_log={} -> tab.count=7 pinned=true dirty=true group=preview",
+        example.callback_logs.len()
+    )
+}
+
+fn collapsible_panel_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: mode=Expanded width=240 pinned=true expand_on_hover=true resize_handle=true callback_log={} actions={actions} -> mode=IconOnly width=320 pinned=false expand_on_hover=true resize_handle=true",
         example.callback_logs.len()
     )
 }

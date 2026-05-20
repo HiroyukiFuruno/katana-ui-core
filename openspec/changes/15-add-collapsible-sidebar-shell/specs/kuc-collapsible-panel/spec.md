@@ -5,6 +5,7 @@
 `CollapsiblePanel` MUST expose `mode = Expanded | IconOnly | Collapsed | FloatingOverlay`.
 The transition between modes MUST be observable via `ModeChanged` events.
 `CollapsiblePanel` MUST NOT expose app shell, page, or template slots.
+`CollapsiblePanel` MUST render stable numeric width, visibility, and overlay z-index props for each mode.
 
 #### Scenario: switching modes emits events
 
@@ -17,6 +18,12 @@ The transition between modes MUST be observable via `ModeChanged` events.
 - **WHEN** mode transitions to `FloatingOverlay`
 - **THEN** the sibling main content's available width is unchanged
 - **AND** the sidebar renders as an overlay on top of the main content with a higher z-index
+
+#### Scenario: modes expose numeric render props
+
+- **WHEN** the panel renders in Expanded, IconOnly, Collapsed, or FloatingOverlay
+- **THEN** the root node exposes deterministic width and visibility props for that mode
+- **AND** FloatingOverlay keeps its visual width while contributing zero layout width to the main content
 
 ### Requirement: CollapsiblePanel supports resizable width with optional persistence
 

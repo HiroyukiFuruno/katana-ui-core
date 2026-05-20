@@ -69,7 +69,6 @@ pub enum UiNodeKind {
     SettingsList,
     CollapsibleSidebar,
     CollapsiblePanel,
-    AppShell,
     VirtualizedList,
     VirtualizedTree,
     Skeleton,

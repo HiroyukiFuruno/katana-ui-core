@@ -28,6 +28,7 @@ UI ごとの状態（state）は component 内部 model で管理し、同じ種
 
 現在の主な実装対象は、利用側が組み合わせて UI を構築するための最小部品（atoms）と組み合わせ部品（molecules）です。
 画面（pages）や画面ひな形（templates）は将来の拡張対象であり、現時点の公開スコープではありません。
+折りたたみ可能なパネル（CollapsiblePanel）は molecule として提供しますが、アプリ全体の枠（AppShell）や画面テンプレートは公開 API に含めません。利用側は `SplitPane`、`Toolbar`、`StatusBar`、`CollapsiblePanel` などを組み合わせて shell を構築します。
 次フェーズの正本は [`openspec/changes/establish-kuc-atoms-molecules-catalog/`](openspec/changes/establish-kuc-atoms-molecules-catalog/) です。
 
 ## Core 階層と依存方向

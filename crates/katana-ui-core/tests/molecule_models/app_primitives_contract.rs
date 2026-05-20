@@ -7,16 +7,16 @@ use katana_ui_core::widget::atoms::{
     SkeletonShape,
 };
 use katana_ui_core::widget::molecules::{
-    AppShell, AppShellSlot, AppShellSlotKind, CollapsibleSidebar, MotionPrimitive,
-    MotionPrimitiveKind, MotionSpec, ReducedMotionPolicy, ResizableWidth, RowHeightProvider,
-    SettingsControl, SettingsDirtyVisualization, SettingsField, SettingsList, SettingsListEvent,
-    SettingsSection, SettingsValue, ShortcutCheatsheet, ShortcutCheatsheetAction,
-    ShortcutCheatsheetEvent, ShortcutCheatsheetGroup, ShortcutCheatsheetItem, SidebarEvent,
-    SidebarMode, SkeletonCluster, StartupState, StartupStatePanel, StartupStatePanelAction,
-    StartupStatePanelEvent, VirtualizationConfig, VirtualizedEvent, VirtualizedList,
-    VirtualizedTree, WindowControlButtonGroup, WindowControlButtonGroupAction,
-    WindowControlButtonGroupEvent, WindowControlButtonGroupOptions, WindowControlKind,
-    WindowControlSize, WindowControlVisibility, WindowControlsPosition,
+    CollapsiblePanel, CollapsiblePanelWidth, CollapsibleSidebar, MotionPrimitive,
+    MotionPrimitiveKind, MotionSpec, PanelMode, ReducedMotionPolicy, ResizableWidth,
+    RowHeightProvider, SettingsControl, SettingsDirtyVisualization, SettingsField, SettingsList,
+    SettingsListEvent, SettingsSection, SettingsValue, ShortcutCheatsheet,
+    ShortcutCheatsheetAction, ShortcutCheatsheetEvent, ShortcutCheatsheetGroup,
+    ShortcutCheatsheetItem, SidebarEvent, SidebarMode, SkeletonCluster, StartupState,
+    StartupStatePanel, StartupStatePanelAction, StartupStatePanelEvent, VirtualizationConfig,
+    VirtualizedEvent, VirtualizedList, VirtualizedTree, WindowControlButtonGroup,
+    WindowControlButtonGroupAction, WindowControlButtonGroupEvent, WindowControlButtonGroupOptions,
+    WindowControlKind, WindowControlSize, WindowControlVisibility, WindowControlsPosition,
 };
 
 #[test]
@@ -95,7 +95,7 @@ fn settings_list_filters_resets_and_collapses_with_typed_events() {
 }
 
 #[test]
-fn sidebar_and_app_shell_expose_width_mode_and_slot_contract() {
+fn sidebar_exposes_width_mode_and_event_contract() {
     let width = ResizableWidth {
         min: 160,
         max: 320,
@@ -111,13 +111,7 @@ fn sidebar_and_app_shell_expose_width_mode_and_slot_contract() {
         *sidebar.last_event()
     );
 
-    let shell = AppShell::new("App", 1000).slot(AppShellSlot {
-        kind: AppShellSlotKind::Leading,
-        width: sidebar.width(),
-        node: sidebar.into(),
-    });
-    assert_eq!(680, shell.main_available_width());
-    assert_eq!(UiNodeKind::AppShell, UiTree::new(shell).root().kind());
+    assert_eq!(320, sidebar.width());
 }
 
 #[test]
@@ -219,10 +213,12 @@ fn window_control_group_and_startup_panel_emit_typed_events() {
 
 #[test]
 fn widget_molecules_public_api_exports_app_primitives() {
-    let tree = UiTree::new(AppShell::new("App", 800).slot(AppShellSlot {
-        kind: AppShellSlotKind::Main,
-        width: 800,
-        node: Text::new("Main").into(),
-    }));
+    let panel = CollapsiblePanel::new(
+        "Panel",
+        CollapsiblePanelWidth::new(160, 360, 240, 240, Some("panel.width")),
+    )
+    .mode(PanelMode::Expanded)
+    .content(Text::new("Main"));
+    let tree = UiTree::new(panel);
     assert_eq!(1, tree.root().children().len());
 }

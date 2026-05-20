@@ -50,6 +50,7 @@ class KucGuardrails:
         failures.extend(self.repo_local_guardrail_policy_failures())
         failures.extend(self.agent_stop_policy_failures())
         failures.extend(self.agent_hook_policy_failures())
+        failures.extend(self.public_app_shell_failures())
         failures.extend(self.openspec_evidence_failures())
         failures.extend(self.file_length_review_failures())
         return failures
@@ -363,6 +364,24 @@ class KucGuardrails:
             for token in forbidden_tokens
             if token in combined
         )
+        return failures
+
+    def public_app_shell_failures(self) -> list[str]:
+        checked_paths = (
+            self.root / "crates/katana-ui-core/src/molecule/mod.rs",
+            self.root / "crates/katana-ui-core/src/widget/molecules.rs",
+            self.root / "crates/katana-ui-core/src/render_model/kind.rs",
+            self.root / "crates/katana-ui-core-storybook/src/catalog/preset_labels.rs",
+        )
+        failures: list[str] = []
+        for path in checked_paths:
+            if not path.exists():
+                continue
+            source = self.read(path)
+            if "AppShell" in source or "app-shell" in source:
+                failures.append(
+                    f"{self.relative(path)}: AppShell is outside the public KUC molecule scope"
+                )
         return failures
 
 

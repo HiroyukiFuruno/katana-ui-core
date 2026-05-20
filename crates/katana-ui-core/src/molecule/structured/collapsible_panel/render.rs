@@ -26,13 +26,21 @@ impl From<CollapsiblePanel> for UiNode {
 fn common_props(value: &CollapsiblePanel) -> UiCommonProps {
     let props = UiCommonProps::default()
         .visible(value.rendered_mode() != PanelMode::Collapsed)
-        .width(UiDimension::Px(value.state.width.current));
+        .width(UiDimension::Px(rendered_width(value)));
     if value.rendered_mode() == PanelMode::FloatingOverlay {
         props
             .position(UiPosition::Absolute)
             .z_index(UiZIndex::Value(CollapsiblePanel::OVERLAY_Z_INDEX))
     } else {
         props
+    }
+}
+
+fn rendered_width(value: &CollapsiblePanel) -> u16 {
+    if value.rendered_mode() == PanelMode::FloatingOverlay {
+        value.state.width.current
+    } else {
+        value.layout_contribution_width()
     }
 }
 

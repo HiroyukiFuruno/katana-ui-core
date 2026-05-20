@@ -287,6 +287,54 @@ class KucGuardrailsTest(unittest.TestCase):
 
             self.assertEqual([], failures)
 
+    def test_rejects_public_app_shell_api(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core/src/molecule/mod.rs",
+                "pub use app_primitives::{AppShell, CollapsiblePanel};\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/widget/molecules.rs",
+                "pub use crate::molecule::{AppShellSlot, CollapsiblePanel};\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/catalog/preset_labels.rs",
+                '"app-shell" => &["shell"],\n',
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/render_model/kind.rs",
+                "pub enum UiNodeKind { AppShell, CollapsiblePanel }\n",
+            )
+
+            failures = KucGuardrails(root).public_app_shell_failures()
+
+            self.assertEqual(4, len(failures))
+
+    def test_accepts_collapsible_panel_without_public_app_shell(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core/src/molecule/mod.rs",
+                "pub use structured::CollapsiblePanel;\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/widget/molecules.rs",
+                "pub use crate::molecule::CollapsiblePanel;\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/catalog/preset_labels.rs",
+                '"collapsible-panel" => &["Explorer panel"],\n',
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/render_model/kind.rs",
+                "pub enum UiNodeKind { CollapsiblePanel }\n",
+            )
+
+            failures = KucGuardrails(root).public_app_shell_failures()
+
+            self.assertEqual([], failures)
+
 
 if __name__ == "__main__":
     unittest.main()

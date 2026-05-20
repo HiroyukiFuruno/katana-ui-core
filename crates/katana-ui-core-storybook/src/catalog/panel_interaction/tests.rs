@@ -16,6 +16,7 @@ const TOAST_STACK_SETTINGS_MUTATION_COUNT: usize = 6;
 const STATUS_BAR_SETTINGS_MUTATION_COUNT: usize = 3;
 const SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT: usize = 4;
 const SETTINGS_LIST_SETTINGS_MUTATION_COUNT: usize = 6;
+const COLLAPSIBLE_PANEL_SETTINGS_MUTATION_COUNT: usize = 5;
 
 #[test]
 fn report_covers_selector_overlay_and_color_picker_sequences() {
@@ -41,6 +42,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + STATUS_BAR_SETTINGS_MUTATION_COUNT
             + SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT
             + SETTINGS_LIST_SETTINGS_MUTATION_COUNT
+            + COLLAPSIBLE_PANEL_SETTINGS_MUTATION_COUNT
             + CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT,
         report.settings_mutations.len()
     );
@@ -113,6 +115,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_status_bar_settings_are_switchable(&report.settings_mutations);
     assert_shortcut_combo_settings_are_switchable(&report.settings_mutations);
     assert_settings_list_settings_are_switchable(&report.settings_mutations);
+    assert_collapsible_panel_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
         report.legacy_ui_markers.len(),
         report
@@ -134,6 +137,26 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
     );
+}
+
+fn assert_collapsible_panel_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "collapsible_panel.mode",
+        "collapsible_panel.width",
+        "collapsible_panel.pinned",
+        "collapsible_panel.expand_on_hover",
+        "collapsible_panel.resize_handle",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "collapsible-panel"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "collapsible_panel_settings_changed"
+            }),
+            "missing collapsible-panel setting mutation for {option}"
+        );
+    }
 }
 
 fn assert_settings_list_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
