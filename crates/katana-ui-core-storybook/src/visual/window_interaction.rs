@@ -7,7 +7,11 @@ use super::navigation_tree::{NavigationRow, TreeExpansionState, row_from_click};
 use super::panel_scroll_state::{PanelScrollOffsets, PanelScrollRegion, region_at};
 use super::panel_scrollbars;
 use super::preview_detail;
+use super::render::{HEIGHT, WIDTH};
 use super::screen_state::StorybookScreenState;
+use super::window_coordinates::{
+    CanvasPoint, SurfaceSize, WindowPoint, window_point_to_canvas_point,
+};
 use button_operation::button_operation_at;
 
 const DEFAULT_SELECTED_PAGE: &str = "button";
@@ -52,7 +56,10 @@ pub(super) fn apply_scroll(window: &Window, state: &mut StorybookWindowState) ->
     let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) else {
         return apply_scroll_delta(state, delta_y);
     };
-    apply_scroll_delta_at(state, x as usize, y as usize, delta_y)
+    let Some(point) = normalize_mouse_point(window, x, y) else {
+        return false;
+    };
+    apply_scroll_delta_at(state, point.x, point.y, delta_y)
 }
 
 pub(super) fn apply_mouse_click(
@@ -66,8 +73,11 @@ pub(super) fn apply_mouse_click(
     let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) else {
         return false;
     };
-    let x = x as usize;
-    let raw_y = y as usize;
+    let Some(point) = normalize_mouse_point(window, x, y) else {
+        return false;
+    };
+    let x = point.x;
+    let raw_y = point.y;
     if !window.get_mouse_down(MouseButton::Left) {
         state.drag_scroll_region = None;
     }
@@ -126,6 +136,15 @@ fn click_started(window: &Window, button: MouseButton, mouse_was_down: &mut bool
     started
 }
 
+fn normalize_mouse_point(window: &Window, x: f32, y: f32) -> Option<CanvasPoint> {
+    let (width, height) = window.get_size();
+    window_point_to_canvas_point(
+        WindowPoint::new(x, y),
+        SurfaceSize::new(width, height),
+        SurfaceSize::new(WIDTH, HEIGHT),
+    )
+}
+
 fn apply_scroll_delta(state: &mut StorybookWindowState, delta_y: f32) -> bool {
     apply_scroll_delta_at_root(state, delta_y)
 }
@@ -136,7 +155,7 @@ fn apply_scroll_delta_at(
     y: usize,
     delta_y: f32,
 ) -> bool {
-    let region = region_at(x, y);
+    let region = region_at(x, y + state.panel_scroll.root_y);
     let changed = state.panel_scroll.scroll_delta(region, delta_y);
     if region == PanelScrollRegion::Root {
         state.scroll_y = state.panel_scroll.root_y;
@@ -166,11 +185,12 @@ fn apply_scrollbar_drag(
 }
 
 fn click_content_y(state: &StorybookWindowState, x: usize, y: usize) -> usize {
-    match region_at(x, y) {
-        PanelScrollRegion::Root => y + state.panel_scroll.root_y,
-        PanelScrollRegion::Navigation => y,
-        PanelScrollRegion::Preview => y + state.panel_scroll.preview_y,
-        PanelScrollRegion::Inspector => y + state.panel_scroll.inspector_y,
+    let content_y = y + state.panel_scroll.root_y;
+    match region_at(x, content_y) {
+        PanelScrollRegion::Root => content_y,
+        PanelScrollRegion::Navigation => content_y,
+        PanelScrollRegion::Preview => content_y + state.panel_scroll.preview_y,
+        PanelScrollRegion::Inspector => content_y + state.panel_scroll.inspector_y,
     }
 }
 

@@ -2,7 +2,7 @@ use super::super::{
     StorybookWindowState, apply_scroll_delta, apply_scroll_delta_at, apply_scrollbar_drag,
 };
 use crate::visual::layout_metrics;
-use crate::visual::panel_scroll_state::PanelScrollRegion;
+use crate::visual::panel_scroll_state::{PanelScrollOffsets, PanelScrollRegion};
 use crate::visual::panel_scrollbars;
 
 #[test]
@@ -69,5 +69,28 @@ fn scroll_delta_updates_only_the_panel_under_pointer() {
 
     assert!(apply_scroll_delta_at(&mut state, 288, 22, -1.0));
     assert_eq!(layout_metrics::SCROLL_STEP, state.panel_scroll.root_y);
+    assert_eq!(layout_metrics::SCROLL_STEP, state.scroll_y);
+}
+
+#[test]
+fn scroll_delta_region_uses_root_scrolled_content_position() {
+    let mut state = StorybookWindowState {
+        scroll_y: layout_metrics::SCROLL_STEP,
+        panel_scroll: PanelScrollOffsets {
+            root_y: layout_metrics::SCROLL_STEP,
+            ..PanelScrollOffsets::default()
+        },
+        ..StorybookWindowState::default()
+    };
+    let visible_preview_y = layout_metrics::PRESET_ACTIVE_Y + 40 - state.panel_scroll.root_y;
+
+    assert!(apply_scroll_delta_at(
+        &mut state,
+        layout_metrics::PREVIEW_X + 8,
+        visible_preview_y,
+        -1.0,
+    ));
+    assert_eq!(layout_metrics::SCROLL_STEP, state.panel_scroll.root_y);
+    assert_eq!(layout_metrics::SCROLL_STEP, state.panel_scroll.preview_y);
     assert_eq!(layout_metrics::SCROLL_STEP, state.scroll_y);
 }

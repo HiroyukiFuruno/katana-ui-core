@@ -1,5 +1,6 @@
-use super::super::{StorybookWindowState, apply_click};
+use super::super::{StorybookWindowState, apply_click, click_content_y};
 use crate::visual::navigation_tree::{NavigationGroup, NavigationRow, row_from_click};
+use crate::visual::panel_scroll_state::PanelScrollOffsets;
 use crate::visual::{layout_metrics, render};
 
 const DIFF_THRESHOLD: usize = 8_000;
@@ -55,6 +56,29 @@ fn click_mapping_can_select_visible_story_and_change_rendered_scene() {
     assert!(pixel_diff(&before, &after) > DIFF_THRESHOLD);
 }
 
+#[test]
+fn viewport_click_mapping_keeps_navigation_rows_aligned_after_root_scroll() {
+    let mut state = StorybookWindowState {
+        scroll_y: layout_metrics::SCROLL_STEP,
+        panel_scroll: PanelScrollOffsets {
+            root_y: layout_metrics::SCROLL_STEP,
+            navigation_y: layout_metrics::NAV_ROW_STEP,
+            ..PanelScrollOffsets::default()
+        },
+        ..StorybookWindowState::default()
+    };
+    let target = logical_click_target_for_page("tree-view");
+
+    assert!(target.is_some());
+    if let Some((x, logical_y)) = target {
+        let visible_y = logical_y - state.panel_scroll.navigation_y - state.panel_scroll.root_y;
+        let content_y = click_content_y(&state, x, visible_y);
+
+        assert!(apply_click(&mut state, x, content_y));
+        assert_eq!("tree-view", state.selected_page);
+    }
+}
+
 fn click_scrollbar_off(state: &mut StorybookWindowState) {
     let scrollbar_off = layout_metrics::scrollbar_off_rect();
     assert!(apply_click(state, scrollbar_off.x + 1, scrollbar_off.y + 1));
@@ -78,7 +102,20 @@ fn click_page(state: &mut StorybookWindowState, page: &'static str) {
 }
 
 fn click_target_for_page(page: &str) -> Option<(usize, usize)> {
-    for y in 0..render::HEIGHT {
+    for y in 0..layout_metrics::CONTENT_HEIGHT {
+        let x = layout_metrics::NAV_ROW_X + 1;
+        if matches!(
+            row_from_click(x, y, Default::default()),
+            Some(NavigationRow::Page { page: found, .. }) if found == page
+        ) {
+            return Some((x, y));
+        }
+    }
+    None
+}
+
+fn logical_click_target_for_page(page: &str) -> Option<(usize, usize)> {
+    for y in 0..layout_metrics::CONTENT_HEIGHT {
         let x = layout_metrics::NAV_ROW_X + 1;
         if matches!(
             row_from_click(x, y, Default::default()),

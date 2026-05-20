@@ -83,6 +83,7 @@ mod visual_interaction_tests;
 #[cfg(test)]
 mod visual_tests;
 mod window;
+mod window_coordinates;
 mod window_interaction;
 mod window_modal_plan;
 mod window_options;
