@@ -33,7 +33,9 @@ pub(super) fn visual_role(kind: UiNodeKind) -> UiVisualRole {
         | UiNodeKind::SvgButton
         | UiNodeKind::TextButton
         | UiNodeKind::IconTextButton
-        | UiNodeKind::DragHandle => UiVisualRole::Control,
+        | UiNodeKind::DragHandle
+        | UiNodeKind::CloseableTabStrip
+        | UiNodeKind::CloseableTab => UiVisualRole::Control,
         UiNodeKind::DropIndicator => UiVisualRole::Status,
         _ => UiVisualRole::Content,
     }

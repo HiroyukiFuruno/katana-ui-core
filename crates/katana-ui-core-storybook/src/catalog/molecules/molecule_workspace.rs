@@ -23,32 +23,99 @@ fn drag_and_drop_story() -> StoryExample {
 }
 
 fn closeable_tab_strip_story() -> StoryExample {
-    let mut bar = molecule::CloseableTabStrip::new("CloseableTabStrip")
-        .group(molecule::CloseableTabGroup::new("docs", "Docs"))
-        .tab(molecule::CloseableTab::new("works", "works").pinned(true))
+    let bar = closeable_tab_strip_base();
+    let target = bar.state().state_id.clone();
+    let logs = closeable_tab_strip_logs(&target);
+    StoryCatalog::interactive_story("closeable-tab-strip", bar, logs)
+}
+
+fn closeable_tab_strip_base() -> molecule::CloseableTabStrip {
+    molecule::CloseableTabStrip::new("CloseableTabStrip")
+        .group(molecule::TabGroup::new("docs", "Docs"))
+        .group(molecule::TabGroup::new("preview", "Preview"))
+        .tab(molecule::CloseableTab::new("works", "default"))
+        .tab(molecule::CloseableTab::new("pinned", "pinned").pinned(true))
+        .tab(molecule::CloseableTab::new("overflow", "overflow").icon("more"))
         .tab(
-            molecule::CloseableTab::new("inbox", "受信トレイ")
+            molecule::CloseableTab::new("inbox", "groups")
                 .dirty(true)
                 .group_id("docs"),
         )
-        .tab(molecule::CloseableTab::new("settings", "Settings").icon("gear"))
-        .active_tab_id("inbox");
-    let target = bar.state().state_id.clone();
-    let select = bar.apply_action(molecule::CloseableTabStripAction::SelectTab {
+        .tab(molecule::CloseableTab::new("settings", "dirty").dirty(true))
+        .tab(molecule::CloseableTab::new("dragging", "dragging"))
+        .active_tab_id("inbox")
+}
+
+fn closeable_tab_strip_logs(target: &UiStateId) -> Vec<UiCallbackLog> {
+    vec![
+        closeable_action_log(target, "add_tab", "tabs=6", "tabs=7 event=tab_added"),
+        closeable_core_action_log(target, "delete_tab", "tabs=6", close_events()),
+        closeable_core_action_log(target, "pin_tab", "pinned=false", pin_events()),
+        closeable_action_log(
+            target,
+            "dirty_toggle",
+            "dirty=false",
+            "dirty=true event=tab_dirty_changed",
+        ),
+        closeable_core_action_log(target, "group_toggle", "group=docs", group_events()),
+        closeable_core_action_log(target, "drag_tab", "index=4", drag_events()),
+        closeable_core_action_log(target, "overflow_open", "hidden=0", overflow_events()),
+    ]
+}
+
+fn close_events() -> Vec<molecule::CloseableTabStripEvent> {
+    let mut bar = closeable_tab_strip_base();
+    bar.apply_action(molecule::CloseableTabStripAction::CloseTab {
+        tab_id: molecule::CloseableTabId::new("dragging"),
+    })
+}
+
+fn pin_events() -> Vec<molecule::CloseableTabStripEvent> {
+    let mut bar = closeable_tab_strip_base();
+    bar.apply_action(molecule::CloseableTabStripAction::PinTab {
         tab_id: molecule::CloseableTabId::new("settings"),
-    });
-    let close = bar.apply_action(molecule::CloseableTabStripAction::CloseTab {
-        tab_id: molecule::CloseableTabId::new("inbox"),
-    });
-    let overflow = bar.apply_action(molecule::CloseableTabStripAction::OpenOverflow {
+    })
+}
+
+fn group_events() -> Vec<molecule::CloseableTabStripEvent> {
+    let mut bar = closeable_tab_strip_base();
+    bar.apply_action(molecule::CloseableTabStripAction::MoveToGroup {
+        tab_id: molecule::CloseableTabId::new("settings"),
+        target: molecule::TabGroupTarget::Existing("preview".into()),
+    })
+}
+
+fn drag_events() -> Vec<molecule::CloseableTabStripEvent> {
+    let mut bar = closeable_tab_strip_base();
+    bar.apply_action(molecule::CloseableTabStripAction::MoveTab {
+        tab_id: molecule::CloseableTabId::new("dragging"),
+        to_visual_index: 2,
+    })
+}
+
+fn overflow_events() -> Vec<molecule::CloseableTabStripEvent> {
+    let mut bar = closeable_tab_strip_base();
+    bar.apply_action(molecule::CloseableTabStripAction::OpenOverflow {
         hidden_tab_ids: vec![molecule::CloseableTabId::new("settings")],
-    });
-    let logs = vec![
-        event_log(&target, "select_tab", "active=inbox", select.as_slice()),
-        event_log(&target, "close_tab", "dirty=true", close.as_slice()),
-        event_log(&target, "open_overflow", "hidden=1", overflow.as_slice()),
-    ];
-    StoryCatalog::interactive_story("closeable-tab-strip", bar, logs)
+    })
+}
+
+fn closeable_core_action_log(
+    target: &UiStateId,
+    action: &str,
+    before: &str,
+    events: Vec<molecule::CloseableTabStripEvent>,
+) -> UiCallbackLog {
+    event_log(target, action, before, events.as_slice())
+}
+
+fn closeable_action_log(
+    target: &UiStateId,
+    action: &str,
+    before: impl Into<String>,
+    after: impl Into<String>,
+) -> UiCallbackLog {
+    log(target, action, before, after)
 }
 
 fn event_log(

@@ -29,7 +29,9 @@ impl StoryDetailContent {
         let after_props = props_with_option(props, option, &resolved_after);
         let after = option_value(option, &after_props);
         let action = action_line(example, &marker);
-        let settings = if example.page == "drag-and-drop" {
+        let settings = if example.page == "closeable-tab-strip" {
+            closeable_tab_strip_settings_line(example, &marker)
+        } else if example.page == "drag-and-drop" {
             drag_and_drop_settings_line(example, &marker)
         } else if example.page == "context-menu" {
             context_menu_settings_line(example, &marker)
@@ -119,6 +121,19 @@ fn context_menu_settings_line(example: &StoryExample, marker: &str) -> String {
     )
 }
 
+fn closeable_tab_strip_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: tab.count=6 pinned=false dirty=false group=docs actions={actions} callback_log={} -> tab.count=7 pinned=true dirty=true group=preview",
+        example.callback_logs.len()
+    )
+}
+
 fn action_line(example: &StoryExample, marker: &str) -> String {
     if let Some(log) = example.callback_logs.first() {
         return format!(
@@ -130,11 +145,19 @@ fn action_line(example: &StoryExample, marker: &str) -> String {
 }
 
 fn preset_line(page: &str, marker: &str) -> String {
+    if page == "closeable-tab-strip" {
+        return format!("{marker} preset: default / overflow / pinned / groups / dirty / dragging");
+    }
     let presets = StoryPresetLabels::for_page(page);
     format!("{marker} preset: {}", presets.join(" / "))
 }
 
 fn quality_line(spec: Option<&LegacyDodSpec>, marker: &str) -> String {
+    if marker == "catalog-closeable-tab-strip" {
+        return format!(
+            "{marker} quality: settings=tab_add/delete/pin/dirty/group state/event/action/preset markers fixed"
+        );
+    }
     let option = spec.map_or("theme_id", |it| it.option);
     format!("{marker} quality: settings={option} state/event/action/preset markers fixed")
 }

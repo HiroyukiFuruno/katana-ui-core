@@ -2,7 +2,7 @@ use super::actions::WorkspaceTabBarAction;
 use super::events::WorkspaceTabBarEvent;
 use super::identifiers::WorkspaceTabId;
 use super::keyboard::{WorkspaceTabKeyboardController, WorkspaceTabKeyboardInput};
-use super::options::{WorkspaceTab, WorkspaceTabBarOptions, WorkspaceTabGroup};
+use super::options::{WorkspaceTab, WorkspaceTabBarOptions, WorkspaceTabGroup, WorkspaceTabTone};
 use super::ordering::ordered_tabs;
 use super::state::WorkspaceTabBarState;
 use crate::render_model::{UiCommonProps, UiDimension, UiNode, UiNodeKind, UiVisualRole};
@@ -83,6 +83,13 @@ impl WorkspaceTabBar {
             WorkspaceTabBarAction::MoveToGroup { tab_id, target } => {
                 self.move_to_group(tab_id, target)
             }
+            WorkspaceTabBarAction::StartDrag { tab_id } => self.start_drag(tab_id),
+            WorkspaceTabBarAction::EndDrag { committed } => self.end_drag(committed),
+            WorkspaceTabBarAction::CancelDrag => self.end_drag(false),
+            WorkspaceTabBarAction::HoverCollapsedGroupForDrop {
+                group_id,
+                elapsed_ms,
+            } => self.hover_collapsed_group_for_drop(group_id, elapsed_ms),
             WorkspaceTabBarAction::ToggleGroupCollapse { group_id } => {
                 self.toggle_group_collapse(group_id)
             }
@@ -100,6 +107,9 @@ impl WorkspaceTabBar {
         input: WorkspaceTabKeyboardInput,
         visible_tab_ids: &[WorkspaceTabId],
     ) -> Vec<WorkspaceTabBarEvent> {
+        if input == WorkspaceTabKeyboardInput::CancelDrag {
+            return self.apply_action(WorkspaceTabBarAction::CancelDrag);
+        }
         let action = WorkspaceTabKeyboardController::action_for_input(
             &input,
             self.state.active_tab_id.as_ref(),
@@ -119,11 +129,11 @@ impl From<WorkspaceTabBar> for UiNode {
         let interaction = value.state.interaction(value.options.tabs.len());
         let state_id = value.state.state_id.clone();
         let label = value.label.clone();
-        let mut node = UiNode::from_state(UiNodeKind::Tabs, label, state_id)
+        let mut node = UiNode::from_state(UiNodeKind::CloseableTabStrip, label, state_id)
             .common(common)
             .interaction(interaction)
             .visual_role(UiVisualRole::Control)
-            .style_class("workspace-tab-bar");
+            .style_class("closeable-tab-strip");
         for tab in value.visual_tabs() {
             node = node.child(workspace_tab_node(tab, value.state.child_state_id(&tab.id)));
         }
@@ -136,21 +146,34 @@ fn workspace_tab_node(
     state_id: Option<&crate::render_model::UiStateId>,
 ) -> UiNode {
     let mut node = state_id.map_or_else(
-        || UiNode::new(UiNodeKind::Tabs, tab.title.clone()),
-        |it| UiNode::from_state(UiNodeKind::Tabs, tab.title.clone(), it.clone()),
+        || UiNode::new(UiNodeKind::CloseableTab, tab.title.clone()),
+        |it| UiNode::from_state(UiNodeKind::CloseableTab, tab.title.clone(), it.clone()),
     );
     node = node
         .width(UiDimension::FitContent)
         .height(UiDimension::Px(WORKSPACE_TAB_HEIGHT_PX))
         .focusable(true)
         .selectable(true)
+        .tone(tab_tone(tab.tone))
         .accessibility_label(tab.accessibility_text())
-        .style_class("workspace-tab");
+        .style_class("closeable-tab");
     if tab.pinned {
-        node = node.style_class("workspace-tab-pinned");
+        node = node.style_class("closeable-tab-pinned");
+    }
+    if tab.closeable && !tab.pinned {
+        node = node.style_class("closeable-tab-closeable");
     }
     if tab.dirty {
-        node = node.style_class("workspace-tab-dirty");
+        node = node.style_class("closeable-tab-dirty");
     }
     node
+}
+
+fn tab_tone(tone: WorkspaceTabTone) -> crate::render_model::UiTone {
+    match tone {
+        WorkspaceTabTone::Default | WorkspaceTabTone::Muted => crate::render_model::UiTone::Neutral,
+        WorkspaceTabTone::Accent => crate::render_model::UiTone::Accent,
+        WorkspaceTabTone::Warning => crate::render_model::UiTone::Warning,
+        WorkspaceTabTone::Danger => crate::render_model::UiTone::Danger,
+    }
 }

@@ -115,7 +115,7 @@ pub(super) fn group_for_page(page: &str) -> NavigationGroup {
         | "text-input" | "checkbox" | "radio" | "badge" | "divider" | "spacer" | "key-cap"
         | "loading-dots" | "spinner" | "progress-bar" | "color-swatch" | "toggle"
         | "slide-control" => NavigationGroup::Atoms,
-        "context-menu" | "selection-list" => NavigationGroup::Selection,
+        "closeable-tab-strip" | "context-menu" | "selection-list" => NavigationGroup::Selection,
         "row" | "column" | "stack" | "grid" | "scroll-area" | "split-pane" | "align-center" => {
             NavigationGroup::Layout
         }
@@ -176,5 +176,26 @@ mod tests {
         assert!(selection_index.is_some());
         assert!(context_menu_index.is_some());
         assert!(selection_index < context_menu_index);
+    }
+
+    #[test]
+    fn closeable_tab_strip_is_grouped_under_selection() {
+        let rows = visible_rows(TreeExpansionState::default());
+        let selection_index = rows
+            .iter()
+            .position(|it| matches!(it, NavigationRow::Group(super::NavigationGroup::Selection)));
+        let tab_strip_index = rows.iter().position(|it| {
+            matches!(
+                it,
+                NavigationRow::Page {
+                    page: "closeable-tab-strip",
+                    group: super::NavigationGroup::Selection
+                }
+            )
+        });
+
+        assert!(selection_index.is_some());
+        assert!(tab_strip_index.is_some());
+        assert!(selection_index < tab_strip_index);
     }
 }

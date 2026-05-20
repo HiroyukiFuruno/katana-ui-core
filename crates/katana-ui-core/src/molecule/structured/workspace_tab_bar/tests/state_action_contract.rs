@@ -1,7 +1,10 @@
 use super::super::{
-    WorkspaceTab, WorkspaceTabBar, WorkspaceTabBarAction, WorkspaceTabBarEvent,
-    WorkspaceTabDropRules, WorkspaceTabGroup, WorkspaceTabGroupTarget, WorkspaceTabId,
+    CLOSEABLE_TAB_DRAG_TAG, WorkspaceTab, WorkspaceTabBar, WorkspaceTabBarAction,
+    WorkspaceTabBarEvent, WorkspaceTabDropRules, WorkspaceTabGroup, WorkspaceTabGroupTarget,
+    WorkspaceTabId,
 };
+use crate::interaction::drag_and_drop::{DropEffect, DropIndicatorOrientation};
+use crate::render_model::UiNodeKind;
 use std::collections::HashSet;
 
 #[test]
@@ -60,7 +63,7 @@ fn dirty_close_requires_confirm_before_tab_closed() {
         .map(WorkspaceTabBarEvent::name)
         .collect();
     assert_eq!(
-        vec!["workspace_tab_close_requested", "workspace_tab_closed"],
+        vec!["closeable_tab_close_requested", "closeable_tab_closed"],
         event_names
     );
     assert!(bar.options().tabs.is_empty());
@@ -132,9 +135,9 @@ fn group_collapse_and_overflow_emit_typed_events() {
         hidden_tab_ids: vec![WorkspaceTabId::new("hidden")],
     });
 
-    assert_eq!("workspace_tab_group_collapse_changed", collapse[0].name());
+    assert_eq!("closeable_tab_group_collapse_changed", collapse[0].name());
     assert!(bar.options().groups[0].collapsed);
-    assert_eq!("workspace_tab_overflow_opened", overflow[0].name());
+    assert_eq!("closeable_tab_overflow_opened", overflow[0].name());
     assert!(bar.state().overflow_visible);
 }
 
@@ -157,4 +160,79 @@ fn child_state_ids_are_unique_and_separate_from_parent_state() {
             .iter()
             .all(|child| child.state_id != bar.state().state_id)
     );
+}
+
+#[test]
+fn collapsed_group_auto_expands_after_drop_hover_delay() {
+    let mut bar = WorkspaceTabBar::new("Workspace")
+        .group(WorkspaceTabGroup::new("docs", "Docs").collapsed(true))
+        .tab(WorkspaceTab::new("draft", "Draft").group_id("docs"));
+    let delay = bar.options().collapsed_group_auto_expand_ms;
+
+    let early = bar.apply_action(WorkspaceTabBarAction::HoverCollapsedGroupForDrop {
+        group_id: "docs".into(),
+        elapsed_ms: delay.saturating_sub(1),
+    });
+    let expanded = bar.apply_action(WorkspaceTabBarAction::HoverCollapsedGroupForDrop {
+        group_id: "docs".into(),
+        elapsed_ms: delay,
+    });
+
+    assert!(early.is_empty());
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::GroupCollapseChanged {
+            group_id: "docs".into(),
+            collapsed: false
+        }],
+        expanded
+    );
+    assert!(!bar.options().groups[0].collapsed);
+}
+
+#[test]
+fn tab_drag_lifecycle_sets_state_and_uses_drag_primitives() {
+    let mut bar = WorkspaceTabBar::new("Workspace").tab(
+        WorkspaceTab::new("draft", "Draft")
+            .icon("<svg/>")
+            .dirty(true),
+    );
+    let tab_id = WorkspaceTabId::new("draft");
+
+    let source = bar.drag_source(&tab_id).expect("drag source");
+    let target = bar.drop_target_for_tab(&tab_id).expect("drop target");
+    let preview = bar.drag_preview_for_tab(&tab_id).expect("drag preview");
+    let started = bar.apply_action(WorkspaceTabBarAction::StartDrag {
+        tab_id: tab_id.clone(),
+    });
+    let cancelled = bar.apply_action(WorkspaceTabBarAction::CancelDrag);
+
+    assert_eq!(CLOSEABLE_TAB_DRAG_TAG, source.payload.tag);
+    assert_eq!(DropEffect::Move, target.effect);
+    assert!(
+        target
+            .accepted_tags
+            .contains(&CLOSEABLE_TAB_DRAG_TAG.to_string())
+    );
+    assert_eq!(
+        DropIndicatorOrientation::Vertical,
+        target.indicator_orientation
+    );
+    assert_eq!(
+        UiNodeKind::DragPreview,
+        crate::render_model::UiNode::from(preview).kind()
+    );
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::DragStarted {
+            tab_id: tab_id.clone()
+        }],
+        started
+    );
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::DragEnded {
+            tab_id,
+            committed: false
+        }],
+        cancelled
+    );
+    assert!(!bar.state().drag_in_progress);
 }

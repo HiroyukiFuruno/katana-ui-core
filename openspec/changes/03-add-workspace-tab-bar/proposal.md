@@ -21,7 +21,7 @@ KUC は `Tabs` molecule（segmented / preset 切替えとしての水平 tabs）
 
 ### New Capabilities
 
-- `kuc-closeable-tab-strip`: CloseableTabStrip molecule の option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページの完了条件を定義する。
+- `kuc-closeable-tab-strip`: CloseableTabStrip molecule の option / action / event / state / preset / preview / settings / 自動テスト / 数値化された描画契約 / Storybook ページの完了条件を定義する。
 
 ### Modified Capabilities
 

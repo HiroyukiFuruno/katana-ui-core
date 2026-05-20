@@ -1,6 +1,7 @@
 mod actions;
 mod bar;
 mod context_menu;
+mod dnd;
 mod events;
 mod identifiers;
 mod keyboard;
@@ -11,7 +12,7 @@ mod overflow;
 mod state;
 
 pub use actions::{
-    WORKSPACE_TAB_DRAG_TAG, WorkspaceTabBarAction, WorkspaceTabDropPosition, WorkspaceTabDropRules,
+    CLOSEABLE_TAB_DRAG_TAG, WorkspaceTabBarAction, WorkspaceTabDropPosition, WorkspaceTabDropRules,
     WorkspaceTabGroupTarget,
 };
 pub use bar::WorkspaceTabBar;
@@ -30,8 +31,6 @@ pub use overflow::{
     WorkspaceTabOverflowPlanner,
 };
 pub use state::{WorkspaceTabBarState, WorkspaceTabChildState};
-
-pub const CLOSEABLE_TAB_DRAG_TAG: &str = WORKSPACE_TAB_DRAG_TAG;
 
 pub type CloseableTab = WorkspaceTab;
 pub type CloseableTabChildState = WorkspaceTabChildState;

@@ -98,6 +98,44 @@ impl WorkspaceTabBar {
             collapsed: group.collapsed,
         }]
     }
+
+    pub(super) fn hover_collapsed_group_for_drop(
+        &mut self,
+        group_id: WorkspaceTabGroupId,
+        elapsed_ms: u16,
+    ) -> Vec<WorkspaceTabBarEvent> {
+        if elapsed_ms < self.options.collapsed_group_auto_expand_ms {
+            return Vec::new();
+        }
+        let Some(group) = self.options.groups.iter_mut().find(|it| it.id == group_id) else {
+            return Vec::new();
+        };
+        if !group.collapsed {
+            return Vec::new();
+        }
+        group.collapsed = false;
+        vec![WorkspaceTabBarEvent::GroupCollapseChanged {
+            group_id,
+            collapsed: false,
+        }]
+    }
+
+    pub(super) fn start_drag(&mut self, tab_id: WorkspaceTabId) -> Vec<WorkspaceTabBarEvent> {
+        if self.find_tab(&tab_id).is_none() {
+            return Vec::new();
+        }
+        self.state.drag_in_progress = true;
+        self.state.dragged_tab_id = Some(tab_id.clone());
+        vec![WorkspaceTabBarEvent::DragStarted { tab_id }]
+    }
+
+    pub(super) fn end_drag(&mut self, committed: bool) -> Vec<WorkspaceTabBarEvent> {
+        let Some(tab_id) = self.state.dragged_tab_id.take() else {
+            return Vec::new();
+        };
+        self.state.drag_in_progress = false;
+        vec![WorkspaceTabBarEvent::DragEnded { tab_id, committed }]
+    }
 }
 
 impl WorkspaceTabBar {

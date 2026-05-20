@@ -4,6 +4,7 @@ use std::collections::BTreeSet;
 
 const LEGACY_UI_MARKER_COUNT: usize = 27;
 const DND_SETTINGS_MUTATION_COUNT: usize = 3;
+const CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT: usize = 5;
 
 #[test]
 fn report_covers_selector_overlay_and_color_picker_sequences() {
@@ -14,7 +15,11 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_eq!(5, report.overlay_dismissals.len());
     assert_eq!(1, report.color_picker_updates.len());
     assert_eq!(
-        examples.len() + 1 + DND_SETTINGS_MUTATION_COUNT + 3,
+        examples.len()
+            + 1
+            + DND_SETTINGS_MUTATION_COUNT
+            + 3
+            + CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT,
         report.settings_mutations.len()
     );
     assert_eq!(LEGACY_UI_MARKER_COUNT, report.legacy_ui_markers.len());
@@ -74,6 +79,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     ));
     assert_drag_and_drop_settings_are_switchable(&report.settings_mutations);
     assert_context_menu_settings_are_switchable(&report.settings_mutations);
+    assert_closeable_tab_strip_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
         report.legacy_ui_markers.len(),
         report
@@ -95,6 +101,38 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
     );
+}
+
+fn assert_closeable_tab_strip_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for (option, action, event) in [
+        ("tab.count", "add_tab", "closeable_tab_strip_tab_added"),
+        (
+            "tab.deleted",
+            "delete_tab",
+            "closeable_tab_strip_tab_deleted",
+        ),
+        ("tab.pinned", "pin_tab", "closeable_tab_strip_pin_changed"),
+        (
+            "tab.dirty",
+            "dirty_toggle",
+            "closeable_tab_strip_dirty_changed",
+        ),
+        (
+            "tab.group",
+            "group_toggle",
+            "closeable_tab_strip_group_changed",
+        ),
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "closeable-tab-strip"
+                    && it.option.name == option
+                    && it.action == action
+                    && it.event == event
+            }),
+            "missing closeable-tab-strip setting mutation for {option}"
+        );
+    }
 }
 
 fn assert_context_menu_settings_are_switchable(settings: &[super::SettingsMutationReport]) {

@@ -197,6 +197,65 @@ fn context_menu_story_exposes_detail_settings_and_callback_log() -> Result<(), &
 }
 
 #[test]
+fn closeable_tab_strip_story_exposes_settings_presets_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "closeable-tab-strip")
+        .ok_or("closeable-tab-strip page missing")?;
+    let labels = page_children(&examples, "closeable-tab-strip")
+        .ok_or("closeable-tab-strip page missing")?;
+    let details = super::StoryDetailContent::from_example(story);
+
+    for preset in [
+        "default", "overflow", "pinned", "groups", "dirty", "dragging",
+    ] {
+        assert!(
+            labels.iter().any(|it| it.contains(preset)),
+            "closeable-tab-strip preview lacks preset {preset}"
+        );
+        assert!(
+            details.preset.contains(preset),
+            "closeable-tab-strip details lack preset {preset}"
+        );
+    }
+    for action in [
+        "add_tab",
+        "delete_tab",
+        "pin_tab",
+        "dirty_toggle",
+        "group_toggle",
+        "drag_tab",
+        "overflow_open",
+    ] {
+        assert!(
+            story.callback_logs.iter().any(|it| it.action == action),
+            "closeable-tab-strip callback log lacks action {action}"
+        );
+        assert!(
+            details.settings.contains(action),
+            "closeable-tab-strip settings inspector lacks action {action}"
+        );
+    }
+    for event in [
+        "tab_added",
+        "closeable_tab_closed",
+        "closeable_tab_reordered",
+        "closeable_tab_overflow_opened",
+        "tab_dirty_changed",
+    ] {
+        assert!(
+            story
+                .callback_logs
+                .iter()
+                .any(|it| it.after.contains(event)),
+            "closeable-tab-strip callback log lacks event {event}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn catalog_contains_single_independent_context_menu_story() {
     let examples = StoryCatalog.examples();
     let count = examples

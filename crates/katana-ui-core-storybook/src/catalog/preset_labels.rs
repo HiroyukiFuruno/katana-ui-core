@@ -200,7 +200,12 @@ impl StoryPresetLabels {
                 "keyboard drag",
             ],
             "closeable-tab-strip" => &[
-                "browser", "overflow", "pinned", "groups", "dirty", "dragging",
+                "tab row default",
+                "overflow",
+                "pinned",
+                "groups",
+                "dirty",
+                "dragging",
             ],
             "row" => &["row layout", "align", "overflow", "theme gap"],
             "column" => &["column", "align", "overflow", "theme gap"],

@@ -190,6 +190,8 @@ fn label_for(kind: UiNodeKind) -> &'static str {
         UiNodeKind::List => "list rows",
         UiNodeKind::Menu => "menu items",
         UiNodeKind::Tabs => "tabs switch",
+        UiNodeKind::CloseableTabStrip => "closeable tabs",
+        UiNodeKind::CloseableTab => "closeable tab",
         UiNodeKind::Toolbar => "toolbar tools",
         UiNodeKind::FormField => "field group",
         UiNodeKind::Breadcrumb => "breadcrumb path",

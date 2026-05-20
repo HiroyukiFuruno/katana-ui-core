@@ -1,5 +1,5 @@
 use super::super::{
-    WORKSPACE_TAB_DRAG_TAG, WorkspaceGroupContextCommand, WorkspaceTab, WorkspaceTabBar,
+    CLOSEABLE_TAB_DRAG_TAG, WorkspaceGroupContextCommand, WorkspaceTab, WorkspaceTabBar,
     WorkspaceTabBarAction, WorkspaceTabBarOptions, WorkspaceTabBarState, WorkspaceTabChildState,
     WorkspaceTabContextCommand, WorkspaceTabContextMenu, WorkspaceTabDropPosition,
     WorkspaceTabGroup, WorkspaceTabGroupId, WorkspaceTabGroupTarget, WorkspaceTabId,
@@ -22,7 +22,7 @@ fn typed_options_cover_workspace_tab_and_group_contract() {
         .color("accent")
         .collapsed(true);
 
-    assert_eq!("katana-ui-core/workspace-tab", WORKSPACE_TAB_DRAG_TAG);
+    assert_eq!("katana-ui-core/closeable-tab", CLOSEABLE_TAB_DRAG_TAG);
     assert_eq!(Some("<svg/>"), tab.icon.as_deref());
     assert_eq!(WorkspaceTabTone::Warning, tab.tone);
     assert_eq!(

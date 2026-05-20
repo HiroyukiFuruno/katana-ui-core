@@ -16,6 +16,7 @@ pub struct WorkspaceTabBarState {
     pub active_tab_id: Option<WorkspaceTabId>,
     pub overflow_visible: bool,
     pub drag_in_progress: bool,
+    pub dragged_tab_id: Option<WorkspaceTabId>,
     pub pending_close_confirm: Option<WorkspaceTabId>,
     pub child_states: Vec<WorkspaceTabChildState>,
 }
@@ -23,13 +24,14 @@ pub struct WorkspaceTabBarState {
 impl WorkspaceTabBarState {
     #[must_use]
     pub fn new(tabs: &[WorkspaceTab]) -> Self {
-        let state_id = UiStateId::next_for(UiNodeKind::Tabs);
+        let state_id = UiStateId::next_for(UiNodeKind::CloseableTabStrip);
         Self {
             child_states: child_states(&state_id, tabs),
             state_id,
             active_tab_id: None,
             overflow_visible: false,
             drag_in_progress: false,
+            dragged_tab_id: None,
             pending_close_confirm: None,
         }
     }
@@ -68,7 +70,7 @@ fn child_states(parent_state_id: &UiStateId, tabs: &[WorkspaceTab]) -> Vec<Works
         .map(|(index, tab)| WorkspaceTabChildState {
             tab_id: tab.id.clone(),
             state_id: UiStateId::new(format!(
-                "{}:workspace-tab:{}:{index}",
+                "{}:closeable-tab:{}:{index}",
                 parent_state_id.as_str(),
                 tab.id.as_str()
             )),

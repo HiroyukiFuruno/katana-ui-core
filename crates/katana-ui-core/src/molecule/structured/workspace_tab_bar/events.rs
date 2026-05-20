@@ -17,6 +17,13 @@ pub enum WorkspaceTabBarEvent {
         from: usize,
         to: usize,
     },
+    DragStarted {
+        tab_id: WorkspaceTabId,
+    },
+    DragEnded {
+        tab_id: WorkspaceTabId,
+        committed: bool,
+    },
     GroupCollapseChanged {
         group_id: WorkspaceTabGroupId,
         collapsed: bool,
@@ -30,12 +37,14 @@ impl WorkspaceTabBarEvent {
     #[must_use]
     pub fn name(&self) -> &'static str {
         match self {
-            Self::TabSelected { .. } => "workspace_tab_selected",
-            Self::TabCloseRequested { .. } => "workspace_tab_close_requested",
-            Self::TabClosed { .. } => "workspace_tab_closed",
-            Self::TabReordered { .. } => "workspace_tab_reordered",
-            Self::GroupCollapseChanged { .. } => "workspace_tab_group_collapse_changed",
-            Self::OverflowOpened { .. } => "workspace_tab_overflow_opened",
+            Self::TabSelected { .. } => "closeable_tab_selected",
+            Self::TabCloseRequested { .. } => "closeable_tab_close_requested",
+            Self::TabClosed { .. } => "closeable_tab_closed",
+            Self::TabReordered { .. } => "closeable_tab_reordered",
+            Self::DragStarted { .. } => "closeable_tab_drag_started",
+            Self::DragEnded { .. } => "closeable_tab_drag_ended",
+            Self::GroupCollapseChanged { .. } => "closeable_tab_group_collapse_changed",
+            Self::OverflowOpened { .. } => "closeable_tab_overflow_opened",
         }
     }
 }

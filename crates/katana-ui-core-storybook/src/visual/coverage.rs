@@ -183,6 +183,8 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::List
             | UiNodeKind::Menu
             | UiNodeKind::Tabs
+            | UiNodeKind::CloseableTabStrip
+            | UiNodeKind::CloseableTab
             | UiNodeKind::Toolbar
             | UiNodeKind::FormField
             | UiNodeKind::Breadcrumb

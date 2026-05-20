@@ -2,7 +2,7 @@ use super::identifiers::{WorkspaceTabGroupId, WorkspaceTabId};
 use super::options::{WorkspaceTab, WorkspaceTabGroup};
 use serde::{Deserialize, Serialize};
 
-pub const WORKSPACE_TAB_DRAG_TAG: &str = "katana-ui-core/workspace-tab";
+pub const CLOSEABLE_TAB_DRAG_TAG: &str = "katana-ui-core/closeable-tab";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WorkspaceTabBarAction {
@@ -25,6 +25,17 @@ pub enum WorkspaceTabBarAction {
     MoveToGroup {
         tab_id: WorkspaceTabId,
         target: WorkspaceTabGroupTarget,
+    },
+    StartDrag {
+        tab_id: WorkspaceTabId,
+    },
+    EndDrag {
+        committed: bool,
+    },
+    CancelDrag,
+    HoverCollapsedGroupForDrop {
+        group_id: WorkspaceTabGroupId,
+        elapsed_ms: u16,
     },
     ToggleGroupCollapse {
         group_id: WorkspaceTabGroupId,
