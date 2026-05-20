@@ -11,6 +11,7 @@ pub(super) struct StorybookScreenState {
     pub(super) last_setting_value: &'static str,
     pub(super) state_label: &'static str,
     pub(super) button_options: StorybookButtonOptions,
+    pub(super) preview_hovered: bool,
 }
 
 impl Default for StorybookScreenState {
@@ -24,6 +25,7 @@ impl Default for StorybookScreenState {
             last_setting_value: "none",
             state_label: "idle",
             button_options: StorybookButtonOptions::default(),
+            preview_hovered: false,
         }
     }
 }
@@ -69,6 +71,14 @@ impl StorybookScreenState {
         self.last_setting = control.setting_name();
         self.last_setting_value = control.setting_value(self.button_options);
         self.state_label = control.state_label(self.button_options);
+    }
+
+    pub(super) fn set_preview_hovered(&mut self, hovered: bool) -> bool {
+        if self.preview_hovered == hovered {
+            return false;
+        }
+        self.preview_hovered = hovered;
+        true
     }
 
     pub(super) fn register_context_menu(&mut self, page: &str) {

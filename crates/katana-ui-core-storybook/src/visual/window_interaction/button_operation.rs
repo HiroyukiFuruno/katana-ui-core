@@ -54,6 +54,15 @@ pub(super) fn button_operation_at(
         .or_else(|| settings_operation_at(state.selected_page, x, y))
 }
 
+pub(in crate::visual) fn apply_hover_at(
+    state: &mut StorybookWindowState,
+    x: usize,
+    y: usize,
+) -> bool {
+    let hovered = preview_detail::component_action_hit_rect(state.selected_page).contains(x, y);
+    state.screen_state.set_preview_hovered(hovered)
+}
+
 fn theme_operation_at(x: usize, y: usize) -> Option<StorybookButtonOperation> {
     if light_theme_rect().contains(x, y) {
         return Some(StorybookButtonOperation::LightTheme);

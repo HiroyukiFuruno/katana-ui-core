@@ -2,6 +2,7 @@ pub(super) const PX_0: usize = 0;
 pub(super) const PX_1: usize = 1;
 pub(super) const PX_2: usize = 2;
 pub(super) const PX_3: usize = 3;
+pub(super) const PX_4: usize = 4;
 pub(super) const PX_6: usize = 6;
 pub(super) const PX_8: usize = 8;
 pub(super) const PX_10: usize = 10;

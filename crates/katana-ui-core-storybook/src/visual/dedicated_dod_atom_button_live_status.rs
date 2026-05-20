@@ -12,6 +12,8 @@ const STATUS_GAP: usize = 4;
 const STATUS_TEXT_X: usize = 8;
 const STATUS_TEXT_Y: usize = 5;
 #[cfg(test)]
+const MIN_FRAME_PADDING: usize = 8;
+#[cfg(test)]
 const MAX_LABEL_CHARS: usize = 14;
 
 pub(super) fn draw_status_rows(
@@ -103,4 +105,11 @@ pub(super) fn status_rows_fit_for_test(scenario: ScenarioContext<'_>) -> bool {
     ]
     .into_iter()
     .all(|label| label.chars().count() <= MAX_LABEL_CHARS)
+}
+
+#[cfg(test)]
+pub(super) const fn status_rows_have_frame_padding_for_test() -> bool {
+    STATUS_X >= MIN_FRAME_PADDING
+        && STATUS_Y >= MIN_FRAME_PADDING
+        && STATUS_WIDTH + STATUS_X <= super::dedicated_dod_common::AREA_WIDTH - MIN_FRAME_PADDING
 }

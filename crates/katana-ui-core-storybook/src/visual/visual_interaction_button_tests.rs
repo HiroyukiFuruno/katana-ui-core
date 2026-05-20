@@ -16,8 +16,9 @@ const EDGE_PRESET: usize = 2;
 const COMPONENT_BODY_DIFF_THRESHOLD: usize = 80;
 const MIN_BUTTON_WIDTH: usize = 96;
 const MIN_BUTTON_HEIGHT: usize = 36;
-const BUTTON_PRESSED_FILL: u32 = 0x6a9955;
+const BUTTON_PRESSED_FILL: u32 = 0x557846;
 const BUTTON_FILL_PROBE_OFFSET: usize = 8;
+const BUTTON_HOVER_DIFF_THRESHOLD: usize = 24;
 
 #[test]
 fn preset_tab_updates_selected_preview_body() {
@@ -81,6 +82,35 @@ fn clicked_button_updates_visible_button_body() {
 }
 
 #[test]
+fn hovering_button_preview_updates_surface_without_click_action() {
+    let mut state = StorybookWindowState::default();
+    let before = render::render_storybook_canvas_with_screen_state(
+        state.theme_id,
+        state.selected_page,
+        state.preset_index,
+        state.screen_state,
+    );
+    let rect = preview_detail::button_action_hit_rect(BUTTON_PAGE);
+
+    assert!(super::window_interaction::apply_hover_at(
+        &mut state,
+        rect.x + rect.width / 2,
+        rect.y + rect.height / 2
+    ));
+    assert_eq!(0, state.screen_state.action_count);
+    assert!(state.screen_state.preview_hovered);
+
+    let after = render::render_storybook_canvas_with_screen_state(
+        state.theme_id,
+        state.selected_page,
+        state.preset_index,
+        state.screen_state,
+    );
+
+    assert!(component_body_pixel_diff(BUTTON_PAGE, &before, &after) > BUTTON_HOVER_DIFF_THRESHOLD);
+}
+
+#[test]
 fn button_text_button_and_svg_button_have_distinct_material_shapes() {
     let button = StorybookVisual.render_preset(DARK_THEME, BUTTON_PAGE, DEFAULT_PRESET, 0);
     let text_button =
@@ -111,6 +141,9 @@ fn button_status_rows_use_compact_labels_that_fit() {
 
     assert!(super::dedicated_dod_atom_button_live_status::status_rows_fit_for_test(pressed));
     assert!(super::dedicated_dod_atom_button_live_status::status_rows_fit_for_test(option_changed));
+    assert!(
+        super::dedicated_dod_atom_button_live_status::status_rows_have_frame_padding_for_test()
+    );
 }
 
 #[test]

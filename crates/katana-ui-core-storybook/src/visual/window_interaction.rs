@@ -12,6 +12,7 @@ use super::screen_state::StorybookScreenState;
 use super::window_coordinates::{
     CanvasPoint, SurfaceSize, WindowPoint, window_point_to_canvas_point,
 };
+pub(super) use button_operation::apply_hover_at;
 use button_operation::button_operation_at;
 
 const DEFAULT_SELECTED_PAGE: &str = "button";

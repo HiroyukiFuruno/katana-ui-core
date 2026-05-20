@@ -132,6 +132,24 @@ impl Canvas {
         self.pixels[index] = blend_color(self.pixels[index], color, alpha);
     }
 
+    pub fn blend_rect(
+        &mut self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        color: u32,
+        alpha: u8,
+    ) {
+        let right = x.saturating_add(width).min(self.width);
+        let bottom = y.saturating_add(height).min(self.height);
+        for current_y in y..bottom {
+            for current_x in x..right {
+                self.blend(current_x, current_y, color, alpha);
+            }
+        }
+    }
+
     pub fn save_png(&self, path: &Path) -> image::ImageResult<()> {
         let mut image =
             ImageBuffer::<Rgba<u8>, Vec<u8>>::new(self.width as u32, self.height as u32);

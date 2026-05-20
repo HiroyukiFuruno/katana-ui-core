@@ -90,6 +90,7 @@ fn run_single_window(
             break;
         }
         if apply_scroll(window, &mut state)
+            || apply_hover(window, &mut state)
             || apply_mouse_click(
                 window,
                 &mut state,
@@ -104,6 +105,21 @@ fn run_single_window(
         frame_index += 1;
     }
     Ok(())
+}
+
+fn apply_hover(window: &Window, state: &mut StorybookWindowState) -> bool {
+    let Some((x, y)) = window.get_mouse_pos(minifb::MouseMode::Discard) else {
+        return state.screen_state.set_preview_hovered(false);
+    };
+    let (width, height) = window.get_size();
+    let Some(point) = super::window_coordinates::window_point_to_canvas_point(
+        super::window_coordinates::WindowPoint::new(x, y),
+        super::window_coordinates::SurfaceSize::new(width, height),
+        super::window_coordinates::SurfaceSize::new(render::WIDTH, render::HEIGHT),
+    ) else {
+        return state.screen_state.set_preview_hovered(false);
+    };
+    super::window_interaction::apply_hover_at(state, point.x, point.y)
 }
 
 fn render_frame(state: &StorybookWindowState) -> Canvas {
