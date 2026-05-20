@@ -8,9 +8,9 @@ use molecule::{
     BannerAction, BannerActionKind, BannerCommand, BannerDensity, BannerPlacementHint,
     BannerSeverity, ProgressMeterShape, ProgressMeterSpec, SettingsListAction, SettingsValue,
     ShortcutCheatsheetAction, ShortcutCheatsheetGroup, ShortcutCheatsheetItem, StatusBarAction,
-    StatusBarMode, StatusBarPopoverSpec, StatusBarSegment, StatusBarSegmentAlignment, ToastAction,
-    ToastActionKind, ToastDedupStrategy, ToastPayload, ToastPosition, ToastStackAction,
-    ToastStackDirection, ToastStackOptions,
+    StatusBarDensity, StatusBarMode, StatusBarPopoverSpec, StatusBarSegment,
+    StatusBarSegmentAlignment, ToastAction, ToastActionKind, ToastDedupStrategy, ToastPayload,
+    ToastPosition, ToastStackAction, ToastStackDirection, ToastStackOptions,
 };
 
 const TOAST_DURATION_MS: u64 = 8_000;
@@ -144,8 +144,11 @@ fn toast_payload(id: &str, message: &str) -> ToastPayload {
 fn status_bar_story() -> StoryExample {
     let mut status = molecule::StatusBar::new("Status bar")
         .mode(StatusBarMode::MultiSegment)
+        .density(StatusBarDensity::Compact)
         .segment(
             StatusBarSegment::new("branch", "main")
+                .icon("git-branch")
+                .tooltip("Current branch")
                 .alignment(StatusBarSegmentAlignment::Leading)
                 .popover(StatusBarPopoverSpec::new(
                     "Git branch",
@@ -156,13 +159,17 @@ fn status_bar_story() -> StoryExample {
             StatusBarSegment::new("diagnostics", "2 warnings")
                 .alignment(StatusBarSegmentAlignment::Center)
                 .interactive(true)
+                .tooltip("Linter summary")
                 .accessibility_label("Diagnostics summary"),
         )
         .segment(
             StatusBarSegment::new("index", "Indexing")
                 .alignment(StatusBarSegmentAlignment::Trailing)
+                .tooltip("Index progress")
                 .progress(
                     ProgressMeterSpec::new(ProgressMeterShape::Linear, STATUS_PROGRESS_PERCENT)
+                        .label("Indexing")
+                        .tooltip("Indexing 72%")
                         .tone(UiTone::Accent),
                 ),
         )

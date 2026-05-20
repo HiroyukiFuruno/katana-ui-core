@@ -15,6 +15,13 @@ pub enum StatusBarSegmentAlignment {
     Trailing,
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum StatusBarDensity {
+    Compact,
+    #[default]
+    Default,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ProgressMeterShape {
     Linear,
@@ -27,7 +34,8 @@ pub struct ProgressMeterSpec {
     pub(super) percent: u8,
     pub(super) label: String,
     pub(super) tone: UiTone,
-    shape: ProgressMeterShape,
+    pub(super) tooltip: String,
+    pub(super) shape: ProgressMeterShape,
 }
 
 impl ProgressMeterSpec {
@@ -38,7 +46,14 @@ impl ProgressMeterSpec {
             percent: percent.min(100),
             label: String::new(),
             tone: UiTone::Neutral,
+            tooltip: String::new(),
         }
+    }
+
+    #[must_use]
+    pub fn label(mut self, value: impl Into<String>) -> Self {
+        self.label = value.into();
+        self
     }
 
     #[must_use]
@@ -48,8 +63,19 @@ impl ProgressMeterSpec {
     }
 
     #[must_use]
+    pub fn tooltip(mut self, value: impl Into<String>) -> Self {
+        self.tooltip = value.into();
+        self
+    }
+
+    #[must_use]
     pub const fn percent(&self) -> u8 {
         self.percent
+    }
+
+    #[must_use]
+    pub const fn shape(&self) -> ProgressMeterShape {
+        self.shape
     }
 }
 
@@ -73,8 +99,10 @@ impl StatusBarPopoverSpec {
 pub struct StatusBarSegment {
     pub(super) id: String,
     pub(super) label: String,
+    pub(super) icon: Option<String>,
     pub(super) tone: UiTone,
     pub(super) alignment: StatusBarSegmentAlignment,
+    pub(super) tooltip: Option<String>,
     pub(super) interactive: bool,
     pub(super) popover: Option<StatusBarPopoverSpec>,
     pub(super) progress: Option<ProgressMeterSpec>,
@@ -89,8 +117,10 @@ impl StatusBarSegment {
             id: id.into(),
             accessibility_label: label.clone(),
             label,
+            icon: None,
             tone: UiTone::Neutral,
             alignment: StatusBarSegmentAlignment::Leading,
+            tooltip: None,
             interactive: false,
             popover: None,
             progress: None,
@@ -100,6 +130,18 @@ impl StatusBarSegment {
     #[must_use]
     pub fn alignment(mut self, value: StatusBarSegmentAlignment) -> Self {
         self.alignment = value;
+        self
+    }
+
+    #[must_use]
+    pub fn icon(mut self, value: impl Into<String>) -> Self {
+        self.icon = Some(value.into());
+        self
+    }
+
+    #[must_use]
+    pub fn tooltip(mut self, value: impl Into<String>) -> Self {
+        self.tooltip = Some(value.into());
         self
     }
 

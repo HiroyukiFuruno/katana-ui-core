@@ -68,7 +68,7 @@
 | ComboBox | molecule | input + option list |
 | MenuButton | molecule | trigger + menu |
 | CommandPalette | molecule | provider を domain 外へ出す |
-| StatusBar | molecule | footer に固定する severity message。画面上部や form 内に残る告知は Banner を使う |
+| StatusBar | molecule | footer に固定する SingleMessage / MultiSegment status bar。segment popover、progress meter、density を持ち、画面上部や form 内に残る告知は Banner を使う |
 | Toolbar | molecule | action rail。overflow、split action、display mode、density、accelerator を持つ |
 | NotificationToast | molecule | 単一の transient message。複数 toast の queue / dedup / position は ToastStackManager を使い、消えずに残す inline 告知は Banner を使う |
 | SearchControlStrip | molecule | query option / navigation / replace request |

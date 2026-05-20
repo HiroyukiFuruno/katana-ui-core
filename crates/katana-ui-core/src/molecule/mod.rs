@@ -76,7 +76,7 @@ pub use shortcut_cheatsheet::{
 pub use skeleton_cluster::{SkeletonCluster, SkeletonClusterPreset};
 pub use status_bar::{
     ProgressMeterShape, ProgressMeterSpec, StatusBar, StatusBarAction, StatusBarContractViolation,
-    StatusBarEvent, StatusBarMode, StatusBarPopoverSpec, StatusBarSegment,
+    StatusBarDensity, StatusBarEvent, StatusBarMode, StatusBarPopoverSpec, StatusBarSegment,
     StatusBarSegmentAlignment, StatusBarState,
 };
 pub use structured::{

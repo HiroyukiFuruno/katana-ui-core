@@ -37,6 +37,8 @@ impl StoryDetailContent {
             toast_stack_settings_line(example, &marker)
         } else if example.page == "notification-toast" {
             notification_toast_settings_line(&marker)
+        } else if example.page == "status-bar" {
+            status_bar_settings_line(example, &marker)
         } else if example.page == "chip" {
             chip_settings_line(&marker)
         } else if example.page == "attachment-chip" {
@@ -204,6 +206,19 @@ fn toast_stack_settings_line(example: &StoryExample, marker: &str) -> String {
 fn notification_toast_settings_line(marker: &str) -> String {
     format!(
         "{marker} settings: single transient toast -> use ToastStackManager for queue/dedup/position"
+    )
+}
+
+fn status_bar_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: mode=SingleMessage segments=1 density=Default callback_log={} actions={actions} -> mode=MultiSegment segments=4 density=Compact",
+        example.callback_logs.len()
     )
 }
 

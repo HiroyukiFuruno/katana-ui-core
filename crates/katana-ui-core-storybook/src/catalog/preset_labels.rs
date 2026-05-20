@@ -137,10 +137,11 @@ impl StoryPresetLabels {
             "selection-list" => &["items", "select", "multi", "theme list"],
             "side-menu" => &["nav tree", "select", "collapse", "theme side"],
             "status-bar" => &[
-                "branch popover",
-                "center diagnostics",
+                "editor status bar",
+                "chat usage bar",
+                "linter summary",
                 "progress segment",
-                "theme bar",
+                "popover segment",
             ],
             "shortcut-combo" => &[
                 "mac glyphs",

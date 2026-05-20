@@ -573,6 +573,46 @@ fn toast_stack_manager_story_exposes_settings_presets_and_links() -> Result<(), 
 }
 
 #[test]
+fn status_bar_story_exposes_multi_segment_settings_presets_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "status-bar")
+        .ok_or("status-bar page missing")?;
+    let details = super::StoryDetailContent::from_example(story);
+
+    assert_eq!(
+        &[
+            "editor status bar",
+            "chat usage bar",
+            "linter summary",
+            "progress segment",
+            "popover segment"
+        ],
+        StoryPresetLabels::for_page("status-bar")
+    );
+    for preset in StoryPresetLabels::for_page("status-bar") {
+        assert!(
+            details.preset.contains(preset),
+            "status-bar detail preset lacks {preset}"
+        );
+    }
+    for setting in ["mode", "segments", "density"] {
+        assert!(
+            details.settings.contains(setting),
+            "status-bar settings inspector lacks {setting}"
+        );
+    }
+    assert!(
+        story
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "status_bar_segment_popover")
+    );
+    Ok(())
+}
+
+#[test]
 fn hover_card_story_exposes_rich_slots_and_callback_log() -> Result<(), &'static str> {
     let examples = StoryCatalog.examples();
     let story = examples

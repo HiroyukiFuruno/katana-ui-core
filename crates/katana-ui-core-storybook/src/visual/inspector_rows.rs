@@ -100,6 +100,14 @@ pub(super) fn settings_rows(
             "duration/pause: 8000/off".to_string(),
         ];
     }
+    if example.page == "status-bar" {
+        return vec![
+            "mode: single -> multi".to_string(),
+            "segments: 1 -> 4".to_string(),
+            "density: default -> compact".to_string(),
+            "popover/progress: enabled".to_string(),
+        ];
+    }
     if example.page == "chip" {
         return vec![
             "variant: outline -> filled".to_string(),

@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StatusBarAction {
     PressSegment { id: String },
+    ActivateSegment { id: String },
+    ShowTooltip { id: String },
     ClosePopover { id: String },
     Dismiss,
 }
@@ -12,6 +14,7 @@ pub enum StatusBarEvent {
     SegmentPressed { id: String },
     SegmentPopoverOpened { id: String },
     SegmentPopoverClosed { id: String },
+    SegmentTooltipShown { id: String },
     Dismissed,
 }
 

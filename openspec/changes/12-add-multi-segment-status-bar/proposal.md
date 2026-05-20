@@ -36,7 +36,7 @@ KUC は `StatusBar` molecule と `ProgressBar` atom を持つが、現状は「s
 
 ### New Capabilities
 
-- `kuc-status-bar-segments`: status bar segment と progress meter の option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページの完了条件を定義する。
+- `kuc-status-bar-segments`: status bar segment と progress meter の option / action / event / state / preset / preview / settings / 自動テスト / 数値化された描画契約 / Storybook ページの完了条件を定義する。
 
 ## Impact
 

@@ -19,6 +19,8 @@ mod legacy_dod_drag_settings;
 mod legacy_dod_empty_state_settings;
 #[path = "legacy_dod_overlay_settings.rs"]
 mod legacy_dod_overlay_settings;
+#[path = "legacy_dod_status_bar_settings.rs"]
+mod legacy_dod_status_bar_settings;
 #[path = "legacy_dod_text_area_settings.rs"]
 mod legacy_dod_text_area_settings;
 #[path = "legacy_dod_toast_stack_settings.rs"]
@@ -91,6 +93,7 @@ impl LegacyDodReports {
             examples,
         ));
         reports.extend(legacy_dod_overlay_settings::settings_mutations(examples));
+        reports.extend(legacy_dod_status_bar_settings::settings_mutations(examples));
         reports.extend(legacy_dod_text_area_settings::settings_mutations(examples));
         reports.extend(legacy_dod_toast_stack_settings::settings_mutations(
             examples,

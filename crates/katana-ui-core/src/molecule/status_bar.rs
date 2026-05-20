@@ -5,13 +5,16 @@ mod model;
 #[path = "status_bar_parts/render.rs"]
 mod render;
 
+use crate::interaction::placement::{
+    PlacementConsumer, PlacementEngine, PlacementRequest, PlacementResult,
+};
 use crate::render_model::{
     UiCommonProps, UiDismissAction, UiNode, UiNodeKind, UiStateId, UiStatusProps, UiTone, UiVariant,
 };
 pub use interaction::{StatusBarAction, StatusBarEvent, StatusBarState};
 pub use model::{
-    ProgressMeterShape, ProgressMeterSpec, StatusBarContractViolation, StatusBarMode,
-    StatusBarPopoverSpec, StatusBarSegment, StatusBarSegmentAlignment,
+    ProgressMeterShape, ProgressMeterSpec, StatusBarContractViolation, StatusBarDensity,
+    StatusBarMode, StatusBarPopoverSpec, StatusBarSegment, StatusBarSegmentAlignment,
 };
 use render::segment_nodes;
 use serde::{Deserialize, Serialize};
@@ -24,6 +27,7 @@ pub struct StatusBar {
     status: UiStatusProps,
     children: Vec<UiNode>,
     pub(super) mode: StatusBarMode,
+    pub(super) density: StatusBarDensity,
     pub(super) segments: Vec<StatusBarSegment>,
     single_message: Option<String>,
     state: StatusBarState,
@@ -39,6 +43,7 @@ impl StatusBar {
             status: UiStatusProps::default(),
             children: Vec::new(),
             mode: StatusBarMode::SingleMessage,
+            density: StatusBarDensity::Default,
             segments: Vec::new(),
             single_message: None,
             state: StatusBarState::default(),
@@ -48,6 +53,12 @@ impl StatusBar {
     #[must_use]
     pub fn mode(mut self, value: StatusBarMode) -> Self {
         self.mode = value;
+        self
+    }
+
+    #[must_use]
+    pub fn density(mut self, value: StatusBarDensity) -> Self {
+        self.density = value;
         self
     }
 
@@ -130,7 +141,12 @@ impl StatusBar {
     #[must_use]
     pub fn apply_action(&mut self, action: &StatusBarAction) -> Vec<StatusBarEvent> {
         match action {
-            StatusBarAction::PressSegment { id } => self.press_segment(id),
+            StatusBarAction::PressSegment { id } | StatusBarAction::ActivateSegment { id } => {
+                self.press_segment(id)
+            }
+            StatusBarAction::ShowTooltip { id } => {
+                vec![StatusBarEvent::SegmentTooltipShown { id: id.clone() }]
+            }
             StatusBarAction::ClosePopover { id } => {
                 self.state.open_popover = None;
                 vec![StatusBarEvent::SegmentPopoverClosed { id: id.clone() }]
@@ -142,6 +158,18 @@ impl StatusBar {
     #[must_use]
     pub const fn state(&self) -> &StatusBarState {
         &self.state
+    }
+
+    #[must_use]
+    pub fn resolve_popover_placement(
+        &self,
+        id: &str,
+        request: &PlacementRequest,
+    ) -> Option<PlacementResult> {
+        self.segments
+            .iter()
+            .any(|segment| segment.id == id && segment.popover.is_some())
+            .then(|| PlacementEngine::resolve_for(PlacementConsumer::Popover, request))
     }
 
     fn press_segment(&mut self, id: &str) -> Vec<StatusBarEvent> {
@@ -167,7 +195,8 @@ impl From<StatusBar> for UiNode {
         let segment_nodes = segment_nodes(&value);
         let mut node = UiNode::from_state(UiNodeKind::StatusBar, value.label, value.state_id)
             .common(value.common)
-            .status(value.status);
+            .status(value.status)
+            .size(value.density.into());
         for child in value.children.into_iter().chain(segment_nodes) {
             node = node.child(child);
         }
