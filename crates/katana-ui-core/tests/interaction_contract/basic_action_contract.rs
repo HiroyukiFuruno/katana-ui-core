@@ -190,11 +190,10 @@ fn slide_action_updates_value_with_component_specific_event_name() {
 }
 
 #[test]
-fn badge_dismiss_action_exposes_action_history() {
+fn passive_badge_ignores_dismiss_action() {
     let mut badge = Badge::new("Ready");
     let result = badge.apply_action(&UiAction::dismiss(badge.state_id().clone()));
 
-    assert!(result.handled);
-    assert_eq!("dismiss", result.callback_log[0].action);
-    assert_eq!(badge.state_id(), &result.callback_log[0].target);
+    assert!(!result.handled);
+    assert!(result.callback_log.is_empty());
 }

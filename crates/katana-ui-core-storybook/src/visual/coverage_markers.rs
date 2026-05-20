@@ -16,6 +16,7 @@ const LEGACY_DOD_PREVIEW_PAGES: &[&str] = &[
     "theme-tokens",
     "text",
     "icon",
+    "chip",
     "loading-dots",
     "spinner",
     "button",
@@ -38,6 +39,8 @@ const LEGACY_DOD_PREVIEW_PAGES: &[&str] = &[
     "popover",
     "color-picker-rgba",
     "code-diff",
+    "attachment-chip",
+    "chip-group",
 ];
 
 pub(super) struct CoverageMarkers {

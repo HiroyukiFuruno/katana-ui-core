@@ -138,6 +138,9 @@ fn expected_preset_count(page: &str) -> usize {
     if page == "text-area" {
         return 7;
     }
+    if page == "attachment-chip" {
+        return 5;
+    }
     if page == "closeable-tab-strip" {
         return 6;
     }

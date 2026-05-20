@@ -21,7 +21,7 @@
 
 ### New Capabilities
 
-- `kuc-chip-atom`: Chip atom の option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページの完了条件を定義する。
+- `kuc-chip-atom`: Chip atom の option / action / event / state / preset / preview / settings / 自動テスト / 数値化された描画契約 / Storybook ページの完了条件を定義する。
 - `kuc-attachment-chip`: AttachmentChip molecule と ChipGroup molecule の完了条件を定義する。
 
 ### Modified Capabilities

@@ -5,6 +5,8 @@ use super::legacy_dod_specs::{LegacyDodSpec, legacy_dod_specs};
 use crate::catalog::StoryExample;
 use serde::{Deserialize, Serialize};
 
+#[path = "legacy_dod_chip_settings.rs"]
+mod legacy_dod_chip_settings;
 #[path = "legacy_dod_context_menu.rs"]
 mod legacy_dod_context_menu;
 #[path = "legacy_dod_drag_settings.rs"]
@@ -72,6 +74,7 @@ impl LegacyDodReports {
             examples,
         ));
         reports.extend(legacy_dod_context_menu::settings_mutations(examples));
+        reports.extend(legacy_dod_chip_settings::settings_mutations(examples));
         reports.extend(legacy_dod_overlay_settings::settings_mutations(examples));
         reports.extend(legacy_dod_text_area_settings::settings_mutations(examples));
         reports.extend(legacy_dod_toolbar_settings::settings_mutations(examples));

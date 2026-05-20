@@ -14,8 +14,9 @@ pub(super) fn option_value(option: &str, props: &UiProps) -> String {
         "loading.reduced_motion" => props.loading_indicator.reduced_motion.to_string(),
         "loading.animation_state" => format!("{:?}", props.loading_indicator.animation_state),
         "progress.percent" => props.progress_percent.to_string(),
-        "variant" => format!("{:?}", props.variant),
-        "tone" => format!("{:?}", props.tone),
+        "variant" | "chip.variant" => format!("{:?}", props.variant),
+        "tone" | "chip.tone" => format!("{:?}", props.tone),
+        "chip.size" => format!("{:?}", props.size),
         "button.icon_position" => props.button.icon_position.clone(),
         "checked" => props.checked.to_string(),
         "interaction.selected_index" => props.interaction.selected_index.to_string(),
@@ -84,8 +85,9 @@ pub(super) fn props_with_option(props: &UiProps, option: &str, value: &str) -> U
             next.loading_indicator.animation_state = animation_state(value);
         }
         "progress.percent" => next.progress_percent = parse_u8(value),
-        "variant" => next.variant = variant(value),
-        "tone" => next.tone = tone(value),
+        "variant" | "chip.variant" => next.variant = variant(value),
+        "tone" | "chip.tone" => next.tone = tone(value),
+        "chip.size" => next.size = size(value),
         "button.icon_position" => next.button.icon_position = value.to_string(),
         "checked" => next.checked = value == "true",
         "interaction.selected_index" => {
@@ -187,9 +189,10 @@ fn tone(value: &str) -> UiTone {
 fn size(value: &str) -> UiSize {
     match value {
         "x-small" => UiSize::XSmall,
-        "small" => UiSize::Small,
-        "large" => UiSize::Large,
-        "x-large" => UiSize::XLarge,
+        "small" | "Small" => UiSize::Small,
+        "large" | "Large" => UiSize::Large,
+        "x-large" | "XLarge" => UiSize::XLarge,
+        "medium" | "Medium" => UiSize::Medium,
         _ => UiSize::Medium,
     }
 }

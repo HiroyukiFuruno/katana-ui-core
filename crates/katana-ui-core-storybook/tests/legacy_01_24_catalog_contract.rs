@@ -49,7 +49,6 @@ const INTERACTIVE_LEGACY_PAGES: &[&str] = &[
     "text-input",
     "search-box",
     "tooltip",
-    "badge",
     "card",
     "accordion",
     "split-pane",

@@ -3,7 +3,7 @@
 ### Requirement: Atoms cover primitive building blocks
 
 KUC atoms MUST cover primitive building blocks such as Text, Icon, Button, Input, TextArea, Checkbox, Radio, Badge, Chip, Divider, Spacer, KeyCap, Spinner, ProgressBar, and ColorSwatch where adopted.
-Atom contracts MUST explicitly define options, actions, events, state, presets, tests, visual regression, preview behavior, settings behavior, and Storybook pages.
+Atom contracts MUST explicitly define options, actions, events, state, presets, tests, numeric rendering contracts, preview behavior, settings behavior, and Storybook pages.
 Passive atoms MUST explicitly state that actions or events are `none`; absence of a row MUST block completion.
 
 #### Scenario: passive vs interactive atom is enforced

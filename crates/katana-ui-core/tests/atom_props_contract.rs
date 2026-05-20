@@ -137,8 +137,7 @@ fn selection_and_status_props_are_typed() {
     let badge = UiNode::from(
         Badge::new("Ready")
             .severity(UiTone::Success)
-            .variant(UiVariant::Outline)
-            .dismiss_action(UiDismissAction::Available),
+            .variant(UiVariant::Outline),
     );
     let color = UiNode::from(ColorSwatch::new("Accent").value("#4080ff"));
 
@@ -149,10 +148,7 @@ fn selection_and_status_props_are_typed() {
     assert_eq!(UiTone::Success, badge.props().severity);
     assert_eq!(UiTone::Success, badge.props().status.severity);
     assert_eq!(UiVariant::Outline, badge.props().status.variant);
-    assert_eq!(
-        UiDismissAction::Available,
-        badge.props().status.dismiss_action
-    );
+    assert_eq!(UiDismissAction::None, badge.props().status.dismiss_action);
     assert_eq!("#4080ff", color.props().interaction.value);
 }
 

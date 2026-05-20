@@ -1,7 +1,6 @@
 use super::{Badge, Icon, Input, LoadingDots, ProgressBar, Spinner, SvgButton};
 use crate::render_model::{
-    UiAnimationState, UiClearActionSpec, UiDismissAction, UiIconProps, UiSlotPlacement, UiSlotSpec,
-    UiSvgPaintPolicy,
+    UiAnimationState, UiClearActionSpec, UiIconProps, UiSlotPlacement, UiSlotSpec, UiSvgPaintPolicy,
 };
 
 impl Input {
@@ -44,12 +43,6 @@ impl Input {
 }
 
 impl Badge {
-    #[must_use]
-    pub fn dismiss_action(mut self, value: UiDismissAction) -> Self {
-        self.state.status.dismiss_action = value;
-        self
-    }
-
     #[must_use]
     pub fn leading_icon(mut self, value: impl Into<String>) -> Self {
         self.state.status.leading_icon = value.into();

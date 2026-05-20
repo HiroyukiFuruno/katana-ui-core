@@ -7,7 +7,7 @@ use katana_ui_core::atom::{
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::interaction::UiCallbackLog;
-use katana_ui_core::render_model::{UiDismissAction, UiSize, UiTone, UiVariant, UiVisualRole};
+use katana_ui_core::render_model::{UiSize, UiTone, UiVariant, UiVisualRole};
 
 const TEXT_AREA_MIN_ROWS: u16 = 2;
 const TEXT_AREA_MAX_ROWS: u16 = 4;
@@ -190,13 +190,10 @@ pub(super) fn radio() -> StoryExample {
 }
 
 pub(super) fn badge() -> StoryExample {
-    let mut badge = atom::Badge::new("Badge")
+    let badge = atom::Badge::new("Badge")
         .accessibility_label("Status badge")
         .visual_role(UiVisualRole::Status)
         .tone(UiTone::Success)
-        .size(UiSize::Small)
-        .dismiss_action(UiDismissAction::Available);
-    let target = badge.state_id().clone();
-    let result = badge.apply_action(&UiAction::dismiss(target));
-    StoryCatalog::interactive_story("badge", badge, result.callback_log)
+        .size(UiSize::Small);
+    StoryCatalog::story("badge", badge)
 }

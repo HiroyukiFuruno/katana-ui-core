@@ -5,6 +5,7 @@ const REQUIRED_INTERACTIVE_ATOMS: [&str; 14] = [
     "text-button",
     "svg-button",
     "icon-text-button",
+    "chip",
     "text-input",
     "checkbox",
     "radio",
@@ -14,10 +15,9 @@ const REQUIRED_INTERACTIVE_ATOMS: [&str; 14] = [
     "color-swatch",
     "toggle",
     "slide-control",
-    "badge",
 ];
 
-const REQUIRED_PASSIVE_ATOMS: [&str; 3] = ["text", "icon", "key-cap"];
+const REQUIRED_PASSIVE_ATOMS: [&str; 4] = ["text", "icon", "badge", "key-cap"];
 
 #[test]
 fn atom_story_pages_expose_action_and_event_history() {

@@ -108,11 +108,11 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "selected=true",
         )),
         "badge" => Some(spec(
-            "badge_dismiss",
-            "badge_dismissed",
+            "badge_passive",
+            "none",
             "status.severity",
             "Danger",
-            "dismissed=true",
+            "use Chip for dismiss",
         )),
         "divider" => Some(spec(
             "divider_resize",

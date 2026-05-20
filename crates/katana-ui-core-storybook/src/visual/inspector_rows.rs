@@ -76,6 +76,38 @@ pub(super) fn settings_rows(
             )),
         ];
     }
+    if example.page == "badge" {
+        return vec![
+            "role: passive status".to_string(),
+            "actions: none".to_string(),
+            "dismiss: use Chip".to_string(),
+            "tone: status token".to_string(),
+        ];
+    }
+    if example.page == "chip" {
+        return vec![
+            "variant: outline -> filled".to_string(),
+            "tone: accent -> danger".to_string(),
+            "size: medium -> large".to_string(),
+            "dismiss: backspace/delete".to_string(),
+        ];
+    }
+    if example.page == "attachment-chip" {
+        return vec![
+            "kind: file/image/url".to_string(),
+            "status: uploading -> error".to_string(),
+            "progress: 42 -> 100".to_string(),
+            "retry: child button".to_string(),
+        ];
+    }
+    if example.page == "chip-group" {
+        return vec![
+            "overflow: menu -> scroll".to_string(),
+            "wrap: false -> true".to_string(),
+            "reorder: on/off".to_string(),
+            "menu: hidden chips".to_string(),
+        ];
+    }
     if is_button_page(example.page) {
         let spec = StorybookInteractionSpec::for_page(example.page);
         let variant = if scenario.screen_state.has_settings_override() {

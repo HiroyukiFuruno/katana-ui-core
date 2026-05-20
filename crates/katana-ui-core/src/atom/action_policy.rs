@@ -46,7 +46,7 @@ impl AtomActionPolicy {
             }
             UiNodeKind::ProgressBar => Self::is_progress_action(action),
             UiNodeKind::ColorSwatch => Self::is_color_action(action),
-            UiNodeKind::Badge => Self::is_badge_action(action),
+            UiNodeKind::Badge => Self::is_passive_status_action(action),
             UiNodeKind::LoadingDots | UiNodeKind::Spinner => Self::is_loading_action(action),
             UiNodeKind::SlideControl => Self::is_slide_action(action),
             _ => false,
@@ -114,8 +114,8 @@ impl AtomActionPolicy {
         )
     }
 
-    fn is_badge_action(action: &UiAction) -> bool {
-        matches!(action, UiAction::Dismiss { .. } | UiAction::SetFocus { .. })
+    fn is_passive_status_action(action: &UiAction) -> bool {
+        matches!(action, UiAction::SetFocus { .. })
     }
 
     fn is_loading_action(action: &UiAction) -> bool {

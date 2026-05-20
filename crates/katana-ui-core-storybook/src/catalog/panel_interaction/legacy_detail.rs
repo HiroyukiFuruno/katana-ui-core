@@ -29,7 +29,15 @@ impl StoryDetailContent {
         let after_props = props_with_option(props, option, &resolved_after);
         let after = option_value(option, &after_props);
         let action = action_line(example, &marker);
-        let settings = if example.page == "closeable-tab-strip" {
+        let settings = if example.page == "badge" {
+            badge_settings_line(&marker)
+        } else if example.page == "chip" {
+            chip_settings_line(&marker)
+        } else if example.page == "attachment-chip" {
+            attachment_chip_settings_line(&marker)
+        } else if example.page == "chip-group" {
+            chip_group_settings_line(&marker)
+        } else if example.page == "closeable-tab-strip" {
             closeable_tab_strip_settings_line(example, &marker)
         } else if example.page == "drag-and-drop" {
             drag_and_drop_settings_line(example, &marker)
@@ -150,6 +158,24 @@ fn toolbar_settings_line(marker: &str) -> String {
 fn text_area_settings_line(marker: &str) -> String {
     format!(
         "{marker} settings: submit/newline/tab/auto/wrap Enter,ShiftEnter,MoveFocus,true,Soft -> ModEnter,Enter,InsertTab,false,Hard"
+    )
+}
+
+fn badge_settings_line(marker: &str) -> String {
+    format!("{marker} settings: passive status -> use Chip for dismiss / interactive")
+}
+
+fn chip_settings_line(marker: &str) -> String {
+    format!("{marker} settings: variant/tone/size Outline,Accent,Medium -> Filled,Danger,Large")
+}
+
+fn attachment_chip_settings_line(marker: &str) -> String {
+    format!("{marker} settings: status/progress Uploading,42 -> Error,100")
+}
+
+fn chip_group_settings_line(marker: &str) -> String {
+    format!(
+        "{marker} settings: overflow/wrap/reorder Menu,false,true -> ScrollHorizontal,true,false"
     )
 }
 

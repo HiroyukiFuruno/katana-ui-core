@@ -2,12 +2,13 @@ use super::StorybookPanelInteractionReport;
 use crate::catalog::StoryCatalog;
 use std::collections::BTreeSet;
 
-const LEGACY_UI_MARKER_COUNT: usize = 27;
+const LEGACY_UI_MARKER_COUNT: usize = 30;
 const DND_SETTINGS_MUTATION_COUNT: usize = 3;
 const CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT: usize = 5;
 const OVERLAY_SETTINGS_MUTATION_COUNT: usize = 9;
 const TOOLBAR_SETTINGS_MUTATION_COUNT: usize = 5;
 const TEXT_AREA_SETTINGS_MUTATION_COUNT: usize = 5;
+const CHIP_SETTINGS_MUTATION_COUNT: usize = 6;
 
 #[test]
 fn report_covers_selector_overlay_and_color_picker_sequences() {
@@ -25,6 +26,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + OVERLAY_SETTINGS_MUTATION_COUNT
             + TOOLBAR_SETTINGS_MUTATION_COUNT
             + TEXT_AREA_SETTINGS_MUTATION_COUNT
+            + CHIP_SETTINGS_MUTATION_COUNT
             + CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT,
         report.settings_mutations.len()
     );
@@ -89,6 +91,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_overlay_settings_are_switchable(&report.settings_mutations);
     assert_toolbar_settings_are_switchable(&report.settings_mutations);
     assert_text_area_settings_are_switchable(&report.settings_mutations);
+    assert_chip_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
         report.legacy_ui_markers.len(),
         report
@@ -110,6 +113,39 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
     );
+}
+
+fn assert_chip_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for (page, option, event) in [
+        ("chip", "chip.variant", "chip_settings_changed"),
+        ("chip", "chip.tone", "chip_settings_changed"),
+        ("chip", "chip.size", "chip_settings_changed"),
+        (
+            "attachment-chip",
+            "attachment.status",
+            "attachment_chip_settings_changed",
+        ),
+        (
+            "attachment-chip",
+            "attachment.progress",
+            "attachment_chip_settings_changed",
+        ),
+        (
+            "chip-group",
+            "chip_group.overflow",
+            "chip_group_settings_changed",
+        ),
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == page
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == event
+            }),
+            "missing chip setting mutation for {page} {option}"
+        );
+    }
 }
 
 fn assert_toolbar_settings_are_switchable(settings: &[super::SettingsMutationReport]) {

@@ -31,6 +31,14 @@ pub(super) const ATOM_SPECS: &[LegacyDodSpec] = &[
         ["svg-grid", "accent-icon", "missing-label", "muted-icon"],
     ),
     spec(
+        "chip",
+        "07-chip",
+        "chip.variant",
+        "ChipVariant",
+        "Filled",
+        ["filter-tag", "dismiss", "selected", "tone-matrix"],
+    ),
+    spec(
         "loading-dots",
         "04-loading-dots",
         "loading.reduced_motion",

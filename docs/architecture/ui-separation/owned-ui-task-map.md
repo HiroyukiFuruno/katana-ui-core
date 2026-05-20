@@ -76,7 +76,9 @@
 | DragAndDropPrimitive | atom / molecule / interaction | DragHandle / DropIndicator / DragPreview / DragData / DropTarget / keyboard drag。OS payload は adapter contract で `os/*` tag に変換する |
 | CloseableTabStrip | molecule | closeable / dirty / draggable tab。workspace / document domain は持たない |
 | TextArea | atom | 複数行フォーム入力。KLE 本文 editor ではない |
-| Chip / AttachmentChip | atom / molecule | 添付、filter、tag 表示 |
+| Chip | atom | filter / tag 表示。variant / tone / size / selected / dismissible / keyboard dismiss を持つ |
+| AttachmentChip | molecule | file / image / URL / paste / resource 添付。status / progress / retry action を持つ |
+| ChipGroup | molecule | wrap / overflow menu / horizontal scroll / reorder opt-in を持つ chip container |
 | DiagnosticsList | molecule | severity / location / action の汎用問題一覧。lint domain は持たない |
 | EmptyState | molecule | 空状態の heading / body / action |
 | Banner | molecule | 画面内に残る告知 |

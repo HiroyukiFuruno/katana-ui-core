@@ -40,6 +40,21 @@ fn interactive_atom_examples_expose_callback_logs() {
 }
 
 #[test]
+fn badge_story_remains_passive_and_points_to_chip_for_dismiss() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let badge = examples
+        .iter()
+        .find(|it| it.page == "badge")
+        .ok_or("badge page missing")?;
+    let details = super::StoryDetailContent::from_example(badge);
+
+    assert!(badge.callback_logs.is_empty());
+    assert!(details.settings.contains("passive"));
+    assert!(details.settings.contains("Chip"));
+    Ok(())
+}
+
+#[test]
 fn story_page_contract_is_derived_from_materialized_evidence() {
     let incomplete =
         StoryPageContract::from_tree("button", &UiTree::new(atom::Button::new("Button")), 99, &[]);
@@ -290,6 +305,79 @@ fn toolbar_story_exposes_overflow_split_settings_and_logs() -> Result<(), &'stat
 }
 
 #[test]
+fn chip_attachment_stories_expose_settings_presets_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let chip = examples
+        .iter()
+        .find(|it| it.page == "chip")
+        .ok_or("chip page missing")?;
+    let attachment = examples
+        .iter()
+        .find(|it| it.page == "attachment-chip")
+        .ok_or("attachment-chip page missing")?;
+    let group = examples
+        .iter()
+        .find(|it| it.page == "chip-group")
+        .ok_or("chip-group page missing")?;
+    let chip_details = super::StoryDetailContent::from_example(chip);
+    let attachment_details = super::StoryDetailContent::from_example(attachment);
+    let group_details = super::StoryDetailContent::from_example(group);
+
+    assert_eq!(
+        &["filter tag", "dismiss", "selected", "tone matrix"],
+        StoryPresetLabels::for_page("chip")
+    );
+    assert_eq!(
+        &[
+            "file attachment",
+            "image attachment",
+            "url attachment",
+            "uploading",
+            "error retry"
+        ],
+        StoryPresetLabels::for_page("attachment-chip")
+    );
+    assert_eq!(
+        &["wrap", "overflow menu", "horizontal scroll", "reorder"],
+        StoryPresetLabels::for_page("chip-group")
+    );
+    for setting in ["variant", "tone", "size"] {
+        assert!(
+            chip_details.settings.contains(setting),
+            "chip settings inspector lacks {setting}"
+        );
+    }
+    for setting in ["status", "progress"] {
+        assert!(
+            attachment_details.settings.contains(setting),
+            "attachment-chip settings inspector lacks {setting}"
+        );
+    }
+    assert!(
+        group_details.settings.contains("overflow"),
+        "chip-group settings inspector lacks overflow"
+    );
+    assert!(
+        chip.callback_logs
+            .iter()
+            .any(|it| it.action == "chip_dismiss")
+    );
+    assert!(
+        attachment
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "attachment_status")
+    );
+    assert!(
+        group
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "chip_group_overflow")
+    );
+    Ok(())
+}
+
+#[test]
 fn hover_card_story_exposes_rich_slots_and_callback_log() -> Result<(), &'static str> {
     let examples = StoryCatalog.examples();
     let story = examples
@@ -397,6 +485,7 @@ fn is_atom_kind(kind: UiNodeKind) -> bool {
             | UiNodeKind::Spinner
             | UiNodeKind::ProgressBar
             | UiNodeKind::ColorSwatch
+            | UiNodeKind::Chip
             | UiNodeKind::Toggle
             | UiNodeKind::SlideControl
             | UiNodeKind::SvgButton

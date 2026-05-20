@@ -9,6 +9,7 @@ const PASSIVE_CONTRACT_PAGES: &[&str] = &[
     "theme-tokens",
     "text",
     "icon",
+    "badge",
     "divider",
     "spacer",
     "key-cap",

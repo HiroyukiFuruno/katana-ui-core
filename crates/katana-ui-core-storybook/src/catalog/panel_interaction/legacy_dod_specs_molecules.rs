@@ -47,7 +47,7 @@ pub(super) const MOLECULE_SPECS: &[LegacyDodSpec] = &[
         "status.severity",
         "UiTone",
         "Danger",
-        ["tone-grid", "dismiss-action", "small-size", "theme-badge"],
+        ["tone-grid", "passive-status", "small-size", "theme-badge"],
     ),
     spec(
         "key-cap",
@@ -143,5 +143,21 @@ pub(super) const MOLECULE_SPECS: &[LegacyDodSpec] = &[
         "DiffMode",
         "Split",
         ["inline", "mode-switch", "collapsed", "theme-japanese"],
+    ),
+    spec(
+        "attachment-chip",
+        "07-attachment-chip",
+        "interaction.value",
+        "AttachmentStatus",
+        "Error",
+        ["file", "image", "url", "uploading"],
+    ),
+    spec(
+        "chip-group",
+        "07-chip-group",
+        "interaction.open",
+        "bool",
+        "true",
+        ["wrap", "overflow-menu", "horizontal-scroll", "reorder"],
     ),
 ];
