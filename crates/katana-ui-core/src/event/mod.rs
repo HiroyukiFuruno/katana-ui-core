@@ -77,6 +77,7 @@ pub enum UiEvent {
     Focus(FocusEvent),
     Command(CommandEvent),
     Drag(DragEvent),
+    Scroll(crate::layout::ScrollAreaEvent),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

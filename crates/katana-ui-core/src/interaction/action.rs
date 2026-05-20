@@ -1,6 +1,6 @@
 use super::action_name::value_name;
 use crate::interaction::{ColorDragAction, ProgressAction, UiActionSource};
-use crate::render_model::UiStateId;
+use crate::render_model::{UiRect, UiScrollbarVisibility, UiStateId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -62,6 +62,24 @@ pub enum UiAction {
     Dismiss {
         target: UiStateId,
     },
+    ScrollTo {
+        target: UiStateId,
+        x: u32,
+        y: u32,
+    },
+    ScrollBy {
+        target: UiStateId,
+        dx: i32,
+        dy: i32,
+    },
+    ScrollIntoView {
+        target: UiStateId,
+        target_rect: UiRect,
+    },
+    SetScrollbarVisibility {
+        target: UiStateId,
+        visibility: UiScrollbarVisibility,
+    },
 }
 
 impl UiAction {
@@ -80,7 +98,11 @@ impl UiAction {
             | Self::SetSelectedIndex { target, .. }
             | Self::SetValue { target, .. }
             | Self::ClearValue { target }
-            | Self::Dismiss { target } => target,
+            | Self::Dismiss { target }
+            | Self::ScrollTo { target, .. }
+            | Self::ScrollBy { target, .. }
+            | Self::ScrollIntoView { target, .. }
+            | Self::SetScrollbarVisibility { target, .. } => target,
         }
     }
 
@@ -135,6 +157,10 @@ impl UiAction {
             }
             Self::ClearValue { .. } => "clear_value",
             Self::Dismiss { .. } => "dismiss",
+            Self::ScrollTo { .. } => "scroll_to",
+            Self::ScrollBy { .. } => "scroll_by",
+            Self::ScrollIntoView { .. } => "scroll_into_view",
+            Self::SetScrollbarVisibility { .. } => "scrollbar_visibility_changed",
         }
     }
 }

@@ -109,6 +109,10 @@ impl MoleculeState {
             UiAction::SetValue { value, .. } => self.value = value.clone(),
             UiAction::ClearValue { .. } => self.value.clear(),
             UiAction::Dismiss { .. } => self.open = false,
+            UiAction::ScrollTo { .. }
+            | UiAction::ScrollBy { .. }
+            | UiAction::ScrollIntoView { .. }
+            | UiAction::SetScrollbarVisibility { .. } => {}
         }
     }
 

@@ -30,6 +30,8 @@ impl StoryDetailContent {
         let after = option_value(option, &after_props);
         let settings = if example.page == "badge" {
             badge_settings_line(&marker)
+        } else if example.page == "scroll-area" {
+            scroll_area_settings_line(example, &marker)
         } else if example.page == "search-control-strip" {
             search_control_settings_line(example, &marker)
         } else if example.page == "modal" {
@@ -95,21 +97,29 @@ impl StoryDetailContent {
         };
         let state = if example.page == "search-control-strip" {
             search_control_state_line(example, &marker)
+        } else if example.page == "scroll-area" {
+            scroll_area_state_line(example, &marker)
         } else {
             state_line(example, &marker, option, &after_props)
         };
         let event = if example.page == "search-control-strip" {
             search_control_event_line(example, &marker)
+        } else if example.page == "scroll-area" {
+            scroll_area_event_line(example, &marker)
         } else {
             event_line(example, &marker)
         };
         let action = if example.page == "search-control-strip" {
             search_control_action_line(example, &marker)
+        } else if example.page == "scroll-area" {
+            scroll_area_action_line(example, &marker)
         } else {
             action_line(example, &marker)
         };
         let quality = if example.page == "search-control-strip" {
             search_control_quality_line(&marker)
+        } else if example.page == "scroll-area" {
+            scroll_area_quality_line(&marker)
         } else {
             quality_line(spec, &marker)
         };
@@ -201,6 +211,45 @@ fn color_picker_settings_line(example: &StoryExample, marker: &str) -> String {
     format!(
         "{marker} settings: mode=RGBA/RGB channels=R64,G128,B255,A204 blending=Normal/Additive eyedropper=storybook-eyedropper readonly=false disabled=false plane=saturation/value hue=214 alpha=204 preview=transparent-checker actions={actions} -> mode=RGB channels=R72,G136,B240,A188 blending=Additive readonly=true disabled=true"
     )
+}
+
+fn scroll_area_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = callback_actions(example);
+    format!(
+        "{marker} settings: axis offset viewport content scrollbar visibility placement edge_threshold actions={actions} -> axis=Both offset=40,180 viewport=320x220 content=860x1400 scrollbar=Always placement=Reserved"
+    )
+}
+
+fn scroll_area_state_line(example: &StoryExample, marker: &str) -> String {
+    let props = example.tree.root().props();
+    format!(
+        "{marker} state: id={} state: offset={},{} viewport={}x{} content={}x{} edge=none",
+        props.state_id.as_str(),
+        props.scroll_area.offset_x,
+        props.scroll_area.offset_y,
+        props.scroll_area.viewport_width,
+        props.scroll_area.viewport_height,
+        props.scroll_area.content_width,
+        props.scroll_area.content_height
+    )
+}
+
+fn scroll_area_event_line(example: &StoryExample, marker: &str) -> String {
+    format!(
+        "{marker} event: Scrolled ScrollEdgeReached ScrollCommandRejected callback_log={}",
+        example.callback_logs.len()
+    )
+}
+
+fn scroll_area_action_line(example: &StoryExample, marker: &str) -> String {
+    let actions = callback_actions(example);
+    format!(
+        "{marker} action: scroll_to scroll_by scroll_into_view scrollbar_visibility actions={actions}"
+    )
+}
+
+fn scroll_area_quality_line(marker: &str) -> String {
+    format!("{marker} quality: nested_state_identity clamp edge_event axis_rejection")
 }
 
 fn search_control_settings_line(example: &StoryExample, marker: &str) -> String {

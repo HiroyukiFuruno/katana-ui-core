@@ -16,6 +16,8 @@ pub enum UiActionSource {
     SplitPane,
     SplitPaneReset,
     SplitPaneKeyboard,
+    ScrollArea,
+    ScrollbarVisibility,
     SearchBox,
     InputSubmit,
     SegmentedToggle,
@@ -52,6 +54,7 @@ impl UiActionSource {
             Self::ColorPickerOpen => "color_picker_toggle",
             Self::CodeDiffExpand => "code_diff_expand",
             Self::CodeDiffScrollSync => "code_diff_scroll_sync",
+            Self::ScrollArea => "scroll_area_press",
             _ => "press",
         }
     }

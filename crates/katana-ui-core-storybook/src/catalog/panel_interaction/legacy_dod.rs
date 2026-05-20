@@ -23,6 +23,8 @@ mod legacy_dod_drag_settings;
 mod legacy_dod_empty_state_settings;
 #[path = "legacy_dod_overlay_settings.rs"]
 mod legacy_dod_overlay_settings;
+#[path = "legacy_dod_scroll_area_settings.rs"]
+mod legacy_dod_scroll_area_settings;
 #[path = "legacy_dod_search_control_strip_settings.rs"]
 mod legacy_dod_search_control_strip_settings;
 #[path = "legacy_dod_settings_list.rs"]
@@ -112,6 +114,9 @@ impl LegacyDodReports {
         reports.extend(legacy_dod_status_bar_settings::settings_mutations(examples));
         reports.extend(legacy_dod_shortcut_settings::settings_mutations(examples));
         reports.extend(legacy_dod_search_control_strip_settings::settings_mutations(examples));
+        reports.extend(legacy_dod_scroll_area_settings::settings_mutations(
+            examples,
+        ));
         reports.extend(legacy_dod_settings_list::settings_mutations(examples));
         reports.extend(legacy_dod_text_area_settings::settings_mutations(examples));
         reports.extend(legacy_dod_toast_stack_settings::settings_mutations(

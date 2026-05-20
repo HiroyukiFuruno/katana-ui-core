@@ -18,6 +18,8 @@ mod typed_modal;
 mod typed_panel;
 #[path = "typed_popover.rs"]
 mod typed_popover;
+#[path = "typed_scroll_area.rs"]
+mod typed_scroll_area;
 #[path = "typed_search.rs"]
 mod typed_search;
 #[path = "typed_split_pane.rs"]
@@ -35,6 +37,7 @@ pub use typed_panel::{
     UiScrollbarVisibility,
 };
 pub use typed_popover::{UiPopoverFocusManagement, UiPopoverPlacement, UiPopoverProps};
+pub use typed_scroll_area::{UiScrollAreaAxis, UiScrollAreaProps};
 pub use typed_search::{UiSearchControlProps, UiSearchReplaceMode};
 pub use typed_split_pane::{UiSplitPaneAxis, UiSplitPaneProps, UiSplitPaneResizeMode};
 

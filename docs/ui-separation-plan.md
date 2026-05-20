@@ -14,6 +14,9 @@ repo-local source: [`docs/architecture/ui-separation/root-plan-source.md`](archi
 atoms / molecules と Storybook の実装正本は [`openspec/changes/establish-kuc-atoms-molecules-catalog/`](../openspec/changes/establish-kuc-atoms-molecules-catalog/) とする。
 このファイルには root architecture と依存境界だけを置き、部品ごとの option / action / event / state / preset / test は新 change 側で管理する。
 
+`ScrollArea` は KUC の layout foundation として、axis、offset、viewport/content extent、scrollbar visibility / placement、scroll command、edge event、nested state identity を typed contract で持つ。
+KDV / KLE の本文 viewer / editor scroll policy や editor-preview 同期は KUC に入れず、利用側がこの scroll container を組み合わせて実装する。
+
 ## Repository の役割
 
 `katana-ui-core` (KUC、旧 `katana-ui-widget`) は **framework-neutral な UI Core** として位置付ける。

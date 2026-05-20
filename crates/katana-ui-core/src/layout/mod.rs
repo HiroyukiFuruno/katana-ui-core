@@ -1,3 +1,4 @@
+mod scroll_area;
 mod split_pane;
 mod split_pane_actions;
 mod split_pane_ratio;
@@ -5,6 +6,10 @@ mod split_pane_ratio;
 use crate::render_model::{
     UiAlignItems, UiCommonProps, UiDisplay, UiInteractionState, UiJustifyContent, UiNode,
     UiNodeKind, UiStateId,
+};
+pub use scroll_area::{
+    ScrollArea, ScrollAreaAction, ScrollAreaEvent, ScrollAxis, ScrollEdge, ScrollRejectionReason,
+    ScrollbarPlacement, ScrollbarVisibility,
 };
 use serde::{Deserialize, Serialize};
 pub use split_pane::{SplitPane, SplitPaneAxis, SplitPaneResizeMode};
@@ -121,7 +126,6 @@ layout_model!(Row, UiNodeKind::Row);
 layout_model!(Column, UiNodeKind::Column);
 layout_model!(Stack, UiNodeKind::Stack);
 layout_model!(Grid, UiNodeKind::Grid);
-layout_model!(ScrollArea, UiNodeKind::ScrollArea);
 layout_model!(AlignCenter, UiNodeKind::AlignCenter);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

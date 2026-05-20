@@ -54,6 +54,10 @@ impl AtomState {
             } => self.apply_value_action(value, progress.as_ref()),
             UiAction::ClearValue { .. } => self.interaction.value.clear(),
             UiAction::Dismiss { .. } => self.interaction.open = false,
+            UiAction::ScrollTo { .. }
+            | UiAction::ScrollBy { .. }
+            | UiAction::ScrollIntoView { .. }
+            | UiAction::SetScrollbarVisibility { .. } => {}
         }
     }
 

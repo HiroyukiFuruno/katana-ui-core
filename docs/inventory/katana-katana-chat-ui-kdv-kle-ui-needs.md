@@ -71,7 +71,7 @@ KUC が持つ対象は、最小部品（atoms）と複合部品（molecules）�
 
 | 優先 | UI 群 | 画面上でどう見えるか | 何を操作するものか | 主な利用元 | 現状 / gap |
 | --- | --- | --- | --- | --- | --- |
-| 00 | scroll area contract | 長い内容を独立して縦 / 横に動かす領域 | offset、scrollbar、外部 scroll command、edge 到達を扱う | KDV viewer 周辺、KLE find 周辺、katana panels、chat history、Storybook | `ScrollArea` はあるが typed axis / offset / extent / event / scrollbar 契約が不足 |
+| 00 | scroll area contract | 長い内容を独立して縦 / 横に動かす領域 | offset、scrollbar、外部 scroll command、edge 到達を扱う | KDV viewer 周辺、KLE find 周辺、katana panels、chat history、Storybook | `ScrollArea` は typed axis / offset / extent / event / scrollbar 契約へ移管済み |
 | 00 | split pane contract | 左右または上下の 2 領域を境界線で分ける | 境界線 drag、keyboard resize、比率 reset | katana editor-preview、KDV TOC-viewer、Storybook panels | `SplitPane` はあるが 2 pane contract、ratio clamp、event、`CollapsiblePanel` との境界が不足 |
 | 01 | 文脈メニュー（context menu） | 右クリック位置やボタン付近に出る縦メニュー | action、submenu、toggle、radio、shortcut 表示を選ぶ | katana tab / explorer / editor 周辺、chat output | `ContextMenu` はあるが、shared overlay / placement と consumer preset の整理が必要 |
 | 02 | drag and drop primitive | ドラッグ中の影、drop 線、drop 領域 | 並べ替え、添付 drop、ツリー移動 | katana tab / explorer、chat attachment | 現行 KUC に共通 DnD model が不足 |
@@ -100,7 +100,7 @@ KUC が持つ対象は、最小部品（atoms）と複合部品（molecules）�
 
 | 既存 UI | 補えない差分 | 必要な change |
 | --- | --- | --- |
-| `ScrollArea` | axis、offset、viewport/content extent、scrollbar、外部 scroll command、edge event が typed でない | `00-add-scroll-area-contract` |
+| `ScrollArea` | axis、offset、viewport/content extent、scrollbar、外部 scroll command、edge event は typed contract へ移管済み | `00-add-scroll-area-contract` |
 | `SplitPane` | 2 pane contract、min/max/reset ratio、drag/keyboard resize event、persistence 境界が曖昧 | `00-add-split-pane-contract` |
 | `Tabs` | segmented 切替と closeable / dirty / draggable / grouped tab は状態が違う | `03-add-workspace-tab-bar` を domain-free tab strip に修正 |
 | `MenuButton` / `Menu` | pointer 座標起点、submenu path、outside click reason、type-ahead を持てない | `01-add-context-menu` |

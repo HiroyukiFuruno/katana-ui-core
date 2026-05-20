@@ -10,6 +10,8 @@ mod panel_operations;
 mod panel_report;
 mod preset_labels;
 #[cfg(test)]
+mod scroll_area_story_tests;
+#[cfg(test)]
 mod search_control_strip_story_tests;
 #[cfg(test)]
 mod tests;

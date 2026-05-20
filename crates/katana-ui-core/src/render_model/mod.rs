@@ -47,11 +47,11 @@ pub use typed::{
     UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiIconProps, UiLoadingProps,
     UiModalParentInteraction, UiModalPresentation, UiModalProps, UiModalSize, UiPanelProps,
     UiPopoverFocusManagement, UiPopoverPlacement, UiPopoverProps, UiProgressMode, UiRect,
-    UiScrollbarDragState, UiScrollbarModel, UiScrollbarPlacement, UiScrollbarVisibility,
-    UiSearchControlProps, UiSearchReplaceMode, UiShortcutProps, UiSkeletonAnimation,
-    UiSkeletonProps, UiSkeletonShape, UiSlotPlacement, UiSlotSpec, UiSplitPaneAxis,
-    UiSplitPaneProps, UiSplitPaneResizeMode, UiStatusProps, UiSvgPaintPolicy, UiTextEntryProps,
-    UiTextProps,
+    UiScrollAreaAxis, UiScrollAreaProps, UiScrollbarDragState, UiScrollbarModel,
+    UiScrollbarPlacement, UiScrollbarVisibility, UiSearchControlProps, UiSearchReplaceMode,
+    UiShortcutProps, UiSkeletonAnimation, UiSkeletonProps, UiSkeletonShape, UiSlotPlacement,
+    UiSlotSpec, UiSplitPaneAxis, UiSplitPaneProps, UiSplitPaneResizeMode, UiStatusProps,
+    UiSvgPaintPolicy, UiTextEntryProps, UiTextProps,
 };
 
 #[cfg(test)]

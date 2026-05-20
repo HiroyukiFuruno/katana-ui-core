@@ -1,7 +1,7 @@
 use super::{StoryCatalog, StoryExample};
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::{UiAction, UiCallbackLog};
-use katana_ui_core::render_model::UiStateId;
+use katana_ui_core::render_model::{UiRect, UiScrollbarVisibility, UiStateId};
 use katana_ui_core::{atom, layout, molecule};
 
 const SPLIT_PANE_MIN_PERCENT: u8 = 20;
@@ -28,10 +28,7 @@ pub(super) fn examples() -> Vec<StoryExample> {
                 .child(atom::Text::new("Grid item"))
                 .child(atom::Text::new("Grid item 2")),
         ),
-        StoryCatalog::story(
-            "scroll-area",
-            layout::ScrollArea::new().child(atom::Text::new("Scroll item")),
-        ),
+        scroll_area_story(),
         split_pane_story(),
         StoryCatalog::story(
             "align-center",
@@ -80,6 +77,72 @@ fn split_pane_story() -> StoryExample {
         )))
         .child(split_pane_nested_preview());
     StoryCatalog::interactive_story("split-pane", preview, logs)
+}
+
+fn scroll_area_story() -> StoryExample {
+    let area = layout::ScrollArea::new()
+        .axis(layout::ScrollAxis::Both)
+        .viewport(320, 220)
+        .content_extent(860, 1400)
+        .offset(40, 180)
+        .scrollbar_visibility(layout::ScrollbarVisibility::Always)
+        .scrollbar_placement(layout::ScrollbarPlacement::Reserved)
+        .edge_threshold(24)
+        .child(atom::Text::new(
+            "settings: axis offset viewport content scrollbar visibility placement edge_threshold",
+        ))
+        .child(atom::Text::new(
+            "state: offset=40,180 viewport=320x220 content=860x1400 edge=none",
+        ))
+        .child(atom::Text::new(
+            "event: Scrolled ScrollEdgeReached ScrollCommandRejected",
+        ))
+        .child(atom::Text::new(
+            "action: scroll_to scroll_by scroll_into_view scrollbar_visibility",
+        ))
+        .child(atom::Text::new(
+            "preset: vertical horizontal both nested theme scroll",
+        ))
+        .child(atom::Text::new(
+            "quality: nested_state_identity clamp edge_event axis_rejection",
+        ));
+    let target = area.state_id().clone();
+    let mut probe = area.clone();
+    let logs = scroll_area_logs(&mut probe, target);
+    StoryCatalog::interactive_story("scroll-area", area, logs)
+}
+
+fn scroll_area_logs(area: &mut layout::ScrollArea, target: UiStateId) -> Vec<UiCallbackLog> {
+    let mut logs = Vec::new();
+    logs.extend(
+        area.apply_action(&UiAction::scroll_to(target.clone(), 40, 180))
+            .callback_log,
+    );
+    logs.extend(
+        area.apply_action(&UiAction::scroll_by(target.clone(), 0, 220))
+            .callback_log,
+    );
+    logs.extend(
+        area.apply_action(&UiAction::scroll_into_view(
+            target.clone(),
+            UiRect::new(0, 980, 120, 80),
+        ))
+        .callback_log,
+    );
+    logs.extend(
+        area.apply_action(&UiAction::scrollbar_visibility(
+            target.clone(),
+            UiScrollbarVisibility::Auto,
+        ))
+        .callback_log,
+    );
+    logs.push(UiCallbackLog::new(
+        target,
+        "scroll_axis_rejected",
+        "axis=Vertical dx=24",
+        "ScrollCommandRejected(AxisMismatch)",
+    ));
+    logs
 }
 
 fn split_pane_nested_preview() -> layout::SplitPane {

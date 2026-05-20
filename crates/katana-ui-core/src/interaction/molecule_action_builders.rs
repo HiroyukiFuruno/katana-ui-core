@@ -1,5 +1,5 @@
 use crate::interaction::{UiAction, UiActionSource};
-use crate::render_model::UiStateId;
+use crate::render_model::{UiRect, UiScrollbarVisibility, UiStateId};
 
 impl UiAction {
     #[must_use]
@@ -139,5 +139,28 @@ impl UiAction {
             target,
             source: UiActionSource::CodeDiffScrollSync,
         }
+    }
+
+    #[must_use]
+    pub fn scroll_to(target: UiStateId, x: u32, y: u32) -> Self {
+        Self::ScrollTo { target, x, y }
+    }
+
+    #[must_use]
+    pub fn scroll_by(target: UiStateId, dx: i32, dy: i32) -> Self {
+        Self::ScrollBy { target, dx, dy }
+    }
+
+    #[must_use]
+    pub fn scroll_into_view(target: UiStateId, target_rect: UiRect) -> Self {
+        Self::ScrollIntoView {
+            target,
+            target_rect,
+        }
+    }
+
+    #[must_use]
+    pub fn scrollbar_visibility(target: UiStateId, visibility: UiScrollbarVisibility) -> Self {
+        Self::SetScrollbarVisibility { target, visibility }
     }
 }

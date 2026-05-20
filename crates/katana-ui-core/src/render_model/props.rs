@@ -3,8 +3,8 @@ use super::{
     UiButtonProps, UiColorPickerProps, UiColorSwatchProps, UiCommandResultProps, UiCommonProps,
     UiContextMenuProps, UiDisclosureProps, UiDragHandleProps, UiDragPreviewProps,
     UiDropIndicatorProps, UiIconProps, UiLoadingProps, UiModalProps, UiPanelProps, UiPopoverProps,
-    UiSearchControlProps, UiShortcutProps, UiSkeletonProps, UiSplitPaneProps, UiStatusProps,
-    UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTreeProps,
+    UiScrollAreaProps, UiSearchControlProps, UiShortcutProps, UiSkeletonProps, UiSplitPaneProps,
+    UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTreeProps,
 };
 use crate::facade::DEFAULT_FONT_ROLE;
 use serde::{Deserialize, Serialize};
@@ -137,6 +137,7 @@ pub struct UiProps {
     pub panel: UiPanelProps,
     pub tree: UiTreeProps,
     pub context_menu: UiContextMenuProps,
+    pub scroll_area: UiScrollAreaProps,
     pub split_pane: UiSplitPaneProps,
     pub modal: UiModalProps,
     pub popover: UiPopoverProps,
@@ -188,6 +189,7 @@ impl UiProps {
             panel: UiPanelProps::default(),
             tree: UiTreeProps::default(),
             context_menu: UiContextMenuProps::default(),
+            scroll_area: UiScrollAreaProps::default(),
             split_pane: UiSplitPaneProps::default(),
             modal: UiModalProps::default(),
             popover: UiPopoverProps::default(),
