@@ -1,6 +1,7 @@
 use super::action_model::ToolbarAction;
 use super::group_model::ToolbarGroup;
 use super::identifiers::ToolbarActionId;
+use crate::molecule::selection::ContextMenuAnchor;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -35,6 +36,7 @@ pub struct ToolbarOptions {
     overflow_strategy: ToolbarStrategy,
     actions: Vec<ToolbarAction>,
     groups: Vec<ToolbarGroup>,
+    context_menu_anchor: Option<ContextMenuAnchor>,
 }
 
 impl ToolbarOptions {
@@ -46,6 +48,7 @@ impl ToolbarOptions {
             overflow_strategy: ToolbarStrategy::default(),
             actions: Vec::new(),
             groups: Vec::new(),
+            context_menu_anchor: None,
         }
     }
 
@@ -77,6 +80,17 @@ impl ToolbarOptions {
     pub fn group(mut self, value: ToolbarGroup) -> Self {
         self.groups.push(value);
         self
+    }
+
+    #[must_use]
+    pub fn context_menu_anchor(mut self, value: ContextMenuAnchor) -> Self {
+        self.context_menu_anchor = Some(value);
+        self
+    }
+
+    #[must_use]
+    pub const fn context_menu_anchor_model(&self) -> Option<&ContextMenuAnchor> {
+        self.context_menu_anchor.as_ref()
     }
 
     #[must_use]

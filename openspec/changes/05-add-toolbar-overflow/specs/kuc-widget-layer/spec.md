@@ -3,7 +3,7 @@
 ### Requirement: Molecules compose atoms without stealing state
 
 KUC molecules MUST compose atoms and additional model state without moving child component state into an uncontrolled global store.
-Molecule contracts MUST explicitly define options, actions, events, state, presets, tests, visual regression, preview behavior, settings behavior, and Storybook pages.
+Molecule contracts MUST explicitly define options, actions, events, state, presets, tests, numeric rendering contracts, preview behavior, settings behavior, and Storybook pages.
 Molecules MUST preserve parent and child state identities separately in automated tests and Storybook logs.
 For `Toolbar` specifically, the molecule MUST own action priority, accelerator, group, split, density, display mode, and overflow strategy options as typed values rather than string/dynamic constructs.
 

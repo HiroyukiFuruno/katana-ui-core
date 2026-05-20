@@ -39,6 +39,8 @@ impl StoryDetailContent {
             popover_settings_line(&marker)
         } else if example.page == "hover-card" {
             hover_card_settings_line(&marker)
+        } else if example.page == "toolbar" {
+            toolbar_settings_line(&marker)
         } else {
             format!("{marker} settings: {option} ({value_type}) {before} -> {after}")
         };
@@ -134,6 +136,12 @@ fn popover_settings_line(marker: &str) -> String {
 fn hover_card_settings_line(marker: &str) -> String {
     format!(
         "{marker} settings: delay/placement/arrow/focus/slot open100,Pointer,true,keep,heading -> open0,TopStart,false,blur,footer"
+    )
+}
+
+fn toolbar_settings_line(marker: &str) -> String {
+    format!(
+        "{marker} settings: action/priority/overflow/display/density count4,search10,Menu,IconLeading,Default -> count5,search90,Hide,LabelOnly,Compact"
     )
 }
 

@@ -47,6 +47,14 @@ pub(super) fn settings_rows(
             "slot: heading/body/action".to_string(),
         ];
     }
+    if example.page == "toolbar" {
+        return vec![
+            "actions: add/remove".to_string(),
+            "priority: visible/hidden".to_string(),
+            "overflow: Menu".to_string(),
+            "mode/density: icon/default".to_string(),
+        ];
+    }
     if is_button_page(example.page) {
         let spec = StorybookInteractionSpec::for_page(example.page);
         let variant = if scenario.screen_state.has_settings_override() {

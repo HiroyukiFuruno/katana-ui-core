@@ -256,6 +256,40 @@ fn closeable_tab_strip_story_exposes_settings_presets_and_logs() -> Result<(), &
 }
 
 #[test]
+fn toolbar_story_exposes_overflow_split_settings_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "toolbar")
+        .ok_or("toolbar page missing")?;
+    let details = super::StoryDetailContent::from_example(story);
+
+    assert_eq!(
+        &[
+            "overflow menu",
+            "split action",
+            "display mode",
+            "density",
+            "accelerator"
+        ],
+        StoryPresetLabels::for_page("toolbar")
+    );
+    for setting in ["action", "priority", "overflow", "display", "density"] {
+        assert!(
+            details.settings.contains(setting),
+            "toolbar settings inspector lacks {setting}"
+        );
+    }
+    for action in ["toolbar_overflow_plan", "toolbar_split_open"] {
+        assert!(
+            story.callback_logs.iter().any(|it| it.action == action),
+            "toolbar callback log lacks {action}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn hover_card_story_exposes_rich_slots_and_callback_log() -> Result<(), &'static str> {
     let examples = StoryCatalog.examples();
     let story = examples

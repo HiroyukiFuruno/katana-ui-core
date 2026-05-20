@@ -1,10 +1,13 @@
+use katana_ui_core::interaction::placement::{AnchorKind, Placement, PlacementRequest, Rect, Size};
 use katana_ui_core::molecule::toolbar::{
     KeyCombo, MeasuredToolbarAction, SplitAction, SplitActionPart, ToolbarAction,
     ToolbarContractViolation, ToolbarDisplayMode, ToolbarEvent, ToolbarFocusState, ToolbarGroup,
-    ToolbarGroupId, ToolbarGroupLayout, ToolbarInteractionAction, ToolbarKeyInput, ToolbarOptions,
-    ToolbarOverflowInput, ToolbarOverflowPlanner, ToolbarPlacementRequest, ToolbarPriority,
-    ToolbarState, ToolbarStrategy,
+    ToolbarGroupId, ToolbarGroupLayout, ToolbarInteractionAction, ToolbarKeyInput,
+    ToolbarKeyboardInput, ToolbarKeyboardNavigator, ToolbarOptions, ToolbarOverflowInput,
+    ToolbarOverflowPlanner, ToolbarPlacementRequest, ToolbarPriority, ToolbarState,
+    ToolbarStrategy,
 };
+use katana_ui_core::molecule::{ContextMenuAnchor, ContextMenuRect};
 
 #[test]
 fn overflow_hides_lowest_priority_and_trailing_ties_first() {
@@ -84,6 +87,29 @@ fn split_action_keeps_primary_and_secondary_disabled_state_independent() {
 }
 
 #[test]
+fn toolbar_menu_placement_uses_shared_placement_engine() {
+    let request = PlacementRequest::new(
+        AnchorKind::virtual_rect(Rect::new(120, 190, 40, 24)),
+        Placement::BottomStart,
+        Size::new(120, 80),
+        Rect::new(0, 0, 320, 220),
+    )
+    .clamp_margin(8);
+
+    let result = ToolbarPlacementRequest::Menu.resolve(&request);
+
+    assert_eq!(Placement::TopStart, result.placement_used);
+}
+
+#[test]
+fn toolbar_options_expose_context_menu_hook_anchor() {
+    let anchor = ContextMenuAnchor::VirtualRect(ContextMenuRect::new(12, 24, 80, 32));
+    let options = ToolbarOptions::new().context_menu_anchor(anchor.clone());
+
+    assert_eq!(Some(&anchor), options.context_menu_anchor_model());
+}
+
+#[test]
 fn accelerator_fires_command_without_moving_focus() {
     let actions = vec![
         ToolbarAction::new("save", "Save").accelerator(KeyCombo::command_or_control("s")),
@@ -113,6 +139,31 @@ fn accelerator_fires_command_without_moving_focus() {
             },
         ],
         result.events()
+    );
+}
+
+#[test]
+fn keyboard_navigation_moves_and_activates_without_layout_state() {
+    assert_eq!(
+        Some(2),
+        ToolbarKeyboardNavigator::apply(Some(1), 4, ToolbarKeyboardInput::ArrowRight)
+            .focused_index()
+    );
+    assert_eq!(
+        Some(0),
+        ToolbarKeyboardNavigator::apply(Some(2), 4, ToolbarKeyboardInput::Home).focused_index()
+    );
+    assert_eq!(
+        Some(3),
+        ToolbarKeyboardNavigator::apply(Some(0), 4, ToolbarKeyboardInput::End).focused_index()
+    );
+    assert_eq!(
+        Some(3),
+        ToolbarKeyboardNavigator::apply(Some(3), 4, ToolbarKeyboardInput::Space).activated_index()
+    );
+    assert_eq!(
+        None,
+        ToolbarKeyboardNavigator::apply(None, 0, ToolbarKeyboardInput::Enter).focused_index()
     );
 }
 

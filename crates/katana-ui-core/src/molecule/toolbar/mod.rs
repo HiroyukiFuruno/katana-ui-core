@@ -5,6 +5,7 @@ mod events;
 mod group_model;
 mod groups;
 mod identifiers;
+mod keyboard_navigation;
 mod options;
 mod overflow;
 mod overflow_sections;
@@ -18,6 +19,9 @@ pub use events::{ToolbarEvent, ToolbarPlacementRequest};
 pub use group_model::ToolbarGroup;
 pub use groups::{ToolbarGroupDivider, ToolbarGroupLayout};
 pub use identifiers::{ToolbarActionId, ToolbarGroupId, ToolbarPriority};
+pub use keyboard_navigation::{
+    ToolbarKeyboardInput, ToolbarKeyboardNavigator, ToolbarKeyboardResult,
+};
 pub use options::{
     ToolbarContractViolation, ToolbarDensity, ToolbarDisplayMode, ToolbarOptions, ToolbarStrategy,
 };

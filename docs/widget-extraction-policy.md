@@ -30,6 +30,9 @@ ContextMenu は、pointer 起動、node 起動、仮想矩形起動を `ContextM
 浮上パネル（floating panel）系の配置は `interaction::placement` を共通入口にする。
 `Tooltip`、`Popover`、`HoverCard`、`ContextMenu`、`Menu`、`MenuButton`、`SelectBox`、`ComboBox` は、viewport 端での反転、clamp、arrow offset を個別に再実装せず、同じ placement engine と数値契約テストで検証する。
 
+Toolbar の `IconOnly` 表示では、各 action が `accessibility_label` または `tooltip` を持つことを contract として必須にする。
+icon だけの見た目でも、利用側が何を押すものかを失わないようにする。
+
 Tabs は segmented な切替 UI として扱い、close button、dirty 表示、pin、group、drag reorder、overflow menu を持たせない。
 それらが必要な場合は CloseableTabStrip を使い、workspace、document、chat session、file path の意味は consumer 側 state に閉じ込める。
 

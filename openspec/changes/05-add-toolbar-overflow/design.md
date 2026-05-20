@@ -83,7 +83,7 @@ display mode 変更で measured width が変わるため overflow 再計算が�
 
 | 代替 | 却下理由 |
 | --- | --- |
-| overflow を consumer 側で実装 | しきい値判定と画像回帰が consumer 任せになり、 cross-app での挙動差が積み上がる。 |
+| overflow を consumer 側で実装 | しきい値判定と数値化された描画契約が consumer 任せになり、 cross-app での挙動差が積み上がる。 |
 | split action を 2 つの隣接 action として並べる | accelerator / disabled / divider / accessibility / tooltip が分裂し、原則「primary + secondary が一体の action」を表現できない。 |
 | display mode を CSS-like 文字列で扱う | typed enum でないと未対応値が runtime fallback になり、入力回帰がしづらい。 |
 

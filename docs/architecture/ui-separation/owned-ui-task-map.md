@@ -69,7 +69,7 @@
 | MenuButton | molecule | trigger + menu |
 | CommandPalette | molecule | provider を domain 外へ出す |
 | StatusBar | molecule | severity message |
-| Toolbar | molecule | action rail |
+| Toolbar | molecule | action rail。overflow、split action、display mode、density、accelerator を持つ |
 | NotificationToast | molecule | transient message |
 | SearchControlStrip | molecule | query option / navigation / replace request |
 | ContextMenu | molecule | pointer 起点 / submenu / keyboard navigation |
