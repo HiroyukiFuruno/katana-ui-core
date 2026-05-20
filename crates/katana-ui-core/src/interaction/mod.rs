@@ -14,8 +14,9 @@ pub mod virtualization;
 
 pub use action::UiAction;
 pub use motion::{
-    MotionContext, MotionDisableContext, MotionPrimitiveKind, MotionResolver, MotionSnapshot,
-    MotionSpec, ReducedMotionPolicy,
+    MotionContext, MotionDisableContext, MotionDistanceToken, MotionDurationToken,
+    MotionEasingToken, MotionPrimitive, MotionPrimitiveKind, MotionResolver, MotionSnapshot,
+    MotionSpec, ReducedMotionPolicy, ScaleOrigin, ShimmerDirection, ShimmerSpeed, SlideDirection,
 };
 pub use result::{UiActionResult, UiCallbackLog};
 pub use typed::UiActionSource;

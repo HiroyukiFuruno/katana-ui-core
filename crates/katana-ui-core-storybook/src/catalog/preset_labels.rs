@@ -227,10 +227,10 @@ impl StoryPresetLabels {
                 "image card loading",
             ],
             "motion" => &[
-                "slide transition",
-                "fade transition",
-                "reduced motion",
-                "disabled context",
+                "4 primitive",
+                "reduced-motion respect",
+                "force ignore",
+                "per-molecule motion",
             ],
             "window-control-button-group" => &[
                 "macos leading",

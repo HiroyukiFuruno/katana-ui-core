@@ -155,13 +155,12 @@ fn skeleton_and_motion_make_passive_and_reduced_motion_contract_explicit() {
     assert_eq!(UiNodeKind::SkeletonCluster, tree.root().kind());
     assert_eq!("Loading", tree.root().props().accessibility_label);
 
-    let spec = MotionSpec {
-        primitive: MotionPrimitiveKind::Slide,
-        duration_ms: 180,
-        distance_px: 12,
-        policy: ReducedMotionPolicy::Respect,
-        disable_in: Vec::new(),
-    };
+    let spec = MotionSpec::new(
+        MotionPrimitiveKind::Slide,
+        180,
+        12,
+        ReducedMotionPolicy::Respect,
+    );
     let mut motion = MotionPrimitive::new("Panel motion", spec);
     let reduce = UiAction::reduced_motion(motion.state_id().clone(), true);
     assert!(motion.apply_action(&reduce).handled);

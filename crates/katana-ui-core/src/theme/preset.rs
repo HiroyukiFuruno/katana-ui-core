@@ -29,10 +29,13 @@ const RADIUS_SM: f32 = 4.0;
 const SHADOW_NONE: f32 = 0.0;
 const BORDER_THIN: f32 = 1.0;
 const Z_INDEX_OVERLAY: i32 = 100;
+const MOTION_INSTANT_MS: u16 = 0;
 const MOTION_FAST_MS: u16 = 120;
-const MOTION_STANDARD_MS: u16 = 180;
-const MOTION_DISTANCE_SM: u16 = 8;
-const MOTION_DISTANCE_MD: u16 = 12;
+const MOTION_DEFAULT_MS: u16 = 200;
+const MOTION_SLOW_MS: u16 = 320;
+const MOTION_DISTANCE_COMPACT: u16 = 4;
+const MOTION_DISTANCE_DEFAULT: u16 = 8;
+const MOTION_DISTANCE_SPACIOUS: u16 = 16;
 
 pub(super) struct ThemePreset {
     id: &'static str,
@@ -126,16 +129,28 @@ impl ThemePreset {
 fn motion_tokens() -> Vec<MotionToken> {
     vec![
         MotionToken {
+            name: "instant".to_string(),
+            duration_ms: MOTION_INSTANT_MS,
+            easing: "linear".to_string(),
+            distance_px: 0,
+        },
+        MotionToken {
             name: "fast".to_string(),
             duration_ms: MOTION_FAST_MS,
             easing: "standard".to_string(),
-            distance_px: MOTION_DISTANCE_SM,
+            distance_px: MOTION_DISTANCE_COMPACT,
         },
         MotionToken {
-            name: "standard".to_string(),
-            duration_ms: MOTION_STANDARD_MS,
+            name: "default".to_string(),
+            duration_ms: MOTION_DEFAULT_MS,
             easing: "emphasized".to_string(),
-            distance_px: MOTION_DISTANCE_MD,
+            distance_px: MOTION_DISTANCE_DEFAULT,
+        },
+        MotionToken {
+            name: "slow".to_string(),
+            duration_ms: MOTION_SLOW_MS,
+            easing: "decelerate".to_string(),
+            distance_px: MOTION_DISTANCE_SPACIOUS,
         },
     ]
 }

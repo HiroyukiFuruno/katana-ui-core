@@ -9,6 +9,7 @@ mod disclosure;
 mod disclosure_foundation;
 mod drag_preview;
 mod empty_state;
+mod motion_defaults;
 mod segmented_toggle;
 pub mod selection;
 pub mod shortcut_cheatsheet;
@@ -59,6 +60,7 @@ pub use empty_state::{
     EmptyStateContractViolation, EmptyStateEvent, EmptyStateLayoutRect, EmptyStateLayoutSnapshot,
     EmptyStateSize, EmptyStateTone,
 };
+pub use motion_defaults::{MotionDefaults, MotionTarget};
 pub use segmented_toggle::SegmentedToggle;
 pub use selection::{
     Breadcrumb, ChoiceItem, ComboBox, ContextMenu, ContextMenuAction, ContextMenuAnchor,

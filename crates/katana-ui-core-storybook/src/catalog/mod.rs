@@ -5,6 +5,8 @@ mod atoms;
 mod color_picker_story_tests;
 mod layouts;
 mod molecules;
+#[cfg(test)]
+mod motion_story_tests;
 mod panel_interaction;
 mod panel_operations;
 mod panel_report;

@@ -24,6 +24,10 @@ Virtualization の row 測定は adapter / consumer 側の責務とする。
 adapter は実測した row height を KUC の `RowHeightOverride` として返し、KUC core は `VirtualizationPlanner` で visible range、overscan、aria-setsize / aria-posinset、scroll offset 補正を計算する。
 adapter は独自の global scroll state を持たず、component ごとの `VirtualizationConfig` と `VirtualRange` をそのまま反映する。
 
+Motion の reduced-motion query は adapter の責務とする。
+各 adapter は OS / host の prefers-reduced-motion を `ReducedMotionQuery` として KUC runtime へ渡し、KUC core は `ReducedMotionPolicy::Respect`、`ForceReduced`、`Ignore` と `MotionDisableContext` に基づいて `MotionSnapshot` を解決する。
+adapter は独自の animation literal を持たず、`MotionDurationToken`、`MotionEasingToken`、`MotionDistanceToken` の解決結果だけを描画へ反映する。
+
 ## 最低品質 gate
 
 互換 adapter crate を作る段階では最低限以下を通す。

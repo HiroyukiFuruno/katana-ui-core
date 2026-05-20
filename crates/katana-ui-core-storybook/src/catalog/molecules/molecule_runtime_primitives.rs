@@ -1,11 +1,17 @@
 use super::super::{StoryCatalog, StoryExample};
 use katana_ui_core::component::ComponentAction;
-use katana_ui_core::interaction::{UiAction, UiCallbackLog};
+use katana_ui_core::interaction::{
+    MotionContext, MotionDisableContext, MotionDistanceToken, MotionDurationToken,
+    MotionEasingToken, MotionResolver, ScaleOrigin, ShimmerDirection, ShimmerSpeed, SlideDirection,
+    UiAction, UiCallbackLog,
+};
 use katana_ui_core::render_model::UiStateId;
+use katana_ui_core::theme::ThemeSnapshot;
 use katana_ui_core::{atom, layout, molecule};
 use molecule::{
-    CollapsiblePanelAction, CollapsiblePanelWidth, MotionPrimitiveKind, MotionSpec, PanelMode,
-    PanelSide, ReducedMotionPolicy, RowHeightProvider, SkeletonClusterPreset, VirtualizationConfig,
+    CollapsiblePanelAction, CollapsiblePanelWidth, MotionDefaults, MotionSpec, MotionTarget,
+    PanelMode, PanelSide, ReducedMotionPolicy, RowHeightProvider, SkeletonClusterPreset,
+    VirtualizationConfig,
 };
 
 const PANEL_MIN_WIDTH: u16 = 180;
@@ -17,8 +23,6 @@ const VIRTUAL_ROW_HEIGHT: u32 = 28;
 const VIRTUAL_VIEWPORT_HEIGHT: u32 = 168;
 const VIRTUAL_SCROLL_OFFSET: u32 = 1_260;
 const VIRTUAL_FOCUSED_INDEX: usize = 120;
-const MOTION_DURATION_MS: u16 = 180;
-const MOTION_DISTANCE_PX: u16 = 24;
 const MOTION_PHASE: u16 = 2;
 
 pub(super) fn examples() -> Vec<StoryExample> {
@@ -185,16 +189,45 @@ fn skeleton_cluster_preset(
 }
 
 fn motion_story() -> StoryExample {
-    let spec = MotionSpec::new(
-        MotionPrimitiveKind::Slide,
-        MOTION_DURATION_MS,
-        MOTION_DISTANCE_PX,
-        ReducedMotionPolicy::Respect,
+    let spec = MotionSpec::slide(
+        MotionDurationToken::Default,
+        MotionEasingToken::Emphasized,
+        MotionDistanceToken::Default,
+        SlideDirection::Up,
     );
     let mut motion = molecule::MotionPrimitive::new("Motion primitive", spec);
     let target = motion.state_id().clone();
     let reduced = motion.apply_action(&UiAction::reduced_motion(target.clone(), true));
-    let tick = motion.apply_action(&UiAction::animation_tick(target, MOTION_PHASE));
+    let tick = motion.apply_action(&UiAction::animation_tick(target.clone(), MOTION_PHASE));
+    let tokens = ThemeSnapshot::dark().motion_tokens();
+    let force = MotionResolver::compute_with_theme(
+        &MotionSpec::fade(
+            MotionDurationToken::Default,
+            MotionEasingToken::Standard,
+            0.0,
+            1.0,
+        )
+        .policy(ReducedMotionPolicy::ForceReduced),
+        MotionContext::for_test(false),
+        &tokens,
+    );
+    let ignore = MotionResolver::compute_with_theme(
+        &MotionSpec::scale(
+            MotionDurationToken::Default,
+            MotionEasingToken::Emphasized,
+            0.96,
+            1.0,
+            ScaleOrigin::Center,
+        )
+        .policy(ReducedMotionPolicy::Ignore),
+        MotionContext::for_test(true),
+        &tokens,
+    );
+    let override_snapshot = MotionResolver::compute_with_theme(
+        &MotionDefaults::for_target(MotionTarget::Popover),
+        MotionContext::new(false, MotionDisableContext::Test),
+        &tokens,
+    );
     let logs = vec![
         UiCallbackLog::new(
             UiStateId::new("state:MotionPrimitive:storybook"),
@@ -208,6 +241,70 @@ fn motion_story() -> StoryExample {
             "phase=0",
             format!("events={:?}", tick.callback_log),
         ),
+        UiCallbackLog::new(
+            target.clone(),
+            "motion_force",
+            "policy=Respect",
+            format!("instant={} duration={}", force.instant, force.duration_ms),
+        ),
+        UiCallbackLog::new(
+            target.clone(),
+            "motion_ignore",
+            "prefers_reduced_motion=true",
+            format!("diagnostics={}", ignore.diagnostics),
+        ),
+        UiCallbackLog::new(
+            target,
+            "motion_override",
+            "target=Modal default",
+            format!("target=Popover duration={}", override_snapshot.duration_ms),
+        ),
     ];
-    StoryCatalog::interactive_story("motion", motion, logs)
+    StoryCatalog::interactive_story(
+        "motion",
+        layout::Column::new()
+            .child(motion)
+            .child(atom::Text::new("primitive: Fade Slide Scale Shimmer"))
+            .child(atom::Text::new(
+                "tokens: duration=Default easing=Emphasized distance=Default",
+            ))
+            .child(atom::Text::new(
+                "state: instant=false duration=200 distance=8",
+            ))
+            .child(atom::Text::new(
+                "event: reduced_motion_query override=Ignore context=Storybook",
+            ))
+            .child(atom::Text::new(
+                "action: motion_reduce motion_tick motion_force motion_ignore motion_override",
+            ))
+            .child(atom::Text::new(
+                "quality: token_resolution reduced_static override_isolated",
+            ))
+            .child(atom::Text::new(format!(
+                "typed: {:?} {:?} {:?}",
+                MotionSpec::fade(
+                    MotionDurationToken::Fast,
+                    MotionEasingToken::Standard,
+                    0.0,
+                    1.0,
+                )
+                .primitive,
+                MotionSpec::scale(
+                    MotionDurationToken::Default,
+                    MotionEasingToken::Decelerate,
+                    0.96,
+                    1.0,
+                    ScaleOrigin::Center,
+                )
+                .primitive,
+                MotionSpec::shimmer(
+                    MotionDurationToken::Slow,
+                    MotionEasingToken::Linear,
+                    ShimmerSpeed::Default,
+                    ShimmerDirection::LeftToRight,
+                )
+                .primitive
+            ))),
+        logs,
+    )
 }

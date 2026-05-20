@@ -90,6 +90,8 @@ impl StoryDetailContent {
             skeleton_settings_line(example, &marker)
         } else if example.page == "skeleton-cluster" {
             skeleton_cluster_settings_line(example, &marker)
+        } else if example.page == "motion" {
+            motion_settings_line(example, &marker)
         } else if is_virtualized_page(example.page) {
             virtualization_settings_line(example, &marker)
         } else {
@@ -376,6 +378,19 @@ fn skeleton_cluster_settings_line(example: &StoryExample, marker: &str) -> Strin
         .join(",");
     format!(
         "{marker} settings: preset=ListRow children=2 live_region=Loading list loading reduced_motion=false callback_log={} actions={actions} -> preset=ImageCard children=3 live_region=Loading image card loading reduced_motion=false",
+        example.callback_logs.len()
+    )
+}
+
+fn motion_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: primitive: Fade Slide Scale Shimmer; tokens: duration=Default easing=Emphasized distance=Default; state: instant=false duration=200 distance=8; event: reduced_motion_query override=Ignore context=Storybook; action: motion_reduce motion_tick motion_force motion_ignore motion_override; quality: token_resolution reduced_static override_isolated; callback_log={} actions={actions} -> primitive=Scale duration=Slow easing=Decelerate distance=Spacious reduced_policy=Ignore",
         example.callback_logs.len()
     )
 }

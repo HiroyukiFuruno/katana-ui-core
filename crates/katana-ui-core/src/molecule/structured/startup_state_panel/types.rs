@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 const STARTUP_MOTION_DURATION_MS: u16 = 180;
 const STARTUP_MOTION_DISTANCE_PX: u16 = 0;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StartupStatePanelOptions {
     pub live_region_label: String,
     pub reduced_motion: bool,

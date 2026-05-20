@@ -92,6 +92,7 @@
 | CommandLauncherResults | molecule | query + result row + shortcut + keyboard selection |
 | Virtualization | interaction / molecule contract | List / SelectionList / TreeView / CommandPalette / DiagnosticsList が共有する visible range / overscan / row height / aria-setsize 契約 |
 | Skeleton / SkeletonCluster | atom / molecule | loading placeholder。shape / size / animation / reduced-motion / live region / preset layout を数値化された contract で持つ |
+| Motion | foundation / interaction contract | Fade / Slide / Scale / Shimmer を token 化し、reduced-motion query、context disable、per-molecule default / override を持つ |
 
 ## Storybook internal
 

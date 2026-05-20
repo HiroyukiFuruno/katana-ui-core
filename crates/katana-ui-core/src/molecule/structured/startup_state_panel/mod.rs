@@ -10,7 +10,7 @@ pub use actions::{StartupStatePanelAction, StartupStatePanelEvent};
 pub use state::StartupState;
 pub use types::StartupStatePanelOptions;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StartupStatePanel {
     pub(super) label: String,
     pub(super) state_id: UiStateId,

@@ -6,7 +6,7 @@ use crate::interaction::{
 use crate::render_model::{UiInteractionState, UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MotionPrimitive {
     label: String,
     state_id: UiStateId,
@@ -71,7 +71,7 @@ impl From<MotionPrimitive> for UiNode {
         let state = state(&value);
         UiNode::from_state(UiNodeKind::MotionPrimitive, value.label, value.state_id)
             .interaction(state)
-            .style_class(format!("{:?}", value.spec.primitive))
+            .style_class(format!("{:?}", value.spec.primitive.kind()))
     }
 }
 

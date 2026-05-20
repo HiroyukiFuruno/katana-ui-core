@@ -13,6 +13,7 @@ const COLOR_PICKER_SETTINGS_MUTATION_COUNT: usize = 9;
 const COLOR_PICKER_UPDATE_COUNT: usize = 10;
 const DIAGNOSTICS_SETTINGS_MUTATION_COUNT: usize = 5;
 const EMPTY_STATE_SETTINGS_MUTATION_COUNT: usize = 4;
+const MOTION_SETTINGS_MUTATION_COUNT: usize = 6;
 const BANNER_SETTINGS_MUTATION_COUNT: usize = 5;
 const TOAST_STACK_SETTINGS_MUTATION_COUNT: usize = 6;
 const STATUS_BAR_SETTINGS_MUTATION_COUNT: usize = 3;
@@ -43,6 +44,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + COLOR_PICKER_SETTINGS_MUTATION_COUNT
             + DIAGNOSTICS_SETTINGS_MUTATION_COUNT
             + EMPTY_STATE_SETTINGS_MUTATION_COUNT
+            + MOTION_SETTINGS_MUTATION_COUNT
             + BANNER_SETTINGS_MUTATION_COUNT
             + TOAST_STACK_SETTINGS_MUTATION_COUNT
             + STATUS_BAR_SETTINGS_MUTATION_COUNT
@@ -120,6 +122,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_color_picker_settings_are_switchable(&report.settings_mutations);
     assert_diagnostics_settings_are_switchable(&report.settings_mutations);
     assert_empty_state_settings_are_switchable(&report.settings_mutations);
+    assert_motion_settings_are_switchable(&report.settings_mutations);
     assert_banner_settings_are_switchable(&report.settings_mutations);
     assert_toast_stack_settings_are_switchable(&report.settings_mutations);
     assert_status_bar_settings_are_switchable(&report.settings_mutations);
@@ -277,6 +280,27 @@ fn assert_settings_list_settings_are_switchable(settings: &[super::SettingsMutat
                     && it.event == event
             }),
             "missing settings-list setting mutation for {option}"
+        );
+    }
+}
+
+fn assert_motion_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "motion.primitive",
+        "motion.duration",
+        "motion.easing",
+        "motion.distance",
+        "motion.reduced_policy",
+        "motion.disable_context",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "motion"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "motion_settings_changed"
+            }),
+            "missing motion setting mutation for {option}"
         );
     }
 }

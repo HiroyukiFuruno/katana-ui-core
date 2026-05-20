@@ -102,7 +102,7 @@ fn compute_motion_respects_reduced_policy_and_context_disable() {
         },
     );
     assert!(!active.instant);
-    assert_eq!(SLIDE_DURATION_MS, active.duration_ms);
+    assert_eq!(200, active.duration_ms);
 }
 
 #[test]
@@ -148,5 +148,5 @@ fn theme_snapshot_exposes_motion_tokens() {
     let dark = ThemeSnapshot::dark();
 
     assert!(dark.motion.iter().any(|token| token.name == "fast"));
-    assert!(dark.motion.iter().any(|token| token.name == "standard"));
+    assert!(dark.motion.iter().any(|token| token.name == "default"));
 }
