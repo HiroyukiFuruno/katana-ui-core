@@ -27,6 +27,18 @@ pub(super) fn search(
 ) {
     dedicated_dod_form_input_live::search(canvas, text, palette, scenario, x, y);
 }
+
+pub(super) fn text_area(
+    canvas: &mut Canvas,
+    text: &TextRenderer,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    x: usize,
+    y: usize,
+) {
+    dedicated_dod_form_input_live::text_area(canvas, text, palette, scenario, x, y);
+}
+
 pub(super) fn select_box(
     canvas: &mut Canvas,
     text: &TextRenderer,

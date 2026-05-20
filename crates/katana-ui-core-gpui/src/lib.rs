@@ -1,3 +1,5 @@
+pub mod ime_contract;
+
 use katana_ui_core::adapter_contract::{NativeDragDropBridge, WidgetAdapter};
 use katana_ui_core::event::UiEvent;
 use katana_ui_core::interaction::drag_and_drop::{DragData, DropEffect};

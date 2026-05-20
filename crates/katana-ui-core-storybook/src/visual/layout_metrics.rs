@@ -23,12 +23,12 @@ pub(super) const SCROLLBAR_CONTROL_HEIGHT: usize = 22;
 pub(super) const PREVIEW_X: usize = 310;
 pub(super) const PRESET_ACTIVE_Y: usize = 104;
 pub(super) const PRESET_INACTIVE_Y: usize = PRESET_ACTIVE_Y;
-pub(super) const PRESET_WIDTH: usize = 132;
+pub(super) const PRESET_WIDTH: usize = 106;
 pub(super) const PRESET_ACTIVE_HEIGHT: usize = 32;
 pub(super) const PRESET_INACTIVE_HEIGHT: usize = PRESET_ACTIVE_HEIGHT;
 pub(super) const PRESET_GAP: usize = 0;
 pub(super) const PRESET_TEXT_X_OFFSET: usize = 14;
-pub(super) const PRESET_TAB_COUNT: usize = 5;
+pub(super) const PRESET_TAB_COUNT: usize = 7;
 #[cfg(test)]
 pub(super) const PRESET_INTERACTIVE_INDEX: usize = 1;
 #[cfg(test)]

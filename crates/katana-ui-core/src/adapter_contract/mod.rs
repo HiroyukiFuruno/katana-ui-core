@@ -70,7 +70,61 @@ pub struct PlatformMenuRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImeRequest {
-    pub composition: String,
+    pub target: UiNodeId,
+    pub input_kind: ImeInputKind,
+    pub phase: ImeRequestPhase,
+    pub preedit: String,
+    pub commit_text: String,
+    pub caret: usize,
+}
+
+impl ImeRequest {
+    #[must_use]
+    pub fn multiline(
+        target: UiNodeId,
+        phase: ImeRequestPhase,
+        preedit: impl Into<String>,
+        caret: usize,
+    ) -> Self {
+        Self {
+            target,
+            input_kind: ImeInputKind::Multiline,
+            phase,
+            preedit: preedit.into(),
+            commit_text: String::new(),
+            caret,
+        }
+    }
+
+    #[must_use]
+    pub fn multiline_commit(
+        target: UiNodeId,
+        commit_text: impl Into<String>,
+        caret: usize,
+    ) -> Self {
+        Self {
+            target,
+            input_kind: ImeInputKind::Multiline,
+            phase: ImeRequestPhase::Commit,
+            preedit: String::new(),
+            commit_text: commit_text.into(),
+            caret,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ImeInputKind {
+    SingleLine,
+    Multiline,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ImeRequestPhase {
+    Start,
+    Update,
+    Commit,
+    Cancel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -65,6 +65,7 @@ pub(super) fn draw_page(canvas: &mut Canvas, request: DedicatedPageRequest<'_>) 
         "select-box" => dedicated_dod_forms::select_box(canvas, text, palette, scenario, x, y),
         "color-swatch" => dedicated_dod_atoms::swatch(canvas, text, palette, scenario, x, y),
         "text-input" => dedicated_dod_forms::input(canvas, text, palette, scenario, x, y),
+        "text-area" => dedicated_dod_forms::text_area(canvas, text, palette, scenario, x, y),
         "search-box" => dedicated_dod_forms::search(canvas, text, palette, scenario, x, y),
         "checkbox" => dedicated_dod_forms::checkbox(canvas, text, palette, scenario, x, y),
         "radio" => dedicated_dod_forms::radio(canvas, text, palette, scenario, x, y),

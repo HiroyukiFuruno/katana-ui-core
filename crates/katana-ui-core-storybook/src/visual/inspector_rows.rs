@@ -55,6 +55,27 @@ pub(super) fn settings_rows(
             "mode/density: icon/default".to_string(),
         ];
     }
+    if example.page == "text-area" {
+        let props = &node.props().text_area;
+        return vec![
+            row_value(format!(
+                "submit/newline: {:?}/{:?}",
+                props.submit_key, props.newline_key
+            )),
+            row_value(format!(
+                "tab/wrap: {:?}/{:?}",
+                props.tab_behavior, props.wrap_policy
+            )),
+            row_value(format!(
+                "rows: {}..{} auto={}",
+                props.min_rows, props.max_rows, props.auto_grow
+            )),
+            row_value(format!(
+                "ime/scroll: {} / {}",
+                props.ime_enabled, props.internal_scroll
+            )),
+        ];
+    }
     if is_button_page(example.page) {
         let spec = StorybookInteractionSpec::for_page(example.page);
         let variant = if scenario.screen_state.has_settings_override() {
@@ -104,6 +125,14 @@ pub(super) fn state_rows(
     scenario: ScenarioContext<'_>,
 ) -> [String; INSPECTOR_ROW_GROUP_COUNT] {
     let props = node.props();
+    if scenario.selected_page == "text-area" {
+        return [
+            row_value(format!("state: {}", props.state_id.as_str())),
+            row_value(format!("value len: {}", props.interaction.value.len())),
+            row_value(format!("caret: {}", props.interaction.cursor)),
+            row_value(format!("rows: {}", props.text_area.measured_rows)),
+        ];
+    }
     [
         row_value(format!("state: {}", props.state_id.as_str())),
         row_value(format!("open: {}", props.interaction.open)),
@@ -137,7 +166,7 @@ pub(super) fn quality_rows(scenario: ScenarioContext<'_>) -> [String; INSPECTOR_
         "preview: rendered".to_string(),
         "settings: visible".to_string(),
         screen_control.to_string(),
-        "visual gate: required".to_string(),
+        "numeric gate: required".to_string(),
     ]
 }
 

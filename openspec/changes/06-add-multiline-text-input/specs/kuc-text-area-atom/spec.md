@@ -55,12 +55,19 @@ Content beyond `max_rows` MUST scroll internally without losing characters.
 
 `TextArea` MUST keep the preedit string visible during IME composition, update caret position as the composition evolves, and emit `IMECommit` only when composition completes.
 Caret movement and deletion MUST treat grapheme clusters (surrogate pairs, ZWJ-joined emoji) as one unit.
+Adapters MUST expose a neutral IME request carrying `input_kind = Multiline`, `phase`, `preedit`, `commit_text`, and `caret`.
 
 #### Scenario: IME composition continues across a newline
 
 - **WHEN** a composition crosses a line break inside the visible preedit string
 - **THEN** the composition string and caret position remain consistent
 - **AND** `IMEComposition { phase, string }` is emitted per phase, followed by a single `IMECommit`
+
+#### Scenario: adapter reports multiline preedit and caret
+
+- **WHEN** a Floem, egui, or GPUI adapter receives multiline IME preedit
+- **THEN** it maps the update to the neutral IME request DTO
+- **AND** the request carries `input_kind = Multiline`, the preedit string, and the caret byte position
 
 #### Scenario: emoji deletion removes the full grapheme
 
@@ -84,3 +91,14 @@ The molecule MUST NOT silently fall back to one or the other when not configured
 - **WHEN** `tab_behavior = InsertTab` and Tab is pressed
 - **THEN** a `\t` character is inserted at the caret
 - **AND** focus does not change
+
+### Requirement: TextArea Storybook exposes presets and settings
+
+Storybook MUST place `text-area` under `Atoms` and expose component-specific presets for chat composer, search multiline, long text, auto grow, max rows overflow, IME input, and emoji input.
+Storybook MUST show settings mutations for `submit_key`, `newline_key`, `tab_behavior`, `auto_grow`, and `wrap_policy`.
+
+#### Scenario: TextArea page exposes interactive settings evidence
+
+- **WHEN** the Storybook interaction report is built
+- **THEN** it contains settings mutation reports for all TextArea configurable options
+- **AND** state, event, action, preset, and preview rows are present for the TextArea page

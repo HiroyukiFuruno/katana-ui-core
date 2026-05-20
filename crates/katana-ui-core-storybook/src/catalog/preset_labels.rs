@@ -42,10 +42,12 @@ impl StoryPresetLabels {
             "text-input" => &["value", "ime event", "invalid", "theme slot"],
             "text-area" => &[
                 "chat composer",
+                "search multiline",
                 "long text",
                 "auto grow",
+                "max rows",
                 "ime input",
-                "emoji caret",
+                "emoji input",
             ],
             "search-box" => &["search icon", "submit action", "regex case", "theme clear"],
             "search-control-strip" => &[

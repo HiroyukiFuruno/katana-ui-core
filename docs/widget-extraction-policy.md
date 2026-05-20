@@ -33,6 +33,10 @@ ContextMenu は、pointer 起動、node 起動、仮想矩形起動を `ContextM
 Toolbar の `IconOnly` 表示では、各 action が `accessibility_label` または `tooltip` を持つことを contract として必須にする。
 icon だけの見た目でも、利用側が何を押すものかを失わないようにする。
 
+Input は単一行入力だけを担当し、改行を含む値は contract で拒否する。
+複数行入力、IME の preedit、絵文字単位の caret、自動行数調整、max rows 超過時の内部スクロールは TextArea の責務にする。
+adapter は TextArea の IME request に `preedit`、`caret`、`input_kind=Multiline` を入れて core へ返す。
+
 Tabs は segmented な切替 UI として扱い、close button、dirty 表示、pin、group、drag reorder、overflow menu を持たせない。
 それらが必要な場合は CloseableTabStrip を使い、workspace、document、chat session、file path の意味は consumer 側 state に閉じ込める。
 

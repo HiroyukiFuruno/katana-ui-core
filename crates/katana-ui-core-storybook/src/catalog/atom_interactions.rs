@@ -2,7 +2,7 @@ use super::{StoryCatalog, StoryExample};
 use katana_ui_core::atom;
 use katana_ui_core::atom::{
     ChipAction, ChipKeyboardInput, ChipTone, ChipVariant, TextAreaAction, TextAreaCompositionPhase,
-    TextAreaNewlineKey, TextAreaSubmitKey, TextAreaTabBehavior,
+    TextAreaNewlineKey, TextAreaSubmitKey, TextAreaTabBehavior, TextAreaWrapPolicy,
 };
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
@@ -134,6 +134,7 @@ pub(super) fn text_area() -> StoryExample {
         .min_rows(TEXT_AREA_MIN_ROWS)
         .max_rows(TEXT_AREA_MAX_ROWS)
         .auto_grow(true)
+        .wrap_policy(TextAreaWrapPolicy::Soft)
         .submit_key(TextAreaSubmitKey::Enter)
         .newline_key(TextAreaNewlineKey::ShiftEnter)
         .tab_behavior(TextAreaTabBehavior::MoveFocus);
@@ -144,13 +145,30 @@ pub(super) fn text_area() -> StoryExample {
         "かな",
         "かな".len(),
     ));
+    let submit = text_area.apply_text_area_action(TextAreaAction::Submit);
+    let newline = text_area.handle_key(katana_ui_core::atom::TextAreaKeyChord::shift_enter());
     let log = UiCallbackLog::new(
-        target,
+        target.clone(),
         "text_area_type",
         "rows=2 ime=none",
         format!("typed={} ime={}", typed.events.len(), ime.events.len()),
     );
-    StoryCatalog::interactive_story("text-area", text_area, vec![log])
+    let submit_log = UiCallbackLog::new(
+        target.clone(),
+        "text_area_submit",
+        "submit_key=Enter",
+        format!("events={}", submit.events.len()),
+    );
+    let newline_log = UiCallbackLog::new(
+        target,
+        "text_area_newline",
+        "newline_key=ShiftEnter",
+        format!(
+            "events={}",
+            newline.as_ref().map_or(0, |outcome| outcome.events.len())
+        ),
+    );
+    StoryCatalog::interactive_story("text-area", text_area, vec![log, submit_log, newline_log])
 }
 
 pub(super) fn checkbox() -> StoryExample {

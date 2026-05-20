@@ -3,6 +3,7 @@ pub mod chip;
 mod defaults;
 mod drag_handle;
 mod drop_indicator;
+mod input_boundary;
 mod options;
 pub mod shortcut_combo;
 pub mod skeleton;
@@ -21,6 +22,7 @@ use crate::render_model::{
 pub use chip::{Chip, ChipAction, ChipEvent, ChipKeyboardInput, ChipSize, ChipTone, ChipVariant};
 pub use drag_handle::DragHandle;
 pub use drop_indicator::DropIndicator;
+pub use input_boundary::InputValidationError;
 use serde::{Deserialize, Serialize};
 pub use shortcut_combo::{
     KeyCombo, KeyKind, KeyModifiers, NamedKey, RuntimePlatform, ShortcutCombo, ShortcutPlatform,
@@ -36,7 +38,8 @@ pub use text_area::{
 };
 
 macro_rules! atom_model {
-    ($name:ident, $kind:expr) => {
+    ($(#[$meta:meta])* $name:ident, $kind:expr) => {
+        $(#[$meta])*
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub struct $name {
             label: String,
@@ -262,7 +265,11 @@ macro_rules! atom_model {
 atom_model!(Text, UiNodeKind::Text);
 atom_model!(Icon, UiNodeKind::Icon);
 atom_model!(Button, UiNodeKind::Button);
-atom_model!(Input, UiNodeKind::Input);
+atom_model!(
+    #[doc = "単一行の入力 atom。複数行入力、IME の複数行 preedit、自動行数調整は `TextArea` を使う。"]
+    Input,
+    UiNodeKind::Input
+);
 atom_model!(Checkbox, UiNodeKind::Checkbox);
 atom_model!(Radio, UiNodeKind::Radio);
 atom_model!(Badge, UiNodeKind::Badge);

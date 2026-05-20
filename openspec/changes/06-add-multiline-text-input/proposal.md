@@ -29,7 +29,7 @@ document editor（KLE）/ document preview（KDV）は対象外だが、「複�
 
 ### New Capabilities
 
-- `kuc-text-area-atom`: TextArea atom の option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページの完了条件を定義する。
+- `kuc-text-area-atom`: TextArea atom の option / action / event / state / preset / preview / settings / 自動テスト / 数値化された描画契約 / Storybook ページの完了条件を定義する。
 
 ### Modified Capabilities
 

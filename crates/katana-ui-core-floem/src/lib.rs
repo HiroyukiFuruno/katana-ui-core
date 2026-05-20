@@ -1,5 +1,6 @@
 //! Floem adapter and legacy Floem widget surface for KUC.
 
+pub mod ime_contract;
 pub mod menu_button_contract;
 pub mod overlay_lifecycle;
 pub mod runtime;

@@ -16,6 +16,10 @@
 | `katana-ui-core-gpui` | 後続候補。現時点では skeleton のみ | Text / Button / Row / Column | skeleton のみ | 現在の primary release gate には含めない |
 | `katana-ui-core-floem` | primary に選ばれなかった場合の Floem 互換 adapter | primary 実装済み範囲 | primary 実装済み範囲 | primary 降格後は compatibility rule に従う |
 
+TextArea の複数行 IME は core DTO を正本にする。
+各 adapter は現時点では compile-gate stub として、`input_kind=Multiline`、`phase`、`preedit`、`commit_text`、`caret` を `ImeRequest` に写すことを保証する。
+framework-native な候補ウィンドウや実描画は後続 scope とし、core public API を壊さないことを先に固定する。
+
 ## 最低品質 gate
 
 互換 adapter crate を作る段階では最低限以下を通す。

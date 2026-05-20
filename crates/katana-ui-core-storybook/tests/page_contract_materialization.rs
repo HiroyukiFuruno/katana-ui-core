@@ -131,10 +131,12 @@ fn expected_preset_count(page: &str) -> usize {
             | "drag-and-drop"
             | "hover-card"
             | "search-control-strip"
-            | "text-area"
             | "toolbar"
     ) {
         return 5;
+    }
+    if page == "text-area" {
+        return 7;
     }
     if page == "closeable-tab-strip" {
         return 6;

@@ -112,8 +112,8 @@ pub(super) fn group_for_page(page: &str) -> NavigationGroup {
     match page {
         "theme-tokens" => NavigationGroup::Foundation,
         "text" | "icon" | "button" | "text-button" | "svg-button" | "icon-text-button"
-        | "text-input" | "checkbox" | "radio" | "badge" | "divider" | "spacer" | "key-cap"
-        | "loading-dots" | "spinner" | "progress-bar" | "color-swatch" | "toggle"
+        | "text-input" | "text-area" | "checkbox" | "radio" | "badge" | "divider" | "spacer"
+        | "key-cap" | "loading-dots" | "spinner" | "progress-bar" | "color-swatch" | "toggle"
         | "slide-control" => NavigationGroup::Atoms,
         "closeable-tab-strip" | "context-menu" | "selection-list" => NavigationGroup::Selection,
         "row" | "column" | "stack" | "grid" | "scroll-area" | "split-pane" | "align-center" => {
@@ -197,5 +197,26 @@ mod tests {
         assert!(selection_index.is_some());
         assert!(tab_strip_index.is_some());
         assert!(selection_index < tab_strip_index);
+    }
+
+    #[test]
+    fn text_area_is_grouped_under_atoms() {
+        let rows = visible_rows(TreeExpansionState::default());
+        let atoms_index = rows
+            .iter()
+            .position(|it| matches!(it, NavigationRow::Group(super::NavigationGroup::Atoms)));
+        let text_area_index = rows.iter().position(|it| {
+            matches!(
+                it,
+                NavigationRow::Page {
+                    page: "text-area",
+                    group: super::NavigationGroup::Atoms
+                }
+            )
+        });
+
+        assert!(atoms_index.is_some());
+        assert!(text_area_index.is_some());
+        assert!(atoms_index < text_area_index);
     }
 }

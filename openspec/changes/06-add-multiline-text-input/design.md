@@ -10,6 +10,7 @@ document editor（KLE）に踏み込まない範囲で、複数行のフォー�
 
 - `Input` は 1 行限定（既存 contract そのまま）
 - `TextArea` は複数行、auto-grow、submit_key / newline_key 切替えを持つ独立 atom
+- `Input::validate()` は改行を含む value を拒否し、利用側を `TextArea` へ誘導する
 
 両者を同じ enum にまとめる案も検討したが、option / action / event が大幅に異なり、Storybook preset が混在すると入力回帰の対象が把握しづらくなるため別 atom に分離する。
 
@@ -51,6 +52,7 @@ NewlineKey = Enter | ShiftEnter | Disabled
 - caret / selection は composition 中も保持し、composition 終了で commit
 - composition 中の改行や絵文字確定を `IMEComposition { phase, string }` / `IMECommit { string }` で報告
 - adapter は composition 中の preedit string と caret 位置を返す責務を持つ
+- adapter request は `input_kind = Multiline`、`phase`、`preedit`、`commit_text`、`caret` を DTO として渡す
 
 ### 7. emoji 入力
 
@@ -85,4 +87,4 @@ NewlineKey = Enter | ShiftEnter | Disabled
 - `Input` atom はそのまま 1 行入力に固定する
 - chat composer の `ImeMultilineEditor` を KUC `TextArea` に置き換える前提
 - adapter（floem / egui / gpui）に multi-line + IME の compile-gate を追加
-- Storybook の `Input` ページに「multiline は TextArea を見よ」リンクを追加
+- Storybook は `Atom > TextArea` に分類し、chat composer / search multiline / long text / auto grow / max rows / IME input / emoji input の preset を出す

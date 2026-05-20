@@ -41,6 +41,8 @@ impl StoryDetailContent {
             hover_card_settings_line(&marker)
         } else if example.page == "toolbar" {
             toolbar_settings_line(&marker)
+        } else if example.page == "text-area" {
+            text_area_settings_line(&marker)
         } else {
             format!("{marker} settings: {option} ({value_type}) {before} -> {after}")
         };
@@ -142,6 +144,12 @@ fn hover_card_settings_line(marker: &str) -> String {
 fn toolbar_settings_line(marker: &str) -> String {
     format!(
         "{marker} settings: action/priority/overflow/display/density count4,search10,Menu,IconLeading,Default -> count5,search90,Hide,LabelOnly,Compact"
+    )
+}
+
+fn text_area_settings_line(marker: &str) -> String {
+    format!(
+        "{marker} settings: submit/newline/tab/auto/wrap Enter,ShiftEnter,MoveFocus,true,Soft -> ModEnter,Enter,InsertTab,false,Hard"
     )
 }
 
