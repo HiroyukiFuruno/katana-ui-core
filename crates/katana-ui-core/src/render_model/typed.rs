@@ -14,6 +14,8 @@ mod typed_icon;
 mod typed_panel;
 #[path = "typed_search.rs"]
 mod typed_search;
+#[path = "typed_split_pane.rs"]
+mod typed_split_pane;
 pub use typed_command::UiCommandResultProps;
 pub use typed_disclosure::{
     UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea,
@@ -25,6 +27,7 @@ pub use typed_panel::{
     UiScrollbarVisibility,
 };
 pub use typed_search::{UiSearchControlProps, UiSearchReplaceMode};
+pub use typed_split_pane::{UiSplitPaneAxis, UiSplitPaneProps, UiSplitPaneResizeMode};
 
 const DEFAULT_LOADING_SPEED_MS: u16 = 900;
 const DEFAULT_DOT_COUNT: u8 = 3;

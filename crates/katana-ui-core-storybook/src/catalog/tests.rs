@@ -1,6 +1,6 @@
 use super::StoryPageContract;
 use super::{StoryCatalog, StoryPresetLabels};
-use katana_ui_core::render_model::{UiNodeKind, UiVisualRole};
+use katana_ui_core::render_model::{UiNode, UiNodeKind, UiVisualRole};
 use katana_ui_core::{atom, render_model::UiTree};
 
 #[test]
@@ -301,6 +301,81 @@ fn toolbar_story_exposes_overflow_split_settings_and_logs() -> Result<(), &'stat
             "toolbar callback log lacks {action}"
         );
     }
+    Ok(())
+}
+
+#[test]
+fn split_pane_story_exposes_presets_settings_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "split-pane")
+        .ok_or("split-pane page missing")?;
+    let labels =
+        page_descendant_labels(&examples, "split-pane").ok_or("split-pane page missing")?;
+    let details = super::StoryDetailContent::from_example(story);
+
+    assert_eq!(
+        &[
+            "horizontal",
+            "vertical",
+            "min clamp",
+            "reset",
+            "keyboard resize",
+            "nested"
+        ],
+        StoryPresetLabels::for_page("split-pane")
+    );
+    for preset in StoryPresetLabels::for_page("split-pane") {
+        assert!(
+            labels.iter().any(|it| it.contains(preset)),
+            "split-pane preview lacks preset {preset}"
+        );
+        assert!(
+            details.preset.contains(preset),
+            "split-pane detail preset lacks {preset}"
+        );
+    }
+    for setting in [
+        "axis=",
+        "ratio=",
+        "min=",
+        "max=",
+        "reset=",
+        "handle=",
+        "resize_mode=",
+        "children=",
+        "nested=",
+    ] {
+        assert!(
+            details.settings.contains(setting),
+            "split-pane settings inspector lacks {setting}"
+        );
+    }
+    for action in [
+        "split_pane_resized",
+        "split_pane_keyboard_resize",
+        "split_pane_reset",
+        "split_pane_drag_start",
+        "split_pane_drag_end",
+        "split_pane_clamped",
+    ] {
+        assert!(
+            story.callback_logs.iter().any(|it| it.action == action),
+            "split-pane callback log lacks action {action}"
+        );
+        assert!(
+            details.settings.contains(action),
+            "split-pane settings inspector lacks action {action}"
+        );
+    }
+    assert!(
+        story
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "split_pane_clamped" && it.after.contains("clamped=true")),
+        "split-pane callback log lacks clamp evidence"
+    );
     Ok(())
 }
 
@@ -1103,6 +1178,21 @@ fn page_children(examples: &[super::StoryExample], page: &str) -> Option<Vec<Str
             .map(|child| child.props().label.clone())
             .collect()
     })
+}
+
+fn page_descendant_labels(examples: &[super::StoryExample], page: &str) -> Option<Vec<String>> {
+    examples.iter().find(|it| it.page == page).map(|it| {
+        let mut labels = Vec::new();
+        collect_labels(it.tree.root(), &mut labels);
+        labels
+    })
+}
+
+fn collect_labels(node: &UiNode, labels: &mut Vec<String>) {
+    labels.push(node.props().label.clone());
+    for child in node.children() {
+        collect_labels(child, labels);
+    }
 }
 
 fn is_atom_kind(kind: UiNodeKind) -> bool {

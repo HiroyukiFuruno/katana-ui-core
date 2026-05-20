@@ -143,7 +143,7 @@ fn expected_preset_count(page: &str) -> usize {
     if page == "accordion" {
         return 8;
     }
-    if page == "command-palette" {
+    if page == "command-palette" || page == "split-pane" {
         return 6;
     }
     if page == "attachment-chip" {

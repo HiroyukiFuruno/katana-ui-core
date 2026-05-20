@@ -73,6 +73,8 @@ impl StoryDetailContent {
             accordion_settings_line(example, &marker)
         } else if example.page == "toolbar" {
             toolbar_settings_line(&marker)
+        } else if example.page == "split-pane" {
+            split_pane_settings_line(example, &marker)
         } else if example.page == "text-area" {
             text_area_settings_line(&marker)
         } else if example.page == "skeleton" {
@@ -195,6 +197,19 @@ fn accordion_settings_line(example: &StoryExample, marker: &str) -> String {
 fn toolbar_settings_line(marker: &str) -> String {
     format!(
         "{marker} settings: action/priority/overflow/display/density count4,search10,Menu,IconLeading,Default -> count5,search90,Hide,LabelOnly,Compact"
+    )
+}
+
+fn split_pane_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: axis=Horizontal/Vertical ratio=50 min=20 max=80 reset=50 handle=8 resize_mode=Drag+Keyboard children=2 nested=true callback_log={} actions={actions} -> axis=Vertical ratio=56 min=20 max=80 reset=50 handle=10 resize_mode=Keyboard children=2 nested=true",
+        example.callback_logs.len()
     )
 }
 

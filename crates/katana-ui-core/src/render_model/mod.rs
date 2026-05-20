@@ -47,7 +47,8 @@ pub use typed::{
     UiPanelProps, UiProgressMode, UiRect, UiScrollbarDragState, UiScrollbarModel,
     UiScrollbarPlacement, UiScrollbarVisibility, UiSearchControlProps, UiSearchReplaceMode,
     UiShortcutProps, UiSkeletonAnimation, UiSkeletonProps, UiSkeletonShape, UiSlotPlacement,
-    UiSlotSpec, UiStatusProps, UiSvgPaintPolicy, UiTextEntryProps, UiTextProps,
+    UiSlotSpec, UiSplitPaneAxis, UiSplitPaneProps, UiSplitPaneResizeMode, UiStatusProps,
+    UiSvgPaintPolicy, UiTextEntryProps, UiTextProps,
 };
 
 #[cfg(test)]

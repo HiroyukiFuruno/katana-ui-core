@@ -7,7 +7,7 @@ use crate::render_model::{
     UiNodeKind, UiStateId,
 };
 use serde::{Deserialize, Serialize};
-pub use split_pane::{SplitPane, SplitPaneAxis};
+pub use split_pane::{SplitPane, SplitPaneAxis, SplitPaneResizeMode};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Length {

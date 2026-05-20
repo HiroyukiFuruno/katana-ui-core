@@ -3,7 +3,7 @@ use super::{
     UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiCommonProps, UiContextMenuProps,
     UiDisclosureProps, UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiIconProps,
     UiLoadingProps, UiPanelProps, UiSearchControlProps, UiShortcutProps, UiSkeletonProps,
-    UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTreeProps,
+    UiSplitPaneProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTreeProps,
 };
 use crate::facade::DEFAULT_FONT_ROLE;
 use serde::{Deserialize, Serialize};
@@ -135,6 +135,7 @@ pub struct UiProps {
     pub panel: UiPanelProps,
     pub tree: UiTreeProps,
     pub context_menu: UiContextMenuProps,
+    pub split_pane: UiSplitPaneProps,
 }
 
 impl UiProps {
@@ -182,6 +183,7 @@ impl UiProps {
             panel: UiPanelProps::default(),
             tree: UiTreeProps::default(),
             context_menu: UiContextMenuProps::default(),
+            split_pane: UiSplitPaneProps::default(),
         }
     }
 }

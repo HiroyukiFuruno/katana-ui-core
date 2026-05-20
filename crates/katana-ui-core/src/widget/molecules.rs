@@ -1,6 +1,6 @@
 //! Public molecule widgets.
 
-pub use crate::layout::{SplitPane, SplitPaneAxis};
+pub use crate::layout::{SplitPane, SplitPaneAxis, SplitPaneResizeMode};
 pub use crate::molecule::{
     Accordion, AccordionGroup, AccordionGroupItem, ArrayEditorItem, AttachmentChip,
     AttachmentChipAction, AttachmentChipEvent, AttachmentKind, AttachmentMeta, AttachmentProgress,

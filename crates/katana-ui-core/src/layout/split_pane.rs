@@ -3,13 +3,24 @@ use crate::layout::split_pane_ratio::{
     DEFAULT_HANDLE_WIDTH_PX, DEFAULT_MAX_PERCENT, DEFAULT_MIN_PERCENT, DEFAULT_RATIO_PERCENT,
     interaction_with_ratio, parse_ratio_percent,
 };
-use crate::render_model::{UiInteractionState, UiNode, UiNodeKind, UiStateId};
+use crate::render_model::{
+    UiInteractionState, UiNode, UiNodeKind, UiSplitPaneAxis, UiSplitPaneProps,
+    UiSplitPaneResizeMode, UiStateId,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SplitPaneAxis {
     Horizontal,
     Vertical,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SplitPaneResizeMode {
+    PointerOnly,
+    KeyboardOnly,
+    PointerAndKeyboard,
+    Disabled,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -25,6 +36,7 @@ pub struct SplitPane {
     max_percent: u8,
     handle_width_px: u8,
     pub(super) reset_percent: u8,
+    resize_mode: SplitPaneResizeMode,
 }
 
 impl SplitPane {
@@ -42,6 +54,7 @@ impl SplitPane {
             max_percent: DEFAULT_MAX_PERCENT,
             handle_width_px: DEFAULT_HANDLE_WIDTH_PX,
             reset_percent: DEFAULT_RATIO_PERCENT,
+            resize_mode: SplitPaneResizeMode::PointerAndKeyboard,
         }
     }
 
@@ -112,6 +125,12 @@ impl SplitPane {
     }
 
     #[must_use]
+    pub fn resize_mode(mut self, value: SplitPaneResizeMode) -> Self {
+        self.resize_mode = value;
+        self
+    }
+
+    #[must_use]
     pub fn state_id(&self) -> &UiStateId {
         &self.state_id
     }
@@ -147,6 +166,11 @@ impl SplitPane {
     }
 
     #[must_use]
+    pub const fn resize_mode_value(&self) -> SplitPaneResizeMode {
+        self.resize_mode
+    }
+
+    #[must_use]
     pub fn children(&self) -> &[UiNode] {
         &self.children
     }
@@ -156,7 +180,7 @@ impl SplitPane {
         self.interaction.value = self.ratio_percent.to_string();
     }
 
-    fn clamped(&self, percent: u8) -> u8 {
+    pub(super) fn clamped(&self, percent: u8) -> u8 {
         percent.clamp(self.min_percent, self.max_percent)
     }
 }
@@ -169,11 +193,43 @@ impl Default for SplitPane {
 
 impl From<SplitPane> for UiNode {
     fn from(value: SplitPane) -> Self {
+        let child_count = value.children.len();
+        let ignored_children = child_count.saturating_sub(2);
+        let mut interaction = value.interaction;
+        if ignored_children > 0 {
+            interaction.dismiss_reason = format!("ignored_extra_children={ignored_children}");
+        }
+        let split_pane = UiSplitPaneProps {
+            axis: to_render_axis(value.axis),
+            ratio_percent: value.ratio_percent,
+            min_percent: value.min_percent,
+            max_percent: value.max_percent,
+            reset_percent: value.reset_percent,
+            handle_width_px: value.handle_width_px,
+            resize_mode: to_render_resize_mode(value.resize_mode),
+        };
         let mut node = UiNode::from_state(UiNodeKind::SplitPane, "SplitPane", value.state_id)
-            .interaction(value.interaction);
-        for child in value.children {
+            .interaction(interaction)
+            .split_pane(split_pane);
+        for child in value.children.into_iter().take(2) {
             node = node.child(child);
         }
         node
+    }
+}
+
+const fn to_render_axis(value: SplitPaneAxis) -> UiSplitPaneAxis {
+    match value {
+        SplitPaneAxis::Horizontal => UiSplitPaneAxis::Horizontal,
+        SplitPaneAxis::Vertical => UiSplitPaneAxis::Vertical,
+    }
+}
+
+const fn to_render_resize_mode(value: SplitPaneResizeMode) -> UiSplitPaneResizeMode {
+    match value {
+        SplitPaneResizeMode::PointerOnly => UiSplitPaneResizeMode::PointerOnly,
+        SplitPaneResizeMode::KeyboardOnly => UiSplitPaneResizeMode::KeyboardOnly,
+        SplitPaneResizeMode::PointerAndKeyboard => UiSplitPaneResizeMode::PointerAndKeyboard,
+        SplitPaneResizeMode::Disabled => UiSplitPaneResizeMode::Disabled,
     }
 }

@@ -1,8 +1,8 @@
 use super::{
     UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiContextMenuProps, UiDisclosureProps,
     UiIconProps, UiInteractionState, UiLoadingProps, UiNode, UiPanelProps, UiSearchControlProps,
-    UiShortcutProps, UiSize, UiSkeletonProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps,
-    UiTextProps, UiTone, UiTreeProps, UiVariant, UiVisualRole,
+    UiShortcutProps, UiSize, UiSkeletonProps, UiSplitPaneProps, UiStatusProps, UiTextAreaProps,
+    UiTextEntryProps, UiTextProps, UiTone, UiTreeProps, UiVariant, UiVisualRole,
 };
 use crate::theme::ThemeSnapshot;
 
@@ -191,6 +191,12 @@ impl UiNode {
     #[must_use]
     pub fn context_menu(mut self, value: UiContextMenuProps) -> Self {
         self.props.context_menu = value;
+        self
+    }
+
+    #[must_use]
+    pub fn split_pane(mut self, value: UiSplitPaneProps) -> Self {
+        self.props.split_pane = value;
         self
     }
 
