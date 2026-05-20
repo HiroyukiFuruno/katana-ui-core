@@ -25,7 +25,7 @@ KUC は `NotificationToast`（一過性）と `StatusBar`（severity message 1 �
 
 ### New Capabilities
 
-- `kuc-banner`: Banner molecule の option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページの完了条件を定義する。
+- `kuc-banner`: Banner molecule の option / action / event / state / preset / preview / settings / 自動テスト / 数値化された描画契約 / Storybook ページの完了条件を定義する。
 
 ### Modified Capabilities
 

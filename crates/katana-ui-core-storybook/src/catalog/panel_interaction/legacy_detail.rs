@@ -31,6 +31,8 @@ impl StoryDetailContent {
         let action = action_line(example, &marker);
         let settings = if example.page == "badge" {
             badge_settings_line(&marker)
+        } else if example.page == "banner" {
+            banner_settings_line(example, &marker)
         } else if example.page == "chip" {
             chip_settings_line(&marker)
         } else if example.page == "attachment-chip" {
@@ -167,6 +169,19 @@ fn text_area_settings_line(marker: &str) -> String {
 
 fn badge_settings_line(marker: &str) -> String {
     format!("{marker} settings: passive status -> use Chip for dismiss / interactive")
+}
+
+fn banner_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: severity=Warning density=Compact actions=2 details=Closed dismissible=true callback_log={} actions={actions} -> severity=Danger density=Default actions=1 details=Open dismissible=false",
+        example.callback_logs.len()
+    )
 }
 
 fn chip_settings_line(marker: &str) -> String {

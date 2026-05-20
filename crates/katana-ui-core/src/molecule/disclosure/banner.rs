@@ -115,6 +115,9 @@ impl Banner {
             live_region: self.severity.live_region(),
             density: self.density,
             placement_hint: self.placement_hint,
+            action_count: self.actions.len(),
+            dismissible: self.dismissible,
+            details_available: self.expanded_details.is_some(),
         }
     }
 

@@ -73,10 +73,11 @@ impl StoryPresetLabels {
                 "leading icon + shortcut",
             ],
             "banner" => &[
-                "inline warning",
-                "details toggle",
-                "action row",
-                "sticky alert",
+                "保存失敗",
+                "vendor 未接続",
+                "添付サイズ超過",
+                "成功通知",
+                "details 展開",
             ],
             "toast-stack-manager" => &[
                 "bottom stack",

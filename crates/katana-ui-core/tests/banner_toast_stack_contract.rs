@@ -1,9 +1,10 @@
-use katana_ui_core::render_model::{UiNode, UiNodeKind, UiTone};
+use katana_ui_core::render_model::{UiNode, UiNodeKind, UiTone, UiVariant};
 use katana_ui_core::widget::molecules::{
-    Banner, BannerAccessibilityRole, BannerAction, BannerActionKind, BannerCommand, BannerEvent,
-    BannerLiveRegion, BannerSeverity, ToastAction, ToastActionKind, ToastDedupStrategy,
-    ToastDismissReason, ToastPayload, ToastPosition, ToastReplaceKind, ToastStackAction,
-    ToastStackDirection, ToastStackEvent, ToastStackManager, ToastStackOptions,
+    Banner, BannerAccessibilityRole, BannerAction, BannerActionKind, BannerCommand, BannerDensity,
+    BannerEvent, BannerLiveRegion, BannerPlacementHint, BannerSeverity, ToastAction,
+    ToastActionKind, ToastDedupStrategy, ToastDismissReason, ToastPayload, ToastPosition,
+    ToastReplaceKind, ToastStackAction, ToastStackDirection, ToastStackEvent, ToastStackManager,
+    ToastStackOptions,
 };
 
 #[test]
@@ -47,6 +48,56 @@ fn banner_dismiss_and_details_emit_typed_events() {
     assert!(!banner.state().visible);
     assert!(second.state().visible);
     assert_ne!(banner.state_id(), second.state_id());
+}
+
+#[test]
+fn banner_details_open_renders_detail_child_and_visual_contract_counts() {
+    let mut banner = Banner::new("保存に失敗しました")
+        .severity(BannerSeverity::Danger)
+        .title("保存できません")
+        .dismissible(true)
+        .density(BannerDensity::Compact)
+        .placement_hint(BannerPlacementHint::Sticky)
+        .expanded_details("権限と保存先を確認してください")
+        .action(BannerAction::new(
+            "retry",
+            "再試行",
+            BannerActionKind::Primary,
+        ))
+        .action(BannerAction::new(
+            "details",
+            "詳細",
+            BannerActionKind::Secondary,
+        ));
+    let _ = banner.apply_action(BannerCommand::ToggleDetails);
+    let contract = banner.visual_contract();
+    let node = UiNode::from(banner);
+
+    assert_eq!(2, contract.action_count);
+    assert!(contract.dismissible);
+    assert!(contract.details_available);
+    assert_eq!(BannerDensity::Compact, contract.density);
+    assert_eq!(BannerPlacementHint::Sticky, contract.placement_hint);
+    assert!(
+        node.children()
+            .iter()
+            .any(|it| it.props().label == "保存できません")
+    );
+    assert!(
+        node.children()
+            .iter()
+            .any(|it| it.props().label == "権限と保存先を確認してください")
+    );
+    assert!(node.children().iter().any(|it| {
+        it.kind() == UiNodeKind::Button
+            && it.props().label == "再試行"
+            && it.props().variant == UiVariant::Filled
+    }));
+    assert!(node.children().iter().any(|it| {
+        it.kind() == UiNodeKind::Button
+            && it.props().label == "詳細"
+            && it.props().variant == UiVariant::Text
+    }));
 }
 
 #[test]

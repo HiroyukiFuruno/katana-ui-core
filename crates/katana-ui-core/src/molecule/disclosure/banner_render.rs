@@ -1,5 +1,5 @@
 use super::banner::Banner;
-use super::banner_types::BannerDensity;
+use super::banner_types::{BannerActionKind, BannerDensity};
 use crate::atom::{Button, Icon, Text};
 use crate::render_model::{
     UiDismissAction, UiInteractionState, UiNode, UiNodeKind, UiSize, UiStatusProps, UiVariant,
@@ -28,9 +28,22 @@ impl From<Banner> for UiNode {
         if let Some(icon) = contract.icon {
             node = node.child(Icon::new(icon));
         }
+        if let Some(title) = value.title {
+            node = node.child(Text::new(title));
+        }
         node = node.child(Text::new(value.message));
         for action in value.actions {
-            node = node.child(Button::new(action.label).disabled(action.disabled));
+            node = node.child(
+                Button::new(action.label)
+                    .disabled(action.disabled)
+                    .tone(action.tone)
+                    .variant(action_variant(action.kind)),
+            );
+        }
+        if value.state.details_open
+            && let Some(details) = value.expanded_details
+        {
+            node = node.child(Text::new(details));
         }
         node
     }
@@ -59,6 +72,13 @@ fn dismiss_action(dismissible: bool) -> UiDismissAction {
         UiDismissAction::Available
     } else {
         UiDismissAction::None
+    }
+}
+
+fn action_variant(kind: BannerActionKind) -> UiVariant {
+    match kind {
+        BannerActionKind::Primary => UiVariant::Filled,
+        BannerActionKind::Secondary => UiVariant::Text,
     }
 }
 

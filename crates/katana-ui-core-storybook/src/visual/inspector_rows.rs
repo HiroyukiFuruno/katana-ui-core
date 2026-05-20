@@ -84,6 +84,14 @@ pub(super) fn settings_rows(
             "tone: status token".to_string(),
         ];
     }
+    if example.page == "banner" {
+        return vec![
+            "severity: warning -> danger".to_string(),
+            "density: compact -> default".to_string(),
+            "actions: primary+secondary".to_string(),
+            "details/dismiss: open/yes".to_string(),
+        ];
+    }
     if example.page == "chip" {
         return vec![
             "variant: outline -> filled".to_string(),

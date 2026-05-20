@@ -68,9 +68,9 @@
 | ComboBox | molecule | input + option list |
 | MenuButton | molecule | trigger + menu |
 | CommandPalette | molecule | provider を domain 外へ出す |
-| StatusBar | molecule | severity message |
+| StatusBar | molecule | footer に固定する severity message。画面上部や form 内に残る告知は Banner を使う |
 | Toolbar | molecule | action rail。overflow、split action、display mode、density、accelerator を持つ |
-| NotificationToast | molecule | transient message |
+| NotificationToast | molecule | transient message。消えずに残す inline 告知は Banner を使う |
 | SearchControlStrip | molecule | query option / navigation / replace request |
 | ContextMenu | molecule | pointer 起点 / submenu / keyboard navigation |
 | DragAndDropPrimitive | atom / molecule / interaction | DragHandle / DropIndicator / DragPreview / DragData / DropTarget / keyboard drag。OS payload は adapter contract で `os/*` tag に変換する |
@@ -81,7 +81,7 @@
 | ChipGroup | molecule | wrap / overflow menu / horizontal scroll / reorder opt-in を持つ chip container |
 | DiagnosticsList | molecule | severity / location / quickfix / fix preview / bulk fix / keyboard navigation の汎用問題一覧。lint domain は持たない |
 | EmptyState | molecule | 空状態の heading / body / icon or illustration / primary and secondary action / live region |
-| Banner | molecule | 画面内に残る告知 |
+| Banner | molecule | 画面内に残る inline alert。toast / status bar と責務を分ける |
 | ToastStack | molecule | 複数 toast の queue / dedupe / pause-on-hover |
 | HoverCard | molecule | hover / focus で開く rich content。delay、pointer follow、slot、共有 placement を持つ |
 | ProgressMeter | atom | linear / ring / pie の進捗表示 |

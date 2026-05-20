@@ -132,6 +132,9 @@ pub struct BannerVisualContract {
     pub live_region: BannerLiveRegion,
     pub density: BannerDensity,
     pub placement_hint: BannerPlacementHint,
+    pub action_count: usize,
+    pub dismissible: bool,
+    pub details_available: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -470,6 +470,50 @@ fn empty_state_story_exposes_settings_presets_and_logs() -> Result<(), &'static 
 }
 
 #[test]
+fn banner_story_exposes_settings_presets_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "banner")
+        .ok_or("banner page missing")?;
+    let details = super::StoryDetailContent::from_example(story);
+
+    assert_eq!(
+        &[
+            "保存失敗",
+            "vendor 未接続",
+            "添付サイズ超過",
+            "成功通知",
+            "details 展開"
+        ],
+        StoryPresetLabels::for_page("banner")
+    );
+    for preset in StoryPresetLabels::for_page("banner") {
+        assert!(
+            details.preset.contains(preset),
+            "banner detail preset lacks {preset}"
+        );
+    }
+    for setting in ["severity", "density", "actions", "details", "dismissible"] {
+        assert!(
+            details.settings.contains(setting),
+            "banner settings inspector lacks {setting}"
+        );
+    }
+    for action in [
+        "banner_toggle_details",
+        "banner_primary_action",
+        "banner_dismiss",
+    ] {
+        assert!(
+            story.callback_logs.iter().any(|it| it.action == action),
+            "banner callback log lacks action {action}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn hover_card_story_exposes_rich_slots_and_callback_log() -> Result<(), &'static str> {
     let examples = StoryCatalog.examples();
     let story = examples
