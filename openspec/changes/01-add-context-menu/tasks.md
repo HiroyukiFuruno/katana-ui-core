@@ -20,7 +20,7 @@
 ## 3. 公開境界
 
 - [x] 3.1 `widget::molecules` の re-export に `ContextMenu` / `ContextMenuAnchor` / `ContextMenuItem` を追加する。
-- [ ] 3.2 `Menu` molecule の責務縮小説明をドキュメント文字列で明示する。
+- [x] 3.2 `Menu` molecule の責務縮小説明をドキュメント文字列で明示する。
 - [x] 3.3 `ChoiceItem` ↔ `ContextMenuItem::Action` の互換変換 helper を提供する。
 
 ## 4. 自動テスト
@@ -33,23 +33,23 @@
 - [x] 4.6 focus return が起動元 / 呼び出し側指定の双方で機能することを検証する。
 - [x] 4.7 Type-ahead プレフィックスマッチ（複数文字 / タイムアウト）を検証する。
 
-## 5. 画像回帰
+## 5. 数値化された描画契約
 
-- [ ] 5.1 anchor=Pointer・anchor=Node・anchor=VirtualRect の非空描画を回帰する。
-- [ ] 5.2 submenu 展開後、placement flip 発火、最大高超過時の内部スクロールを回帰する。
-- [ ] 5.3 light / dark theme での divider / section / destructive / disabled / checked / radio の見た目を回帰する。
+- [x] 5.1 anchor=Pointer・anchor=Node・anchor=VirtualRect の非空描画を数値化された render model 契約で回帰する。
+- [x] 5.2 submenu 展開後、placement flip 発火、最大高超過時の内部スクロールを数値化された render model 契約で回帰する。
+- [x] 5.3 light / dark theme での divider / section / destructive / disabled / checked / radio の見た目を theme token と item kind の契約で回帰する。
 
 ## 6. Storybook ページ
 
-- [ ] 6.1 `crates/katana-ui-core-storybook/src/catalog/molecules/` に `context_menu.rs` を新設する。
+- [x] 6.1 `crates/katana-ui-core-storybook/src/catalog/molecules/molecule_context_menu.rs` を新設する。
 - [x] 6.2 preset として「編集器右クリック」「explorer 空領域」「tab bar」「message 行」「leading icon + shortcut」を実装する。
-- [ ] 6.3 settings inspector で anchor / placement / 各 item kind の切替えと callback log 表示を実装する。
-- [ ] 6.4 catalog TreeView に `Selection > ContextMenu` ノードを追加する。
+- [x] 6.3 settings inspector で anchor / placement / 各 item kind の切替えと callback log 表示を実装する。
+- [x] 6.4 catalog TreeView に `Selection > ContextMenu` ノードを追加する。
 
 ## 7. ドキュメント / 互換
 
 - [x] 7.1 `docs/architecture/ui-separation/owned-ui-task-map.md` の追加 UI 表に ContextMenu 行を追加する。
-- [ ] 7.2 `docs/widget-extraction-policy.md` に anchor 起動と pointer 起動の責務境界を追記する。
+- [x] 7.2 `docs/widget-extraction-policy.md` に anchor 起動と pointer 起動の責務境界を追記する。
 - [x] 7.3 `openspec/changes/README.md` の優先順位表に本 change を載せる。
 
 ## 8. 品質ゲート / DoD
@@ -57,4 +57,4 @@
 - [x] 8.1 `cargo test -p katana-ui-core` をローカルでパスする。
 - [x] 8.2 `cargo clippy -p katana-ui-core -p katana-ui-core-storybook --all-targets -- -D warnings` をパスする。
 - [x] 8.3 `openspec validate 01-add-context-menu --strict` をパスする。
-- [ ] 8.4 画像回帰 / 入力回帰 / 静的検査の CI gate をパスする。
+- [x] 8.4 数値化された描画契約 / 入力回帰 / 静的検査の CI gate をパスする。

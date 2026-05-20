@@ -1,12 +1,13 @@
 use super::layout_metrics::{NAV_FIRST_ROW_Y, NAV_ROW_STEP, navigation_hit_rect};
 use crate::requirements::StoryRequirements;
 
-const NAVIGATION_GROUP_COUNT: usize = 4;
+const NAVIGATION_GROUP_COUNT: usize = 5;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum NavigationGroup {
     Foundation,
     Atoms,
+    Selection,
     Molecules,
     Layout,
 }
@@ -24,6 +25,7 @@ pub(super) enum NavigationRow {
 pub(super) struct TreeExpansionState {
     foundation: bool,
     atoms: bool,
+    selection: bool,
     molecules: bool,
     layout: bool,
 }
@@ -33,6 +35,7 @@ impl Default for TreeExpansionState {
         Self {
             foundation: true,
             atoms: true,
+            selection: true,
             molecules: true,
             layout: true,
         }
@@ -44,6 +47,7 @@ impl TreeExpansionState {
         match group {
             NavigationGroup::Foundation => self.foundation,
             NavigationGroup::Atoms => self.atoms,
+            NavigationGroup::Selection => self.selection,
             NavigationGroup::Molecules => self.molecules,
             NavigationGroup::Layout => self.layout,
         }
@@ -53,6 +57,7 @@ impl TreeExpansionState {
         match group {
             NavigationGroup::Foundation => self.foundation = !self.foundation,
             NavigationGroup::Atoms => self.atoms = !self.atoms,
+            NavigationGroup::Selection => self.selection = !self.selection,
             NavigationGroup::Molecules => self.molecules = !self.molecules,
             NavigationGroup::Layout => self.layout = !self.layout,
         }
@@ -64,6 +69,7 @@ impl NavigationGroup {
         match self {
             NavigationGroup::Foundation => "Foundation",
             NavigationGroup::Atoms => "Atoms",
+            NavigationGroup::Selection => "Selection",
             NavigationGroup::Molecules => "Molecules",
             NavigationGroup::Layout => "Layout",
         }
@@ -109,6 +115,7 @@ pub(super) fn group_for_page(page: &str) -> NavigationGroup {
         | "text-input" | "checkbox" | "radio" | "badge" | "divider" | "spacer" | "key-cap"
         | "loading-dots" | "spinner" | "progress-bar" | "color-swatch" | "toggle"
         | "slide-control" => NavigationGroup::Atoms,
+        "context-menu" | "selection-list" => NavigationGroup::Selection,
         "row" | "column" | "stack" | "grid" | "scroll-area" | "split-pane" | "align-center" => {
             NavigationGroup::Layout
         }
@@ -120,6 +127,7 @@ fn groups() -> [NavigationGroup; NAVIGATION_GROUP_COUNT] {
     [
         NavigationGroup::Foundation,
         NavigationGroup::Atoms,
+        NavigationGroup::Selection,
         NavigationGroup::Molecules,
         NavigationGroup::Layout,
     ]
@@ -147,5 +155,26 @@ mod tests {
                 .iter()
                 .any(|it| { matches!(it, NavigationRow::Page { page: "button", .. }) })
         );
+    }
+
+    #[test]
+    fn context_menu_is_grouped_under_selection() {
+        let rows = visible_rows(TreeExpansionState::default());
+        let selection_index = rows
+            .iter()
+            .position(|it| matches!(it, NavigationRow::Group(super::NavigationGroup::Selection)));
+        let context_menu_index = rows.iter().position(|it| {
+            matches!(
+                it,
+                NavigationRow::Page {
+                    page: "context-menu",
+                    group: super::NavigationGroup::Selection
+                }
+            )
+        });
+
+        assert!(selection_index.is_some());
+        assert!(context_menu_index.is_some());
+        assert!(selection_index < context_menu_index);
     }
 }

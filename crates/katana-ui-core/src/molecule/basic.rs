@@ -3,7 +3,8 @@ use crate::render_model::{UiCommonProps, UiNode, UiNodeId, UiNodeKind, UiStateId
 use serde::{Deserialize, Serialize};
 
 macro_rules! molecule_model {
-    ($name:ident, $kind:expr) => {
+    ($(#[$meta:meta])* $name:ident, $kind:expr) => {
+        $(#[$meta])*
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub struct $name {
             label: String,
@@ -55,7 +56,14 @@ macro_rules! molecule_model {
 }
 
 molecule_model!(List, UiNodeKind::List);
-molecule_model!(Menu, UiNodeKind::Menu);
+molecule_model!(
+    /// Basic inline menu container.
+    ///
+    /// Use `ContextMenu` for pointer / node anchored menus, submenu state,
+    /// placement, focus return, and callback logs.
+    Menu,
+    UiNodeKind::Menu
+);
 molecule_model!(Toolbar, UiNodeKind::Toolbar);
 molecule_model!(FormField, UiNodeKind::FormField);
 

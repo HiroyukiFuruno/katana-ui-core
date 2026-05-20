@@ -31,6 +31,8 @@ impl StoryDetailContent {
         let action = action_line(example, &marker);
         let settings = if example.page == "drag-and-drop" {
             drag_and_drop_settings_line(example, &marker)
+        } else if example.page == "context-menu" {
+            context_menu_settings_line(example, &marker)
         } else {
             format!("{marker} settings: {option} ({value_type}) {before} -> {after}")
         };
@@ -104,6 +106,17 @@ fn drag_and_drop_settings_line(example: &StoryExample, marker: &str) -> String {
         |it| it.after.as_str(),
     );
     format!("{marker} settings: accept/autoscroll/keyboard_draggable {before} -> {after}")
+}
+
+fn context_menu_settings_line(example: &StoryExample, marker: &str) -> String {
+    let props = example.tree.root().props();
+    let anchor = option_value("context_menu.anchor", props);
+    let placement = option_value("context_menu.placement", props);
+    let item_kind = option_value("context_menu.item_kind", props);
+    let log_count = example.callback_logs.len();
+    format!(
+        "{marker} settings: context_menu.anchor={anchor} context_menu.placement={placement} context_menu.item_kind={item_kind} callback_log={log_count} -> context_menu.anchor=Pointer(0,0) context_menu.placement=AboveEnd context_menu.item_kind=Toggle callback_log={log_count}"
+    )
 }
 
 fn action_line(example: &StoryExample, marker: &str) -> String {

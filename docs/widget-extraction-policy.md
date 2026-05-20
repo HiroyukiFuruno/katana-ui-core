@@ -24,6 +24,9 @@ KUC は Floem 専用 crate ではなく、フレームワーク非依存（frame
 ドラッグ&ドロップ（drag and drop）系の UI は、domain 固有のファイルツリーや chat 添付 model を持ち込まず、`DragData`、`DropTarget`、`DragHandle`、`DropIndicator`、`DragPreview` の neutral DTO として表現できる場合だけ採用する。
 OS ファイル、URL、テキストは adapter が `os/file-list`、`os/url`、`os/text` に変換し、core は payload の中身を解釈しない。
 
+ContextMenu は、pointer 起動、node 起動、仮想矩形起動を `ContextMenuAnchor` として core 側で扱う。
+右クリック位置や window 座標の取得は adapter 責務、項目内容や command の意味づけは consumer 責務とし、core は anchor、placement、item kind、callback log の契約だけを持つ。
+
 ## 除外条件
 
 以下は KUC core には入れない。

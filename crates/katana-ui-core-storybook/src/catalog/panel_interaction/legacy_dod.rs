@@ -5,6 +5,8 @@ use super::legacy_dod_specs::{LegacyDodSpec, legacy_dod_specs};
 use crate::catalog::StoryExample;
 use serde::{Deserialize, Serialize};
 
+#[path = "legacy_dod_context_menu.rs"]
+mod legacy_dod_context_menu;
 #[path = "legacy_dod_drag_settings.rs"]
 mod legacy_dod_drag_settings;
 
@@ -63,6 +65,7 @@ impl LegacyDodReports {
         reports.extend(legacy_dod_drag_settings::drag_and_drop_settings_mutations(
             examples,
         ));
+        reports.extend(legacy_dod_context_menu::settings_mutations(examples));
         reports
     }
 

@@ -14,7 +14,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_eq!(5, report.overlay_dismissals.len());
     assert_eq!(1, report.color_picker_updates.len());
     assert_eq!(
-        examples.len() + 1 + DND_SETTINGS_MUTATION_COUNT,
+        examples.len() + 1 + DND_SETTINGS_MUTATION_COUNT + 3,
         report.settings_mutations.len()
     );
     assert_eq!(LEGACY_UI_MARKER_COUNT, report.legacy_ui_markers.len());
@@ -73,6 +73,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
         |it| it.page == "color-picker-rgba" && it.option.name == "color_swatch.selected_color"
     ));
     assert_drag_and_drop_settings_are_switchable(&report.settings_mutations);
+    assert_context_menu_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
         report.legacy_ui_markers.len(),
         report
@@ -94,6 +95,24 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
     );
+}
+
+fn assert_context_menu_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "context_menu.anchor",
+        "context_menu.placement",
+        "context_menu.item_kind",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "context-menu"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "context_menu_settings_changed"
+            }),
+            "missing context-menu setting mutation for {option}"
+        );
+    }
 }
 
 fn assert_drag_and_drop_settings_are_switchable(settings: &[super::SettingsMutationReport]) {

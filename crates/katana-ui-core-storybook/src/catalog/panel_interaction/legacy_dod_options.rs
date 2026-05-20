@@ -1,10 +1,8 @@
-use katana_ui_core::render_model::{
-    UiAnimationState, UiContextMenuAnchor, UiProps, UiSize, UiTone, UiVariant,
-};
+#[path = "legacy_dod_context_menu_options.rs"]
+mod legacy_dod_context_menu_options;
 
-const CONTEXT_MENU_POINTER_VALUE: &str = "Pointer(192,128)";
-const CONTEXT_MENU_POINTER_X: i32 = 192;
-const CONTEXT_MENU_POINTER_Y: i32 = 128;
+use katana_ui_core::render_model::{UiAnimationState, UiProps, UiSize, UiTone, UiVariant};
+
 const INVALID_USIZE_SETTING: usize = 0;
 const INVALID_U8_SETTING: u8 = 0;
 
@@ -30,7 +28,11 @@ pub(super) fn option_value(option: &str, props: &UiProps) -> String {
         "status.severity" => format!("{:?}", props.status.severity),
         "shortcut.platform" => props.shortcut.platform.clone(),
         "interaction.active" => props.interaction.active.to_string(),
-        "context_menu.anchor" => context_menu_anchor_value(&props.context_menu.anchor),
+        "context_menu.anchor" => {
+            legacy_dod_context_menu_options::anchor_value(&props.context_menu.anchor)
+        }
+        "context_menu.placement" => format!("{:?}", props.context_menu.placement_used),
+        "context_menu.item_kind" => legacy_dod_context_menu_options::item_kind_value(props),
         _ => props.theme_id.clone(),
     }
 }
@@ -99,7 +101,15 @@ pub(super) fn props_with_option(props: &UiProps, option: &str, value: &str) -> U
         "status.severity" => next.status.severity = tone(value),
         "shortcut.platform" => next.shortcut.platform = value.to_string(),
         "interaction.active" => next.interaction.active = value == "true",
-        "context_menu.anchor" => next.context_menu.anchor = context_menu_anchor(value),
+        "context_menu.anchor" => {
+            next.context_menu.anchor = legacy_dod_context_menu_options::anchor(value);
+        }
+        "context_menu.placement" => {
+            next.context_menu.placement_used = legacy_dod_context_menu_options::placement(value);
+        }
+        "context_menu.item_kind" => {
+            legacy_dod_context_menu_options::set_item_kind(&mut next, value)
+        }
         _ => next.theme_id = value.to_string(),
     }
     next
@@ -181,28 +191,5 @@ fn size(value: &str) -> UiSize {
         "large" => UiSize::Large,
         "x-large" => UiSize::XLarge,
         _ => UiSize::Medium,
-    }
-}
-
-fn context_menu_anchor(value: &str) -> UiContextMenuAnchor {
-    if value == CONTEXT_MENU_POINTER_VALUE {
-        return UiContextMenuAnchor::Pointer {
-            x: CONTEXT_MENU_POINTER_X,
-            y: CONTEXT_MENU_POINTER_Y,
-        };
-    }
-    UiContextMenuAnchor::Pointer { x: 0, y: 0 }
-}
-
-fn context_menu_anchor_value(anchor: &UiContextMenuAnchor) -> String {
-    match anchor {
-        UiContextMenuAnchor::Pointer { x, y } => format!("Pointer({x},{y})"),
-        UiContextMenuAnchor::VirtualRect(rect) => {
-            format!(
-                "VirtualRect({},{},{},{})",
-                rect.x, rect.y, rect.width, rect.height
-            )
-        }
-        UiContextMenuAnchor::NodeId(id) => format!("NodeId({id})"),
     }
 }

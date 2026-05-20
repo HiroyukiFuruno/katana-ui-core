@@ -157,6 +157,56 @@ fn drag_and_drop_story_exposes_preset_specific_settings_and_logs() -> Result<(),
     Ok(())
 }
 
+#[test]
+fn context_menu_story_exposes_detail_settings_and_callback_log() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let context_menu = examples
+        .iter()
+        .find(|it| it.page == "context-menu")
+        .ok_or("context-menu page missing")?;
+    let labels = page_children(&examples, "context-menu").ok_or("context-menu page missing")?;
+    let details = super::StoryDetailContent::from_example(context_menu);
+
+    for preset in StoryPresetLabels::for_page("context-menu") {
+        assert!(
+            labels.iter().any(|it| it.contains(preset)),
+            "context-menu preview lacks preset {preset}"
+        );
+    }
+    for setting in ["anchor=", "placement=", "item_kind=", "callback_log="] {
+        assert!(
+            details.settings.contains(setting),
+            "context-menu settings inspector lacks {setting}"
+        );
+    }
+    for action in [
+        "context_menu_open",
+        "context_menu_highlight",
+        "context_menu_submenu",
+        "context_menu_select",
+    ] {
+        assert!(
+            context_menu
+                .callback_logs
+                .iter()
+                .any(|it| it.action == action),
+            "context-menu callback log lacks {action}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn catalog_contains_single_independent_context_menu_story() {
+    let examples = StoryCatalog.examples();
+    let count = examples
+        .iter()
+        .filter(|it| it.page == "context-menu")
+        .count();
+
+    assert_eq!(1, count);
+}
+
 fn page_children(examples: &[super::StoryExample], page: &str) -> Option<Vec<String>> {
     examples.iter().find(|it| it.page == page).map(|it| {
         it.tree
