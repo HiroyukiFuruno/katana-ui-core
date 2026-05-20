@@ -1,11 +1,12 @@
 use super::{
-    SettingsControl, SettingsDirtyVisualization, SettingsField, SettingsList, SettingsValue, state,
+    SettingsControl, SettingsDirtyVisualization, SettingsField, SettingsList, SettingsListDensity,
+    SettingsSection, SettingsValue, state,
 };
 use crate::atom::{Button, Chip, Icon, Input, Radio, Text, TextArea, Toggle};
 use crate::molecule::{
     ChipGroup, ColorPicker, ComboBox, EmptyState, FormField, RgbaColor, SearchBox, SelectBox,
 };
-use crate::render_model::{UiNode, UiNodeKind, UiVariant};
+use crate::render_model::{UiNode, UiNodeKind, UiSize, UiVariant};
 
 const DEFAULT_CHIP_WIDTH: u16 = 64;
 
@@ -16,7 +17,9 @@ pub(super) fn render(value: SettingsList) -> UiNode {
         value.state_id.clone(),
     )
     .interaction(state::interaction_state(&value))
+    .size(size(value.density))
     .variant(variant(value.dirty_visualization))
+    .style_class(density_class(value.density))
     .child(
         SearchBox::new("Settings query")
             .placeholder("Search settings")
@@ -30,15 +33,26 @@ pub(super) fn render(value: SettingsList) -> UiNode {
         return node.child(EmptyState::new("No matching settings").body("No settings match query"));
     }
     for visible in visible_sections {
-        node = node.child(Text::new(visible.section.label.clone()));
+        node = node.child(render_section_header(visible.section));
         for field in visible.fields {
             node = node.child(render_field(
                 field,
                 value.dirty_field_ids.contains(&field.id),
             ));
         }
+        if let Some(footer) = &visible.section.footer {
+            node = node.child(Text::new(footer.clone()));
+        }
     }
     node
+}
+
+fn render_section_header(section: &SettingsSection) -> UiNode {
+    let mut header = UiNode::new(UiNodeKind::Panel, section.label.clone());
+    if let Some(icon) = &section.icon {
+        header = header.child(Icon::new(icon.clone()));
+    }
+    header.child(Text::new(section.label.clone()))
 }
 
 fn render_field(field: &SettingsField, dirty: bool) -> UiNode {
@@ -131,5 +145,21 @@ fn variant(value: SettingsDirtyVisualization) -> UiVariant {
         SettingsDirtyVisualization::None => UiVariant::Plain,
         SettingsDirtyVisualization::Marker => UiVariant::Outline,
         SettingsDirtyVisualization::Highlight => UiVariant::Filled,
+    }
+}
+
+fn size(value: SettingsListDensity) -> UiSize {
+    match value {
+        SettingsListDensity::Compact => UiSize::Small,
+        SettingsListDensity::Default => UiSize::Medium,
+        SettingsListDensity::Spacious => UiSize::Large,
+    }
+}
+
+fn density_class(value: SettingsListDensity) -> &'static str {
+    match value {
+        SettingsListDensity::Compact => "settings-density-compact",
+        SettingsListDensity::Default => "settings-density-default",
+        SettingsListDensity::Spacious => "settings-density-spacious",
     }
 }

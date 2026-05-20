@@ -7,7 +7,7 @@ mod field;
 
 pub use control::{
     SettingsControl, SettingsControlKind, SettingsControlOption, SettingsDirtyVisualization,
-    SettingsValue,
+    SettingsListDensity, SettingsValue,
 };
 pub use events::{SettingsKeyboardInput, SettingsListAction, SettingsListEvent};
 pub use field::{SettingsField, SettingsSection};

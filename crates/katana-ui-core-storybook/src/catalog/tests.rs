@@ -663,6 +663,75 @@ fn shortcut_stories_expose_settings_presets_and_keycap_boundary() -> Result<(), 
 }
 
 #[test]
+fn settings_list_story_exposes_presets_settings_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "settings-list")
+        .ok_or("settings-list page missing")?;
+    let labels = page_children(&examples, "settings-list").ok_or("settings-list page missing")?;
+    let details = super::StoryDetailContent::from_example(story);
+
+    assert_eq!(
+        &[
+            "app settings",
+            "chat settings",
+            "lint settings",
+            "dirty 表示",
+            "query filter",
+            "reset"
+        ],
+        StoryPresetLabels::for_page("settings-list")
+    );
+    for preset in StoryPresetLabels::for_page("settings-list") {
+        assert!(
+            details.preset.contains(preset),
+            "settings-list detail preset lacks {preset}"
+        );
+    }
+    for label in [
+        "App settings",
+        "Chat settings",
+        "Lint settings",
+        "Format on save",
+        "Model",
+        "Tags",
+        "Custom action",
+    ] {
+        assert!(
+            labels.iter().any(|it| it.contains(label)),
+            "settings-list preview lacks {label}"
+        );
+    }
+    for setting in [
+        "density",
+        "dirty_visualization",
+        "query",
+        "sections",
+        "control_kind",
+        "reset",
+    ] {
+        assert!(
+            details.settings.contains(setting),
+            "settings-list settings inspector lacks {setting}"
+        );
+    }
+    for action in [
+        "settings_query_filter",
+        "settings_update_field",
+        "settings_toggle_section",
+        "settings_route_child_event",
+        "settings_reset_field",
+    ] {
+        assert!(
+            story.callback_logs.iter().any(|it| it.action == action),
+            "settings-list callback log lacks action {action}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn hover_card_story_exposes_rich_slots_and_callback_log() -> Result<(), &'static str> {
     let examples = StoryCatalog.examples();
     let story = examples

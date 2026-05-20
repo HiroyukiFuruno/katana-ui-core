@@ -158,10 +158,12 @@ impl StoryPresetLabels {
                 "select combo",
             ],
             "settings-list" => &[
-                "sectioned form",
-                "dirty marker",
-                "search filter",
-                "collapse section",
+                "app settings",
+                "chat settings",
+                "lint settings",
+                "dirty 表示",
+                "query filter",
+                "reset",
             ],
             "collapsible-panel" => &["expanded", "icon only", "floating overlay", "resized width"],
             "virtualization" => &[

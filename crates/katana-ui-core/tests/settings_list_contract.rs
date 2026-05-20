@@ -1,9 +1,10 @@
 use katana_ui_core::atom::Text;
 use katana_ui_core::molecule::{
-    SettingsControl, SettingsControlOption, SettingsField, SettingsKeyboardInput, SettingsList,
-    SettingsListAction, SettingsListEvent, SettingsSection, SettingsValue,
+    SettingsControl, SettingsControlOption, SettingsDirtyVisualization, SettingsField,
+    SettingsKeyboardInput, SettingsList, SettingsListAction, SettingsListDensity,
+    SettingsListEvent, SettingsSection, SettingsValue,
 };
-use katana_ui_core::render_model::{UiNodeKind, UiTree};
+use katana_ui_core::render_model::{UiNode, UiNodeKind, UiSize, UiTree, UiVariant};
 
 #[test]
 fn typed_controls_render_with_distinct_child_state_ids() {
@@ -173,6 +174,132 @@ fn zero_query_result_renders_empty_state_with_distinct_state() {
     assert!(empty.is_some_and(|it| it.props().state_id != tree.root().props().state_id));
 }
 
+#[test]
+fn density_section_icon_footer_and_dirty_visualization_render_contracts() {
+    let list = SettingsList::new("Settings")
+        .density(SettingsListDensity::Compact)
+        .dirty_visualization(SettingsDirtyVisualization::Marker)
+        .section(
+            SettingsSection::new("appearance", "Appearance")
+                .icon("settings")
+                .footer("Restart required")
+                .field(
+                    field(
+                        "theme",
+                        SettingsControl::Select {
+                            options: options(),
+                            selected: "dark".to_string(),
+                        },
+                    )
+                    .reset_to_default(SettingsValue::Text("light".to_string())),
+                ),
+        );
+
+    let tree = UiTree::new(list);
+
+    assert_eq!(UiSize::Small, tree.root().props().size);
+    assert_eq!(UiVariant::Outline, tree.root().props().variant);
+    assert!(
+        tree.root()
+            .props()
+            .style_classes
+            .contains(&"settings-density-compact".to_string())
+    );
+    assert!(contains_node(&tree, UiNodeKind::Icon, "settings"));
+    assert!(contains_node(&tree, UiNodeKind::Text, "Restart required"));
+    assert!(contains_node(&tree, UiNodeKind::Button, "Reset"));
+}
+
+#[test]
+fn density_and_dirty_visualization_variants_have_numeric_rendering_contracts() {
+    let density_cases = [
+        (
+            SettingsListDensity::Compact,
+            UiSize::Small,
+            "settings-density-compact",
+        ),
+        (
+            SettingsListDensity::Default,
+            UiSize::Medium,
+            "settings-density-default",
+        ),
+        (
+            SettingsListDensity::Spacious,
+            UiSize::Large,
+            "settings-density-spacious",
+        ),
+    ];
+    let dirty_cases = [
+        (SettingsDirtyVisualization::None, UiVariant::Plain),
+        (SettingsDirtyVisualization::Marker, UiVariant::Outline),
+        (SettingsDirtyVisualization::Highlight, UiVariant::Filled),
+    ];
+
+    for (density, size, class_name) in density_cases {
+        let tree = UiTree::new(
+            SettingsList::new("Settings")
+                .density(density)
+                .section(SettingsSection::new("general", "General")),
+        );
+        assert_eq!(size, tree.root().props().size);
+        assert!(
+            tree.root()
+                .props()
+                .style_classes
+                .contains(&class_name.to_string())
+        );
+    }
+    for (dirty_visualization, variant) in dirty_cases {
+        let tree = UiTree::new(
+            SettingsList::new("Settings")
+                .dirty_visualization(dirty_visualization)
+                .section(SettingsSection::new("general", "General")),
+        );
+        assert_eq!(variant, tree.root().props().variant);
+    }
+}
+
+#[test]
+fn update_focus_and_callback_log_are_stateful_and_typed() {
+    let mut list = SettingsList::new("Settings").section(
+        SettingsSection::new("general", "General")
+            .field(field("toggle", SettingsControl::Toggle { checked: false }))
+            .field(field(
+                "input",
+                SettingsControl::Input {
+                    value: "old".to_string(),
+                },
+            )),
+    );
+
+    let changed = list.apply_settings_action(SettingsListAction::UpdateField {
+        field_id: "toggle".to_string(),
+        value: SettingsValue::Bool(true),
+    });
+    let focused = list.apply_settings_action(SettingsListAction::FocusField {
+        field_id: Some("input".to_string()),
+    });
+    let next = list.apply_settings_action(SettingsListAction::KeyboardField {
+        field_id: "toggle".to_string(),
+        input: SettingsKeyboardInput::Tab,
+    });
+
+    assert!(matches!(
+        changed.as_slice(),
+        [SettingsListEvent::FieldChanged { field_id }] if field_id == "toggle"
+    ));
+    assert!(matches!(
+        focused.as_slice(),
+        [SettingsListEvent::FieldFocused { field_id }] if field_id.as_deref() == Some("input")
+    ));
+    assert!(matches!(
+        next.as_slice(),
+        [SettingsListEvent::FieldFocused { field_id }] if field_id.as_deref() == Some("input")
+    ));
+    assert_eq!(Some("input"), list.focused_field_id());
+    assert_eq!(3, list.callback_log().len());
+}
+
 fn field(id: &str, control: SettingsControl) -> SettingsField {
     SettingsField::new(id, id, control)
 }
@@ -202,4 +329,16 @@ fn collect_ids(
     for child in node.children() {
         collect_ids(child, ids);
     }
+}
+
+fn contains_node(tree: &UiTree, kind: UiNodeKind, label: &str) -> bool {
+    contains_node_inner(tree.root(), kind, label)
+}
+
+fn contains_node_inner(node: &UiNode, kind: UiNodeKind, label: &str) -> bool {
+    node.kind() == kind && node.props().label == label
+        || node
+            .children()
+            .iter()
+            .any(|child| contains_node_inner(child, kind, label))
 }

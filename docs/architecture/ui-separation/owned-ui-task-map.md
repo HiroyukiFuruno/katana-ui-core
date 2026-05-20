@@ -87,6 +87,7 @@
 | ProgressMeter | atom | linear / ring / pie の進捗表示 |
 | ShortcutCombo | atom | 複数キーの組み合わせ表示。platform_display / separator / size / tone を持つ |
 | ShortcutCheatsheet | molecule | ショートカット一覧。group_layout / query / select event を持つ |
+| SettingsList | molecule | セクション付き設定フォーム。density / dirty_visualization / query / collapse / reset / focus state を持つ |
 | CollapsiblePanel | molecule | 折りたたみ / hover / resize panel。AppShell は持たない |
 | CommandLauncherResults | molecule | query + result row + shortcut + keyboard selection |
 

@@ -11,8 +11,8 @@ use std::collections::BTreeSet;
 pub use query::SettingsVisibleSection;
 pub use types::{
     SettingsControl, SettingsControlKind, SettingsControlOption, SettingsDirtyVisualization,
-    SettingsField, SettingsKeyboardInput, SettingsListAction, SettingsListEvent, SettingsSection,
-    SettingsValue,
+    SettingsField, SettingsKeyboardInput, SettingsListAction, SettingsListDensity,
+    SettingsListEvent, SettingsSection, SettingsValue,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -21,9 +21,12 @@ pub struct SettingsList {
     state_id: UiStateId,
     sections: Vec<SettingsSection>,
     query: Option<String>,
+    density: SettingsListDensity,
     dirty_visualization: SettingsDirtyVisualization,
     collapsed_section_ids: BTreeSet<String>,
     dirty_field_ids: BTreeSet<String>,
+    focused_field_id: Option<String>,
+    callback_log: Vec<SettingsListEvent>,
     last_event: Option<SettingsListEvent>,
 }
 
@@ -35,9 +38,12 @@ impl SettingsList {
             state_id: UiStateId::next_for(UiNodeKind::SettingsList),
             sections: Vec::new(),
             query: None,
+            density: SettingsListDensity::Default,
             dirty_visualization: SettingsDirtyVisualization::None,
             collapsed_section_ids: BTreeSet::new(),
             dirty_field_ids: BTreeSet::new(),
+            focused_field_id: None,
+            callback_log: Vec::new(),
             last_event: None,
         }
     }
@@ -52,6 +58,12 @@ impl SettingsList {
     #[must_use]
     pub fn query(mut self, value: impl Into<String>) -> Self {
         self.query = Some(value.into());
+        self
+    }
+
+    #[must_use]
+    pub const fn density(mut self, value: SettingsListDensity) -> Self {
+        self.density = value;
         self
     }
 
@@ -100,6 +112,16 @@ impl SettingsList {
     #[must_use]
     pub fn dirty_field_ids(&self) -> &BTreeSet<String> {
         &self.dirty_field_ids
+    }
+
+    #[must_use]
+    pub fn focused_field_id(&self) -> Option<&str> {
+        self.focused_field_id.as_deref()
+    }
+
+    #[must_use]
+    pub fn callback_log(&self) -> &[SettingsListEvent] {
+        &self.callback_log
     }
 
     pub fn apply_settings_action(&mut self, action: SettingsListAction) -> Vec<SettingsListEvent> {

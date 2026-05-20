@@ -22,6 +22,13 @@ pub enum SettingsDirtyVisualization {
     Highlight,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SettingsListDensity {
+    Compact,
+    Default,
+    Spacious,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SettingsValue {
     Bool(bool),

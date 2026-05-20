@@ -4,12 +4,19 @@
 
 `SettingsList` MUST expose `sections: Vec<SettingsSection>` where each section contains an ordered `fields: Vec<SettingsField>`.
 Each field MUST carry a `control: SettingsControl` that is a typed enum mapping to an existing KUC atom or molecule (Toggle, Select, Combo, Input, TextArea, Number, Chips, Radio, ColorPicker, Custom).
+`SettingsList` MUST expose `density = Compact | Default | Spacious` and render it as stable `UiSize` and style class values.
 
 #### Scenario: section contains heterogeneous controls
 
 - **WHEN** a section contains `Toggle`, `Select`, and `Input` controls
 - **THEN** each field renders the typed atom or molecule for its control kind
 - **AND** parent and child state ids remain distinct for each field's control
+
+#### Scenario: density maps to numeric rendering props
+
+- **WHEN** density is Compact, Default, or Spacious
+- **THEN** the root node renders a stable size token for that density
+- **AND** the root node carries a stable density style class for automated rendering contracts
 
 #### Scenario: custom control supplies its own subtree
 
@@ -21,6 +28,7 @@ Each field MUST carry a `control: SettingsControl` that is a typed enum mapping 
 
 `SettingsList` MUST allow `collapsible: bool` and `default_collapsed: bool` per section.
 Section headers MUST be activatable via keyboard (Enter / Space) when collapsible.
+Section headers MAY expose an icon and section footer; those values MUST be represented in the render tree.
 
 #### Scenario: collapsible section toggles via keyboard
 
@@ -33,6 +41,29 @@ Section headers MUST be activatable via keyboard (Enter / Space) when collapsibl
 - **WHEN** `default_collapsed = true` is set on a section
 - **THEN** the section starts collapsed on first render
 - **AND** subsequent user toggles override the default
+
+#### Scenario: section header exposes icon and footer
+
+- **WHEN** a section declares an icon and footer
+- **THEN** the header renders the icon next to the label
+- **AND** the footer renders after the visible fields
+
+### Requirement: SettingsList keeps focus and callback state internally
+
+`SettingsList` MUST keep focused field state and callback log state inside the molecule.
+Keyboard Tab from a field MUST move focus to the next visible field without requiring consumer-side state.
+
+#### Scenario: focus field action updates internal state
+
+- **WHEN** `FocusField { field_id }` is applied
+- **THEN** `focused_field_id` changes inside the SettingsList state
+- **AND** a `FieldFocused` event is recorded in the callback log
+
+#### Scenario: Tab moves focus to next visible field
+
+- **WHEN** a field receives keyboard Tab
+- **THEN** the next visible field becomes focused
+- **AND** the focus transition is emitted as a typed event
 
 ### Requirement: SettingsList supports dirty visualization and reset
 

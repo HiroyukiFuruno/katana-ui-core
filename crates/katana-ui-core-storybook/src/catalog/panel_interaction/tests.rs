@@ -15,6 +15,7 @@ const BANNER_SETTINGS_MUTATION_COUNT: usize = 5;
 const TOAST_STACK_SETTINGS_MUTATION_COUNT: usize = 6;
 const STATUS_BAR_SETTINGS_MUTATION_COUNT: usize = 3;
 const SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT: usize = 4;
+const SETTINGS_LIST_SETTINGS_MUTATION_COUNT: usize = 6;
 
 #[test]
 fn report_covers_selector_overlay_and_color_picker_sequences() {
@@ -39,6 +40,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + TOAST_STACK_SETTINGS_MUTATION_COUNT
             + STATUS_BAR_SETTINGS_MUTATION_COUNT
             + SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT
+            + SETTINGS_LIST_SETTINGS_MUTATION_COUNT
             + CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT,
         report.settings_mutations.len()
     );
@@ -110,6 +112,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_toast_stack_settings_are_switchable(&report.settings_mutations);
     assert_status_bar_settings_are_switchable(&report.settings_mutations);
     assert_shortcut_combo_settings_are_switchable(&report.settings_mutations);
+    assert_settings_list_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
         report.legacy_ui_markers.len(),
         report
@@ -131,6 +134,51 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
     );
+}
+
+fn assert_settings_list_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for (option, action, event) in [
+        (
+            "settings_list.density",
+            "set_settings_list.density",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.dirty_visualization",
+            "set_settings_list.dirty_visualization",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.query",
+            "settings_query_filter",
+            "settings_list_query_changed",
+        ),
+        (
+            "settings_list.sections",
+            "settings_toggle_section",
+            "settings_list_section_collapsed",
+        ),
+        (
+            "settings_list.control_kind",
+            "settings_update_field",
+            "settings_list_field_changed",
+        ),
+        (
+            "settings_list.reset",
+            "settings_reset_field",
+            "settings_list_field_reset",
+        ),
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "settings-list"
+                    && it.option.name == option
+                    && it.action == action
+                    && it.event == event
+            }),
+            "missing settings-list setting mutation for {option}"
+        );
+    }
 }
 
 fn assert_banner_settings_are_switchable(settings: &[super::SettingsMutationReport]) {

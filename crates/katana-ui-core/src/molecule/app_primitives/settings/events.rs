@@ -10,6 +10,13 @@ pub enum SettingsListAction {
         section_id: String,
         input: SettingsKeyboardInput,
     },
+    KeyboardField {
+        field_id: String,
+        input: SettingsKeyboardInput,
+    },
+    FocusField {
+        field_id: Option<String>,
+    },
     UpdateField {
         field_id: String,
         value: super::SettingsValue,
@@ -34,6 +41,7 @@ pub enum SettingsKeyboardInput {
 pub enum SettingsListEvent {
     QueryChanged(Option<String>),
     FieldChanged { field_id: String },
+    FieldFocused { field_id: Option<String> },
     FieldReset { field_id: String },
     SectionCollapsed { section_id: String, collapsed: bool },
     ChildEventRouted { field_id: String, event: String },

@@ -162,5 +162,8 @@ fn expected_preset_count(page: &str) -> usize {
     if page == "diagnostics-list" {
         return 6;
     }
+    if page == "settings-list" {
+        return 6;
+    }
     4
 }

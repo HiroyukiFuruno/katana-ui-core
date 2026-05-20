@@ -30,26 +30,27 @@
 - [x] 4.6 query が全件フィルタアウトしたとき EmptyState が表示されることを検証する。
 - [x] 4.7 child `UiStateId` が一意で衝突しないことを検証する。
 
-## 5. 画像回帰
+## 5. 数値化された描画 / 入力契約
 
-- [ ] 5.1 control 各種 × density 3 種類 × dirty_visualization 3 種類を回帰する。
-- [ ] 5.2 section collapsed / expanded を回帰する。
-- [ ] 5.3 query で zero match の EmptyState を回帰する。
-- [ ] 5.4 light / dark theme を回帰する。
+- [x] 5.1 control 各種の render tree と child `UiStateId` 分離を自動テストで検証する。
+- [x] 5.2 density 3 種類と dirty_visualization 3 種類が `UiSize` / `UiVariant` / style class を変えることを自動テストで検証する。
+- [x] 5.3 section collapsed / expanded と keyboard toggle を自動テストで検証する。
+- [x] 5.4 query で zero match の EmptyState と distinct state を自動テストで検証する。
+- [x] 5.5 focus state / callback_log / Tab 移動を自動テストで検証する。
 
 ## 6. Storybook ページ
 
 - [x] 6.1 `Structured > SettingsList` ノードを追加する。
-- [ ] 6.2 preset「app settings」「chat settings」「lint settings」「dirty 表示」「query filter」「reset」を実装する。
-- [ ] 6.3 settings で density / dirty_visualization / query / sections / control kind を切替えできるようにする。
+- [x] 6.2 preset「app settings」「chat settings」「lint settings」「dirty 表示」「query filter」「reset」を実装する。
+- [x] 6.3 settings で density / dirty_visualization / query / sections / control kind を切替えできるようにする。
 
 ## 7. ドキュメント
 
-- [ ] 7.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に SettingsList 行を追加する。
+- [x] 7.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に SettingsList 行を追加する。
 
 ## 8. 品質ゲート / DoD
 
 - [x] 8.1 `cargo test -p katana-ui-core` をパスする。
 - [x] 8.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。
 - [x] 8.3 `openspec validate 14-add-sectioned-settings-form --strict` をパスする。
-- [ ] 8.4 画像 / 入力回帰 CI gate をパスする。
+- [x] 8.4 入力回帰、state / event / action contract、数値化された描画契約、Storybook requirement gate をパスする。

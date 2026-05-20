@@ -64,7 +64,9 @@ pub struct SettingsSection {
     pub id: String,
     pub label: String,
     pub description: Option<String>,
+    pub icon: Option<String>,
     pub fields: Vec<SettingsField>,
+    pub footer: Option<String>,
     pub collapsible: bool,
     pub default_collapsed: bool,
 }
@@ -76,7 +78,9 @@ impl SettingsSection {
             id: id.into(),
             label: label.into(),
             description: None,
+            icon: None,
             fields: Vec::new(),
+            footer: None,
             collapsible: false,
             default_collapsed: false,
         }
@@ -89,8 +93,20 @@ impl SettingsSection {
     }
 
     #[must_use]
+    pub fn icon(mut self, value: impl Into<String>) -> Self {
+        self.icon = Some(value.into());
+        self
+    }
+
+    #[must_use]
     pub fn field(mut self, value: SettingsField) -> Self {
         self.fields.push(value);
+        self
+    }
+
+    #[must_use]
+    pub fn footer(mut self, value: impl Into<String>) -> Self {
+        self.footer = Some(value.into());
         self
     }
 

@@ -43,6 +43,8 @@ impl StoryDetailContent {
             shortcut_combo_settings_line(example, &marker)
         } else if example.page == "shortcut-cheatsheet" {
             shortcut_cheatsheet_settings_line(example, &marker)
+        } else if example.page == "settings-list" {
+            settings_list_settings_line(example, &marker)
         } else if example.page == "key-cap" {
             key_cap_settings_line(&marker)
         } else if example.page == "chip" {
@@ -244,6 +246,19 @@ fn shortcut_combo_settings_line(example: &StoryExample, marker: &str) -> String 
 fn shortcut_cheatsheet_settings_line(example: &StoryExample, marker: &str) -> String {
     format!(
         "{marker} settings: group_layout=TwoColumn query=format callback_log={} -> group_layout=OneColumn query=カテゴリ",
+        example.callback_logs.len()
+    )
+}
+
+fn settings_list_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: density=Default dirty_visualization=Marker query=None sections=3 control_kind=Toggle+Select+Combo+Input+TextArea+Number+Chips+Radio+ColorPicker+Custom callback_log={} actions={actions} -> density=Compact dirty_visualization=Highlight query=format sections=app+chat+lint control_kind=Number reset=true",
         example.callback_logs.len()
     )
 }

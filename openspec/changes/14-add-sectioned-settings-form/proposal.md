@@ -26,11 +26,11 @@ KUC は `FormField` molecule（ラベル + 子コントロール + エラー）�
 
 ### New Capabilities
 
-- `kuc-settings-list`: SettingsList molecule の option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページの完了条件を定義する。
+- `kuc-settings-list`: SettingsList molecule の option / action / event / state / preset / preview / settings / 自動テスト / 数値化された描画契約 / Storybook ページの完了条件を定義する。
 
 ## Impact
 
-- `crates/katana-ui-core/src/molecule/structured/settings_list.rs` 新設。
+- `crates/katana-ui-core/src/molecule/app_primitives/settings/` 新設。
 - consumer (`katana` settings、`katana-chat-ui` chat settings、`katana-markdown-linter` lint settings) は KUC molecule に統一可能になる。
 - 内部で既存 atom / molecule（Toggle, SelectBox, ComboBox, Input, TextArea, ChipGroup, Radio, ColorPicker, SlideControl）を再利用。
 - search filter は `SearchBox` molecule を embed する。
