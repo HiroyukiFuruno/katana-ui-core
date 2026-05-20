@@ -44,11 +44,12 @@ pub use typed::{
     UiAnimationState, UiButtonProps, UiClearActionSpec, UiColorSwatchProps, UiCommandResultProps,
     UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea, UiDismissAction,
     UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiIconProps, UiLoadingProps,
-    UiPanelProps, UiProgressMode, UiRect, UiScrollbarDragState, UiScrollbarModel,
-    UiScrollbarPlacement, UiScrollbarVisibility, UiSearchControlProps, UiSearchReplaceMode,
-    UiShortcutProps, UiSkeletonAnimation, UiSkeletonProps, UiSkeletonShape, UiSlotPlacement,
-    UiSlotSpec, UiSplitPaneAxis, UiSplitPaneProps, UiSplitPaneResizeMode, UiStatusProps,
-    UiSvgPaintPolicy, UiTextEntryProps, UiTextProps,
+    UiModalParentInteraction, UiModalPresentation, UiModalProps, UiModalSize, UiPanelProps,
+    UiProgressMode, UiRect, UiScrollbarDragState, UiScrollbarModel, UiScrollbarPlacement,
+    UiScrollbarVisibility, UiSearchControlProps, UiSearchReplaceMode, UiShortcutProps,
+    UiSkeletonAnimation, UiSkeletonProps, UiSkeletonShape, UiSlotPlacement, UiSlotSpec,
+    UiSplitPaneAxis, UiSplitPaneProps, UiSplitPaneResizeMode, UiStatusProps, UiSvgPaintPolicy,
+    UiTextEntryProps, UiTextProps,
 };
 
 #[cfg(test)]

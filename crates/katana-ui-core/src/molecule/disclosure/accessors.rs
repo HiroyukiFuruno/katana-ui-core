@@ -1,3 +1,4 @@
+use super::modal_types::ModalParentInteraction;
 use super::model::{Accordion, Modal, NotificationToast, Popover, SlideControl, Tooltip};
 use crate::molecule::DisclosureTriggerArea;
 
@@ -62,6 +63,11 @@ macro_rules! disclosure_accessors {
             #[must_use]
             pub fn uses_native_window_mode(&self) -> bool {
                 self.model.native_window_mode
+            }
+
+            #[must_use]
+            pub fn parent_interaction_model(&self) -> ModalParentInteraction {
+                self.model.parent_interaction
             }
 
             #[must_use]

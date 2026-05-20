@@ -1,4 +1,5 @@
 use super::actions::apply_disclosure_action;
+use super::modal_render::native_modal_props;
 use super::types::DisclosureTypedModel;
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult};
@@ -187,7 +188,8 @@ macro_rules! disclosure_molecule {
                 let mut node = value
                     .state
                     .node($kind, value.label)
-                    .disclosure(disclosure_props(&value.model));
+                    .disclosure(disclosure_props(&value.model))
+                    .modal(modal_props($kind, &value.model));
                 for child in value.children {
                     node = node.child(child);
                 }
@@ -211,6 +213,16 @@ fn disclosure_props(model: &DisclosureTypedModel) -> UiDisclosureProps {
         depth: model.depth,
         show_lines: model.show_lines,
     }
+}
+
+fn modal_props(
+    kind: UiNodeKind,
+    model: &DisclosureTypedModel,
+) -> crate::render_model::UiModalProps {
+    if kind == UiNodeKind::Modal {
+        return native_modal_props(model);
+    }
+    crate::render_model::UiModalProps::default()
 }
 
 fn indicator_position(value: &str) -> UiDisclosureIndicatorPosition {

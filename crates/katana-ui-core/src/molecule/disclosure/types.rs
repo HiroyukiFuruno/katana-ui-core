@@ -1,3 +1,4 @@
+use super::modal_types::ModalParentInteraction;
 use super::rich_content::{PopoverArrowSpec, PopoverFocusManagement, PopoverSlots};
 use crate::interaction::placement::Placement;
 use crate::molecule::disclosure_foundation::DisclosureTriggerArea;
@@ -24,6 +25,7 @@ pub(super) struct DisclosureTypedModel {
     pub size: String,
     pub footer: String,
     pub native_window_mode: bool,
+    pub parent_interaction: ModalParentInteraction,
     pub width: String,
     pub focus_handling: String,
     pub delay_ms: u16,
@@ -69,6 +71,7 @@ impl Default for DisclosureTypedModel {
             size: String::new(),
             footer: String::new(),
             native_window_mode: false,
+            parent_interaction: ModalParentInteraction::Block,
             width: String::new(),
             focus_handling: String::new(),
             delay_ms: 0,

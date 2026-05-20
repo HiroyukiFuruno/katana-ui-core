@@ -1,8 +1,9 @@
 use super::{
     UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiContextMenuProps, UiDisclosureProps,
-    UiIconProps, UiInteractionState, UiLoadingProps, UiNode, UiPanelProps, UiSearchControlProps,
-    UiShortcutProps, UiSize, UiSkeletonProps, UiSplitPaneProps, UiStatusProps, UiTextAreaProps,
-    UiTextEntryProps, UiTextProps, UiTone, UiTreeProps, UiVariant, UiVisualRole,
+    UiIconProps, UiInteractionState, UiLoadingProps, UiModalProps, UiNode, UiPanelProps,
+    UiSearchControlProps, UiShortcutProps, UiSize, UiSkeletonProps, UiSplitPaneProps,
+    UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTone, UiTreeProps, UiVariant,
+    UiVisualRole,
 };
 use crate::theme::ThemeSnapshot;
 
@@ -197,6 +198,12 @@ impl UiNode {
     #[must_use]
     pub fn split_pane(mut self, value: UiSplitPaneProps) -> Self {
         self.props.split_pane = value;
+        self
+    }
+
+    #[must_use]
+    pub fn modal(mut self, value: UiModalProps) -> Self {
+        self.props.modal = value;
         self
     }
 

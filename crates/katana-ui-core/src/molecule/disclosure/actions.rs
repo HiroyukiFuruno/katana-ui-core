@@ -19,6 +19,9 @@ pub(super) fn apply_disclosure_action(
     if matches!(kind, UiNodeKind::Accordion) && is_accordion_trigger_action(action) {
         return UiActionResult::ignored(state.state_id.clone(), before);
     }
+    if matches!(kind, UiNodeKind::Modal) && is_modal_lifecycle_action(action) {
+        return UiActionResult::ignored(state.state_id.clone(), before);
+    }
     state.apply_action(action, false)
 }
 
@@ -83,6 +86,16 @@ pub(super) fn is_accordion_trigger_action(action: &UiAction) -> bool {
     matches!(action, UiAction::Press { source, .. } if is_accordion_trigger_source(*source))
 }
 
+fn is_modal_lifecycle_action(action: &UiAction) -> bool {
+    matches!(
+        action,
+        UiAction::Press {
+            source: UiActionSource::ModalEscape | UiActionSource::ModalBackdrop,
+            ..
+        }
+    )
+}
+
 fn is_accordion_trigger_source(source: UiActionSource) -> bool {
     matches!(
         source,
@@ -129,11 +142,16 @@ fn apply_modal_action(
         UiAction::Press {
             source: UiActionSource::ModalEscape,
             ..
-        } => dismiss_if_allowed(state, model.escape_dismiss, "escape"),
+        } => dismiss_if_allowed(state, model.escape_dismiss, "escape", &model.focus_return),
         UiAction::Press {
             source: UiActionSource::ModalBackdrop,
             ..
-        } => dismiss_if_allowed(state, model.outside_click_dismiss, "backdrop"),
+        } => dismiss_if_allowed(
+            state,
+            model.outside_click_dismiss,
+            "backdrop",
+            &model.focus_return,
+        ),
         _ => false,
     }
 }
@@ -158,15 +176,15 @@ fn apply_popover_action(
         UiAction::Dismiss { .. } if model.keep_open_on_inner_focus && state.transient.focused => {
             true
         }
-        UiAction::Dismiss { .. } => dismiss_if_allowed(state, true, "dismiss"),
+        UiAction::Dismiss { .. } => dismiss_if_allowed(state, true, "dismiss", ""),
         UiAction::Press {
             source: UiActionSource::ModalBackdrop,
             ..
-        } => dismiss_if_allowed(state, model.outside_click_dismiss, "outside"),
+        } => dismiss_if_allowed(state, model.outside_click_dismiss, "outside", ""),
         UiAction::Press {
             source: UiActionSource::ModalEscape,
             ..
-        } => dismiss_if_allowed(state, model.escape_dismiss, "escape"),
+        } => dismiss_if_allowed(state, model.escape_dismiss, "escape", ""),
         _ => false,
     }
 }
@@ -176,12 +194,20 @@ fn toggle_open(state: &mut MoleculeState) -> bool {
     true
 }
 
-fn dismiss_if_allowed(state: &mut MoleculeState, allowed: bool, reason: &str) -> bool {
+fn dismiss_if_allowed(
+    state: &mut MoleculeState,
+    allowed: bool,
+    reason: &str,
+    focus_return: &str,
+) -> bool {
     if !allowed {
         return false;
     }
     state.open = false;
     state.transient.dismiss_reason = reason.to_string();
+    if !focus_return.is_empty() {
+        state.value = format!("focus_return={focus_return}");
+    }
     true
 }
 

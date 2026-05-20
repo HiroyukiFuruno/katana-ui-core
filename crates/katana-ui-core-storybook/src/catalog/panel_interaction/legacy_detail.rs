@@ -31,6 +31,10 @@ impl StoryDetailContent {
         let action = action_line(example, &marker);
         let settings = if example.page == "badge" {
             badge_settings_line(&marker)
+        } else if example.page == "modal" {
+            modal_settings_line(example, &marker)
+        } else if example.page == "modal-overlay" {
+            modal_overlay_settings_line(example, &marker)
         } else if example.page == "banner" {
             banner_settings_line(example, &marker)
         } else if example.page == "toast-stack-manager" {
@@ -191,6 +195,20 @@ fn accordion_settings_line(example: &StoryExample, marker: &str) -> String {
     format!(
         "{marker} settings: expanded=false disabled=false controlled=true multiple=true indicator=leading trigger_area=IconAndText toggle_icon=chevron tree_mode=true depth=2 selected=true show_lines=true reduced_motion=true body_border=true callback_log={} actions={actions} -> expanded=true trigger_area=WholeElement selected=false",
         example.callback_logs.len()
+    )
+}
+
+fn modal_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = callback_actions(example);
+    format!(
+        "{marker} settings: option=native_window_mode=true escape_close=true focus_return=trigger:open-modal parent_interaction=Block title=Preferences footer=Cancel / Save size=medium action={actions} event=NativeWindowOpened+ModalEscaped+FocusReturned+ParentInteractionBlocked state=open->closed preset=native window/focus return/parent block -> native_window_mode=true"
+    )
+}
+
+fn modal_overlay_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = callback_actions(example);
+    format!(
+        "{marker} settings: option=same_window_overlay=true backdrop_close=true escape_close=true focus_trap=true focus_return=trigger:open-overlay dismiss_disabled=true action={actions} event=OverlayBackdropClosed+OverlayEscaped+FocusTrapCycled+FocusReturned+DismissBlocked state=open->closed/open preset=overlay dialog/backdrop close/focus trap/dismiss disabled -> same_window_overlay=true"
     )
 }
 
@@ -402,6 +420,15 @@ fn collapsible_panel_settings_line(example: &StoryExample, marker: &str) -> Stri
         "{marker} settings: mode=Expanded width=240 pinned=true expand_on_hover=true resize_handle=true callback_log={} actions={actions} -> mode=IconOnly width=320 pinned=false expand_on_hover=true resize_handle=true",
         example.callback_logs.len()
     )
+}
+
+fn callback_actions(example: &StoryExample) -> String {
+    example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 fn action_line(example: &StoryExample, marker: &str) -> String {

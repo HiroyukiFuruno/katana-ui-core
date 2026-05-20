@@ -10,6 +10,8 @@ mod typed_disclosure;
 mod typed_drag;
 #[path = "typed_icon.rs"]
 mod typed_icon;
+#[path = "typed_modal.rs"]
+mod typed_modal;
 #[path = "typed_panel.rs"]
 mod typed_panel;
 #[path = "typed_search.rs"]
@@ -22,6 +24,7 @@ pub use typed_disclosure::{
 };
 pub use typed_drag::{UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps};
 pub use typed_icon::{UiIconProps, UiSvgPaintPolicy};
+pub use typed_modal::{UiModalParentInteraction, UiModalPresentation, UiModalProps, UiModalSize};
 pub use typed_panel::{
     UiPanelProps, UiRect, UiScrollbarDragState, UiScrollbarModel, UiScrollbarPlacement,
     UiScrollbarVisibility,

@@ -8,6 +8,8 @@ mod hover_card;
 mod hover_card_render;
 mod hover_card_slots;
 mod modal_overlay;
+mod modal_render;
+mod modal_types;
 mod model;
 mod options;
 mod placement;
@@ -26,6 +28,7 @@ pub use banner_types::{
 pub use group::{AccordionGroup, AccordionGroupItem};
 pub use hover_card::{HoverCard, HoverCardAction, HoverCardDelayState, HoverCardEvent};
 pub use modal_overlay::ModalOverlay;
+pub use modal_types::ModalParentInteraction;
 pub use model::{Accordion, Modal, NotificationToast, Popover, SlideControl, Tooltip};
 pub use rich_content::{PopoverActionSlot, PopoverArrowSpec, PopoverFocusManagement, PopoverSlots};
 pub use search_box::SearchBox;

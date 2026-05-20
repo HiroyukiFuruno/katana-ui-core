@@ -1,3 +1,4 @@
+use super::modal_types::ModalParentInteraction;
 use super::model::{Accordion, Modal, NotificationToast, Popover, SlideControl, Tooltip};
 
 macro_rules! disclosure_options {
@@ -24,6 +25,12 @@ macro_rules! disclosure_options {
             #[must_use]
             pub fn native_window_mode(mut self, value: bool) -> Self {
                 self.model.native_window_mode = value;
+                self
+            }
+
+            #[must_use]
+            pub fn parent_interaction(mut self, value: ModalParentInteraction) -> Self {
+                self.model.parent_interaction = value;
                 self
             }
 

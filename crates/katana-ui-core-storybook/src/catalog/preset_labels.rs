@@ -120,7 +120,20 @@ impl StoryPresetLabels {
                 "keyboard resize",
                 "nested",
             ],
-            "modal" | "modal-overlay" => &["dialog", "escape close", "focus trap", "theme overlay"],
+            "modal" => &[
+                "native window",
+                "escape close",
+                "focus return",
+                "parent block",
+                "title footer size",
+            ],
+            "modal-overlay" => &[
+                "overlay dialog",
+                "backdrop close",
+                "escape close",
+                "focus trap",
+                "dismiss disabled",
+            ],
             "notification-toast" => &["toast", "dismiss", "ToastStackManager", "theme toast"],
             "popover" => &["anchor", "arrow", "slots", "focus management"],
             "hover-card" => &[

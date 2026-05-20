@@ -179,5 +179,8 @@ fn expected_preset_count(page: &str) -> usize {
     if page == "collapsible-panel" {
         return 5;
     }
+    if page == "modal" || page == "modal-overlay" {
+        return 5;
+    }
     4
 }

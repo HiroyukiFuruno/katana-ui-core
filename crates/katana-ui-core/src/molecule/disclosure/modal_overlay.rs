@@ -1,3 +1,4 @@
+use super::modal_render::overlay_dialog_props;
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult, UiActionSource};
 use crate::molecule::state::MoleculeState;
@@ -140,7 +141,18 @@ impl ComponentAction for ModalOverlay {
 
 impl From<ModalOverlay> for UiNode {
     fn from(value: ModalOverlay) -> Self {
-        let mut node = value.state.node(UiNodeKind::ModalOverlay, value.label);
+        let modal_props = overlay_dialog_props(
+            &value.backdrop,
+            value.focus_trap,
+            &value.focus_return,
+            &value.dismiss_policy,
+            value.escape_dismiss,
+            value.outside_click_dismiss,
+        );
+        let mut node = value
+            .state
+            .node(UiNodeKind::ModalOverlay, value.label)
+            .modal(modal_props);
         for child in value.children {
             node = node.child(child);
         }
@@ -176,6 +188,10 @@ impl ModalOverlay {
             return false;
         }
         self.state.open = false;
+        self.state.transient.dismiss_reason = self.dismiss_policy.clone();
+        if !self.focus_return.is_empty() {
+            self.state.value = format!("focus_return={}", self.focus_return);
+        }
         true
     }
 }

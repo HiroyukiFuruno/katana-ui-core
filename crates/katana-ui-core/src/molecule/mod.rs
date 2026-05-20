@@ -48,9 +48,9 @@ pub use disclosure::{
     Accordion, AccordionGroup, AccordionGroupItem, Banner, BannerAccessibilityRole, BannerAction,
     BannerActionKind, BannerCommand, BannerDensity, BannerEvent, BannerLiveRegion,
     BannerPlacementHint, BannerSeverity, BannerState, BannerVisualContract, HoverCard,
-    HoverCardAction, HoverCardDelayState, HoverCardEvent, Modal, ModalOverlay, NotificationToast,
-    Popover, PopoverActionSlot, PopoverArrowSpec, PopoverFocusManagement, PopoverSlots, SearchBox,
-    SlideControl, Tooltip,
+    HoverCardAction, HoverCardDelayState, HoverCardEvent, Modal, ModalOverlay,
+    ModalParentInteraction, NotificationToast, Popover, PopoverActionSlot, PopoverArrowSpec,
+    PopoverFocusManagement, PopoverSlots, SearchBox, SlideControl, Tooltip,
 };
 pub use disclosure_foundation::{DisclosureIndicatorPosition, DisclosureTriggerArea};
 pub use drag_preview::DragPreview;

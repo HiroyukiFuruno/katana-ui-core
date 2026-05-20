@@ -35,3 +35,64 @@ fn molecule_story_pages_expose_component_specific_action_history() {
         );
     }
 }
+
+#[test]
+fn modal_story_pages_expose_specific_action_event_evidence() {
+    let examples = StoryCatalog.examples();
+    let modal = examples
+        .iter()
+        .find(|it| it.page == "modal")
+        .expect("modal story is missing");
+    let overlay = examples
+        .iter()
+        .find(|it| it.page == "modal-overlay")
+        .expect("modal-overlay story is missing");
+
+    for action in ["modal_escape", "modal_focus_return", "modal_parent_block"] {
+        assert!(
+            modal.callback_logs.iter().any(|it| it.action == action),
+            "modal lacks {action} action"
+        );
+    }
+    for event in [
+        "NativeWindowOpened",
+        "ModalEscaped",
+        "FocusReturned",
+        "ParentInteractionBlocked",
+    ] {
+        assert!(
+            modal
+                .callback_logs
+                .iter()
+                .any(|it| it.after.contains(event)),
+            "modal lacks {event} event evidence"
+        );
+    }
+    for action in [
+        "modal_backdrop_click",
+        "modal_escape",
+        "modal_focus_trap",
+        "modal_focus_return",
+        "modal_dismiss_disabled",
+    ] {
+        assert!(
+            overlay.callback_logs.iter().any(|it| it.action == action),
+            "modal-overlay lacks {action} action"
+        );
+    }
+    for event in [
+        "OverlayBackdropClosed",
+        "OverlayEscaped",
+        "FocusTrapCycled",
+        "FocusReturned",
+        "DismissBlocked",
+    ] {
+        assert!(
+            overlay
+                .callback_logs
+                .iter()
+                .any(|it| it.after.contains(event)),
+            "modal-overlay lacks {event} event evidence"
+        );
+    }
+}

@@ -27,7 +27,7 @@ impl StorybookOperationSequences {
     }
 
     pub(crate) fn overlay_dismissals(examples: &[StoryExample]) -> Vec<OperationStepReport> {
-        Self::operations_from_pages(examples, OVERLAY_PAGES)
+        Self::primary_operations_from_pages(examples, OVERLAY_PAGES)
     }
 
     pub(crate) fn color_picker_updates(examples: &[StoryExample]) -> Vec<OperationStepReport> {
@@ -107,6 +107,17 @@ impl StorybookOperationSequences {
             .iter()
             .filter(|example| pages.contains(&example.page))
             .flat_map(|example| example.callback_logs.iter().map(Self::operation_from_log))
+            .collect()
+    }
+
+    fn primary_operations_from_pages(
+        examples: &[StoryExample],
+        pages: &[&str],
+    ) -> Vec<OperationStepReport> {
+        examples
+            .iter()
+            .filter(|example| pages.contains(&example.page))
+            .filter_map(|example| example.callback_logs.first().map(Self::operation_from_log))
             .collect()
     }
 
