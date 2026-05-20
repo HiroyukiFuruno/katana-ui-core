@@ -1,6 +1,6 @@
 use super::{
-    UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiContextMenuProps, UiIconProps,
-    UiInteractionState, UiLoadingProps, UiNode, UiPanelProps, UiSearchControlProps,
+    UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiContextMenuProps, UiDisclosureProps,
+    UiIconProps, UiInteractionState, UiLoadingProps, UiNode, UiPanelProps, UiSearchControlProps,
     UiShortcutProps, UiSize, UiSkeletonProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps,
     UiTextProps, UiTone, UiTreeProps, UiVariant, UiVisualRole,
 };
@@ -161,6 +161,12 @@ impl UiNode {
     #[must_use]
     pub fn skeleton(mut self, value: UiSkeletonProps) -> Self {
         self.props.skeleton = value;
+        self
+    }
+
+    #[must_use]
+    pub fn disclosure(mut self, value: UiDisclosureProps) -> Self {
+        self.props.disclosure = value;
         self
     }
 

@@ -42,8 +42,9 @@ pub use tree_props::{
 };
 pub use typed::{
     UiAnimationState, UiButtonProps, UiClearActionSpec, UiColorSwatchProps, UiCommandResultProps,
-    UiDismissAction, UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiIconProps,
-    UiLoadingProps, UiPanelProps, UiProgressMode, UiRect, UiScrollbarDragState, UiScrollbarModel,
+    UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea, UiDismissAction,
+    UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiIconProps, UiLoadingProps,
+    UiPanelProps, UiProgressMode, UiRect, UiScrollbarDragState, UiScrollbarModel,
     UiScrollbarPlacement, UiScrollbarVisibility, UiSearchControlProps, UiSearchReplaceMode,
     UiShortcutProps, UiSkeletonAnimation, UiSkeletonProps, UiSkeletonShape, UiSlotPlacement,
     UiSlotSpec, UiStatusProps, UiSvgPaintPolicy, UiTextEntryProps, UiTextProps,

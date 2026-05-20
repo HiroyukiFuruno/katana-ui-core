@@ -1016,6 +1016,74 @@ fn popover_story_exposes_arrow_slots_and_focus_presets() -> Result<(), &'static 
 }
 
 #[test]
+fn accordion_story_exposes_presets_settings_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "accordion")
+        .ok_or("accordion page missing")?;
+    let labels = page_children(&examples, "accordion").ok_or("accordion page missing")?;
+    let details = super::StoryDetailContent::from_example(story);
+
+    assert_eq!(
+        &[
+            "closed",
+            "open",
+            "disabled",
+            "controlled",
+            "multiple",
+            "tree mode",
+            "reduced motion",
+            "trigger areas"
+        ],
+        StoryPresetLabels::for_page("accordion")
+    );
+    for preset in StoryPresetLabels::for_page("accordion") {
+        assert!(
+            labels.iter().any(|it| it.contains(preset)),
+            "accordion preview lacks preset {preset}"
+        );
+        assert!(
+            details.preset.contains(preset),
+            "accordion detail preset lacks {preset}"
+        );
+    }
+    for setting in [
+        "expanded",
+        "disabled",
+        "controlled",
+        "multiple",
+        "indicator",
+        "trigger_area",
+        "toggle_icon",
+        "tree_mode",
+        "depth",
+        "selected",
+        "show_lines",
+        "reduced_motion",
+        "body_border",
+    ] {
+        assert!(
+            details.settings.contains(setting),
+            "accordion settings inspector lacks {setting}"
+        );
+    }
+    for action in [
+        "accordion_toggle",
+        "accordion_trigger_area",
+        "accordion_controlled_request",
+        "accordion_group_toggle",
+        "accordion_disabled_block",
+    ] {
+        assert!(
+            story.callback_logs.iter().any(|it| it.action == action),
+            "accordion callback log lacks action {action}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn catalog_contains_single_independent_context_menu_story() {
     let examples = StoryCatalog.examples();
     let count = examples

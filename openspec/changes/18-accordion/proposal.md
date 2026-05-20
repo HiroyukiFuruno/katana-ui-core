@@ -3,21 +3,22 @@
 > Archive candidate: Accordion の KUC 実装要件は `openspec/changes/establish-kuc-atoms-molecules-catalog/` へ移管する。この change は要件移管後に archive 候補として扱う。
 
 設定パネル / FAQ / セクション分割で「ヘッダクリックで本体を折り畳む」UI が要る。
-root plan 適用後は repo 外の実装を直接読まず、必要な挙動を `docs/inventory/accordion.md` にコピーしてから KUC の中立 model と adapter 経由で実装する。
-`docs/inventory/accordion.md` が未作成の間は、この change 単独で実装を開始しない。
+root plan 適用後は repo 外の実装を直接読まず、必要な挙動を KUC の中立 model と自動契約へ移して実装する。
+完了根拠は Storybook の目視ではなく、state / event / action contract、render props、入力回帰、Storybook requirement gate とする。
 
 ## What Changes
 
-- `layout/accordion/` に `Accordion` widget を提供。
-- props: `header: View`（クロージャ）、`expanded: bool`、`on_toggle: Fn(bool)`、`disabled`、`indicator`（chevron icon の表示位置 `Leading` / `Trailing` / `None`）、`children: View`（クロージャ）。
-- 高さアニメーションは `theme/spacing` の固定 duration トークンを参照。
-- 単一の Accordion のみを対象（複数項目を排他的に開閉する `AccordionGroup` は YAGNI、必要時に別 change）。
+- `molecule::Accordion` に expanded、disabled、controlled、indicator、trigger area、tree mode、reduced motion、body border を持たせる。
+- `molecule::AccordionGroup` に single / multiple の同時展開制御を持たせる。
+- indicator は `Leading` / `Trailing` / `None` を扱う。
+- trigger area は icon only / text only / icon + text / full row を扱う。
+- 高さアニメーションは reduced motion で抑制できる render contract として扱う。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `widget-accordion`: 単一セクションの折り畳みコンテナ。chevron 配置と展開アニメーションを統一。
+- `widget-accordion`: セクションの折り畳みコンテナ。chevron 配置、trigger area、tree mode、controlled request、group 展開制御を統一。
 
 ## Impact
 

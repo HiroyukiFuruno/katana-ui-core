@@ -140,6 +140,9 @@ fn expected_preset_count(page: &str) -> usize {
     if page == "text-area" {
         return 7;
     }
+    if page == "accordion" {
+        return 8;
+    }
     if page == "command-palette" {
         return 6;
     }

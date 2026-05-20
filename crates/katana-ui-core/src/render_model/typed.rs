@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 
 #[path = "typed_command.rs"]
 mod typed_command;
+#[path = "typed_disclosure.rs"]
+mod typed_disclosure;
 #[path = "typed_drag.rs"]
 mod typed_drag;
 #[path = "typed_icon.rs"]
@@ -13,6 +15,9 @@ mod typed_panel;
 #[path = "typed_search.rs"]
 mod typed_search;
 pub use typed_command::UiCommandResultProps;
+pub use typed_disclosure::{
+    UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea,
+};
 pub use typed_drag::{UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps};
 pub use typed_icon::{UiIconProps, UiSvgPaintPolicy};
 pub use typed_panel::{

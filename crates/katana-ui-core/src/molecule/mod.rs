@@ -45,13 +45,14 @@ pub use diff::{
     CodeDiffTextSource, CodeDiffWhitespace, CollapsedBlock, HighlightRange,
 };
 pub use disclosure::{
-    Accordion, Banner, BannerAccessibilityRole, BannerAction, BannerActionKind, BannerCommand,
-    BannerDensity, BannerEvent, BannerLiveRegion, BannerPlacementHint, BannerSeverity, BannerState,
-    BannerVisualContract, HoverCard, HoverCardAction, HoverCardDelayState, HoverCardEvent, Modal,
-    ModalOverlay, NotificationToast, Popover, PopoverActionSlot, PopoverArrowSpec,
-    PopoverFocusManagement, PopoverSlots, SearchBox, SlideControl, Tooltip,
+    Accordion, AccordionGroup, AccordionGroupItem, Banner, BannerAccessibilityRole, BannerAction,
+    BannerActionKind, BannerCommand, BannerDensity, BannerEvent, BannerLiveRegion,
+    BannerPlacementHint, BannerSeverity, BannerState, BannerVisualContract, HoverCard,
+    HoverCardAction, HoverCardDelayState, HoverCardEvent, Modal, ModalOverlay, NotificationToast,
+    Popover, PopoverActionSlot, PopoverArrowSpec, PopoverFocusManagement, PopoverSlots, SearchBox,
+    SlideControl, Tooltip,
 };
-pub use disclosure_foundation::DisclosureTriggerArea;
+pub use disclosure_foundation::{DisclosureIndicatorPosition, DisclosureTriggerArea};
 pub use drag_preview::DragPreview;
 pub use empty_state::{
     EmptyState, EmptyStateAction, EmptyStateActionId, EmptyStateAlignment,

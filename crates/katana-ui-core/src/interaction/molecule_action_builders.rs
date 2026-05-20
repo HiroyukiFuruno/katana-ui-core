@@ -27,6 +27,30 @@ impl UiAction {
     }
 
     #[must_use]
+    pub fn accordion_icon_toggle(target: UiStateId) -> Self {
+        Self::Press {
+            target,
+            source: UiActionSource::AccordionIcon,
+        }
+    }
+
+    #[must_use]
+    pub fn accordion_text_toggle(target: UiStateId) -> Self {
+        Self::Press {
+            target,
+            source: UiActionSource::AccordionText,
+        }
+    }
+
+    #[must_use]
+    pub fn accordion_row_toggle(target: UiStateId) -> Self {
+        Self::Press {
+            target,
+            source: UiActionSource::AccordionRow,
+        }
+    }
+
+    #[must_use]
     pub fn tooltip_toggle(target: UiStateId) -> Self {
         Self::Press {
             target,

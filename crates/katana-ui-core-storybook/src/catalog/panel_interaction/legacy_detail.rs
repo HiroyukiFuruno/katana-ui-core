@@ -69,6 +69,8 @@ impl StoryDetailContent {
             popover_settings_line(&marker)
         } else if example.page == "hover-card" {
             hover_card_settings_line(&marker)
+        } else if example.page == "accordion" {
+            accordion_settings_line(example, &marker)
         } else if example.page == "toolbar" {
             toolbar_settings_line(&marker)
         } else if example.page == "text-area" {
@@ -174,6 +176,19 @@ fn popover_settings_line(marker: &str) -> String {
 fn hover_card_settings_line(marker: &str) -> String {
     format!(
         "{marker} settings: delay/placement/arrow/focus/slot open100,Pointer,true,keep,heading -> open0,TopStart,false,blur,footer"
+    )
+}
+
+fn accordion_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: expanded=false disabled=false controlled=true multiple=true indicator=leading trigger_area=IconAndText toggle_icon=chevron tree_mode=true depth=2 selected=true show_lines=true reduced_motion=true body_border=true callback_log={} actions={actions} -> expanded=true trigger_area=WholeElement selected=false",
+        example.callback_logs.len()
     )
 }
 

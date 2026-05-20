@@ -20,6 +20,9 @@ pub enum UiActionSource {
     SegmentedToggle,
     SelectBox,
     Accordion,
+    AccordionIcon,
+    AccordionText,
+    AccordionRow,
     Tooltip,
     Popover,
     ModalEscape,
@@ -38,7 +41,9 @@ impl UiActionSource {
             Self::Button => "button_press",
             Self::SearchBox => "search_submitted",
             Self::InputSubmit => "input_submitted",
-            Self::Accordion => "accordion_toggle",
+            Self::Accordion | Self::AccordionIcon | Self::AccordionText | Self::AccordionRow => {
+                "accordion_toggle"
+            }
             Self::Tooltip => "tooltip_toggle",
             Self::Popover => "popover_toggle",
             Self::ModalEscape => "modal_escape",

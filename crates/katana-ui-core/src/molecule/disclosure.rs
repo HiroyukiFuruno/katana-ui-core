@@ -3,6 +3,7 @@ mod actions;
 mod banner;
 mod banner_render;
 mod banner_types;
+mod group;
 mod hover_card;
 mod hover_card_render;
 mod hover_card_slots;
@@ -22,6 +23,7 @@ pub use banner_types::{
     BannerEvent, BannerLiveRegion, BannerPlacementHint, BannerSeverity, BannerState,
     BannerVisualContract,
 };
+pub use group::{AccordionGroup, AccordionGroupItem};
 pub use hover_card::{HoverCard, HoverCardAction, HoverCardDelayState, HoverCardEvent};
 pub use modal_overlay::ModalOverlay;
 pub use model::{Accordion, Modal, NotificationToast, Popover, SlideControl, Tooltip};

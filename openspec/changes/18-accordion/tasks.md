@@ -2,9 +2,9 @@
 
 ## 1. 実装
 
-- [x] 1.1 `layout/accordion/types.rs` に `AccordionProps` / `IndicatorPosition` を定義
-- [x] 1.2 `layout/accordion/view.rs` に展開・折り畳みアニメーションを実装
-- [x] 1.3 `layout/accordion/mod.rs` で公開 API を整理
+- [x] 1.1 `molecule::Accordion` / `AccordionGroup` の typed props を定義
+- [x] 1.2 展開・折り畳み、controlled request、trigger area の action contract を実装
+- [x] 1.3 `widget::molecules` の公開 API を整理
 - [x] 1.4 `tree_mode` 相当の情報を受け取るプロパティを追加し、選択行/深さ/ライン表示を扱える状態を用意
 
 ## 2. 追加要件対応
@@ -19,7 +19,7 @@
 
 ## 3. Storybook
 
-- [x] 3.1 `storybook/src/pages/accordion.rs` を追加し `pages/mod.rs` に登録済み
+- [x] 3.1 Storybook の `accordion` page を KUC panel へ登録済み
 - [x] 3.2 ページ内表示
   - [x] 既定 / 展開済み
   - [x] indicator 位置違い 3 種
@@ -32,13 +32,12 @@
   - [x] reduced motion の比較
   - [x] 操作結果 / callback log を同じ画面内に表示
 
-## 4. 完了確認
+## 4. 自動契約 / 品質ゲート
 
 - [x] 4.1 `cargo check -p katana-ui-core`
-- [x] 4.2 `just storybook` で accordion ページが想定通り表示
-  - 2026-05-11: `KATANA_UI_WIDGET_STORYBOOK_PAGE=accordion` で起動し、katana方式の `screencapture -l <window_id>` でAccordionページのウィンドウ単体表示を確認。
-- [x] 4.3 ast-lint 通過
-  - 2026-05-11: `just ast-lint` 通過
+- [x] 4.2 `accordion_contract` で trigger area、controlled、render props、group single/multiple を検証
+- [x] 4.3 `cargo test -p katana-ui-core-storybook` で Storybook page contract を検証
+- [x] 4.4 `just storybook-requirement-gate` を通過
 
 ## ユーザーフィードバック
 

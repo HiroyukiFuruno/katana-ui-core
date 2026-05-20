@@ -16,6 +16,9 @@ pub(super) fn apply_disclosure_action(
     if apply_kind_action(state, model, kind, action) {
         return handled(state.state_id.clone(), action, before, state.interaction());
     }
+    if matches!(kind, UiNodeKind::Accordion) && is_accordion_trigger_action(action) {
+        return UiActionResult::ignored(state.state_id.clone(), before);
+    }
     state.apply_action(action, false)
 }
 
@@ -27,7 +30,7 @@ fn apply_kind_action(
 ) -> bool {
     match kind {
         UiNodeKind::Tooltip => apply_tooltip_action(state, model, action),
-        UiNodeKind::Accordion => apply_toggle_action(state, action),
+        UiNodeKind::Accordion => apply_toggle_action(state, model, action),
         UiNodeKind::Modal => apply_modal_action(state, model, action),
         UiNodeKind::Popover => apply_popover_action(state, model, action),
         _ => false,
@@ -58,12 +61,61 @@ fn apply_tooltip_action(
     }
 }
 
-fn apply_toggle_action(state: &mut MoleculeState, action: &UiAction) -> bool {
+fn apply_toggle_action(
+    state: &mut MoleculeState,
+    model: &DisclosureTypedModel,
+    action: &UiAction,
+) -> bool {
     match action {
-        UiAction::Press {
-            source: UiActionSource::Accordion | UiActionSource::Click | UiActionSource::Generic,
-            ..
-        } => toggle_open(state),
+        UiAction::Press { source, .. } if accepts_accordion_trigger(model, *source) => {
+            if model.controlled {
+                state.value = format!("requested_open={}", !state.open);
+                return true;
+            }
+            toggle_open(state)
+        }
+        UiAction::Press { source, .. } if is_accordion_trigger_source(*source) => false,
+        _ => false,
+    }
+}
+
+pub(super) fn is_accordion_trigger_action(action: &UiAction) -> bool {
+    matches!(action, UiAction::Press { source, .. } if is_accordion_trigger_source(*source))
+}
+
+fn is_accordion_trigger_source(source: UiActionSource) -> bool {
+    matches!(
+        source,
+        UiActionSource::Accordion
+            | UiActionSource::Click
+            | UiActionSource::Generic
+            | UiActionSource::AccordionRow
+            | UiActionSource::AccordionIcon
+            | UiActionSource::AccordionText
+    )
+}
+
+fn accepts_accordion_trigger(model: &DisclosureTypedModel, source: UiActionSource) -> bool {
+    match source {
+        UiActionSource::Accordion => true,
+        UiActionSource::Click | UiActionSource::Generic | UiActionSource::AccordionRow => {
+            matches!(
+                model.trigger_area,
+                crate::molecule::DisclosureTriggerArea::WholeElement
+            )
+        }
+        UiActionSource::AccordionIcon => matches!(
+            model.trigger_area,
+            crate::molecule::DisclosureTriggerArea::IconOnly
+                | crate::molecule::DisclosureTriggerArea::IconAndText
+                | crate::molecule::DisclosureTriggerArea::WholeElement
+        ),
+        UiActionSource::AccordionText => matches!(
+            model.trigger_area,
+            crate::molecule::DisclosureTriggerArea::IconAndText
+                | crate::molecule::DisclosureTriggerArea::WholeElement
+                | crate::molecule::DisclosureTriggerArea::TextOnly
+        ),
         _ => false,
     }
 }
