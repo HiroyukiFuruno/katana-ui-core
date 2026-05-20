@@ -93,7 +93,7 @@ KUC が持つ対象は、最小部品（atoms）と複合部品（molecules）�
 | 18 | motion primitives | fade / slide / scale / shimmer の数値 token | 開閉、hover、loading の動き | overlay、toast、skeleton | 現行追加は妥当。reduced-motion を contract 化する |
 | 19 | window control button group | close / minimize / maximize の小ボタン群 | window command を通知する | katana title area、chat header | title bar / window chrome 全体は対象外。button group molecule まで |
 | 20 | startup state composition | loading / error / retry を持つ小さな状態面 | 起動・初期化状態を表示する | app splash、session loading | splash template は対象外。KUC は state panel か既存 molecule の組合せを提供 |
-| 21 | command launcher / search results | 上部入力欄と、icon / label / shortcut 付き結果一覧 | command 検索、slash command、履歴検索 | katana command palette、chat slash launcher | `CommandPalette` はあるが result row、provider、keyboard selection、shortcut badge が不足 |
+| 21 | command launcher / search results | 上部入力欄と、icon / label / shortcut 付き結果一覧 | command 検索、slash command、履歴検索 | katana command palette、chat slash launcher | result row、provider group、keyboard selection、shortcut badge、disabled guard、virtualized highlight は KUC contract へ移管済み。domain command registry は consumer 側 |
 | 22 | search control strip | 検索欄の横に match case / whole word / regex / 前後移動 / 件数が並ぶ | 検索条件、前後移動、replace request を consumer へ通知する | katana search modal、KLE find/replace、KDV viewer search、chat history search | `SearchBox` はあるが検索 option、件数、replace、navigation event が不足 |
 
 ## 既存 UI では option で補えない差分
@@ -111,7 +111,7 @@ KUC が持つ対象は、最小部品（atoms）と複合部品（molecules）�
 | `List` / `TreeView` | severity、location、fix action、bulk action、filter chip が typed でない | `08-add-diagnostics-list` |
 | `StatusBar` / `ProgressBar` | segment action、ring / pie meter、usage tooltip が不足 | `12-add-multi-segment-status-bar` |
 | `KeyCap` | modifier + key の platform 表示、検索可能 cheatsheet が不足 | `13-add-shortcut-combo-display` |
-| `CommandPalette` | result row の icon / secondary text / shortcut badge / provider dispatch が不足 | `21-add-command-launcher-results` |
+| `CommandPalette` | result row / provider group / keyboard selection / shortcut badge / virtualized highlight は `21-add-command-launcher-results` で対応済み。provider dispatch と app command registry は domain 側に残す | `21-add-command-launcher-results` |
 | `SearchBox` | match case / whole word / regex、前後移動、件数、replace controls は `SearchControlStrip` の typed state / action / event / Storybook settings へ移管済み | `22-add-search-control-strip` |
 
 ## 利用側が組む organisms / templates

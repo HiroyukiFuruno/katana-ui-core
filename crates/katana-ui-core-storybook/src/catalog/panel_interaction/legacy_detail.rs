@@ -96,6 +96,8 @@ impl StoryDetailContent {
             window_control_button_group_settings_line(example, &marker)
         } else if example.page == "startup-state-panel" {
             startup_state_panel_settings_line(example, &marker)
+        } else if example.page == "command-palette" {
+            command_palette_settings_line(example, &marker)
         } else if is_virtualized_page(example.page) {
             virtualization_settings_line(example, &marker)
         } else {
@@ -105,6 +107,8 @@ impl StoryDetailContent {
             search_control_state_line(example, &marker)
         } else if example.page == "scroll-area" {
             scroll_area_state_line(example, &marker)
+        } else if example.page == "command-palette" {
+            command_palette_state_line(example, &marker)
         } else {
             state_line(example, &marker, option, &after_props)
         };
@@ -112,6 +116,8 @@ impl StoryDetailContent {
             search_control_event_line(example, &marker)
         } else if example.page == "scroll-area" {
             scroll_area_event_line(example, &marker)
+        } else if example.page == "command-palette" {
+            command_palette_event_line(example, &marker)
         } else {
             event_line(example, &marker)
         };
@@ -119,6 +125,8 @@ impl StoryDetailContent {
             search_control_action_line(example, &marker)
         } else if example.page == "scroll-area" {
             scroll_area_action_line(example, &marker)
+        } else if example.page == "command-palette" {
+            command_palette_action_line(example, &marker)
         } else {
             action_line(example, &marker)
         };
@@ -126,6 +134,8 @@ impl StoryDetailContent {
             search_control_quality_line(&marker)
         } else if example.page == "scroll-area" {
             scroll_area_quality_line(&marker)
+        } else if example.page == "command-palette" {
+            command_palette_quality_line(&marker)
         } else {
             quality_line(spec, &marker)
         };
@@ -422,6 +432,35 @@ fn startup_state_panel_settings_line(example: &StoryExample, marker: &str) -> St
     format!(
         "{marker} settings: state=Idle/Loading/Error progress=None/64/100 label=Loading workspace retry=true/false cancel=true/false version_label=none/v0.1.0 callback_log={} actions={actions} event=StartupStateChanged+StartupRetried+StartupCanceled -> state=Error progress=100 label=Workspace failed retry=true cancel=true",
         example.callback_logs.len()
+    )
+}
+
+fn command_palette_settings_line(example: &StoryExample, marker: &str) -> String {
+    format!(
+        "{marker} settings: query=open->theme highlight=0->2 row_count=5->50 provider_group=workspace/editor/app shortcut_display=visible/hidden disabled_reason=readonly virtualization enabled=true->false overscan=2->4 row_height_provider=Fixed->Variable visible_range={} -> query=theme highlight=2 row_count=50",
+        virtualization_log_after(example)
+    )
+}
+
+fn command_palette_state_line(example: &StoryExample, marker: &str) -> String {
+    format!(
+        "{marker} state: id={} query=theme highlighted_row=theme virtual_range={} disabled_reason=readonly",
+        example.tree.root().props().state_id.as_str(),
+        virtualization_log_after(example)
+    )
+}
+
+fn command_palette_event_line(example: &StoryExample, marker: &str) -> String {
+    format!("{marker} event: {}", callback_actions(example))
+}
+
+fn command_palette_action_line(example: &StoryExample, marker: &str) -> String {
+    format!("{marker} action: {}", callback_actions(example))
+}
+
+fn command_palette_quality_line(marker: &str) -> String {
+    format!(
+        "{marker} quality: keyboard_contract=true virtualized_highlight=true disabled_execution_guard=true"
     )
 }
 

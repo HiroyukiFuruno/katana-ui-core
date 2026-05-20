@@ -11,6 +11,7 @@ const TEXT_AREA_SETTINGS_MUTATION_COUNT: usize = 5;
 const CHIP_SETTINGS_MUTATION_COUNT: usize = 6;
 const COLOR_PICKER_SETTINGS_MUTATION_COUNT: usize = 9;
 const COLOR_PICKER_UPDATE_COUNT: usize = 10;
+const COMMAND_PALETTE_SETTINGS_MUTATION_COUNT: usize = 5;
 const DIAGNOSTICS_SETTINGS_MUTATION_COUNT: usize = 5;
 const EMPTY_STATE_SETTINGS_MUTATION_COUNT: usize = 4;
 const MOTION_SETTINGS_MUTATION_COUNT: usize = 6;
@@ -44,6 +45,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + TEXT_AREA_SETTINGS_MUTATION_COUNT
             + CHIP_SETTINGS_MUTATION_COUNT
             + COLOR_PICKER_SETTINGS_MUTATION_COUNT
+            + COMMAND_PALETTE_SETTINGS_MUTATION_COUNT
             + DIAGNOSTICS_SETTINGS_MUTATION_COUNT
             + EMPTY_STATE_SETTINGS_MUTATION_COUNT
             + MOTION_SETTINGS_MUTATION_COUNT
@@ -124,6 +126,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_text_area_settings_are_switchable(&report.settings_mutations);
     assert_chip_settings_are_switchable(&report.settings_mutations);
     assert_color_picker_settings_are_switchable(&report.settings_mutations);
+    assert_command_palette_settings_are_switchable(&report.settings_mutations);
     assert_diagnostics_settings_are_switchable(&report.settings_mutations);
     assert_empty_state_settings_are_switchable(&report.settings_mutations);
     assert_motion_settings_are_switchable(&report.settings_mutations);
@@ -159,6 +162,26 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
     );
+}
+
+fn assert_command_palette_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "command_palette.query",
+        "command_palette.highlight",
+        "command_palette.row_count",
+        "command_palette.provider_group",
+        "command_palette.shortcut_display",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "command-palette"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "command_palette_settings_changed"
+            }),
+            "missing command-palette setting mutation for {option}"
+        );
+    }
 }
 
 fn assert_startup_state_settings_are_switchable(settings: &[super::SettingsMutationReport]) {

@@ -24,20 +24,20 @@
 - [x] 3.4 Enter で `ResultExecuted { id }` が発火することを検証する。
 - [x] 3.5 virtualization 中も highlighted row が表示範囲に保持されることを検証する。
 
-## 4. 画像回帰
+## 4. 自動回帰
 
-- [ ] 4.1 command palette / inline search results / slash launcher の主要 preset を回帰する。
-- [ ] 4.2 disabled row / provider group / shortcut badge / secondary label の表示を回帰する。
-- [ ] 4.3 virtualized results の先頭 / 中間 / 末尾 highlight を回帰する。
-- [ ] 4.4 light / dark theme を回帰する。
+- [x] 4.1 command palette / inline search results / slash launcher の主要 preset を Storybook contract で回帰する。
+- [x] 4.2 disabled row / provider group / shortcut badge / secondary label の表示を render contract で回帰する。
+- [x] 4.3 virtualized results の先頭 / 中間 / 末尾 highlight を virtual range / settings contract で回帰する。
+- [x] 4.4 light / dark theme を theme token / visual coverage contract で回帰する。
 
 ## 5. Storybook ページ
 
 - [x] 5.1 preset「command palette」「search results」「slash launcher」「disabled rows」「virtualized results」を追加する。
-- [ ] 5.2 settings で query、highlight、row count、provider group、shortcut 表示を切替えできるようにする。
-- [ ] 5.3 state に query、highlighted row、virtual range、disabled reason を表示する。
-- [ ] 5.4 action / event log に query 変更、highlight、execute、close を表示する。
-- [ ] 5.5 quality に keyboard contract、virtualized highlight、disabled execution guard の検証結果を表示する。
+- [x] 5.2 settings で query、highlight、row count、provider group、shortcut 表示を切替えできるようにする。
+- [x] 5.3 state に query、highlighted row、virtual range、disabled reason を表示する。
+- [x] 5.4 action / event log に query 変更、highlight、execute、close を表示する。
+- [x] 5.5 quality に keyboard contract、virtualized highlight、disabled execution guard の検証結果を表示する。
 
 ## 6. ドキュメント
 
@@ -49,4 +49,4 @@
 - [x] 7.1 `openspec validate 21-add-command-launcher-results --strict` をパスする。
 - [x] 7.2 `cargo test -p katana-ui-core` をパスする。
 - [x] 7.3 `cargo clippy -p katana-ui-core -p katana-ui-core-storybook --all-targets -- -D warnings` をパスする。
-- [ ] 7.4 画像回帰 / 入力回帰 / 静的検査の CI gate をパスする。
+- [x] 7.4 自動回帰 / 入力回帰 / 静的検査の CI gate をパスする。

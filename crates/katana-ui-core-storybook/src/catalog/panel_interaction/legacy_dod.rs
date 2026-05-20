@@ -13,6 +13,8 @@ mod legacy_dod_chip_settings;
 mod legacy_dod_collapsible_panel_settings;
 #[path = "legacy_dod_color_picker_settings.rs"]
 mod legacy_dod_color_picker_settings;
+#[path = "legacy_dod_command_palette_settings.rs"]
+mod legacy_dod_command_palette_settings;
 #[path = "legacy_dod_context_menu.rs"]
 mod legacy_dod_context_menu;
 #[path = "legacy_dod_diagnostics_settings.rs"]
@@ -107,6 +109,9 @@ impl LegacyDodReports {
         reports.extend(legacy_dod_context_menu::settings_mutations(examples));
         reports.extend(legacy_dod_chip_settings::settings_mutations(examples));
         reports.extend(legacy_dod_color_picker_settings::settings_mutations(
+            examples,
+        ));
+        reports.extend(legacy_dod_command_palette_settings::settings_mutations(
             examples,
         ));
         reports.extend(legacy_dod_collapsible_panel_settings::settings_mutations(

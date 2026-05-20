@@ -37,8 +37,11 @@ fn command_palette_story() -> StoryExample {
         ));
     let target = palette.state_id().clone();
     let query = palette.apply_launcher_action(CommandLauncherAction::SetQuery("theme".into()));
+    let highlight =
+        palette.apply_launcher_action(CommandLauncherAction::Keyboard(CommandKeyboardInput::Home));
     let execute =
         palette.apply_launcher_action(CommandLauncherAction::Keyboard(CommandKeyboardInput::Enter));
+    let closed = palette.apply_launcher_action(CommandLauncherAction::Close);
     let logs = vec![
         UiCallbackLog::new(
             target.clone(),
@@ -47,10 +50,22 @@ fn command_palette_story() -> StoryExample {
             format!("events={query:?}"),
         ),
         UiCallbackLog::new(
-            target,
+            target.clone(),
+            "command_highlight_moved",
+            "highlighted=theme",
+            format!("events={highlight:?}"),
+        ),
+        UiCallbackLog::new(
+            target.clone(),
             "command_execute",
             "highlighted=theme",
             format!("events={execute:?}"),
+        ),
+        UiCallbackLog::new(
+            target.clone(),
+            "command_close",
+            "open=true",
+            format!("events={closed:?}"),
         ),
         molecule_virtualization::log(
             palette.state_id().clone(),
