@@ -8,7 +8,7 @@ pub use actions::{
 };
 pub use types::{ReplaceMode, SearchOptionKind, SearchOptions};
 
-use crate::render_model::{UiNodeKind, UiStateId};
+use crate::render_model::{UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -21,6 +21,7 @@ pub struct SearchControlStrip {
     active_index: Option<usize>,
     replace_mode: ReplaceMode,
     replace_value: String,
+    children: Vec<UiNode>,
 }
 
 impl SearchControlStrip {
@@ -35,6 +36,7 @@ impl SearchControlStrip {
             active_index: None,
             replace_mode: ReplaceMode::Hidden,
             replace_value: String::new(),
+            children: Vec::new(),
         }
     }
 
@@ -66,6 +68,12 @@ impl SearchControlStrip {
     #[must_use]
     pub fn replace_value(mut self, value: impl Into<String>) -> Self {
         self.replace_value = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn child(mut self, value: impl Into<UiNode>) -> Self {
+        self.children.push(value.into());
         self
     }
 

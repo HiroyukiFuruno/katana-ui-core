@@ -28,9 +28,10 @@ impl StoryDetailContent {
         let resolved_after = resolved_after_value(option, value_type, configured_after, &before);
         let after_props = props_with_option(props, option, &resolved_after);
         let after = option_value(option, &after_props);
-        let action = action_line(example, &marker);
         let settings = if example.page == "badge" {
             badge_settings_line(&marker)
+        } else if example.page == "search-control-strip" {
+            search_control_settings_line(example, &marker)
         } else if example.page == "modal" {
             modal_settings_line(example, &marker)
         } else if example.page == "modal-overlay" {
@@ -92,15 +93,35 @@ impl StoryDetailContent {
         } else {
             format!("{marker} settings: {option} ({value_type}) {before} -> {after}")
         };
+        let state = if example.page == "search-control-strip" {
+            search_control_state_line(example, &marker)
+        } else {
+            state_line(example, &marker, option, &after_props)
+        };
+        let event = if example.page == "search-control-strip" {
+            search_control_event_line(example, &marker)
+        } else {
+            event_line(example, &marker)
+        };
+        let action = if example.page == "search-control-strip" {
+            search_control_action_line(example, &marker)
+        } else {
+            action_line(example, &marker)
+        };
+        let quality = if example.page == "search-control-strip" {
+            search_control_quality_line(&marker)
+        } else {
+            quality_line(spec, &marker)
+        };
 
         Self {
             page: example.page.to_string(),
             settings,
-            state: state_line(example, &marker, option, &after_props),
-            event: event_line(example, &marker),
+            state,
+            event,
             action,
             preset: preset_line(example.page, &marker),
-            quality: quality_line(spec, &marker),
+            quality,
         }
     }
 }
@@ -180,6 +201,43 @@ fn color_picker_settings_line(example: &StoryExample, marker: &str) -> String {
     format!(
         "{marker} settings: mode=RGBA/RGB channels=R64,G128,B255,A204 blending=Normal/Additive eyedropper=storybook-eyedropper readonly=false disabled=false plane=saturation/value hue=214 alpha=204 preview=transparent-checker actions={actions} -> mode=RGB channels=R72,G136,B240,A188 blending=Additive readonly=true disabled=true"
     )
+}
+
+fn search_control_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = callback_actions(example);
+    format!(
+        "{marker} settings: query match_case whole_word regex replace_mode result_count active_index actions={actions} -> query=heading match_case=true whole_word=true regex=true replace_mode=Visible result_count=12 active_index=2"
+    )
+}
+
+fn search_control_state_line(example: &StoryExample, marker: &str) -> String {
+    let props = example.tree.root().props();
+    format!(
+        "{marker} state: id={} state: query={} match_case={} whole_word={} regex={} replace={} result={}",
+        props.state_id.as_str(),
+        props.search_control.query,
+        props.search_control.match_case,
+        props.search_control.whole_word,
+        props.search_control.use_regex,
+        props.search_control.replace_value,
+        props.search_control.result_summary
+    )
+}
+
+fn search_control_event_line(example: &StoryExample, marker: &str) -> String {
+    format!(
+        "{marker} event: SearchQueryChanged SearchOptionChanged SearchNavigationRequested ReplaceRequested callback_log={}",
+        example.callback_logs.len()
+    )
+}
+
+fn search_control_action_line(example: &StoryExample, marker: &str) -> String {
+    let actions = callback_actions(example);
+    format!("{marker} action: query option navigate replace result-position actions={actions}")
+}
+
+fn search_control_quality_line(marker: &str) -> String {
+    format!("{marker} quality: typed options state_id result_count event_contract")
 }
 
 fn popover_settings_line(example: &StoryExample, marker: &str) -> String {

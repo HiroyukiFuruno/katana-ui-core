@@ -1,5 +1,6 @@
 use super::super::{StoryCatalog, StoryExample};
 use super::molecule_virtualization;
+use katana_ui_core::atom;
 use katana_ui_core::interaction::UiCallbackLog;
 use katana_ui_core::molecule;
 use katana_ui_core::molecule::{
@@ -80,18 +81,46 @@ fn search_control_strip_story() -> StoryExample {
         .query("head")
         .result_position(SEARCH_RESULT_COUNT, Some(SEARCH_ACTIVE_INDEX))
         .replace_mode(ReplaceMode::Visible)
-        .replace_value("title");
+        .replace_value("title")
+        .child(atom::Text::new(
+            "settings: query match_case whole_word regex replace_mode result_count active_index",
+        ))
+        .child(atom::Text::new(
+            "state: query=heading match_case=true whole_word=true regex=true replace=title result=3 / 12",
+        ))
+        .child(atom::Text::new(
+            "event: SearchQueryChanged SearchOptionChanged SearchNavigationRequested ReplaceRequested",
+        ))
+        .child(atom::Text::new(
+            "action: query option navigate replace result-position",
+        ))
+        .child(atom::Text::new(
+            "preset: workspace search editor find editor replace viewer search history search",
+        ))
+        .child(atom::Text::new(
+            "quality: typed options state_id result_count event_contract",
+        ));
     let target = strip.state_id().clone();
     let query = strip.apply_action(SearchControlStripAction::SetSearchQuery(
         "heading".to_string(),
     ));
-    let option = strip.apply_action(SearchControlStripAction::ToggleSearchOption(
+    let match_case = strip.apply_action(SearchControlStripAction::ToggleSearchOption(
+        SearchOptionKind::MatchCase,
+    ));
+    let whole_word = strip.apply_action(SearchControlStripAction::ToggleSearchOption(
+        SearchOptionKind::WholeWord,
+    ));
+    let regex = strip.apply_action(SearchControlStripAction::ToggleSearchOption(
         SearchOptionKind::UseRegex,
     ));
     let navigate = strip.apply_action(SearchControlStripAction::Navigate(
         SearchNavigationDirection::Next,
     ));
     let replace = strip.apply_action(SearchControlStripAction::Replace(SearchReplaceScope::All));
+    let result_position = strip.apply_action(SearchControlStripAction::SetResultPosition {
+        result_count: SEARCH_RESULT_COUNT,
+        active_index: Some(SEARCH_ACTIVE_INDEX),
+    });
     let logs = vec![
         UiCallbackLog::new(
             target.clone(),
@@ -102,8 +131,20 @@ fn search_control_strip_story() -> StoryExample {
         UiCallbackLog::new(
             target.clone(),
             "search_option_changed",
+            "match_case=false",
+            format!("events={match_case:?}"),
+        ),
+        UiCallbackLog::new(
+            target.clone(),
+            "search_option_changed",
+            "whole_word=false",
+            format!("events={whole_word:?}"),
+        ),
+        UiCallbackLog::new(
+            target.clone(),
+            "search_option_changed",
             "regex=false",
-            format!("events={option:?}"),
+            format!("events={regex:?}"),
         ),
         UiCallbackLog::new(
             target.clone(),
@@ -112,10 +153,16 @@ fn search_control_strip_story() -> StoryExample {
             format!("events={navigate:?}"),
         ),
         UiCallbackLog::new(
-            target,
+            target.clone(),
             "search_replace_requested",
             "replace=title",
             format!("events={replace:?}"),
+        ),
+        UiCallbackLog::new(
+            target,
+            "search_result_position_changed",
+            "result=3 / 12",
+            format!("events={result_position:?}"),
         ),
     ];
     StoryCatalog::interactive_story("search-control-strip", strip, logs)

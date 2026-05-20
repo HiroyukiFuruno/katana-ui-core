@@ -115,6 +115,21 @@ fn render_exposes_result_summary_tooltips_and_replace_state() {
 }
 
 #[test]
+fn zero_results_disable_navigation_buttons_without_search_logic() {
+    let tree = UiTree::new(SearchControlStrip::new("Search controls").result_position(0, None));
+    let root = tree.root();
+
+    for label in ["Previous result", "Next result"] {
+        assert!(
+            root.children()
+                .iter()
+                .any(|it| it.props().label == label && it.props().disabled),
+            "{label} should be disabled when there are no consumer-provided results"
+        );
+    }
+}
+
+#[test]
 fn search_control_and_command_palette_state_ids_are_independent() {
     let search = UiTree::new(SearchControlStrip::new("Search controls"));
     let command = UiTree::new(

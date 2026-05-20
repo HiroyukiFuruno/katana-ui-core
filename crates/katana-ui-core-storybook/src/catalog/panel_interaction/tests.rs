@@ -17,6 +17,7 @@ const BANNER_SETTINGS_MUTATION_COUNT: usize = 5;
 const TOAST_STACK_SETTINGS_MUTATION_COUNT: usize = 6;
 const STATUS_BAR_SETTINGS_MUTATION_COUNT: usize = 3;
 const SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT: usize = 4;
+const SEARCH_CONTROL_STRIP_SETTINGS_MUTATION_COUNT: usize = 7;
 const SETTINGS_LIST_SETTINGS_MUTATION_COUNT: usize = 6;
 const COLLAPSIBLE_PANEL_SETTINGS_MUTATION_COUNT: usize = 5;
 
@@ -44,6 +45,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + TOAST_STACK_SETTINGS_MUTATION_COUNT
             + STATUS_BAR_SETTINGS_MUTATION_COUNT
             + SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT
+            + SEARCH_CONTROL_STRIP_SETTINGS_MUTATION_COUNT
             + SETTINGS_LIST_SETTINGS_MUTATION_COUNT
             + COLLAPSIBLE_PANEL_SETTINGS_MUTATION_COUNT
             + CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT,
@@ -118,6 +120,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_toast_stack_settings_are_switchable(&report.settings_mutations);
     assert_status_bar_settings_are_switchable(&report.settings_mutations);
     assert_shortcut_combo_settings_are_switchable(&report.settings_mutations);
+    assert_search_control_strip_settings_are_switchable(&report.settings_mutations);
     assert_settings_list_settings_are_switchable(&report.settings_mutations);
     assert_collapsible_panel_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
@@ -159,6 +162,28 @@ fn assert_collapsible_panel_settings_are_switchable(settings: &[super::SettingsM
                     && it.event == "collapsible_panel_settings_changed"
             }),
             "missing collapsible-panel setting mutation for {option}"
+        );
+    }
+}
+
+fn assert_search_control_strip_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "search_control.query",
+        "search_control.match_case",
+        "search_control.whole_word",
+        "search_control.use_regex",
+        "search_control.replace_mode",
+        "search_control.result_count",
+        "search_control.active_index",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "search-control-strip"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "search_control_strip_settings_changed"
+            }),
+            "missing search-control-strip setting mutation for {option}"
         );
     }
 }

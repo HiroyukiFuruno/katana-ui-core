@@ -39,8 +39,16 @@ pub(super) fn render(value: SearchControlStrip) -> UiNode {
         SearchOptionKind::UseRegex,
         value.options.use_regex,
     ))
-    .child(Button::new("Previous result").accessibility_label("Previous search result"))
-    .child(Button::new("Next result").accessibility_label("Next search result"))
+    .child(navigation_button(
+        "Previous result",
+        "Previous search result",
+        value.result_count,
+    ))
+    .child(navigation_button(
+        "Next result",
+        "Next search result",
+        value.result_count,
+    ))
     .child(Text::new(result_summary));
 
     if value.replace_mode != ReplaceMode::Hidden {
@@ -48,6 +56,9 @@ pub(super) fn render(value: SearchControlStrip) -> UiNode {
             .child(replace_input(&value))
             .child(replace_button("Replace", value.replace_mode))
             .child(replace_button("Replace all", value.replace_mode));
+    }
+    for child in value.children {
+        node = node.child(child);
     }
     node
 }
@@ -71,6 +82,16 @@ fn replace_button(label: &'static str, mode: ReplaceMode) -> UiNode {
     UiNode::from(Button::new(label))
         .disabled(mode == ReplaceMode::Disabled)
         .accessibility_label(label)
+}
+
+fn navigation_button(
+    label: &'static str,
+    accessibility: &'static str,
+    count: Option<usize>,
+) -> UiNode {
+    UiNode::from(Button::new(label))
+        .disabled(count == Some(0))
+        .accessibility_label(accessibility)
 }
 
 fn option_label(kind: SearchOptionKind) -> &'static str {
