@@ -5,6 +5,7 @@ use std::collections::BTreeSet;
 const LEGACY_UI_MARKER_COUNT: usize = 27;
 const DND_SETTINGS_MUTATION_COUNT: usize = 3;
 const CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT: usize = 5;
+const OVERLAY_SETTINGS_MUTATION_COUNT: usize = 9;
 
 #[test]
 fn report_covers_selector_overlay_and_color_picker_sequences() {
@@ -19,6 +20,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + 1
             + DND_SETTINGS_MUTATION_COUNT
             + 3
+            + OVERLAY_SETTINGS_MUTATION_COUNT
             + CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT,
         report.settings_mutations.len()
     );
@@ -80,6 +82,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_drag_and_drop_settings_are_switchable(&report.settings_mutations);
     assert_context_menu_settings_are_switchable(&report.settings_mutations);
     assert_closeable_tab_strip_settings_are_switchable(&report.settings_mutations);
+    assert_overlay_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
         report.legacy_ui_markers.len(),
         report
@@ -101,6 +104,30 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
     );
+}
+
+fn assert_overlay_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "popover.placement",
+        "popover.arrow",
+        "popover.focus_management",
+        "popover.slot",
+        "hover_card.delay",
+        "hover_card.placement",
+        "hover_card.arrow",
+        "hover_card.focus",
+        "hover_card.slot",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                (it.page == "popover" || it.page == "hover-card")
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event.ends_with("_settings_changed")
+            }),
+            "missing overlay setting mutation for {option}"
+        );
+    }
 }
 
 fn assert_closeable_tab_strip_settings_are_switchable(settings: &[super::SettingsMutationReport]) {

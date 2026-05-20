@@ -35,6 +35,10 @@ impl StoryDetailContent {
             drag_and_drop_settings_line(example, &marker)
         } else if example.page == "context-menu" {
             context_menu_settings_line(example, &marker)
+        } else if example.page == "popover" {
+            popover_settings_line(&marker)
+        } else if example.page == "hover-card" {
+            hover_card_settings_line(&marker)
         } else {
             format!("{marker} settings: {option} ({value_type}) {before} -> {after}")
         };
@@ -118,6 +122,18 @@ fn context_menu_settings_line(example: &StoryExample, marker: &str) -> String {
     let log_count = example.callback_logs.len();
     format!(
         "{marker} settings: context_menu.anchor={anchor} context_menu.placement={placement} context_menu.item_kind={item_kind} callback_log={log_count} -> context_menu.anchor=Pointer(0,0) context_menu.placement=AboveEnd context_menu.item_kind=Toggle callback_log={log_count}"
+    )
+}
+
+fn popover_settings_line(marker: &str) -> String {
+    format!(
+        "{marker} settings: placement/arrow/focus/slot BottomStart,true,FirstInteractive,heading -> TopStart,false,None,footer"
+    )
+}
+
+fn hover_card_settings_line(marker: &str) -> String {
+    format!(
+        "{marker} settings: delay/placement/arrow/focus/slot open100,Pointer,true,keep,heading -> open0,TopStart,false,blur,footer"
     )
 }
 

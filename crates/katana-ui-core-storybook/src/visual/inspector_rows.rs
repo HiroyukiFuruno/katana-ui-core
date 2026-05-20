@@ -31,6 +31,22 @@ pub(super) fn settings_rows(
             "log: opened/highlight/select".to_string(),
         ];
     }
+    if example.page == "popover" {
+        return vec![
+            "placement: bottom-start".to_string(),
+            "arrow: surface-raised".to_string(),
+            "focus: first interactive".to_string(),
+            "slot: heading/body/action".to_string(),
+        ];
+    }
+    if example.page == "hover-card" {
+        return vec![
+            "delay: open100 close50".to_string(),
+            "placement: pointer follow".to_string(),
+            "focus: keep open".to_string(),
+            "slot: heading/body/action".to_string(),
+        ];
+    }
     if is_button_page(example.page) {
         let spec = StorybookInteractionSpec::for_page(example.page);
         let variant = if scenario.screen_state.has_settings_override() {

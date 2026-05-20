@@ -1,4 +1,4 @@
-use super::rich_content::PopoverActionSlot;
+use super::rich_content::{PopoverActionSlot, PopoverSlots};
 use crate::interaction::placement::Point;
 use crate::render_model::UiNodeId;
 use serde::{Deserialize, Serialize};
@@ -13,6 +13,7 @@ pub struct HoverCard {
     delay_state: HoverCardDelayState,
     pointer_follow: bool,
     pointer_anchor: Option<Point>,
+    pub(super) slots: PopoverSlots,
     pub(super) slot_actions: Vec<PopoverActionSlot>,
 }
 
@@ -28,6 +29,7 @@ impl HoverCard {
             delay_state: HoverCardDelayState::Idle,
             pointer_follow: false,
             pointer_anchor: None,
+            slots: PopoverSlots::default(),
             slot_actions: Vec::new(),
         }
     }

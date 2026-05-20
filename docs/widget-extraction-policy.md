@@ -27,6 +27,9 @@ OS ファイル、URL、テキストは adapter が `os/file-list`、`os/url`、
 ContextMenu は、pointer 起動、node 起動、仮想矩形起動を `ContextMenuAnchor` として core 側で扱う。
 右クリック位置や window 座標の取得は adapter 責務、項目内容や command の意味づけは consumer 責務とし、core は anchor、placement、item kind、callback log の契約だけを持つ。
 
+浮上パネル（floating panel）系の配置は `interaction::placement` を共通入口にする。
+`Tooltip`、`Popover`、`HoverCard`、`ContextMenu`、`Menu`、`MenuButton`、`SelectBox`、`ComboBox` は、viewport 端での反転、clamp、arrow offset を個別に再実装せず、同じ placement engine と数値契約テストで検証する。
+
 Tabs は segmented な切替 UI として扱い、close button、dirty 表示、pin、group、drag reorder、overflow menu を持たせない。
 それらが必要な場合は CloseableTabStrip を使い、workspace、document、chat session、file path の意味は consumer 側 state に閉じ込める。
 

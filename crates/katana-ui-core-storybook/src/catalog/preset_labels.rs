@@ -100,7 +100,7 @@ impl StoryPresetLabels {
             "split-pane" => &["horizontal", "drag action", "min clamp", "theme handle"],
             "modal" | "modal-overlay" => &["dialog", "escape close", "focus trap", "theme overlay"],
             "notification-toast" => &["toast", "dismiss", "stack", "theme toast"],
-            "popover" => &["anchor", "outside close", "placement edge", "theme shadow"],
+            "popover" => &["anchor", "arrow", "slots", "focus management"],
             "hover-card" => &[
                 "delayed open",
                 "pointer follow",

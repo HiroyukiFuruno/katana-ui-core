@@ -1,4 +1,8 @@
 use super::types::{ContextMenuAnchor, ContextMenuPlacement, ContextMenuRect};
+use crate::interaction::placement::{
+    AnchorKind, Placement, PlacementConsumer, PlacementEngine, PlacementRequest, Point, Rect, Size,
+};
+use crate::render_model::UiNodeId;
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_VIEWPORT_MARGIN: u32 = 8;
@@ -53,90 +57,67 @@ impl ContextMenuPlacementResolver {
         viewport: ContextMenuViewport,
         priority: &[ContextMenuPlacement],
     ) -> ContextMenuPlacementResult {
-        let anchor_rect = anchor_rect(anchor);
         let fit_size = fit_size(menu_size, viewport);
-        for placement in priority {
-            let candidate = candidate_for(anchor_rect, fit_size, *placement, menu_size);
-            if fits(candidate, fit_size, viewport) {
-                return candidate;
-            }
-        }
-        clamp(
-            candidate_for(
-                anchor_rect,
-                fit_size,
-                ContextMenuPlacement::BelowStart,
-                menu_size,
-            ),
-            fit_size,
-            viewport,
+        let preferred = priority
+            .first()
+            .copied()
+            .unwrap_or(ContextMenuPlacement::BelowStart);
+        let request = PlacementRequest::new(
+            anchor_kind(anchor),
+            to_common_placement(preferred),
+            Size::new(fit_size.width, fit_size.height),
+            Rect::new(0, 0, viewport.width, viewport.height),
         )
+        .priority(priority.iter().copied().map(to_common_placement))
+        .clamp_margin(viewport.margin as i32);
+        let result = PlacementEngine::resolve_for(PlacementConsumer::ContextMenu, &request);
+        ContextMenuPlacementResult {
+            placement: from_common_placement(result.placement_used),
+            x: result.position.x,
+            y: result.position.y,
+            render_height: fit_size.height,
+            scrollable: fit_size.height < menu_size.height,
+        }
     }
 }
 
-fn anchor_rect(anchor: &ContextMenuAnchor) -> ContextMenuRect {
+fn anchor_kind(anchor: &ContextMenuAnchor) -> AnchorKind {
     match anchor {
-        ContextMenuAnchor::Pointer { x, y } => ContextMenuRect::new(*x, *y, 0, 0),
-        ContextMenuAnchor::VirtualRect(rect) => *rect,
-        ContextMenuAnchor::NodeId(_) => ContextMenuRect::new(0, 0, 0, 0),
+        ContextMenuAnchor::Pointer { x, y } => AnchorKind::pointer(Point::new(*x, *y)),
+        ContextMenuAnchor::VirtualRect(rect) => AnchorKind::virtual_rect(rect_from_context(*rect)),
+        ContextMenuAnchor::NodeId(id) => {
+            AnchorKind::node_rect(UiNodeId::new(id.clone()), Rect::new(0, 0, 0, 0))
+        }
     }
 }
 
-fn candidate_for(
-    anchor: ContextMenuRect,
-    fit_size: ContextMenuSize,
-    placement: ContextMenuPlacement,
-    original_size: ContextMenuSize,
-) -> ContextMenuPlacementResult {
-    let anchor_right = anchor.x + anchor.width as i32;
-    let anchor_bottom = anchor.y + anchor.height as i32;
-    let menu_width = fit_size.width as i32;
-    let menu_height = fit_size.height as i32;
-    let (x, y) = match placement {
-        ContextMenuPlacement::BelowStart => (anchor.x, anchor_bottom),
-        ContextMenuPlacement::BelowEnd => (anchor_right - menu_width, anchor_bottom),
-        ContextMenuPlacement::AboveStart => (anchor.x, anchor.y - menu_height),
-        ContextMenuPlacement::AboveEnd => (anchor_right - menu_width, anchor.y - menu_height),
-        ContextMenuPlacement::RightStart => (anchor_right, anchor.y),
-        ContextMenuPlacement::LeftStart => (anchor.x - menu_width, anchor.y),
-    };
-    ContextMenuPlacementResult {
-        placement,
-        x,
-        y,
-        render_height: fit_size.height,
-        scrollable: fit_size.height < original_size.height,
+fn rect_from_context(rect: ContextMenuRect) -> Rect {
+    Rect::new(rect.x, rect.y, rect.width, rect.height)
+}
+
+fn to_common_placement(placement: ContextMenuPlacement) -> Placement {
+    match placement {
+        ContextMenuPlacement::BelowStart => Placement::BottomStart,
+        ContextMenuPlacement::BelowEnd => Placement::BottomEnd,
+        ContextMenuPlacement::AboveStart => Placement::TopStart,
+        ContextMenuPlacement::AboveEnd => Placement::TopEnd,
+        ContextMenuPlacement::RightStart => Placement::RightStart,
+        ContextMenuPlacement::LeftStart => Placement::LeftStart,
     }
 }
 
-fn fits(
-    result: ContextMenuPlacementResult,
-    menu_size: ContextMenuSize,
-    viewport: ContextMenuViewport,
-) -> bool {
-    let margin = viewport.margin as i32;
-    let right = result.x + menu_size.width as i32;
-    let bottom = result.y + menu_size.height as i32;
-    result.x >= margin
-        && result.y >= margin
-        && right <= viewport.width as i32 - margin
-        && bottom <= viewport.height as i32 - margin
-}
-
-fn clamp(
-    result: ContextMenuPlacementResult,
-    menu_size: ContextMenuSize,
-    viewport: ContextMenuViewport,
-) -> ContextMenuPlacementResult {
-    let margin = viewport.margin as i32;
-    let max_x = viewport.width as i32 - margin - menu_size.width as i32;
-    let max_y = viewport.height as i32 - margin - menu_size.height as i32;
-    ContextMenuPlacementResult {
-        placement: result.placement,
-        x: result.x.clamp(margin, max_x.max(margin)),
-        y: result.y.clamp(margin, max_y.max(margin)),
-        render_height: result.render_height,
-        scrollable: result.scrollable,
+fn from_common_placement(placement: Placement) -> ContextMenuPlacement {
+    match placement {
+        Placement::Bottom | Placement::BottomStart => ContextMenuPlacement::BelowStart,
+        Placement::BottomEnd => ContextMenuPlacement::BelowEnd,
+        Placement::Top | Placement::TopStart => ContextMenuPlacement::AboveStart,
+        Placement::TopEnd => ContextMenuPlacement::AboveEnd,
+        Placement::Right | Placement::RightStart | Placement::RightEnd => {
+            ContextMenuPlacement::RightStart
+        }
+        Placement::Left | Placement::LeftStart | Placement::LeftEnd => {
+            ContextMenuPlacement::LeftStart
+        }
     }
 }
 

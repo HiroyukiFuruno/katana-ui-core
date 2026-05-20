@@ -256,6 +256,75 @@ fn closeable_tab_strip_story_exposes_settings_presets_and_logs() -> Result<(), &
 }
 
 #[test]
+fn hover_card_story_exposes_rich_slots_and_callback_log() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "hover-card")
+        .ok_or("hover-card page missing")?;
+    let labels = page_children(&examples, "hover-card").ok_or("hover-card page missing")?;
+    let details = super::StoryDetailContent::from_example(story);
+
+    for expected in [
+        "Anchor",
+        "Heading: Capability",
+        "Body: Shows rich hover and focus content",
+        "Footer: Keeps open while the card is focused",
+        "Configure",
+    ] {
+        assert!(
+            labels.iter().any(|it| it == expected),
+            "hover-card preview lacks {expected}"
+        );
+    }
+    assert_eq!(
+        &[
+            "delayed open",
+            "pointer follow",
+            "focus trigger",
+            "rich content",
+            "actions"
+        ],
+        StoryPresetLabels::for_page("hover-card")
+    );
+    for action in ["hover_card_open", "hover_card_keep_open"] {
+        assert!(
+            story.callback_logs.iter().any(|it| it.action == action),
+            "hover-card callback log lacks {action}"
+        );
+    }
+    for setting in ["delay", "placement", "arrow", "focus", "slot"] {
+        assert!(
+            details.settings.contains(setting),
+            "hover-card settings inspector lacks {setting}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn popover_story_exposes_arrow_slots_and_focus_presets() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "popover")
+        .ok_or("popover page missing")?;
+    let details = super::StoryDetailContent::from_example(story);
+
+    assert_eq!(
+        &["anchor", "arrow", "slots", "focus management"],
+        StoryPresetLabels::for_page("popover")
+    );
+    for setting in ["placement", "arrow", "focus", "slot"] {
+        assert!(
+            details.settings.contains(setting),
+            "popover settings inspector lacks {setting}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn catalog_contains_single_independent_context_menu_story() {
     let examples = StoryCatalog.examples();
     let count = examples

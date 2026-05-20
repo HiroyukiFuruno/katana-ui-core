@@ -1,4 +1,4 @@
-use super::{Placement, PlacementRequest, PlacementResult, Point, Rect};
+use super::{Placement, PlacementConsumer, PlacementRequest, PlacementResult, Point, Rect};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -9,9 +9,19 @@ impl PlacementEngine {
     pub fn resolve(request: &PlacementRequest) -> PlacementResult {
         resolve_placement(request)
     }
+
+    #[must_use]
+    pub fn resolve_for(consumer: PlacementConsumer, request: &PlacementRequest) -> PlacementResult {
+        if !request.priority.is_empty() {
+            return resolve_placement(request);
+        }
+        let mut request = request.clone();
+        request.priority = consumer.default_priority().to_vec();
+        resolve_placement(&request)
+    }
 }
 
-fn resolve_placement(request: &PlacementRequest) -> PlacementResult {
+pub fn resolve_placement(request: &PlacementRequest) -> PlacementResult {
     let anchor = request.anchor.rect();
     let placement = choose_placement(request, anchor);
     let raw_position = position_for(anchor, placement, request);

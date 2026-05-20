@@ -81,6 +81,7 @@
 | EmptyState | molecule | 空状態の heading / body / action |
 | Banner | molecule | 画面内に残る告知 |
 | ToastStack | molecule | 複数 toast の queue / dedupe / pause-on-hover |
+| HoverCard | molecule | hover / focus で開く rich content。delay、pointer follow、slot、共有 placement を持つ |
 | ProgressMeter | atom | linear / ring / pie の進捗表示 |
 | CollapsiblePanel | molecule | 折りたたみ / hover / resize panel。AppShell は持たない |
 | CommandLauncherResults | molecule | query + result row + shortcut + keyboard selection |

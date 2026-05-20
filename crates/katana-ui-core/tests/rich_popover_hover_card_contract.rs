@@ -1,11 +1,14 @@
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::interaction::placement::{
-    AnchorKind, Placement, PlacementEngine, PlacementRequest, Point, Rect, Size,
+    AnchorKind, Placement, PlacementConsumer, PlacementEngine, PlacementRequest, Point, Rect, Size,
+    resolve_placement,
 };
 use katana_ui_core::molecule::{
-    HoverCard, HoverCardAction, HoverCardDelayState, HoverCardEvent, Popover, PopoverActionSlot,
-    PopoverArrowSpec, PopoverFocusManagement, PopoverSlots,
+    ComboBox, ContextMenuAnchor, ContextMenuPlacement, ContextMenuPlacementResolver,
+    ContextMenuSize, ContextMenuViewport, HoverCard, HoverCardAction, HoverCardDelayState,
+    HoverCardEvent, Menu, MenuButton, Popover, PopoverActionSlot, PopoverArrowSpec,
+    PopoverFocusManagement, PopoverSlots, SelectBox, Tooltip,
 };
 use katana_ui_core::render_model::UiNodeId;
 
@@ -32,6 +35,126 @@ fn placement_engine_flips_clamps_and_aligns_arrow() {
     assert_eq!(Point::new(100, 92), result.position);
     assert_eq!(Some(50), result.arrow_offset);
     assert!(!result.clamped);
+}
+
+#[test]
+fn public_resolve_placement_function_is_deterministic() {
+    let request = PlacementRequest::new(
+        AnchorKind::virtual_rect(Rect::new(240, 180, 40, 24)),
+        Placement::BottomEnd,
+        Size::new(120, 80),
+        Rect::new(0, 0, 320, 220),
+    )
+    .priority([Placement::BottomEnd, Placement::TopEnd])
+    .offset(4)
+    .clamp_margin(8)
+    .arrow_size(10);
+
+    let first = resolve_placement(&request);
+    let second = resolve_placement(&request);
+
+    assert_eq!(first, second);
+    assert_eq!(Placement::TopEnd, first.placement_used);
+    assert!(first.arrow_offset.is_some());
+}
+
+#[test]
+fn placement_consumers_share_default_priority_contract() {
+    let viewport = Rect::new(0, 0, 320, 220);
+    let request = PlacementRequest::new(
+        AnchorKind::virtual_rect(Rect::new(120, 190, 40, 24)),
+        Placement::BottomStart,
+        Size::new(120, 80),
+        viewport,
+    )
+    .offset(4)
+    .clamp_margin(8);
+    let top_consumers = [PlacementConsumer::Tooltip, PlacementConsumer::HoverCard];
+    let panel_consumers = [
+        PlacementConsumer::Popover,
+        PlacementConsumer::ContextMenu,
+        PlacementConsumer::Menu,
+        PlacementConsumer::MenuButton,
+        PlacementConsumer::SelectBox,
+        PlacementConsumer::ComboBox,
+    ];
+
+    for consumer in top_consumers {
+        let result = PlacementEngine::resolve_for(consumer, &request);
+        assert_eq!(Placement::Top, result.placement_used);
+        assert!(viewport.contains_panel(result.position, Size::new(120, 80)));
+    }
+
+    for consumer in panel_consumers {
+        let result = PlacementEngine::resolve_for(consumer, &request);
+        assert_eq!(Placement::TopStart, result.placement_used);
+        assert!(viewport.contains_panel(result.position, Size::new(120, 80)));
+    }
+}
+
+#[test]
+fn disclosure_and_selection_molecules_delegate_panel_placement_to_shared_engine() {
+    let viewport = Rect::new(0, 0, 320, 220);
+    let request = PlacementRequest::new(
+        AnchorKind::virtual_rect(Rect::new(120, 190, 40, 24)),
+        Placement::BottomStart,
+        Size::new(120, 80),
+        viewport,
+    )
+    .offset(4)
+    .clamp_margin(8);
+    let tooltip = Tooltip::new("Tooltip");
+    let popover = Popover::new("Popover");
+    let hover_card = HoverCard::new("Hover card");
+    let menu = Menu::new("Menu");
+    let menu_button = MenuButton::new("Menu button");
+    let select_box = SelectBox::new("Select box");
+    let combo_box = ComboBox::new("Combo box");
+
+    assert_eq!(
+        Placement::Top,
+        tooltip.resolve_panel_placement(&request).placement_used
+    );
+    assert_eq!(
+        Placement::Top,
+        hover_card.resolve_panel_placement(&request).placement_used
+    );
+    assert_eq!(
+        Placement::TopStart,
+        popover.resolve_panel_placement(&request).placement_used
+    );
+    assert_eq!(
+        Placement::TopStart,
+        menu.resolve_panel_placement(&request).placement_used
+    );
+    assert_eq!(
+        Placement::TopStart,
+        menu_button.resolve_panel_placement(&request).placement_used
+    );
+    assert_eq!(
+        Placement::TopStart,
+        select_box.resolve_panel_placement(&request).placement_used
+    );
+    assert_eq!(
+        Placement::TopStart,
+        combo_box.resolve_panel_placement(&request).placement_used
+    );
+}
+
+#[test]
+fn context_menu_resolver_uses_shared_placement_engine_defaults() {
+    let result = ContextMenuPlacementResolver::resolve(
+        &ContextMenuAnchor::VirtualRect(katana_ui_core::molecule::ContextMenuRect::new(
+            120, 190, 40, 24,
+        )),
+        ContextMenuSize::new(120, 80),
+        ContextMenuViewport::new(320, 220),
+        &[],
+    );
+
+    assert_eq!(ContextMenuPlacement::AboveStart, result.placement);
+    assert_eq!(120, result.x);
+    assert_eq!(110, result.y);
 }
 
 #[test]
@@ -128,6 +251,21 @@ fn hover_card_pointer_and_focus_keep_card_open() {
 }
 
 #[test]
+fn hover_card_exposes_typed_content_slots() {
+    let slots = PopoverSlots::new()
+        .heading("Diagnostic detail")
+        .body("Unused import")
+        .footer("source: rustc")
+        .action(PopoverActionSlot::new("fix-action", "Apply fix"));
+    let hover_card = HoverCard::new("Diagnostic").slots(slots);
+
+    assert_eq!("Diagnostic detail", hover_card.slots_model().heading);
+    assert_eq!("Unused import", hover_card.slots_model().body);
+    assert_eq!("source: rustc", hover_card.slots_model().footer);
+    assert_eq!(1, hover_card.slots_model().actions.len());
+}
+
+#[test]
 fn popover_focus_arrow_slots_and_keep_open_are_contract_options() {
     let anchor = UiNodeId::new("toolbar-anchor");
     let first_action = PopoverActionSlot::new("copy-action", "Copy");
@@ -150,6 +288,8 @@ fn popover_focus_arrow_slots_and_keep_open_are_contract_options() {
     assert_eq!(Some(first_action.node_id), popover.open_focus_target());
     assert_eq!(Some(anchor), popover.close_focus_target());
     assert!(popover.arrow_model().visible);
+    assert_eq!(10, popover.arrow_model().size_px);
+    assert_eq!("surface-raised", popover.arrow_model().tone);
     assert_eq!("Quick actions", popover.slots_model().heading);
     assert_eq!(2, popover.auto_flip_priority_model().len());
     assert!(focus.handled);

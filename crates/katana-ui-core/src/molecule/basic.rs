@@ -1,4 +1,7 @@
 use crate::event::EventRoute;
+use crate::interaction::placement::{
+    PlacementConsumer, PlacementEngine, PlacementRequest, PlacementResult,
+};
 use crate::render_model::{UiCommonProps, UiNode, UiNodeId, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
 
@@ -66,6 +69,13 @@ molecule_model!(
 );
 molecule_model!(Toolbar, UiNodeKind::Toolbar);
 molecule_model!(FormField, UiNodeKind::FormField);
+
+impl Menu {
+    #[must_use]
+    pub fn resolve_panel_placement(&self, request: &PlacementRequest) -> PlacementResult {
+        PlacementEngine::resolve_for(PlacementConsumer::Menu, request)
+    }
+}
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MoleculeEventRouting;

@@ -116,10 +116,18 @@ fn notification_toast_story() -> StoryExample {
 }
 
 fn popover_story() -> StoryExample {
+    let slots = molecule::PopoverSlots::new()
+        .heading("Quick actions")
+        .body("Operate on the current selection")
+        .footer("Esc closes and returns focus")
+        .action(molecule::PopoverActionSlot::new("copy-action", "Copy"));
     let mut popover = molecule::Popover::new("Popover")
         .open(true)
         .placement("bottom-start")
         .width("320px")
+        .arrow(molecule::PopoverArrowSpec::new(true, 10, "surface-raised"))
+        .slots(slots)
+        .focus_management(molecule::PopoverFocusManagement::FirstInteractive)
         .escape_dismiss(true)
         .child(atom::Button::new("Anchor"))
         .child(atom::Text::new("Content"));
@@ -129,14 +137,19 @@ fn popover_story() -> StoryExample {
 }
 
 fn hover_card_story() -> StoryExample {
+    let slots = molecule::PopoverSlots::new()
+        .heading("Capability")
+        .body("Shows rich hover and focus content")
+        .footer("Keeps open while the card is focused")
+        .action(molecule::PopoverActionSlot::new(
+            "configure-action",
+            "Configure",
+        ));
     let mut hover_card = molecule::HoverCard::new("Hover card")
         .open_delay_ms(HOVER_CARD_OPEN_DELAY_MS)
         .close_delay_ms(HOVER_CARD_CLOSE_DELAY_MS)
         .pointer_follow(true)
-        .slot_action(molecule::PopoverActionSlot::new(
-            "configure-action",
-            "Configure",
-        ));
+        .slots(slots);
     let opened =
         hover_card.apply_hover_card_action(molecule::HoverCardAction::AnchorPointerEntered);
     let kept = hover_card.apply_hover_card_action(molecule::HoverCardAction::CardPointerEntered);

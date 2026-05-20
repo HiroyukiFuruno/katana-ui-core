@@ -83,6 +83,33 @@ impl Placement {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum PlacementConsumer {
+    Tooltip,
+    Popover,
+    HoverCard,
+    ContextMenu,
+    Menu,
+    MenuButton,
+    SelectBox,
+    ComboBox,
+}
+
+impl PlacementConsumer {
+    #[must_use]
+    pub const fn default_priority(self) -> [Placement; 2] {
+        match self {
+            Self::Tooltip | Self::HoverCard => [Placement::Top, Placement::Bottom],
+            Self::Popover
+            | Self::ContextMenu
+            | Self::Menu
+            | Self::MenuButton
+            | Self::SelectBox
+            | Self::ComboBox => [Placement::BottomStart, Placement::TopStart],
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PlacementRequest {
     pub anchor: AnchorKind,
@@ -144,4 +171,4 @@ pub struct PlacementResult {
 }
 
 mod engine;
-pub use engine::PlacementEngine;
+pub use engine::{PlacementEngine, resolve_placement};

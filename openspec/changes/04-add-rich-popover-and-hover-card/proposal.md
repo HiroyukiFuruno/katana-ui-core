@@ -26,7 +26,7 @@
 
 ### New Capabilities
 
-- `kuc-hover-card`: HoverCard molecule の option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページの完了条件を定義する。
+- `kuc-hover-card`: HoverCard molecule の option / action / event / state / preset / preview / settings / 自動テスト / 数値化された描画契約 / Storybook ページの完了条件を定義する。
 - `kuc-placement-engine`: anchor + placement priority + edge flip + arrow alignment の共通 API を定義する。
 
 ### Modified Capabilities

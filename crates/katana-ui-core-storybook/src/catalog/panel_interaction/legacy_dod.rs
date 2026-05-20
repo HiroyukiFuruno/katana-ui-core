@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 mod legacy_dod_context_menu;
 #[path = "legacy_dod_drag_settings.rs"]
 mod legacy_dod_drag_settings;
+#[path = "legacy_dod_overlay_settings.rs"]
+mod legacy_dod_overlay_settings;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettingsMutationReport {
@@ -66,6 +68,7 @@ impl LegacyDodReports {
             examples,
         ));
         reports.extend(legacy_dod_context_menu::settings_mutations(examples));
+        reports.extend(legacy_dod_overlay_settings::settings_mutations(examples));
         reports.extend(closeable_tab_strip_settings_mutations(examples));
         reports
     }

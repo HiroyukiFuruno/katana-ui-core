@@ -2,6 +2,7 @@ mod accessors;
 mod choice;
 mod context_menu;
 mod options;
+mod placement;
 mod rendering;
 mod types;
 pub mod window_control_button_group;
