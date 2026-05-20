@@ -137,7 +137,7 @@ fn expected_preset_count(page: &str) -> usize {
     ) {
         return 5;
     }
-    if page == "text-area" {
+    if page == "popover" || page == "text-area" {
         return 7;
     }
     if page == "accordion" {

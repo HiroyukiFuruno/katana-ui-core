@@ -1,5 +1,6 @@
 use super::actions::apply_disclosure_action;
 use super::modal_render::native_modal_props;
+use super::popover_render::popover_props;
 use super::types::DisclosureTypedModel;
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult};
@@ -189,7 +190,8 @@ macro_rules! disclosure_molecule {
                     .state
                     .node($kind, value.label)
                     .disclosure(disclosure_props(&value.model))
-                    .modal(modal_props($kind, &value.model));
+                    .modal(modal_props($kind, &value.model))
+                    .popover(render_popover_props($kind, &value.model));
                 for child in value.children {
                     node = node.child(child);
                 }
@@ -223,6 +225,16 @@ fn modal_props(
         return native_modal_props(model);
     }
     crate::render_model::UiModalProps::default()
+}
+
+fn render_popover_props(
+    kind: UiNodeKind,
+    model: &DisclosureTypedModel,
+) -> crate::render_model::UiPopoverProps {
+    if kind == UiNodeKind::Popover {
+        return popover_props(model);
+    }
+    crate::render_model::UiPopoverProps::default()
 }
 
 fn indicator_position(value: &str) -> UiDisclosureIndicatorPosition {

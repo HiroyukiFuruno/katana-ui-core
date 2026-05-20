@@ -14,6 +14,7 @@ mod model;
 mod options;
 mod placement;
 mod popover;
+mod popover_render;
 mod rich_content;
 mod search_box;
 mod toast;

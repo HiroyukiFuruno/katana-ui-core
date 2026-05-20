@@ -1,9 +1,9 @@
 use super::{
     UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiContextMenuProps, UiDisclosureProps,
     UiIconProps, UiInteractionState, UiLoadingProps, UiModalProps, UiNode, UiPanelProps,
-    UiSearchControlProps, UiShortcutProps, UiSize, UiSkeletonProps, UiSplitPaneProps,
-    UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTone, UiTreeProps, UiVariant,
-    UiVisualRole,
+    UiPopoverProps, UiSearchControlProps, UiShortcutProps, UiSize, UiSkeletonProps,
+    UiSplitPaneProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTone,
+    UiTreeProps, UiVariant, UiVisualRole,
 };
 use crate::theme::ThemeSnapshot;
 
@@ -204,6 +204,12 @@ impl UiNode {
     #[must_use]
     pub fn modal(mut self, value: UiModalProps) -> Self {
         self.props.modal = value;
+        self
+    }
+
+    #[must_use]
+    pub fn popover(mut self, value: UiPopoverProps) -> Self {
+        self.props.popover = value;
         self
     }
 

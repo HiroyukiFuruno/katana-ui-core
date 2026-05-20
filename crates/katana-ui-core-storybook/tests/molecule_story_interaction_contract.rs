@@ -1,4 +1,4 @@
-use katana_ui_core_storybook::StoryCatalog;
+use katana_ui_core_storybook::{StoryCatalog, StoryDetailContent};
 
 const REQUIRED_INTERACTIVE_MOLECULES: [(&str, &str); 15] = [
     ("card", "click"),
@@ -8,7 +8,7 @@ const REQUIRED_INTERACTIVE_MOLECULES: [(&str, &str); 15] = [
     ("combo-box", "select_box_selected"),
     ("menu-button", "select_box_selected"),
     ("notification-toast", "dismiss"),
-    ("popover", "modal_escape"),
+    ("popover", "popover_open"),
     ("search-box", "search_submitted"),
     ("segmented-toggle", "segmented_toggle_selected"),
     ("select-box", "select_box_selected"),
@@ -93,6 +93,75 @@ fn modal_story_pages_expose_specific_action_event_evidence() {
                 .iter()
                 .any(|it| it.after.contains(event)),
             "modal-overlay lacks {event} event evidence"
+        );
+    }
+}
+
+#[test]
+fn popover_story_page_exposes_specific_action_event_evidence() {
+    let examples = StoryCatalog.examples();
+    let popover = examples
+        .iter()
+        .find(|it| it.page == "popover")
+        .expect("popover story is missing");
+    let details = StoryDetailContent::from_example(popover);
+
+    for action in [
+        "popover_open",
+        "popover_outside_close",
+        "popover_escape_close",
+        "popover_auto_flip",
+        "popover_focus_return",
+        "popover_slot_action",
+    ] {
+        assert!(
+            popover.callback_logs.iter().any(|it| it.action == action),
+            "popover lacks {action} action"
+        );
+        assert!(
+            details.settings.contains(action),
+            "popover settings lacks {action} action evidence"
+        );
+    }
+    for event in [
+        "PopoverOpened",
+        "PopoverOutsideClosed",
+        "PopoverEscapeClosed",
+        "PopoverAutoFlipped",
+        "PopoverFocusReturned",
+        "PopoverSlotActionInvoked",
+    ] {
+        assert!(
+            popover
+                .callback_logs
+                .iter()
+                .any(|it| it.after.contains(event)),
+            "popover lacks {event} event evidence"
+        );
+        assert!(
+            details.settings.contains(event),
+            "popover settings lacks {event} event evidence"
+        );
+    }
+    for setting in [
+        "option=",
+        "action=",
+        "event=",
+        "state=",
+        "preset=",
+        "anchor=node:toolbar.more-actions",
+        "placement=bottom-start",
+        "auto_flip=BottomStart>TopStart",
+        "offset=12,8",
+        "width=320px",
+        "outside_close=true",
+        "escape_close=true",
+        "focus_handling=FirstInteractive",
+        "slot=heading/body/footer/action",
+    ] {
+        assert!(
+            details.settings.contains(setting),
+            "popover settings lacks {setting}"
         );
     }
 }

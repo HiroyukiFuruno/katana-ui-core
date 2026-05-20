@@ -142,7 +142,12 @@ fn apply_modal_action(
         UiAction::Press {
             source: UiActionSource::ModalEscape,
             ..
-        } => dismiss_if_allowed(state, model.escape_dismiss, "escape", &model.focus_return),
+        } => dismiss_if_allowed(
+            state,
+            model.escape_dismiss,
+            "escape",
+            focus_return_value(&model.focus_return),
+        ),
         UiAction::Press {
             source: UiActionSource::ModalBackdrop,
             ..
@@ -150,7 +155,7 @@ fn apply_modal_action(
             state,
             model.outside_click_dismiss,
             "backdrop",
-            &model.focus_return,
+            focus_return_value(&model.focus_return),
         ),
         _ => false,
     }
@@ -176,15 +181,27 @@ fn apply_popover_action(
         UiAction::Dismiss { .. } if model.keep_open_on_inner_focus && state.transient.focused => {
             true
         }
-        UiAction::Dismiss { .. } => dismiss_if_allowed(state, true, "dismiss", ""),
+        UiAction::Dismiss { .. } => {
+            dismiss_if_allowed(state, true, "dismiss", popover_focus_return(model))
+        }
         UiAction::Press {
             source: UiActionSource::ModalBackdrop,
             ..
-        } => dismiss_if_allowed(state, model.outside_click_dismiss, "outside", ""),
+        } => dismiss_if_allowed(
+            state,
+            model.outside_click_dismiss,
+            "outside",
+            popover_focus_return(model),
+        ),
         UiAction::Press {
             source: UiActionSource::ModalEscape,
             ..
-        } => dismiss_if_allowed(state, model.escape_dismiss, "escape", ""),
+        } => dismiss_if_allowed(
+            state,
+            model.escape_dismiss,
+            "escape",
+            popover_focus_return(model),
+        ),
         _ => false,
     }
 }
@@ -194,18 +211,30 @@ fn toggle_open(state: &mut MoleculeState) -> bool {
     true
 }
 
+fn focus_return_value(value: &str) -> Option<String> {
+    (!value.is_empty()).then(|| value.to_string())
+}
+
+fn popover_focus_return(model: &DisclosureTypedModel) -> Option<String> {
+    model
+        .focus_return_target
+        .as_ref()
+        .map(|target| target.as_str().to_string())
+        .or_else(|| focus_return_value(&model.focus_return))
+}
+
 fn dismiss_if_allowed(
     state: &mut MoleculeState,
     allowed: bool,
     reason: &str,
-    focus_return: &str,
+    focus_return: Option<String>,
 ) -> bool {
     if !allowed {
         return false;
     }
     state.open = false;
     state.transient.dismiss_reason = reason.to_string();
-    if !focus_return.is_empty() {
+    if let Some(focus_return) = focus_return {
         state.value = format!("focus_return={focus_return}");
     }
     true

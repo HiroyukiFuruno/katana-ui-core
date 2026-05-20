@@ -135,7 +135,15 @@ impl StoryPresetLabels {
                 "dismiss disabled",
             ],
             "notification-toast" => &["toast", "dismiss", "ToastStackManager", "theme toast"],
-            "popover" => &["anchor", "arrow", "slots", "focus management"],
+            "popover" => &[
+                "anchor",
+                "placement",
+                "auto flip",
+                "offset width",
+                "outside+escape close",
+                "focus handling",
+                "slot content",
+            ],
             "hover-card" => &[
                 "delayed open",
                 "pointer follow",

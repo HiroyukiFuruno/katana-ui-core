@@ -70,7 +70,7 @@ impl StoryDetailContent {
         } else if example.page == "context-menu" {
             context_menu_settings_line(example, &marker)
         } else if example.page == "popover" {
-            popover_settings_line(&marker)
+            popover_settings_line(example, &marker)
         } else if example.page == "hover-card" {
             hover_card_settings_line(&marker)
         } else if example.page == "accordion" {
@@ -173,9 +173,10 @@ fn context_menu_settings_line(example: &StoryExample, marker: &str) -> String {
     )
 }
 
-fn popover_settings_line(marker: &str) -> String {
+fn popover_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = callback_actions(example);
     format!(
-        "{marker} settings: placement/arrow/focus/slot BottomStart,true,FirstInteractive,heading -> TopStart,false,None,footer"
+        "{marker} settings: option=anchor=node:toolbar.more-actions placement=bottom-start auto_flip=BottomStart>TopStart offset=12,8 width=320px outside_close=true escape_close=true focus_handling=FirstInteractive focus_return=trigger:popover-anchor slot=heading/body/footer/action action={actions} event=PopoverOpened+PopoverOutsideClosed+PopoverEscapeClosed+PopoverAutoFlipped+PopoverFocusReturned+PopoverSlotActionInvoked state=open=false->true->closed focus=copy-action->trigger:popover-anchor preset=anchor/placement/auto flip/offset width/outside+escape close/focus handling/slot content -> placement=top-start auto_flip=TopStart offset=0,0 width=240px focus_handling=None"
     )
 }
 
