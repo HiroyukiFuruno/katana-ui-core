@@ -1,11 +1,12 @@
 use katana_ui_core::atom::shortcut_combo::{
     KeyCombo, KeyKind, KeyModifiers, RuntimePlatform, ShortcutCombo, ShortcutPlatform,
-    ShortcutSeparator,
+    ShortcutPlatformProvider, ShortcutSeparator,
 };
 use katana_ui_core::molecule::shortcut_cheatsheet::{
     ShortcutCheatsheet, ShortcutCheatsheetAction, ShortcutCheatsheetEvent, ShortcutCheatsheetGroup,
-    ShortcutCheatsheetItem,
+    ShortcutCheatsheetItem, ShortcutCheatsheetLayout,
 };
+use katana_ui_core::render_model::{UiNode, UiSize, UiTone};
 
 #[test]
 fn shortcut_combo_serializes_and_renders_platform_display() {
@@ -36,6 +37,25 @@ fn shortcut_combo_supports_separator_override_and_runtime_auto() {
     assert_eq!("⌃+⇧+P", mac.visual_text(RuntimePlatform::MacOS));
     assert_eq!("Ctrl+Shift+P", auto.visual_text(RuntimePlatform::Windows));
     assert_eq!("Ctrl+Shift+P", auto.visual_text(RuntimePlatform::Linux));
+}
+
+#[test]
+fn shortcut_combo_uses_adapter_platform_callback_and_renders_props() {
+    let provider = StaticPlatformProvider(RuntimePlatform::Windows);
+    let combo = ShortcutCombo::new(
+        "Palette",
+        KeyCombo::new(KeyModifiers::command_shift(), KeyKind::Char('p')),
+    )
+    .platform_display(ShortcutPlatform::Auto)
+    .separator(ShortcutSeparator::Space)
+    .size(UiSize::Large)
+    .tone(UiTone::Accent);
+    let node = UiNode::from(combo.clone());
+
+    assert_eq!("Ctrl Shift P", combo.visual_text_with_provider(&provider));
+    assert_eq!("Command + Shift + P", node.props().accessibility_label);
+    assert_eq!(UiSize::Large, node.props().size);
+    assert_eq!(UiTone::Accent, node.props().tone);
 }
 
 #[test]
@@ -80,10 +100,35 @@ fn shortcut_cheatsheet_filters_groups_and_emits_selection_event() {
     assert_eq!(vec!["open", "close"], visible_ids(&sheet));
 }
 
+#[test]
+fn shortcut_cheatsheet_layout_is_typed_and_rendered() {
+    let sheet = ShortcutCheatsheet::new("Shortcuts")
+        .group_layout(ShortcutCheatsheetLayout::OneColumn)
+        .group(
+            ShortcutCheatsheetGroup::new("File").item(ShortcutCheatsheetItem::new(
+                "open",
+                "Open file",
+                KeyCombo::new(KeyModifiers::command_shift(), KeyKind::Char('o')),
+            )),
+        );
+    let node = UiNode::from(sheet);
+
+    assert_eq!("OneColumn", node.props().interaction.value);
+    assert_eq!(1, node.props().interaction.item_count);
+}
+
 fn visible_ids(sheet: &ShortcutCheatsheet) -> Vec<&str> {
     sheet
         .visible_items()
         .into_iter()
         .map(ShortcutCheatsheetItem::id)
         .collect()
+}
+
+struct StaticPlatformProvider(RuntimePlatform);
+
+impl ShortcutPlatformProvider for StaticPlatformProvider {
+    fn runtime_platform(&self) -> RuntimePlatform {
+        self.0
+    }
 }

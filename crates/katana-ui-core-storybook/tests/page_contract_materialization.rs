@@ -150,6 +150,9 @@ fn expected_preset_count(page: &str) -> usize {
     if page == "status-bar" {
         return 5;
     }
+    if page == "shortcut-combo" || page == "shortcut-cheatsheet" {
+        return 5;
+    }
     if page == "empty-state" {
         return 5;
     }

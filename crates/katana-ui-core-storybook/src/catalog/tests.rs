@@ -613,6 +613,56 @@ fn status_bar_story_exposes_multi_segment_settings_presets_and_logs() -> Result<
 }
 
 #[test]
+fn shortcut_stories_expose_settings_presets_and_keycap_boundary() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let combo = examples
+        .iter()
+        .find(|it| it.page == "shortcut-combo")
+        .ok_or("shortcut-combo page missing")?;
+    let combo_details = super::StoryDetailContent::from_example(combo);
+    let cheatsheet = examples
+        .iter()
+        .find(|it| it.page == "shortcut-cheatsheet")
+        .ok_or("shortcut-cheatsheet page missing")?;
+    let cheatsheet_details = super::StoryDetailContent::from_example(cheatsheet);
+    let key_cap = examples
+        .iter()
+        .find(|it| it.page == "key-cap")
+        .ok_or("key-cap page missing")?;
+    let key_cap_details = super::StoryDetailContent::from_example(key_cap);
+
+    assert_eq!(
+        &[
+            "macOS",
+            "Windows",
+            "Linux",
+            "custom separator",
+            "a11y label"
+        ],
+        StoryPresetLabels::for_page("shortcut-combo")
+    );
+    assert_eq!(
+        &[
+            "cheatsheet sample",
+            "カテゴリ filter",
+            "two column",
+            "one column",
+            "select combo"
+        ],
+        StoryPresetLabels::for_page("shortcut-cheatsheet")
+    );
+    for setting in ["platform_display", "separator", "size", "tone"] {
+        assert!(
+            combo_details.settings.contains(setting),
+            "shortcut-combo settings inspector lacks {setting}"
+        );
+    }
+    assert!(cheatsheet_details.settings.contains("group_layout"));
+    assert!(key_cap_details.settings.contains("ShortcutCombo"));
+    Ok(())
+}
+
+#[test]
 fn hover_card_story_exposes_rich_slots_and_callback_log() -> Result<(), &'static str> {
     let examples = StoryCatalog.examples();
     let story = examples

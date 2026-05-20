@@ -193,6 +193,9 @@ fn status_bar_story() -> StoryExample {
 fn shortcut_combo_story() -> StoryExample {
     let combo = atom::ShortcutCombo::new("Open command palette", command_combo('k'))
         .platform_display(atom::ShortcutPlatform::MacOS)
+        .separator(atom::ShortcutSeparator::None)
+        .size(katana_ui_core::render_model::UiSize::Medium)
+        .tone(UiTone::Accent)
         .accessibility_label("Open command palette shortcut");
     let logs = vec![UiCallbackLog::new(
         UiStateId::new("state:ShortcutCombo:storybook"),
@@ -205,6 +208,7 @@ fn shortcut_combo_story() -> StoryExample {
 
 fn shortcut_cheatsheet_story() -> StoryExample {
     let mut cheatsheet = molecule::ShortcutCheatsheet::new("Shortcut cheatsheet")
+        .group_layout(molecule::ShortcutCheatsheetLayout::TwoColumn)
         .group(shortcut_group(
             "Navigation",
             "command-palette",

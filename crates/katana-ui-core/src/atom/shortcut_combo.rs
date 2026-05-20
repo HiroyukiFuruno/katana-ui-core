@@ -22,6 +22,10 @@ pub struct ShortcutCombo {
     accessibility_label: Option<String>,
 }
 
+pub trait ShortcutPlatformProvider {
+    fn runtime_platform(&self) -> RuntimePlatform;
+}
+
 impl ShortcutCombo {
     #[must_use]
     pub fn new(label: impl Into<String>, combo: KeyCombo) -> Self {
@@ -50,6 +54,18 @@ impl ShortcutCombo {
     }
 
     #[must_use]
+    pub fn size(mut self, value: UiSize) -> Self {
+        self.size = value;
+        self
+    }
+
+    #[must_use]
+    pub fn tone(mut self, value: UiTone) -> Self {
+        self.tone = value;
+        self
+    }
+
+    #[must_use]
     pub fn accessibility_label(mut self, value: impl Into<String>) -> Self {
         self.accessibility_label = Some(value.into());
         self
@@ -68,6 +84,11 @@ impl ShortcutCombo {
                 .unwrap_or_else(|| default_separator(self.resolved_platform(runtime)))
                 .as_str(),
         )
+    }
+
+    #[must_use]
+    pub fn visual_text_with_provider(&self, provider: &impl ShortcutPlatformProvider) -> String {
+        self.visual_text(provider.runtime_platform())
     }
 
     #[must_use]
@@ -101,6 +122,7 @@ impl ShortcutCombo {
 impl From<ShortcutCombo> for UiNode {
     fn from(value: ShortcutCombo) -> Self {
         let combo = value.visual_text(RuntimePlatform::MacOS);
+        let accessibility_label = value.accessibility_text(RuntimePlatform::MacOS);
         UiNode::from_state(UiNodeKind::ShortcutCombo, value.label, value.state_id)
             .shortcut(UiShortcutProps {
                 platform: format!("{:?}", value.platform_display),
@@ -108,5 +130,6 @@ impl From<ShortcutCombo> for UiNode {
             })
             .size(value.size)
             .tone(value.tone)
+            .accessibility_label(accessibility_label)
     }
 }

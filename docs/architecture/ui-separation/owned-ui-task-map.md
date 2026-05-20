@@ -85,6 +85,8 @@
 | ToastStackManager | molecule | 複数 toast の queue / dedup / position / pause-on-hover / action dismiss |
 | HoverCard | molecule | hover / focus で開く rich content。delay、pointer follow、slot、共有 placement を持つ |
 | ProgressMeter | atom | linear / ring / pie の進捗表示 |
+| ShortcutCombo | atom | 複数キーの組み合わせ表示。platform_display / separator / size / tone を持つ |
+| ShortcutCheatsheet | molecule | ショートカット一覧。group_layout / query / select event を持つ |
 | CollapsiblePanel | molecule | 折りたたみ / hover / resize panel。AppShell は持たない |
 | CommandLauncherResults | molecule | query + result row + shortcut + keyboard selection |
 

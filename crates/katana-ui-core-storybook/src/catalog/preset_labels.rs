@@ -144,16 +144,18 @@ impl StoryPresetLabels {
                 "popover segment",
             ],
             "shortcut-combo" => &[
-                "mac glyphs",
-                "windows text",
+                "macOS",
+                "Windows",
+                "Linux",
                 "custom separator",
                 "a11y label",
             ],
             "shortcut-cheatsheet" => &[
-                "grouped list",
-                "search filter",
+                "cheatsheet sample",
+                "カテゴリ filter",
+                "two column",
+                "one column",
                 "select combo",
-                "theme help",
             ],
             "settings-list" => &[
                 "sectioned form",

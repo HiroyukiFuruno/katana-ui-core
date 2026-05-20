@@ -39,6 +39,12 @@ impl StoryDetailContent {
             notification_toast_settings_line(&marker)
         } else if example.page == "status-bar" {
             status_bar_settings_line(example, &marker)
+        } else if example.page == "shortcut-combo" {
+            shortcut_combo_settings_line(example, &marker)
+        } else if example.page == "shortcut-cheatsheet" {
+            shortcut_cheatsheet_settings_line(example, &marker)
+        } else if example.page == "key-cap" {
+            key_cap_settings_line(&marker)
         } else if example.page == "chip" {
             chip_settings_line(&marker)
         } else if example.page == "attachment-chip" {
@@ -220,6 +226,30 @@ fn status_bar_settings_line(example: &StoryExample, marker: &str) -> String {
         "{marker} settings: mode=SingleMessage segments=1 density=Default callback_log={} actions={actions} -> mode=MultiSegment segments=4 density=Compact",
         example.callback_logs.len()
     )
+}
+
+fn shortcut_combo_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: platform_display=Auto separator=Plus size=Medium tone=Neutral callback_log={} actions={actions} -> platform_display=MacOS separator=None size=Large tone=Accent",
+        example.callback_logs.len()
+    )
+}
+
+fn shortcut_cheatsheet_settings_line(example: &StoryExample, marker: &str) -> String {
+    format!(
+        "{marker} settings: group_layout=TwoColumn query=format callback_log={} -> group_layout=OneColumn query=カテゴリ",
+        example.callback_logs.len()
+    )
+}
+
+fn key_cap_settings_line(marker: &str) -> String {
+    format!("{marker} settings: single key only -> use ShortcutCombo for multi-key combinations")
 }
 
 fn chip_settings_line(marker: &str) -> String {

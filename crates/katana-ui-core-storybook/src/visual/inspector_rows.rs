@@ -108,6 +108,14 @@ pub(super) fn settings_rows(
             "popover/progress: enabled".to_string(),
         ];
     }
+    if example.page == "shortcut-combo" {
+        return vec![
+            "platform: auto -> macOS".to_string(),
+            "separator: plus -> none".to_string(),
+            "size: medium -> large".to_string(),
+            "tone: neutral -> accent".to_string(),
+        ];
+    }
     if example.page == "chip" {
         return vec![
             "variant: outline -> filled".to_string(),

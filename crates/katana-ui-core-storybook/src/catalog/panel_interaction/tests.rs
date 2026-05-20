@@ -14,6 +14,7 @@ const EMPTY_STATE_SETTINGS_MUTATION_COUNT: usize = 4;
 const BANNER_SETTINGS_MUTATION_COUNT: usize = 5;
 const TOAST_STACK_SETTINGS_MUTATION_COUNT: usize = 6;
 const STATUS_BAR_SETTINGS_MUTATION_COUNT: usize = 3;
+const SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT: usize = 4;
 
 #[test]
 fn report_covers_selector_overlay_and_color_picker_sequences() {
@@ -37,6 +38,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + BANNER_SETTINGS_MUTATION_COUNT
             + TOAST_STACK_SETTINGS_MUTATION_COUNT
             + STATUS_BAR_SETTINGS_MUTATION_COUNT
+            + SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT
             + CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT,
         report.settings_mutations.len()
     );
@@ -107,6 +109,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_banner_settings_are_switchable(&report.settings_mutations);
     assert_toast_stack_settings_are_switchable(&report.settings_mutations);
     assert_status_bar_settings_are_switchable(&report.settings_mutations);
+    assert_shortcut_combo_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
         report.legacy_ui_markers.len(),
         report
@@ -185,6 +188,25 @@ fn assert_status_bar_settings_are_switchable(settings: &[super::SettingsMutation
                     && it.event == "status_bar_settings_changed"
             }),
             "missing status bar setting mutation for {option}"
+        );
+    }
+}
+
+fn assert_shortcut_combo_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "shortcut_combo.platform_display",
+        "shortcut_combo.separator",
+        "shortcut_combo.size",
+        "shortcut_combo.tone",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "shortcut-combo"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "shortcut_combo_settings_changed"
+            }),
+            "missing shortcut combo setting mutation for {option}"
         );
     }
 }

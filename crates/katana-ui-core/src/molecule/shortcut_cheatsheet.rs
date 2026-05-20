@@ -107,6 +107,12 @@ impl ShortcutCheatsheet {
     }
 
     #[must_use]
+    pub fn group_layout(mut self, value: ShortcutCheatsheetLayout) -> Self {
+        self.group_layout = value;
+        self
+    }
+
+    #[must_use]
     pub fn visible_items(&self) -> Vec<&ShortcutCheatsheetItem> {
         let query = self.query.to_lowercase();
         self.groups
@@ -155,9 +161,10 @@ impl From<ShortcutCheatsheet> for UiNode {
         let mut node =
             UiNode::from_state(UiNodeKind::ShortcutCheatsheet, value.label, value.state_id)
                 .interaction(UiInteractionState {
-                    value: value.query.clone(),
+                    value: format!("{:?}", value.group_layout),
                     item_count: count,
                     has_selection: value.selected_id.is_some(),
+                    dismiss_reason: value.query.clone(),
                     ..UiInteractionState::default()
                 });
         for item in visible_items {

@@ -26,7 +26,7 @@ pub use input_boundary::InputValidationError;
 use serde::{Deserialize, Serialize};
 pub use shortcut_combo::{
     KeyCombo, KeyKind, KeyModifiers, NamedKey, RuntimePlatform, ShortcutCombo, ShortcutPlatform,
-    ShortcutSeparator,
+    ShortcutPlatformProvider, ShortcutSeparator,
 };
 pub use skeleton::{Skeleton, SkeletonAnimation, SkeletonShape, SkeletonSize};
 use state::AtomState;
