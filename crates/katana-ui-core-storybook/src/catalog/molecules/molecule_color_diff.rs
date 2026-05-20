@@ -1,11 +1,11 @@
 use super::super::{StoryCatalog, StoryExample};
 use katana_ui_core::component::ComponentAction;
-use katana_ui_core::interaction::{RgbaActionValue, UiAction};
+use katana_ui_core::interaction::{UiAction, UiCallbackLog};
 use katana_ui_core::molecule::{
     CodeDiffLine, CodeDiffLineKind, CodeDiffMode, CodeDiffSource, CollapsedBlock,
     ColorBlendingMode, HighlightRange, RgbaColor,
 };
-use katana_ui_core::{atom, molecule};
+use katana_ui_core::{atom, molecule, render_model::UiSize};
 
 const OLD_LINE_NUMBER: usize = 1;
 const NEW_LINE_NUMBER: usize = 1;
@@ -67,7 +67,7 @@ fn added_line() -> CodeDiffLine {
 }
 
 fn color_picker_story() -> StoryExample {
-    let mut picker = molecule::ColorPicker::new("Color picker")
+    let picker = molecule::ColorPicker::new("Color picker")
         .open(true)
         .rgba(RgbaColor::new(
             COLOR_RED,
@@ -77,20 +77,111 @@ fn color_picker_story() -> StoryExample {
         ))
         .hue(COLOR_HUE)
         .alpha(COLOR_ALPHA)
-        .blending(ColorBlendingMode::Screen)
+        .blending(ColorBlendingMode::Normal)
+        .color_area("saturation/value plane")
+        .trigger_size(UiSize::Large)
+        .eyedropper_callback("storybook-eyedropper")
         .title("Brand accent")
-        .child(atom::ColorSwatch::new("Preview").value("rgba(64, 128, 255, 204)"))
-        .child(atom::SlideControl::new("Hue").value(COLOR_HUE.to_string()))
-        .child(atom::SlideControl::new("Alpha").value(COLOR_ALPHA.to_string()))
-        .child(atom::Text::new("trigger: color-only / border / size"))
-        .child(atom::Text::new("panel: floating / rgb / rgba"))
-        .child(atom::Text::new("value: R=64 G=128 B=255 A=204"));
+        .child(
+            atom::ColorSwatch::new("preview: transparent checker + opaque RGB")
+                .value("rgba(64, 128, 255, 204)"),
+        )
+        .child(atom::Text::new(
+            "settings: mode=RGBA eyedropper=true blending=Normal/Additive",
+        ))
+        .child(atom::Text::new(
+            "trigger: color-only large border with transparent checker",
+        ))
+        .child(atom::Text::new(
+            "floating panel: rgb/rgba popup with saturation/value plane",
+        ))
+        .child(atom::Text::new(
+            "state: open=true value=rgba(64,128,255,204)",
+        ))
+        .child(atom::Text::new(
+            "event: RgbaChanged AlphaChanged BlendingChanged",
+        ))
+        .child(atom::Text::new(
+            "action: open close drag-plane drag-hue drag-alpha numeric-input eyedropper",
+        ))
+        .child(atom::Text::new("preset: RGBA RGB readonly disabled"))
+        .child(atom::Text::new("U8 fields: R=64 G=128 B=255 A=204"))
+        .child(atom::Text::new("plane: saturation/value with drag handle"))
+        .child(atom::Text::new("slider: hue=214 alpha=204 with handles"))
+        .child(atom::SlideControl::new("Hue slider").value(COLOR_HUE.to_string()))
+        .child(atom::SlideControl::new("Alpha slider").value(COLOR_ALPHA.to_string()));
     let target = picker.state_id().clone();
-    let result = picker.apply_action(&UiAction::color_drag(
-        target,
-        RgbaActionValue::new(COLOR_RED, COLOR_GREEN, COLOR_BLUE, COLOR_ALPHA),
-        COLOR_HUE,
-        true,
-    ));
-    StoryCatalog::interactive_story("color-picker-rgba", picker, result.callback_log)
+    let logs = color_picker_callback_logs(target);
+    StoryCatalog::interactive_story("color-picker-rgba", picker, logs)
+}
+
+fn color_picker_callback_logs(
+    target: katana_ui_core::render_model::UiStateId,
+) -> Vec<UiCallbackLog> {
+    vec![
+        color_picker_log(
+            &target,
+            "color_picker_open",
+            "open=false",
+            "ColorPickerOpened open=true",
+        ),
+        color_picker_log(
+            &target,
+            "color_drag",
+            "plane=saturation/value R=64 G=128 B=255 A=204",
+            "RgbaChanged plane=drag R=72 G=136 B=240 A=188",
+        ),
+        color_picker_log(&target, "color_hue_drag", "hue=214", "HueChanged hue=226"),
+        color_picker_log(
+            &target,
+            "color_alpha_drag",
+            "alpha=204",
+            "AlphaChanged alpha=188",
+        ),
+        color_picker_log(
+            &target,
+            "color_numeric_input",
+            "R=64 G=128 B=255 A=204",
+            "NumericFieldChanged R=72 G=136 B=240 A=188",
+        ),
+        color_picker_log(
+            &target,
+            "color_blending_changed",
+            "blending=Normal",
+            "BlendingChanged blending=Additive",
+        ),
+        color_picker_log(
+            &target,
+            "color_eyedropper_request",
+            "eyedropper=ready",
+            "EyedropperRequested action=storybook-eyedropper",
+        ),
+        color_picker_log(
+            &target,
+            "color_picker_close",
+            "open=true",
+            "ColorPickerClosed open=false",
+        ),
+        color_picker_log(
+            &target,
+            "color_picker_readonly_blocked",
+            "readonly=true",
+            "ReadonlySuppressed value=rgba(64,128,255,204)",
+        ),
+        color_picker_log(
+            &target,
+            "color_picker_disabled_blocked",
+            "disabled=true",
+            "DisabledSuppressed value=rgba(64,128,255,204)",
+        ),
+    ]
+}
+
+fn color_picker_log(
+    target: &katana_ui_core::render_model::UiStateId,
+    action: &str,
+    before: &str,
+    after: &str,
+) -> UiCallbackLog {
+    UiCallbackLog::new(target.clone(), action, before, after)
 }

@@ -1,9 +1,9 @@
 use super::{
-    UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiContextMenuProps, UiDisclosureProps,
-    UiIconProps, UiInteractionState, UiLoadingProps, UiModalProps, UiNode, UiPanelProps,
-    UiPopoverProps, UiSearchControlProps, UiShortcutProps, UiSize, UiSkeletonProps,
-    UiSplitPaneProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTone,
-    UiTreeProps, UiVariant, UiVisualRole,
+    UiButtonProps, UiColorPickerProps, UiColorSwatchProps, UiCommandResultProps,
+    UiContextMenuProps, UiDisclosureProps, UiIconProps, UiInteractionState, UiLoadingProps,
+    UiModalProps, UiNode, UiPanelProps, UiPopoverProps, UiSearchControlProps, UiShortcutProps,
+    UiSize, UiSkeletonProps, UiSplitPaneProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps,
+    UiTextProps, UiTone, UiTreeProps, UiVariant, UiVisualRole,
 };
 use crate::theme::ThemeSnapshot;
 
@@ -114,6 +114,12 @@ impl UiNode {
     #[must_use]
     pub fn color_swatch(mut self, value: UiColorSwatchProps) -> Self {
         self.props.color_swatch = value;
+        self
+    }
+
+    #[must_use]
+    pub fn color_picker(mut self, value: UiColorPickerProps) -> Self {
+        self.props.color_picker = value;
         self
     }
 

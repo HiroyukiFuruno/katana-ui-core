@@ -169,6 +169,17 @@ impl UiAction {
     }
 
     #[must_use]
+    pub fn color_blending_changed(target: UiStateId, value: impl Into<String>) -> Self {
+        Self::SetValue {
+            target,
+            value: value.into(),
+            source: UiActionSource::ColorPickerBlending,
+            progress: None,
+            color_drag: None,
+        }
+    }
+
+    #[must_use]
     pub fn clear_value(target: UiStateId) -> Self {
         Self::ClearValue { target }
     }

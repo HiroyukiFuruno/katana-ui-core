@@ -17,6 +17,7 @@ pub(super) fn value_name(
         UiActionSource::SplitPane => "split_pane_resized",
         UiActionSource::SplitPaneReset => "split_pane_reset",
         UiActionSource::SplitPaneKeyboard => "split_pane_keyboard_resize",
+        UiActionSource::ColorPickerBlending => "color_blending_changed",
         UiActionSource::CodeDiffMode => "code_diff_mode_changed",
         UiActionSource::CodeDiffDirection => "code_diff_direction_changed",
         _ => "set_value",

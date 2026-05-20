@@ -69,6 +69,8 @@ impl StoryDetailContent {
             drag_and_drop_settings_line(example, &marker)
         } else if example.page == "context-menu" {
             context_menu_settings_line(example, &marker)
+        } else if example.page == "color-picker-rgba" {
+            color_picker_settings_line(example, &marker)
         } else if example.page == "popover" {
             popover_settings_line(example, &marker)
         } else if example.page == "hover-card" {
@@ -170,6 +172,13 @@ fn context_menu_settings_line(example: &StoryExample, marker: &str) -> String {
     let log_count = example.callback_logs.len();
     format!(
         "{marker} settings: context_menu.anchor={anchor} context_menu.placement={placement} context_menu.item_kind={item_kind} callback_log={log_count} -> context_menu.anchor=Pointer(0,0) context_menu.placement=AboveEnd context_menu.item_kind=Toggle callback_log={log_count}"
+    )
+}
+
+fn color_picker_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = callback_actions(example);
+    format!(
+        "{marker} settings: mode=RGBA/RGB channels=R64,G128,B255,A204 blending=Normal/Additive eyedropper=storybook-eyedropper readonly=false disabled=false plane=saturation/value hue=214 alpha=204 preview=transparent-checker actions={actions} -> mode=RGB channels=R72,G136,B240,A188 blending=Additive readonly=true disabled=true"
     )
 }
 

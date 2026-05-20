@@ -49,7 +49,23 @@ impl From<RgbaActionValue> for RgbaColor {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ColorBlendingMode {
+    Normal,
+    Additive,
     Replace,
     Multiply,
     Screen,
+}
+
+impl ColorBlendingMode {
+    #[must_use]
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "normal" | "Normal" => Some(Self::Normal),
+            "additive" | "Additive" => Some(Self::Additive),
+            "replace" | "Replace" => Some(Self::Replace),
+            "multiply" | "Multiply" => Some(Self::Multiply),
+            "screen" | "Screen" => Some(Self::Screen),
+            _ => None,
+        }
+    }
 }

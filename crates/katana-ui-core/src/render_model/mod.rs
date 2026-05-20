@@ -41,7 +41,8 @@ pub use tree_props::{
     UiTreeLineStyle, UiTreeNodeKind, UiTreeNodeProps, UiTreeProps, UiTreeToggleTriggerArea,
 };
 pub use typed::{
-    UiAnimationState, UiButtonProps, UiClearActionSpec, UiColorSwatchProps, UiCommandResultProps,
+    UiAnimationState, UiButtonProps, UiClearActionSpec, UiColorBlendingMode, UiColorPickerProps,
+    UiColorPickerTriggerKind, UiColorSwatchProps, UiCommandResultProps,
     UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea, UiDismissAction,
     UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiIconProps, UiLoadingProps,
     UiModalParentInteraction, UiModalPresentation, UiModalProps, UiModalSize, UiPanelProps,

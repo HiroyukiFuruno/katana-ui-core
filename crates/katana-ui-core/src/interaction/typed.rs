@@ -11,6 +11,7 @@ pub enum UiActionSource {
     Toggle,
     Progress,
     ColorPicker,
+    ColorPickerBlending,
     SlideControl,
     SplitPane,
     SplitPaneReset,

@@ -2,6 +2,8 @@ use super::button_layout::UiButtonLayoutDto;
 use super::{UiTone, UiVariant};
 use serde::{Deserialize, Serialize};
 
+#[path = "typed_color_picker.rs"]
+mod typed_color_picker;
 #[path = "typed_command.rs"]
 mod typed_command;
 #[path = "typed_disclosure.rs"]
@@ -20,6 +22,7 @@ mod typed_popover;
 mod typed_search;
 #[path = "typed_split_pane.rs"]
 mod typed_split_pane;
+pub use typed_color_picker::{UiColorBlendingMode, UiColorPickerProps, UiColorPickerTriggerKind};
 pub use typed_command::UiCommandResultProps;
 pub use typed_disclosure::{
     UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea,

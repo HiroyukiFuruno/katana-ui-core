@@ -63,8 +63,8 @@ impl ColorPicker {
     }
 
     #[must_use]
-    pub const fn shows_eyedropper_control(&self) -> bool {
-        false
+    pub fn shows_eyedropper_control(&self) -> bool {
+        !self.eyedropper_callback.is_empty()
     }
 
     #[must_use]
@@ -98,8 +98,8 @@ impl ColorPicker {
     }
 
     #[must_use]
-    pub const fn panel_shows_eyedropper(&self) -> bool {
-        false
+    pub fn panel_shows_eyedropper(&self) -> bool {
+        self.shows_eyedropper_control()
     }
 
     #[must_use]

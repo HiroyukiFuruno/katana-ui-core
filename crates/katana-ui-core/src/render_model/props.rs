@@ -1,10 +1,10 @@
 use super::UiStateId;
 use super::{
-    UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiCommonProps, UiContextMenuProps,
-    UiDisclosureProps, UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiIconProps,
-    UiLoadingProps, UiModalProps, UiPanelProps, UiPopoverProps, UiSearchControlProps,
-    UiShortcutProps, UiSkeletonProps, UiSplitPaneProps, UiStatusProps, UiTextAreaProps,
-    UiTextEntryProps, UiTextProps, UiTreeProps,
+    UiButtonProps, UiColorPickerProps, UiColorSwatchProps, UiCommandResultProps, UiCommonProps,
+    UiContextMenuProps, UiDisclosureProps, UiDragHandleProps, UiDragPreviewProps,
+    UiDropIndicatorProps, UiIconProps, UiLoadingProps, UiModalProps, UiPanelProps, UiPopoverProps,
+    UiSearchControlProps, UiShortcutProps, UiSkeletonProps, UiSplitPaneProps, UiStatusProps,
+    UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTreeProps,
 };
 use crate::facade::DEFAULT_FONT_ROLE;
 use serde::{Deserialize, Serialize};
@@ -120,6 +120,7 @@ pub struct UiProps {
     pub text: UiTextProps,
     pub button: UiButtonProps,
     pub color_swatch: UiColorSwatchProps,
+    pub color_picker: UiColorPickerProps,
     pub command_result: UiCommandResultProps,
     pub shortcut: UiShortcutProps,
     pub search_control: UiSearchControlProps,
@@ -170,6 +171,7 @@ impl UiProps {
             text: UiTextProps::default(),
             button: UiButtonProps::default(),
             color_swatch: UiColorSwatchProps::default(),
+            color_picker: UiColorPickerProps::default(),
             command_result: UiCommandResultProps::default(),
             shortcut: UiShortcutProps::default(),
             search_control: UiSearchControlProps::default(),

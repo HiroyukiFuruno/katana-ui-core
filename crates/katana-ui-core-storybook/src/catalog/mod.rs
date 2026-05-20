@@ -1,6 +1,8 @@
 mod atom_interactions;
 mod atom_motion_interactions;
 mod atoms;
+#[cfg(test)]
+mod color_picker_story_tests;
 mod layouts;
 mod molecules;
 mod panel_interaction;

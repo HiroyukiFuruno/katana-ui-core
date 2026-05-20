@@ -128,7 +128,7 @@ pub(super) const MOLECULE_SPECS: &[LegacyDodSpec] = &[
         "23-color-picker-parity",
         "color_picker.trigger_size",
         "TriggerSize",
-        "large",
+        "small",
         [
             "color-only-trigger",
             "floating-panel",

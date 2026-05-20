@@ -9,6 +9,8 @@ const OVERLAY_SETTINGS_MUTATION_COUNT: usize = 9;
 const TOOLBAR_SETTINGS_MUTATION_COUNT: usize = 5;
 const TEXT_AREA_SETTINGS_MUTATION_COUNT: usize = 5;
 const CHIP_SETTINGS_MUTATION_COUNT: usize = 6;
+const COLOR_PICKER_SETTINGS_MUTATION_COUNT: usize = 9;
+const COLOR_PICKER_UPDATE_COUNT: usize = 10;
 const DIAGNOSTICS_SETTINGS_MUTATION_COUNT: usize = 5;
 const EMPTY_STATE_SETTINGS_MUTATION_COUNT: usize = 4;
 const BANNER_SETTINGS_MUTATION_COUNT: usize = 5;
@@ -25,7 +27,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
 
     assert_eq!(4, report.selector_operations.len());
     assert_eq!(5, report.overlay_dismissals.len());
-    assert_eq!(1, report.color_picker_updates.len());
+    assert_eq!(COLOR_PICKER_UPDATE_COUNT, report.color_picker_updates.len());
     assert_eq!(
         examples.len()
             + 1
@@ -35,6 +37,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + TOOLBAR_SETTINGS_MUTATION_COUNT
             + TEXT_AREA_SETTINGS_MUTATION_COUNT
             + CHIP_SETTINGS_MUTATION_COUNT
+            + COLOR_PICKER_SETTINGS_MUTATION_COUNT
             + DIAGNOSTICS_SETTINGS_MUTATION_COUNT
             + EMPTY_STATE_SETTINGS_MUTATION_COUNT
             + BANNER_SETTINGS_MUTATION_COUNT
@@ -108,6 +111,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_toolbar_settings_are_switchable(&report.settings_mutations);
     assert_text_area_settings_are_switchable(&report.settings_mutations);
     assert_chip_settings_are_switchable(&report.settings_mutations);
+    assert_color_picker_settings_are_switchable(&report.settings_mutations);
     assert_diagnostics_settings_are_switchable(&report.settings_mutations);
     assert_empty_state_settings_are_switchable(&report.settings_mutations);
     assert_banner_settings_are_switchable(&report.settings_mutations);
@@ -297,6 +301,30 @@ fn assert_empty_state_settings_are_switchable(settings: &[super::SettingsMutatio
                     && it.event == "empty_state_settings_changed"
             }),
             "missing empty-state setting mutation for {option}"
+        );
+    }
+}
+
+fn assert_color_picker_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "color_picker.mode",
+        "color_picker.red",
+        "color_picker.green",
+        "color_picker.blue",
+        "color_picker.alpha",
+        "color_picker.blending",
+        "color_picker.eyedropper",
+        "color_picker.readonly",
+        "color_picker.disabled",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "color-picker-rgba"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "color_picker_settings_changed"
+            }),
+            "missing color picker setting mutation for {option}"
         );
     }
 }
