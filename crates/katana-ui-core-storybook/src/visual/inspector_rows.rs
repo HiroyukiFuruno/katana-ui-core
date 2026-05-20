@@ -92,6 +92,14 @@ pub(super) fn settings_rows(
             "details/dismiss: open/yes".to_string(),
         ];
     }
+    if example.page == "toast-stack-manager" {
+        return vec![
+            "position: bottom -> top".to_string(),
+            "max: 2 -> 4 / gap 10->16".to_string(),
+            "dedup: id -> id+severity".to_string(),
+            "duration/pause: 8000/off".to_string(),
+        ];
+    }
     if example.page == "chip" {
         return vec![
             "variant: outline -> filled".to_string(),

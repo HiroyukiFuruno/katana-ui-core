@@ -46,6 +46,10 @@ impl ToastStackManager {
     pub fn visual_contract(&self) -> ToastStackVisualContract {
         ToastStackVisualContract {
             position: self.options.position,
+            max_visible: self.options.max_visible,
+            dedup_strategy: self.options.dedup_strategy,
+            default_duration_ms: self.options.default_duration_ms,
+            pause_on_hover: self.options.pause_on_hover,
             stack_direction: self.options.position.stack_direction(),
             stack_gap: self.options.stack_gap,
             enter_direction: self.options.enter_direction,
@@ -151,6 +155,10 @@ pub struct ToastStackState {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ToastStackVisualContract {
     pub position: ToastPosition,
+    pub max_visible: usize,
+    pub dedup_strategy: ToastDedupStrategy,
+    pub default_duration_ms: u64,
+    pub pause_on_hover: bool,
     pub stack_direction: ToastStackDirection,
     pub stack_gap: u16,
     pub enter_direction: ToastStackDirection,

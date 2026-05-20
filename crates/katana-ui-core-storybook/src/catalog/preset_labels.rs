@@ -80,10 +80,11 @@ impl StoryPresetLabels {
                 "details 展開",
             ],
             "toast-stack-manager" => &[
-                "bottom stack",
-                "queue overflow",
-                "hover pause",
-                "action dismiss",
+                "位置 6 種類",
+                "dedup ById",
+                "pause_on_hover",
+                "queue 上限超過",
+                "action 付き toast",
             ],
             "tabs" => &["browser tab", "switch", "overflow", "theme line"],
             "toolbar" => &[
@@ -102,7 +103,7 @@ impl StoryPresetLabels {
             ],
             "split-pane" => &["horizontal", "drag action", "min clamp", "theme handle"],
             "modal" | "modal-overlay" => &["dialog", "escape close", "focus trap", "theme overlay"],
-            "notification-toast" => &["toast", "dismiss", "stack", "theme toast"],
+            "notification-toast" => &["toast", "dismiss", "ToastStackManager", "theme toast"],
             "popover" => &["anchor", "arrow", "slots", "focus management"],
             "hover-card" => &[
                 "delayed open",

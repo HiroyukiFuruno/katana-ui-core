@@ -33,6 +33,10 @@ impl StoryDetailContent {
             badge_settings_line(&marker)
         } else if example.page == "banner" {
             banner_settings_line(example, &marker)
+        } else if example.page == "toast-stack-manager" {
+            toast_stack_settings_line(example, &marker)
+        } else if example.page == "notification-toast" {
+            notification_toast_settings_line(&marker)
         } else if example.page == "chip" {
             chip_settings_line(&marker)
         } else if example.page == "attachment-chip" {
@@ -181,6 +185,25 @@ fn banner_settings_line(example: &StoryExample, marker: &str) -> String {
     format!(
         "{marker} settings: severity=Warning density=Compact actions=2 details=Closed dismissible=true callback_log={} actions={actions} -> severity=Danger density=Default actions=1 details=Open dismissible=false",
         example.callback_logs.len()
+    )
+}
+
+fn toast_stack_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: position=BottomEnd max_visible=2 dedup=ById duration=8000 pause_on_hover=true stack_gap=10 callback_log={} actions={actions} -> position=TopCenter max_visible=4 dedup=ByIdAndSeverity duration=3000 pause_on_hover=false stack_gap=16",
+        example.callback_logs.len()
+    )
+}
+
+fn notification_toast_settings_line(marker: &str) -> String {
+    format!(
+        "{marker} settings: single transient toast -> use ToastStackManager for queue/dedup/position"
     )
 }
 

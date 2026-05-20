@@ -144,6 +144,9 @@ fn expected_preset_count(page: &str) -> usize {
     if page == "banner" {
         return 5;
     }
+    if page == "toast-stack-manager" {
+        return 5;
+    }
     if page == "empty-state" {
         return 5;
     }

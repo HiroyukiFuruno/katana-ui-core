@@ -1,6 +1,6 @@
-use super::ToastStackManager;
+use super::{ToastActionKind, ToastStackManager};
 use crate::molecule::NotificationToast;
-use crate::render_model::{UiInteractionState, UiNode, UiNodeKind};
+use crate::render_model::{UiInteractionState, UiNode, UiNodeKind, UiVariant};
 
 impl From<ToastStackManager> for UiNode {
     fn from(value: ToastStackManager) -> Self {
@@ -33,7 +33,15 @@ fn toast_node(toast: super::ActiveToast) -> UiNode {
             .open(true),
     );
     for action in payload.actions {
-        node = node.child(crate::atom::Button::new(action.label));
+        node =
+            node.child(crate::atom::Button::new(action.label).variant(action_variant(action.kind)));
     }
     node
+}
+
+fn action_variant(kind: ToastActionKind) -> UiVariant {
+    match kind {
+        ToastActionKind::Primary => UiVariant::Filled,
+        ToastActionKind::Secondary => UiVariant::Text,
+    }
 }

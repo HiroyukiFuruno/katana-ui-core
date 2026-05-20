@@ -21,6 +21,8 @@ mod legacy_dod_empty_state_settings;
 mod legacy_dod_overlay_settings;
 #[path = "legacy_dod_text_area_settings.rs"]
 mod legacy_dod_text_area_settings;
+#[path = "legacy_dod_toast_stack_settings.rs"]
+mod legacy_dod_toast_stack_settings;
 #[path = "legacy_dod_toolbar_settings.rs"]
 mod legacy_dod_toolbar_settings;
 
@@ -90,6 +92,9 @@ impl LegacyDodReports {
         ));
         reports.extend(legacy_dod_overlay_settings::settings_mutations(examples));
         reports.extend(legacy_dod_text_area_settings::settings_mutations(examples));
+        reports.extend(legacy_dod_toast_stack_settings::settings_mutations(
+            examples,
+        ));
         reports.extend(legacy_dod_toolbar_settings::settings_mutations(examples));
         reports.extend(closeable_tab_strip_settings_mutations(examples));
         reports

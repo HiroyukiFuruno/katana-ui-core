@@ -157,6 +157,49 @@ fn toast_enqueue_queues_beyond_max_visible_and_promotes_on_dismiss() {
 }
 
 #[test]
+fn toast_stack_renders_actions_and_exposes_option_contract() {
+    let options = ToastStackOptions {
+        position: ToastPosition::TopCenter,
+        max_visible: 2,
+        dedup_strategy: ToastDedupStrategy::ById,
+        default_duration_ms: 7_000,
+        pause_on_hover: false,
+        stack_gap: 14,
+        ..ToastStackOptions::default()
+    };
+    let mut manager = ToastStackManager::new().options(options);
+    let _ = manager.apply_action(ToastStackAction::Enqueue(
+        ToastPayload::new("sync", "同期しました")
+            .action(ToastAction::new("open", "開く", ToastActionKind::Primary))
+            .action(ToastAction::new(
+                "ignore",
+                "閉じる",
+                ToastActionKind::Secondary,
+            )),
+    ));
+    let contract = manager.visual_contract();
+    let node = UiNode::from(manager);
+    let toast = node.children().first().expect("visible toast is rendered");
+
+    assert_eq!(ToastPosition::TopCenter, contract.position);
+    assert_eq!(2, contract.max_visible);
+    assert_eq!(ToastDedupStrategy::ById, contract.dedup_strategy);
+    assert_eq!(7_000, contract.default_duration_ms);
+    assert!(!contract.pause_on_hover);
+    assert_eq!(14, contract.stack_gap);
+    assert!(toast.children().iter().any(|it| {
+        it.kind() == UiNodeKind::Button
+            && it.props().label == "開く"
+            && it.props().variant == UiVariant::Filled
+    }));
+    assert!(toast.children().iter().any(|it| {
+        it.kind() == UiNodeKind::Button
+            && it.props().label == "閉じる"
+            && it.props().variant == UiVariant::Text
+    }));
+}
+
+#[test]
 fn toast_dedup_by_id_replaces_visible_and_preserves_remaining_duration() {
     let options = ToastStackOptions {
         dedup_strategy: ToastDedupStrategy::ById,

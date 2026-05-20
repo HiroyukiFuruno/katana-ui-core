@@ -12,6 +12,7 @@ const CHIP_SETTINGS_MUTATION_COUNT: usize = 6;
 const DIAGNOSTICS_SETTINGS_MUTATION_COUNT: usize = 5;
 const EMPTY_STATE_SETTINGS_MUTATION_COUNT: usize = 4;
 const BANNER_SETTINGS_MUTATION_COUNT: usize = 5;
+const TOAST_STACK_SETTINGS_MUTATION_COUNT: usize = 6;
 
 #[test]
 fn report_covers_selector_overlay_and_color_picker_sequences() {
@@ -33,6 +34,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + DIAGNOSTICS_SETTINGS_MUTATION_COUNT
             + EMPTY_STATE_SETTINGS_MUTATION_COUNT
             + BANNER_SETTINGS_MUTATION_COUNT
+            + TOAST_STACK_SETTINGS_MUTATION_COUNT
             + CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT,
         report.settings_mutations.len()
     );
@@ -101,6 +103,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_diagnostics_settings_are_switchable(&report.settings_mutations);
     assert_empty_state_settings_are_switchable(&report.settings_mutations);
     assert_banner_settings_are_switchable(&report.settings_mutations);
+    assert_toast_stack_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
         report.legacy_ui_markers.len(),
         report
@@ -140,6 +143,27 @@ fn assert_banner_settings_are_switchable(settings: &[super::SettingsMutationRepo
                     && it.event == "banner_settings_changed"
             }),
             "missing banner setting mutation for {option}"
+        );
+    }
+}
+
+fn assert_toast_stack_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "toast_stack.position",
+        "toast_stack.max_visible",
+        "toast_stack.dedup",
+        "toast_stack.duration",
+        "toast_stack.pause_on_hover",
+        "toast_stack.stack_gap",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "toast-stack-manager"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "toast_stack_settings_changed"
+            }),
+            "missing toast stack setting mutation for {option}"
         );
     }
 }

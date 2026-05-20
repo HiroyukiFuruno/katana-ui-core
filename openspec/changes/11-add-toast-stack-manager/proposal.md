@@ -25,7 +25,7 @@ KUC は `NotificationToast` molecule を持つが、現状は単一 toast の表
 
 ### New Capabilities
 
-- `kuc-toast-stack-manager`: ToastStackManager molecule の option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページの完了条件を定義する。
+- `kuc-toast-stack-manager`: ToastStackManager molecule の option / action / event / state / preset / preview / settings / 自動テスト / 数値化された描画契約 / Storybook ページの完了条件を定義する。
 
 ### Modified Capabilities
 

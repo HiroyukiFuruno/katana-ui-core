@@ -514,6 +514,65 @@ fn banner_story_exposes_settings_presets_and_logs() -> Result<(), &'static str> 
 }
 
 #[test]
+fn toast_stack_manager_story_exposes_settings_presets_and_links() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "toast-stack-manager")
+        .ok_or("toast-stack-manager page missing")?;
+    let details = super::StoryDetailContent::from_example(story);
+
+    assert_eq!(
+        &[
+            "位置 6 種類",
+            "dedup ById",
+            "pause_on_hover",
+            "queue 上限超過",
+            "action 付き toast"
+        ],
+        StoryPresetLabels::for_page("toast-stack-manager")
+    );
+    for preset in StoryPresetLabels::for_page("toast-stack-manager") {
+        assert!(
+            details.preset.contains(preset),
+            "toast-stack-manager detail preset lacks {preset}"
+        );
+    }
+    for setting in [
+        "position",
+        "max_visible",
+        "dedup",
+        "duration",
+        "pause_on_hover",
+        "stack_gap",
+    ] {
+        assert!(
+            details.settings.contains(setting),
+            "toast-stack-manager settings inspector lacks {setting}"
+        );
+    }
+    for action in [
+        "toast_enqueue_visible",
+        "toast_queue_and_overflow",
+        "toast_pause_hover",
+        "toast_action_dismiss",
+    ] {
+        assert!(
+            story.callback_logs.iter().any(|it| it.action == action),
+            "toast-stack-manager callback log lacks action {action}"
+        );
+    }
+
+    let notification = examples
+        .iter()
+        .find(|it| it.page == "notification-toast")
+        .ok_or("notification-toast page missing")?;
+    let notification_details = super::StoryDetailContent::from_example(notification);
+    assert!(notification_details.settings.contains("ToastStackManager"));
+    Ok(())
+}
+
+#[test]
 fn hover_card_story_exposes_rich_slots_and_callback_log() -> Result<(), &'static str> {
     let examples = StoryCatalog.examples();
     let story = examples
