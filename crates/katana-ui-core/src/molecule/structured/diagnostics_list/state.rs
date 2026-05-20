@@ -66,12 +66,28 @@ impl DiagnosticsListState {
             DiagnosticKeyboardInput::F8 => self.select_error(items, options, true),
             DiagnosticKeyboardInput::ShiftF8 => self.select_error(items, options, false),
             DiagnosticKeyboardInput::Space => self.apply_selected_fix(items),
-            DiagnosticKeyboardInput::ArrowRight | DiagnosticKeyboardInput::Enter => {
-                self.toggle_selected_preview()
-            }
+            DiagnosticKeyboardInput::Enter => self.navigate_selected(),
+            DiagnosticKeyboardInput::ArrowRight => self.toggle_selected_preview(),
             DiagnosticKeyboardInput::ArrowLeft => self.collapse_selected_preview(),
-            DiagnosticKeyboardInput::ArrowUp | DiagnosticKeyboardInput::ArrowDown => Vec::new(),
+            DiagnosticKeyboardInput::ArrowUp => self.select_visible(items, options, false),
+            DiagnosticKeyboardInput::ArrowDown => self.select_visible(items, options, true),
         }
+    }
+
+    fn select_visible(
+        &mut self,
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+        forward: bool,
+    ) -> Vec<DiagnosticsListEvent> {
+        let ids = DiagnosticsListPlanner::visible_items(items, options)
+            .into_iter()
+            .map(|it| it.id.clone())
+            .collect::<Vec<_>>();
+        let Some(id) = next_id(&ids, self.selected_id.as_ref(), forward, options) else {
+            return Vec::new();
+        };
+        self.select(id)
     }
 
     fn select_error(
@@ -102,6 +118,12 @@ impl DiagnosticsListState {
         self.selected_id
             .clone()
             .map_or_else(Vec::new, |id| self.toggle_fix_preview(id))
+    }
+
+    fn navigate_selected(&self) -> Vec<DiagnosticsListEvent> {
+        self.selected_id.clone().map_or_else(Vec::new, |id| {
+            vec![DiagnosticsListEvent::NavigateRequested { id }]
+        })
     }
 
     fn collapse_selected_preview(&mut self) -> Vec<DiagnosticsListEvent> {

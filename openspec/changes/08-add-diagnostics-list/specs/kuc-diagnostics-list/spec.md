@@ -51,28 +51,40 @@ The bulk apply MUST emit `BulkFixApplied { applied_ids, skipped_ids }`.
 - **THEN** excluded items appear in `skipped_ids` with reason `FilteredOut`
 - **AND** they are not modified
 
-### Requirement: DiagnosticsList surfaces empty and loading states
+### Requirement: DiagnosticsList surfaces empty and loading slots
 
-`DiagnosticsList` MUST render an empty state when no items pass the filter and `state.empty_state = true`.
-`DiagnosticsList` MUST render a skeleton state when `state.loading = true`.
-The empty and loading states MUST use the KUC `EmptyState` and `Skeleton` molecules respectively (when those changes are implemented).
+`DiagnosticsList` MUST render an `empty_slot` when no items pass the filter and the slot is provided.
+`DiagnosticsList` MUST render a `loading_slot` when `state.loading = true` and the slot is provided.
+`EmptyState` and `Skeleton` are recommended child molecules, but they MUST NOT be required for this change to compile or pass its contract tests.
 
 #### Scenario: filter results in zero items
 
 - **WHEN** items remain but the filter excludes all of them
-- **THEN** the molecule renders the `EmptyState` with a "no matches" message
-- **AND** the bulk action is disabled
+- **THEN** the molecule renders the provided `empty_slot`
+- **AND** diagnostic row children are not rendered
 
 #### Scenario: loading transitions to result
 
 - **WHEN** `state.loading = true` flips to `false` with items present
 - **THEN** the skeleton is replaced by the actual list
-- **AND** the focused item is restored if it still exists, otherwise focus falls back to the first item
+- **AND** root interaction reports the visible item count and selected index
+- **AND** a missing selected id falls back to visible index 0 without mutating consumer state
 
 ### Requirement: DiagnosticsList keyboard navigation matches problems panel conventions
 
-`DiagnosticsList` MUST handle `ArrowUp/Down` to move selection, `ArrowLeft/Right` to collapse/expand groups, `Enter` to navigate, and `Space` to apply quick fix.
+`DiagnosticsList` MUST handle `ArrowUp/Down` to move selection, `ArrowLeft/Right` to collapse/expand the selected fix preview, `Enter` to request navigation, and `Space` to apply quick fix.
 `DiagnosticsList` MUST also support `F8` / `Shift+F8` accelerators to jump to next/previous Error.
+
+#### Scenario: Arrow keys move and preview current item
+
+- **WHEN** `ArrowDown` or `ArrowUp` is pressed
+- **THEN** selection moves through currently visible items
+- **AND** `DiagnosticSelected { id }` is emitted with the destination item
+
+#### Scenario: Enter requests navigation
+
+- **WHEN** `Enter` is pressed on a selected item
+- **THEN** `NavigateRequested { id }` is emitted
 
 #### Scenario: F8 jumps to next Error
 

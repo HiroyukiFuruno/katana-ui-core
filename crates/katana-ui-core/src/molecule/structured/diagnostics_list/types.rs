@@ -1,6 +1,5 @@
 use crate::molecule::CodeDiff;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeSet;
 
 const DIAGNOSTIC_SEVERITY_COUNT: usize = 4;
 
@@ -125,72 +124,9 @@ impl DiagnosticItem {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DiagnosticsGroupBy {
-    Severity,
-    Source,
-    Location,
-    #[default]
-    None,
-}
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DiagnosticsSortBy {
-    Severity,
-    Location,
-    Source,
-    #[default]
-    Order,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DiagnosticsListOptions {
-    pub group_by: DiagnosticsGroupBy,
-    pub sort_by: DiagnosticsSortBy,
-    pub severity_filter: BTreeSet<DiagnosticSeverity>,
-    pub wrap_error_navigation: bool,
-}
-
-impl Default for DiagnosticsListOptions {
-    fn default() -> Self {
-        Self {
-            group_by: DiagnosticsGroupBy::None,
-            sort_by: DiagnosticsSortBy::Order,
-            severity_filter: DiagnosticSeverity::all().into_iter().collect(),
-            wrap_error_navigation: true,
-        }
-    }
-}
-
 impl DiagnosticSeverity {
     #[must_use]
     pub fn all() -> [Self; DIAGNOSTIC_SEVERITY_COUNT] {
         [Self::Error, Self::Warning, Self::Info, Self::Hint]
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DiagnosticsListEvent {
-    DiagnosticSelected {
-        id: DiagnosticId,
-    },
-    DiagnosticFixPreviewToggled {
-        id: DiagnosticId,
-        expanded: bool,
-    },
-    DiagnosticFixApplied {
-        id: DiagnosticId,
-    },
-    BulkFixPreviewOpened,
-    BulkFixApplied {
-        applied_ids: Vec<DiagnosticId>,
-        skipped_ids: Vec<(DiagnosticId, BulkFixSkipReason)>,
-    },
-    FilterChanged,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BulkFixSkipReason {
-    FilteredOut,
-    NoQuickfix,
 }

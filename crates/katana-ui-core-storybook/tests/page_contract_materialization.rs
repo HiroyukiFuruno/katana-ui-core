@@ -144,5 +144,8 @@ fn expected_preset_count(page: &str) -> usize {
     if page == "closeable-tab-strip" {
         return 6;
     }
+    if page == "diagnostics-list" {
+        return 6;
+    }
     4
 }

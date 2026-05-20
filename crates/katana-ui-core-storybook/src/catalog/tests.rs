@@ -378,6 +378,58 @@ fn chip_attachment_stories_expose_settings_presets_and_logs() -> Result<(), &'st
 }
 
 #[test]
+fn diagnostics_list_story_exposes_settings_presets_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "diagnostics-list")
+        .ok_or("diagnostics-list page missing")?;
+    let details = super::StoryDetailContent::from_example(story);
+
+    assert_eq!(
+        &[
+            "lint result",
+            "editor inline",
+            "tool result",
+            "empty",
+            "loading",
+            "bulk fix"
+        ],
+        StoryPresetLabels::for_page("diagnostics-list")
+    );
+    for preset in StoryPresetLabels::for_page("diagnostics-list") {
+        assert!(
+            details.preset.contains(preset),
+            "diagnostics-list detail preset lacks {preset}"
+        );
+    }
+    for setting in [
+        "group_by",
+        "sort_by",
+        "severity_filter",
+        "bulk_action",
+        "fix_preview",
+    ] {
+        assert!(
+            details.settings.contains(setting),
+            "diagnostics-list settings inspector lacks {setting}"
+        );
+    }
+    for action in [
+        "diagnostic_fix_preview",
+        "diagnostic_bulk_preview",
+        "diagnostic_select_error",
+        "diagnostic_apply_fix",
+    ] {
+        assert!(
+            story.callback_logs.iter().any(|it| it.action == action),
+            "diagnostics-list callback log lacks action {action}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn hover_card_story_exposes_rich_slots_and_callback_log() -> Result<(), &'static str> {
     let examples = StoryCatalog.examples();
     let story = examples

@@ -9,6 +9,8 @@ use serde::{Deserialize, Serialize};
 mod legacy_dod_chip_settings;
 #[path = "legacy_dod_context_menu.rs"]
 mod legacy_dod_context_menu;
+#[path = "legacy_dod_diagnostics_settings.rs"]
+mod legacy_dod_diagnostics_settings;
 #[path = "legacy_dod_drag_settings.rs"]
 mod legacy_dod_drag_settings;
 #[path = "legacy_dod_overlay_settings.rs"]
@@ -75,6 +77,9 @@ impl LegacyDodReports {
         ));
         reports.extend(legacy_dod_context_menu::settings_mutations(examples));
         reports.extend(legacy_dod_chip_settings::settings_mutations(examples));
+        reports.extend(legacy_dod_diagnostics_settings::settings_mutations(
+            examples,
+        ));
         reports.extend(legacy_dod_overlay_settings::settings_mutations(examples));
         reports.extend(legacy_dod_text_area_settings::settings_mutations(examples));
         reports.extend(legacy_dod_toolbar_settings::settings_mutations(examples));

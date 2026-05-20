@@ -79,7 +79,7 @@
 | Chip | atom | filter / tag 表示。variant / tone / size / selected / dismissible / keyboard dismiss を持つ |
 | AttachmentChip | molecule | file / image / URL / paste / resource 添付。status / progress / retry action を持つ |
 | ChipGroup | molecule | wrap / overflow menu / horizontal scroll / reorder opt-in を持つ chip container |
-| DiagnosticsList | molecule | severity / location / action の汎用問題一覧。lint domain は持たない |
+| DiagnosticsList | molecule | severity / location / quickfix / fix preview / bulk fix / keyboard navigation の汎用問題一覧。lint domain は持たない |
 | EmptyState | molecule | 空状態の heading / body / action |
 | Banner | molecule | 画面内に残る告知 |
 | ToastStack | molecule | 複数 toast の queue / dedupe / pause-on-hover |

@@ -108,6 +108,14 @@ pub(super) fn settings_rows(
             "menu: hidden chips".to_string(),
         ];
     }
+    if example.page == "diagnostics-list" {
+        return vec![
+            "group_by: severity".to_string(),
+            "sort_by: severity".to_string(),
+            "filter: error+warning".to_string(),
+            "bulk/fix: preview on".to_string(),
+        ];
+    }
     if is_button_page(example.page) {
         let spec = StorybookInteractionSpec::for_page(example.page);
         let variant = if scenario.screen_state.has_settings_override() {

@@ -1,4 +1,6 @@
 mod actions;
+mod events;
+mod options;
 mod planner;
 mod render;
 mod state;
@@ -8,12 +10,13 @@ use crate::render_model::{UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
 
 pub use actions::{DiagnosticKeyboardInput, DiagnosticsListAction};
+pub use events::{BulkFixSkipReason, DiagnosticsListEvent};
+pub use options::{DiagnosticsGroupBy, DiagnosticsListOptions, DiagnosticsSortBy};
 pub use planner::{DiagnosticsGroup, DiagnosticsListPlanner, DiagnosticsVisibleSnapshot};
 pub use state::DiagnosticsListState;
 pub use types::{
-    BulkFixSkipReason, DiagnosticAction, DiagnosticFixPreview, DiagnosticId, DiagnosticItem,
-    DiagnosticLocation, DiagnosticSeverity, DiagnosticsGroupBy, DiagnosticsListEvent,
-    DiagnosticsListOptions, DiagnosticsSortBy,
+    DiagnosticAction, DiagnosticFixPreview, DiagnosticId, DiagnosticItem, DiagnosticLocation,
+    DiagnosticSeverity,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

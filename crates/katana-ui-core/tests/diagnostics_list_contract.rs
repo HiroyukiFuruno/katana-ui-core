@@ -4,6 +4,7 @@ use katana_ui_core::molecule::{
     DiagnosticFixPreview, DiagnosticItem, DiagnosticKeyboardInput, DiagnosticLocation,
     DiagnosticSeverity, DiagnosticsGroupBy, DiagnosticsList, DiagnosticsListAction,
     DiagnosticsListEvent, DiagnosticsListOptions, DiagnosticsListPlanner, DiagnosticsSortBy,
+    ModalOverlay,
 };
 use katana_ui_core::render_model::{UiNodeKind, UiTree};
 
@@ -27,6 +28,38 @@ fn groups_filters_and_sorts_deterministically() {
 }
 
 #[test]
+fn group_by_source_and_location_preserves_typed_groups() {
+    let source_options = DiagnosticsListOptions {
+        group_by: DiagnosticsGroupBy::Source,
+        ..DiagnosticsListOptions::default()
+    };
+    let location_options = DiagnosticsListOptions {
+        group_by: DiagnosticsGroupBy::Location,
+        ..DiagnosticsListOptions::default()
+    };
+
+    let source_snapshot = DiagnosticsListPlanner::snapshot(&items(), &source_options);
+    let location_snapshot = DiagnosticsListPlanner::snapshot(&items(), &location_options);
+
+    assert_eq!("rustc", source_snapshot.groups[0].key);
+    assert_eq!("clippy", source_snapshot.groups[1].key);
+    assert_eq!("src/lib.rs", location_snapshot.groups[0].key);
+    assert_eq!("src/main.rs", location_snapshot.groups[1].key);
+}
+
+#[test]
+fn stable_sort_keeps_input_order_inside_equal_sort_keys() {
+    let options = DiagnosticsListOptions {
+        sort_by: DiagnosticsSortBy::Severity,
+        ..DiagnosticsListOptions::default()
+    };
+    let ordered = vec![item_without_fix("warning-b"), item_without_fix("warning-a")];
+    let snapshot = DiagnosticsListPlanner::snapshot(&ordered, &options);
+
+    assert_eq!(vec![id("warning-b"), id("warning-a")], snapshot.visible_ids);
+}
+
+#[test]
 fn expanded_fix_preview_renders_code_diff_with_distinct_state() {
     let mut list = DiagnosticsList::new("Diagnostics").item(item_with_fix("error-a"));
     list.apply_action(DiagnosticsListAction::ToggleFixPreview(id("error-a")));
@@ -40,6 +73,84 @@ fn expanded_fix_preview_renders_code_diff_with_distinct_state() {
         .find(|it| it.kind() == UiNodeKind::CodeDiff);
     assert!(preview.is_some());
     assert!(preview.is_some_and(|it| root.props().state_id != it.props().state_id));
+}
+
+#[test]
+fn open_bulk_preview_renders_modal_overlay_with_typed_event() {
+    let mut list = DiagnosticsList::new("Diagnostics")
+        .item(item_with_fix("error-a"))
+        .bulk_preview(ModalOverlay::new("Bulk fix preview").child(Text::new("Apply safe fixes")));
+    let events = list.apply_action(DiagnosticsListAction::OpenBulkPreview);
+    let tree = UiTree::new(list);
+
+    assert!(matches!(
+        events.as_slice(),
+        [DiagnosticsListEvent::BulkFixPreviewOpened]
+    ));
+    assert!(
+        tree.root()
+            .children()
+            .iter()
+            .any(|it| it.kind() == UiNodeKind::ModalOverlay)
+    );
+}
+
+#[test]
+fn severity_filter_renders_chip_row_with_selected_state() {
+    let options = DiagnosticsListOptions {
+        severity_filter: [DiagnosticSeverity::Error, DiagnosticSeverity::Warning]
+            .into_iter()
+            .collect(),
+        ..DiagnosticsListOptions::default()
+    };
+    let tree = UiTree::new(
+        DiagnosticsList::new("Diagnostics")
+            .option(options)
+            .item(item_with_fix("error-a")),
+    );
+    let chips = tree
+        .root()
+        .children()
+        .iter()
+        .filter(|it| it.kind() == UiNodeKind::Chip)
+        .collect::<Vec<_>>();
+
+    assert_eq!(4, chips.len());
+    assert!(
+        chips
+            .iter()
+            .any(|it| { it.props().label == "Error" && it.props().interaction.has_selection })
+    );
+    assert!(
+        chips
+            .iter()
+            .any(|it| { it.props().label == "Info" && !it.props().interaction.has_selection })
+    );
+}
+
+#[test]
+fn rendered_selection_reports_visible_index_and_missing_selection_fallback() {
+    let mut selected = DiagnosticsList::new("Diagnostics")
+        .item(item_with_fix("error-a"))
+        .item(item_without_fix("warning-a"));
+    selected.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ArrowDown,
+    ));
+    selected.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ArrowDown,
+    ));
+    let selected_tree = UiTree::new(selected);
+
+    let mut missing = DiagnosticsList::new("Diagnostics").item(item_with_fix("error-a"));
+    missing.apply_action(DiagnosticsListAction::Select(id("missing")));
+    let missing_tree = UiTree::new(missing);
+
+    assert!(selected_tree.root().props().interaction.has_selection);
+    assert_eq!(1, selected_tree.root().props().interaction.selected_index);
+    assert_eq!(2, selected_tree.root().props().interaction.item_count);
+    assert!(missing_tree.root().props().interaction.has_selection);
+    assert_eq!(0, missing_tree.root().props().interaction.selected_index);
+    assert_eq!(1, missing_tree.root().props().interaction.item_count);
 }
 
 #[test]
@@ -127,6 +238,89 @@ fn keyboard_f8_and_space_follow_problems_panel_convention() {
     assert!(matches!(
         applied.as_slice(),
         [DiagnosticsListEvent::DiagnosticFixApplied { id }] if id.as_str() == "error-a"
+    ));
+}
+
+#[test]
+fn keyboard_enter_requests_navigation_and_arrow_right_toggles_preview() {
+    let mut list = DiagnosticsList::new("Diagnostics").item(item_with_fix("error-a"));
+    list.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ArrowDown,
+    ));
+    let navigate = list.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::Enter,
+    ));
+    let expand = list.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ArrowRight,
+    ));
+    let collapse = list.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ArrowLeft,
+    ));
+
+    assert!(matches!(
+        navigate.as_slice(),
+        [DiagnosticsListEvent::NavigateRequested { id }] if id.as_str() == "error-a"
+    ));
+    assert!(matches!(
+        expand.as_slice(),
+        [DiagnosticsListEvent::DiagnosticFixPreviewToggled { id, expanded }]
+            if id.as_str() == "error-a" && *expanded
+    ));
+    assert!(matches!(
+        collapse.as_slice(),
+        [DiagnosticsListEvent::DiagnosticFixPreviewToggled { id, expanded }]
+            if id.as_str() == "error-a" && !*expanded
+    ));
+}
+
+#[test]
+fn keyboard_arrows_and_shift_f8_move_selection_through_visible_items() {
+    let options = DiagnosticsListOptions {
+        severity_filter: [DiagnosticSeverity::Error, DiagnosticSeverity::Warning]
+            .into_iter()
+            .collect(),
+        ..DiagnosticsListOptions::default()
+    };
+    let mut list = DiagnosticsList::new("Diagnostics")
+        .option(options)
+        .item(item_with_fix("error-a"))
+        .item(item_without_fix("warning-a"))
+        .item(item_with_fix("error-b"));
+
+    let first = list.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ArrowDown,
+    ));
+    let second = list.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ArrowDown,
+    ));
+    let previous = list.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ArrowUp,
+    ));
+    let next_error =
+        list.apply_action(DiagnosticsListAction::Keyboard(DiagnosticKeyboardInput::F8));
+    let previous_error = list.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ShiftF8,
+    ));
+
+    assert!(matches!(
+        first.as_slice(),
+        [DiagnosticsListEvent::DiagnosticSelected { id }] if id.as_str() == "error-a"
+    ));
+    assert!(matches!(
+        second.as_slice(),
+        [DiagnosticsListEvent::DiagnosticSelected { id }] if id.as_str() == "warning-a"
+    ));
+    assert!(matches!(
+        previous.as_slice(),
+        [DiagnosticsListEvent::DiagnosticSelected { id }] if id.as_str() == "error-a"
+    ));
+    assert!(matches!(
+        next_error.as_slice(),
+        [DiagnosticsListEvent::DiagnosticSelected { id }] if id.as_str() == "error-b"
+    ));
+    assert!(matches!(
+        previous_error.as_slice(),
+        [DiagnosticsListEvent::DiagnosticSelected { id }] if id.as_str() == "error-a"
     ));
 }
 

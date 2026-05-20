@@ -192,7 +192,14 @@ impl StoryPresetLabels {
                 "error retry",
             ],
             "chip-group" => &["wrap", "overflow menu", "horizontal scroll", "reorder"],
-            "diagnostics-list" => &["lint result", "severity filter", "fix preview", "bulk fix"],
+            "diagnostics-list" => &[
+                "lint result",
+                "editor inline",
+                "tool result",
+                "empty",
+                "loading",
+                "bulk fix",
+            ],
             "empty-state" => &[
                 "explorer empty",
                 "search no result",

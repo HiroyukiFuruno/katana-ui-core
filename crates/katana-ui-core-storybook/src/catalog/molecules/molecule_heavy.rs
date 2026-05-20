@@ -3,8 +3,9 @@ use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::molecule::{
     CodeDiffLine, CodeDiffLineKind, DiagnosticAction, DiagnosticFixPreview, DiagnosticItem,
-    DiagnosticLocation, DiagnosticSeverity, DiagnosticsGroupBy, DiagnosticsListAction,
-    DiagnosticsListOptions, DiagnosticsSortBy, DisclosureTriggerArea, TreeLineStyle, TreeNode,
+    DiagnosticKeyboardInput, DiagnosticLocation, DiagnosticSeverity, DiagnosticsGroupBy,
+    DiagnosticsListAction, DiagnosticsListOptions, DiagnosticsSortBy, DisclosureTriggerArea,
+    TreeLineStyle, TreeNode,
 };
 use katana_ui_core::{atom, molecule};
 
@@ -40,22 +41,44 @@ fn diagnostics_list_story() -> StoryExample {
         })
         .item(diagnostic_error())
         .item(diagnostic_warning())
+        .item(diagnostic_tool_result())
         .empty_slot(atom::Text::new("No diagnostics"))
+        .loading_slot(atom::Text::new("Loading diagnostics"))
         .bulk_preview(
             molecule::ModalOverlay::new("Bulk fix preview")
                 .child(atom::Text::new("Apply all safe quick fixes")),
         );
     let target = diagnostics.state_id().clone();
-    let events = diagnostics.apply_action(DiagnosticsListAction::ToggleFixPreview(
+    let preview = diagnostics.apply_action(DiagnosticsListAction::ToggleFixPreview(
         molecule::DiagnosticId::new("syntax-error"),
     ));
-    let log = katana_ui_core::interaction::UiCallbackLog::new(
-        target,
-        "diagnostic_fix_preview",
-        "expanded=false",
+    let bulk = diagnostics.apply_action(DiagnosticsListAction::OpenBulkPreview);
+    let select =
+        diagnostics.apply_action(DiagnosticsListAction::Keyboard(DiagnosticKeyboardInput::F8));
+    let apply = diagnostics.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::Space,
+    ));
+    let logs = vec![
+        diagnostic_log(&target, "diagnostic_fix_preview", "expanded=false", preview),
+        diagnostic_log(&target, "diagnostic_bulk_preview", "open=false", bulk),
+        diagnostic_log(&target, "diagnostic_select_error", "selected=none", select),
+        diagnostic_log(&target, "diagnostic_apply_fix", "applied=false", apply),
+    ];
+    StoryCatalog::interactive_story("diagnostics-list", diagnostics, logs)
+}
+
+fn diagnostic_log(
+    target: &katana_ui_core::render_model::UiStateId,
+    action: &str,
+    before: &str,
+    events: Vec<katana_ui_core::molecule::DiagnosticsListEvent>,
+) -> katana_ui_core::interaction::UiCallbackLog {
+    katana_ui_core::interaction::UiCallbackLog::new(
+        target.clone(),
+        action,
+        before,
         format!("events={events:?}"),
-    );
-    StoryCatalog::interactive_story("diagnostics-list", diagnostics, vec![log])
+    )
 }
 
 fn diagnostic_error() -> DiagnosticItem {
@@ -97,6 +120,16 @@ fn diagnostic_warning() -> DiagnosticItem {
     )
     .source("clippy")
     .quickfix(DiagnosticAction::new("remove-import", "Remove import"))
+}
+
+fn diagnostic_tool_result() -> DiagnosticItem {
+    DiagnosticItem::new(
+        "format-hint",
+        DiagnosticSeverity::Warning,
+        "Formatter tool result",
+        DiagnosticLocation::new("crates/katana-ui-core/src/story.rs", 31, 1),
+    )
+    .source("katana-format")
 }
 
 fn tree_view_story() -> StoryExample {

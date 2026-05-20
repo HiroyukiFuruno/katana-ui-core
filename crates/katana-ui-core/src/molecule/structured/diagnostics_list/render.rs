@@ -1,16 +1,24 @@
 use super::{DiagnosticsList, DiagnosticsListPlanner};
-use crate::atom::Text;
-use crate::render_model::{UiNode, UiNodeKind};
+use crate::atom::{Chip, ChipSize, ChipTone, ChipVariant, Text};
+use crate::render_model::{UiInteractionState, UiNode, UiNodeKind};
 
 impl From<DiagnosticsList> for UiNode {
     fn from(value: DiagnosticsList) -> Self {
-        let mut node = UiNode::from_state(UiNodeKind::DiagnosticsList, value.label, value.state_id);
+        let mut node = UiNode::from_state(
+            UiNodeKind::DiagnosticsList,
+            value.label.clone(),
+            value.state_id.clone(),
+        );
         if value.state.loading {
             return render_optional_slot(node, value.loading_slot);
         }
         let visible = DiagnosticsListPlanner::visible_items(&value.items, &value.options);
+        node = node.interaction(interaction_state(&value, &visible));
         if visible.is_empty() {
             return render_optional_slot(node, value.empty_slot);
+        }
+        for severity in super::DiagnosticSeverity::all() {
+            node = node.child(severity_chip(severity, &value));
         }
         for item in visible {
             node = node.child(Text::new(format!("{:?}: {}", item.severity, item.message)));
@@ -29,9 +37,45 @@ impl From<DiagnosticsList> for UiNode {
     }
 }
 
+fn severity_chip(severity: super::DiagnosticSeverity, value: &DiagnosticsList) -> Chip {
+    Chip::new(format!("{severity:?}"))
+        .tone(severity_tone(severity))
+        .variant(ChipVariant::Soft)
+        .size(ChipSize::Compact)
+        .interactive(true)
+        .selected(value.options.severity_filter.contains(&severity))
+}
+
+fn severity_tone(severity: super::DiagnosticSeverity) -> ChipTone {
+    match severity {
+        super::DiagnosticSeverity::Error => ChipTone::Danger,
+        super::DiagnosticSeverity::Warning => ChipTone::Warning,
+        super::DiagnosticSeverity::Info => ChipTone::Accent,
+        super::DiagnosticSeverity::Hint => ChipTone::Muted,
+    }
+}
+
 fn render_optional_slot(node: UiNode, slot: Option<UiNode>) -> UiNode {
     if let Some(slot) = slot {
         return node.child(slot);
     }
     node
+}
+
+fn interaction_state(
+    value: &DiagnosticsList,
+    visible: &[&super::DiagnosticItem],
+) -> UiInteractionState {
+    let selected_index = value
+        .state
+        .selected_id
+        .as_ref()
+        .and_then(|id| visible.iter().position(|it| &it.id == id));
+    UiInteractionState {
+        has_selection: value.state.selected_id.is_some() && !visible.is_empty(),
+        selected_index: selected_index.unwrap_or_default(),
+        item_count: visible.len(),
+        open: value.state.bulk_preview_open,
+        ..UiInteractionState::default()
+    }
 }

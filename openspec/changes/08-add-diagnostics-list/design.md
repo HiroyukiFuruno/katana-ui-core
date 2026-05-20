@@ -11,17 +11,15 @@ severity 付き問題リストを汎用 molecule として提供し、problems p
 ```text
 DiagnosticsItem {
   id, severity (Error | Warning | Info | Hint),
-  code, message,
+  message,
   location: DiagnosticLocation,        // file_label + line/col、または scope
   source: String,                       // rule id / linter name
-  fix_preview: Option<CodeDiffSnapshot>,
-  actions: Vec<DiagnosticAction>,
-  related: Vec<DiagnosticsItem>,        // 子 diagnostic
+  quickfix: Option<DiagnosticAction>,
+  fix_preview: Option<DiagnosticFixPreview>,
 }
 
 DiagnosticAction {
-  id, label, kind: Quickfix | Refactor | Navigate | Command,
-  destructive: bool,
+  id, label,
 }
 
 DiagnosticsGroup {
@@ -34,7 +32,7 @@ DiagnosticsGroup {
 
 - `group_by`: `Severity` / `Source` / `Location` / `None`
 - group ごとに count badge、severity summary（混在の場合は最大 severity）を表示
-- toggle で expand/collapse
+- group / sort / filter は `DiagnosticsListPlanner` の純関数で snapshot 化する
 
 ### 3. fix preview
 
@@ -45,26 +43,27 @@ DiagnosticsGroup {
 
 ### 4. bulk action
 
-- `bulk_action: BulkActionSpec { label, target_filter, dry_run_preview }`
-- bulk fix の preview は別 modal で見せる（KUC `ModalOverlay` を使う）
+- bulk fix の preview は consumer が渡す `bulk_preview` slot を別 modal で見せる（KUC `ModalOverlay` を使う）
 - bulk apply の結果は `BulkFixApplied { applied_ids, skipped_ids }` event
 
 ### 5. severity filter
 
-- chip group 風の filter（`07-add-chip-and-attachment-chip` の `Chip` を利用）
-- 選択 severity を `state.severity_filter` に保持
+- chip row 風の filter（`07-add-chip-and-attachment-chip` の `Chip` を利用）
+- 選択 severity を `DiagnosticsListOptions.severity_filter` に保持
 - 表示 item は filter で評価
 
-### 6. empty / loading state
+### 6. empty / loading slot
 
-- `state.empty_state: bool` で `EmptyState`（別 change `09-add-empty-state`）を embed
-- `state.loading: bool` で skeleton（`add-skeleton-loader-17`）を表示
+- `empty_slot: Option<UiTree>` を受け取り、結果 0 件時に表示する
+- `loading_slot: Option<UiTree>` を受け取り、loading=true のときに表示する
+- `EmptyState` と `Skeleton` は推奨 child だが、DiagnosticsList の必須依存にしない
+- slot の子 `UiStateId` は親と分離する
 
 ### 7. キーボード
 
 - ↑↓ で item 移動
-- ← で group collapse、→ で expand
-- Enter で `Navigate`、Space で `ApplyFix`（quickfix がある場合）
+- ← / → で選択 item の fix preview を collapse / expand
+- Enter で `NavigateRequested`、Space で `ApplyFix`（quickfix がある場合）
 - F8 / Shift+F8: 次 / 前の error にジャンプ（accelerator）
 
 ## 代替案と却下理由
@@ -84,5 +83,5 @@ DiagnosticsGroup {
 ## 影響範囲
 
 - `CodeDiff` molecule に「snapshot として埋め込み利用」される旨を明記
-- 別 change `09-add-empty-state` / `add-skeleton-loader-17` / `07-add-chip-and-attachment-chip` と組合せ
+- 別 change `09-add-empty-state` / `17-add-skeleton-loader` / `07-add-chip-and-attachment-chip` と組合せ
 - consumer の problems panel / editor diagnostics / lint result 描画を KUC molecule で置換

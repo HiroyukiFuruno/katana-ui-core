@@ -27,7 +27,7 @@ pub(super) fn contract_rows(
         ("settings", row_value(settings_summary(node))),
         (
             "test",
-            row_value("unit + visual regression required".to_string()),
+            row_value("unit + numeric render contract".to_string()),
         ),
     ]
 }
@@ -46,7 +46,7 @@ pub(super) fn status_rows(example: &StoryExample) -> [(&'static str, String); ST
         ("action", status(contract.action_history)),
         ("preset", status(contract.preset_tabs)),
         ("requirement", status(contract.requirement_status)),
-        ("visual", "required".to_string()),
+        ("render", "numeric contract".to_string()),
     ]
 }
 
