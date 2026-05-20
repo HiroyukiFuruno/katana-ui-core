@@ -92,6 +92,8 @@ impl StoryDetailContent {
             skeleton_cluster_settings_line(example, &marker)
         } else if example.page == "motion" {
             motion_settings_line(example, &marker)
+        } else if example.page == "window-control-button-group" {
+            window_control_button_group_settings_line(example, &marker)
         } else if is_virtualized_page(example.page) {
             virtualization_settings_line(example, &marker)
         } else {
@@ -391,6 +393,19 @@ fn motion_settings_line(example: &StoryExample, marker: &str) -> String {
         .join(",");
     format!(
         "{marker} settings: primitive: Fade Slide Scale Shimmer; tokens: duration=Default easing=Emphasized distance=Default; state: instant=false duration=200 distance=8; event: reduced_motion_query override=Ignore context=Storybook; action: motion_reduce motion_tick motion_force motion_ignore motion_override; quality: token_resolution reduced_static override_isolated; callback_log={} actions={actions} -> primitive=Scale duration=Slow easing=Decelerate distance=Spacious reduced_policy=Ignore",
+        example.callback_logs.len()
+    )
+}
+
+fn window_control_button_group_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: position=Leading/Trailing/Auto size=Compact/Default/Tall controls=Close+Minimize+Maximize+Restore visibility=Always/Hover/FullscreenHover callback_log={} actions={actions} state=visible event=ControlPressed+VisibilityChanged+FullscreenChanged action=window_control_press -> position=Trailing size=Tall controls=Close visibility=Hover",
         example.callback_logs.len()
     )
 }

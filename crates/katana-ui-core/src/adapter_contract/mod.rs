@@ -3,7 +3,11 @@ use crate::event::drag::{DRAG_CANCEL_REASON_KEYBOARD_ESCAPE, DragEvent};
 use crate::interaction::drag_and_drop::{
     DragData, DropEffect, OS_FILE_LIST_TAG, OS_TEXT_TAG, OS_URL_TAG,
 };
+use crate::molecule::selection::window_control_button_group::{
+    WindowControlButtonGroupEvent, WindowControlKind,
+};
 use crate::render_model::{RenderContext, UiNodeId, UiTree};
+use crate::window::{WindowCommand, WindowId};
 use serde::{Deserialize, Serialize};
 
 pub trait WidgetAdapter {
@@ -61,6 +65,7 @@ pub enum AdapterExtension {
     PlatformMenu(PlatformMenuRequest),
     Ime(ImeRequest),
     DragDrop(DragDropRequest),
+    WindowControl(WindowControlDispatchRequest),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -130,6 +135,48 @@ pub enum ImeRequestPhase {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DragDropRequest {
     pub payload: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WindowControlDispatchRequest {
+    pub window_id: WindowId,
+    pub control: WindowControlKind,
+}
+
+impl WindowControlDispatchRequest {
+    #[must_use]
+    pub const fn new(window_id: WindowId, control: WindowControlKind) -> Self {
+        Self { window_id, control }
+    }
+
+    #[must_use]
+    pub fn from_event(event: WindowControlButtonGroupEvent, window_id: WindowId) -> Option<Self> {
+        match event {
+            WindowControlButtonGroupEvent::ControlPressed { which } => {
+                Some(Self::new(window_id, which))
+            }
+            WindowControlButtonGroupEvent::VisibilityChanged { .. }
+            | WindowControlButtonGroupEvent::FullscreenChanged { .. } => None,
+        }
+    }
+
+    #[must_use]
+    pub fn command(&self) -> WindowCommand {
+        match self.control {
+            WindowControlKind::Close => WindowCommand::Close {
+                window_id: self.window_id.clone(),
+            },
+            WindowControlKind::Minimize => WindowCommand::Minimize {
+                window_id: self.window_id.clone(),
+            },
+            WindowControlKind::Maximize => WindowCommand::Maximize {
+                window_id: self.window_id.clone(),
+            },
+            WindowControlKind::Restore => WindowCommand::Restore {
+                window_id: self.window_id.clone(),
+            },
+        }
+    }
 }
 
 pub const NATIVE_DND_ESCAPE_HATCH_TAGS: [&str; 3] = [OS_FILE_LIST_TAG, OS_URL_TAG, OS_TEXT_TAG];

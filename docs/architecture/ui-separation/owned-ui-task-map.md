@@ -93,6 +93,7 @@
 | Virtualization | interaction / molecule contract | List / SelectionList / TreeView / CommandPalette / DiagnosticsList が共有する visible range / overscan / row height / aria-setsize 契約 |
 | Skeleton / SkeletonCluster | atom / molecule | loading placeholder。shape / size / animation / reduced-motion / live region / preset layout を数値化された contract で持つ |
 | Motion | foundation / interaction contract | Fade / Slide / Scale / Shimmer を token 化し、reduced-motion query、context disable、per-molecule default / override を持つ |
+| WindowControlButtonGroup | molecule / adapter contract | close / minimize / maximize / restore の window intent を持つ。title layout と draggable region は consumer / adapter の責務 |
 
 ## Storybook internal
 

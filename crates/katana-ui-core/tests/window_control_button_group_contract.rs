@@ -1,3 +1,4 @@
+use katana_ui_core::adapter_contract::{AdapterExtension, WindowControlDispatchRequest};
 use katana_ui_core::molecule::selection::window_control_button_group::{
     WindowControlButtonGroup, WindowControlButtonGroupAction, WindowControlButtonGroupEvent,
     WindowControlButtonGroupOptions, WindowControlKind, WindowControlSize, WindowControlVisibility,
@@ -87,6 +88,62 @@ fn pressing_controls_emits_typed_intent_events() {
         events[0].window_command(window_id)
     );
     assert_eq!(events, group.state().events());
+}
+
+#[test]
+fn adapter_dispatch_request_maps_all_control_events_to_window_commands() {
+    let window_id = WindowId::new("main-window");
+
+    let cases = [
+        (
+            WindowControlKind::Close,
+            WindowCommand::Close {
+                window_id: window_id.clone(),
+            },
+        ),
+        (
+            WindowControlKind::Minimize,
+            WindowCommand::Minimize {
+                window_id: window_id.clone(),
+            },
+        ),
+        (
+            WindowControlKind::Maximize,
+            WindowCommand::Maximize {
+                window_id: window_id.clone(),
+            },
+        ),
+        (
+            WindowControlKind::Restore,
+            WindowCommand::Restore {
+                window_id: window_id.clone(),
+            },
+        ),
+    ];
+
+    for (control, command) in cases {
+        let request = WindowControlDispatchRequest::from_event(
+            WindowControlButtonGroupEvent::ControlPressed { which: control },
+            window_id.clone(),
+        )
+        .expect("control press must become adapter dispatch request");
+
+        assert_eq!(window_id, request.window_id);
+        assert_eq!(control, request.control);
+        assert_eq!(command, request.command());
+    }
+}
+
+#[test]
+fn adapter_extension_carries_window_control_without_owning_title_bar_layout() {
+    let request =
+        WindowControlDispatchRequest::new(WindowId::new("main-window"), WindowControlKind::Close);
+    let extension = AdapterExtension::WindowControl(request.clone());
+    let adapter_contract_source = include_str!("../src/adapter_contract/mod.rs");
+
+    assert_eq!(AdapterExtension::WindowControl(request), extension);
+    assert!(!adapter_contract_source.contains("TitleBar"));
+    assert!(!adapter_contract_source.contains("DraggableRegion"));
 }
 
 #[test]

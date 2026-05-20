@@ -28,12 +28,17 @@ Motion の reduced-motion query は adapter の責務とする。
 各 adapter は OS / host の prefers-reduced-motion を `ReducedMotionQuery` として KUC runtime へ渡し、KUC core は `ReducedMotionPolicy::Respect`、`ForceReduced`、`Ignore` と `MotionDisableContext` に基づいて `MotionSnapshot` を解決する。
 adapter は独自の animation literal を持たず、`MotionDurationToken`、`MotionEasingToken`、`MotionDistanceToken` の解決結果だけを描画へ反映する。
 
+Window controls dispatch は adapter の責務とする。
+KUC core は `WindowControlButtonGroupEvent::ControlPressed` を `WindowControlDispatchRequest` に変換できる境界だけを持ち、各 adapter はそれを host の `WindowCommand` へ渡す。
+ドラッグできるタイトル領域（draggable region）は consumer / adapter が持つ window surface の責務であり、`WindowControlButtonGroup` の public API には入れない。
+
 ## 最低品質 gate
 
 互換 adapter crate を作る段階では最低限以下を通す。
 
 - adapter crate の compile test
 - Text / Button / Row / Column の `UiTree` 変換 skeleton test
+- window controls dispatch の compile-gate stub test
 - core crate dependency leak guard
 
 Storybook smoke は `katana-ui-core` の core-only 確認だけを必須にする。

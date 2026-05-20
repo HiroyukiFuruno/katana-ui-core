@@ -23,6 +23,7 @@ const SCROLL_AREA_SETTINGS_MUTATION_COUNT: usize = 6;
 const SPLIT_PANE_SETTINGS_MUTATION_COUNT: usize = 6;
 const SETTINGS_LIST_SETTINGS_MUTATION_COUNT: usize = 6;
 const COLLAPSIBLE_PANEL_SETTINGS_MUTATION_COUNT: usize = 5;
+const WINDOW_CONTROL_SETTINGS_MUTATION_COUNT: usize = 4;
 
 #[test]
 fn report_covers_selector_overlay_and_color_picker_sequences() {
@@ -54,6 +55,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + SPLIT_PANE_SETTINGS_MUTATION_COUNT
             + SETTINGS_LIST_SETTINGS_MUTATION_COUNT
             + COLLAPSIBLE_PANEL_SETTINGS_MUTATION_COUNT
+            + WINDOW_CONTROL_SETTINGS_MUTATION_COUNT
             + CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT,
         report.settings_mutations.len()
     );
@@ -132,6 +134,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_split_pane_settings_are_switchable(&report.settings_mutations);
     assert_settings_list_settings_are_switchable(&report.settings_mutations);
     assert_collapsible_panel_settings_are_switchable(&report.settings_mutations);
+    assert_window_control_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
         report.legacy_ui_markers.len(),
         report
@@ -153,6 +156,25 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
     );
+}
+
+fn assert_window_control_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "window_control.position",
+        "window_control.size",
+        "window_control.controls",
+        "window_control.visibility",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "window-control-button-group"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "window_control_settings_changed"
+            }),
+            "missing window-control-button-group setting mutation for {option}"
+        );
+    }
 }
 
 fn assert_collapsible_panel_settings_are_switchable(settings: &[super::SettingsMutationReport]) {

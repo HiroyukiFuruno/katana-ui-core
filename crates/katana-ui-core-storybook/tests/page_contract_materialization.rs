@@ -176,7 +176,7 @@ fn expected_preset_count(page: &str) -> usize {
     if page == "settings-list" {
         return 6;
     }
-    if page == "collapsible-panel" {
+    if page == "collapsible-panel" || page == "window-control-button-group" {
         return 5;
     }
     if page == "modal" || page == "modal-overlay" {

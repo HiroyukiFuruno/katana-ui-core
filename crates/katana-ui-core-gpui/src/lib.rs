@@ -1,6 +1,8 @@
 pub mod ime_contract;
 
-use katana_ui_core::adapter_contract::{NativeDragDropBridge, WidgetAdapter};
+use katana_ui_core::adapter_contract::{
+    NativeDragDropBridge, WidgetAdapter, WindowControlDispatchRequest,
+};
 use katana_ui_core::event::UiEvent;
 use katana_ui_core::interaction::drag_and_drop::{DragData, DropEffect};
 use katana_ui_core::render_model::UiNodeId;
@@ -57,6 +59,11 @@ impl GpuiWindowBridge {
     pub fn map_command(self, command: &WindowCommand) -> GpuiWindowAction {
         GpuiWindowAction::Command(format!("{command:?}"))
     }
+
+    #[must_use]
+    pub fn map_window_control(self, request: &WindowControlDispatchRequest) -> GpuiWindowAction {
+        self.map_command(&request.command())
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -96,18 +103,22 @@ impl GpuiNativeDragDropBridge {
 mod tests {
     use super::{
         GpuiCompatAdapter, GpuiNativeDragDropBridge, GpuiRuntimeAdapter, GpuiSurfaceBridge,
+        GpuiWindowAction, GpuiWindowBridge,
     };
-    use katana_ui_core::adapter_contract::WidgetAdapter;
+    use katana_ui_core::adapter_contract::{WidgetAdapter, WindowControlDispatchRequest};
     use katana_ui_core::atom::{Button, Text};
     use katana_ui_core::event::{DragEvent, UiEvent};
     use katana_ui_core::interaction::drag_and_drop::{DragData, DropEffect, OS_TEXT_TAG};
     use katana_ui_core::layout::{Column, Row};
+    use katana_ui_core::molecule::selection::window_control_button_group::{
+        WindowControlButtonGroupEvent, WindowControlKind,
+    };
     use katana_ui_core::render_model::UiNodeId;
     use katana_ui_core::render_model::{RenderContext, UiNodeKind, UiTree};
     use katana_ui_core::runtime::{AppConfig, RuntimeAdapter};
     use katana_ui_core::surface::{PaintRequest, SurfaceMetrics};
     use katana_ui_core::theme::ThemeId;
-    use katana_ui_core::window::{WindowConfig, WindowId};
+    use katana_ui_core::window::{WindowCommand, WindowConfig, WindowId};
 
     #[test]
     fn maps_text_button_row_column_skeleton() {
@@ -162,5 +173,24 @@ mod tests {
                 })
             ]
         ));
+    }
+
+    #[test]
+    fn window_control_stub_receives_window_commands() {
+        let request = WindowControlDispatchRequest::from_event(
+            WindowControlButtonGroupEvent::ControlPressed {
+                which: WindowControlKind::Restore,
+            },
+            WindowId::new("main"),
+        )
+        .expect("window control press must dispatch");
+        let expected = WindowCommand::Restore {
+            window_id: WindowId::new("main"),
+        };
+
+        assert_eq!(
+            GpuiWindowAction::Command(format!("{expected:?}")),
+            GpuiWindowBridge.map_window_control(&request)
+        );
     }
 }

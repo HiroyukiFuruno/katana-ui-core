@@ -233,8 +233,9 @@ impl StoryPresetLabels {
                 "per-molecule motion",
             ],
             "window-control-button-group" => &[
-                "macos leading",
-                "windows trailing",
+                "macOS",
+                "Windows",
+                "Linux",
                 "fullscreen hover",
                 "close only",
             ],
