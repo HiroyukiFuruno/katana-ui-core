@@ -13,6 +13,8 @@ mod legacy_dod_context_menu;
 mod legacy_dod_diagnostics_settings;
 #[path = "legacy_dod_drag_settings.rs"]
 mod legacy_dod_drag_settings;
+#[path = "legacy_dod_empty_state_settings.rs"]
+mod legacy_dod_empty_state_settings;
 #[path = "legacy_dod_overlay_settings.rs"]
 mod legacy_dod_overlay_settings;
 #[path = "legacy_dod_text_area_settings.rs"]
@@ -78,6 +80,9 @@ impl LegacyDodReports {
         reports.extend(legacy_dod_context_menu::settings_mutations(examples));
         reports.extend(legacy_dod_chip_settings::settings_mutations(examples));
         reports.extend(legacy_dod_diagnostics_settings::settings_mutations(
+            examples,
+        ));
+        reports.extend(legacy_dod_empty_state_settings::settings_mutations(
             examples,
         ));
         reports.extend(legacy_dod_overlay_settings::settings_mutations(examples));

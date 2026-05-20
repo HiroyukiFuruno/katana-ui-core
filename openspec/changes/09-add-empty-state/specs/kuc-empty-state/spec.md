@@ -15,17 +15,17 @@
 
 - **WHEN** both `icon` and `illustration` are set
 - **THEN** the contract test fails
-- **AND** the static linter directs the consumer to choose one
+- **AND** `validate()` directs the consumer to choose one
 
 ### Requirement: EmptyState primary and secondary actions emit typed events
 
-`EmptyState` MUST emit `EmptyStateActioned { id }` for primary and secondary actions.
+`EmptyState` MUST emit `EmptyStateEvent::Actioned { id, action_id }` for primary and secondary actions.
 Both actions MUST be optional; absence MUST simply hide the corresponding button.
 
 #### Scenario: primary action pressed
 
 - **WHEN** primary action is pressed
-- **THEN** `EmptyStateActioned { id: Primary }` is emitted
+- **THEN** `EmptyStateEvent::Actioned { id: Primary, action_id }` is emitted
 - **AND** focus stays on the action unless the consumer dispatches a follow-up command
 
 #### Scenario: no actions configured
@@ -37,7 +37,7 @@ Both actions MUST be optional; absence MUST simply hide the corresponding button
 ### Requirement: EmptyState tone × size × alignment matrix is stable
 
 `EmptyState` MUST keep `tone = Neutral | Subtle | Accent | Warning | Danger`, `size = Compact | Default | Large`, and `alignment = Center | Leading` as typed enums.
-Layout snapshots MUST remain stable under the same `(tone, size, alignment)` triple.
+Layout snapshots MUST expose heading, body, and action rectangles and remain stable under the same `(size, alignment, body, actions)` inputs.
 
 #### Scenario: tone changes color but not layout
 
@@ -51,6 +51,17 @@ Layout snapshots MUST remain stable under the same `(tone, size, alignment)` tri
 - **THEN** layout dimensions update accordingly
 - **AND** the rendered tone color tokens stay the same for the same `tone` value
 
+### Requirement: EmptyState exposes accessibility announce payload
+
+`EmptyState` MUST expose a deterministic announce payload that combines tone and heading.
+The rendered root node MUST copy the payload into `accessibility_label`.
+
+#### Scenario: warning empty state announces tone and heading
+
+- **WHEN** `tone = Warning` and `heading = "No results"` are set
+- **THEN** `announce_payload()` returns `Warning: No results`
+- **AND** the rendered root node has the same accessibility label
+
 ### Requirement: EmptyState is embeddable in list molecules
 
 `DiagnosticsList`, `SelectionList`, `TreeView`, `CommandPalette`, and `SearchBox` MUST be able to embed `EmptyState` when their data is empty after applying filters.
@@ -60,4 +71,10 @@ Each embedding MUST keep `EmptyState`'s `UiStateId` distinct from the parent lis
 
 - **WHEN** a `SelectionList` has zero rows after filtering
 - **THEN** it renders an `EmptyState` molecule in the body slot
+- **AND** the parent and child state ids remain distinct in tests
+
+#### Scenario: other empty hosts can embed EmptyState
+
+- **WHEN** `DiagnosticsList`, `TreeView`, `CommandPalette`, or `SearchBox` renders an empty child slot
+- **THEN** it can render an `EmptyState` child
 - **AND** the parent and child state ids remain distinct in tests

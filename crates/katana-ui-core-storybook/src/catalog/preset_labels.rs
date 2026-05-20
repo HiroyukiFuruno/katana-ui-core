@@ -204,6 +204,7 @@ impl StoryPresetLabels {
                 "explorer empty",
                 "search no result",
                 "diagnostics clean",
+                "history empty",
                 "error fallback",
             ],
             "tree-view" => &["folders", "toggle", "context", "theme tree"],

@@ -2,7 +2,7 @@
 
 `katana` の explorer 空表示（`explorer/empty.rs`）、search no result、tab bar が空のとき、chat history が空のとき、DiagnosticsList が clean の場合、command palette の検索結果空など、「空表示（empty state）」は consumer のあらゆる場所に存在する。
 
-現状 KUC には empty state 用 molecule がなく、consumer ごとに「アイコン + 見出し + 補足 + アクション」を ad hoc に組んでいる。揃った余白・揃ったタイポグラフィ・action button の有無で揺れが出ており、画像回帰の対象にもなっていない。
+現状 KUC には empty state 用 molecule がなく、consumer ごとに「アイコン + 見出し + 補足 + アクション」を ad hoc に組んでいる。揃った余白・揃ったタイポグラフィ・action button の有無で揺れが出ており、layout snapshot / render command / theme token / accessibility payload の契約対象にもなっていない。
 
 ## What Changes
 
@@ -18,17 +18,17 @@
     - `size: Compact | Default | Large`
     - `alignment: Center | Leading`
   - action: `PressPrimary` / `PressSecondary`
-  - event: `EmptyStateActioned`
-  - state: callback log、focus
+  - event: `EmptyStateEvent::Actioned`
+  - state: callback log、focus、live region announce payload
 
 ## Capabilities
 
 ### New Capabilities
 
-- `kuc-empty-state`: EmptyState molecule の option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページの完了条件を定義する。
+- `kuc-empty-state`: EmptyState molecule の option / action / event / state / preset / preview / settings / 自動テスト / 数値化された描画契約 / Storybook ページの完了条件を定義する。
 
 ## Impact
 
-- `crates/katana-ui-core/src/molecule/basic.rs`（または `molecule/empty_state.rs`）に追加する。
+- `crates/katana-ui-core/src/molecule/empty_state/` に model / layout / render / types を追加する。
 - DiagnosticsList、SelectionList、TreeView、SearchBox、CommandPalette に empty 表示を embed できる前提として整理する。
 - consumer (`katana` explorer empty、`katana-chat-ui` history empty 等) は KUC molecule に置き換え可能になる。

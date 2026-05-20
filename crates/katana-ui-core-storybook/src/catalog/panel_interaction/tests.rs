@@ -10,6 +10,7 @@ const TOOLBAR_SETTINGS_MUTATION_COUNT: usize = 5;
 const TEXT_AREA_SETTINGS_MUTATION_COUNT: usize = 5;
 const CHIP_SETTINGS_MUTATION_COUNT: usize = 6;
 const DIAGNOSTICS_SETTINGS_MUTATION_COUNT: usize = 5;
+const EMPTY_STATE_SETTINGS_MUTATION_COUNT: usize = 4;
 
 #[test]
 fn report_covers_selector_overlay_and_color_picker_sequences() {
@@ -29,6 +30,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + TEXT_AREA_SETTINGS_MUTATION_COUNT
             + CHIP_SETTINGS_MUTATION_COUNT
             + DIAGNOSTICS_SETTINGS_MUTATION_COUNT
+            + EMPTY_STATE_SETTINGS_MUTATION_COUNT
             + CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT,
         report.settings_mutations.len()
     );
@@ -95,6 +97,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_text_area_settings_are_switchable(&report.settings_mutations);
     assert_chip_settings_are_switchable(&report.settings_mutations);
     assert_diagnostics_settings_are_switchable(&report.settings_mutations);
+    assert_empty_state_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
         report.legacy_ui_markers.len(),
         report
@@ -116,6 +119,25 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
     );
+}
+
+fn assert_empty_state_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "empty_state.tone",
+        "empty_state.size",
+        "empty_state.alignment",
+        "empty_state.actions",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "empty-state"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "empty_state_settings_changed"
+            }),
+            "missing empty-state setting mutation for {option}"
+        );
+    }
 }
 
 fn assert_diagnostics_settings_are_switchable(settings: &[super::SettingsMutationReport]) {

@@ -141,6 +141,9 @@ fn expected_preset_count(page: &str) -> usize {
     if page == "attachment-chip" {
         return 5;
     }
+    if page == "empty-state" {
+        return 5;
+    }
     if page == "closeable-tab-strip" {
         return 6;
     }

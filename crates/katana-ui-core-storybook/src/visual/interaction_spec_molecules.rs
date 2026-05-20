@@ -255,8 +255,8 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "preview=true",
         )),
         "empty-state" => Some(spec(
-            "empty_state_action",
-            "empty_state_action_invoked",
+            "empty_state_primary",
+            "empty_state_actioned",
             "empty_state.primary_action",
             "reload",
             "action=reload",

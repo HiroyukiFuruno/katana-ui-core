@@ -54,8 +54,8 @@ pub use disclosure_foundation::DisclosureTriggerArea;
 pub use drag_preview::DragPreview;
 pub use empty_state::{
     EmptyState, EmptyStateAction, EmptyStateActionId, EmptyStateAlignment,
-    EmptyStateContractViolation, EmptyStateEvent, EmptyStateLayoutSnapshot, EmptyStateSize,
-    EmptyStateTone,
+    EmptyStateContractViolation, EmptyStateEvent, EmptyStateLayoutRect, EmptyStateLayoutSnapshot,
+    EmptyStateSize, EmptyStateTone,
 };
 pub use segmented_toggle::SegmentedToggle;
 pub use selection::{

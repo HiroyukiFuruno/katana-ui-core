@@ -27,12 +27,12 @@
 - primary は強調表示
 - secondary は ghost / link 表示
 - どちらも `Button` atom を子に持つ
-- callback は `EmptyStateActioned { id: Primary | Secondary }` event
+- callback は `EmptyStateEvent::Actioned { id: Primary | Secondary, action_id }` event
 
 ### 4. accessibility
 
-- heading は role=heading
-- live region announce: tone と heading を読み上げる
+- heading は root label として保持し、支援技術向け payload は `accessibility_label` に出す
+- live region announce: tone と heading を `announce_payload()` で読み上げる
 
 ### 5. 内部レイアウト
 
@@ -43,7 +43,7 @@
 
 | 代替 | 却下理由 |
 | --- | --- |
-| consumer 毎に `Card` + `Text` + `Button` を組む | テンプレートが揃わず、空表示の視覚的一貫性が崩れる。画像回帰の対象から漏れる。 |
+| consumer 毎に `Card` + `Text` + `Button` を組む | テンプレートが揃わず、空表示の視覚的一貫性が崩れる。layout snapshot / render command / theme token / accessibility payload の契約から漏れる。 |
 | `Card` molecule に empty option を追加 | Card は一般 surface であり、empty 状態用の icon/illustration/action 構成は別責務。 |
 
 ## Out of scope

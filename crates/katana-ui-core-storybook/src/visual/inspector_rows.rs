@@ -116,6 +116,14 @@ pub(super) fn settings_rows(
             "bulk/fix: preview on".to_string(),
         ];
     }
+    if example.page == "empty-state" {
+        return vec![
+            "tone: accent -> danger".to_string(),
+            "size: default -> large".to_string(),
+            "align: center -> leading".to_string(),
+            "actions: primary+secondary".to_string(),
+        ];
+    }
     if is_button_page(example.page) {
         let spec = StorybookInteractionSpec::for_page(example.page);
         let variant = if scenario.screen_state.has_settings_override() {

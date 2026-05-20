@@ -80,7 +80,7 @@
 | AttachmentChip | molecule | file / image / URL / paste / resource 添付。status / progress / retry action を持つ |
 | ChipGroup | molecule | wrap / overflow menu / horizontal scroll / reorder opt-in を持つ chip container |
 | DiagnosticsList | molecule | severity / location / quickfix / fix preview / bulk fix / keyboard navigation の汎用問題一覧。lint domain は持たない |
-| EmptyState | molecule | 空状態の heading / body / action |
+| EmptyState | molecule | 空状態の heading / body / icon or illustration / primary and secondary action / live region |
 | Banner | molecule | 画面内に残る告知 |
 | ToastStack | molecule | 複数 toast の queue / dedupe / pause-on-hover |
 | HoverCard | molecule | hover / focus で開く rich content。delay、pointer follow、slot、共有 placement を持つ |

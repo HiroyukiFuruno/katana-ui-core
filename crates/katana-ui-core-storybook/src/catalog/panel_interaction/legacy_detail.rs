@@ -39,6 +39,8 @@ impl StoryDetailContent {
             chip_group_settings_line(&marker)
         } else if example.page == "diagnostics-list" {
             diagnostics_settings_line(example, &marker)
+        } else if example.page == "empty-state" {
+            empty_state_settings_line(example, &marker)
         } else if example.page == "closeable-tab-strip" {
             closeable_tab_strip_settings_line(example, &marker)
         } else if example.page == "drag-and-drop" {
@@ -190,6 +192,19 @@ fn diagnostics_settings_line(example: &StoryExample, marker: &str) -> String {
         .join(",");
     format!(
         "{marker} settings: group_by=Severity sort_by=Severity severity_filter=Error+Warning bulk_action=Preview fix_preview=Expanded actions={actions} -> group_by=Source sort_by=Location severity_filter=Error bulk_action=Apply fix_preview=Collapsed"
+    )
+}
+
+fn empty_state_settings_line(example: &StoryExample, marker: &str) -> String {
+    let actions = example
+        .callback_logs
+        .iter()
+        .map(|it| it.action.as_str())
+        .collect::<Vec<_>>()
+        .join(",");
+    format!(
+        "{marker} settings: tone=Accent size=Default alignment=Center actions=Primary callback_log={} actions={actions} -> tone=Danger size=Large alignment=Leading actions=Primary+Secondary",
+        example.callback_logs.len()
     )
 }
 

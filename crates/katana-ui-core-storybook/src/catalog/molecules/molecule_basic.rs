@@ -5,7 +5,8 @@ use katana_ui_core::render_model::UiStateId;
 use katana_ui_core::{atom, molecule};
 use molecule::{
     AttachmentChipAction, AttachmentKind, AttachmentProgress, AttachmentStatus, ChipGroupAction,
-    ChipGroupOverflow, EmptyStateAction, EmptyStateActionId, EmptyStateTone,
+    ChipGroupOverflow, EmptyStateAction, EmptyStateActionId, EmptyStateAlignment, EmptyStateSize,
+    EmptyStateTone,
 };
 
 const TOOLBAR_AVAILABLE_WIDTH: u32 = 110;
@@ -113,16 +114,28 @@ fn empty_state_story() -> StoryExample {
     let empty = molecule::EmptyState::new("No diagnostics")
         .body("日本語 mixed text is centered.")
         .tone(EmptyStateTone::Accent)
-        .primary_action(EmptyStateAction::new("reload", "Reload"));
+        .size(EmptyStateSize::Default)
+        .alignment(EmptyStateAlignment::Center)
+        .primary_action(EmptyStateAction::new("reload", "Reload"))
+        .secondary_action(EmptyStateAction::new("docs", "Open docs"));
     let target = empty.state_id().clone();
-    let event = empty.apply_action(EmptyStateActionId::Primary);
-    let log = UiCallbackLog::new(
-        target,
-        "empty_state_action",
-        "action=none",
-        format!("event={event:?}"),
-    );
-    StoryCatalog::interactive_story("empty-state", empty, vec![log])
+    let primary = empty.apply_action(EmptyStateActionId::Primary);
+    let secondary = empty.apply_action(EmptyStateActionId::Secondary);
+    let logs = vec![
+        UiCallbackLog::new(
+            target.clone(),
+            "empty_state_primary",
+            "action=none",
+            format!("event={primary:?}"),
+        ),
+        UiCallbackLog::new(
+            target,
+            "empty_state_secondary",
+            "action=primary",
+            format!("event={secondary:?}"),
+        ),
+    ];
+    StoryCatalog::interactive_story("empty-state", empty, logs)
 }
 
 fn toolbar_story() -> StoryExample {
