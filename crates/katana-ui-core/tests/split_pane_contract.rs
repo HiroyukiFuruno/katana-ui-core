@@ -1,7 +1,11 @@
 use katana_ui_core::atom::Text;
 use katana_ui_core::component::ComponentAction;
+use katana_ui_core::event::UiEvent;
 use katana_ui_core::interaction::UiAction;
-use katana_ui_core::layout::{SplitPane, SplitPaneAxis, SplitPaneResizeMode};
+use katana_ui_core::layout::{
+    SplitPane, SplitPaneAction, SplitPaneAxis, SplitPaneEvent, SplitPaneResizeMode,
+    SplitPaneResizeSource,
+};
 use katana_ui_core::render_model::{UiNodeKind, UiSplitPaneAxis, UiSplitPaneResizeMode, UiTree};
 
 #[test]
@@ -44,6 +48,28 @@ fn split_pane_rejects_extra_primary_panes_in_render_contract() {
     );
 
     assert_eq!(2, tree.root().children().len());
+    assert_eq!(
+        "ignored_extra_children=1",
+        tree.root().props().interaction.dismiss_reason
+    );
+}
+
+#[test]
+fn split_pane_first_second_slots_are_the_only_primary_panes() {
+    let tree = UiTree::new(
+        SplitPane::new()
+            .first(Text::new("Editor"))
+            .second(Text::new("Preview"))
+            .child(Text::new("Ignored")),
+    );
+
+    let child_labels: Vec<&str> = tree
+        .root()
+        .children()
+        .iter()
+        .map(|it| it.props().label.as_str())
+        .collect();
+    assert_eq!(["Editor", "Preview"], child_labels.as_slice());
     assert_eq!(
         "ignored_extra_children=1",
         tree.root().props().interaction.dismiss_reason
@@ -103,4 +129,103 @@ fn split_pane_clamp_reset_and_drag_lifecycle_are_deterministic() {
     assert!(drag_start.after.dragging);
     assert!(!drag_end.after.dragging);
     assert_eq!("55", reset.after.value);
+}
+
+#[test]
+fn split_pane_typed_drag_sequence_emits_ordered_events() {
+    let mut split = SplitPane::new().min_percent(20).max_percent(80);
+    let target = split.state_id().clone();
+
+    let events = split.apply_split_action_sequence([
+        SplitPaneAction::StartResize,
+        SplitPaneAction::SetRatio(96),
+        SplitPaneAction::EndResize,
+    ]);
+
+    assert_eq!(
+        &[
+            SplitPaneEvent::ResizeStarted {
+                target: target.clone()
+            },
+            SplitPaneEvent::RatioChanged {
+                target: target.clone(),
+                ratio_percent: 80,
+                clamped: true,
+                source: SplitPaneResizeSource::Pointer,
+            },
+            SplitPaneEvent::ResizeEnded { target },
+        ],
+        events.as_slice()
+    );
+    assert!(matches!(
+        UiEvent::SplitPane(events[1].clone()),
+        UiEvent::SplitPane(SplitPaneEvent::RatioChanged {
+            ratio_percent: 80,
+            clamped: true,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn split_pane_keyboard_resize_uses_axis_step_and_reset_ratio() {
+    let mut split = SplitPane::new()
+        .axis(SplitPaneAxis::Vertical)
+        .ratio_percent(40)
+        .reset_percent(55);
+    let target = split.state_id().clone();
+
+    let resized = split.apply_split_action(SplitPaneAction::ResizeBy {
+        delta_percent: 6,
+        source: SplitPaneResizeSource::Keyboard,
+    });
+    let reset = split.apply_split_action(SplitPaneAction::ResetRatio);
+
+    assert_eq!(
+        vec![SplitPaneEvent::RatioChanged {
+            target: target.clone(),
+            ratio_percent: 46,
+            clamped: false,
+            source: SplitPaneResizeSource::Keyboard,
+        }],
+        resized
+    );
+    assert_eq!(
+        vec![SplitPaneEvent::RatioChanged {
+            target,
+            ratio_percent: 55,
+            clamped: false,
+            source: SplitPaneResizeSource::Pointer,
+        }],
+        reset
+    );
+    assert_eq!(SplitPaneAxis::Vertical, split.axis_value());
+    assert_eq!(55, split.ratio_percent_value());
+}
+
+#[test]
+fn split_pane_public_contract_does_not_absorb_shell_or_sidebar_contracts() {
+    let split_pane_sources = [
+        include_str!("../src/layout/split_pane.rs"),
+        include_str!("../src/layout/split_pane_actions.rs"),
+        include_str!("../src/layout/split_pane_contract.rs"),
+        include_str!("../src/render_model/typed_split_pane.rs"),
+    ]
+    .join("\n");
+
+    for forbidden in [
+        "AppShell",
+        "CollapsiblePanel",
+        "CollapsibleSidebar",
+        "sidebar",
+        "collapse",
+        "viewer-editor",
+        "storage",
+        "persist",
+    ] {
+        assert!(
+            !split_pane_sources.contains(forbidden),
+            "SplitPane contract must not absorb {forbidden}"
+        );
+    }
 }

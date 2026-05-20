@@ -57,7 +57,12 @@ impl AtomState {
             UiAction::ScrollTo { .. }
             | UiAction::ScrollBy { .. }
             | UiAction::ScrollIntoView { .. }
-            | UiAction::SetScrollbarVisibility { .. } => {}
+            | UiAction::SetScrollbarVisibility { .. }
+            | UiAction::SplitPaneSetRatio { .. }
+            | UiAction::SplitPaneResizeBy { .. }
+            | UiAction::SplitPaneResetRatio { .. }
+            | UiAction::SplitPaneStartResize { .. }
+            | UiAction::SplitPaneEndResize { .. } => {}
         }
     }
 

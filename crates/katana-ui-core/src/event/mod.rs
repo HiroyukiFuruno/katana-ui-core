@@ -78,6 +78,7 @@ pub enum UiEvent {
     Command(CommandEvent),
     Drag(DragEvent),
     Scroll(crate::layout::ScrollAreaEvent),
+    SplitPane(crate::layout::SplitPaneEvent),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -1,6 +1,7 @@
 use super::{StoryCatalog, StoryExample};
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::{UiAction, UiCallbackLog};
+use katana_ui_core::layout::SplitPaneResizeSource;
 use katana_ui_core::render_model::{UiRect, UiScrollbarVisibility, UiStateId};
 use katana_ui_core::{atom, layout, molecule};
 
@@ -51,11 +52,11 @@ fn split_pane_story() -> StoryExample {
         .max_percent(SPLIT_PANE_MAX_PERCENT)
         .reset_percent(SPLIT_PANE_RESET_PERCENT)
         .handle_width_px(8)
-        .child(atom::Text::new(split_pane_preset_label(
+        .first(atom::Text::new(split_pane_preset_label(
             "horizontal",
             "axis=Horizontal ratio=50 min=20 max=80 handle=8 resize_mode=Drag",
         )))
-        .child(atom::Text::new(split_pane_preset_label(
+        .second(atom::Text::new(split_pane_preset_label(
             "vertical",
             "axis=Vertical ratio=42 min=24 max=76 handle=10 resize_mode=Keyboard",
         )));
@@ -75,7 +76,22 @@ fn split_pane_story() -> StoryExample {
             "keyboard resize",
             "axis=Horizontal ratio=50->56 min=20 max=80 resize_mode=Keyboard",
         )))
-        .child(split_pane_nested_preview());
+        .child(split_pane_nested_preview())
+        .child(atom::Text::new(
+            "settings: axis ratio min max reset handle resize_mode",
+        ))
+        .child(atom::Text::new(
+            "state: ratio=50 dragging=false focused_handle=false last_event=RatioChanged",
+        ))
+        .child(atom::Text::new(
+            "event: ResizeStarted RatioChanged ResizeEnded ResizeRejected",
+        ))
+        .child(atom::Text::new(
+            "action: split_pane_set_ratio split_pane_resize_by split_pane_reset_ratio",
+        ))
+        .child(atom::Text::new(
+            "quality: clamp event_order public_api_guard",
+        ));
     StoryCatalog::interactive_story("split-pane", preview, logs)
 }
 
@@ -152,15 +168,47 @@ fn split_pane_nested_preview() -> layout::SplitPane {
         .min_percent(30)
         .max_percent(70)
         .handle_width_px(6)
-        .child(atom::Text::new(split_pane_preset_label(
+        .first(atom::Text::new(split_pane_preset_label(
             "nested",
             "children=2 nested=true axis=Vertical ratio=58 handle=6",
         )))
-        .child(atom::Text::new("nested detail"))
+        .second(atom::Text::new("nested detail"))
 }
 
 fn split_pane_logs(split: &mut layout::SplitPane, target: UiStateId) -> Vec<UiCallbackLog> {
     let mut logs = Vec::new();
+    logs.extend(
+        split
+            .apply_action(&UiAction::split_pane_start_resize(target.clone()))
+            .callback_log,
+    );
+    logs.extend(
+        split
+            .apply_action(&UiAction::split_pane_set_ratio(
+                target.clone(),
+                SPLIT_PANE_RESIZE_PERCENT,
+            ))
+            .callback_log,
+    );
+    logs.extend(
+        split
+            .apply_action(&UiAction::split_pane_resize_by(
+                target.clone(),
+                4,
+                SplitPaneResizeSource::Keyboard,
+            ))
+            .callback_log,
+    );
+    logs.extend(
+        split
+            .apply_action(&UiAction::split_pane_reset_ratio(target.clone()))
+            .callback_log,
+    );
+    logs.extend(
+        split
+            .apply_action(&UiAction::split_pane_end_resize(target.clone()))
+            .callback_log,
+    );
     logs.extend(
         split
             .apply_action(&UiAction::split_pane_resized(
@@ -208,6 +256,16 @@ fn split_pane_logs(split: &mut layout::SplitPane, target: UiStateId) -> Vec<UiCa
         "requested=8 min=20 max=80",
         "ratio=20 clamped=true",
     ));
+    let mut disabled = layout::SplitPane::new().resize_mode(layout::SplitPaneResizeMode::Disabled);
+    logs.extend(
+        disabled
+            .apply_action(&UiAction::split_pane_resize_by(
+                disabled.state_id().clone(),
+                8,
+                SplitPaneResizeSource::Pointer,
+            ))
+            .callback_log,
+    );
     logs
 }
 

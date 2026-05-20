@@ -343,7 +343,7 @@ fn split_pane_settings_line(example: &StoryExample, marker: &str) -> String {
         .collect::<Vec<_>>()
         .join(",");
     format!(
-        "{marker} settings: axis=Horizontal/Vertical ratio=50 min=20 max=80 reset=50 handle=8 resize_mode=Drag+Keyboard children=2 nested=true callback_log={} actions={actions} -> axis=Vertical ratio=56 min=20 max=80 reset=50 handle=10 resize_mode=Keyboard children=2 nested=true",
+        "{marker} settings: axis ratio min max reset handle resize_mode; axis=Horizontal/Vertical ratio=50 min=20 max=80 reset=50 handle=8 resize_mode=Drag+Keyboard children=2 nested=true callback_log={} actions={actions}; state: ratio=50 dragging=false focused_handle=false last_event=RatioChanged; event: ResizeStarted RatioChanged ResizeEnded ResizeRejected; action: split_pane_set_ratio split_pane_resize_by split_pane_reset_ratio; quality: clamp event_order public_api_guard -> axis=Vertical ratio=56 min=20 max=80 reset=50 handle=10 resize_mode=Keyboard children=2 nested=true",
         example.callback_logs.len()
     )
 }

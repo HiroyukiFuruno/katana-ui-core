@@ -31,6 +31,8 @@ mod legacy_dod_search_control_strip_settings;
 mod legacy_dod_settings_list;
 #[path = "legacy_dod_shortcut_settings.rs"]
 mod legacy_dod_shortcut_settings;
+#[path = "legacy_dod_split_pane_settings.rs"]
+mod legacy_dod_split_pane_settings;
 #[path = "legacy_dod_status_bar_settings.rs"]
 mod legacy_dod_status_bar_settings;
 #[path = "legacy_dod_text_area_settings.rs"]
@@ -117,6 +119,7 @@ impl LegacyDodReports {
         reports.extend(legacy_dod_scroll_area_settings::settings_mutations(
             examples,
         ));
+        reports.extend(legacy_dod_split_pane_settings::settings_mutations(examples));
         reports.extend(legacy_dod_settings_list::settings_mutations(examples));
         reports.extend(legacy_dod_text_area_settings::settings_mutations(examples));
         reports.extend(legacy_dod_toast_stack_settings::settings_mutations(

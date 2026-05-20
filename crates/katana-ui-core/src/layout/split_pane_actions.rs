@@ -1,4 +1,4 @@
-use super::{SplitPane, SplitPaneResizeMode};
+use super::{SplitPane, SplitPaneAction, SplitPaneResizeMode, SplitPaneResizeSource};
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult, UiActionSource};
 use crate::layout::split_pane_ratio::parse_ratio_percent;
@@ -24,8 +24,30 @@ impl ComponentAction for SplitPane {
 impl SplitPane {
     fn apply_resize_action(&mut self, action: &UiAction) -> bool {
         match action {
+            UiAction::SplitPaneSetRatio { ratio_percent, .. } => !self
+                .apply_split_action(SplitPaneAction::SetRatio(*ratio_percent))
+                .is_empty(),
+            UiAction::SplitPaneResizeBy {
+                delta_percent,
+                source,
+                ..
+            } => !self
+                .apply_split_action(SplitPaneAction::ResizeBy {
+                    delta_percent: *delta_percent,
+                    source: *source,
+                })
+                .is_empty(),
+            UiAction::SplitPaneResetRatio { .. } => !self
+                .apply_split_action(SplitPaneAction::ResetRatio)
+                .is_empty(),
+            UiAction::SplitPaneStartResize { .. } => !self
+                .apply_split_action(SplitPaneAction::StartResize)
+                .is_empty(),
+            UiAction::SplitPaneEndResize { .. } => !self
+                .apply_split_action(SplitPaneAction::EndResize)
+                .is_empty(),
             UiAction::SetValue { value, source, .. } if self.resize_source_allowed(*source) => {
-                self.apply_ratio_value(value)
+                self.apply_ratio_value(value, *source)
             }
             UiAction::SetValue { source, .. } if Self::is_resize_source(*source) => false,
             UiAction::SetValue { source, .. }
@@ -49,24 +71,21 @@ impl SplitPane {
         }
     }
 
-    fn apply_ratio_value(&mut self, value: &str) -> bool {
+    fn apply_ratio_value(&mut self, value: &str, source: UiActionSource) -> bool {
         let Some(percent) = parse_ratio_percent(value) else {
             return false;
         };
-        let clamped = self.clamped(percent);
-        self.set_ratio_percent(percent);
-        self.interaction.dismiss_reason = if clamped == percent {
-            String::new()
-        } else {
-            format!("clamped:{percent}->{clamped}")
+        let source = match source {
+            UiActionSource::SplitPaneKeyboard => SplitPaneResizeSource::Keyboard,
+            _ => SplitPaneResizeSource::Pointer,
         };
-        true
+        !self.set_ratio_with_event(percent, source).is_empty()
     }
 
     fn reset_ratio(&mut self) -> bool {
-        self.set_ratio_percent(self.reset_percent);
-        self.interaction.dismiss_reason.clear();
-        true
+        !self
+            .apply_split_action(SplitPaneAction::ResetRatio)
+            .is_empty()
     }
 
     const fn is_resize_source(source: UiActionSource) -> bool {

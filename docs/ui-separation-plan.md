@@ -115,6 +115,8 @@ P0 → P1 (本 repo)
 - [x] P1-D-008: `Grid` model を定義する。
 - [x] P1-D-009: `ScrollArea` model を定義する。
 - [x] P1-D-010: `SplitPane` model を定義する。
+  - `SplitPane` は `first` / `second` の 2 pane slot、typed action / event、ratio clamp、reset、handle props を KUC が持つ。
+  - ratio の保存、app shell、折りたたみ sidebar、editor-preview sync は consumer 側の責務とする。
 - [x] P1-D-011: layout snapshot test を作る。
 - [x] P1-D-012: layout serialization test を作る。
 

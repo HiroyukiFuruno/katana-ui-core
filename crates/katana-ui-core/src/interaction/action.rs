@@ -1,5 +1,6 @@
 use super::action_name::value_name;
 use crate::interaction::{ColorDragAction, ProgressAction, UiActionSource};
+use crate::layout::SplitPaneResizeSource;
 use crate::render_model::{UiRect, UiScrollbarVisibility, UiStateId};
 use serde::{Deserialize, Serialize};
 
@@ -80,6 +81,24 @@ pub enum UiAction {
         target: UiStateId,
         visibility: UiScrollbarVisibility,
     },
+    SplitPaneSetRatio {
+        target: UiStateId,
+        ratio_percent: u8,
+    },
+    SplitPaneResizeBy {
+        target: UiStateId,
+        delta_percent: i8,
+        source: SplitPaneResizeSource,
+    },
+    SplitPaneResetRatio {
+        target: UiStateId,
+    },
+    SplitPaneStartResize {
+        target: UiStateId,
+    },
+    SplitPaneEndResize {
+        target: UiStateId,
+    },
 }
 
 impl UiAction {
@@ -102,7 +121,12 @@ impl UiAction {
             | Self::ScrollTo { target, .. }
             | Self::ScrollBy { target, .. }
             | Self::ScrollIntoView { target, .. }
-            | Self::SetScrollbarVisibility { target, .. } => target,
+            | Self::SetScrollbarVisibility { target, .. }
+            | Self::SplitPaneSetRatio { target, .. }
+            | Self::SplitPaneResizeBy { target, .. }
+            | Self::SplitPaneResetRatio { target }
+            | Self::SplitPaneStartResize { target }
+            | Self::SplitPaneEndResize { target } => target,
         }
     }
 
@@ -161,6 +185,11 @@ impl UiAction {
             Self::ScrollBy { .. } => "scroll_by",
             Self::ScrollIntoView { .. } => "scroll_into_view",
             Self::SetScrollbarVisibility { .. } => "scrollbar_visibility_changed",
+            Self::SplitPaneSetRatio { .. } => "split_pane_set_ratio",
+            Self::SplitPaneResizeBy { .. } => "split_pane_resize_by",
+            Self::SplitPaneResetRatio { .. } => "split_pane_reset_ratio",
+            Self::SplitPaneStartResize { .. } => "split_pane_start_resize",
+            Self::SplitPaneEndResize { .. } => "split_pane_end_resize",
         }
     }
 }

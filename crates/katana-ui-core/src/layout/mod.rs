@@ -1,7 +1,10 @@
 mod scroll_area;
 mod split_pane;
 mod split_pane_actions;
+mod split_pane_contract;
+mod split_pane_event_actions;
 mod split_pane_ratio;
+mod split_pane_slots;
 
 use crate::render_model::{
     UiAlignItems, UiCommonProps, UiDisplay, UiInteractionState, UiJustifyContent, UiNode,
@@ -13,6 +16,10 @@ pub use scroll_area::{
 };
 use serde::{Deserialize, Serialize};
 pub use split_pane::{SplitPane, SplitPaneAxis, SplitPaneResizeMode};
+pub use split_pane_contract::{
+    SplitPaneAction, SplitPaneEvent, SplitPaneOptions, SplitPaneRejectionReason,
+    SplitPaneResizeSource,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub enum Length {

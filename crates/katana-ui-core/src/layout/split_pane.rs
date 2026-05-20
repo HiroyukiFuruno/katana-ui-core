@@ -1,11 +1,11 @@
-use super::{Alignment, Length};
+use super::{Alignment, Length, SplitPaneOptions};
 use crate::layout::split_pane_ratio::{
     DEFAULT_HANDLE_WIDTH_PX, DEFAULT_MAX_PERCENT, DEFAULT_MIN_PERCENT, DEFAULT_RATIO_PERCENT,
     interaction_with_ratio, parse_ratio_percent,
 };
 use crate::render_model::{
-    UiInteractionState, UiNode, UiNodeKind, UiSplitPaneAxis, UiSplitPaneProps,
-    UiSplitPaneResizeMode, UiStateId,
+    UiInteractionState, UiNode, UiNodeKind, UiSplitPaneAxis, UiSplitPaneHandleProps,
+    UiSplitPaneProps, UiSplitPaneResizeMode, UiStateId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -131,6 +131,31 @@ impl SplitPane {
     }
 
     #[must_use]
+    pub fn options(mut self, options: SplitPaneOptions) -> Self {
+        self.axis = options.axis;
+        self.min_percent = options.min_percent.min(options.max_percent);
+        self.max_percent = options.max_percent.max(self.min_percent);
+        self.reset_percent = self.clamped(options.reset_percent);
+        self.handle_width_px = options.handle_width_px;
+        self.resize_mode = options.resize_mode;
+        self.set_ratio_percent(options.ratio_percent);
+        self
+    }
+
+    #[must_use]
+    pub const fn options_value(&self) -> SplitPaneOptions {
+        SplitPaneOptions {
+            axis: self.axis,
+            ratio_percent: self.ratio_percent,
+            min_percent: self.min_percent,
+            max_percent: self.max_percent,
+            reset_percent: self.reset_percent,
+            handle_width_px: self.handle_width_px,
+            resize_mode: self.resize_mode,
+        }
+    }
+
+    #[must_use]
     pub fn state_id(&self) -> &UiStateId {
         &self.state_id
     }
@@ -206,6 +231,11 @@ impl From<SplitPane> for UiNode {
             max_percent: value.max_percent,
             reset_percent: value.reset_percent,
             handle_width_px: value.handle_width_px,
+            handle: UiSplitPaneHandleProps {
+                width_px: value.handle_width_px,
+                focusable: value.resize_mode != SplitPaneResizeMode::Disabled,
+                hit_target_px: value.handle_width_px.max(24),
+            },
             resize_mode: to_render_resize_mode(value.resize_mode),
         };
         let mut node = UiNode::from_state(UiNodeKind::SplitPane, "SplitPane", value.state_id)

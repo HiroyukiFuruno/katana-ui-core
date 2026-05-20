@@ -19,6 +19,7 @@ const STATUS_BAR_SETTINGS_MUTATION_COUNT: usize = 3;
 const SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT: usize = 4;
 const SEARCH_CONTROL_STRIP_SETTINGS_MUTATION_COUNT: usize = 7;
 const SCROLL_AREA_SETTINGS_MUTATION_COUNT: usize = 6;
+const SPLIT_PANE_SETTINGS_MUTATION_COUNT: usize = 6;
 const SETTINGS_LIST_SETTINGS_MUTATION_COUNT: usize = 6;
 const COLLAPSIBLE_PANEL_SETTINGS_MUTATION_COUNT: usize = 5;
 
@@ -48,6 +49,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT
             + SEARCH_CONTROL_STRIP_SETTINGS_MUTATION_COUNT
             + SCROLL_AREA_SETTINGS_MUTATION_COUNT
+            + SPLIT_PANE_SETTINGS_MUTATION_COUNT
             + SETTINGS_LIST_SETTINGS_MUTATION_COUNT
             + COLLAPSIBLE_PANEL_SETTINGS_MUTATION_COUNT
             + CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT,
@@ -124,6 +126,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_shortcut_combo_settings_are_switchable(&report.settings_mutations);
     assert_search_control_strip_settings_are_switchable(&report.settings_mutations);
     assert_scroll_area_settings_are_switchable(&report.settings_mutations);
+    assert_split_pane_settings_are_switchable(&report.settings_mutations);
     assert_settings_list_settings_are_switchable(&report.settings_mutations);
     assert_collapsible_panel_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
@@ -208,6 +211,27 @@ fn assert_scroll_area_settings_are_switchable(settings: &[super::SettingsMutatio
                     && it.event == "scroll_area_settings_changed"
             }),
             "missing scroll-area setting mutation for {option}"
+        );
+    }
+}
+
+fn assert_split_pane_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "split_pane.axis",
+        "split_pane.ratio",
+        "split_pane.min",
+        "split_pane.max",
+        "split_pane.reset",
+        "split_pane.resize_mode",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "split-pane"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "split_pane_settings_changed"
+            }),
+            "missing split-pane setting mutation for {option}"
         );
     }
 }

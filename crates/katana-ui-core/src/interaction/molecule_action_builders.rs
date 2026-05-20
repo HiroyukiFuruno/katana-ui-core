@@ -1,4 +1,5 @@
 use crate::interaction::{UiAction, UiActionSource};
+use crate::layout::SplitPaneResizeSource;
 use crate::render_model::{UiRect, UiScrollbarVisibility, UiStateId};
 
 impl UiAction {
@@ -72,6 +73,27 @@ impl UiAction {
     }
 
     #[must_use]
+    pub fn split_pane_set_ratio(target: UiStateId, ratio_percent: u8) -> Self {
+        Self::SplitPaneSetRatio {
+            target,
+            ratio_percent,
+        }
+    }
+
+    #[must_use]
+    pub fn split_pane_resize_by(
+        target: UiStateId,
+        delta_percent: i8,
+        source: SplitPaneResizeSource,
+    ) -> Self {
+        Self::SplitPaneResizeBy {
+            target,
+            delta_percent,
+            source,
+        }
+    }
+
+    #[must_use]
     pub fn split_pane_reset(target: UiStateId) -> Self {
         Self::SetValue {
             target,
@@ -80,6 +102,21 @@ impl UiAction {
             progress: None,
             color_drag: None,
         }
+    }
+
+    #[must_use]
+    pub fn split_pane_reset_ratio(target: UiStateId) -> Self {
+        Self::SplitPaneResetRatio { target }
+    }
+
+    #[must_use]
+    pub fn split_pane_start_resize(target: UiStateId) -> Self {
+        Self::SplitPaneStartResize { target }
+    }
+
+    #[must_use]
+    pub fn split_pane_end_resize(target: UiStateId) -> Self {
+        Self::SplitPaneEndResize { target }
     }
 
     #[must_use]

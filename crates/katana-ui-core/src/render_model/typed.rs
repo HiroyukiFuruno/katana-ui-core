@@ -39,7 +39,9 @@ pub use typed_panel::{
 pub use typed_popover::{UiPopoverFocusManagement, UiPopoverPlacement, UiPopoverProps};
 pub use typed_scroll_area::{UiScrollAreaAxis, UiScrollAreaProps};
 pub use typed_search::{UiSearchControlProps, UiSearchReplaceMode};
-pub use typed_split_pane::{UiSplitPaneAxis, UiSplitPaneProps, UiSplitPaneResizeMode};
+pub use typed_split_pane::{
+    UiSplitPaneAxis, UiSplitPaneHandleProps, UiSplitPaneProps, UiSplitPaneResizeMode,
+};
 
 const DEFAULT_LOADING_SPEED_MS: u16 = 900;
 const DEFAULT_DOT_COUNT: u8 = 3;

@@ -14,6 +14,8 @@ mod scroll_area_story_tests;
 #[cfg(test)]
 mod search_control_strip_story_tests;
 #[cfg(test)]
+mod split_pane_story_tests;
+#[cfg(test)]
 mod tests;
 mod types;
 use crate::requirements::StoryRequirements;
