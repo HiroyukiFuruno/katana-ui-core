@@ -7,6 +7,7 @@ mod molecule_heavy;
 mod molecule_interaction;
 mod molecule_platform_primitives;
 mod molecule_runtime_primitives;
+mod molecule_virtualization;
 mod molecule_workspace;
 
 use super::StoryExample;

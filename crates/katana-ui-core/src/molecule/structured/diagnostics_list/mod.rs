@@ -6,6 +6,8 @@ mod render;
 mod state;
 mod types;
 
+use crate::interaction::{VirtualRange, VirtualizationConfig};
+use crate::molecule::virtualization;
 use crate::render_model::{UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
 
@@ -56,6 +58,18 @@ impl DiagnosticsList {
     pub fn item(mut self, value: DiagnosticItem) -> Self {
         self.items.push(value);
         self
+    }
+
+    #[must_use]
+    pub fn virtualization(mut self, value: VirtualizationConfig) -> Self {
+        self.options.virtualization = Some(value);
+        self
+    }
+
+    #[must_use]
+    pub fn virtual_range_model(&self) -> Option<VirtualRange> {
+        let visible = DiagnosticsListPlanner::visible_items(&self.items, &self.options);
+        virtualization::range(&self.options.virtualization, visible.len())
     }
 
     #[must_use]

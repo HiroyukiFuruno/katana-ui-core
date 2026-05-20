@@ -1,4 +1,5 @@
 use super::super::{StoryCatalog, StoryExample};
+use super::molecule_virtualization;
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::molecule::{
@@ -30,6 +31,10 @@ const DIAGNOSTIC_WARNING_LINE: u32 = 24;
 const DIAGNOSTIC_WARNING_COLUMN: u32 = 5;
 
 fn diagnostics_list_story() -> StoryExample {
+    let virtualization = molecule_virtualization::fixed_config(
+        molecule_virtualization::DIAGNOSTIC_TOTAL_COUNT,
+        Some(8),
+    );
     let mut diagnostics = molecule::DiagnosticsList::new("Diagnostics")
         .option(DiagnosticsListOptions {
             group_by: DiagnosticsGroupBy::Severity,
@@ -63,6 +68,11 @@ fn diagnostics_list_story() -> StoryExample {
         diagnostic_log(&target, "diagnostic_bulk_preview", "open=false", bulk),
         diagnostic_log(&target, "diagnostic_select_error", "selected=none", select),
         diagnostic_log(&target, "diagnostic_apply_fix", "applied=false", apply),
+        molecule_virtualization::log(
+            target.clone(),
+            "diagnostics_list_virtualization_range",
+            &virtualization,
+        ),
     ];
     StoryCatalog::interactive_story("diagnostics-list", diagnostics, logs)
 }
@@ -133,6 +143,10 @@ fn diagnostic_tool_result() -> DiagnosticItem {
 }
 
 fn tree_view_story() -> StoryExample {
+    let virtualization = molecule_virtualization::estimated_config(
+        molecule_virtualization::TREE_TOTAL_COUNT,
+        Some(18),
+    );
     let mut tree = molecule::TreeView::new("Tree view")
         .default_open(true)
         .line_display(true)
@@ -153,8 +167,21 @@ fn tree_view_story() -> StoryExample {
         )
         .item(TreeNode::new("button", "Button", 1).file().selected(true))
         .item_count(2)
+        .child(molecule::VirtualizedTree::new(
+            "Tree virtualization",
+            virtualization.clone(),
+        ))
+        .child(atom::Badge::new(molecule_virtualization::compact_label(
+            &virtualization,
+        )))
         .child(atom::Text::new("Parent"))
         .child(atom::Text::new("Child"));
     let result = tree.apply_action(&UiAction::click(tree.state_id().clone()));
-    StoryCatalog::interactive_story("tree-view", tree, result.callback_log)
+    let mut logs = result.callback_log;
+    logs.push(molecule_virtualization::log(
+        tree.state_id().clone(),
+        "tree_view_virtualization_range",
+        &virtualization,
+    ));
+    StoryCatalog::interactive_story("tree-view", tree, logs)
 }

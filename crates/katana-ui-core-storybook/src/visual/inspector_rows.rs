@@ -20,6 +20,16 @@ pub(super) fn settings_rows(
             "context menu: enabled".to_string(),
             "default open: true".to_string(),
             "trigger: icon+text chevron".to_string(),
+            "virtual: on range + total".to_string(),
+            "rows: overscan/provider".to_string(),
+        ];
+    }
+    if is_virtualized_page(example.page) {
+        return vec![
+            "virtual: on -> off".to_string(),
+            "overscan: 2 -> 4".to_string(),
+            "row height: fixed -> variable".to_string(),
+            "range/total: logged".to_string(),
         ];
     }
     if example.page == "context-menu" {
@@ -274,6 +284,13 @@ fn is_button_page(page: &str) -> bool {
     matches!(
         page,
         "button" | "text-button" | "svg-button" | "icon-text-button"
+    )
+}
+
+fn is_virtualized_page(page: &str) -> bool {
+    matches!(
+        page,
+        "list" | "selection-list" | "command-palette" | "diagnostics-list"
     )
 }
 

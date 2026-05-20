@@ -1,5 +1,6 @@
 use super::super::{StoryCatalog, StoryExample};
-use katana_ui_core::interaction::{RowHeightProvider, UiCallbackLog, VirtualizationConfig};
+use super::molecule_virtualization;
+use katana_ui_core::interaction::UiCallbackLog;
 use katana_ui_core::molecule;
 use katana_ui_core::molecule::{
     CommandKeyboardInput, CommandLauncherAction, CommandResultRow, ReplaceMode,
@@ -7,9 +8,6 @@ use katana_ui_core::molecule::{
 };
 use katana_ui_core::widget::atoms::{KeyCombo, KeyKind, KeyModifiers, NamedKey, ShortcutCombo};
 
-const COMMAND_RESULT_COUNT: usize = 5;
-const COMMAND_VIEWPORT_HEIGHT: u32 = 96;
-const COMMAND_ROW_HEIGHT: u32 = 32;
 const SEARCH_RESULT_COUNT: usize = 12;
 const SEARCH_ACTIVE_INDEX: usize = 2;
 
@@ -18,6 +16,10 @@ pub(super) fn examples() -> Vec<StoryExample> {
 }
 
 fn command_palette_story() -> StoryExample {
+    let virtualization = molecule_virtualization::estimated_config(
+        molecule_virtualization::COMMAND_TOTAL_COUNT,
+        Some(0),
+    );
     let mut palette = molecule::CommandPalette::new("Command palette")
         .open(true)
         .query("open")
@@ -27,19 +29,11 @@ fn command_palette_story() -> StoryExample {
         .result_row(command_row("theme", "Switch Theme", "app"))
         .result_row(command_row("recent", "Open Recent", "workspace"))
         .highlighted_index(Some(0))
-        .virtualization(VirtualizationConfig {
-            enabled: true,
-            total_count: COMMAND_RESULT_COUNT,
-            viewport_offset: 0,
-            viewport_height: COMMAND_VIEWPORT_HEIGHT,
-            overscan: 1,
-            row_height_provider: RowHeightProvider::Fixed {
-                height: COMMAND_ROW_HEIGHT,
-            },
-            keep_focused_in_window: true,
-            focused_index: Some(0),
-        })
-        .child(molecule::SearchBox::new("Command query").value("open"));
+        .virtualization(virtualization.clone())
+        .child(molecule::SearchBox::new("Command query").value("open"))
+        .child(katana_ui_core::atom::Badge::new(
+            molecule_virtualization::compact_label(&virtualization),
+        ));
     let target = palette.state_id().clone();
     let query = palette.apply_launcher_action(CommandLauncherAction::SetQuery("theme".into()));
     let execute =
@@ -56,6 +50,11 @@ fn command_palette_story() -> StoryExample {
             "command_execute",
             "highlighted=theme",
             format!("events={execute:?}"),
+        ),
+        molecule_virtualization::log(
+            palette.state_id().clone(),
+            "command_palette_virtualization_range",
+            &virtualization,
         ),
     ];
     StoryCatalog::interactive_story("command-palette", palette, logs)

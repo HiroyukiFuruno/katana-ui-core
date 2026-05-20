@@ -1,4 +1,5 @@
 use super::super::{StoryCatalog, StoryExample};
+use super::molecule_virtualization;
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::{UiAction, UiCallbackLog};
 use katana_ui_core::render_model::UiStateId;
@@ -23,12 +24,7 @@ const ATTACHMENT_UPLOAD_PROGRESS: u16 = 4_200;
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
         card_story(),
-        StoryCatalog::story(
-            "list",
-            molecule::List::new("List")
-                .child(atom::Text::new("Row 1"))
-                .child(atom::Text::new("Row 2")),
-        ),
+        list_story(),
         StoryCatalog::story(
             "tabs",
             molecule::Tabs::new("Tabs")
@@ -52,12 +48,7 @@ pub(super) fn examples() -> Vec<StoryExample> {
                 .child(atom::Text::new("Leaf")),
         ),
         search_box_story(),
-        StoryCatalog::story(
-            "selection-list",
-            molecule::SelectionList::new("Selection list")
-                .child(atom::Text::new("First"))
-                .child(atom::Text::new("Second")),
-        ),
+        selection_list_story(),
         StoryCatalog::story(
             "side-menu",
             molecule::SideMenu::new("Side menu")
@@ -65,6 +56,56 @@ pub(super) fn examples() -> Vec<StoryExample> {
                 .child(atom::Button::new("Settings")),
         ),
     ]
+}
+
+fn list_story() -> StoryExample {
+    let config =
+        molecule_virtualization::fixed_config(molecule_virtualization::LIST_TOTAL_COUNT, Some(18));
+    let list = molecule::List::new("List")
+        .child(atom::Text::new("Row 1"))
+        .child(atom::Text::new("Row 2"))
+        .child(atom::Badge::new(molecule_virtualization::compact_label(
+            &config,
+        )))
+        .child(molecule::VirtualizedList::new(
+            "List virtualization",
+            config.clone(),
+        ));
+    StoryCatalog::interactive_story(
+        "list",
+        list,
+        vec![molecule_virtualization::log(
+            UiStateId::new("state:List:virtualization"),
+            "list_virtualization_range",
+            &config,
+        )],
+    )
+}
+
+fn selection_list_story() -> StoryExample {
+    let config = molecule_virtualization::variable_config(
+        molecule_virtualization::SELECTION_TOTAL_COUNT,
+        Some(12),
+    );
+    let list = molecule::SelectionList::new("Selection list")
+        .child(atom::Text::new("First"))
+        .child(atom::Text::new("Second"))
+        .child(atom::Badge::new(molecule_virtualization::compact_label(
+            &config,
+        )))
+        .child(molecule::VirtualizedList::new(
+            "Selection virtualization",
+            config.clone(),
+        ));
+    StoryCatalog::interactive_story(
+        "selection-list",
+        list,
+        vec![molecule_virtualization::log(
+            UiStateId::new("state:SelectionList:virtualization"),
+            "selection_list_virtualization_range",
+            &config,
+        )],
+    )
 }
 
 fn attachment_chip_story() -> StoryExample {

@@ -125,18 +125,23 @@ fn expected_preset_count(page: &str) -> usize {
     if matches!(
         page,
         "context-menu"
-            | "command-palette"
             | "code-diff"
             | "color-picker-rgba"
             | "drag-and-drop"
             | "hover-card"
+            | "list"
             | "search-control-strip"
+            | "selection-list"
             | "toolbar"
+            | "tree-view"
     ) {
         return 5;
     }
     if page == "text-area" {
         return 7;
+    }
+    if page == "command-palette" {
+        return 6;
     }
     if page == "attachment-chip" {
         return 5;
@@ -160,7 +165,7 @@ fn expected_preset_count(page: &str) -> usize {
         return 6;
     }
     if page == "diagnostics-list" {
-        return 6;
+        return 7;
     }
     if page == "settings-list" {
         return 6;

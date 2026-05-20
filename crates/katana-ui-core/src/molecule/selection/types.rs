@@ -1,3 +1,4 @@
+use crate::interaction::VirtualizationConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -84,4 +85,5 @@ pub(super) struct SelectionTypedModel {
     pub section: String,
     pub marker: String,
     pub more_row: bool,
+    pub virtualization: Option<VirtualizationConfig>,
 }

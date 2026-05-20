@@ -1,7 +1,9 @@
 use super::CommandResultRow;
 use crate::atom::Text;
+use crate::interaction::VirtualRange;
 use crate::molecule::structured::items::CommandItem;
 use crate::molecule::structured::model::CommandPalette;
+use crate::molecule::virtualization;
 use crate::render_model::{
     UiCommandResultProps, UiCursor, UiInteractionState, UiNode, UiNodeKind, UiVisualRole,
 };
@@ -10,7 +12,8 @@ pub(crate) struct CommandPaletteRenderer;
 
 impl CommandPaletteRenderer {
     pub(crate) fn render(value: CommandPalette) -> UiNode {
-        let rows = rows_for(&value);
+        let range = value.virtual_range_model();
+        let rows = virtualization::slice_by_range(indexed_rows_for(&value), range.as_ref());
         let label = value.label.clone();
         let mut node = value
             .state
@@ -18,16 +21,21 @@ impl CommandPaletteRenderer {
             .interaction(interaction(
                 &value,
                 interaction_item_count(&value, rows.len()),
+                range.as_ref(),
             ));
 
         for child in value.children {
             node = node.child(child);
         }
-        for (index, row) in rows.into_iter().enumerate() {
-            node = node.child(row_node(row, index, value.model.command_result_rows.len()));
+        for (index, row) in rows {
+            node = node.child(row_node(row, index, range.as_ref()));
         }
         node
     }
+}
+
+fn indexed_rows_for(value: &CommandPalette) -> Vec<(usize, CommandResultRow)> {
+    rows_for(value).into_iter().enumerate().collect()
 }
 
 fn rows_for(value: &CommandPalette) -> Vec<CommandResultRow> {
@@ -46,8 +54,12 @@ fn row_from_legacy(value: CommandItem) -> CommandResultRow {
     row
 }
 
-fn interaction(value: &CommandPalette, item_count: usize) -> UiInteractionState {
-    UiInteractionState {
+fn interaction(
+    value: &CommandPalette,
+    item_count: usize,
+    range: Option<&VirtualRange>,
+) -> UiInteractionState {
+    let base = UiInteractionState {
         open: value.state.open,
         has_selection: value.model.command_highlighted_index.is_some() || value.state.has_selection,
         selected_index: value
@@ -57,7 +69,8 @@ fn interaction(value: &CommandPalette, item_count: usize) -> UiInteractionState 
         item_count,
         value: interaction_value(value),
         ..UiInteractionState::default()
-    }
+    };
+    virtualization::interaction(base, range)
 }
 
 fn interaction_value(value: &CommandPalette) -> String {
@@ -74,7 +87,8 @@ fn interaction_item_count(value: &CommandPalette, row_count: usize) -> usize {
     row_count
 }
 
-fn row_node(row: CommandResultRow, index: usize, set_size: usize) -> UiNode {
+fn row_node(row: CommandResultRow, index: usize, range: Option<&VirtualRange>) -> UiNode {
+    let set_size = range.map_or(1, |it| it.aria_set_size);
     let props = UiCommandResultProps {
         id: row.id.clone(),
         secondary_label: row.secondary_label.clone().unwrap_or_default(),

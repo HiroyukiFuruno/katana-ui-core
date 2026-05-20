@@ -63,7 +63,7 @@ impl StoryPresetLabels {
             "key-cap" => &["single key", "combo", "non-macos", "theme key"],
             "skeleton" => &["text line", "avatar", "reduced motion", "theme shimmer"],
             "card" => &["slots", "card click", "nested controls", "theme border"],
-            "list" => &["rows", "selection", "empty", "theme list"],
+            "list" => &["rows", "selection", "empty", "theme list", "Virtualization"],
             "menu" => &["menu items", "shortcut", "disabled", "theme menu"],
             "context-menu" => &[
                 "編集器右クリック",
@@ -132,9 +132,10 @@ impl StoryPresetLabels {
                 "slash launcher",
                 "disabled rows",
                 "virtualized results",
+                "Virtualization",
             ],
             "dynamic-array-editor" => &["rows", "add remove", "reorder", "theme row"],
-            "selection-list" => &["items", "select", "multi", "theme list"],
+            "selection-list" => &["items", "select", "multi", "theme list", "Virtualization"],
             "side-menu" => &["nav tree", "select", "collapse", "theme side"],
             "status-bar" => &[
                 "editor status bar",
@@ -212,6 +213,7 @@ impl StoryPresetLabels {
                 "empty",
                 "loading",
                 "bulk fix",
+                "Virtualization",
             ],
             "empty-state" => &[
                 "explorer empty",
@@ -220,7 +222,13 @@ impl StoryPresetLabels {
                 "history empty",
                 "error fallback",
             ],
-            "tree-view" => &["folders", "toggle", "context", "theme tree"],
+            "tree-view" => &[
+                "folders",
+                "toggle",
+                "context",
+                "theme tree",
+                "Virtualization",
+            ],
             "drag-and-drop" => &[
                 "reorder list",
                 "file drop",

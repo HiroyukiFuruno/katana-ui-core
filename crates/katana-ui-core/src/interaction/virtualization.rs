@@ -65,6 +65,13 @@ pub struct VirtualRange {
     pub focused_row: Option<VirtualRow>,
 }
 
+impl VirtualRange {
+    #[must_use]
+    pub fn announce_row(&self, label: &str, index: usize) -> String {
+        format!("{label}, {} of {}", index + 1, self.aria_set_size)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct VirtualRow {
     pub index: usize,

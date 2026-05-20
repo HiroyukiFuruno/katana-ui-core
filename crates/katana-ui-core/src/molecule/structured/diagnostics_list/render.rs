@@ -1,5 +1,7 @@
 use super::{DiagnosticsList, DiagnosticsListPlanner};
 use crate::atom::{Chip, ChipSize, ChipTone, ChipVariant, Text};
+use crate::interaction::VirtualRange;
+use crate::molecule::virtualization;
 use crate::render_model::{UiInteractionState, UiNode, UiNodeKind};
 
 impl From<DiagnosticsList> for UiNode {
@@ -13,14 +15,15 @@ impl From<DiagnosticsList> for UiNode {
             return render_optional_slot(node, value.loading_slot);
         }
         let visible = DiagnosticsListPlanner::visible_items(&value.items, &value.options);
-        node = node.interaction(interaction_state(&value, &visible));
+        let range = value.virtual_range_model();
+        node = node.interaction(interaction_state(&value, &visible, range.as_ref()));
         if visible.is_empty() {
             return render_optional_slot(node, value.empty_slot);
         }
         for severity in super::DiagnosticSeverity::all() {
             node = node.child(severity_chip(severity, &value));
         }
-        for item in visible {
+        for item in virtual_visible_items(visible, range.as_ref()) {
             node = node.child(Text::new(format!("{:?}: {}", item.severity, item.message)));
             if value.state.expanded_ids.contains(&item.id)
                 && let Some(preview) = item.fix_preview.clone()
@@ -65,17 +68,26 @@ fn render_optional_slot(node: UiNode, slot: Option<UiNode>) -> UiNode {
 fn interaction_state(
     value: &DiagnosticsList,
     visible: &[&super::DiagnosticItem],
+    range: Option<&VirtualRange>,
 ) -> UiInteractionState {
     let selected_index = value
         .state
         .selected_id
         .as_ref()
         .and_then(|id| visible.iter().position(|it| &it.id == id));
-    UiInteractionState {
+    let base = UiInteractionState {
         has_selection: value.state.selected_id.is_some() && !visible.is_empty(),
         selected_index: selected_index.unwrap_or_default(),
         item_count: visible.len(),
         open: value.state.bulk_preview_open,
         ..UiInteractionState::default()
-    }
+    };
+    virtualization::interaction(base, range)
+}
+
+fn virtual_visible_items<'a>(
+    visible: Vec<&'a super::DiagnosticItem>,
+    range: Option<&VirtualRange>,
+) -> Vec<&'a super::DiagnosticItem> {
+    virtualization::slice_by_range(visible, range)
 }

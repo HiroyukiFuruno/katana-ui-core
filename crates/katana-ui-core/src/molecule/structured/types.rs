@@ -33,6 +33,7 @@ pub(super) struct StructuredTypedModel {
     pub command_result_rows: Vec<CommandResultRow>,
     pub command_highlighted_index: Option<usize>,
     pub command_virtualization: Option<VirtualizationConfig>,
+    pub virtualization: Option<VirtualizationConfig>,
     pub add_action: String,
     pub delete_action: String,
     pub reorder_action: String,

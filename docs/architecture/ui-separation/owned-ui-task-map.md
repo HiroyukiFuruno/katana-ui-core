@@ -90,6 +90,7 @@
 | SettingsList | molecule | セクション付き設定フォーム。density / dirty_visualization / query / collapse / reset / focus state を持つ |
 | CollapsiblePanel | molecule | 折りたたみ / hover / resize panel。AppShell は持たない |
 | CommandLauncherResults | molecule | query + result row + shortcut + keyboard selection |
+| Virtualization | interaction / molecule contract | List / SelectionList / TreeView / CommandPalette / DiagnosticsList が共有する visible range / overscan / row height / aria-setsize 契約 |
 
 ## Storybook internal
 

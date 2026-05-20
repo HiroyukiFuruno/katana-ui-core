@@ -1,4 +1,5 @@
 use super::DiagnosticSeverity;
+use crate::interaction::VirtualizationConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -26,6 +27,7 @@ pub struct DiagnosticsListOptions {
     pub sort_by: DiagnosticsSortBy,
     pub severity_filter: BTreeSet<DiagnosticSeverity>,
     pub wrap_error_navigation: bool,
+    pub virtualization: Option<VirtualizationConfig>,
 }
 
 impl Default for DiagnosticsListOptions {
@@ -35,6 +37,7 @@ impl Default for DiagnosticsListOptions {
             sort_by: DiagnosticsSortBy::Order,
             severity_filter: DiagnosticSeverity::all().into_iter().collect(),
             wrap_error_navigation: true,
+            virtualization: None,
         }
     }
 }

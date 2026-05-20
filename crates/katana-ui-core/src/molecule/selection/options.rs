@@ -1,5 +1,7 @@
 use super::choice::{Breadcrumb, ComboBox, MenuButton, SelectBox, SelectionList, SideMenu, Tabs};
 use super::types::ChoiceItem;
+use crate::interaction::{VirtualRange, VirtualizationConfig};
+use crate::molecule::virtualization;
 use crate::render_model::UiStateId;
 
 macro_rules! selection_options {
@@ -55,3 +57,16 @@ selection_options!(SelectBox);
 selection_options!(SelectionList);
 selection_options!(SideMenu);
 selection_options!(Tabs);
+
+impl SelectionList {
+    #[must_use]
+    pub fn virtualization(mut self, value: VirtualizationConfig) -> Self {
+        self.model.virtualization = Some(value);
+        self
+    }
+
+    #[must_use]
+    pub fn virtual_range_model(&self) -> Option<VirtualRange> {
+        virtualization::range(&self.model.virtualization, self.items.len())
+    }
+}

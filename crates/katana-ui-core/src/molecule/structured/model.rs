@@ -2,9 +2,10 @@ use super::command_launcher_results::CommandPaletteRenderer;
 use super::items::{ArrayEditorItem, CommandItem, TreeNode, TreeNodeKind};
 use super::types::{StructuredTypedModel, TreeLineStyle};
 use crate::component::ComponentAction;
-use crate::interaction::{UiAction, UiActionResult};
+use crate::interaction::{UiAction, UiActionResult, VirtualRange, VirtualizationConfig};
 use crate::molecule::DisclosureTriggerArea;
 use crate::molecule::state::MoleculeState;
+use crate::molecule::virtualization;
 use crate::render_model::{
     UiNode, UiNodeKind, UiTreeLineStyle, UiTreeNodeKind, UiTreeNodeProps, UiTreeProps,
     UiTreeToggleTriggerArea,
@@ -86,10 +87,15 @@ structured_molecule!(
 impl From<TreeView> for UiNode {
     fn from(value: TreeView) -> Self {
         let model = value.model.clone();
+        let range = value.virtual_range_model();
         let mut node = value
             .state
             .node(UiNodeKind::TreeView, value.label)
-            .tree(tree_props(model, value.items));
+            .interaction(virtualization::interaction(
+                value.state.interaction(),
+                range.as_ref(),
+            ))
+            .tree(tree_props(model, value.items, range.as_ref()));
         if !value.model.font_role.is_empty() {
             node = node.font_role(value.model.font_role);
         }
@@ -127,7 +133,11 @@ fn structured_node(mut node: UiNode, children: Vec<UiNode>) -> UiNode {
     node
 }
 
-fn tree_props(model: StructuredTypedModel, items: Vec<TreeNode>) -> UiTreeProps {
+fn tree_props(
+    model: StructuredTypedModel,
+    items: Vec<TreeNode>,
+    range: Option<&VirtualRange>,
+) -> UiTreeProps {
     UiTreeProps {
         active_id: model.active_id,
         line_display: model.line_display,
@@ -142,7 +152,10 @@ fn tree_props(model: StructuredTypedModel, items: Vec<TreeNode>) -> UiTreeProps 
         default_open: model.default_open,
         toggle_icon: model.toggle_icon,
         toggle_trigger_area: trigger_area(model.toggle_trigger_area),
-        nodes: items.into_iter().map(tree_node_props).collect(),
+        nodes: virtualization::slice_by_range(items, range)
+            .into_iter()
+            .map(tree_node_props)
+            .collect(),
     }
 }
 
@@ -194,6 +207,26 @@ impl ComponentAction for TreeView {
             before,
             self.state.interaction(),
         )
+    }
+}
+
+impl TreeView {
+    #[must_use]
+    pub fn virtualization(mut self, value: VirtualizationConfig) -> Self {
+        self.model.virtualization = Some(value);
+        self
+    }
+
+    #[must_use]
+    pub fn virtual_range_model(&self) -> Option<VirtualRange> {
+        virtualization::range(&self.model.virtualization, self.items.len())
+    }
+}
+
+impl CommandPalette {
+    #[must_use]
+    pub fn virtual_range_model(&self) -> Option<VirtualRange> {
+        self.command_virtual_range_model()
     }
 }
 

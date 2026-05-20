@@ -393,7 +393,8 @@ fn diagnostics_list_story_exposes_settings_presets_and_logs() -> Result<(), &'st
             "tool result",
             "empty",
             "loading",
-            "bulk fix"
+            "bulk fix",
+            "Virtualization"
         ],
         StoryPresetLabels::for_page("diagnostics-list")
     );
@@ -424,6 +425,49 @@ fn diagnostics_list_story_exposes_settings_presets_and_logs() -> Result<(), &'st
         assert!(
             story.callback_logs.iter().any(|it| it.action == action),
             "diagnostics-list callback log lacks action {action}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn virtualized_collection_pages_expose_range_settings_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    for page in [
+        "list",
+        "selection-list",
+        "tree-view",
+        "command-palette",
+        "diagnostics-list",
+    ] {
+        let story = examples
+            .iter()
+            .find(|it| it.page == page)
+            .ok_or("virtualized collection page missing")?;
+        let details = super::StoryDetailContent::from_example(story);
+        assert!(
+            StoryPresetLabels::for_page(page).contains(&"Virtualization"),
+            "{page} preset lacks Virtualization"
+        );
+        for setting in [
+            "enabled=true->false",
+            "overscan",
+            "row_height_provider",
+            "visible_range",
+        ] {
+            assert!(
+                details.settings.contains(setting),
+                "{page} settings inspector lacks {setting}"
+            );
+        }
+        assert!(
+            story.callback_logs.iter().any(|it| {
+                it.action.contains("virtualization_range")
+                    && it.before.contains("visible_range=")
+                    && it.before.contains("total_count=")
+                    && it.after.contains("enabled=false")
+            }),
+            "{page} callback log lacks virtualization range and total count"
         );
     }
     Ok(())

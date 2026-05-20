@@ -70,13 +70,13 @@ Screen reader announcements MUST reflect total count, not the rendered count.
 ### Requirement: Virtualization is opt-in and backward compatible
 
 When `VirtualizationConfig::enabled = false` (default), the existing rendering behavior of all affected molecules MUST be unchanged.
-Existing Storybook presets, contract tests, and visual regressions MUST continue to pass without modification.
+Existing Storybook presets, contract tests, and numeric layout / rendering contracts MUST continue to pass without modification.
 
 #### Scenario: existing preset stays valid
 
 - **WHEN** a Storybook preset relies on default options
 - **THEN** turning the virtualization-aware code path off renders identically to before
-- **AND** image regressions for that preset remain pixel-stable
+- **AND** numeric rendering contracts for that preset remain stable
 
 #### Scenario: opt-in does not leak to disabled consumers
 

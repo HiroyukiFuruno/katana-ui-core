@@ -73,6 +73,8 @@ impl StoryDetailContent {
             toolbar_settings_line(&marker)
         } else if example.page == "text-area" {
             text_area_settings_line(&marker)
+        } else if is_virtualized_page(example.page) {
+            virtualization_settings_line(example, &marker)
         } else {
             format!("{marker} settings: {option} ({value_type}) {before} -> {after}")
         };
@@ -180,6 +182,13 @@ fn toolbar_settings_line(marker: &str) -> String {
 fn text_area_settings_line(marker: &str) -> String {
     format!(
         "{marker} settings: submit/newline/tab/auto/wrap Enter,ShiftEnter,MoveFocus,true,Soft -> ModEnter,Enter,InsertTab,false,Hard"
+    )
+}
+
+fn virtualization_settings_line(example: &StoryExample, marker: &str) -> String {
+    let range = virtualization_log_after(example);
+    format!(
+        "{marker} settings: virtualization enabled=true->false overscan=2->4 row_height_provider=Fixed->Variable visible_range={range} -> virtualization disabled"
     )
 }
 
@@ -291,7 +300,8 @@ fn diagnostics_settings_line(example: &StoryExample, marker: &str) -> String {
         .collect::<Vec<_>>()
         .join(",");
     format!(
-        "{marker} settings: group_by=Severity sort_by=Severity severity_filter=Error+Warning bulk_action=Preview fix_preview=Expanded actions={actions} -> group_by=Source sort_by=Location severity_filter=Error bulk_action=Apply fix_preview=Collapsed"
+        "{marker} settings: group_by=Severity sort_by=Severity severity_filter=Error+Warning bulk_action=Preview fix_preview=Expanded actions={actions} virtualization enabled=true->false overscan=2->4 row_height_provider=Fixed->Variable visible_range={} -> group_by=Source sort_by=Location severity_filter=Error bulk_action=Apply fix_preview=Collapsed",
+        virtualization_log_after(example)
     )
 }
 
@@ -335,7 +345,7 @@ fn collapsible_panel_settings_line(example: &StoryExample, marker: &str) -> Stri
 }
 
 fn action_line(example: &StoryExample, marker: &str) -> String {
-    if let Some(log) = example.callback_logs.first() {
+    if let Some(log) = virtualization_log(example).or_else(|| example.callback_logs.first()) {
         return format!(
             "{marker} action: {} before={} after={}",
             log.action, log.before, log.after
@@ -360,4 +370,24 @@ fn quality_line(spec: Option<&LegacyDodSpec>, marker: &str) -> String {
     }
     let option = spec.map_or("theme_id", |it| it.option);
     format!("{marker} quality: settings={option} state/event/action/preset markers fixed")
+}
+
+fn is_virtualized_page(page: &str) -> bool {
+    matches!(
+        page,
+        "list" | "selection-list" | "tree-view" | "command-palette" | "diagnostics-list"
+    )
+}
+
+fn virtualization_log(
+    example: &StoryExample,
+) -> Option<&katana_ui_core::interaction::UiCallbackLog> {
+    example
+        .callback_logs
+        .iter()
+        .find(|it| it.action.contains("virtualization_range"))
+}
+
+fn virtualization_log_after(example: &StoryExample) -> &str {
+    virtualization_log(example).map_or("missing", |it| it.after.as_str())
 }

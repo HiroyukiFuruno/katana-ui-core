@@ -20,6 +20,10 @@ TextArea の複数行 IME は core DTO を正本にする。
 各 adapter は現時点では compile-gate stub として、`input_kind=Multiline`、`phase`、`preedit`、`commit_text`、`caret` を `ImeRequest` に写すことを保証する。
 framework-native な候補ウィンドウや実描画は後続 scope とし、core public API を壊さないことを先に固定する。
 
+Virtualization の row 測定は adapter / consumer 側の責務とする。
+adapter は実測した row height を KUC の `RowHeightOverride` として返し、KUC core は `VirtualizationPlanner` で visible range、overscan、aria-setsize / aria-posinset、scroll offset 補正を計算する。
+adapter は独自の global scroll state を持たず、component ごとの `VirtualizationConfig` と `VirtualRange` をそのまま反映する。
+
 ## 最低品質 gate
 
 互換 adapter crate を作る段階では最低限以下を通す。

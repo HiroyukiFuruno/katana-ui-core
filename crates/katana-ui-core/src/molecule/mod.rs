@@ -18,6 +18,7 @@ pub mod status_bar;
 pub mod structured;
 mod toast_stack_manager;
 pub mod toolbar;
+mod virtualization;
 
 pub use app_primitives::{
     CollapsibleSidebar, MotionPrimitive, MotionPrimitiveKind, MotionSpec, ReducedMotionPolicy,
