@@ -7,6 +7,7 @@ mod color;
 mod diff;
 mod disclosure;
 mod disclosure_foundation;
+mod drag_preview;
 mod empty_state;
 mod segmented_toggle;
 pub mod selection;
@@ -50,6 +51,7 @@ pub use disclosure::{
     PopoverFocusManagement, PopoverSlots, SearchBox, SlideControl, Tooltip,
 };
 pub use disclosure_foundation::DisclosureTriggerArea;
+pub use drag_preview::DragPreview;
 pub use empty_state::{
     EmptyState, EmptyStateAction, EmptyStateActionId, EmptyStateAlignment,
     EmptyStateContractViolation, EmptyStateEvent, EmptyStateLayoutSnapshot, EmptyStateSize,

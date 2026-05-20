@@ -32,7 +32,9 @@ pub(super) fn visual_role(kind: UiNodeKind) -> UiVisualRole {
         | UiNodeKind::SlideControl
         | UiNodeKind::SvgButton
         | UiNodeKind::TextButton
-        | UiNodeKind::IconTextButton => UiVisualRole::Control,
+        | UiNodeKind::IconTextButton
+        | UiNodeKind::DragHandle => UiVisualRole::Control,
+        UiNodeKind::DropIndicator => UiVisualRole::Status,
         _ => UiVisualRole::Content,
     }
 }

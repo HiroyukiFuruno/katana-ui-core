@@ -1,6 +1,8 @@
 mod action_policy;
 pub mod chip;
 mod defaults;
+mod drag_handle;
+mod drop_indicator;
 mod options;
 pub mod shortcut_combo;
 pub mod skeleton;
@@ -17,6 +19,8 @@ use crate::render_model::{
     UiPosition, UiProgressMode, UiSize, UiStateId, UiTone, UiVariant, UiVisualRole, UiZIndex,
 };
 pub use chip::{Chip, ChipAction, ChipEvent, ChipKeyboardInput, ChipSize, ChipTone, ChipVariant};
+pub use drag_handle::DragHandle;
+pub use drop_indicator::DropIndicator;
 use serde::{Deserialize, Serialize};
 pub use shortcut_combo::{
     KeyCombo, KeyKind, KeyModifiers, NamedKey, RuntimePlatform, ShortcutCombo, ShortcutPlatform,

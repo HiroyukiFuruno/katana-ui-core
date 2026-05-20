@@ -1,8 +1,9 @@
 use super::UiStateId;
 use super::{
     UiButtonProps, UiColorSwatchProps, UiCommandResultProps, UiCommonProps, UiContextMenuProps,
-    UiIconProps, UiLoadingProps, UiPanelProps, UiSearchControlProps, UiShortcutProps,
-    UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTreeProps,
+    UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiIconProps, UiLoadingProps,
+    UiPanelProps, UiSearchControlProps, UiShortcutProps, UiStatusProps, UiTextAreaProps,
+    UiTextEntryProps, UiTextProps, UiTreeProps,
 };
 use crate::facade::DEFAULT_FONT_ROLE;
 use serde::{Deserialize, Serialize};
@@ -126,6 +127,9 @@ pub struct UiProps {
     pub status: UiStatusProps,
     pub loading_indicator: UiLoadingProps,
     pub icon: UiIconProps,
+    pub drag_handle: UiDragHandleProps,
+    pub drop_indicator: UiDropIndicatorProps,
+    pub drag_preview: UiDragPreviewProps,
     pub panel: UiPanelProps,
     pub tree: UiTreeProps,
     pub context_menu: UiContextMenuProps,
@@ -168,6 +172,9 @@ impl UiProps {
             status: UiStatusProps::default(),
             loading_indicator: UiLoadingProps::default(),
             icon: UiIconProps::default(),
+            drag_handle: UiDragHandleProps::default(),
+            drop_indicator: UiDropIndicatorProps::default(),
+            drag_preview: UiDragPreviewProps::default(),
             panel: UiPanelProps::default(),
             tree: UiTreeProps::default(),
             context_menu: UiContextMenuProps::default(),

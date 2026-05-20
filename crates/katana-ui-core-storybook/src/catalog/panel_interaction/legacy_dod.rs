@@ -5,6 +5,9 @@ use super::legacy_dod_specs::{LegacyDodSpec, legacy_dod_specs};
 use crate::catalog::StoryExample;
 use serde::{Deserialize, Serialize};
 
+#[path = "legacy_dod_drag_settings.rs"]
+mod legacy_dod_drag_settings;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SettingsMutationReport {
     pub page: String,
@@ -57,6 +60,9 @@ impl LegacyDodReports {
         let mut reports: Vec<SettingsMutationReport> =
             examples.iter().map(settings_mutation).collect();
         reports.extend(parity_settings_mutations(examples));
+        reports.extend(legacy_dod_drag_settings::drag_and_drop_settings_mutations(
+            examples,
+        ));
         reports
     }
 

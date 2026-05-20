@@ -21,6 +21,9 @@ KUC は Floem 専用 crate ではなく、フレームワーク非依存（frame
 7. **Storybook-ready**: preview、settings、preset、state、event、action 履歴を Storybook で表現できる。静的見本ではなく、layout、option、action、event、state、rendering、panel 独立 scroll を実画面で扱える。
 8. **Test-gated**: Storybook や手動操作ではなく、自動テスト、数値化された layout / rendering contract、入力回帰、guard で完了判定できる。
 
+ドラッグ&ドロップ（drag and drop）系の UI は、domain 固有のファイルツリーや chat 添付 model を持ち込まず、`DragData`、`DropTarget`、`DragHandle`、`DropIndicator`、`DragPreview` の neutral DTO として表現できる場合だけ採用する。
+OS ファイル、URL、テキストは adapter が `os/file-list`、`os/url`、`os/text` に変換し、core は payload の中身を解釈しない。
+
 ## 除外条件
 
 以下は KUC core には入れない。
@@ -34,6 +37,10 @@ KUC は Floem 専用 crate ではなく、フレームワーク非依存（frame
 | Editor gutter / ruler | editor document model に依存する | language editor adapter |
 | Language server status | LSP integration に依存する | consumer crate |
 | File diff approval UI | file path、approve / reject、multi-file navigation を含む | application UI |
+| App shell | 画面全体の構造であり organisms / templates に近い | consumer crate |
+| Title bar / window chrome | OS window / adapter 固有責務を含む | consumer crate / adapter |
+| Splash screen template | 起動 lifecycle と branding を含む | consumer crate |
+| Chat root / message thread / composer | chat session / vendor protocol に依存する | chat domain |
 
 ただし、domain を持たない表示専用の `CodeDiff` のように、2つの文字列を比較するだけの部品は KUC に入れてよい。
 

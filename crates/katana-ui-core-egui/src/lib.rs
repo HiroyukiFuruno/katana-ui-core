@@ -1,4 +1,7 @@
-use katana_ui_core::adapter_contract::WidgetAdapter;
+use katana_ui_core::adapter_contract::{NativeDragDropBridge, WidgetAdapter};
+use katana_ui_core::event::UiEvent;
+use katana_ui_core::interaction::drag_and_drop::{DragData, DropEffect};
+use katana_ui_core::render_model::UiNodeId;
 use katana_ui_core::render_model::{RenderContext, UiNodeKind, UiTree};
 use katana_ui_core::runtime::{AppConfig, AppHandle, AppLifecycle, RuntimeAdapter};
 use katana_ui_core::surface::PaintRequest;
@@ -67,12 +70,37 @@ impl EguiSurfaceBridge {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct EguiNativeDragDropBridge;
+
+impl EguiNativeDragDropBridge {
+    #[must_use]
+    pub fn drag_start(self, source: UiNodeId, data: DragData) -> UiEvent {
+        NativeDragDropBridge::drag_start(source, data)
+    }
+
+    #[must_use]
+    pub fn drop(self, target: UiNodeId, data: DragData, effect: DropEffect) -> UiEvent {
+        NativeDragDropBridge::drop(target, data, effect)
+    }
+
+    #[must_use]
+    pub fn cancel(self, source: UiNodeId) -> Vec<UiEvent> {
+        NativeDragDropBridge::cancel(source)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{EguiCompatAdapter, EguiRuntimeAdapter, EguiSurfaceBridge};
+    use super::{
+        EguiCompatAdapter, EguiNativeDragDropBridge, EguiRuntimeAdapter, EguiSurfaceBridge,
+    };
     use katana_ui_core::adapter_contract::WidgetAdapter;
     use katana_ui_core::atom::{Button, Text};
+    use katana_ui_core::event::{DragEvent, UiEvent};
+    use katana_ui_core::interaction::drag_and_drop::{DragData, DropEffect, OS_URL_TAG};
     use katana_ui_core::layout::{Column, Row};
+    use katana_ui_core::render_model::UiNodeId;
     use katana_ui_core::render_model::{RenderContext, UiNodeKind, UiTree};
     use katana_ui_core::runtime::{AppConfig, RuntimeAdapter};
     use katana_ui_core::surface::{PaintRequest, SurfaceMetrics};
@@ -110,5 +138,27 @@ mod tests {
             UiNodeKind::Text,
             EguiSurfaceBridge.paint(&request).root_kind
         );
+    }
+
+    #[test]
+    fn native_dnd_stub_maps_start_drop_and_cancel() {
+        let bridge = EguiNativeDragDropBridge;
+        let data = DragData::new(OS_URL_TAG, serde_json::json!("https://example.test"));
+        let start = bridge.drag_start(UiNodeId::new("source"), data.clone());
+        let drop = bridge.drop(UiNodeId::new("target"), data, DropEffect::Copy);
+        let cancel = bridge.cancel(UiNodeId::new("source"));
+
+        assert!(matches!(start, UiEvent::Drag(DragEvent::DragStart { .. })));
+        assert!(matches!(drop, UiEvent::Drag(DragEvent::Drop { .. })));
+        assert!(matches!(
+            cancel.as_slice(),
+            [
+                UiEvent::Drag(DragEvent::DragCancel { .. }),
+                UiEvent::Drag(DragEvent::DragEnd {
+                    committed: false,
+                    ..
+                })
+            ]
+        ));
     }
 }

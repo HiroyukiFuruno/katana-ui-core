@@ -1,5 +1,9 @@
 use crate::event::UiEvent;
-use crate::render_model::{RenderContext, UiTree};
+use crate::event::drag::{DRAG_CANCEL_REASON_KEYBOARD_ESCAPE, DragEvent};
+use crate::interaction::drag_and_drop::{
+    DragData, DropEffect, OS_FILE_LIST_TAG, OS_TEXT_TAG, OS_URL_TAG,
+};
+use crate::render_model::{RenderContext, UiNodeId, UiTree};
 use serde::{Deserialize, Serialize};
 
 pub trait WidgetAdapter {
@@ -72,4 +76,44 @@ pub struct ImeRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DragDropRequest {
     pub payload: String,
+}
+
+pub const NATIVE_DND_ESCAPE_HATCH_TAGS: [&str; 3] = [OS_FILE_LIST_TAG, OS_URL_TAG, OS_TEXT_TAG];
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NativeDragDropBridge;
+
+impl NativeDragDropBridge {
+    #[must_use]
+    pub fn is_native_tag(tag: &str) -> bool {
+        NATIVE_DND_ESCAPE_HATCH_TAGS.contains(&tag)
+    }
+
+    #[must_use]
+    pub fn drag_start(source: UiNodeId, data: DragData) -> UiEvent {
+        UiEvent::Drag(DragEvent::DragStart { source, data })
+    }
+
+    #[must_use]
+    pub fn drop(target: UiNodeId, data: DragData, effect: DropEffect) -> UiEvent {
+        UiEvent::Drag(DragEvent::Drop {
+            target,
+            data,
+            effect,
+        })
+    }
+
+    #[must_use]
+    pub fn cancel(source: UiNodeId) -> Vec<UiEvent> {
+        vec![
+            UiEvent::Drag(DragEvent::DragCancel {
+                source: source.clone(),
+                reason: DRAG_CANCEL_REASON_KEYBOARD_ESCAPE.to_string(),
+            }),
+            UiEvent::Drag(DragEvent::DragEnd {
+                source,
+                committed: false,
+            }),
+        ]
+    }
 }

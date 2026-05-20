@@ -55,6 +55,8 @@
 | UI | KUC 分類 | 備考 |
 | --- | --- | --- |
 | ProgressBar | atom | 進捗表示 |
+| ScrollArea | layout / molecule | axis / offset / extent / scrollbar / event を持つ scroll container |
+| SplitPane | layout / molecule | 2 pane / ratio / resize event / reset を持つ split layout |
 | Tabs | molecule | Storybook preset 切替にも使う |
 | Breadcrumb | molecule | 階層パス表示 |
 | SideMenu | molecule | shell に近いが MVP では molecules 側 |
@@ -69,6 +71,19 @@
 | StatusBar | molecule | severity message |
 | Toolbar | molecule | action rail |
 | NotificationToast | molecule | transient message |
+| SearchControlStrip | molecule | query option / navigation / replace request |
+| ContextMenu | molecule | pointer 起点 / submenu / keyboard navigation |
+| DragAndDropPrimitive | atom / molecule / interaction | DragHandle / DropIndicator / DragPreview / DragData / DropTarget / keyboard drag。OS payload は adapter contract で `os/*` tag に変換する |
+| CloseableTabStrip | molecule | closeable / dirty / draggable tab。workspace / document domain は持たない |
+| TextArea | atom | 複数行フォーム入力。KLE 本文 editor ではない |
+| Chip / AttachmentChip | atom / molecule | 添付、filter、tag 表示 |
+| DiagnosticsList | molecule | severity / location / action の汎用問題一覧。lint domain は持たない |
+| EmptyState | molecule | 空状態の heading / body / action |
+| Banner | molecule | 画面内に残る告知 |
+| ToastStack | molecule | 複数 toast の queue / dedupe / pause-on-hover |
+| ProgressMeter | atom | linear / ring / pie の進捗表示 |
+| CollapsiblePanel | molecule | 折りたたみ / hover / resize panel。AppShell は持たない |
+| CommandLauncherResults | molecule | query + result row + shortcut + keyboard selection |
 
 ## Storybook internal
 

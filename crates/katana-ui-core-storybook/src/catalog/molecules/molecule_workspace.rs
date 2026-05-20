@@ -8,29 +8,17 @@ pub(super) fn examples() -> Vec<StoryExample> {
 }
 
 fn drag_and_drop_story() -> StoryExample {
-    let source = molecule::CLOSEABLE_TAB_DRAG_TAG;
-    let root = molecule::List::new("DragAndDrop")
-        .child(atom::Badge::new("source: tab-a"))
-        .child(atom::Badge::new(format!("payload: {source}")))
-        .child(atom::Badge::new("target: tab-b"))
-        .child(atom::Badge::new("indicator: before / inside / after"))
-        .child(atom::Badge::new("keyboard: Space Arrow Space"));
     let target = UiStateId::new("state:DragAndDrop:storybook");
-    let logs = vec![
-        log(
-            &target,
-            "drag_start",
-            "idle",
-            "event=drag_start payload=tab-a",
-        ),
-        log(
-            &target,
-            "drag_over",
-            "target=tab-b",
-            "event=drag_over indicator=after",
-        ),
-        log(&target, "drop", "effect=move", "event=drop committed=true"),
-    ];
+    let presets = drag_and_drop_presets();
+    let root = presets
+        .iter()
+        .fold(molecule::List::new("DragAndDrop"), |root, preset| {
+            root.child(atom::Badge::new(preset.preview_label()))
+        });
+    let logs = presets
+        .iter()
+        .map(|preset| preset.callback_log(&target))
+        .collect();
     StoryCatalog::interactive_story("drag-and-drop", root, logs)
 }
 
@@ -84,4 +72,106 @@ fn log(
     after: impl Into<String>,
 ) -> UiCallbackLog {
     UiCallbackLog::new(target.clone(), action, before, after)
+}
+
+fn drag_and_drop_presets() -> [DragAndDropPreset; 5] {
+    [
+        DragAndDropPreset {
+            name: "reorder list",
+            payload: "katana-ui-core/list-row:item-02",
+            target: "list:item-04",
+            accept: "Accept(move, indicator=after)",
+            autoscroll: "edge=24 speed=medium",
+            keyboard_draggable: true,
+            events: "DragStart > DragMove > DragEnter > Drop > DragEnd(committed=true)",
+            action: "reorder_list_drop",
+        },
+        DragAndDropPreset {
+            name: "file drop",
+            payload: "os/file-list:3 files",
+            target: "drop-zone:imports",
+            accept: "Accept(copy, indicator=outline)",
+            autoscroll: "off",
+            keyboard_draggable: false,
+            events: "DragEnter > DragMove > Drop > DragEnd(committed=true)",
+            action: "file_drop_accept",
+        },
+        DragAndDropPreset {
+            name: "tab reorder",
+            payload: molecule::CLOSEABLE_TAB_DRAG_TAG,
+            target: "tab:settings",
+            accept: "Accept(move, indicator=before)",
+            autoscroll: "edge=16 speed=slow",
+            keyboard_draggable: true,
+            events: "DragStart > DragMove > DragEnter > Drop > DragEnd(committed=true)",
+            action: "tab_reorder_drop",
+        },
+        DragAndDropPreset {
+            name: "attachment drop",
+            payload: "consumer/chat-attachment:image.png",
+            target: "composer:attachments",
+            accept: "Accept(copy, indicator=inside)",
+            autoscroll: "edge=32 speed=fast",
+            keyboard_draggable: false,
+            events: "DragEnter > DragMove > Drop > DragEnd(committed=true)",
+            action: "attachment_drop_accept",
+        },
+        DragAndDropPreset {
+            name: "keyboard drag",
+            payload: "katana-ui-core/list-row:item-01",
+            target: "list:item-03",
+            accept: "Accept(move, indicator=after)",
+            autoscroll: "edge=24 speed=keyboard",
+            keyboard_draggable: true,
+            events: "DragStart(Space) > DragMove(ArrowDown) > DragEnter > DragCancel(Esc) > DragEnd(committed=false)",
+            action: "keyboard_drag_cancel",
+        },
+    ]
+}
+
+struct DragAndDropPreset {
+    name: &'static str,
+    payload: &'static str,
+    target: &'static str,
+    accept: &'static str,
+    autoscroll: &'static str,
+    keyboard_draggable: bool,
+    events: &'static str,
+    action: &'static str,
+}
+
+impl DragAndDropPreset {
+    fn preview_label(&self) -> String {
+        format!(
+            "preset={} payload={} target={} accept={} autoscroll={} keyboard_draggable={} events={}",
+            self.name,
+            self.payload,
+            self.target,
+            self.accept,
+            self.autoscroll,
+            self.keyboard_draggable,
+            self.events
+        )
+    }
+
+    fn callback_log(&self, target: &UiStateId) -> UiCallbackLog {
+        log(
+            target,
+            self.action,
+            format!(
+                "preset={} accept=pending autoscroll={} keyboard_draggable={}",
+                self.name, self.autoscroll, self.keyboard_draggable
+            ),
+            format!(
+                "preset={} payload={} accept={} autoscroll={} keyboard_draggable={} events={} target={}",
+                self.name,
+                self.payload,
+                self.accept,
+                self.autoscroll,
+                self.keyboard_draggable,
+                self.events,
+                self.target
+            ),
+        )
+    }
 }

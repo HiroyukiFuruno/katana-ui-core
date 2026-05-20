@@ -66,6 +66,9 @@ theme / event / render_model
 `katana-ui-core-egui` / `katana-ui-core-gpui` は後続の互換 adapter 候補です。
 現段階では skeleton のみを置き、framework-native 実装と Storybook smoke は必須 gate に含めません。
 
+OS ネイティブのドラッグ&ドロップ（native drag and drop）は、中核 crate に OS 固有型を持ち込みません。
+adapter は OS ファイル一覧、URL、テキストを `os/file-list`、`os/url`、`os/text` の `DragData` に変換し、`NativeDragDropBridge` 経由で `DragStart` / `Drop` / `DragCancel` を KUC event に渡します。
+
 primary adapter の決定は [`docs/adr/katana-ui-primary-adapter.md`](docs/adr/katana-ui-primary-adapter.md) に記録します。
 互換 adapter の対応範囲と release blocking 条件は [`docs/compat-adapters.md`](docs/compat-adapters.md) を参照します。
 

@@ -3,6 +3,7 @@ use crate::catalog::StoryCatalog;
 use std::collections::BTreeSet;
 
 const LEGACY_UI_MARKER_COUNT: usize = 27;
+const DND_SETTINGS_MUTATION_COUNT: usize = 3;
 
 #[test]
 fn report_covers_selector_overlay_and_color_picker_sequences() {
@@ -12,7 +13,10 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_eq!(4, report.selector_operations.len());
     assert_eq!(5, report.overlay_dismissals.len());
     assert_eq!(1, report.color_picker_updates.len());
-    assert_eq!(examples.len() + 1, report.settings_mutations.len());
+    assert_eq!(
+        examples.len() + 1 + DND_SETTINGS_MUTATION_COUNT,
+        report.settings_mutations.len()
+    );
     assert_eq!(LEGACY_UI_MARKER_COUNT, report.legacy_ui_markers.len());
     assert_eq!(LEGACY_UI_MARKER_COUNT, report.preset_differences.len());
     assert_eq!(12, report.tree_view_option_mutations.len());
@@ -68,6 +72,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert!(report.settings_mutations.iter().any(
         |it| it.page == "color-picker-rgba" && it.option.name == "color_swatch.selected_color"
     ));
+    assert_drag_and_drop_settings_are_switchable(&report.settings_mutations);
     assert_eq!(
         report.legacy_ui_markers.len(),
         report
@@ -89,6 +94,24 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
     );
+}
+
+fn assert_drag_and_drop_settings_are_switchable(settings: &[super::SettingsMutationReport]) {
+    for option in [
+        "drag.accept_policy",
+        "drag.autoscroll",
+        "drag.keyboard_draggable",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "drag-and-drop"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "drag_and_drop_settings_changed"
+            }),
+            "missing drag-and-drop setting mutation for {option}"
+        );
+    }
 }
 
 fn is_typed_settings_record(it: &super::SettingsMutationReport) -> bool {

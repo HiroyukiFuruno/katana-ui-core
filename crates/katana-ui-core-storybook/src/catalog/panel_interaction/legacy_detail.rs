@@ -29,10 +29,15 @@ impl StoryDetailContent {
         let after_props = props_with_option(props, option, &resolved_after);
         let after = option_value(option, &after_props);
         let action = action_line(example, &marker);
+        let settings = if example.page == "drag-and-drop" {
+            drag_and_drop_settings_line(example, &marker)
+        } else {
+            format!("{marker} settings: {option} ({value_type}) {before} -> {after}")
+        };
 
         Self {
             page: example.page.to_string(),
-            settings: format!("{marker} settings: {option} ({value_type}) {before} -> {after}"),
+            settings,
             state: state_line(example, &marker, option, &after_props),
             event: event_line(example, &marker),
             action,
@@ -87,6 +92,18 @@ fn event_line(example: &StoryExample, marker: &str) -> String {
         return format!("{marker} event: {} -> {}", log.action, log.after);
     }
     format!("{marker} event: passive-ui")
+}
+
+fn drag_and_drop_settings_line(example: &StoryExample, marker: &str) -> String {
+    let before = example.callback_logs.first().map_or(
+        "accept=missing autoscroll=missing keyboard_draggable=missing",
+        |it| it.before.as_str(),
+    );
+    let after = example.callback_logs.first().map_or(
+        "accept=missing autoscroll=missing keyboard_draggable=missing",
+        |it| it.after.as_str(),
+    );
+    format!("{marker} settings: accept/autoscroll/keyboard_draggable {before} -> {after}")
 }
 
 fn action_line(example: &StoryExample, marker: &str) -> String {

@@ -1815,6 +1815,7 @@ name = "katana-ui-core-egui"
 version = "0.1.0"
 dependencies = [
  "katana-ui-core",
+ "serde_json",
 ]
 
 [[package]]
@@ -1826,6 +1827,7 @@ dependencies = [
  "floem_renderer",
  "katana-ui-core",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1833,6 +1835,7 @@ name = "katana-ui-core-gpui"
 version = "0.1.0"
 dependencies = [
  "katana-ui-core",
+ "serde_json",
 ]
 
 [[package]]

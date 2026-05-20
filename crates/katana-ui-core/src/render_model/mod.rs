@@ -42,10 +42,11 @@ pub use tree_props::{
 };
 pub use typed::{
     UiAnimationState, UiButtonProps, UiClearActionSpec, UiColorSwatchProps, UiCommandResultProps,
-    UiDismissAction, UiIconProps, UiLoadingProps, UiPanelProps, UiProgressMode, UiRect,
-    UiScrollbarDragState, UiScrollbarModel, UiScrollbarPlacement, UiScrollbarVisibility,
-    UiSearchControlProps, UiSearchReplaceMode, UiShortcutProps, UiSlotPlacement, UiSlotSpec,
-    UiStatusProps, UiSvgPaintPolicy, UiTextEntryProps, UiTextProps,
+    UiDismissAction, UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiIconProps,
+    UiLoadingProps, UiPanelProps, UiProgressMode, UiRect, UiScrollbarDragState, UiScrollbarModel,
+    UiScrollbarPlacement, UiScrollbarVisibility, UiSearchControlProps, UiSearchReplaceMode,
+    UiShortcutProps, UiSlotPlacement, UiSlotSpec, UiStatusProps, UiSvgPaintPolicy,
+    UiTextEntryProps, UiTextProps,
 };
 
 #[cfg(test)]

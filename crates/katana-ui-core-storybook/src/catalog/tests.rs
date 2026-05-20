@@ -98,6 +98,65 @@ fn color_picker_and_code_diff_presets_are_dod_specific() {
     );
 }
 
+#[test]
+fn drag_and_drop_story_exposes_preset_specific_settings_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let drag_and_drop = examples
+        .iter()
+        .find(|it| it.page == "drag-and-drop")
+        .ok_or("drag-and-drop page missing")?;
+    let labels = page_children(&examples, "drag-and-drop").ok_or("drag-and-drop page missing")?;
+    let details = super::StoryDetailContent::from_example(drag_and_drop);
+
+    assert_eq!(5, labels.len());
+    for preset in StoryPresetLabels::for_page("drag-and-drop") {
+        assert!(
+            labels.iter().any(|it| it.contains(preset)),
+            "drag-and-drop preview lacks preset {preset}"
+        );
+    }
+    for setting in ["accept=", "autoscroll=", "keyboard_draggable="] {
+        assert!(
+            labels.iter().all(|it| it.contains(setting)),
+            "drag-and-drop preview lacks setting {setting}"
+        );
+        assert!(
+            drag_and_drop
+                .callback_logs
+                .iter()
+                .all(|it| it.before.contains(setting) || it.after.contains(setting)),
+            "drag-and-drop logs lack setting {setting}"
+        );
+    }
+    assert!(details.settings.contains("accept="));
+    assert!(details.settings.contains("autoscroll="));
+    assert!(details.settings.contains("keyboard_draggable="));
+    for event in [
+        "DragStart",
+        "DragMove",
+        "DragEnter",
+        "Drop",
+        "DragCancel",
+        "DragEnd",
+    ] {
+        assert!(
+            drag_and_drop
+                .callback_logs
+                .iter()
+                .any(|it| it.after.contains(event)),
+            "drag-and-drop logs lack event {event}"
+        );
+    }
+    assert!(
+        drag_and_drop
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "file_drop_accept" && it.after.contains("os/file-list")),
+        "file drop log must expose the OS file-list payload"
+    );
+    Ok(())
+}
+
 fn page_children(examples: &[super::StoryExample], page: &str) -> Option<Vec<String>> {
     examples.iter().find(|it| it.page == page).map(|it| {
         it.tree
