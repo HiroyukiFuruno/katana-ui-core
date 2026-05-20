@@ -161,7 +161,7 @@ class KucGuardrailsTest(unittest.TestCase):
 
             failures = KucGuardrails(root).agent_hook_policy_failures()
 
-            self.assertEqual(3, len(failures))
+            self.assertEqual(4, len(failures))
 
     def test_accepts_agent_stop_hook_policy(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -176,6 +176,12 @@ class KucGuardrailsTest(unittest.TestCase):
                 "ユーザー確認で止まらず\n",
             )
             write_text(
+                root / ".githooks/pre-push",
+                "KUC_PUSH_CONFIRMED\n"
+                "push confirmation required\n"
+                "release confirmation required\n",
+            )
+            write_text(
                 root / "scripts/install-git-hooks.sh",
                 "git config core.hooksPath .githooks\n",
             )
@@ -184,6 +190,35 @@ class KucGuardrailsTest(unittest.TestCase):
             failures = KucGuardrails(root).agent_hook_policy_failures()
 
             self.assertEqual([], failures)
+
+    def test_rejects_commit_confirmation_as_stop_reason(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / ".githooks/pre-commit",
+                "just kuc-guardrails\n"
+                "fix-and-continue\n"
+                "push confirmation required\n"
+                "release confirmation required\n"
+                "destructive operation confirmation required\n"
+                "ユーザー確認で止まらず\n",
+            )
+            write_text(
+                root / ".githooks/pre-push",
+                "KUC_PUSH_CONFIRMED\n"
+                "push confirmation required\n"
+                "release confirmation required\n",
+            )
+            write_text(
+                root / "scripts/install-git-hooks.sh",
+                "git config core.hooksPath .githooks\n",
+            )
+            write_text(root / "AGENTS.md", "commit confirmation required\n")
+
+            failures = KucGuardrails(root).agent_hook_policy_failures()
+
+            self.assertEqual(1, len(failures))
+            self.assertIn("local commit must not be a stop reason", failures[0])
 
     def test_checks_storybook_panel_evidence_markers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

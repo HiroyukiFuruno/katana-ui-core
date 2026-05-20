@@ -240,30 +240,43 @@ class KucGuardrails:
 
     def agent_hook_policy_failures(self) -> list[str]:
         hook = self.root / ".githooks/pre-commit"
+        push_hook = self.root / ".githooks/pre-push"
         installer = self.root / "scripts/install-git-hooks.sh"
         agents = self.root / "AGENTS.md"
-        missing_files = [path for path in (hook, installer, agents) if not path.exists()]
+        missing_files = [
+            path for path in (hook, push_hook, installer, agents) if not path.exists()
+        ]
         if missing_files:
             return [
                 f"{self.relative(path)}: agent stop hook policy file is missing"
                 for path in missing_files
             ]
 
-        combined = "\n".join(self.read(path) for path in (hook, installer, agents))
+        combined = "\n".join(
+            self.read(path) for path in (hook, push_hook, installer, agents)
+        )
         required_tokens = (
             "core.hooksPath .githooks",
             "just kuc-guardrails",
             "fix-and-continue",
+            "KUC_PUSH_CONFIRMED",
             "push confirmation required",
             "release confirmation required",
             "destructive operation confirmation required",
             "ユーザー確認で止まらず",
         )
-        return [
+        failures = [
             f"agent stop hook policy missing token: {token}"
             for token in required_tokens
             if token not in combined
         ]
+        forbidden_tokens = ("commit confirmation required",)
+        failures.extend(
+            f"local commit must not be a stop reason: {token}"
+            for token in forbidden_tokens
+            if token in combined
+        )
+        return failures
 
     def storybook_panel_evidence_failures(self) -> list[str]:
         docs = self.guard_docs_source()
