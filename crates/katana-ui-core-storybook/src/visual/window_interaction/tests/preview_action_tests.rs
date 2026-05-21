@@ -1,9 +1,13 @@
 use super::super::{StorybookWindowState, apply_click, apply_context_click};
+use crate::requirements::StoryRequirements;
 use crate::visual::button_options::{StorybookButtonOptionControl, control_rect};
+use crate::visual::dedicated_dod_molecule_tree_parts as tree_parts;
 use crate::visual::interaction_spec::StorybookInteractionSpec;
-use crate::visual::{layout_metrics, preview_detail, render};
+use crate::visual::visual_interaction_test_support::rect_non_background_pixels;
+use crate::visual::{layout_metrics, palette, preview_detail, render};
 
 const UI_INTERACTION_DIFF_THRESHOLD: usize = 500;
+const MIN_HIT_TARGET_PIXELS: usize = 64;
 const REPRESENTATIVE_PREVIEW_PAGES: &[&str] = &[
     "toggle",
     "select-box",
@@ -84,6 +88,21 @@ fn representative_preview_clicks_emit_action_event_state_and_repaint_canvas() {
 }
 
 #[test]
+fn every_required_page_preview_hit_target_contains_drawn_component_pixels() {
+    for &page in StoryRequirements::required_pages() {
+        let canvas = render::render_storybook_canvas_for_preset("dark", page, 0, 0);
+        let target = preview_detail::component_action_hit_rect(page);
+
+        assert!(target.width > 0, "{page} lacks preview hit target");
+        assert!(
+            rect_non_background_pixels(target, &canvas, palette::DEFAULT_BACKGROUND)
+                > MIN_HIT_TARGET_PIXELS,
+            "{page} hit target does not contain rendered component pixels"
+        );
+    }
+}
+
+#[test]
 fn clicking_settings_row_mutates_selected_component_options() {
     let mut state = StorybookWindowState {
         selected_page: "card",
@@ -125,6 +144,24 @@ fn right_clicking_tree_view_preview_opens_context_menu_state() {
     assert_eq!("tree_context_opened", state.screen_state.last_event);
     assert_eq!("context_menu=open", state.screen_state.state_label);
     assert_eq!("empty_area_context_menu", state.screen_state.last_setting);
+}
+
+#[test]
+fn clicking_visible_tree_view_row_uses_the_drawn_row_hit_target() {
+    let mut state = StorybookWindowState {
+        selected_page: "tree-view",
+        ..StorybookWindowState::default()
+    };
+    let x = preview_detail::HERO_PREVIEW_X_FOR_TEST + tree_parts::LABEL_X + 8;
+    let y = preview_detail::HERO_PREVIEW_Y_FOR_TEST
+        + tree_parts::TREE_PANEL_Y
+        + tree_parts::ROW_HEIGHT / 2;
+
+    assert!(apply_click(&mut state, x, y));
+    assert_eq!(1, state.screen_state.action_count);
+    assert_eq!("tree_click_toggle", state.screen_state.last_action);
+    assert_eq!("tree_toggled", state.screen_state.last_event);
+    assert_eq!("open=false", state.screen_state.state_label);
 }
 
 #[test]

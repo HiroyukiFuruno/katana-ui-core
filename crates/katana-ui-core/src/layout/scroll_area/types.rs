@@ -69,6 +69,7 @@ pub enum ScrollEdge {
 pub enum ScrollRejectionReason {
     AxisMismatch,
     InvalidExtent,
+    NoOverflow,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

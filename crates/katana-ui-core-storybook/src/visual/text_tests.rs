@@ -12,6 +12,11 @@ const TEXT_Y: usize = 12;
 const TEXT_SIZE: f32 = 18.0;
 const ALIGN_BOX_HEIGHT: f32 = 32.0;
 const MAX_CENTER_DELTA: f32 = 2.0;
+const SMALL_CODE_TEXT_SIZE: f32 = 10.0;
+const SMALL_CODE_BOX_HEIGHT: f32 = 24.0;
+const MAX_CODE_GLYPH_CENTER_DELTA: f32 = 1.5;
+const WIDGET_LABEL_TEXT_SIZE: f32 = 14.0;
+const WIDGET_LABEL_BOX_HEIGHT: f32 = 28.0;
 
 #[test]
 fn draws_japanese_and_emoji_text() {
@@ -91,19 +96,87 @@ fn code_role_draws_mixed_japanese_status_text() {
     assert!(canvas.non_background_pixels(BACKGROUND) > 200);
 }
 
+#[test]
+fn code_role_digits_and_lowercase_glyphs_share_vertical_center_at_small_size() {
+    let facade = UiCoreFacade::default();
+    let code_renderer = TextRenderer::load(&facade, "code");
+    let samples = ["e", "0", "preset horizontal", "count 0", "state idle"];
+
+    for sample in samples {
+        let center_delta = centered_text_delta_with_size(
+            &code_renderer,
+            sample,
+            SMALL_CODE_TEXT_SIZE,
+            SMALL_CODE_BOX_HEIGHT,
+        );
+        assert!(
+            center_delta <= MAX_CODE_GLYPH_CENTER_DELTA,
+            "{sample} center delta was {center_delta}"
+        );
+    }
+}
+
+#[test]
+fn completed_widget_preview_text_boxes_keep_vertical_alignment() {
+    let facade = UiCoreFacade::default();
+    let body_renderer = TextRenderer::load(&facade, "body");
+    let code_renderer = TextRenderer::load(&facade, "code");
+    let body_samples = ["Button", "Theme tokens", "保存する", "日本語 UI", "UI 🔷"];
+    let code_samples = [
+        "preset modern",
+        "state idle",
+        "setting layout=basic",
+        "count 0",
+    ];
+
+    for sample in body_samples {
+        let center_delta = centered_text_delta_with_size(
+            &body_renderer,
+            sample,
+            WIDGET_LABEL_TEXT_SIZE,
+            WIDGET_LABEL_BOX_HEIGHT,
+        );
+        assert!(
+            center_delta <= MAX_CENTER_DELTA,
+            "{sample} body center delta was {center_delta}"
+        );
+    }
+    for sample in code_samples {
+        let center_delta = centered_text_delta_with_size(
+            &code_renderer,
+            sample,
+            SMALL_CODE_TEXT_SIZE,
+            SMALL_CODE_BOX_HEIGHT,
+        );
+        assert!(
+            center_delta <= MAX_CODE_GLYPH_CENTER_DELTA,
+            "{sample} code center delta was {center_delta}"
+        );
+    }
+}
+
 fn centered_text_delta(renderer: &TextRenderer, sample: &str) -> f32 {
+    centered_text_delta_with_size(renderer, sample, TEXT_SIZE, ALIGN_BOX_HEIGHT)
+}
+
+fn centered_text_delta_with_size(
+    renderer: &TextRenderer,
+    sample: &str,
+    size: f32,
+    box_height: f32,
+) -> f32 {
     let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
     renderer.draw_centered(
         &mut canvas,
         sample,
         TEXT_X,
-        TextVerticalBox::new(TEXT_Y, ALIGN_BOX_HEIGHT),
-        TEXT_SIZE,
+        TextVerticalBox::new(TEXT_Y, box_height),
+        size,
         TEXT,
     );
     let bounds = ink_vertical_bounds(&canvas);
     let ink_center = (bounds.top + bounds.bottom) as f32 / 2.0;
-    let box_center = TEXT_Y as f32 + ALIGN_BOX_HEIGHT / 2.0;
+    let box_center = TEXT_Y as f32 + box_height / 2.0;
     (ink_center - box_center).abs()
 }
 

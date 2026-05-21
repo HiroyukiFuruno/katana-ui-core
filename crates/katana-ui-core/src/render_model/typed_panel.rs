@@ -147,6 +147,9 @@ impl UiPanelProps {
         content_height: u32,
         visible: bool,
     ) -> Self {
+        let max_scroll = content_height.saturating_sub(viewport_height);
+        let scroll_y = scroll_y.min(max_scroll);
+        let visible = visible && max_scroll > 0;
         self.scroll_y = scroll_y;
         self.viewport_height = viewport_height;
         self.content_height = content_height;
@@ -173,6 +176,9 @@ impl UiPanelProps {
         content_width: u32,
         visible: bool,
     ) -> Self {
+        let max_scroll = content_width.saturating_sub(viewport_width);
+        let scroll_x = scroll_x.min(max_scroll);
+        let visible = visible && max_scroll > 0;
         self.scroll_x = scroll_x;
         self.viewport_width = viewport_width;
         self.content_width = content_width;

@@ -105,11 +105,11 @@ fn panel_scrollbars_visible() -> bool {
     ) && panel_scrollbar_center_is_accent(
         &canvas,
         accent,
-        panel_scroll_state::PanelScrollRegion::Preview,
-    ) && panel_scrollbar_center_is_accent(
+        panel_scroll_state::PanelScrollRegion::Inspector,
+    ) && !panel_scrollbar_center_is_accent(
         &canvas,
         accent,
-        panel_scroll_state::PanelScrollRegion::Inspector,
+        panel_scroll_state::PanelScrollRegion::Preview,
     )
 }
 

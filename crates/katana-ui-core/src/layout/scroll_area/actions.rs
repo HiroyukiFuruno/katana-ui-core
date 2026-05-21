@@ -37,6 +37,9 @@ impl ScrollArea {
         if !self.allows_delta(dx, dy) {
             return vec![self.rejected(ScrollRejectionReason::AxisMismatch)];
         }
+        if !self.has_overflow_for_delta(dx, dy) {
+            return vec![self.rejected(ScrollRejectionReason::NoOverflow)];
+        }
         let x = add_delta(self.offset_x, dx);
         let y = add_delta(self.offset_y, dy);
         self.scroll_to(x, y)
@@ -93,6 +96,10 @@ impl ScrollArea {
 
     fn allows_delta(&self, dx: i32, dy: i32) -> bool {
         (dx == 0 || self.axis_allows_x()) && (dy == 0 || self.axis_allows_y())
+    }
+
+    fn has_overflow_for_delta(&self, dx: i32, dy: i32) -> bool {
+        (dx != 0 && self.max_x() > 0) || (dy != 0 && self.max_y() > 0)
     }
 
     const fn max_x(&self) -> u32 {

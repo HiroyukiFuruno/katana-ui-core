@@ -1,6 +1,8 @@
 use super::canvas::Canvas;
 use super::dedicated;
 use super::layout_metrics::{LayoutRect, PREVIEW_X};
+use super::panel_scroll_state::PanelScrollRegion;
+use super::panel_scrollbars;
 use super::preview_effects;
 use super::render_context::{RenderContext, ScenarioContext};
 use katana_ui_core::render_model::UiNode;
@@ -49,7 +51,9 @@ pub(super) fn draw_selected_hero(
         return;
     };
     let node = example.tree.root();
-    let hero_y = HERO_Y.saturating_sub(scenario.panel_scroll.preview_y);
+    let preview_y = preview_scroll_y(scenario);
+    let preview_x = preview_scroll_x(scenario);
+    let hero_y = HERO_Y.saturating_sub(preview_y);
     canvas.fill_rect(
         PREVIEW_X,
         hero_y,
@@ -87,7 +91,7 @@ pub(super) fn draw_selected_hero(
         PRESET_TEXT_SIZE,
         render.palette.muted,
     );
-    let preview_x = HERO_PREVIEW_X.saturating_sub(scenario.panel_scroll.preview_x);
+    let component_x = HERO_PREVIEW_X.saturating_sub(preview_x);
     canvas.with_clip(PREVIEW_X, hero_y, HERO_WIDTH, HERO_HEIGHT, |canvas| {
         dedicated::draw_page(
             canvas,
@@ -97,7 +101,7 @@ pub(super) fn draw_selected_hero(
                 node,
                 palette: render.palette,
                 scenario,
-                x: preview_x,
+                x: component_x,
                 y: hero_y + (HERO_PREVIEW_Y - HERO_Y),
             },
         );
@@ -109,6 +113,26 @@ pub(super) fn draw_selected_hero(
         );
         draw_runtime_state(canvas, render, scenario);
     });
+}
+
+fn preview_scroll_y(scenario: ScenarioContext<'_>) -> usize {
+    if panel_scrollbars::vertical_region_scrollable(
+        PanelScrollRegion::Preview,
+        scenario.selected_page,
+    ) {
+        return scenario.panel_scroll.preview_y;
+    }
+    0
+}
+
+fn preview_scroll_x(scenario: ScenarioContext<'_>) -> usize {
+    if panel_scrollbars::horizontal_region_scrollable(
+        PanelScrollRegion::Preview,
+        scenario.selected_page,
+    ) {
+        return scenario.panel_scroll.preview_x;
+    }
+    0
 }
 
 fn draw_runtime_state(

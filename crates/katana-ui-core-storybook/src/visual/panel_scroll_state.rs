@@ -2,8 +2,8 @@ use super::layout_metrics::{
     INSPECTOR_HEIGHT, INSPECTOR_WIDTH, INSPECTOR_X, INSPECTOR_Y, MAX_SCROLL_Y, NAV_WIDTH,
     PREVIEW_X, SCROLL_STEP,
 };
+use super::navigation_tree::TreeExpansionState;
 
-pub(super) const NAV_MAX_SCROLL_Y: usize = 280;
 pub(super) const PREVIEW_MAX_SCROLL_Y: usize = 480;
 pub(super) const INSPECTOR_MAX_SCROLL_Y: usize = 360;
 pub(super) const ROOT_MAX_SCROLL_Y: usize = MAX_SCROLL_Y;
@@ -13,6 +13,12 @@ pub(super) const INSPECTOR_MAX_SCROLL_X: usize = 160;
 pub(super) const ROOT_MAX_SCROLL_X: usize = 0;
 const PREVIEW_PANEL_RIGHT: usize = INSPECTOR_X - 24;
 const CHILD_PANEL_TOP: usize = 120;
+const INSPECTOR_VIEWPORT_WIDTH: usize = 352;
+const INSPECTOR_VIEWPORT_HEIGHT: usize = 776;
+const INSPECTOR_CONTENT_WIDTH: usize = 512;
+const INSPECTOR_CONTENT_HEIGHT: usize = 1136;
+const PREVIEW_VIEWPORT_WIDTH: usize = 720;
+const PREVIEW_VIEWPORT_HEIGHT: usize = 714;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum PanelScrollRegion {
@@ -20,6 +26,46 @@ pub(super) enum PanelScrollRegion {
     Navigation,
     Preview,
     Inspector,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct PanelOverflow {
+    pub(super) viewport_width: usize,
+    pub(super) viewport_height: usize,
+    pub(super) content_width: usize,
+    pub(super) content_height: usize,
+}
+
+impl PanelOverflow {
+    pub(super) const fn new(
+        viewport_width: usize,
+        viewport_height: usize,
+        content_width: usize,
+        content_height: usize,
+    ) -> Self {
+        Self {
+            viewport_width,
+            viewport_height,
+            content_width,
+            content_height,
+        }
+    }
+
+    pub(super) fn max_x(self) -> usize {
+        self.content_width.saturating_sub(self.viewport_width)
+    }
+
+    pub(super) fn max_y(self) -> usize {
+        self.content_height.saturating_sub(self.viewport_height)
+    }
+
+    pub(super) fn overflows_x(self) -> bool {
+        self.max_x() > 0
+    }
+
+    pub(super) fn overflows_y(self) -> bool {
+        self.max_y() > 0
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -35,9 +81,19 @@ pub(super) struct PanelScrollOffsets {
 }
 
 impl PanelScrollOffsets {
+    #[cfg(test)]
     pub(super) fn scroll_delta(&mut self, region: PanelScrollRegion, delta_y: f32) -> bool {
+        self.scroll_delta_with_max(region, max_scroll_y(region), delta_y)
+    }
+
+    pub(super) fn scroll_delta_with_max(
+        &mut self,
+        region: PanelScrollRegion,
+        max_offset: usize,
+        delta_y: f32,
+    ) -> bool {
         let before = self.offset(region);
-        let next = next_offset(before, max_scroll_y(region), delta_y);
+        let next = next_offset(before, max_offset, delta_y);
         self.set_offset(region, next);
         before != next
     }
@@ -49,9 +105,19 @@ impl PanelScrollOffsets {
         before != next
     }
 
+    #[cfg(test)]
     pub(super) fn set_drag_offset(&mut self, region: PanelScrollRegion, value: usize) -> bool {
+        self.set_drag_offset_with_max(region, value, max_scroll_y(region))
+    }
+
+    pub(super) fn set_drag_offset_with_max(
+        &mut self,
+        region: PanelScrollRegion,
+        value: usize,
+        max_offset: usize,
+    ) -> bool {
         let before = self.offset(region);
-        self.set_offset(region, value.min(max_scroll_y(region)));
+        self.set_offset(region, value.min(max_offset));
         before != self.offset(region)
     }
 
@@ -123,7 +189,9 @@ fn next_offset(current: usize, max_scroll_y: usize, delta_y: f32) -> usize {
 pub(super) fn max_scroll_y(region: PanelScrollRegion) -> usize {
     match region {
         PanelScrollRegion::Root => ROOT_MAX_SCROLL_Y,
-        PanelScrollRegion::Navigation => NAV_MAX_SCROLL_Y,
+        PanelScrollRegion::Navigation => {
+            super::navigation_tree::max_scroll_y(TreeExpansionState::default())
+        }
         PanelScrollRegion::Preview => PREVIEW_MAX_SCROLL_Y,
         PanelScrollRegion::Inspector => INSPECTOR_MAX_SCROLL_Y,
     }
@@ -136,4 +204,49 @@ pub(super) fn max_scroll_x(region: PanelScrollRegion) -> usize {
         PanelScrollRegion::Preview => PREVIEW_MAX_SCROLL_X,
         PanelScrollRegion::Inspector => INSPECTOR_MAX_SCROLL_X,
     }
+}
+
+pub(super) fn overflow_for(
+    region: PanelScrollRegion,
+    selected_page: &str,
+    expansion: TreeExpansionState,
+) -> PanelOverflow {
+    match region {
+        PanelScrollRegion::Root => PanelOverflow::new(
+            super::render::WIDTH,
+            super::render::VIEWPORT_HEIGHT,
+            super::render::WIDTH,
+            super::render::CANVAS_HEIGHT,
+        ),
+        PanelScrollRegion::Navigation => navigation_overflow(expansion),
+        PanelScrollRegion::Preview => preview_overflow(selected_page),
+        PanelScrollRegion::Inspector => PanelOverflow::new(
+            INSPECTOR_VIEWPORT_WIDTH,
+            INSPECTOR_VIEWPORT_HEIGHT,
+            INSPECTOR_CONTENT_WIDTH,
+            INSPECTOR_CONTENT_HEIGHT,
+        ),
+    }
+}
+
+fn navigation_overflow(expansion: TreeExpansionState) -> PanelOverflow {
+    let viewport_height = super::layout_metrics::navigation_menu_panel_rect()
+        .bottom()
+        .saturating_sub(super::layout_metrics::NAV_FIRST_ROW_Y);
+    PanelOverflow::new(
+        super::layout_metrics::NAV_ROW_WIDTH,
+        viewport_height,
+        super::layout_metrics::NAV_ROW_WIDTH,
+        viewport_height + super::navigation_tree::max_scroll_y(expansion),
+    )
+}
+
+fn preview_overflow(selected_page: &str) -> PanelOverflow {
+    let _ = selected_page;
+    PanelOverflow::new(
+        PREVIEW_VIEWPORT_WIDTH,
+        PREVIEW_VIEWPORT_HEIGHT,
+        PREVIEW_VIEWPORT_WIDTH,
+        PREVIEW_VIEWPORT_HEIGHT,
+    )
 }

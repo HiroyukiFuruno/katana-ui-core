@@ -49,7 +49,19 @@ fn storybook_hides_preview_scrollbars_when_selected_component_does_not_overflow(
 }
 
 #[test]
-fn panel_scrollbar_thumbs_move_only_for_scrolled_panel() {
+fn hidden_preview_scroll_offsets_do_not_shift_button_page_rendering() {
+    let baseline = render_with_offsets(Default::default());
+    let shifted = render_with_offsets(panel_scroll_state::PanelScrollOffsets {
+        preview_x: layout_metrics::SCROLL_STEP * 3,
+        preview_y: layout_metrics::SCROLL_STEP * 2,
+        ..Default::default()
+    });
+
+    assert_eq!(0, preview_panel_pixel_diff(&baseline, &shifted));
+}
+
+#[test]
+fn storybook_outer_scrollbars_are_shown_only_for_overflowing_regions() {
     let accent = palette::VisualPalette::from_theme(&ThemeSnapshot::dark()).accent;
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
 
@@ -61,7 +73,7 @@ fn panel_scrollbar_thumbs_move_only_for_scrolled_panel() {
     );
 
     assert_eq!(Some(accent), pixel_at_rect(&canvas, nav_thumb));
-    assert_eq!(
+    assert_ne!(
         Some(accent),
         pixel_at_rect(
             &canvas,
@@ -84,7 +96,7 @@ fn panel_scrollbar_thumbs_move_only_for_scrolled_panel() {
 }
 
 #[test]
-fn panel_scroll_offsets_move_only_target_panel_content() {
+fn hidden_preview_scroll_offsets_do_not_move_panel_foundation_preview() {
     let baseline = render_panel_with_offsets(Default::default());
     let mut preview_offsets = panel_scroll_state::PanelScrollOffsets::default();
     assert!(preview_offsets.scroll_delta(panel_scroll_state::PanelScrollRegion::Preview, -1.0));
@@ -94,10 +106,7 @@ fn panel_scroll_offsets_move_only_target_panel_content() {
     let inspector_scrolled = render_panel_with_offsets(inspector_offsets);
 
     let preview_diff = preview_panel_pixel_diff(&baseline, &preview_scrolled);
-    let inspector_diff_after_preview_scroll =
-        inspector_panel_pixel_diff(&baseline, &preview_scrolled);
-    assert!(preview_diff > PANEL_DIFF_THRESHOLD);
-    assert!(preview_diff > inspector_diff_after_preview_scroll * 4);
+    assert_eq!(0, preview_diff);
     assert!(inspector_panel_pixel_diff(&baseline, &inspector_scrolled) > PANEL_DIFF_THRESHOLD);
 }
 
@@ -116,24 +125,7 @@ fn root_panel_scroll_reaches_bottom_and_root_thumb_reaches_track_end() {
 }
 
 #[test]
-fn panel_horizontal_scroll_is_independent_and_reaches_max() {
-    let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
-
-    assert!(offsets.scroll_delta_x(panel_scroll_state::PanelScrollRegion::Preview, -1.0));
-    assert_eq!(layout_metrics::SCROLL_STEP, offsets.preview_x);
-    assert_eq!(0, offsets.navigation_x);
-    for _ in 0..100 {
-        offsets.scroll_delta_x(panel_scroll_state::PanelScrollRegion::Preview, -1.0);
-    }
-
-    assert_eq!(
-        panel_scroll_state::max_scroll_x(panel_scroll_state::PanelScrollRegion::Preview),
-        offsets.preview_x
-    );
-}
-
-#[test]
-fn storybook_draws_preview_horizontal_scrollbar() {
+fn storybook_hides_preview_horizontal_scrollbar_without_preview_overflow() {
     let accent = palette::VisualPalette::from_theme(&ThemeSnapshot::dark()).accent;
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
     offsets.scroll_delta_x(panel_scroll_state::PanelScrollRegion::Preview, -1.0);
@@ -143,7 +135,7 @@ fn storybook_draws_preview_horizontal_scrollbar() {
         offsets,
     );
 
-    assert_eq!(Some(accent), pixel_at_rect(&canvas, thumb));
+    assert_ne!(Some(accent), pixel_at_rect(&canvas, thumb));
 }
 
 #[test]

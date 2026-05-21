@@ -94,7 +94,7 @@ fn draw_summary_controls(
             rect.height,
             render.palette.border,
         );
-        render.code_text.draw_centered(
+        render.text.draw_centered(
             canvas,
             &sample.visible,
             rect.x + SUMMARY_PADDING_X,
@@ -190,7 +190,7 @@ fn draw_summary_tooltip(
         SUMMARY_TOOLTIP_HEIGHT,
         render.palette.accent,
     );
-    render.code_text.draw_centered(
+    render.text.draw_centered(
         canvas,
         &sample.full,
         source.x + SUMMARY_TOOLTIP_PADDING_X,

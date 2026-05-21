@@ -7,6 +7,16 @@ use crate::visual::{layout_metrics, preview_detail, render};
 const UI_INTERACTION_DIFF_THRESHOLD: usize = 500;
 const BUTTON_BODY_DIFF_THRESHOLD: usize = 40;
 const TEXT_BUTTON_PAGE: &str = "text-button";
+const BUTTON_VARIANT_PAGES: &[(&str, &str, &str)] = &[
+    ("button", "button_press", "button_clicked"),
+    ("text-button", "text_button_press", "text_button_clicked"),
+    ("svg-button", "svg_button_press", "svg_button_clicked"),
+    (
+        "icon-text-button",
+        "icon_text_button_press",
+        "icon_text_button_clicked",
+    ),
+];
 
 #[test]
 fn click_button_operation_updates_action_event_state_for_button_preview() {
@@ -22,6 +32,36 @@ fn click_button_operation_updates_action_event_state_for_button_preview() {
     assert_eq!("button_press", state.screen_state.last_action);
     assert_eq!("button_clicked", state.screen_state.last_event);
     assert_eq!("pressed=true", state.screen_state.state_label);
+}
+
+#[test]
+fn each_button_variant_hit_rect_emits_its_own_action_and_event() {
+    for &(page, action, event) in BUTTON_VARIANT_PAGES {
+        let mut state = StorybookWindowState {
+            selected_page: page,
+            ..StorybookWindowState::default()
+        };
+        let target = preview_detail::button_action_hit_rect(page);
+
+        assert!(target.width > 0, "{page} hit rect missing");
+        assert_eq!(
+            Some(StorybookButtonOperation::PreviewButton),
+            button_operation_at(
+                &state,
+                target.x + target.width / 2,
+                target.y + target.height / 2
+            ),
+            "{page} hit rect must map to the visible button body"
+        );
+        assert!(apply_click(
+            &mut state,
+            target.x + target.width / 2,
+            target.y + target.height / 2
+        ));
+        assert_eq!(action, state.screen_state.last_action, "{page} action");
+        assert_eq!(event, state.screen_state.last_event, "{page} event");
+        assert_eq!(1, state.screen_state.action_count, "{page} action count");
+    }
 }
 
 #[test]

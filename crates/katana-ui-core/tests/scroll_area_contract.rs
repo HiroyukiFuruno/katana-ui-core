@@ -80,6 +80,26 @@ fn scroll_actions_clamp_into_view_and_reject_axis_mismatch() {
 }
 
 #[test]
+fn scroll_area_rejects_scroll_when_content_does_not_overflow() {
+    let mut area = ScrollArea::new()
+        .axis(ScrollAxis::Both)
+        .viewport(320, 200)
+        .content_extent(320, 200)
+        .offset(120, 80)
+        .scrollbar_visibility(ScrollbarVisibility::Always);
+
+    assert_eq!(0, area.offset_x());
+    assert_eq!(0, area.offset_y());
+    assert_eq!(
+        vec![ScrollAreaEvent::ScrollCommandRejected {
+            target: area.state_id().clone(),
+            reason: ScrollRejectionReason::NoOverflow,
+        }],
+        area.apply_scroll_action(ScrollAreaAction::ScrollBy { dx: 16, dy: 16 })
+    );
+}
+
+#[test]
 fn nested_scroll_area_events_target_only_the_child_state() {
     let parent = ScrollArea::new()
         .axis(ScrollAxis::Vertical)

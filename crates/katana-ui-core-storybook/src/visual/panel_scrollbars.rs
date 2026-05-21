@@ -56,11 +56,11 @@ pub(super) fn vertical_bar_visible(
     if !scrollbar_visible {
         return false;
     }
-    match region {
-        PanelScrollRegion::Navigation | PanelScrollRegion::Inspector => true,
-        PanelScrollRegion::Preview => selected_page == "panel",
-        PanelScrollRegion::Root => false,
-    }
+    vertical_region_scrollable(region, selected_page) && region != PanelScrollRegion::Root
+}
+
+pub(super) fn vertical_region_scrollable(region: PanelScrollRegion, selected_page: &str) -> bool {
+    super::panel_scroll_state::overflow_for(region, selected_page, Default::default()).overflows_y()
 }
 
 pub(super) fn horizontal_bar_visible(
@@ -68,7 +68,11 @@ pub(super) fn horizontal_bar_visible(
     selected_page: &str,
     scrollbar_visible: bool,
 ) -> bool {
-    scrollbar_visible && selected_page == "panel" && region == PanelScrollRegion::Preview
+    scrollbar_visible && horizontal_region_scrollable(region, selected_page)
+}
+
+pub(super) fn horizontal_region_scrollable(region: PanelScrollRegion, selected_page: &str) -> bool {
+    super::panel_scroll_state::overflow_for(region, selected_page, Default::default()).overflows_x()
 }
 
 pub(super) fn thumb_rect_for(region: PanelScrollRegion, offsets: PanelScrollOffsets) -> LayoutRect {
@@ -85,11 +89,6 @@ pub(super) fn horizontal_thumb_rect_for(
 #[cfg(test)]
 pub(super) fn track_rect_for(region: PanelScrollRegion) -> LayoutRect {
     vertical_model_for(region).track
-}
-
-#[cfg(test)]
-pub(super) fn horizontal_track_rect_for(region: PanelScrollRegion) -> LayoutRect {
-    horizontal_model_for(region).track
 }
 
 pub(super) fn region_from_thumb(
@@ -178,7 +177,7 @@ fn vertical_model_for(region: PanelScrollRegion) -> ScrollbarModel {
         PanelScrollRegion::Navigation => ScrollbarModel::new(
             LayoutRect::new(NAV_SCROLL_X, NAV_SCROLL_Y, TRACK_WIDTH, NAV_SCROLL_HEIGHT),
             THUMB_HEIGHT,
-            super::panel_scroll_state::NAV_MAX_SCROLL_Y,
+            super::panel_scroll_state::max_scroll_y(PanelScrollRegion::Navigation),
         ),
         PanelScrollRegion::Preview => ScrollbarModel::new(
             LayoutRect::new(

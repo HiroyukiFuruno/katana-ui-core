@@ -102,6 +102,7 @@ STORYBOOK_FILES = (
     Path("crates/katana-ui-core-storybook/src/visual/window_interaction.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/window_interaction/content_position.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/window_interaction/panel_scroll_drag.rs"),
+    Path("crates/katana-ui-core-storybook/src/visual/window_interaction/scroll_operation.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/interaction_spec_runtime.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/window_interaction/tests.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/window_interaction/tests/button_operation_tests.rs"),

@@ -1,4 +1,6 @@
-use super::layout_metrics::{NAV_FIRST_ROW_Y, NAV_ROW_STEP, navigation_hit_rect};
+use super::layout_metrics::{
+    NAV_FIRST_ROW_Y, NAV_ROW_HEIGHT, NAV_ROW_STEP, navigation_hit_rect, navigation_menu_panel_rect,
+};
 use crate::requirements::StoryRequirements;
 
 const NAVIGATION_GROUP_COUNT: usize = 5;
@@ -108,6 +110,19 @@ pub(super) fn row_from_click(
     None
 }
 
+pub(super) fn max_scroll_y(expansion: TreeExpansionState) -> usize {
+    navigation_content_height(expansion).saturating_sub(navigation_viewport_height())
+}
+
+#[cfg(test)]
+pub(super) fn last_row_bottom_at_scroll(expansion: TreeExpansionState, scroll_y: usize) -> usize {
+    let row_count = visible_rows(expansion).len();
+    if row_count == 0 {
+        return NAV_FIRST_ROW_Y;
+    }
+    NAV_FIRST_ROW_Y + (row_count - 1) * NAV_ROW_STEP + NAV_ROW_HEIGHT - scroll_y
+}
+
 pub(super) fn group_for_page(page: &str) -> NavigationGroup {
     match page {
         "panel" | "theme-tokens" => NavigationGroup::Foundation,
@@ -131,6 +146,20 @@ fn groups() -> [NavigationGroup; NAVIGATION_GROUP_COUNT] {
         NavigationGroup::Molecules,
         NavigationGroup::Layout,
     ]
+}
+
+fn navigation_content_height(expansion: TreeExpansionState) -> usize {
+    let row_count = visible_rows(expansion).len();
+    if row_count == 0 {
+        return 0;
+    }
+    (row_count - 1) * NAV_ROW_STEP + NAV_ROW_HEIGHT
+}
+
+fn navigation_viewport_height() -> usize {
+    navigation_menu_panel_rect()
+        .bottom()
+        .saturating_sub(NAV_FIRST_ROW_Y)
 }
 
 #[cfg(test)]
@@ -239,5 +268,16 @@ mod tests {
         assert!(foundation_index.is_some());
         assert!(panel_index.is_some());
         assert!(foundation_index < panel_index);
+    }
+
+    #[test]
+    fn max_scroll_places_last_navigation_row_at_panel_bottom() {
+        let expansion = TreeExpansionState::default();
+        let max_scroll = super::max_scroll_y(expansion);
+
+        assert_eq!(
+            super::navigation_menu_panel_rect().bottom(),
+            super::last_row_bottom_at_scroll(expansion, max_scroll)
+        );
     }
 }
