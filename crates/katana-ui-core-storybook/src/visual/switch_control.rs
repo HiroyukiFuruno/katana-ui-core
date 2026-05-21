@@ -3,11 +3,7 @@ use super::palette::VisualPalette;
 
 const BORDER_INSET: usize = 1;
 const KNOB_INSET: usize = 3;
-const EDGE_SAMPLE_COUNT: usize = 4;
-const EDGE_SAMPLE_TOTAL: usize = EDGE_SAMPLE_COUNT * EDGE_SAMPLE_COUNT;
-const OPAQUE_ALPHA: u8 = 255;
 const COLOR_ALPHA_MAX: u32 = 255;
-const SAMPLE_CENTER_OFFSET: f32 = 0.5;
 const OFF_TRACK_TEXT_MIX_ALPHA: u32 = 48;
 const SWITCH_THUMB_DARK_THEME: u32 = 0xf2f2f2;
 const SWITCH_THUMB_LIGHT_THEME: u32 = 0xffffff;
@@ -32,7 +28,7 @@ pub(super) fn draw_switch(
 ) {
     let fill = switch_track_fill(palette, enabled);
     let radius = height / 2;
-    draw_smooth_round_rect(canvas, x, y, width, height, radius, palette.border);
+    canvas.fill_round_rect(x, y, width, height, radius, palette.border);
     draw_track_fill(canvas, x, y, width, height, radius, fill);
     let knob = height.saturating_sub(KNOB_INSET * 2);
     let knob_x = if enabled {
@@ -40,8 +36,7 @@ pub(super) fn draw_switch(
     } else {
         x + KNOB_INSET
     };
-    draw_smooth_round_rect(
-        canvas,
+    canvas.fill_round_rect(
         knob_x,
         y + KNOB_INSET,
         knob,
@@ -65,8 +60,7 @@ fn draw_track_fill(
     if inner_width == 0 || inner_height == 0 {
         return;
     }
-    draw_smooth_round_rect(
-        canvas,
+    canvas.fill_round_rect(
         x + BORDER_INSET,
         y + BORDER_INSET,
         inner_width,
@@ -74,118 +68,6 @@ fn draw_track_fill(
         radius.saturating_sub(BORDER_INSET),
         fill,
     );
-}
-
-fn draw_smooth_round_rect(
-    canvas: &mut Canvas,
-    x: usize,
-    y: usize,
-    width: usize,
-    height: usize,
-    radius: usize,
-    color: u32,
-) {
-    if width == 0 || height == 0 {
-        return;
-    }
-    let rect = SmoothRoundRect::new(x, y, width, height, radius);
-    for current_y in rect.y..rect.bottom() {
-        for current_x in rect.x..rect.right() {
-            let alpha = round_rect_alpha(current_x, current_y, rect);
-            if alpha == 0 {
-                continue;
-            }
-            canvas.blend(current_x, current_y, color, alpha);
-        }
-    }
-}
-
-fn round_rect_alpha(pixel_x: usize, pixel_y: usize, rect: SmoothRoundRect) -> u8 {
-    let mut inside = 0;
-    for sample_y in 0..EDGE_SAMPLE_COUNT {
-        for sample_x in 0..EDGE_SAMPLE_COUNT {
-            if sample_inside_round_rect(
-                pixel_x,
-                pixel_y,
-                rect,
-                SmoothSample::new(sample_x, sample_y),
-            ) {
-                inside += 1;
-            }
-        }
-    }
-    ((inside * usize::from(OPAQUE_ALPHA)) / EDGE_SAMPLE_TOTAL) as u8
-}
-
-fn sample_inside_round_rect(
-    pixel_x: usize,
-    pixel_y: usize,
-    rect: SmoothRoundRect,
-    sample: SmoothSample,
-) -> bool {
-    let local_x = pixel_x.saturating_sub(rect.x) as f32 + sample.offset_x();
-    let local_y = pixel_y.saturating_sub(rect.y) as f32 + sample.offset_y();
-    let width = rect.width as f32;
-    let height = rect.height as f32;
-    let radius = (rect.radius as f32).min(width / 2.0).min(height / 2.0);
-    let clamp_x = local_x.clamp(radius, width - radius);
-    let clamp_y = local_y.clamp(radius, height - radius);
-    let delta_x = local_x - clamp_x;
-    let delta_y = local_y - clamp_y;
-    delta_x * delta_x + delta_y * delta_y <= radius * radius
-}
-
-fn sample_offset(index: usize) -> f32 {
-    (index as f32 + SAMPLE_CENTER_OFFSET) / EDGE_SAMPLE_COUNT as f32
-}
-
-#[derive(Clone, Copy)]
-struct SmoothRoundRect {
-    x: usize,
-    y: usize,
-    width: usize,
-    height: usize,
-    radius: usize,
-}
-
-impl SmoothRoundRect {
-    const fn new(x: usize, y: usize, width: usize, height: usize, radius: usize) -> Self {
-        Self {
-            x,
-            y,
-            width,
-            height,
-            radius,
-        }
-    }
-
-    const fn right(self) -> usize {
-        self.x + self.width
-    }
-
-    const fn bottom(self) -> usize {
-        self.y + self.height
-    }
-}
-
-#[derive(Clone, Copy)]
-struct SmoothSample {
-    x: usize,
-    y: usize,
-}
-
-impl SmoothSample {
-    const fn new(x: usize, y: usize) -> Self {
-        Self { x, y }
-    }
-
-    fn offset_x(self) -> f32 {
-        sample_offset(self.x)
-    }
-
-    fn offset_y(self) -> f32 {
-        sample_offset(self.y)
-    }
 }
 
 fn switch_track_fill(palette: &VisualPalette, enabled: bool) -> u32 {

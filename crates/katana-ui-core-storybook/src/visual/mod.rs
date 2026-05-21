@@ -1,6 +1,7 @@
 mod button_options;
 mod button_options_draw;
 mod canvas;
+mod canvas_round_rect;
 mod coverage;
 mod coverage_markers;
 mod dedicated;
@@ -56,6 +57,7 @@ mod palette;
 mod panel_scroll_interaction_tests;
 mod panel_scroll_state;
 mod panel_scrollbars;
+mod presentation;
 mod preset_tabs;
 mod preview;
 mod preview_contract;

@@ -1,5 +1,6 @@
 use super::canvas::Canvas;
 use super::modal;
+use super::presentation;
 use super::render;
 use super::runtime::{StorybookRuntimeReport, StorybookVisualError, StorybookWindowRun};
 use super::types::StorybookVisual;
@@ -85,10 +86,13 @@ fn run_single_window(
     let mut state = StorybookWindowState::default();
     let mut left_mouse_was_down = false;
     let mut right_mouse_was_down = false;
+    let mut presented = present_for_window(window, &frame);
+    let mut presented_window_size = window.get_size();
     while frames == 0 || frame_index < frames {
         if !window.is_open() || window.is_key_down(Key::Escape) {
             break;
         }
+        let mut frame_changed = false;
         if apply_scroll(window, &mut state)
             || apply_hover(window, &mut state)
             || apply_mouse_click(
@@ -99,12 +103,24 @@ fn run_single_window(
             )
         {
             frame = render_frame(&state);
+            frame_changed = true;
         }
-        window.update_with_buffer(frame.pixels(), frame.width(), frame.height())?;
+        let window_size = window.get_size();
+        if frame_changed || window_size != presented_window_size {
+            presented = present_for_window(window, &frame);
+            presented_window_size = window_size;
+        }
+        window.update_with_buffer(presented.pixels(), presented.width(), presented.height())?;
         thread::sleep(Duration::from_millis(render::FRAME_DELAY_MS));
         frame_index += 1;
     }
     Ok(())
+}
+
+fn present_for_window(window: &Window, frame: &Canvas) -> Canvas {
+    let (width, height) = window.get_size();
+    let fill = frame.pixels().first().copied().unwrap_or_default();
+    presentation::present_frame(frame, width, height, fill)
 }
 
 fn apply_hover(window: &Window, state: &mut StorybookWindowState) -> bool {
