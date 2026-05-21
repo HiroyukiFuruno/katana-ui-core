@@ -404,3 +404,19 @@ Storybook は触ってフィードバックするための実画面であり、�
 - [x] 33.5 各 case で page 間、preset 間の state が共有されないことを自動テストで固定する。
 - [x] 33.6 `assert-storybook-page-layout.py` に 33.1〜33.5 の guard marker を追加し、横断 required page テストだけへ戻る変更を失敗扱いにする。
 - [x] 33.7 33.1〜33.6 を含めて `just check` を通す。
+- [x] 33.8 各 case が Storybook 見た目専用ではなく、catalog / core render model 上で期待する `UiNodeKind` を持つことを自動テストで固定する。
+
+## 34. Panel scroll / layout 詳細設計のやり直し
+
+現状の Panel / scrollbar は、Panel 本体、content viewport、scrollbar、hit target の座標が別々の定数から出ている。
+そのため Inspector が Preview へめり込む、scrollbar が不要な領域へ出る、終端で余白が残る、といった不具合を個別修正で潰し切れない。
+Panel を KUC foundation として成立させるため、詳細設計からやり直し、実装と自動テストへ落とす。
+
+- [x] 34.1 `panel-scroll-layout-redesign.md` に PanelFrame / ContentViewport / ScrollbarGutter / ClipRect / HitRect の設計を正本化する。
+- [x] 34.2 Storybook の Navigation / Preview / Inspector の矩形を `PanelRegionLayout` から導出し、描画用定数と入力用定数の分離をやめる。
+- [x] 34.3 Inspector controls が Inspector の ContentViewport 内に収まり、Preview へ重ならないことを layout contract test で固定する。
+- [x] 34.4 scrollbar track / thumb が各 PanelFrame 内に収まり、scrollbar gutter が content と重ならないことを contract test で固定する。
+- [x] 34.5 content が viewport 以下の場合に scrollbar と余白 scroll が発生しないことを contract test で固定する。
+- [x] 34.6 縦横 scroll の最大 offset で thumb bottom / right が track bottom / right と一致することを contract test で固定する。
+- [x] 34.7 Navigation / Preview / Inspector の描画を ContentViewport で clip し、子 Panel や Inspector が隣の Panel へめり込まないことを rendering contract で固定する。
+- [x] 34.8 34.2〜34.7 を含めて `just check` を通す。

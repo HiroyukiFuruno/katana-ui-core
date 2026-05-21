@@ -4,7 +4,9 @@ use super::legacy_01_24_contract::{LegacyPageContract, legacy_01_24_contracts};
 use super::visual_interaction_test_support::component_body_pixel_diff;
 use super::window_interaction::{StorybookWindowState, apply_click};
 use super::{Canvas, layout_metrics, preview_detail, render};
+use crate::StoryCatalog;
 use crate::catalog::StoryPresetLabels;
+use katana_ui_core::render_model::{UiNode, UiNodeKind};
 use std::collections::BTreeSet;
 
 const FIRST_LEGACY_NUMBER: u8 = 1;
@@ -43,6 +45,29 @@ fn legacy_01_24_specs_and_presets_are_explicit_per_widget() {
 }
 
 #[test]
+fn legacy_01_24_catalog_model_contains_expected_core_node_kind() {
+    let examples = StoryCatalog.examples();
+    for case in legacy_01_24_contracts() {
+        let example = examples.iter().find(|it| it.page == case.page);
+
+        assert!(example.is_some(), "{} page missing", case.label);
+        let Some(example) = example else {
+            continue;
+        };
+        assert!(
+            contains_kind(example.tree.root(), expected_kind(case.page)),
+            "{} model lacks expected core node kind",
+            case.label
+        );
+        assert!(
+            example.contract.is_complete(),
+            "{} story contract incomplete",
+            case.label
+        );
+    }
+}
+
+#[test]
 fn legacy_01_24_clicks_emit_expected_action_event_state_and_repaint_body() {
     for case in legacy_01_24_contracts() {
         let mut state = new_state(case.page);
@@ -67,6 +92,46 @@ fn legacy_01_24_clicks_emit_expected_action_event_state_and_repaint_body() {
         );
         assert_body_repainted(case, &before, &render_state(&state), "click");
     }
+}
+
+fn expected_kind(page: &str) -> UiNodeKind {
+    match page {
+        "theme-tokens" => UiNodeKind::Card,
+        "text" => UiNodeKind::Text,
+        "icon" => UiNodeKind::Icon,
+        "loading-dots" => UiNodeKind::LoadingDots,
+        "spinner" => UiNodeKind::Spinner,
+        "svg-button" => UiNodeKind::SvgButton,
+        "text-button" => UiNodeKind::TextButton,
+        "icon-text-button" => UiNodeKind::IconTextButton,
+        "toggle" => UiNodeKind::Toggle,
+        "segmented-toggle" => UiNodeKind::SegmentedToggle,
+        "select-box" => UiNodeKind::SelectBox,
+        "color-swatch" => UiNodeKind::ColorSwatch,
+        "text-input" => UiNodeKind::Input,
+        "text-area" => UiNodeKind::TextArea,
+        "search-box" => UiNodeKind::SearchBox,
+        "tooltip" => UiNodeKind::Tooltip,
+        "badge" => UiNodeKind::Badge,
+        "key-cap" => UiNodeKind::KeyCap,
+        "card" => UiNodeKind::Card,
+        "accordion" => UiNodeKind::Accordion,
+        "split-pane" => UiNodeKind::SplitPane,
+        "modal" => UiNodeKind::Modal,
+        "modal-overlay" => UiNodeKind::ModalOverlay,
+        "popover" => UiNodeKind::Popover,
+        "color-picker-rgba" => UiNodeKind::ColorPicker,
+        "code-diff" => UiNodeKind::CodeDiff,
+        _ => UiNodeKind::Text,
+    }
+}
+
+fn contains_kind(node: &UiNode, kind: UiNodeKind) -> bool {
+    node.kind() == kind
+        || node
+            .children()
+            .iter()
+            .any(|child| contains_kind(child, kind))
 }
 
 #[test]

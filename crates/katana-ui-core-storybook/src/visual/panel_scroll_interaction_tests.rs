@@ -1,6 +1,6 @@
 use super::{
-    Canvas, StorybookVisual, layout_metrics, palette, panel_scroll_state, panel_scrollbars, render,
-    scrollbar,
+    Canvas, StorybookVisual, layout_metrics, palette, panel_layout, panel_scroll_state,
+    panel_scrollbars, render, scrollbar,
 };
 use katana_ui_core::theme::ThemeSnapshot;
 
@@ -99,7 +99,7 @@ fn storybook_outer_scrollbars_are_shown_only_for_overflowing_regions() {
 fn hidden_preview_scroll_offsets_do_not_move_panel_foundation_preview() {
     let baseline = render_panel_with_offsets(Default::default());
     let mut preview_offsets = panel_scroll_state::PanelScrollOffsets::default();
-    assert!(preview_offsets.scroll_delta(panel_scroll_state::PanelScrollRegion::Preview, -1.0));
+    assert!(!preview_offsets.scroll_delta(panel_scroll_state::PanelScrollRegion::Preview, -1.0));
     let preview_scrolled = render_panel_with_offsets(preview_offsets);
     let mut inspector_offsets = panel_scroll_state::PanelScrollOffsets::default();
     assert!(inspector_offsets.scroll_delta(panel_scroll_state::PanelScrollRegion::Inspector, -1.0));
@@ -181,12 +181,13 @@ fn render_panel_with_offsets(offsets: panel_scroll_state::PanelScrollOffsets) ->
 }
 
 fn preview_panel_pixel_diff(before: &Canvas, after: &Canvas) -> usize {
+    let frame = panel_layout::region_frame(panel_scroll_state::PanelScrollRegion::Preview);
     region_pixel_diff(
         before,
         after,
-        layout_metrics::PREVIEW_X,
+        frame.x,
         layout_metrics::PRESET_ACTIVE_Y,
-        panel_scrollbars::PREVIEW_SCROLL_X - layout_metrics::PREVIEW_X,
+        frame.width,
         render::HEIGHT - layout_metrics::PRESET_ACTIVE_Y,
     )
 }

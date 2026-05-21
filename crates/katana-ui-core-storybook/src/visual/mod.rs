@@ -61,10 +61,13 @@ mod navigation;
 mod navigation_icons;
 mod navigation_tree;
 mod palette;
+mod panel_layout;
 #[cfg(test)]
 mod panel_scroll_contract_tests;
 #[cfg(test)]
 mod panel_scroll_interaction_tests;
+#[cfg(test)]
+mod panel_scroll_layout_contract_tests;
 mod panel_scroll_state;
 mod panel_scrollbars;
 mod presentation;

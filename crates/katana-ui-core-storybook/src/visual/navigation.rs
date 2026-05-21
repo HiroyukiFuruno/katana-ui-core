@@ -6,6 +6,8 @@ use super::layout_metrics::{
 use super::navigation_icons::{draw_disclosure, draw_file_icon, draw_folder_icon};
 use super::navigation_tree::{NavigationGroup, NavigationRow, TreeExpansionState, visible_rows};
 use super::palette::VisualPalette;
+use super::panel_layout;
+use super::panel_scroll_state::PanelScrollRegion;
 use super::text::{TextRenderer, TextVerticalBox};
 
 const PAGE_LINE_X: usize = 44;
@@ -27,27 +29,36 @@ pub(super) fn draw(
     scroll_y: usize,
 ) {
     draw_navigation_panel(canvas, palette);
-    let first_index = scroll_y / NAV_ROW_STEP;
-    let row_offset = scroll_y % NAV_ROW_STEP;
-    let mut row_y = NAV_FIRST_ROW_Y.saturating_sub(row_offset);
-    for row in visible_rows(expansion).into_iter().skip(first_index) {
-        match row {
-            NavigationRow::Group(group) => {
-                draw_group(
-                    canvas,
-                    text,
-                    palette,
-                    group,
-                    expansion.is_open(group),
-                    row_y,
-                );
+    let viewport = panel_layout::region_layout(PanelScrollRegion::Navigation).content_viewport;
+    canvas.with_clip(
+        viewport.x,
+        viewport.y,
+        viewport.width,
+        viewport.height,
+        |canvas| {
+            let first_index = scroll_y / NAV_ROW_STEP;
+            let row_offset = scroll_y % NAV_ROW_STEP;
+            let mut row_y = NAV_FIRST_ROW_Y.saturating_sub(row_offset);
+            for row in visible_rows(expansion).into_iter().skip(first_index) {
+                match row {
+                    NavigationRow::Group(group) => {
+                        draw_group(
+                            canvas,
+                            text,
+                            palette,
+                            group,
+                            expansion.is_open(group),
+                            row_y,
+                        );
+                    }
+                    NavigationRow::Page { page, .. } => {
+                        draw_page(canvas, text, palette, page, page == selected_page, row_y);
+                    }
+                }
+                row_y += NAV_ROW_STEP;
             }
-            NavigationRow::Page { page, .. } => {
-                draw_page(canvas, text, palette, page, page == selected_page, row_y);
-            }
-        }
-        row_y += NAV_ROW_STEP;
-    }
+        },
+    );
 }
 
 fn draw_navigation_panel(canvas: &mut Canvas, palette: &VisualPalette) {

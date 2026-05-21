@@ -26,12 +26,12 @@ fn panel_scrollbar_thumbs_move_only_for_scrolled_panel() {
     let mut state = StorybookWindowState::default();
     let thumb = panel_scrollbars::thumb_rect_for(PanelScrollRegion::Preview, state.panel_scroll);
 
-    assert!(apply_scrollbar_drag(
+    assert!(!apply_scrollbar_drag(
         &mut state,
         PanelScrollRegion::Preview,
         thumb.y + 180,
     ));
-    assert!(state.panel_scroll.preview_y > 0);
+    assert_eq!(0, state.panel_scroll.preview_y);
     assert_eq!(0, state.panel_scroll.navigation_y);
     assert_eq!(0, state.panel_scroll.inspector_y);
 }

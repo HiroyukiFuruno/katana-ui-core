@@ -2,6 +2,8 @@ use super::button_options;
 use super::canvas::Canvas;
 use super::layout_metrics::{INSPECTOR_HEIGHT, INSPECTOR_WIDTH, INSPECTOR_X, INSPECTOR_Y};
 use super::palette::VisualPalette;
+use super::panel_layout;
+use super::panel_scroll_state::PanelScrollRegion;
 use super::render_context::{RenderContext, ScenarioContext};
 use super::text::TextRenderer;
 use super::{inspector_rows, inspector_rows::settings_title};
@@ -63,16 +65,25 @@ pub(super) fn draw(
         palette.muted,
     );
 
-    let mut y = FIRST_SECTION_Y.saturating_sub(scenario.panel_scroll.inspector_y);
-    let Some((node, example)) = selected else {
-        draw_section(canvas, render.text, palette, "No selection", &[], y);
-        return;
-    };
+    let viewport = panel_layout::region_layout(PanelScrollRegion::Inspector).content_viewport;
+    canvas.with_clip(
+        viewport.x,
+        viewport.y,
+        viewport.width,
+        viewport.height,
+        |canvas| {
+            let mut y = FIRST_SECTION_Y.saturating_sub(scenario.panel_scroll.inspector_y);
+            let Some((node, example)) = selected else {
+                draw_section(canvas, render.text, palette, "No selection", &[], y);
+                return;
+            };
 
-    y = draw_settings(canvas, render, node, example, scenario, y);
-    y = draw_state(canvas, render, node, scenario, y + SECTION_GAP);
-    y = draw_history(canvas, render, example, scenario, y + SECTION_GAP);
-    draw_quality(canvas, render.text, palette, scenario, y + SECTION_GAP);
+            y = draw_settings(canvas, render, node, example, scenario, y);
+            y = draw_state(canvas, render, node, scenario, y + SECTION_GAP);
+            y = draw_history(canvas, render, example, scenario, y + SECTION_GAP);
+            draw_quality(canvas, render.text, palette, scenario, y + SECTION_GAP);
+        },
+    );
 }
 
 fn draw_settings(

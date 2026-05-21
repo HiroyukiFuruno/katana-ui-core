@@ -75,8 +75,10 @@ STORYBOOK_FILES = (
     Path("crates/katana-ui-core-storybook/src/visual/navigation_icons.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/navigation_tree.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/palette.rs"),
+    Path("crates/katana-ui-core-storybook/src/visual/panel_layout.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/panel_scroll_contract_tests.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/panel_scroll_interaction_tests.rs"),
+    Path("crates/katana-ui-core-storybook/src/visual/panel_scroll_layout_contract_tests.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/preset_tabs.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/panel_scroll_state.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/panel_scrollbars.rs"),
@@ -197,6 +199,12 @@ def main() -> int:
         "legacy_01_24_clicks_emit_expected_action_event_state_and_repaint_body",
         "legacy_01_24_settings_mutate_option_and_repaint_body",
         "legacy_01_24_state_is_isolated_by_page_and_preset",
+        "legacy_01_24_catalog_model_contains_expected_core_node_kind",
+        "PanelRegionLayout",
+        "panel_scrollbar_tracks_stay_inside_own_panel_frames",
+        "panel_content_viewports_reserve_scrollbar_gutters",
+        "non_overflowing_preview_has_no_scroll_offset",
+        "rendered_panel_content_does_not_paint_reserved_scrollbar_gutter",
     )
     evidence_tokens = (
         "storybook-panel-interaction-report.json",

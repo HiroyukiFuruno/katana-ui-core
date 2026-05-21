@@ -1,5 +1,6 @@
 use super::{
-    Canvas, layout_metrics, palette, panel_scroll_state, panel_scrollbars, preview, render,
+    Canvas, layout_metrics, palette, panel_layout, panel_scroll_state, panel_scrollbars, preview,
+    render,
 };
 use katana_ui_core::theme::ThemeSnapshot;
 
@@ -148,12 +149,13 @@ fn render_panel_with_offsets(offsets: panel_scroll_state::PanelScrollOffsets) ->
 }
 
 fn preview_panel_pixel_diff(before: &Canvas, after: &Canvas) -> usize {
+    let frame = panel_layout::region_frame(panel_scroll_state::PanelScrollRegion::Preview);
     region_pixel_diff(
         before,
         after,
-        layout_metrics::PREVIEW_X,
+        frame.x,
         layout_metrics::PRESET_ACTIVE_Y,
-        panel_scrollbars::PREVIEW_SCROLL_X - layout_metrics::PREVIEW_X,
+        frame.width,
         render::HEIGHT - layout_metrics::PRESET_ACTIVE_Y,
     )
 }
