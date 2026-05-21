@@ -26,6 +26,22 @@ fn click_mapping_updates_theme_preset_and_story_selection() {
 }
 
 #[test]
+fn preset_tab_selection_is_owned_by_component() {
+    let mut state = StorybookWindowState::default();
+
+    click_preset(&mut state, 3);
+    click_page(&mut state, "text-button");
+    assert_eq!(0, state.preset_index);
+
+    click_preset(&mut state, 1);
+    click_page(&mut state, "button");
+    assert_eq!(3, state.preset_index);
+
+    click_page(&mut state, "text-button");
+    assert_eq!(1, state.preset_index);
+}
+
+#[test]
 fn click_mapping_toggles_tree_groups() {
     let mut state = StorybookWindowState::default();
     let target = group_click_target(NavigationGroup::Atoms);

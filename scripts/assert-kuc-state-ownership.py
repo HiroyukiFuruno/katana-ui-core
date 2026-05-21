@@ -24,9 +24,15 @@ def main() -> int:
     )
     atom_model = read("crates/katana-ui-core/src/atom/mod.rs")
     component_model = read("crates/katana-ui-core/src/component.rs")
+    state_model = read("crates/katana-ui-core/src/state.rs")
     interaction_model = read_rust_dir("crates/katana-ui-core/src/interaction")
     contract_test = read("crates/katana-ui-core/tests/core_contract.rs")
-    interaction_test = read("crates/katana-ui-core/tests/interaction_contract.rs")
+    interaction_test = "\n".join(
+        (
+            read("crates/katana-ui-core/tests/interaction_contract.rs"),
+            read_rust_dir("crates/katana-ui-core/tests/interaction_contract"),
+        )
+    )
 
     required_render_tokens = (
         "pub struct UiStateId",
@@ -38,6 +44,21 @@ def main() -> int:
     for token in required_render_tokens:
         if token not in render_model:
             failures.append(f"render_model missing state ownership token: {token}")
+
+    required_handle_tokens = (
+        ("state model", state_model, "pub struct UiStateHandle"),
+        ("state model", state_model, "pub struct UiComponentState"),
+        ("state model", state_model, "pub fn get"),
+        ("state model", state_model, "pub fn set"),
+        ("state model", state_model, "pub fn update"),
+        ("state model", state_model, "pub fn with"),
+        ("component model", component_model, "pub trait ComponentStateBinding"),
+        ("atom model", atom_model, "pub fn state_snapshot"),
+        ("atom model", atom_model, "pub fn sync_state"),
+    )
+    for label, source, token in required_handle_tokens:
+        if token not in source:
+            failures.append(f"{label} missing component state handle token: {token}")
 
     forbidden_atom_tokens = (
         "pub struct AtomState",
@@ -60,6 +81,16 @@ def main() -> int:
         ("component model", component_model, "pub trait ComponentAction"),
         ("interaction contract", interaction_test, "action_targets_only_the_matching_component_state"),
         ("interaction contract", interaction_test, "action_result_is_serializable_snapshot"),
+        (
+            "interaction contract",
+            interaction_test,
+            "app_global_state_updates_component_owned_state_via_handle",
+        ),
+        (
+            "interaction contract",
+            interaction_test,
+            "state_handle_supports_react_like_get_set_and_update_without_global_store",
+        ),
     )
     for label, source, token in required_action_tokens:
         if token not in source:

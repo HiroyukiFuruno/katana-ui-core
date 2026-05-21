@@ -19,6 +19,7 @@ use crate::render_model::{
     UiCommonProps, UiCursor, UiDimension, UiDisplay, UiNode, UiNodeKind, UiPointerEvents,
     UiPosition, UiProgressMode, UiSize, UiStateId, UiTone, UiVariant, UiVisualRole, UiZIndex,
 };
+use crate::state::{UiComponentState, UiStateHandle};
 pub use chip::{Chip, ChipAction, ChipEvent, ChipKeyboardInput, ChipSize, ChipTone, ChipVariant};
 pub use drag_handle::DragHandle;
 pub use drop_indicator::DropIndicator;
@@ -246,11 +247,51 @@ macro_rules! atom_model {
             pub fn state_id(&self) -> &UiStateId {
                 &self.state.state_id
             }
+
+            #[must_use]
+            pub fn state_snapshot(&self) -> UiComponentState {
+                self.state.component_state()
+            }
+
+            #[must_use]
+            pub fn state_handle(&self) -> UiStateHandle<UiComponentState> {
+                UiStateHandle::new(self.state_snapshot())
+            }
+
+            #[must_use]
+            pub fn set_state(mut self, state: UiComponentState) -> Self {
+                self.state.sync_component_state(state);
+                self
+            }
+
+            #[must_use]
+            pub fn update_state(mut self, update_state: impl FnOnce(&mut UiComponentState)) -> Self {
+                let mut state = self.state_snapshot();
+                update_state(&mut state);
+                self.state.sync_component_state(state);
+                self
+            }
+
+            #[must_use]
+            pub fn sync_state(mut self, state_handle: &UiStateHandle<UiComponentState>) -> Self {
+                self.state.sync_component_state(state_handle.get());
+                self
+            }
         }
 
         impl crate::component::ComponentAction for $name {
             fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
                 self.state.apply_action_for_kind($kind, action)
+            }
+        }
+
+        impl crate::component::ComponentStateBinding for $name {
+            fn state_snapshot(&self) -> UiComponentState {
+                self.state.component_state()
+            }
+
+            fn set_state_snapshot(&mut self, state: UiComponentState) {
+                self.state.sync_component_state(state);
             }
         }
 

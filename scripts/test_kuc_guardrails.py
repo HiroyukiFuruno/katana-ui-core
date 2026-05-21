@@ -333,6 +333,100 @@ class KucGuardrailsTest(unittest.TestCase):
 
             self.assertEqual([], failures)
 
+    def test_requires_component_state_ownership_handle_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            failures = KucGuardrails(root).component_state_ownership_failures()
+
+            self.assertGreaterEqual(len(failures), 8)
+
+    def test_accepts_component_state_ownership_handle_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core/src/state.rs",
+                "pub struct UiStateHandle<T>(T);\n"
+                "pub struct UiComponentState;\n"
+                "impl<T> UiStateHandle<T> { pub fn update(&self) {} }\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/component.rs",
+                "pub trait ComponentStateBinding {}\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/atom/mod.rs",
+                "pub fn state_snapshot() {}\npub fn sync_state() {}\n",
+            )
+            write_text(
+                root
+                / "crates/katana-ui-core-storybook/src/visual/window_interaction/state_store.rs",
+                "struct Key { component_id: &'static str }\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/visual/window_interaction.rs",
+                "selected_component_presets\n",
+            )
+            write_text(
+                root
+                / "crates/katana-ui-core-storybook/src/visual/window_interaction/tests/navigation_tests.rs",
+                "fn preset_tab_selection_is_owned_by_component() {}\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/tests/interaction_contract.rs",
+                "fn action_targets_only_the_matching_component_state() {}\n"
+                "fn complex_ui_state_is_owned_by_the_component_model() {}\n"
+                "fn app_global_state_updates_component_owned_state_via_handle() {}\n"
+                "fn state_handle_supports_react_like_get_set_and_update_without_global_store() {}\n",
+            )
+            write_text(
+                root
+                / "openspec/changes/establish-kuc-atoms-molecules-catalog/core-foundation-contract.md",
+                "UiStateHandle set/update global state component-owned state\n",
+            )
+
+            failures = KucGuardrails(root).component_state_ownership_failures()
+
+            self.assertEqual([], failures)
+
+    def test_rejects_page_owned_storybook_component_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(root / "crates/katana-ui-core/src/state.rs", "UiStateHandle UiComponentState\n")
+            write_text(root / "crates/katana-ui-core/src/component.rs", "ComponentStateBinding\n")
+            write_text(root / "crates/katana-ui-core/src/atom/mod.rs", "state_snapshot sync_state\n")
+            write_text(
+                root
+                / "crates/katana-ui-core-storybook/src/visual/window_interaction/state_store.rs",
+                "struct Key { page: &'static str, component_id: &'static str }\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/visual/window_interaction.rs",
+                "selected_component_presets selected_presets\n",
+            )
+            write_text(
+                root
+                / "crates/katana-ui-core-storybook/src/visual/window_interaction/tests/navigation_tests.rs",
+                "preset_tab_selection_is_owned_by_component\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/tests/interaction_contract.rs",
+                "action_targets_only_the_matching_component_state\n"
+                "complex_ui_state_is_owned_by_the_component_model\n"
+                "app_global_state_updates_component_owned_state_via_handle\n"
+                "state_handle_supports_react_like_get_set_and_update_without_global_store\n",
+            )
+            write_text(
+                root
+                / "openspec/changes/establish-kuc-atoms-molecules-catalog/core-foundation-contract.md",
+                "set/update\n",
+            )
+
+            failures = KucGuardrails(root).component_state_ownership_failures()
+
+            self.assertIn("storybook state key must not be page-owned", failures)
+            self.assertIn("storybook preset state must be component-owned", failures)
+
     def test_rejects_public_app_shell_api(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

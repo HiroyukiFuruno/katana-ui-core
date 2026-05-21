@@ -83,6 +83,8 @@ mod visual_interaction_test_support;
 #[cfg(test)]
 mod visual_interaction_tests;
 #[cfg(test)]
+mod visual_preset_marker_tests;
+#[cfg(test)]
 mod visual_tests;
 mod window;
 mod window_coordinates;

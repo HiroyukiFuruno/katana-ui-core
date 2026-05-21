@@ -4,6 +4,7 @@ use katana_ui_core::atom::{
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::render_model::UiNode;
+use katana_ui_core::state::UiStateHandle;
 
 const PROGRESS_PERCENT: u8 = 64;
 
@@ -37,6 +38,43 @@ fn button_press_is_repeatable_and_does_not_become_selection_state() {
     assert_eq!("button_press", second.callback_log[0].action);
     assert!(!node.props().interaction.has_selection);
     assert!(!node.props().interaction.active);
+}
+
+#[test]
+fn app_global_state_updates_component_owned_state_via_handle() {
+    let mut button = Button::new("Next page").loading(true);
+    let button_state = button.state_handle();
+    let press_while_loading = UiAction::button_press(button.state_id().clone());
+
+    assert!(!button.apply_action(&press_while_loading).handled);
+    button_state.update(|state| {
+        state.loading = false;
+    });
+    let mut button = button.sync_state(&button_state);
+    let press_after_loading = UiAction::button_press(button.state_id().clone());
+
+    assert!(button.apply_action(&press_after_loading).handled);
+}
+
+#[test]
+fn state_handle_supports_react_like_get_set_and_update_without_global_store() {
+    let mut initial_state = Button::new("Save").state_snapshot();
+    initial_state.loading = true;
+    let state_handle = UiStateHandle::new(initial_state);
+
+    assert!(state_handle.get().loading);
+    state_handle.update(|state| {
+        state.loading = false;
+        state.interaction.value = "ready".to_string();
+    });
+    assert!(!state_handle.get().loading);
+    assert_eq!("ready", state_handle.get().interaction.value);
+
+    let mut next_state = state_handle.get();
+    next_state.disabled = true;
+    state_handle.set(next_state);
+
+    assert!(state_handle.with(|state| state.disabled));
 }
 
 #[test]

@@ -44,6 +44,7 @@ class KucGuardrails:
         failures.extend(self.callback_failures())
         failures.extend(self.storybook_leak_failures())
         failures.extend(self.helper_only_view_failures())
+        failures.extend(self.component_state_ownership_failures())
         failures.extend(self.typed_action_model_failures())
         failures.extend(self.storybook_panel_evidence_failures())
         failures.extend(self.visual_fallback_policy_failures())
@@ -395,6 +396,91 @@ class KucGuardrails:
             for token in forbidden_tokens
             if token in combined
         )
+        return failures
+
+    def component_state_ownership_failures(self) -> list[str]:
+        required_files = (
+            self.root / "crates/katana-ui-core/src/state.rs",
+            self.root / "crates/katana-ui-core/src/component.rs",
+            self.root / "crates/katana-ui-core/src/atom/mod.rs",
+            self.root
+            / "crates/katana-ui-core-storybook/src/visual/window_interaction/state_store.rs",
+            self.root / "crates/katana-ui-core-storybook/src/visual/window_interaction.rs",
+            self.root
+            / "crates/katana-ui-core-storybook/src/visual/window_interaction/tests/navigation_tests.rs",
+            self.root / "crates/katana-ui-core/tests/interaction_contract.rs",
+            self.root
+            / "openspec/changes/establish-kuc-atoms-molecules-catalog/core-foundation-contract.md",
+        )
+        missing_files = [path for path in required_files if not path.exists()]
+        if missing_files:
+            return [
+                f"{self.relative(path)}: component state ownership file is missing"
+                for path in missing_files
+            ]
+
+        state_model = self.read(required_files[0])
+        component_model = self.read(required_files[1])
+        atom_model = self.read(required_files[2])
+        state_store = self.read(required_files[3])
+        window_state = self.read(required_files[4])
+        navigation_tests = self.read(required_files[5])
+        core_contract = "\n".join(
+            (
+                self.read(required_files[6]),
+                self.read_rust_dir(self.root / "crates/katana-ui-core/tests/interaction_contract"),
+                self.read_rust_dir(self.root / "crates/katana-ui-core/tests/core_contract"),
+            )
+        )
+        foundation_contract = self.read(required_files[7])
+        combined = "\n".join(
+            (
+                state_model,
+                component_model,
+                atom_model,
+                state_store,
+                window_state,
+                navigation_tests,
+                core_contract,
+                foundation_contract,
+            )
+        )
+        required_tokens = (
+            "UiStateHandle",
+            "UiComponentState",
+            "ComponentStateBinding",
+            "state_snapshot",
+            "sync_state",
+            "set/update",
+            "component_id",
+            "selected_component_presets",
+            "preset_tab_selection_is_owned_by_component",
+            "action_targets_only_the_matching_component_state",
+            "complex_ui_state_is_owned_by_the_component_model",
+            "app_global_state_updates_component_owned_state_via_handle",
+            "state_handle_supports_react_like_get_set_and_update_without_global_store",
+        )
+        failures = [
+            f"component state ownership missing token: {token}"
+            for token in required_tokens
+            if token not in combined
+        ]
+        forbidden_patterns = (
+            (state_store, r"\bpage\s*:\s*&'static str", "storybook state key must not be page-owned"),
+            (
+                window_state,
+                r"\bselected_presets\b",
+                "storybook preset state must be component-owned",
+            ),
+            (
+                window_state,
+                r"\bglobal_(state|store)\b",
+                "component state must not use global state/store",
+            ),
+        )
+        for source, pattern, message in forbidden_patterns:
+            if re.search(pattern, source):
+                failures.append(message)
         return failures
 
     def public_app_shell_failures(self) -> list[str]:

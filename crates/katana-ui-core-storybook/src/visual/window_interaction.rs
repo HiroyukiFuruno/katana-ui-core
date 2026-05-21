@@ -16,6 +16,7 @@ use super::window_coordinates::{
 pub(super) use button_operation::apply_hover_at;
 use button_operation::button_operation_at;
 use state_store::StorybookScreenStateStore;
+use std::collections::BTreeMap;
 
 const DEFAULT_SELECTED_PAGE: &str = "button";
 const DEFAULT_THEME_ID: &str = "dark";
@@ -25,6 +26,7 @@ pub(super) struct StorybookWindowState {
     pub(super) selected_page: &'static str,
     pub(super) theme_id: &'static str,
     pub(super) preset_index: usize,
+    pub(super) selected_component_presets: BTreeMap<&'static str, usize>,
     pub(super) scroll_y: usize,
     pub(super) panel_scroll: PanelScrollOffsets,
     pub(super) scrollbar_visible: bool,
@@ -40,6 +42,7 @@ impl Default for StorybookWindowState {
             selected_page: DEFAULT_SELECTED_PAGE,
             theme_id: DEFAULT_THEME_ID,
             preset_index: 0,
+            selected_component_presets: BTreeMap::new(),
             scroll_y: 0,
             panel_scroll: PanelScrollOffsets::default(),
             scrollbar_visible: true,
@@ -53,7 +56,12 @@ impl Default for StorybookWindowState {
 
 impl StorybookWindowState {
     fn select_page(&mut self, page: &'static str) {
-        self.switch_screen_state(page, self.preset_index);
+        let preset_index = self
+            .selected_component_presets
+            .get(page)
+            .copied()
+            .unwrap_or_default();
+        self.switch_screen_state(page, preset_index);
     }
 
     fn select_preset(&mut self, preset_index: usize) {
@@ -63,8 +71,11 @@ impl StorybookWindowState {
     fn switch_screen_state(&mut self, page: &'static str, preset_index: usize) {
         self.screen_states
             .save(self.selected_page, self.preset_index, self.screen_state);
+        self.selected_component_presets
+            .insert(self.selected_page, self.preset_index);
         self.selected_page = page;
         self.preset_index = preset_index;
+        self.selected_component_presets.insert(page, preset_index);
         self.screen_state = self.screen_states.restore(page, preset_index);
     }
 }

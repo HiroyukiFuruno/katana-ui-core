@@ -23,6 +23,9 @@ KUC は外側から UI 全体の設定を渡す入口として `UiCoreFacade` �
 
 部品ごとの値や開閉状態、入力値は `UiCoreFacade` の global state に寄せない。
 各部品は自身の状態 ID を持ち、外側は action / event と facade 設定を通じて観測・制御する。
+利用側が通信中、保存中、外部選択中のような app 側の状態から UI を制御したい場合は、global state に部品固有 state を直接置かない。
+外側は `UiStateHandle` の `get` / `with` で短命に読み取り、`set/update` で部品内部状態へ反映する。
+部品は `sync_state` でその snapshot を取り込み、描画可否や action 可否を自身の状態として判定する。
 
 ## 3.2 Katana 既定 theme
 
@@ -87,6 +90,7 @@ TextInput 系部品は、利用側に文字列 state を外出ししなくても
 | molecule | 子部品の state id を失わず、親の state と区別して追跡できる。 |
 | Storybook | action / event / state 履歴に target state id を表示する。 |
 | global state | focus、overlay、modal など全体制御だけを扱う。部品固有 state の置き場にしない。 |
+| 外部制御 state | 利用側の app state から `UiStateHandle` を通じて部品内部状態へ `set/update` する。state の所有は部品に残す。 |
 
 state ID の生成は決定的な外部 key だけに依存しない。
 重複 label による accidental sharing を品質ゲートで失敗扱いにする。

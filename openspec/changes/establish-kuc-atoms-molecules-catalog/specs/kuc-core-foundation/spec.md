@@ -19,6 +19,8 @@ Font configuration MUST use abstract font roles such as proportional and monospa
 The external entry point MUST be a KUC facade that owns the active `ThemeSnapshot`, style sheet, global UI state, and default font role.
 The facade MUST allow replacing theme and style sheet without rebuilding component-local state.
 Global UI state MUST be limited to cross-component concerns such as focus target, active overlay, and modal stack; component-local state MUST remain owned by each component instance.
+When a consumer needs app-level control such as loading, saving, or remote data completion, KUC MUST expose a short-lived state handle API that reads component state by snapshot and writes it back through `set` or `update`.
+The handle MUST NOT require moving component-local state into the facade global state.
 
 #### Scenario: consumer replaces theme and font
 
@@ -31,6 +33,13 @@ Global UI state MUST be limited to cross-component concerns such as focus target
 - **WHEN** a consumer creates a KUC facade with a theme, style sheet, global state, and default font role
 - **THEN** render context, font resolution, and panel theme resolution read those values through the facade
 - **AND** duplicate component instances do not share state because of facade-level configuration
+
+#### Scenario: app global state updates a component-owned loading state
+
+- **WHEN** a consumer keeps an app-level loading flag for a Button
+- **THEN** the consumer updates the component-owned state through a `UiStateHandle`
+- **AND** the Button accepts press actions again after the handle writes `loading=false`
+- **AND** the facade global state does not become the storage location for that Button state
 
 ### Requirement: Default theme uses Katana accent colors
 

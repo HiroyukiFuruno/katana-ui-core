@@ -2,22 +2,22 @@ use super::canvas::Canvas;
 use super::inspector;
 use super::layout_metrics::{
     BRAND_X, NAV_WIDTH, SCROLLBAR_CONTROL_HEIGHT, SCROLLBAR_CONTROL_WIDTH, SCROLLBAR_CONTROL_Y,
-    THEME_CONTROL_GAP, THEME_CONTROL_HEIGHT, THEME_CONTROL_WIDTH, THEME_CONTROL_Y, dark_theme_rect,
-    light_theme_rect, scrollbar_off_rect, scrollbar_on_rect,
+    THEME_CONTROL_HEIGHT, THEME_CONTROL_WIDTH, THEME_CONTROL_Y, dark_theme_rect, light_theme_rect,
+    scrollbar_off_rect, scrollbar_on_rect,
 };
 use super::navigation;
 use super::panel_scrollbars;
 use super::preview;
 use super::render::CANVAS_HEIGHT;
 use super::render_context::ShellContext;
+use super::text::TextVerticalBox;
 
 const BRAND_TITLE_Y: usize = 20;
 const BRAND_THEME_Y: usize = 46;
 const BRAND_TITLE_SIZE: f32 = 18.0;
 const BRAND_META_SIZE: f32 = 13.0;
-const THEME_CONTROL_TEXT_Y: usize = 6;
+const CONTROL_TEXT_X_PADDING: usize = 14;
 const THEME_CONTROL_TEXT_SIZE: f32 = 12.0;
-const SCROLLBAR_CONTROL_TEXT_Y: usize = 5;
 const SCROLLBAR_CONTROL_TEXT_SIZE: f32 = 11.0;
 
 pub(super) fn draw(canvas: &mut Canvas, context: ShellContext<'_>) {
@@ -115,11 +115,11 @@ fn draw_scrollbar_option(
         SCROLLBAR_CONTROL_HEIGHT,
         palette.border,
     );
-    context.render.text.draw(
+    context.render.text.draw_centered(
         canvas,
         label,
-        x + THEME_CONTROL_GAP,
-        SCROLLBAR_CONTROL_Y + SCROLLBAR_CONTROL_TEXT_Y,
+        x + CONTROL_TEXT_X_PADDING,
+        TextVerticalBox::new(SCROLLBAR_CONTROL_Y, SCROLLBAR_CONTROL_HEIGHT as f32),
         SCROLLBAR_CONTROL_TEXT_SIZE,
         text_color,
     );
@@ -158,11 +158,11 @@ fn draw_theme_option(
         THEME_CONTROL_HEIGHT,
         palette.border,
     );
-    context.render.text.draw(
+    context.render.text.draw_centered(
         canvas,
         label,
-        x + THEME_CONTROL_GAP,
-        THEME_CONTROL_Y + THEME_CONTROL_TEXT_Y,
+        x + CONTROL_TEXT_X_PADDING,
+        TextVerticalBox::new(THEME_CONTROL_Y, THEME_CONTROL_HEIGHT as f32),
         THEME_CONTROL_TEXT_SIZE,
         text_color,
     );

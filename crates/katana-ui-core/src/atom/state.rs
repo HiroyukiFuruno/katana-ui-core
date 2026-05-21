@@ -5,6 +5,7 @@ use crate::render_model::{
     UiLoadingProps, UiNode, UiNodeKind, UiShortcutProps, UiSize, UiStateId, UiStatusProps,
     UiTextEntryProps, UiTextProps, UiTone, UiVariant, UiVisualRole,
 };
+use crate::state::UiComponentState;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -98,5 +99,33 @@ impl AtomState {
             .status(self.status)
             .loading_indicator(self.loading_indicator)
             .icon(self.icon)
+    }
+
+    pub(super) fn component_state(&self) -> UiComponentState {
+        UiComponentState {
+            state_id: self.state_id.clone(),
+            common: self.common.clone(),
+            disabled: self.disabled,
+            focusable: self.focusable,
+            loading: self.loading,
+            readonly: self.readonly,
+            invalid: self.invalid,
+            checked: self.checked,
+            interaction: self.interaction.clone(),
+        }
+    }
+
+    pub(super) fn sync_component_state(&mut self, state: UiComponentState) {
+        self.state_id = state.state_id;
+        self.common = state.common;
+        self.disabled = state.disabled;
+        self.focusable = state.focusable;
+        self.loading = state.loading;
+        self.readonly = state.readonly;
+        self.invalid = state.invalid;
+        self.checked = state.checked;
+        self.interaction = state.interaction;
+        self.common.disabled = self.disabled;
+        self.common.focusable = self.focusable;
     }
 }

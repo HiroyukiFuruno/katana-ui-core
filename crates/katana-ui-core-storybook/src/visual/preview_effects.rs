@@ -2,7 +2,6 @@ use super::canvas::Canvas;
 use super::layout_metrics::LayoutRect;
 use super::render_context::{RenderContext, ScenarioContext};
 
-const PRESET_MARKER_WIDTH: usize = 96;
 const PRESET_MARKER_HEIGHT: usize = 16;
 const PRESET_MARKER_GAP: usize = 6;
 const SETTING_MARKER_WIDTH: usize = 116;
@@ -20,6 +19,16 @@ const TREE_MAX_PRESET_INDEX: usize = 3;
 const CONTEXT_MARKER_WIDTH: usize = 92;
 const CONTEXT_MARKER_HEIGHT: usize = 14;
 
+#[cfg(test)]
+pub(super) fn legacy_preset_marker_rect_for_test(rect: LayoutRect) -> LayoutRect {
+    LayoutRect::new(
+        rect.x + rect.width - SETTING_MARKER_WIDTH - PRESET_MARKER_GAP,
+        rect.y + PRESET_MARKER_HEIGHT + PRESET_MARKER_GAP + PRESET_MARKER_GAP,
+        SETTING_MARKER_WIDTH,
+        SETTING_MARKER_HEIGHT,
+    )
+}
+
 pub(super) fn draw(
     canvas: &mut Canvas,
     render: RenderContext<'_>,
@@ -29,47 +38,8 @@ pub(super) fn draw(
     if rect.width == 0 {
         return;
     }
-    draw_preset_marker(canvas, render, scenario, rect);
     draw_setting_marker(canvas, render, scenario, rect);
     draw_tree_view_scroll(canvas, render, scenario, rect);
-}
-
-fn draw_preset_marker(
-    canvas: &mut Canvas,
-    render: RenderContext<'_>,
-    scenario: ScenarioContext<'_>,
-    rect: LayoutRect,
-) {
-    if is_button_page(scenario.selected_page) {
-        return;
-    }
-    let fill = if scenario.preset_index == 0 {
-        render.palette.panel
-    } else {
-        render.palette.accent
-    };
-    let text_color = if scenario.preset_index == 0 {
-        render.palette.muted
-    } else {
-        render.palette.background
-    };
-    let marker_x = rect.x + rect.width - PRESET_MARKER_WIDTH - PRESET_MARKER_GAP;
-    let marker_y = rect.y + PRESET_MARKER_GAP;
-    canvas.fill_rect(
-        marker_x,
-        marker_y,
-        PRESET_MARKER_WIDTH,
-        PRESET_MARKER_HEIGHT,
-        fill,
-    );
-    render.code_text.draw(
-        canvas,
-        &format!("preset {}", scenario.preset_index),
-        marker_x + TEXT_OFFSET_X,
-        marker_y + TEXT_OFFSET_Y,
-        TEXT_SIZE,
-        text_color,
-    );
 }
 
 fn draw_setting_marker(

@@ -1,5 +1,6 @@
 use crate::interaction::{UiAction, UiActionResult};
 use crate::render_model::{UiNode, UiTree};
+use crate::state::{UiComponentState, UiStateHandle};
 
 pub trait Component: Sized {
     fn render(self) -> UiNode;
@@ -12,6 +13,26 @@ pub trait Component: Sized {
 
 pub trait ComponentAction {
     fn apply_action(&mut self, action: &UiAction) -> UiActionResult;
+}
+
+pub trait ComponentStateBinding {
+    fn state_snapshot(&self) -> UiComponentState;
+
+    fn set_state_snapshot(&mut self, state: UiComponentState);
+
+    fn state_handle(&self) -> UiStateHandle<UiComponentState> {
+        UiStateHandle::new(self.state_snapshot())
+    }
+
+    fn sync_state(&mut self, state_handle: &UiStateHandle<UiComponentState>) {
+        self.set_state_snapshot(state_handle.get());
+    }
+
+    fn update_state(&mut self, update_state: impl FnOnce(&mut UiComponentState)) {
+        let mut state = self.state_snapshot();
+        update_state(&mut state);
+        self.set_state_snapshot(state);
+    }
 }
 
 impl<T> Component for T

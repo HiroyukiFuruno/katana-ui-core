@@ -9,11 +9,14 @@ pub(in crate::visual) struct StorybookScreenStateStore {
 impl StorybookScreenStateStore {
     pub(super) fn save(
         &mut self,
-        page: &'static str,
+        component_id: &'static str,
         preset_index: usize,
         state: StorybookScreenState,
     ) {
-        let key = StorybookScreenStateKey { page, preset_index };
+        let key = StorybookScreenStateKey {
+            component_id,
+            preset_index,
+        };
         if state == StorybookScreenState::default() {
             self.states.remove(&key);
             return;
@@ -21,9 +24,16 @@ impl StorybookScreenStateStore {
         self.states.insert(key, state);
     }
 
-    pub(super) fn restore(&self, page: &'static str, preset_index: usize) -> StorybookScreenState {
+    pub(super) fn restore(
+        &self,
+        component_id: &'static str,
+        preset_index: usize,
+    ) -> StorybookScreenState {
         self.states
-            .get(&StorybookScreenStateKey { page, preset_index })
+            .get(&StorybookScreenStateKey {
+                component_id,
+                preset_index,
+            })
             .copied()
             .unwrap_or_default()
     }
@@ -31,6 +41,6 @@ impl StorybookScreenStateStore {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct StorybookScreenStateKey {
-    page: &'static str,
+    component_id: &'static str,
     preset_index: usize,
 }
