@@ -44,7 +44,7 @@ pub(super) fn draw(
 }
 
 fn button_label_for(scenario: ScenarioContext<'_>, kind: ButtonLiveKind) -> &'static str {
-    let fallback = if scenario.screen_state.has_widget_action() {
+    let fallback = if scenario.screen_state.is_button_pressed() {
         "Pressed"
     } else if scenario.screen_state.has_settings_override() {
         "Outline"

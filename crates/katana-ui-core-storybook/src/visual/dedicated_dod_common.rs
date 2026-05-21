@@ -2,8 +2,8 @@ use super::canvas::Canvas;
 use super::palette::VisualPalette;
 use super::text::TextRenderer;
 
-pub(super) const AREA_WIDTH: usize = 344;
-pub(super) const AREA_HEIGHT: usize = 108;
+pub(super) const AREA_WIDTH: usize = 520;
+pub(super) const AREA_HEIGHT: usize = 132;
 pub(super) const TITLE_SIZE: f32 = 11.0;
 pub(super) const BODY_SIZE: f32 = 10.0;
 const ACCENT_WIDTH: usize = 4;

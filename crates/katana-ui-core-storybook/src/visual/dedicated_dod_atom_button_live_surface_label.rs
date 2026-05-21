@@ -81,7 +81,7 @@ fn label_color(
     if scenario.screen_state.has_settings_override() {
         return palette.text;
     }
-    if scenario.screen_state.has_widget_action() {
+    if scenario.screen_state.is_button_pressed() {
         return palette.background;
     }
     if matches!(
@@ -94,7 +94,7 @@ fn label_color(
 }
 
 fn text_button_label_color(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.screen_state.has_widget_action() {
+    if scenario.screen_state.is_button_pressed() {
         return common::SUCCESS;
     }
     palette.accent

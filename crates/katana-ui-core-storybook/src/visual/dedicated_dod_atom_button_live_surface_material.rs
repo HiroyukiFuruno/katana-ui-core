@@ -99,7 +99,7 @@ fn interactive_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>, fill
     if scenario.screen_state.preview_hovered && !scenario.screen_state.button_options.disabled {
         surface = blend_color(surface, palette.accent, HOVER_BLEND_ALPHA);
     }
-    if scenario.screen_state.has_widget_action() {
+    if scenario.screen_state.is_button_pressed() {
         surface = blend_color(surface, palette.background, PRESSED_BLEND_ALPHA);
     }
     surface
@@ -120,7 +120,7 @@ fn draw_interaction_chrome(
             palette.accent,
         );
     }
-    if !scenario.screen_state.has_widget_action() {
+    if !scenario.screen_state.is_button_pressed() {
         return;
     }
     canvas.fill_rect(

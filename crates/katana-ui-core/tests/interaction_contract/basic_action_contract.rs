@@ -23,6 +23,23 @@ fn action_targets_only_the_matching_component_state() {
 }
 
 #[test]
+fn button_press_is_repeatable_and_does_not_become_selection_state() {
+    let mut button = Button::new("Next page");
+    let action = UiAction::button_press(button.state_id().clone());
+
+    let first = button.apply_action(&action);
+    let second = button.apply_action(&action);
+    let node = UiNode::from(button);
+
+    assert!(first.handled);
+    assert!(second.handled);
+    assert_eq!("button_press", first.callback_log[0].action);
+    assert_eq!("button_press", second.callback_log[0].action);
+    assert!(!node.props().interaction.has_selection);
+    assert!(!node.props().interaction.active);
+}
+
+#[test]
 fn passive_text_ignores_click_but_button_accepts_generic_click() {
     let mut text = katana_ui_core::atom::Text::new("Tree row");
     let mut button = Button::new("Open row");

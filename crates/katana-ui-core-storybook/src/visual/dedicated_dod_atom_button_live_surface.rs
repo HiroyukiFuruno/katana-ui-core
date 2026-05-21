@@ -74,7 +74,7 @@ fn button_fill(
         return CODE;
     }
     if matches!(kind, ButtonLiveKind::TextButton) {
-        return if scenario.screen_state.has_widget_action() {
+        return if scenario.screen_state.is_button_pressed() {
             palette.surface
         } else {
             palette.panel
@@ -83,7 +83,7 @@ fn button_fill(
     if scenario.screen_state.has_settings_override() {
         return palette.surface;
     }
-    if scenario.screen_state.has_widget_action() {
+    if scenario.screen_state.is_button_pressed() {
         return common::SUCCESS;
     }
     match scenario.preset_index {
@@ -103,7 +103,7 @@ fn draw_text_button_underline(
     if !matches!(kind, ButtonLiveKind::TextButton) || !scenario.screen_state.button_options.border {
         return;
     }
-    let color = if scenario.screen_state.has_widget_action() {
+    let color = if scenario.screen_state.is_button_pressed() {
         common::SUCCESS
     } else {
         palette.accent

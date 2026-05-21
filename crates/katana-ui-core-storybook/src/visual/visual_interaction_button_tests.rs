@@ -19,6 +19,8 @@ const MIN_BUTTON_HEIGHT: usize = 36;
 const BUTTON_PRESSED_FILL: u32 = 0x557846;
 const BUTTON_FILL_PROBE_OFFSET: usize = 8;
 const BUTTON_HOVER_DIFF_THRESHOLD: usize = 24;
+const BUTTON_MAX_CONFIGURED_RIGHT: usize = 320;
+const BUTTON_STATUS_GAP: usize = 24;
 
 #[test]
 fn preset_tab_updates_selected_preview_body() {
@@ -143,6 +145,10 @@ fn button_status_rows_use_compact_labels_that_fit() {
     assert!(super::dedicated_dod_atom_button_live_status::status_rows_fit_for_test(option_changed));
     assert!(
         super::dedicated_dod_atom_button_live_status::status_rows_have_frame_padding_for_test()
+    );
+    assert!(
+        super::dedicated_dod_atom_button_live_status::status_rows_start_x_for_test()
+            >= BUTTON_MAX_CONFIGURED_RIGHT + BUTTON_STATUS_GAP
     );
 }
 

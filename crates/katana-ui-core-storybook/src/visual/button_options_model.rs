@@ -57,14 +57,6 @@ impl StorybookButtonOptions {
             fallback
         }
     }
-
-    pub(in crate::visual) fn compact_props_label(self) -> String {
-        format!(
-            "w:{} h:{}",
-            self.width_mode.label(),
-            self.height_mode.label()
-        )
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

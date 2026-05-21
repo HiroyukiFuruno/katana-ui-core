@@ -11,6 +11,7 @@ pub(super) struct StorybookScreenState {
     pub(super) last_setting_value: &'static str,
     pub(super) state_label: &'static str,
     pub(super) button_options: StorybookButtonOptions,
+    pub(super) button_pressed: bool,
     pub(super) preview_hovered: bool,
 }
 
@@ -25,6 +26,7 @@ impl Default for StorybookScreenState {
             last_setting_value: "none",
             state_label: "idle",
             button_options: StorybookButtonOptions::default(),
+            button_pressed: false,
             preview_hovered: false,
         }
     }
@@ -39,6 +41,7 @@ impl StorybookScreenState {
             return;
         }
         self.action_count += 1;
+        self.button_pressed = true;
         let spec = StorybookInteractionSpec::for_page(page);
         self.last_action = spec.action;
         self.last_event = spec.event;
@@ -104,6 +107,19 @@ impl StorybookScreenState {
 
     pub(super) fn has_widget_action(self) -> bool {
         self.action_count > 0
+    }
+
+    pub(super) const fn is_button_pressed(self) -> bool {
+        self.button_pressed
+    }
+
+    pub(super) fn release_button_press(&mut self) -> bool {
+        if !self.button_pressed {
+            return false;
+        }
+        self.button_pressed = false;
+        self.state_label = "pressed=false";
+        true
     }
 
     pub(super) fn has_settings_override(self) -> bool {

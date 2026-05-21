@@ -234,7 +234,11 @@ impl StorybookVisual {
         scrollbar_visible: bool,
     ) -> Canvas {
         let mut screen_state = screen_state::StorybookScreenState::default();
-        screen_state.register_preview_action(selected_page);
+        if button_options::is_button_page(selected_page) {
+            screen_state.register_button_click(selected_page);
+        } else {
+            screen_state.register_preview_action(selected_page);
+        }
         render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
             theme_id,
             selected_page,

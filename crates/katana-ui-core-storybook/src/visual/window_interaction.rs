@@ -103,6 +103,9 @@ pub(super) fn apply_mouse_click(
     let raw_y = point.y;
     if !window.get_mouse_down(MouseButton::Left) {
         state.drag_scroll_region = None;
+        if state.screen_state.release_button_press() {
+            return true;
+        }
     }
     if window.get_mouse_down(MouseButton::Left)
         && let Some(region) = state.drag_scroll_region

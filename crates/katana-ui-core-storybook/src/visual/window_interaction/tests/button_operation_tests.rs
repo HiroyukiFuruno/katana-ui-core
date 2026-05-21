@@ -25,6 +25,23 @@ fn click_button_operation_updates_action_event_state_for_button_preview() {
 }
 
 #[test]
+fn repeated_button_click_returns_to_released_state_then_presses_again() {
+    let mut state = StorybookWindowState::default();
+    let button = preview_detail::button_action_hit_rect("button");
+
+    assert!(apply_click(&mut state, button.x + 1, button.y + 1));
+    assert_eq!(1, state.screen_state.action_count);
+    assert_eq!("pressed=true", state.screen_state.state_label);
+
+    assert!(state.screen_state.release_button_press());
+    assert_eq!("pressed=false", state.screen_state.state_label);
+
+    assert!(apply_click(&mut state, button.x + 1, button.y + 1));
+    assert_eq!(2, state.screen_state.action_count);
+    assert_eq!("pressed=true", state.screen_state.state_label);
+}
+
+#[test]
 fn preset_tabs_do_not_share_button_press_state() {
     let mut state = StorybookWindowState::default();
     let button = preview_detail::button_action_hit_rect("button");
