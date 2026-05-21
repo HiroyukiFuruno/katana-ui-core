@@ -9,6 +9,9 @@ use crate::molecule::DragPreview;
 use crate::render_model::UiNodeId;
 use serde_json::json;
 
+const DRAG_PREVIEW_OPACITY_PERCENT: u8 = 82;
+const DIRTY_TAB_BADGE_COUNT: usize = 1;
+
 impl WorkspaceTabBar {
     #[must_use]
     pub fn drag_source(&self, tab_id: &WorkspaceTabId) -> Option<DragSource> {
@@ -31,12 +34,13 @@ impl WorkspaceTabBar {
     #[must_use]
     pub fn drag_preview_for_tab(&self, tab_id: &WorkspaceTabId) -> Option<DragPreview> {
         let tab = self.tab_by_id(tab_id)?;
-        let mut preview = DragPreview::new(tab.title.clone()).opacity_percent(82);
+        let mut preview =
+            DragPreview::new(tab.title.clone()).opacity_percent(DRAG_PREVIEW_OPACITY_PERCENT);
         if let Some(icon) = tab.icon.as_ref() {
             preview = preview.icon(icon.clone());
         }
         if tab.dirty {
-            preview = preview.count_badge(1);
+            preview = preview.count_badge(DIRTY_TAB_BADGE_COUNT);
         }
         Some(preview)
     }

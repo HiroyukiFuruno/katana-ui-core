@@ -138,28 +138,30 @@ fn empty_state_embeds_without_parent_state_conflict() {
 }
 
 #[test]
-fn empty_state_embeds_in_required_empty_hosts_with_distinct_state() {
+fn empty_state_embeds_in_required_empty_hosts_with_distinct_state() -> Result<(), String> {
     assert_embedded_empty_state(UiTree::new(
         DiagnosticsList::new("Diagnostics").empty_slot(EmptyState::new("No diagnostics")),
-    ));
+    ))?;
     assert_embedded_empty_state(UiTree::new(
         TreeView::new("Tree").child(EmptyState::new("No files")),
-    ));
+    ))?;
     assert_embedded_empty_state(UiTree::new(
         CommandPalette::new("Commands").child(EmptyState::new("No commands")),
-    ));
+    ))?;
     assert_embedded_empty_state(UiTree::new(
         SearchBox::new("Search").child(EmptyState::new("No results")),
-    ));
+    ))?;
+    Ok(())
 }
 
-fn assert_embedded_empty_state(tree: UiTree) {
+fn assert_embedded_empty_state(tree: UiTree) -> Result<(), String> {
     let empty = tree
         .root()
         .children()
         .iter()
         .find(|it| it.kind() == UiNodeKind::EmptyState)
-        .expect("required host must render EmptyState child");
+        .ok_or_else(|| "required host must render EmptyState child".to_string())?;
 
     assert_ne!(tree.root().props().state_id, empty.props().state_id);
+    Ok(())
 }

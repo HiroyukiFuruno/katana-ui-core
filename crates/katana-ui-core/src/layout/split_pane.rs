@@ -1,43 +1,18 @@
+mod types;
+
 use super::{Alignment, Length, SplitPaneOptions};
 use crate::layout::split_pane_ratio::{
     DEFAULT_HANDLE_WIDTH_PX, DEFAULT_MAX_PERCENT, DEFAULT_MIN_PERCENT, DEFAULT_RATIO_PERCENT,
     interaction_with_ratio, parse_ratio_percent,
 };
 use crate::render_model::{
-    UiInteractionState, UiNode, UiNodeKind, UiSplitPaneAxis, UiSplitPaneHandleProps,
-    UiSplitPaneProps, UiSplitPaneResizeMode, UiStateId,
+    UiNode, UiNodeKind, UiSplitPaneAxis, UiSplitPaneHandleProps, UiSplitPaneProps,
+    UiSplitPaneResizeMode, UiStateId,
 };
-use serde::{Deserialize, Serialize};
+pub use types::{SplitPane, SplitPaneAxis, SplitPaneResizeMode};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SplitPaneAxis {
-    Horizontal,
-    Vertical,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SplitPaneResizeMode {
-    PointerOnly,
-    KeyboardOnly,
-    PointerAndKeyboard,
-    Disabled,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct SplitPane {
-    pub(super) state_id: UiStateId,
-    pub(super) children: Vec<UiNode>,
-    gap: Length,
-    alignment: Alignment,
-    pub(super) interaction: UiInteractionState,
-    axis: SplitPaneAxis,
-    pub(super) ratio_percent: u8,
-    min_percent: u8,
-    max_percent: u8,
-    handle_width_px: u8,
-    pub(super) reset_percent: u8,
-    resize_mode: SplitPaneResizeMode,
-}
+const SPLIT_PANE_VISIBLE_CHILD_COUNT: usize = 2;
+const SPLIT_PANE_HANDLE_MIN_HIT_TARGET_PX: u8 = 24;
 
 impl SplitPane {
     #[must_use]
@@ -219,7 +194,7 @@ impl Default for SplitPane {
 impl From<SplitPane> for UiNode {
     fn from(value: SplitPane) -> Self {
         let child_count = value.children.len();
-        let ignored_children = child_count.saturating_sub(2);
+        let ignored_children = child_count.saturating_sub(SPLIT_PANE_VISIBLE_CHILD_COUNT);
         let mut interaction = value.interaction;
         if ignored_children > 0 {
             interaction.dismiss_reason = format!("ignored_extra_children={ignored_children}");
@@ -234,14 +209,20 @@ impl From<SplitPane> for UiNode {
             handle: UiSplitPaneHandleProps {
                 width_px: value.handle_width_px,
                 focusable: value.resize_mode != SplitPaneResizeMode::Disabled,
-                hit_target_px: value.handle_width_px.max(24),
+                hit_target_px: value
+                    .handle_width_px
+                    .max(SPLIT_PANE_HANDLE_MIN_HIT_TARGET_PX),
             },
             resize_mode: to_render_resize_mode(value.resize_mode),
         };
         let mut node = UiNode::from_state(UiNodeKind::SplitPane, "SplitPane", value.state_id)
             .interaction(interaction)
             .split_pane(split_pane);
-        for child in value.children.into_iter().take(2) {
+        for child in value
+            .children
+            .into_iter()
+            .take(SPLIT_PANE_VISIBLE_CHILD_COUNT)
+        {
             node = node.child(child);
         }
         node

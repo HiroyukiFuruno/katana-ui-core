@@ -91,7 +91,7 @@ fn pressing_controls_emits_typed_intent_events() {
 }
 
 #[test]
-fn adapter_dispatch_request_maps_all_control_events_to_window_commands() {
+fn adapter_dispatch_request_maps_all_control_events_to_window_commands() -> Result<(), String> {
     let window_id = WindowId::new("main-window");
 
     let cases = [
@@ -126,12 +126,13 @@ fn adapter_dispatch_request_maps_all_control_events_to_window_commands() {
             WindowControlButtonGroupEvent::ControlPressed { which: control },
             window_id.clone(),
         )
-        .expect("control press must become adapter dispatch request");
+        .ok_or_else(|| "control press must become adapter dispatch request".to_string())?;
 
         assert_eq!(window_id, request.window_id);
         assert_eq!(control, request.control);
         assert_eq!(command, request.command());
     }
+    Ok(())
 }
 
 #[test]

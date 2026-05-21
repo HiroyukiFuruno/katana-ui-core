@@ -37,8 +37,8 @@ fn status_bar_report(option: StatusBarSettingOption, state_id: &str) -> Settings
     }
 }
 
-fn status_bar_options() -> [StatusBarSettingOption; 3] {
-    [
+fn status_bar_options() -> Vec<StatusBarSettingOption> {
+    vec![
         StatusBarSettingOption {
             name: "status_bar.mode",
             value_type: "StatusBarMode",

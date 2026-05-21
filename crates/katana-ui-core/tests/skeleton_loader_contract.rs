@@ -5,7 +5,7 @@ use katana_ui_core::render_model::{
 };
 
 #[test]
-fn text_shape_renders_stable_lines_with_short_last_line() {
+fn text_shape_renders_stable_lines_with_short_last_line() -> Result<(), String> {
     let tree = UiTree::new(
         Skeleton::new(
             "paragraph",
@@ -23,19 +23,14 @@ fn text_shape_renders_stable_lines_with_short_last_line() {
     let root = tree.root();
     assert_eq!(UiNodeKind::Skeleton, root.kind());
     assert_eq!(UiSkeletonShape::Text, root.props().skeleton.shape);
-    assert_eq!(3, root.children().len());
-    assert_line(
-        root.children().first().expect("first line"),
-        UiDimension::percent(100),
-    );
-    assert_line(
-        root.children().get(1).expect("second line"),
-        UiDimension::percent(100),
-    );
-    assert_line(
-        root.children().get(2).expect("third line"),
-        UiDimension::percent(60),
-    );
+    let children = root.children();
+    if children.len() != 3 {
+        return Err("text skeleton must render three lines".to_string());
+    }
+    assert_line(&children[0], UiDimension::percent(100));
+    assert_line(&children[1], UiDimension::percent(100));
+    assert_line(&children[2], UiDimension::percent(60));
+    Ok(())
 }
 
 #[test]

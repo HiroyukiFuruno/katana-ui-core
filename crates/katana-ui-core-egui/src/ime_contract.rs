@@ -28,16 +28,17 @@ mod tests {
     use katana_ui_core::render_model::UiNodeId;
 
     #[test]
-    fn exposes_multiline_ime_compile_gate_stub() {
+    fn exposes_multiline_ime_compile_gate_stub() -> Result<(), String> {
         let extension =
             EguiTextAreaImeStub.composition_update(UiNodeId::new("composer"), "日本\n語", 10);
 
         let AdapterExtension::Ime(request) = extension else {
-            panic!("expected IME request");
+            return Err("expected IME request".to_string());
         };
         assert_eq!(ImeInputKind::Multiline, request.input_kind);
         assert_eq!(ImeRequestPhase::Update, request.phase);
         assert_eq!("日本\n語", request.preedit);
         assert_eq!(10, request.caret);
+        Ok(())
     }
 }

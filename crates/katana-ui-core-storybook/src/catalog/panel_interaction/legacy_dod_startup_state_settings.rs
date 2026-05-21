@@ -36,8 +36,8 @@ fn report(option: StartupStateOption, state_id: &str) -> SettingsMutationReport 
     }
 }
 
-fn options() -> [StartupStateOption; 5] {
-    [
+fn options() -> Vec<StartupStateOption> {
+    vec![
         StartupStateOption {
             name: "startup_state.state",
             value_type: "StartupState",

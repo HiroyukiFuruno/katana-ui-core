@@ -10,13 +10,28 @@ use katana_ui_core::molecule::{
 };
 use katana_ui_core::{atom, molecule};
 
+const DYNAMIC_ARRAY_ITEM_COUNT: usize = 1;
+const DIAGNOSTIC_ERROR_LINE: u32 = 12;
+const DIAGNOSTIC_ERROR_DIFF_LINE: usize = 12;
+const DIAGNOSTIC_ERROR_COLUMN: u32 = 9;
+const DIAGNOSTIC_WARNING_LINE: u32 = 24;
+const DIAGNOSTIC_WARNING_COLUMN: u32 = 5;
+const DIAGNOSTIC_TOOL_RESULT_LINE: u32 = 31;
+const DIAGNOSTIC_TOOL_RESULT_COLUMN: u32 = 1;
+const DIAGNOSTIC_FOCUSED_INDEX: usize = 8;
+const TREE_FOCUSED_INDEX: usize = 18;
+const TREE_LINE_WIDTH_PX: u8 = 1;
+const TREE_ROOT_DEPTH: usize = 0;
+const TREE_CHILD_DEPTH: usize = 1;
+const TREE_ITEM_COUNT: usize = 2;
+
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
         diagnostics_list_story(),
         StoryCatalog::story(
             "dynamic-array-editor",
             molecule::DynamicArrayEditor::new("Dynamic array")
-                .item_count(1)
+                .item_count(DYNAMIC_ARRAY_ITEM_COUNT)
                 .child(atom::Button::new("Add"))
                 .child(atom::Text::new("Item")),
         ),
@@ -24,16 +39,10 @@ pub(super) fn examples() -> Vec<StoryExample> {
     ]
 }
 
-const DIAGNOSTIC_ERROR_LINE: u32 = 12;
-const DIAGNOSTIC_ERROR_DIFF_LINE: usize = 12;
-const DIAGNOSTIC_ERROR_COLUMN: u32 = 9;
-const DIAGNOSTIC_WARNING_LINE: u32 = 24;
-const DIAGNOSTIC_WARNING_COLUMN: u32 = 5;
-
 fn diagnostics_list_story() -> StoryExample {
     let virtualization = molecule_virtualization::fixed_config(
         molecule_virtualization::DIAGNOSTIC_TOTAL_COUNT,
-        Some(8),
+        Some(DIAGNOSTIC_FOCUSED_INDEX),
     );
     let mut diagnostics = molecule::DiagnosticsList::new("Diagnostics")
         .option(DiagnosticsListOptions {
@@ -137,7 +146,11 @@ fn diagnostic_tool_result() -> DiagnosticItem {
         "format-hint",
         DiagnosticSeverity::Warning,
         "Formatter tool result",
-        DiagnosticLocation::new("crates/katana-ui-core/src/story.rs", 31, 1),
+        DiagnosticLocation::new(
+            "crates/katana-ui-core/src/story.rs",
+            DIAGNOSTIC_TOOL_RESULT_LINE,
+            DIAGNOSTIC_TOOL_RESULT_COLUMN,
+        ),
     )
     .source("katana-format")
 }
@@ -145,13 +158,13 @@ fn diagnostic_tool_result() -> DiagnosticItem {
 fn tree_view_story() -> StoryExample {
     let virtualization = molecule_virtualization::estimated_config(
         molecule_virtualization::TREE_TOTAL_COUNT,
-        Some(18),
+        Some(TREE_FOCUSED_INDEX),
     );
     let mut tree = molecule::TreeView::new("Tree view")
         .default_open(true)
         .line_display(true)
         .line_style(TreeLineStyle::Solid)
-        .line_width(1)
+        .line_width(TREE_LINE_WIDTH_PX)
         .icons_visible(true)
         .directory_icon("<svg data-icon=\"folder\"/>")
         .file_icon("<svg data-icon=\"file\"/>")
@@ -161,12 +174,16 @@ fn tree_view_story() -> StoryExample {
         .toggle_icon("<svg data-icon=\"chevron\"/>")
         .toggle_trigger_area(DisclosureTriggerArea::IconAndText)
         .item(
-            TreeNode::new("atoms", "Atoms", 0)
+            TreeNode::new("atoms", "Atoms", TREE_ROOT_DEPTH)
                 .directory()
                 .expanded(true),
         )
-        .item(TreeNode::new("button", "Button", 1).file().selected(true))
-        .item_count(2)
+        .item(
+            TreeNode::new("button", "Button", TREE_CHILD_DEPTH)
+                .file()
+                .selected(true),
+        )
+        .item_count(TREE_ITEM_COUNT)
         .child(molecule::VirtualizedTree::new(
             "Tree virtualization",
             virtualization.clone(),

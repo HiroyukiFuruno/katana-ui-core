@@ -2,7 +2,6 @@ use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::interaction::placement::{
     AnchorKind, Placement, PlacementConsumer, PlacementEngine, PlacementRequest, Point, Rect, Size,
-    resolve_placement,
 };
 use katana_ui_core::molecule::{
     ComboBox, ContextMenuAnchor, ContextMenuPlacement, ContextMenuPlacementResolver,
@@ -38,7 +37,7 @@ fn placement_engine_flips_clamps_and_aligns_arrow() {
 }
 
 #[test]
-fn public_resolve_placement_function_is_deterministic() {
+fn placement_engine_resolve_function_is_deterministic() {
     let request = PlacementRequest::new(
         AnchorKind::virtual_rect(Rect::new(240, 180, 40, 24)),
         Placement::BottomEnd,
@@ -50,8 +49,8 @@ fn public_resolve_placement_function_is_deterministic() {
     .clamp_margin(8)
     .arrow_size(10);
 
-    let first = resolve_placement(&request);
-    let second = resolve_placement(&request);
+    let first = PlacementEngine::resolve_placement(&request);
+    let second = PlacementEngine::resolve_placement(&request);
 
     assert_eq!(first, second);
     assert_eq!(Placement::TopEnd, first.placement_used);

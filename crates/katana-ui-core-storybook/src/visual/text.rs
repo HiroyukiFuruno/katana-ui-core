@@ -84,8 +84,13 @@ impl TextRenderer {
         let mut buffer = buffer.borrow_with(&mut font_system);
         buffer.set_wrap(Wrap::None);
         buffer.set_size(Some(TEXT_BUFFER_WIDTH), Some(metrics.line_height));
-        buffer.set_text(text, attrs(&self.font), Shaping::Advanced);
-        buffer.shape_until_scroll(true);
+        buffer.set_text(
+            text,
+            &attrs_for_text(&self.font, text),
+            Shaping::Advanced,
+            None,
+        );
+        buffer.shape_until_scroll(false);
         buffer.draw(
             &mut swash_cache,
             text_color(style.color),
@@ -144,16 +149,17 @@ fn resolve_font(facade: &UiCoreFacade, role: &str) -> FontToken {
     }
 }
 
-fn attrs(font: &FontToken) -> Attrs<'_> {
+fn attrs_for_text<'a>(font: &'a FontToken, text: &str) -> Attrs<'a> {
     Attrs::new()
-        .family(family(font.family))
+        .family(family_for_text(font.family, text))
         .weight(Weight(font.weight.max(REGULAR_WEIGHT)))
 }
 
-fn family(family: FontFamily) -> Family<'static> {
+fn family_for_text(family: FontFamily, text: &str) -> Family<'static> {
     match family {
         FontFamily::Proportional => Family::SansSerif,
-        FontFamily::Monospace => Family::Monospace,
+        FontFamily::Monospace if text.is_ascii() => Family::Monospace,
+        FontFamily::Monospace => Family::SansSerif,
     }
 }
 

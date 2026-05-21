@@ -8,6 +8,12 @@ const DEFAULT_FONT_SIZE: i64 = 14;
 const MIN_FONT_SIZE: i64 = 10;
 const MAX_FONT_SIZE: i64 = 24;
 const DEFAULT_TOKEN_BUDGET: i64 = 24_000;
+const MIN_TOKEN_BUDGET: i64 = 4_000;
+const MAX_TOKEN_BUDGET: i64 = 64_000;
+const LINT_ACCENT_RED: u8 = 96;
+const LINT_ACCENT_GREEN: u8 = 165;
+const LINT_ACCENT_BLUE: u8 = 250;
+const LINT_ACCENT_ALPHA: u8 = 255;
 
 pub(super) fn settings_list() -> SettingsList {
     SettingsList::new("Settings list")
@@ -90,8 +96,8 @@ fn chat_section() -> SettingsSection {
             "Token budget",
             SettingsControl::Number {
                 value: DEFAULT_TOKEN_BUDGET,
-                min: 4_000,
-                max: 64_000,
+                min: MIN_TOKEN_BUDGET,
+                max: MAX_TOKEN_BUDGET,
             },
         ))
 }
@@ -123,10 +129,10 @@ fn lint_section() -> SettingsSection {
             "Accent",
             SettingsControl::ColorPicker {
                 color: SettingsValue::Color {
-                    red: 96,
-                    green: 165,
-                    blue: 250,
-                    alpha: 255,
+                    red: LINT_ACCENT_RED,
+                    green: LINT_ACCENT_GREEN,
+                    blue: LINT_ACCENT_BLUE,
+                    alpha: LINT_ACCENT_ALPHA,
                 },
             },
         ))

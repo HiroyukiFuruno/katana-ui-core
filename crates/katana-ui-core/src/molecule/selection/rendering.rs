@@ -1,7 +1,7 @@
 use super::choice::{Breadcrumb, ComboBox, MenuButton, SelectBox, SelectionList, SideMenu, Tabs};
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult};
-use crate::molecule::virtualization;
+use crate::molecule::virtualization::MoleculeVirtualization;
 use crate::render_model::{UiNode, UiNodeKind};
 
 macro_rules! selection_rendering {
@@ -28,15 +28,11 @@ macro_rules! selection_rendering {
 
         impl From<$name> for UiNode {
             fn from(value: $name) -> Self {
-                let range = virtualization::range(&value.model.virtualization, value.items.len());
-                let mut node =
-                    value
-                        .state
-                        .node($kind, value.label)
-                        .interaction(virtualization::interaction(
-                            value.state.interaction(),
-                            range.as_ref(),
-                        ));
+                let range =
+                    MoleculeVirtualization::range(&value.model.virtualization, value.items.len());
+                let mut node = value.state.node($kind, value.label).interaction(
+                    MoleculeVirtualization::interaction(value.state.interaction(), range.as_ref()),
+                );
                 for child in value.children {
                     node = node.child(child);
                 }

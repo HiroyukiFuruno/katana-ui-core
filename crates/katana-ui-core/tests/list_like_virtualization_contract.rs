@@ -16,7 +16,7 @@ const FOCUSED_ROW: usize = 80;
 const LARGE_TOTAL_ROWS: usize = 10_000;
 
 #[test]
-fn shared_config_produces_same_range_without_shared_state() {
+fn shared_config_produces_same_range_without_shared_state() -> Result<(), String> {
     let config = virtual_config(false);
     let list = list_rows(TOTAL_ROWS).virtualization(config.clone());
     let selection = selection_rows(TOTAL_ROWS).virtualization(config.clone());
@@ -33,26 +33,31 @@ fn shared_config_produces_same_range_without_shared_state() {
     ];
 
     for range in ranges {
-        assert_range(range.as_ref().expect("virtual range"));
+        let range = range
+            .as_ref()
+            .ok_or_else(|| "virtual range is missing".to_string())?;
+        assert_range(range);
     }
     assert_ne!(
         UiTree::new(list).root().props().state_id,
         UiTree::new(selection).root().props().state_id
     );
+    Ok(())
 }
 
 #[test]
-fn keep_focused_row_announces_global_position() {
+fn keep_focused_row_announces_global_position() -> Result<(), String> {
     let range = tree_rows(TOTAL_ROWS)
         .virtualization(virtual_config(true))
         .virtual_range_model()
-        .expect("virtual range");
+        .ok_or_else(|| "virtual range is missing".to_string())?;
 
     assert_eq!(Some(FOCUSED_ROW), range.focused_row.map(|it| it.index));
     assert_eq!(
         "row-80, 81 of 100",
         range.announce_row("row-80", FOCUSED_ROW)
     );
+    Ok(())
 }
 
 #[test]
@@ -79,7 +84,7 @@ fn diagnostics_virtualized_selection_stays_item_id_based() {
 }
 
 #[test]
-fn ten_thousand_item_molecules_keep_rendered_rows_bounded() {
+fn ten_thousand_item_molecules_keep_rendered_rows_bounded() -> Result<(), String> {
     let config = VirtualizationConfig {
         total_count: LARGE_TOTAL_ROWS,
         viewport_offset: 1_000,
@@ -107,10 +112,11 @@ fn ten_thousand_item_molecules_keep_rendered_rows_bounded() {
     ];
 
     for range in ranges {
-        let range = range.expect("virtual range");
+        let range = range.ok_or_else(|| "virtual range is missing".to_string())?;
         assert_eq!(LARGE_TOTAL_ROWS, range.total_count);
         assert!(range.rows.len() <= allowed_rows);
     }
+    Ok(())
 }
 
 fn assert_range(range: &VirtualRange) {

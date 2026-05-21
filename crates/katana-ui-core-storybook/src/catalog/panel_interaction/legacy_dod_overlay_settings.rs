@@ -22,8 +22,8 @@ pub(super) fn settings_mutations(examples: &[StoryExample]) -> Vec<SettingsMutat
         .collect()
 }
 
-fn overlay_settings() -> [OverlaySetting; 9] {
-    [
+fn overlay_settings() -> Vec<OverlaySetting> {
+    vec![
         setting(
             "popover",
             "popover.placement",

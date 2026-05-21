@@ -37,8 +37,8 @@ fn toast_stack_report(option: ToastStackSettingOption, state_id: &str) -> Settin
     }
 }
 
-fn toast_stack_options() -> [ToastStackSettingOption; 6] {
-    [
+fn toast_stack_options() -> Vec<ToastStackSettingOption> {
+    vec![
         ToastStackSettingOption {
             name: "toast_stack.position",
             value_type: "ToastPosition",

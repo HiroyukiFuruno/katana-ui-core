@@ -3,7 +3,7 @@ use crate::atom::Text;
 use crate::interaction::VirtualRange;
 use crate::molecule::structured::items::CommandItem;
 use crate::molecule::structured::model::CommandPalette;
-use crate::molecule::virtualization;
+use crate::molecule::virtualization::MoleculeVirtualization;
 use crate::render_model::{
     UiCommandResultProps, UiCursor, UiInteractionState, UiNode, UiNodeKind, UiVisualRole,
 };
@@ -13,7 +13,7 @@ pub(crate) struct CommandPaletteRenderer;
 impl CommandPaletteRenderer {
     pub(crate) fn render(value: CommandPalette) -> UiNode {
         let range = value.virtual_range_model();
-        let rows = virtualization::slice_by_range(indexed_rows_for(&value), range.as_ref());
+        let rows = MoleculeVirtualization::slice_by_range(indexed_rows_for(&value), range.as_ref());
         let label = value.label.clone();
         let mut node = value
             .state
@@ -70,7 +70,7 @@ fn interaction(
         value: interaction_value(value),
         ..UiInteractionState::default()
     };
-    virtualization::interaction(base, range)
+    MoleculeVirtualization::interaction(base, range)
 }
 
 fn interaction_value(value: &CommandPalette) -> String {

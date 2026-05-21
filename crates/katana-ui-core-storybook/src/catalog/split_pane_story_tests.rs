@@ -1,12 +1,12 @@
 use super::{StoryCatalog, StoryDetailContent, StoryPresetLabels, StorybookPanelInteractionReport};
 
 #[test]
-fn split_pane_story_exposes_typed_contract_surface() {
+fn split_pane_story_exposes_typed_contract_surface() -> Result<(), String> {
     let examples = StoryCatalog.examples();
     let story = examples
         .iter()
         .find(|it| it.page == "split-pane")
-        .expect("split-pane story must exist");
+        .ok_or_else(|| "split-pane story must exist".to_string())?;
     let detail = StoryDetailContent::from_example(story);
 
     assert_eq!(
@@ -57,6 +57,7 @@ fn split_pane_story_exposes_typed_contract_surface() {
             .any(|it| it.after.contains("ResizeRejected")),
         "split-pane callback log lacks ResizeRejected event"
     );
+    Ok(())
 }
 
 #[test]

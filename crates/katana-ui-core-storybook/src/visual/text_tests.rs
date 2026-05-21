@@ -58,6 +58,24 @@ fn mixed_japanese_english_and_emoji_are_vertically_centered() {
     }
 }
 
+#[test]
+fn code_role_draws_mixed_japanese_status_text() {
+    let facade = UiCoreFacade::default();
+    let code_renderer = TextRenderer::load(&facade, "code");
+    let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
+
+    code_renderer.draw_centered(
+        &mut canvas,
+        "preset 編集器右クリック",
+        TEXT_X,
+        TextVerticalBox::new(TEXT_Y, ALIGN_BOX_HEIGHT),
+        10.0,
+        TEXT,
+    );
+
+    assert!(canvas.non_background_pixels(BACKGROUND) > 200);
+}
+
 fn centered_text_delta(renderer: &TextRenderer, sample: &str) -> f32 {
     let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
     renderer.draw_centered(

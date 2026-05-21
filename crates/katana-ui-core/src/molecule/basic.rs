@@ -3,7 +3,7 @@ use crate::interaction::{
     VirtualRange, VirtualizationConfig,
     placement::{PlacementConsumer, PlacementEngine, PlacementRequest, PlacementResult},
 };
-use crate::molecule::virtualization;
+use crate::molecule::virtualization::MoleculeVirtualization;
 use crate::render_model::{UiCommonProps, UiNode, UiNodeId, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
 
@@ -53,14 +53,14 @@ impl List {
 
     #[must_use]
     pub fn virtual_range_model(&self) -> Option<VirtualRange> {
-        virtualization::range(&self.virtualization, self.children.len())
+        MoleculeVirtualization::range(&self.virtualization, self.children.len())
     }
 }
 
 impl From<List> for UiNode {
     fn from(value: List) -> Self {
         let range = value.virtual_range_model();
-        let interaction = virtualization::interaction(
+        let interaction = MoleculeVirtualization::interaction(
             crate::render_model::UiInteractionState {
                 item_count: value.children.len(),
                 ..crate::render_model::UiInteractionState::default()
@@ -70,7 +70,7 @@ impl From<List> for UiNode {
         let mut node = UiNode::from_state(UiNodeKind::List, value.label, value.state_id)
             .common(value.common)
             .interaction(interaction);
-        for child in virtualization::slice_by_range(value.children, range.as_ref()) {
+        for child in MoleculeVirtualization::slice_by_range(value.children, range.as_ref()) {
             node = node.child(child);
         }
         node

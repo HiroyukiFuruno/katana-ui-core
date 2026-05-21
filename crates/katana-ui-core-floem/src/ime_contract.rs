@@ -28,16 +28,17 @@ mod tests {
     use katana_ui_core::render_model::UiNodeId;
 
     #[test]
-    fn exposes_multiline_ime_compile_gate_stub() {
+    fn exposes_multiline_ime_compile_gate_stub() -> Result<(), String> {
         let extension =
             FloemTextAreaImeStub.composition_update(UiNodeId::new("composer"), "かな", 6);
 
         let AdapterExtension::Ime(request) = extension else {
-            panic!("expected IME request");
+            return Err("expected IME request".to_string());
         };
         assert_eq!(ImeInputKind::Multiline, request.input_kind);
         assert_eq!(ImeRequestPhase::Update, request.phase);
         assert_eq!("かな", request.preedit);
         assert_eq!(6, request.caret);
+        Ok(())
     }
 }

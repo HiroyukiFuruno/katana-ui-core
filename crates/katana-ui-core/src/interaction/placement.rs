@@ -171,4 +171,4 @@ pub struct PlacementResult {
 }
 
 mod engine;
-pub use engine::{PlacementEngine, resolve_placement};
+pub use engine::PlacementEngine;

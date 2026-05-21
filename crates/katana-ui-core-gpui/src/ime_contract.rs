@@ -28,15 +28,16 @@ mod tests {
     use katana_ui_core::render_model::UiNodeId;
 
     #[test]
-    fn exposes_multiline_ime_compile_gate_stub() {
+    fn exposes_multiline_ime_compile_gate_stub() -> Result<(), String> {
         let extension = GpuiTextAreaImeStub.composition_update(UiNodeId::new("composer"), "👩‍💻", 11);
 
         let AdapterExtension::Ime(request) = extension else {
-            panic!("expected IME request");
+            return Err("expected IME request".to_string());
         };
         assert_eq!(ImeInputKind::Multiline, request.input_kind);
         assert_eq!(ImeRequestPhase::Update, request.phase);
         assert_eq!("👩‍💻", request.preedit);
         assert_eq!(11, request.caret);
+        Ok(())
     }
 }

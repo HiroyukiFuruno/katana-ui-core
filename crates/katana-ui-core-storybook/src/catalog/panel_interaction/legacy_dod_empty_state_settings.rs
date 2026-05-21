@@ -37,8 +37,8 @@ fn empty_state_report(option: EmptyStateSettingOption, state_id: &str) -> Settin
     }
 }
 
-fn empty_state_options() -> [EmptyStateSettingOption; 4] {
-    [
+fn empty_state_options() -> Vec<EmptyStateSettingOption> {
+    vec![
         EmptyStateSettingOption {
             name: "empty_state.tone",
             value_type: "EmptyStateTone",

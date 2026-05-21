@@ -21,12 +21,14 @@ fn reorder_list_indicator_exposes_before_inside_and_after_geometry() {
 }
 
 #[test]
-fn file_drop_hover_indicator_keeps_os_tag_and_anchor_rect() {
+fn file_drop_hover_indicator_keeps_os_tag_and_anchor_rect() -> Result<(), String> {
     let rect = DndRect::new(12.0, 20.0, 320.0, 96.0);
     let target = DropTarget::new(UiNodeId::new("drop-zone")).accepted_tag(OS_FILE_LIST_TAG);
     let data = DragData::new(OS_FILE_LIST_TAG, serde_json::json!(["/tmp/a.md"]));
     let accepted = target.accept(&data, DndPoint::new(64.0, 58.0), rect);
-    let indicator = accepted.indicator().expect("file drop must show indicator");
+    let indicator = accepted
+        .indicator()
+        .ok_or_else(|| "file drop must show indicator".to_string())?;
     let node: UiNode = DropIndicator::new(indicator.kind, indicator.anchor_rect).into();
 
     assert_eq!(UiNodeKind::DropIndicator, node.kind());
@@ -34,6 +36,7 @@ fn file_drop_hover_indicator_keeps_os_tag_and_anchor_rect() {
         UiRect::new(12, 20, 320, 96),
         node.props().drop_indicator.anchor_rect
     );
+    Ok(())
 }
 
 #[test]

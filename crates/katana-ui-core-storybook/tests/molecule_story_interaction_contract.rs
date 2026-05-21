@@ -37,16 +37,16 @@ fn molecule_story_pages_expose_component_specific_action_history() {
 }
 
 #[test]
-fn modal_story_pages_expose_specific_action_event_evidence() {
+fn modal_story_pages_expose_specific_action_event_evidence() -> Result<(), String> {
     let examples = StoryCatalog.examples();
     let modal = examples
         .iter()
         .find(|it| it.page == "modal")
-        .expect("modal story is missing");
+        .ok_or_else(|| "modal story is missing".to_string())?;
     let overlay = examples
         .iter()
         .find(|it| it.page == "modal-overlay")
-        .expect("modal-overlay story is missing");
+        .ok_or_else(|| "modal-overlay story is missing".to_string())?;
 
     for action in ["modal_escape", "modal_focus_return", "modal_parent_block"] {
         assert!(
@@ -95,15 +95,16 @@ fn modal_story_pages_expose_specific_action_event_evidence() {
             "modal-overlay lacks {event} event evidence"
         );
     }
+    Ok(())
 }
 
 #[test]
-fn popover_story_page_exposes_specific_action_event_evidence() {
+fn popover_story_page_exposes_specific_action_event_evidence() -> Result<(), String> {
     let examples = StoryCatalog.examples();
     let popover = examples
         .iter()
         .find(|it| it.page == "popover")
-        .expect("popover story is missing");
+        .ok_or_else(|| "popover story is missing".to_string())?;
     let details = StoryDetailContent::from_example(popover);
 
     for action in [
@@ -164,4 +165,5 @@ fn popover_story_page_exposes_specific_action_event_evidence() {
             "popover settings lacks {setting}"
         );
     }
+    Ok(())
 }

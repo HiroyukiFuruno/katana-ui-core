@@ -1,5 +1,12 @@
 use serde::{Deserialize, Serialize};
 
+const DEFAULT_SPLIT_PANE_HANDLE_WIDTH_PX: u8 = 6;
+const DEFAULT_SPLIT_PANE_RATIO_PERCENT: u8 = 50;
+const DEFAULT_SPLIT_PANE_MIN_PERCENT: u8 = 10;
+const DEFAULT_SPLIT_PANE_MAX_PERCENT: u8 = 90;
+const DEFAULT_SPLIT_PANE_RESET_PERCENT: u8 = 50;
+const DEFAULT_SPLIT_PANE_HIT_TARGET_PX: u8 = 24;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UiSplitPaneAxis {
     Horizontal,
@@ -35,18 +42,18 @@ pub struct UiSplitPaneHandleProps {
 
 impl Default for UiSplitPaneProps {
     fn default() -> Self {
-        let handle_width_px = 6;
+        let handle_width_px = DEFAULT_SPLIT_PANE_HANDLE_WIDTH_PX;
         Self {
             axis: UiSplitPaneAxis::Horizontal,
-            ratio_percent: 50,
-            min_percent: 10,
-            max_percent: 90,
-            reset_percent: 50,
+            ratio_percent: DEFAULT_SPLIT_PANE_RATIO_PERCENT,
+            min_percent: DEFAULT_SPLIT_PANE_MIN_PERCENT,
+            max_percent: DEFAULT_SPLIT_PANE_MAX_PERCENT,
+            reset_percent: DEFAULT_SPLIT_PANE_RESET_PERCENT,
             handle_width_px,
             handle: UiSplitPaneHandleProps {
                 width_px: handle_width_px,
                 focusable: true,
-                hit_target_px: 24,
+                hit_target_px: DEFAULT_SPLIT_PANE_HIT_TARGET_PX,
             },
             resize_mode: UiSplitPaneResizeMode::PointerAndKeyboard,
         }

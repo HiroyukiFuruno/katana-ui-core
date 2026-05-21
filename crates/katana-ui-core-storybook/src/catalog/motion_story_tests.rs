@@ -1,12 +1,12 @@
 use super::{StoryCatalog, StoryDetailContent, StoryPresetLabels, StorybookPanelInteractionReport};
 
 #[test]
-fn motion_story_exposes_primitives_reduced_policy_and_overrides() {
+fn motion_story_exposes_primitives_reduced_policy_and_overrides() -> Result<(), String> {
     let examples = StoryCatalog.examples();
     let story = examples
         .iter()
         .find(|it| it.page == "motion")
-        .expect("motion story must exist");
+        .ok_or_else(|| "motion story must exist".to_string())?;
     let detail = StoryDetailContent::from_example(story);
 
     assert_eq!(
@@ -49,6 +49,7 @@ fn motion_story_exposes_primitives_reduced_policy_and_overrides() {
             "motion callback log lacks {action}"
         );
     }
+    Ok(())
 }
 
 #[test]

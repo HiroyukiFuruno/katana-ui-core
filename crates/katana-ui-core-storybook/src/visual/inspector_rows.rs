@@ -1,6 +1,9 @@
 use super::interaction_spec::StorybookInteractionSpec;
 use super::render_context::ScenarioContext;
 use crate::catalog::StoryExample;
+
+#[path = "inspector_rows_fit.rs"]
+mod inspector_rows_fit;
 use katana_ui_core::render_model::UiNode;
 
 const INSPECTOR_ROW_GROUP_COUNT: usize = 4;
@@ -261,26 +264,10 @@ pub(super) fn quality_rows(scenario: ScenarioContext<'_>) -> [String; INSPECTOR_
 }
 
 pub(super) fn rows_fit(examples: &[StoryExample]) -> bool {
-    let scenario = ScenarioContext {
-        selected_page: "button",
-        preset_index: 0,
-        tree_expansion: Default::default(),
-        scrollbar_visible: true,
-        panel_scroll: Default::default(),
-        screen_state: Default::default(),
-    };
-    examples.iter().all(|example| {
-        let node = example.tree.root();
-        settings_rows(node, example, scenario)
-            .iter()
-            .chain(state_rows(node, scenario).iter())
-            .chain(history_rows(example, scenario).iter())
-            .chain(quality_rows(scenario).iter())
-            .all(|value| value.chars().count() <= ROW_MAX_CHARS)
-    })
+    inspector_rows_fit::rows_fit(examples)
 }
 
-fn is_button_page(page: &str) -> bool {
+pub(super) fn is_button_page(page: &str) -> bool {
     matches!(
         page,
         "button" | "text-button" | "svg-button" | "icon-text-button"

@@ -1,12 +1,13 @@
 use katana_ui_core_storybook::{StoryCatalog, StoryDetailContent, StorybookPanel};
 
 #[test]
-fn command_launcher_story_exposes_settings_state_events_actions_and_quality() {
+fn command_launcher_story_exposes_settings_state_events_actions_and_quality() -> Result<(), String>
+{
     let examples = StoryCatalog.examples();
     let story = examples
         .iter()
         .find(|it| it.page == "command-palette")
-        .expect("command-palette story is missing");
+        .ok_or_else(|| "command-palette story is missing".to_string())?;
     let details = StoryDetailContent::from_example(story);
     let panel_report = StorybookPanel::interaction_report(&examples);
 
@@ -86,4 +87,5 @@ fn command_launcher_story_exposes_settings_state_events_actions_and_quality() {
             "command-palette settings mutation lacks {option}"
         );
     }
+    Ok(())
 }

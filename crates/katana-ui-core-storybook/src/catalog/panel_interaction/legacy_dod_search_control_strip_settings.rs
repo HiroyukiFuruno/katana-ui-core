@@ -36,8 +36,8 @@ fn report(option: SearchSettingOption, state_id: &str) -> SettingsMutationReport
     }
 }
 
-fn search_options() -> [SearchSettingOption; 7] {
-    [
+fn search_options() -> Vec<SearchSettingOption> {
+    vec![
         SearchSettingOption {
             name: "search_control.query",
             value_type: "String",

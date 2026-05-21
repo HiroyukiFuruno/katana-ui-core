@@ -1,12 +1,12 @@
 use katana_ui_core_storybook::{StoryCatalog, StoryDetailContent, StorybookPanel};
 
 #[test]
-fn startup_state_panel_story_exposes_settings_presets_and_action_history() {
+fn startup_state_panel_story_exposes_settings_presets_and_action_history() -> Result<(), String> {
     let examples = StoryCatalog.examples();
     let story = examples
         .iter()
         .find(|it| it.page == "startup-state-panel")
-        .expect("startup-state-panel story is missing");
+        .ok_or_else(|| "startup-state-panel story is missing".to_string())?;
     let details = StoryDetailContent::from_example(story);
     let panel_report = StorybookPanel::interaction_report(&examples);
 
@@ -50,4 +50,5 @@ fn startup_state_panel_story_exposes_settings_presets_and_action_history() {
             "startup-state-panel settings mutation lacks {option}"
         );
     }
+    Ok(())
 }

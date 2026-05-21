@@ -44,8 +44,8 @@ fn chip_report(
     })
 }
 
-fn chip_options() -> [ChipSettingOption; 6] {
-    [
+fn chip_options() -> Vec<ChipSettingOption> {
+    vec![
         ChipSettingOption {
             page: "chip",
             name: "chip.variant",

@@ -124,14 +124,22 @@ impl MotionTokenSet {
 
 impl Default for MotionTokenSet {
     fn default() -> Self {
+        const INSTANT_DURATION_MS: u16 = 0;
+        const FAST_DURATION_MS: u16 = 120;
+        const DEFAULT_DURATION_MS: u16 = 200;
+        const SLOW_DURATION_MS: u16 = 320;
+        const COMPACT_DISTANCE_PX: u16 = 4;
+        const DEFAULT_DISTANCE_PX: u16 = 8;
+        const SPACIOUS_DISTANCE_PX: u16 = 16;
+
         Self {
-            instant_ms: 0,
-            fast_ms: 120,
-            default_ms: 200,
-            slow_ms: 320,
-            compact_px: 4,
-            default_px: 8,
-            spacious_px: 16,
+            instant_ms: INSTANT_DURATION_MS,
+            fast_ms: FAST_DURATION_MS,
+            default_ms: DEFAULT_DURATION_MS,
+            slow_ms: SLOW_DURATION_MS,
+            compact_px: COMPACT_DISTANCE_PX,
+            default_px: DEFAULT_DISTANCE_PX,
+            spacious_px: SPACIOUS_DISTANCE_PX,
         }
     }
 }

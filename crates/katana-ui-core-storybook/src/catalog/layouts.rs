@@ -4,13 +4,22 @@ use katana_ui_core::interaction::{UiAction, UiCallbackLog};
 use katana_ui_core::layout::SplitPaneResizeSource;
 use katana_ui_core::render_model::{UiRect, UiScrollbarVisibility, UiStateId};
 use katana_ui_core::{atom, layout, molecule};
-
 const SPLIT_PANE_MIN_PERCENT: u8 = 20;
 const SPLIT_PANE_MAX_PERCENT: u8 = 80;
 const SPLIT_PANE_RESET_PERCENT: u8 = 50;
 const SPLIT_PANE_RESIZE_PERCENT: u8 = 64;
 const SPLIT_PANE_KEYBOARD_PERCENT: u8 = 56;
 const SPLIT_PANE_CLAMP_INPUT_PERCENT: u8 = 8;
+const SPLIT_PANE_HANDLE_WIDTH_PX: u8 = 8;
+const SPLIT_PANE_KEYBOARD_DELTA: i8 = 4;
+const SPLIT_PANE_DISABLED_POINTER_DELTA: i8 = 8;
+const SCROLL_VIEWPORT_PX: (u32, u32) = (320, 220);
+const SCROLL_CONTENT_EXTENT_PX: (u32, u32) = (860, 1400);
+const SCROLL_OFFSET_PX: (u32, u32) = (40, 180);
+const SCROLL_EDGE_THRESHOLD_PX: u32 = 24;
+const SCROLL_BY_DELTA_PX: (i32, i32) = (0, 220);
+const SCROLL_INTO_VIEW_RECT: UiRect = UiRect::new(0, 980, 120, 80);
+const NESTED_SPLIT_CONFIG: (u8, u8, u8, u8) = (58, 30, 70, 6);
 
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
@@ -51,7 +60,7 @@ fn split_pane_story() -> StoryExample {
         .min_percent(SPLIT_PANE_MIN_PERCENT)
         .max_percent(SPLIT_PANE_MAX_PERCENT)
         .reset_percent(SPLIT_PANE_RESET_PERCENT)
-        .handle_width_px(8)
+        .handle_width_px(SPLIT_PANE_HANDLE_WIDTH_PX)
         .first(atom::Text::new(split_pane_preset_label(
             "horizontal",
             "axis=Horizontal ratio=50 min=20 max=80 handle=8 resize_mode=Drag",
@@ -98,12 +107,12 @@ fn split_pane_story() -> StoryExample {
 fn scroll_area_story() -> StoryExample {
     let area = layout::ScrollArea::new()
         .axis(layout::ScrollAxis::Both)
-        .viewport(320, 220)
-        .content_extent(860, 1400)
-        .offset(40, 180)
+        .viewport(SCROLL_VIEWPORT_PX.0, SCROLL_VIEWPORT_PX.1)
+        .content_extent(SCROLL_CONTENT_EXTENT_PX.0, SCROLL_CONTENT_EXTENT_PX.1)
+        .offset(SCROLL_OFFSET_PX.0, SCROLL_OFFSET_PX.1)
         .scrollbar_visibility(layout::ScrollbarVisibility::Always)
         .scrollbar_placement(layout::ScrollbarPlacement::Reserved)
-        .edge_threshold(24)
+        .edge_threshold(SCROLL_EDGE_THRESHOLD_PX)
         .child(atom::Text::new(
             "settings: axis offset viewport content scrollbar visibility placement edge_threshold",
         ))
@@ -131,17 +140,25 @@ fn scroll_area_story() -> StoryExample {
 fn scroll_area_logs(area: &mut layout::ScrollArea, target: UiStateId) -> Vec<UiCallbackLog> {
     let mut logs = Vec::new();
     logs.extend(
-        area.apply_action(&UiAction::scroll_to(target.clone(), 40, 180))
-            .callback_log,
+        area.apply_action(&UiAction::scroll_to(
+            target.clone(),
+            SCROLL_OFFSET_PX.0,
+            SCROLL_OFFSET_PX.1,
+        ))
+        .callback_log,
     );
     logs.extend(
-        area.apply_action(&UiAction::scroll_by(target.clone(), 0, 220))
-            .callback_log,
+        area.apply_action(&UiAction::scroll_by(
+            target.clone(),
+            SCROLL_BY_DELTA_PX.0,
+            SCROLL_BY_DELTA_PX.1,
+        ))
+        .callback_log,
     );
     logs.extend(
         area.apply_action(&UiAction::scroll_into_view(
             target.clone(),
-            UiRect::new(0, 980, 120, 80),
+            SCROLL_INTO_VIEW_RECT,
         ))
         .callback_log,
     );
@@ -164,10 +181,10 @@ fn scroll_area_logs(area: &mut layout::ScrollArea, target: UiStateId) -> Vec<UiC
 fn split_pane_nested_preview() -> layout::SplitPane {
     layout::SplitPane::new()
         .axis(layout::SplitPaneAxis::Vertical)
-        .ratio_percent(58)
-        .min_percent(30)
-        .max_percent(70)
-        .handle_width_px(6)
+        .ratio_percent(NESTED_SPLIT_CONFIG.0)
+        .min_percent(NESTED_SPLIT_CONFIG.1)
+        .max_percent(NESTED_SPLIT_CONFIG.2)
+        .handle_width_px(NESTED_SPLIT_CONFIG.3)
         .first(atom::Text::new(split_pane_preset_label(
             "nested",
             "children=2 nested=true axis=Vertical ratio=58 handle=6",
@@ -194,7 +211,7 @@ fn split_pane_logs(split: &mut layout::SplitPane, target: UiStateId) -> Vec<UiCa
         split
             .apply_action(&UiAction::split_pane_resize_by(
                 target.clone(),
-                4,
+                SPLIT_PANE_KEYBOARD_DELTA,
                 SplitPaneResizeSource::Keyboard,
             ))
             .callback_log,
@@ -261,7 +278,7 @@ fn split_pane_logs(split: &mut layout::SplitPane, target: UiStateId) -> Vec<UiCa
         disabled
             .apply_action(&UiAction::split_pane_resize_by(
                 disabled.state_id().clone(),
-                8,
+                SPLIT_PANE_DISABLED_POINTER_DELTA,
                 SplitPaneResizeSource::Pointer,
             ))
             .callback_log,

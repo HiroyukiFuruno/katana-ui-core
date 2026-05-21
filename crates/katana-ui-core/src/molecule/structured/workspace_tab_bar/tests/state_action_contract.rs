@@ -190,7 +190,7 @@ fn collapsed_group_auto_expands_after_drop_hover_delay() {
 }
 
 #[test]
-fn tab_drag_lifecycle_sets_state_and_uses_drag_primitives() {
+fn tab_drag_lifecycle_sets_state_and_uses_drag_primitives() -> Result<(), String> {
     let mut bar = WorkspaceTabBar::new("Workspace").tab(
         WorkspaceTab::new("draft", "Draft")
             .icon("<svg/>")
@@ -198,9 +198,15 @@ fn tab_drag_lifecycle_sets_state_and_uses_drag_primitives() {
     );
     let tab_id = WorkspaceTabId::new("draft");
 
-    let source = bar.drag_source(&tab_id).expect("drag source");
-    let target = bar.drop_target_for_tab(&tab_id).expect("drop target");
-    let preview = bar.drag_preview_for_tab(&tab_id).expect("drag preview");
+    let source = bar
+        .drag_source(&tab_id)
+        .ok_or_else(|| "drag source is missing".to_string())?;
+    let target = bar
+        .drop_target_for_tab(&tab_id)
+        .ok_or_else(|| "drop target is missing".to_string())?;
+    let preview = bar
+        .drag_preview_for_tab(&tab_id)
+        .ok_or_else(|| "drag preview is missing".to_string())?;
     let started = bar.apply_action(WorkspaceTabBarAction::StartDrag {
         tab_id: tab_id.clone(),
     });
@@ -235,4 +241,5 @@ fn tab_drag_lifecycle_sets_state_and_uses_drag_primitives() {
         cancelled
     );
     assert!(!bar.state().drag_in_progress);
+    Ok(())
 }

@@ -37,8 +37,8 @@ fn shortcut_report(option: ShortcutSettingOption, state_id: &str) -> SettingsMut
     }
 }
 
-fn shortcut_options() -> [ShortcutSettingOption; 4] {
-    [
+fn shortcut_options() -> Vec<ShortcutSettingOption> {
+    vec![
         ShortcutSettingOption {
             name: "shortcut_combo.platform_display",
             value_type: "ShortcutPlatform",

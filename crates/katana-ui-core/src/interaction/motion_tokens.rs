@@ -1,6 +1,4 @@
-use super::motion_primitive::{
-    legacy_primitive, standard_easing, token_from_distance, token_from_duration,
-};
+use super::motion_primitive::MotionPrimitiveResolver;
 use super::{
     MotionPrimitive, MotionPrimitiveKind, ScaleOrigin, ShimmerDirection, ShimmerSpeed,
     SlideDirection,
@@ -65,10 +63,10 @@ impl MotionSpec {
         policy: ReducedMotionPolicy,
     ) -> Self {
         Self {
-            primitive: legacy_primitive(primitive),
-            duration: token_from_duration(duration_ms),
-            easing: standard_easing(),
-            distance: token_from_distance(distance_px),
+            primitive: MotionPrimitiveResolver::legacy_primitive(primitive),
+            duration: MotionPrimitiveResolver::token_from_duration(duration_ms),
+            easing: MotionPrimitiveResolver::standard_easing(),
+            distance: MotionPrimitiveResolver::token_from_distance(distance_px),
             policy,
             disable_in: Vec::new(),
         }

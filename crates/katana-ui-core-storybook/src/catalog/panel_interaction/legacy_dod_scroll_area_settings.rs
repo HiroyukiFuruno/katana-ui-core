@@ -36,8 +36,8 @@ fn report(option: ScrollAreaOption, state_id: &str) -> SettingsMutationReport {
     }
 }
 
-fn scroll_area_options() -> [ScrollAreaOption; 6] {
-    [
+fn scroll_area_options() -> Vec<ScrollAreaOption> {
+    vec![
         ScrollAreaOption {
             name: "scroll_area.axis",
             value_type: "ScrollAxis",

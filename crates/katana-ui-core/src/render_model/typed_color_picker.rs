@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
 
+const DEFAULT_HUE_DEGREES: u16 = 0;
+const DEFAULT_ALPHA: u8 = 255;
+const DEFAULT_PANEL_SCALE_PERCENT: u16 = 75;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UiColorPickerTriggerKind {
     ColorButton,
@@ -41,12 +45,12 @@ impl Default for UiColorPickerProps {
             rgba_mode: true,
             alpha_slider_visible: true,
             eyedropper_visible: false,
-            hue_degrees: 0,
-            alpha: 255,
+            hue_degrees: DEFAULT_HUE_DEGREES,
+            alpha: DEFAULT_ALPHA,
             blending: UiColorBlendingMode::Normal,
             color_plane: String::new(),
             eyedropper_action: String::new(),
-            panel_scale_percent: 75,
+            panel_scale_percent: DEFAULT_PANEL_SCALE_PERCENT,
         }
     }
 }

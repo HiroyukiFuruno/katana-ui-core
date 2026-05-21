@@ -16,8 +16,8 @@ pub(super) fn drag_and_drop_settings_mutations(
         .collect()
 }
 
-fn drag_settings() -> [DragSetting; 3] {
-    [
+fn drag_settings() -> Vec<DragSetting> {
+    vec![
         DragSetting {
             name: "drag.accept_policy",
             value_type: "DropAcceptance",

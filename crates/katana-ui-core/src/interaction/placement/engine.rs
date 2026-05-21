@@ -7,31 +7,32 @@ pub struct PlacementEngine;
 impl PlacementEngine {
     #[must_use]
     pub fn resolve(request: &PlacementRequest) -> PlacementResult {
-        resolve_placement(request)
+        Self::resolve_placement(request)
     }
 
     #[must_use]
     pub fn resolve_for(consumer: PlacementConsumer, request: &PlacementRequest) -> PlacementResult {
         if !request.priority.is_empty() {
-            return resolve_placement(request);
+            return Self::resolve_placement(request);
         }
         let mut request = request.clone();
         request.priority = consumer.default_priority().to_vec();
-        resolve_placement(&request)
+        Self::resolve_placement(&request)
     }
-}
 
-pub fn resolve_placement(request: &PlacementRequest) -> PlacementResult {
-    let anchor = request.anchor.rect();
-    let placement = choose_placement(request, anchor);
-    let raw_position = position_for(anchor, placement, request);
-    let position = clamp_position(raw_position, request);
+    #[must_use]
+    pub fn resolve_placement(request: &PlacementRequest) -> PlacementResult {
+        let anchor = request.anchor.rect();
+        let placement = choose_placement(request, anchor);
+        let raw_position = position_for(anchor, placement, request);
+        let position = clamp_position(raw_position, request);
 
-    PlacementResult {
-        placement_used: placement,
-        position,
-        arrow_offset: arrow_offset(anchor, placement, position, request),
-        clamped: raw_position != position,
+        PlacementResult {
+            placement_used: placement,
+            position,
+            arrow_offset: arrow_offset(anchor, placement, position, request),
+            clamped: raw_position != position,
+        }
     }
 }
 

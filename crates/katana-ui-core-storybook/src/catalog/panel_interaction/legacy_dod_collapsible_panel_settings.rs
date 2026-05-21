@@ -19,8 +19,8 @@ pub(super) fn settings_mutations(examples: &[StoryExample]) -> Vec<SettingsMutat
         .collect()
 }
 
-fn collapsible_panel_settings() -> [CollapsiblePanelSetting; 5] {
-    [
+fn collapsible_panel_settings() -> Vec<CollapsiblePanelSetting> {
+    vec![
         setting(
             "collapsible_panel.mode",
             "PanelMode",

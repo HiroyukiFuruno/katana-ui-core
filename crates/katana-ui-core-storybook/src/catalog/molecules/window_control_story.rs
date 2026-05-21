@@ -6,6 +6,7 @@ use katana_ui_core::molecule::{
 };
 
 const WINDOW_CONTROL_TARGET: &str = "state:WindowControlButtonGroup:storybook";
+const WINDOW_CONTROL_PRESET_COUNT: usize = 5;
 
 pub(super) fn example() -> StoryExample {
     let presets = presets();
@@ -21,7 +22,7 @@ pub(super) fn example() -> StoryExample {
     StoryCatalog::interactive_story("window-control-button-group", root, logs)
 }
 
-fn presets() -> [WindowControlPreset; 5] {
+fn presets() -> [WindowControlPreset; WINDOW_CONTROL_PRESET_COUNT] {
     [
         preset(
             "macOS",

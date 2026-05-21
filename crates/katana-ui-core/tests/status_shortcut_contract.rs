@@ -105,7 +105,7 @@ fn status_bar_interactive_segment_emits_press_and_popover_event() {
 }
 
 #[test]
-fn status_bar_popover_uses_shared_placement_engine_and_keyboard_activation() {
+fn status_bar_popover_uses_shared_placement_engine_and_keyboard_activation() -> Result<(), String> {
     let mut bar = StatusBar::new("Usage")
         .mode(StatusBarMode::MultiSegment)
         .segment(
@@ -123,7 +123,7 @@ fn status_bar_popover_uses_shared_placement_engine_and_keyboard_activation() {
 
     let placement = bar
         .resolve_popover_placement("tokens", &request)
-        .expect("popover placement resolves through shared engine");
+        .ok_or_else(|| "popover placement resolves through shared engine".to_string())?;
     let events = bar.apply_action(&StatusBarAction::ActivateSegment {
         id: "tokens".to_string(),
     });
@@ -140,6 +140,7 @@ fn status_bar_popover_uses_shared_placement_engine_and_keyboard_activation() {
         ],
         events
     );
+    Ok(())
 }
 
 #[test]

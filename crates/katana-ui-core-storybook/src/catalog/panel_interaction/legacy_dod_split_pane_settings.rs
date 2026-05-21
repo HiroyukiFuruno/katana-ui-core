@@ -36,8 +36,8 @@ fn report(option: SplitPaneOption, state_id: &str) -> SettingsMutationReport {
     }
 }
 
-fn split_pane_options() -> [SplitPaneOption; 6] {
-    [
+fn split_pane_options() -> Vec<SplitPaneOption> {
+    vec![
         SplitPaneOption {
             name: "split_pane.axis",
             value_type: "SplitPaneAxis",

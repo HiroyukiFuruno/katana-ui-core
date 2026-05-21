@@ -1,6 +1,19 @@
 use super::{MotionDistanceToken, MotionDurationToken, MotionEasingToken};
 use serde::{Deserialize, Serialize};
 
+const FADE_START_OPACITY: f32 = 0.0;
+const FADE_END_OPACITY: f32 = 1.0;
+const SCALE_START_RATIO: f32 = 0.96;
+const SCALE_END_RATIO: f32 = 1.0;
+const INSTANT_DURATION_MS: u16 = 0;
+const FAST_DURATION_MIN_MS: u16 = 1;
+const FAST_DURATION_MAX_MS: u16 = 160;
+const DEFAULT_DURATION_MIN_MS: u16 = 161;
+const DEFAULT_DURATION_MAX_MS: u16 = 260;
+const COMPACT_DISTANCE_MAX_PX: u16 = 6;
+const DEFAULT_DISTANCE_MIN_PX: u16 = 7;
+const DEFAULT_DISTANCE_MAX_PX: u16 = 12;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum MotionPrimitiveKind {
     Fade,
@@ -42,6 +55,54 @@ impl MotionPrimitive {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct MotionPrimitiveResolver;
+
+impl MotionPrimitiveResolver {
+    pub(crate) fn legacy_primitive(kind: MotionPrimitiveKind) -> MotionPrimitive {
+        match kind {
+            MotionPrimitiveKind::Fade => MotionPrimitive::Fade {
+                from: FADE_START_OPACITY,
+                to: FADE_END_OPACITY,
+            },
+            MotionPrimitiveKind::Slide => MotionPrimitive::Slide {
+                distance: MotionDistanceToken::Default,
+                direction: SlideDirection::Up,
+            },
+            MotionPrimitiveKind::Scale => MotionPrimitive::Scale {
+                from: SCALE_START_RATIO,
+                to: SCALE_END_RATIO,
+                origin: ScaleOrigin::Center,
+            },
+            MotionPrimitiveKind::Shimmer => MotionPrimitive::Shimmer {
+                speed: ShimmerSpeed::Default,
+                direction: ShimmerDirection::LeftToRight,
+            },
+        }
+    }
+
+    pub(crate) fn token_from_duration(duration_ms: u16) -> MotionDurationToken {
+        match duration_ms {
+            INSTANT_DURATION_MS => MotionDurationToken::Instant,
+            FAST_DURATION_MIN_MS..=FAST_DURATION_MAX_MS => MotionDurationToken::Fast,
+            DEFAULT_DURATION_MIN_MS..=DEFAULT_DURATION_MAX_MS => MotionDurationToken::Default,
+            _ => MotionDurationToken::Slow,
+        }
+    }
+
+    pub(crate) fn token_from_distance(distance_px: u16) -> MotionDistanceToken {
+        match distance_px {
+            0..=COMPACT_DISTANCE_MAX_PX => MotionDistanceToken::Compact,
+            DEFAULT_DISTANCE_MIN_PX..=DEFAULT_DISTANCE_MAX_PX => MotionDistanceToken::Default,
+            _ => MotionDistanceToken::Spacious,
+        }
+    }
+
+    pub(crate) const fn standard_easing() -> MotionEasingToken {
+        MotionEasingToken::Standard
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SlideDirection {
     Up,
@@ -70,44 +131,4 @@ pub enum ShimmerSpeed {
 pub enum ShimmerDirection {
     LeftToRight,
     RightToLeft,
-}
-
-pub(crate) fn legacy_primitive(kind: MotionPrimitiveKind) -> MotionPrimitive {
-    match kind {
-        MotionPrimitiveKind::Fade => MotionPrimitive::Fade { from: 0.0, to: 1.0 },
-        MotionPrimitiveKind::Slide => MotionPrimitive::Slide {
-            distance: MotionDistanceToken::Default,
-            direction: SlideDirection::Up,
-        },
-        MotionPrimitiveKind::Scale => MotionPrimitive::Scale {
-            from: 0.96,
-            to: 1.0,
-            origin: ScaleOrigin::Center,
-        },
-        MotionPrimitiveKind::Shimmer => MotionPrimitive::Shimmer {
-            speed: ShimmerSpeed::Default,
-            direction: ShimmerDirection::LeftToRight,
-        },
-    }
-}
-
-pub(crate) fn token_from_duration(duration_ms: u16) -> MotionDurationToken {
-    match duration_ms {
-        0 => MotionDurationToken::Instant,
-        1..=160 => MotionDurationToken::Fast,
-        161..=260 => MotionDurationToken::Default,
-        _ => MotionDurationToken::Slow,
-    }
-}
-
-pub(crate) fn token_from_distance(distance_px: u16) -> MotionDistanceToken {
-    match distance_px {
-        0..=6 => MotionDistanceToken::Compact,
-        7..=12 => MotionDistanceToken::Default,
-        _ => MotionDistanceToken::Spacious,
-    }
-}
-
-pub(crate) fn standard_easing() -> MotionEasingToken {
-    MotionEasingToken::Standard
 }

@@ -2,6 +2,28 @@ use crate::atom::{Skeleton, SkeletonAnimation, SkeletonShape, SkeletonSize};
 use crate::render_model::{UiDimension, UiNode, UiNodeKind, UiStateId, UiTone};
 use serde::{Deserialize, Serialize};
 
+const CARD_MEDIA_WIDTH_PX: u16 = 280;
+const CARD_MEDIA_HEIGHT_PX: u16 = 140;
+const CARD_SUMMARY_LINE_COUNT: usize = 2;
+const CARD_SUMMARY_LAST_LINE_RATIO: f32 = 0.72;
+const LIST_ROW_AVATAR_SIZE_PX: u16 = 40;
+const LIST_ROW_LINE_COUNT: usize = 2;
+const LIST_ROW_LAST_LINE_RATIO: f32 = 0.64;
+const MESSAGE_AVATAR_SIZE_PX: u16 = 36;
+const MESSAGE_BODY_LINE_COUNT: usize = 2;
+const MESSAGE_BODY_LAST_LINE_RATIO: f32 = 0.78;
+const MESSAGE_META_WIDTH_PERCENT: u16 = 42;
+const PARAGRAPH_LINE_COUNT: usize = 5;
+const PARAGRAPH_LAST_LINE_RATIO: f32 = 0.65;
+const IMAGE_CARD_IMAGE_WIDTH_PX: u16 = 320;
+const IMAGE_CARD_IMAGE_HEIGHT_PX: u16 = 180;
+const IMAGE_CARD_TITLE_LINE_COUNT: usize = 2;
+const IMAGE_CARD_TITLE_LAST_LINE_RATIO: f32 = 0.68;
+const IMAGE_CARD_META_WIDTH_PERCENT: u16 = 52;
+const CODE_BLOCK_LINE_WIDTH_PERCENTAGES: [u16; PARAGRAPH_LINE_COUNT] = [100, 92, 76, 88, 64];
+const LINE_THICKNESS_PX: f32 = 12.0;
+const LINE_HEIGHT_PX: u16 = 12;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SkeletonClusterPreset {
     ListRow,
@@ -86,20 +108,46 @@ fn cluster_live_region(value: &SkeletonCluster) -> String {
 
 fn preset_items(preset: SkeletonClusterPreset) -> Vec<Skeleton> {
     match preset {
-        SkeletonClusterPreset::Card => vec![rect("media", 280, 140), text("summary", 2, 0.72)],
-        SkeletonClusterPreset::ListRow => vec![circle("avatar", 40), text("row", 2, 0.64)],
+        SkeletonClusterPreset::Card => vec![
+            rect("media", CARD_MEDIA_WIDTH_PX, CARD_MEDIA_HEIGHT_PX),
+            text(
+                "summary",
+                CARD_SUMMARY_LINE_COUNT,
+                CARD_SUMMARY_LAST_LINE_RATIO,
+            ),
+        ],
+        SkeletonClusterPreset::ListRow => vec![
+            circle("avatar", LIST_ROW_AVATAR_SIZE_PX),
+            text("row", LIST_ROW_LINE_COUNT, LIST_ROW_LAST_LINE_RATIO),
+        ],
         SkeletonClusterPreset::Message => vec![
-            circle("avatar", 36),
-            text("body", 2, 0.78),
-            line("meta", 42),
+            circle("avatar", MESSAGE_AVATAR_SIZE_PX),
+            text(
+                "body",
+                MESSAGE_BODY_LINE_COUNT,
+                MESSAGE_BODY_LAST_LINE_RATIO,
+            ),
+            line("meta", MESSAGE_META_WIDTH_PERCENT),
         ],
-        SkeletonClusterPreset::Paragraph => vec![text("paragraph", 5, 0.65)],
+        SkeletonClusterPreset::Paragraph => vec![text(
+            "paragraph",
+            PARAGRAPH_LINE_COUNT,
+            PARAGRAPH_LAST_LINE_RATIO,
+        )],
         SkeletonClusterPreset::ImageCard => vec![
-            rect("image", 320, 180),
-            text("title", 2, 0.68),
-            line("meta", 52),
+            rect(
+                "image",
+                IMAGE_CARD_IMAGE_WIDTH_PX,
+                IMAGE_CARD_IMAGE_HEIGHT_PX,
+            ),
+            text(
+                "title",
+                IMAGE_CARD_TITLE_LINE_COUNT,
+                IMAGE_CARD_TITLE_LAST_LINE_RATIO,
+            ),
+            line("meta", IMAGE_CARD_META_WIDTH_PERCENT),
         ],
-        SkeletonClusterPreset::CodeBlock => [100, 92, 76, 88, 64]
+        SkeletonClusterPreset::CodeBlock => CODE_BLOCK_LINE_WIDTH_PERCENTAGES
             .into_iter()
             .enumerate()
             .map(|(index, width_percent)| code_line(index, width_percent))
@@ -139,12 +187,19 @@ fn text(label: &str, lines: usize, last_line_ratio: f32) -> Skeleton {
 }
 
 fn line(label: &str, width_percent: u16) -> Skeleton {
-    Skeleton::new(label, SkeletonShape::Line { thickness: 12.0 }).size(SkeletonSize::Fixed {
+    Skeleton::new(
+        label,
+        SkeletonShape::Line {
+            thickness: LINE_THICKNESS_PX,
+        },
+    )
+    .size(SkeletonSize::Fixed {
         width: UiDimension::percent(width_percent),
-        height: UiDimension::px(12),
+        height: UiDimension::px(LINE_HEIGHT_PX),
     })
 }
 
 fn code_line(index: usize, width_percent: u16) -> Skeleton {
-    line(&format!("code line {}", index + 1), width_percent).animation(SkeletonAnimation::Wave)
+    let display_index = index + 1;
+    line(&format!("code line {display_index}"), width_percent).animation(SkeletonAnimation::Wave)
 }

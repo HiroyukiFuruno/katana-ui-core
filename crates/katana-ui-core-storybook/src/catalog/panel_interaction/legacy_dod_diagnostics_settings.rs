@@ -37,8 +37,8 @@ fn diagnostics_report(option: DiagnosticsSettingOption, state_id: &str) -> Setti
     }
 }
 
-fn diagnostics_options() -> [DiagnosticsSettingOption; 5] {
-    [
+fn diagnostics_options() -> Vec<DiagnosticsSettingOption> {
+    vec![
         DiagnosticsSettingOption {
             name: "diagnostics.group_by",
             value_type: "DiagnosticsGroupBy",

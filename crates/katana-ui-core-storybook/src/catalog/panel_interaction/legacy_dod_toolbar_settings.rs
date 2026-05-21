@@ -19,8 +19,8 @@ pub(super) fn settings_mutations(examples: &[StoryExample]) -> Vec<SettingsMutat
         .collect()
 }
 
-fn toolbar_settings() -> [ToolbarSetting; 5] {
-    [
+fn toolbar_settings() -> Vec<ToolbarSetting> {
+    vec![
         setting("toolbar.action_count", "usize", "4", "5"),
         setting("toolbar.priority", "Priority", "search=10", "search=90"),
         setting("toolbar.overflow_strategy", "Strategy", "Menu", "Hide"),

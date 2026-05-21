@@ -40,8 +40,8 @@ fn color_picker_report(option: ColorPickerSettingOption, state_id: &str) -> Sett
     }
 }
 
-fn color_picker_options() -> [ColorPickerSettingOption; 9] {
-    [
+fn color_picker_options() -> Vec<ColorPickerSettingOption> {
+    vec![
         ColorPickerSettingOption {
             name: "color_picker.mode",
             value_type: "ColorPickerMode",

@@ -3,6 +3,9 @@ use katana_ui_core::interaction::UiCallbackLog;
 use katana_ui_core::render_model::UiStateId;
 use katana_ui_core::{atom, molecule};
 
+const CLOSEABLE_TAB_DRAG_TARGET_INDEX: usize = 2;
+const DRAG_AND_DROP_PRESET_COUNT: usize = 5;
+
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![drag_and_drop_story(), closeable_tab_strip_story()]
 }
@@ -89,7 +92,7 @@ fn drag_events() -> Vec<molecule::CloseableTabStripEvent> {
     let mut bar = closeable_tab_strip_base();
     bar.apply_action(molecule::CloseableTabStripAction::MoveTab {
         tab_id: molecule::CloseableTabId::new("dragging"),
-        to_visual_index: 2,
+        to_visual_index: CLOSEABLE_TAB_DRAG_TARGET_INDEX,
     })
 }
 
@@ -141,7 +144,7 @@ fn log(
     UiCallbackLog::new(target.clone(), action, before, after)
 }
 
-fn drag_and_drop_presets() -> [DragAndDropPreset; 5] {
+fn drag_and_drop_presets() -> [DragAndDropPreset; DRAG_AND_DROP_PRESET_COUNT] {
     [
         DragAndDropPreset {
             name: "reorder list",

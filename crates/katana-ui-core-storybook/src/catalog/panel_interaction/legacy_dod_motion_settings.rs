@@ -36,8 +36,8 @@ fn report(option: MotionSettingOption, state_id: &str) -> SettingsMutationReport
     }
 }
 
-fn motion_options() -> [MotionSettingOption; 6] {
-    [
+fn motion_options() -> Vec<MotionSettingOption> {
+    vec![
         MotionSettingOption {
             name: "motion.primitive",
             value_type: "MotionPrimitive",

@@ -37,8 +37,8 @@ fn text_area_report(option: TextAreaSettingOption, state_id: &str) -> SettingsMu
     }
 }
 
-fn text_area_options() -> [TextAreaSettingOption; 5] {
-    [
+fn text_area_options() -> Vec<TextAreaSettingOption> {
+    vec![
         TextAreaSettingOption {
             name: "text_area.submit_key",
             value_type: "TextAreaSubmitKey",

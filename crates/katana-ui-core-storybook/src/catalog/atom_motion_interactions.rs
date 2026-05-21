@@ -16,19 +16,30 @@ const LOADING_PHASE: u16 = 2;
 const SPINNER_PHASE: u16 = 3;
 const SKELETON_WIDTH_PX: u16 = 220;
 const SKELETON_HEIGHT_PX: u16 = 44;
+const REDUCED_MOTION_LINE_COUNT: usize = 2;
+const REDUCED_MOTION_LAST_LINE_RATIO: f32 = 0.62;
+const REDUCED_MOTION_RADIUS_PX: u16 = 6;
+const TEXT_LINE_COUNT: usize = 3;
+const TEXT_LAST_LINE_RATIO: f32 = 0.58;
+const COMPACT_RADIUS_PX: u16 = 4;
+const AVATAR_SIZE_PX: u16 = 44;
+const AVATAR_RADIUS_PX: u16 = 22;
+const RECT_RADIUS_PX: u16 = 8;
+const LINE_THICKNESS_PX: f32 = 8.0;
+const WARNING_RADIUS_PX: u16 = 14;
 
 pub(super) fn skeleton() -> StoryExample {
     let mut reduced_motion = skeleton_preset(
         "reduced motion shape=Text size=220x44 animation=Shimmer tone=Neutral radius=6 reduced_motion=true accessibility_label=Reduced loading text",
         atom::SkeletonShape::Text {
-            lines: 2,
-            last_line_ratio: 0.62,
+            lines: REDUCED_MOTION_LINE_COUNT,
+            last_line_ratio: REDUCED_MOTION_LAST_LINE_RATIO,
         },
         SKELETON_WIDTH_PX,
         SKELETON_HEIGHT_PX,
         SkeletonAnimation::Shimmer,
         UiTone::Neutral,
-        6,
+        REDUCED_MOTION_RADIUS_PX,
     );
     let reduced_motion_target = reduced_motion.state_id().clone();
     let reduced_motion_result = reduced_motion.apply_action(&UiAction::reduced_motion(
@@ -55,23 +66,23 @@ pub(super) fn skeleton() -> StoryExample {
             .child(skeleton_preset(
                 "text lines shape=Text size=220x44 animation=Shimmer tone=Neutral radius=4 reduced_motion=false accessibility_label=Loading text lines",
                 atom::SkeletonShape::Text {
-                    lines: 3,
-                    last_line_ratio: 0.58,
+                    lines: TEXT_LINE_COUNT,
+                    last_line_ratio: TEXT_LAST_LINE_RATIO,
                 },
                 SKELETON_WIDTH_PX,
                 SKELETON_HEIGHT_PX,
                 SkeletonAnimation::Shimmer,
                 UiTone::Neutral,
-                4,
+                COMPACT_RADIUS_PX,
             ))
             .child(skeleton_preset(
                 "avatar circle shape=Circle size=44x44 animation=Pulse tone=Accent radius=22 reduced_motion=false accessibility_label=Loading avatar",
                 atom::SkeletonShape::Circle,
-                44,
-                44,
+                AVATAR_SIZE_PX,
+                AVATAR_SIZE_PX,
                 SkeletonAnimation::Pulse,
                 UiTone::Accent,
-                22,
+                AVATAR_RADIUS_PX,
             ))
             .child(skeleton_preset(
                 "rect shimmer shape=Rect size=220x44 animation=Shimmer tone=Neutral radius=8 reduced_motion=false accessibility_label=Loading rectangle",
@@ -80,16 +91,18 @@ pub(super) fn skeleton() -> StoryExample {
                 SKELETON_HEIGHT_PX,
                 SkeletonAnimation::Shimmer,
                 UiTone::Neutral,
-                8,
+                RECT_RADIUS_PX,
             ))
             .child(skeleton_preset(
                 "line wave shape=Line thickness=8 size=220x44 animation=Wave tone=Success radius=4 reduced_motion=false accessibility_label=Loading line",
-                atom::SkeletonShape::Line { thickness: 8.0 },
+                atom::SkeletonShape::Line {
+                    thickness: LINE_THICKNESS_PX,
+                },
                 SKELETON_WIDTH_PX,
                 SKELETON_HEIGHT_PX,
                 SkeletonAnimation::Wave,
                 UiTone::Success,
-                4,
+                COMPACT_RADIUS_PX,
             ))
             .child(reduced_motion)
             .child(skeleton_preset(
@@ -99,7 +112,7 @@ pub(super) fn skeleton() -> StoryExample {
                 SKELETON_HEIGHT_PX,
                 SkeletonAnimation::Pulse,
                 UiTone::Warning,
-                14,
+                WARNING_RADIUS_PX,
             )),
         logs,
     )

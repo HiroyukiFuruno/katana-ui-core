@@ -1,5 +1,10 @@
 use serde::{Deserialize, Serialize};
 
+const DEFAULT_POPOVER_OFFSET_X: i16 = 0;
+const DEFAULT_POPOVER_OFFSET_Y: i16 = 0;
+const DEFAULT_POPOVER_ARROW_SIZE_PX: u16 = 8;
+const DEFAULT_POPOVER_ACTION_COUNT: usize = 0;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UiPopoverPlacement {
     Top,
@@ -49,19 +54,19 @@ impl Default for UiPopoverProps {
         Self {
             anchor: String::new(),
             placement: UiPopoverPlacement::BottomStart,
-            offset_x: 0,
-            offset_y: 0,
+            offset_x: DEFAULT_POPOVER_OFFSET_X,
+            offset_y: DEFAULT_POPOVER_OFFSET_Y,
             width: String::new(),
             focus_handling: String::new(),
             dismiss_on_outside_click: false,
             dismiss_on_escape: false,
             arrow_visible: false,
-            arrow_size_px: 8,
+            arrow_size_px: DEFAULT_POPOVER_ARROW_SIZE_PX,
             arrow_tone: String::new(),
             heading: String::new(),
             body: String::new(),
             footer: String::new(),
-            action_count: 0,
+            action_count: DEFAULT_POPOVER_ACTION_COUNT,
             focus_management: UiPopoverFocusManagement::None,
             auto_flip_priority: Vec::new(),
         }

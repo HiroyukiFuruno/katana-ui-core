@@ -36,8 +36,8 @@ fn report(option: CommandPaletteOption, state_id: &str) -> SettingsMutationRepor
     }
 }
 
-fn options() -> [CommandPaletteOption; 5] {
-    [
+fn options() -> Vec<CommandPaletteOption> {
+    vec![
         CommandPaletteOption {
             name: "command_palette.query",
             value_type: "String",

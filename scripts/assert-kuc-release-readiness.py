@@ -2,6 +2,7 @@
 from pathlib import Path
 import re
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 CHANGE = ROOT / "openspec/changes/establish-kuc-atoms-molecules-catalog"
@@ -43,6 +44,7 @@ GATE_FILES = (
 )
 
 INCOMPLETE_TASK = re.compile(r"^- \[(?: |/)\] .+", re.MULTILINE)
+RELEASE_TRACK_CHANGE = re.compile(r"^\d{2}-add-.+")
 NO_IMAGE_POLICY_TERMS = (
     "画像回帰",
     "画像検証",
@@ -246,12 +248,48 @@ def missing_tokens(path: Path, tokens: tuple[str, ...]) -> list[str]:
     return [f"{path.relative_to(ROOT)}: missing `{token}`" for token in tokens if token not in source]
 
 
-def incomplete_task_failures() -> list[str]:
-    source = TASKS.read_text(encoding="utf-8")
+def path_label(path: Path, root: Path = ROOT) -> str:
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def incomplete_task_line_failures(path: Path, source: str, root: Path = ROOT) -> list[str]:
     return [
-        f"{TASKS.relative_to(ROOT)}:{source[:match.start()].count(chr(10)) + 1}: {match.group(0)}"
+        f"{path_label(path, root)}:{source[:match.start()].count(chr(10)) + 1}: {match.group(0)}"
         for match in INCOMPLETE_TASK.finditer(source)
     ]
+
+
+def incomplete_task_failures(path: Path = TASKS, root: Path = ROOT) -> list[str]:
+    source = path.read_text(encoding="utf-8")
+    return incomplete_task_line_failures(path, source, root)
+
+
+def is_release_track_change(name: str) -> bool:
+    return name == CHANGE.name or bool(RELEASE_TRACK_CHANGE.match(name))
+
+
+def release_track_task_files(root: Path = ROOT) -> list[Path]:
+    changes = root / "openspec/changes"
+    if not changes.exists():
+        return []
+    return [
+        change / "tasks.md"
+        for change in sorted(changes.iterdir())
+        if change.is_dir() and is_release_track_change(change.name)
+    ]
+
+
+def release_track_task_failures(root: Path = ROOT) -> list[str]:
+    failures: list[str] = []
+    for path in release_track_task_files(root):
+        if not path.exists():
+            failures.append(f"{path_label(path, root)}: release-track tasks.md is missing")
+            continue
+        failures.extend(incomplete_task_failures(path, root))
+    return failures
 
 
 def dod_failures() -> list[str]:
@@ -423,6 +461,19 @@ def self_test() -> int:
         contract_source=legacy_trace_contract_source.replace('("02-text", &["page"]),\n', ""),
         gate_source=legacy_trace_gate_source.replace(" legacy-02-text", ""),
     )
+    with tempfile.TemporaryDirectory() as tmp:
+        active_root = Path(tmp)
+        active_task = active_root / "openspec/changes/01-add-context-menu/tasks.md"
+        active_task.parent.mkdir(parents=True)
+        active_task.write_text("- [ ] 1. 未完了 task\n", encoding="utf-8")
+        archived_task = active_root / "openspec/changes/archive/01-old/tasks.md"
+        archived_task.parent.mkdir(parents=True)
+        archived_task.write_text("- [ ] 1. archive task\n", encoding="utf-8")
+        active_task_bad = release_track_task_failures(active_root)
+    with tempfile.TemporaryDirectory() as tmp:
+        missing_root = Path(tmp)
+        (missing_root / "openspec/changes/02-add-drag-drop-primitive").mkdir(parents=True)
+        active_task_missing = release_track_task_failures(missing_root)
     allowed_failed = [
         line
         for line in allowed
@@ -452,6 +503,8 @@ def self_test() -> int:
     image_gate_rejected_passed = not any(term in image_gate_rejected for term in FORBIDDEN_IMAGE_GATE_TERMS)
     legacy_trace_good_failed = bool(legacy_trace_good)
     legacy_trace_bad_passed = not any("02" in line for line in legacy_trace_bad)
+    active_task_bad_passed = len(active_task_bad) != 1 or "archive" in active_task_bad[0]
+    active_task_missing_passed = not any("tasks.md is missing" in line for line in active_task_missing)
     if (
         allowed_failed
         or rejected_passed
@@ -460,6 +513,8 @@ def self_test() -> int:
         or image_gate_rejected_passed
         or legacy_trace_good_failed
         or legacy_trace_bad_passed
+        or active_task_bad_passed
+        or active_task_missing_passed
     ):
         print("KUC release readiness self-test failed", file=sys.stderr)
         for line in allowed_failed:
@@ -476,6 +531,10 @@ def self_test() -> int:
             print("- valid legacy DoD trace rejected", file=sys.stderr)
         if legacy_trace_bad_passed:
             print("- invalid legacy DoD trace allowed", file=sys.stderr)
+        if active_task_bad_passed:
+            print("- active release-track incomplete task allowed", file=sys.stderr)
+        if active_task_missing_passed:
+            print("- active release-track missing tasks.md allowed", file=sys.stderr)
         return 1
     return 0
 
@@ -483,7 +542,7 @@ def self_test() -> int:
 def main() -> int:
     if "--self-test" in sys.argv:
         return self_test()
-    failures = incomplete_task_failures()
+    failures = release_track_task_failures()
     failures.extend(dod_failures())
     failures.extend(no_image_policy_failures(REPOSITORY_POLICY_FILES))
     failures.extend(storybook_role_failures())

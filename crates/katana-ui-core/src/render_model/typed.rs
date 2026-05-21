@@ -45,6 +45,12 @@ pub use typed_split_pane::{
 
 const DEFAULT_LOADING_SPEED_MS: u16 = 900;
 const DEFAULT_DOT_COUNT: u8 = 3;
+const DEFAULT_SKELETON_RADIUS_PX: u16 = 4;
+const DEFAULT_SKELETON_LINE_COUNT: usize = 1;
+const DEFAULT_SKELETON_LAST_LINE_PERCENT: u8 = 100;
+const DEFAULT_SKELETON_LINE_THICKNESS_PX: u16 = 12;
+const DEFAULT_SKELETON_ASPECT_RATIO_WIDTH: u16 = 0;
+const DEFAULT_SKELETON_ASPECT_RATIO_HEIGHT: u16 = 0;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiTextProps {
@@ -217,12 +223,12 @@ impl Default for UiSkeletonProps {
         Self {
             shape: UiSkeletonShape::Rect,
             animation: UiSkeletonAnimation::None,
-            radius_px: 4,
-            line_count: 1,
-            last_line_percent: 100,
-            line_thickness_px: 12,
-            aspect_ratio_width: 0,
-            aspect_ratio_height: 0,
+            radius_px: DEFAULT_SKELETON_RADIUS_PX,
+            line_count: DEFAULT_SKELETON_LINE_COUNT,
+            last_line_percent: DEFAULT_SKELETON_LAST_LINE_PERCENT,
+            line_thickness_px: DEFAULT_SKELETON_LINE_THICKNESS_PX,
+            aspect_ratio_width: DEFAULT_SKELETON_ASPECT_RATIO_WIDTH,
+            aspect_ratio_height: DEFAULT_SKELETON_ASPECT_RATIO_HEIGHT,
         }
     }
 }

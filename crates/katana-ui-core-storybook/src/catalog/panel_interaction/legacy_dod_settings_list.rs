@@ -40,8 +40,8 @@ fn settings_list_report(
     }
 }
 
-fn settings_list_options() -> [SettingsListSettingOption; 6] {
-    [
+fn settings_list_options() -> Vec<SettingsListSettingOption> {
+    vec![
         SettingsListSettingOption {
             name: "settings_list.density",
             value_type: "SettingsListDensity",

@@ -56,6 +56,8 @@ ast-lint:
 # Run katana-ui-core specific guardrails
 kuc-guardrails:
     python3 scripts/test_kuc_guardrails.py
+    python3 scripts/assert-kuc-release-readiness.py --self-test
+    python3 scripts/assert-kuc-release-readiness.py
     python3 scripts/assert-kuc-guardrails.py
     bash scripts/assert-core-dependency-boundary.sh
     bash scripts/assert-core-public-api-neutral.sh
@@ -143,6 +145,7 @@ release-target-check:
 
 # Verify KUC v0.1.0 DoD is actually complete before release gates continue.
 release-readiness-check:
+    python3 scripts/assert-kuc-release-readiness.py --self-test
     python3 scripts/assert-kuc-release-readiness.py
 
 # Verify package metadata and dry-run the publishable crate

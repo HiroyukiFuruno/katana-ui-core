@@ -37,8 +37,8 @@ fn banner_report(option: BannerSettingOption, state_id: &str) -> SettingsMutatio
     }
 }
 
-fn banner_options() -> [BannerSettingOption; 5] {
-    [
+fn banner_options() -> Vec<BannerSettingOption> {
+    vec![
         BannerSettingOption {
             name: "banner.severity",
             value_type: "BannerSeverity",

@@ -50,6 +50,7 @@ class KucGuardrails:
         failures.extend(self.repo_local_guardrail_policy_failures())
         failures.extend(self.agent_stop_policy_failures())
         failures.extend(self.agent_hook_policy_failures())
+        failures.extend(self.release_readiness_recipe_failures())
         failures.extend(self.public_app_shell_failures())
         failures.extend(self.openspec_evidence_failures())
         failures.extend(self.file_length_review_failures())
@@ -277,6 +278,36 @@ class KucGuardrails:
             for token in forbidden_tokens
             if token in combined
         )
+        return failures
+
+    def release_readiness_recipe_failures(self) -> list[str]:
+        justfile = self.root / "Justfile"
+        if not justfile.exists():
+            return ["Justfile: kuc-guardrails release readiness recipe is missing"]
+
+        source = self.read(justfile)
+        if "kuc-guardrails:" not in source:
+            return ["Justfile: kuc-guardrails recipe is missing"]
+
+        lines = [line.strip() for line in source.splitlines()]
+        has_self_test = any(
+            "scripts/assert-kuc-release-readiness.py --self-test" in line
+            for line in lines
+        )
+        has_runtime_check = any(
+            line.endswith("scripts/assert-kuc-release-readiness.py")
+            and "--self-test" not in line
+            for line in lines
+        )
+        failures: list[str] = []
+        if not has_self_test:
+            failures.append(
+                "Justfile: kuc-guardrails must run release readiness guard self-test"
+            )
+        if not has_runtime_check:
+            failures.append(
+                "Justfile: kuc-guardrails must run release readiness guard runtime check"
+            )
         return failures
 
     def storybook_panel_evidence_failures(self) -> list[str]:

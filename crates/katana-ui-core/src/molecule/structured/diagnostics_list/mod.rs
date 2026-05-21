@@ -7,7 +7,7 @@ mod state;
 mod types;
 
 use crate::interaction::{VirtualRange, VirtualizationConfig};
-use crate::molecule::virtualization;
+use crate::molecule::virtualization::MoleculeVirtualization;
 use crate::render_model::{UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
 
@@ -69,7 +69,7 @@ impl DiagnosticsList {
     #[must_use]
     pub fn virtual_range_model(&self) -> Option<VirtualRange> {
         let visible = DiagnosticsListPlanner::visible_items(&self.items, &self.options);
-        virtualization::range(&self.options.virtualization, visible.len())
+        MoleculeVirtualization::range(&self.options.virtualization, visible.len())
     }
 
     #[must_use]

@@ -20,6 +20,8 @@ const CHIP_GROUP_AVAILABLE_WIDTH: u16 = 88;
 const CHIP_GROUP_TRIGGER_WIDTH: u16 = 24;
 const CHIP_GROUP_CHIP_WIDTH: u16 = 42;
 const ATTACHMENT_UPLOAD_PROGRESS: u16 = 4_200;
+const LIST_FOCUSED_INDEX: usize = 18;
+const SELECTION_LIST_FOCUSED_INDEX: usize = 12;
 
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
@@ -59,8 +61,10 @@ pub(super) fn examples() -> Vec<StoryExample> {
 }
 
 fn list_story() -> StoryExample {
-    let config =
-        molecule_virtualization::fixed_config(molecule_virtualization::LIST_TOTAL_COUNT, Some(18));
+    let config = molecule_virtualization::fixed_config(
+        molecule_virtualization::LIST_TOTAL_COUNT,
+        Some(LIST_FOCUSED_INDEX),
+    );
     let list = molecule::List::new("List")
         .child(atom::Text::new("Row 1"))
         .child(atom::Text::new("Row 2"))
@@ -85,7 +89,7 @@ fn list_story() -> StoryExample {
 fn selection_list_story() -> StoryExample {
     let config = molecule_virtualization::variable_config(
         molecule_virtualization::SELECTION_TOTAL_COUNT,
-        Some(12),
+        Some(SELECTION_LIST_FOCUSED_INDEX),
     );
     let list = molecule::SelectionList::new("Selection list")
         .child(atom::Text::new("First"))

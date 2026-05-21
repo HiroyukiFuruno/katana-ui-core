@@ -191,6 +191,52 @@ class KucGuardrailsTest(unittest.TestCase):
 
             self.assertEqual([], failures)
 
+    def test_requires_kuc_guardrails_to_run_release_readiness(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "Justfile",
+                "kuc-guardrails:\n"
+                "    python3 scripts/test_kuc_guardrails.py\n"
+                "    python3 scripts/assert-kuc-guardrails.py\n",
+            )
+
+            failures = KucGuardrails(root).release_readiness_recipe_failures()
+
+            self.assertEqual(2, len(failures))
+
+    def test_requires_release_readiness_runtime_check_not_only_self_test(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "Justfile",
+                "kuc-guardrails:\n"
+                "    python3 scripts/test_kuc_guardrails.py\n"
+                "    python3 scripts/assert-kuc-release-readiness.py --self-test\n"
+                "    python3 scripts/assert-kuc-guardrails.py\n",
+            )
+
+            failures = KucGuardrails(root).release_readiness_recipe_failures()
+
+            self.assertEqual(1, len(failures))
+            self.assertIn("runtime check", failures[0])
+
+    def test_accepts_kuc_guardrails_release_readiness_recipe(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "Justfile",
+                "kuc-guardrails:\n"
+                "    python3 scripts/test_kuc_guardrails.py\n"
+                "    python3 scripts/assert-kuc-release-readiness.py --self-test\n"
+                "    python3 scripts/assert-kuc-release-readiness.py\n"
+                "    python3 scripts/assert-kuc-guardrails.py\n",
+            )
+
+            failures = KucGuardrails(root).release_readiness_recipe_failures()
+
+            self.assertEqual([], failures)
+
     def test_rejects_commit_confirmation_as_stop_reason(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

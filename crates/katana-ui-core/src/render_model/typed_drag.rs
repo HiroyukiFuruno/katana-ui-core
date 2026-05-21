@@ -5,6 +5,12 @@ use crate::interaction::drag_and_drop::{
 use crate::render_model::{common_types::UiCursor, props::UiTone, tree::UiNode};
 use serde::{Deserialize, Serialize};
 
+const EMPTY_DND_RECT_ORIGIN: f32 = 0.0;
+const EMPTY_DND_RECT_SIZE: f32 = 0.0;
+const DEFAULT_DRAG_PREVIEW_OPACITY_PERCENT: u8 = 88;
+const DEFAULT_DRAG_PREVIEW_COUNT_BADGE: usize = 0;
+const MIN_DND_RECT_SIZE: f32 = 0.0;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiDragHandleProps {
     pub cursor_hint: UiCursor,
@@ -44,7 +50,15 @@ impl UiDropIndicatorProps {
 
 impl Default for UiDropIndicatorProps {
     fn default() -> Self {
-        Self::new(DropIndicatorKind::None, DndRect::new(0.0, 0.0, 0.0, 0.0))
+        Self::new(
+            DropIndicatorKind::None,
+            DndRect::new(
+                EMPTY_DND_RECT_ORIGIN,
+                EMPTY_DND_RECT_ORIGIN,
+                EMPTY_DND_RECT_SIZE,
+                EMPTY_DND_RECT_SIZE,
+            ),
+        )
     }
 }
 
@@ -59,8 +73,8 @@ impl Default for UiDragPreviewProps {
     fn default() -> Self {
         Self {
             icon: String::new(),
-            count_badge: 0,
-            opacity_percent: 88,
+            count_badge: DEFAULT_DRAG_PREVIEW_COUNT_BADGE,
+            opacity_percent: DEFAULT_DRAG_PREVIEW_OPACITY_PERCENT,
         }
     }
 }
@@ -89,7 +103,7 @@ fn rect_from_dnd(rect: DndRect) -> UiRect {
     UiRect::new(
         rect.x.round() as i32,
         rect.y.round() as i32,
-        rect.width.round().max(0.0) as u32,
-        rect.height.round().max(0.0) as u32,
+        rect.width.round().max(MIN_DND_RECT_SIZE) as u32,
+        rect.height.round().max(MIN_DND_RECT_SIZE) as u32,
     )
 }

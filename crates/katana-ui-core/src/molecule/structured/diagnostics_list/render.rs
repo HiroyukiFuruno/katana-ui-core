@@ -1,7 +1,7 @@
 use super::{DiagnosticsList, DiagnosticsListPlanner};
 use crate::atom::{Chip, ChipSize, ChipTone, ChipVariant, Text};
 use crate::interaction::VirtualRange;
-use crate::molecule::virtualization;
+use crate::molecule::virtualization::MoleculeVirtualization;
 use crate::render_model::{UiInteractionState, UiNode, UiNodeKind};
 
 impl From<DiagnosticsList> for UiNode {
@@ -82,12 +82,12 @@ fn interaction_state(
         open: value.state.bulk_preview_open,
         ..UiInteractionState::default()
     };
-    virtualization::interaction(base, range)
+    MoleculeVirtualization::interaction(base, range)
 }
 
 fn virtual_visible_items<'a>(
     visible: Vec<&'a super::DiagnosticItem>,
     range: Option<&VirtualRange>,
 ) -> Vec<&'a super::DiagnosticItem> {
-    virtualization::slice_by_range(visible, range)
+    MoleculeVirtualization::slice_by_range(visible, range)
 }

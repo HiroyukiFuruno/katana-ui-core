@@ -142,17 +142,20 @@ fn draw_interaction_chrome(
 fn blend_color(base: u32, overlay: u32, alpha: u8) -> u32 {
     const RED_SHIFT: u32 = 16;
     const GREEN_SHIFT: u32 = 8;
-    const ALPHA_MAX: u32 = 255;
+    const BLUE_SHIFT: u32 = 0;
     let alpha = u32::from(alpha);
     let inverse = ALPHA_MAX - alpha;
     let red = blend_channel(base, overlay, alpha, inverse, RED_SHIFT);
     let green = blend_channel(base, overlay, alpha, inverse, GREEN_SHIFT);
-    let blue = blend_channel(base, overlay, alpha, inverse, 0);
+    let blue = blend_channel(base, overlay, alpha, inverse, BLUE_SHIFT);
     (red << RED_SHIFT) | (green << GREEN_SHIFT) | blue
 }
 
+const CHANNEL_MASK: u32 = 0xff;
+const ALPHA_MAX: u32 = 255;
+
 fn blend_channel(base: u32, overlay: u32, alpha: u32, inverse: u32, shift: u32) -> u32 {
-    let base_channel = (base >> shift) & 0xff;
-    let overlay_channel = (overlay >> shift) & 0xff;
-    (overlay_channel * alpha + base_channel * inverse) / 255
+    let base_channel = (base >> shift) & CHANNEL_MASK;
+    let overlay_channel = (overlay >> shift) & CHANNEL_MASK;
+    (overlay_channel * alpha + base_channel * inverse) / ALPHA_MAX
 }

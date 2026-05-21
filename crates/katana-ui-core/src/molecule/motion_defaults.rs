@@ -3,6 +3,13 @@ use crate::interaction::{
     ShimmerDirection, ShimmerSpeed, SlideDirection,
 };
 
+const CONTEXT_MENU_SCALE_FROM: f32 = 0.95;
+const MODAL_SCALE_FROM: f32 = 0.96;
+const DRAG_PREVIEW_SCALE_FROM: f32 = 1.0;
+const FADE_OPACITY_FROM: f32 = 0.0;
+const FADE_OPACITY_TO: f32 = 1.0;
+const SCALE_TO: f32 = 1.0;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MotionTarget {
     Popover,
@@ -45,12 +52,12 @@ impl MotionDefaults {
     pub fn for_target(target: MotionTarget) -> MotionSpec {
         match target {
             MotionTarget::Popover | MotionTarget::HoverCard => slide_up(),
-            MotionTarget::ContextMenu => scale(MotionDurationToken::Fast, 0.95),
-            MotionTarget::Modal => scale(MotionDurationToken::Default, 0.96),
+            MotionTarget::ContextMenu => scale(MotionDurationToken::Fast, CONTEXT_MENU_SCALE_FROM),
+            MotionTarget::Modal => scale(MotionDurationToken::Default, MODAL_SCALE_FROM),
             MotionTarget::NotificationToast | MotionTarget::ToastStackManager => slide_down(),
             MotionTarget::Banner => slide_down(),
             MotionTarget::Accordion => fade(MotionDurationToken::Default),
-            MotionTarget::DragPreview => scale(MotionDurationToken::Fast, 1.0),
+            MotionTarget::DragPreview => scale(MotionDurationToken::Fast, DRAG_PREVIEW_SCALE_FROM),
             MotionTarget::Skeleton | MotionTarget::SkeletonCluster => MotionSpec::shimmer(
                 MotionDurationToken::Slow,
                 MotionEasingToken::Linear,
@@ -62,7 +69,12 @@ impl MotionDefaults {
 }
 
 fn fade(duration: MotionDurationToken) -> MotionSpec {
-    MotionSpec::fade(duration, MotionEasingToken::Standard, 0.0, 1.0)
+    MotionSpec::fade(
+        duration,
+        MotionEasingToken::Standard,
+        FADE_OPACITY_FROM,
+        FADE_OPACITY_TO,
+    )
 }
 
 fn slide_up() -> MotionSpec {
@@ -88,7 +100,7 @@ fn scale(duration: MotionDurationToken, from: f32) -> MotionSpec {
         duration,
         MotionEasingToken::Emphasized,
         from,
-        1.0,
+        SCALE_TO,
         ScaleOrigin::Center,
     )
 }

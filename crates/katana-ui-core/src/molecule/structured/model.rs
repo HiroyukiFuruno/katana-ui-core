@@ -5,7 +5,7 @@ use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult, VirtualRange, VirtualizationConfig};
 use crate::molecule::DisclosureTriggerArea;
 use crate::molecule::state::MoleculeState;
-use crate::molecule::virtualization;
+use crate::molecule::virtualization::MoleculeVirtualization;
 use crate::render_model::{
     UiNode, UiNodeKind, UiTreeLineStyle, UiTreeNodeKind, UiTreeNodeProps, UiTreeProps,
     UiTreeToggleTriggerArea,
@@ -91,7 +91,7 @@ impl From<TreeView> for UiNode {
         let mut node = value
             .state
             .node(UiNodeKind::TreeView, value.label)
-            .interaction(virtualization::interaction(
+            .interaction(MoleculeVirtualization::interaction(
                 value.state.interaction(),
                 range.as_ref(),
             ))
@@ -152,7 +152,7 @@ fn tree_props(
         default_open: model.default_open,
         toggle_icon: model.toggle_icon,
         toggle_trigger_area: trigger_area(model.toggle_trigger_area),
-        nodes: virtualization::slice_by_range(items, range)
+        nodes: MoleculeVirtualization::slice_by_range(items, range)
             .into_iter()
             .map(tree_node_props)
             .collect(),
@@ -219,7 +219,7 @@ impl TreeView {
 
     #[must_use]
     pub fn virtual_range_model(&self) -> Option<VirtualRange> {
-        virtualization::range(&self.model.virtualization, self.items.len())
+        MoleculeVirtualization::range(&self.model.virtualization, self.items.len())
     }
 }
 

@@ -39,8 +39,8 @@ fn report(option: WindowControlOption, state_id: &str) -> SettingsMutationReport
     }
 }
 
-fn options() -> [WindowControlOption; 4] {
-    [
+fn options() -> Vec<WindowControlOption> {
+    vec![
         WindowControlOption {
             name: "window_control.position",
             value_type: "WindowControlsPosition",

@@ -157,7 +157,7 @@ fn toast_enqueue_queues_beyond_max_visible_and_promotes_on_dismiss() {
 }
 
 #[test]
-fn toast_stack_renders_actions_and_exposes_option_contract() {
+fn toast_stack_renders_actions_and_exposes_option_contract() -> Result<(), String> {
     let options = ToastStackOptions {
         position: ToastPosition::TopCenter,
         max_visible: 2,
@@ -179,7 +179,10 @@ fn toast_stack_renders_actions_and_exposes_option_contract() {
     ));
     let contract = manager.visual_contract();
     let node = UiNode::from(manager);
-    let toast = node.children().first().expect("visible toast is rendered");
+    let toast = node
+        .children()
+        .first()
+        .ok_or_else(|| "visible toast is rendered".to_string())?;
 
     assert_eq!(ToastPosition::TopCenter, contract.position);
     assert_eq!(2, contract.max_visible);
@@ -197,6 +200,7 @@ fn toast_stack_renders_actions_and_exposes_option_contract() {
             && it.props().label == "閉じる"
             && it.props().variant == UiVariant::Text
     }));
+    Ok(())
 }
 
 #[test]

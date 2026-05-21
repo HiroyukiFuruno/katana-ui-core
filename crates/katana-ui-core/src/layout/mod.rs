@@ -5,61 +5,25 @@ mod split_pane_contract;
 mod split_pane_event_actions;
 mod split_pane_ratio;
 mod split_pane_slots;
+mod types;
 
 use crate::render_model::{
-    UiAlignItems, UiCommonProps, UiDisplay, UiInteractionState, UiJustifyContent, UiNode,
-    UiNodeKind, UiStateId,
+    UiCommonProps, UiDisplay, UiInteractionState, UiNode, UiNodeKind, UiStateId,
 };
 pub use scroll_area::{
     ScrollArea, ScrollAreaAction, ScrollAreaEvent, ScrollAxis, ScrollEdge, ScrollRejectionReason,
     ScrollbarPlacement, ScrollbarVisibility,
 };
-use serde::{Deserialize, Serialize};
 pub use split_pane::{SplitPane, SplitPaneAxis, SplitPaneResizeMode};
 pub use split_pane_contract::{
     SplitPaneAction, SplitPaneEvent, SplitPaneOptions, SplitPaneRejectionReason,
     SplitPaneResizeSource,
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub enum Length {
-    Px(f32),
-    Fill,
-    Fit,
-}
-
-impl Length {
-    #[must_use]
-    pub const fn px(value: f32) -> Self {
-        Self::Px(value)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct EdgeInsets {
-    pub top: Length,
-    pub right: Length,
-    pub bottom: Length,
-    pub left: Length,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Alignment {
-    Start,
-    Center,
-    End,
-    Stretch,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct SizePolicy {
-    pub width: Length,
-    pub height: Length,
-}
+pub use types::{AlignHorizontal, AlignVertical, Alignment, EdgeInsets, Length, SizePolicy};
 
 macro_rules! layout_model {
     ($name:ident, $kind:expr) => {
-        #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+        #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
         pub struct $name {
             state_id: UiStateId,
             children: Vec<UiNode>,
@@ -135,45 +99,7 @@ layout_model!(Stack, UiNodeKind::Stack);
 layout_model!(Grid, UiNodeKind::Grid);
 layout_model!(AlignCenter, UiNodeKind::AlignCenter);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum AlignHorizontal {
-    Start,
-    Center,
-    End,
-    Stretch,
-}
-
-impl AlignHorizontal {
-    const fn to_justify(self) -> UiJustifyContent {
-        match self {
-            Self::Start => UiJustifyContent::Start,
-            Self::Center => UiJustifyContent::Center,
-            Self::End => UiJustifyContent::End,
-            Self::Stretch => UiJustifyContent::Stretch,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum AlignVertical {
-    Start,
-    Center,
-    End,
-    Stretch,
-}
-
-impl AlignVertical {
-    const fn to_items(self) -> UiAlignItems {
-        match self {
-            Self::Start => UiAlignItems::Start,
-            Self::Center => UiAlignItems::Center,
-            Self::End => UiAlignItems::End,
-            Self::Stretch => UiAlignItems::Stretch,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct AlignNode {
     state_id: UiStateId,
     horizontal: AlignHorizontal,

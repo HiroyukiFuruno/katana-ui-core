@@ -176,14 +176,14 @@ mod tests {
     }
 
     #[test]
-    fn window_control_stub_receives_window_commands() {
+    fn window_control_stub_receives_window_commands() -> Result<(), String> {
         let request = WindowControlDispatchRequest::from_event(
             WindowControlButtonGroupEvent::ControlPressed {
                 which: WindowControlKind::Restore,
             },
             WindowId::new("main"),
         )
-        .expect("window control press must dispatch");
+        .ok_or_else(|| "window control press must dispatch".to_string())?;
         let expected = WindowCommand::Restore {
             window_id: WindowId::new("main"),
         };
@@ -192,5 +192,6 @@ mod tests {
             GpuiWindowAction::Command(format!("{expected:?}")),
             GpuiWindowBridge.map_window_control(&request)
         );
+        Ok(())
     }
 }
