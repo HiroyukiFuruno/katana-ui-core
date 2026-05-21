@@ -390,3 +390,17 @@ Storybook は触ってフィードバックするための実画面であり、�
 - [x] 32.3 `atoms-contract.md` で Button / TextButton / SvgButton / IconTextButton を別契約として扱い、SvgButton は見た目上 icon only と明記する。
 - [x] 32.4 `atoms-contract.md` で Switch を label + switch の行コンポーネントとして定義し、行全体クリックを action / event / state 自動テスト対象にする。
 - [x] 32.5 `specs/kuc-widget-layer/spec.md` に Material UI baseline、共通 props DTO、Button 系分離、Switch 行クリックの必須要件を追加する。
+
+## 33. 01〜24 Panel / Button 粒度の自動検証
+
+ここから先は、01〜24 を「完了済み」とは扱わない。
+直近の Panel / Button と同じ粒度で、UI ごとの option、action、event、state、preset、preview、settings、描画差分、state 分離を個別に検査する。
+横断 required page テストだけでは不足とし、01〜24 の各行を明示的な case として自動テストへ落とす。
+
+- [x] 33.1 01〜24 の正本行を `legacy_01_24_contract` としてコード上の明示 case に変換する。
+- [x] 33.2 各 case で action / event / state / option / after / preset が期待値と一致することを自動テストで固定する。
+- [x] 33.3 各 case で preview クリック後に action / event / state と preview 本体の描画差分が出ることを自動テストで固定する。
+- [x] 33.4 各 case で settings 変更後に typed option と preview 本体の描画差分が出ることを自動テストで固定する。
+- [x] 33.5 各 case で page 間、preset 間の state が共有されないことを自動テストで固定する。
+- [x] 33.6 `assert-storybook-page-layout.py` に 33.1〜33.5 の guard marker を追加し、横断 required page テストだけへ戻る変更を失敗扱いにする。
+- [x] 33.7 33.1〜33.6 を含めて `just check` を通す。

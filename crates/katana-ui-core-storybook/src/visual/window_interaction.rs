@@ -63,7 +63,7 @@ impl Default for StorybookWindowState {
 }
 
 impl StorybookWindowState {
-    fn select_page(&mut self, page: &'static str) {
+    pub(super) fn select_page(&mut self, page: &'static str) {
         let preset_index = self
             .selected_component_presets
             .get(page)
@@ -72,7 +72,7 @@ impl StorybookWindowState {
         self.switch_screen_state(page, normalized_preset_index(page, preset_index));
     }
 
-    fn select_preset(&mut self, preset_index: usize) {
+    pub(super) fn select_preset(&mut self, preset_index: usize) {
         self.switch_screen_state(
             self.selected_page,
             normalized_preset_index(self.selected_page, preset_index),

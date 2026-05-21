@@ -11,7 +11,7 @@ impl StoryPresetLabels {
             ],
             "theme-tokens" => &["overview"],
             "text" => &["role grid", "mixed script", "empty text", "theme color"],
-            "icon" => &["svg grid", "accent icon", "missing label", "muted icon"],
+            "icon" => &["svg grid", "accent icon", "custom SVG", "muted icon"],
             "chip" => &["filter tag", "dismiss", "selected", "tone matrix"],
             "checkbox" => &["unchecked", "checked", "disabled", "focus ring"],
             "radio" => &["unselected", "selected", "group", "focus ring"],

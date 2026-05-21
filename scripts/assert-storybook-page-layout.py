@@ -104,6 +104,10 @@ STORYBOOK_FILES = (
     Path("crates/katana-ui-core-storybook/src/visual/window_interaction/panel_scroll_drag.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/window_interaction/scroll_operation.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/interaction_spec_runtime.rs"),
+    Path("crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract.rs"),
+    Path("crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_01_12.rs"),
+    Path("crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_13_24.rs"),
+    Path("crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract_tests.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/window_interaction/tests.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/window_interaction/tests/button_operation_tests.rs"),
     Path("crates/katana-ui-core-storybook/src/visual/window_interaction/tests/navigation_tests.rs"),
@@ -190,6 +194,9 @@ def main() -> int:
         "props_with_option",
         "resolved_after_value",
         "settings_state_uses_actual_option_after_value",
+        "legacy_01_24_clicks_emit_expected_action_event_state_and_repaint_body",
+        "legacy_01_24_settings_mutate_option_and_repaint_body",
+        "legacy_01_24_state_is_isolated_by_page_and_preset",
     )
     evidence_tokens = (
         "storybook-panel-interaction-report.json",

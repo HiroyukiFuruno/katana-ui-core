@@ -52,6 +52,10 @@ mod inspector;
 mod inspector_rows;
 mod interaction_spec;
 mod layout_metrics;
+#[cfg(test)]
+mod legacy_01_24_contract;
+#[cfg(test)]
+mod legacy_01_24_contract_tests;
 mod modal;
 mod navigation;
 mod navigation_icons;
