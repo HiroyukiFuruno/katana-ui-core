@@ -88,25 +88,27 @@ pub(super) fn draw_selected_hero(
         render.palette.muted,
     );
     let preview_x = HERO_PREVIEW_X.saturating_sub(scenario.panel_scroll.preview_x);
-    dedicated::draw_page(
-        canvas,
-        dedicated::DedicatedPageRequest {
-            text: render.text,
-            page: example.page,
-            node,
-            palette: render.palette,
+    canvas.with_clip(PREVIEW_X, hero_y, HERO_WIDTH, HERO_HEIGHT, |canvas| {
+        dedicated::draw_page(
+            canvas,
+            dedicated::DedicatedPageRequest {
+                text: render.text,
+                page: example.page,
+                node,
+                palette: render.palette,
+                scenario,
+                x: preview_x,
+                y: hero_y + (HERO_PREVIEW_Y - HERO_Y),
+            },
+        );
+        preview_effects::draw(
+            canvas,
+            render,
             scenario,
-            x: preview_x,
-            y: hero_y + (HERO_PREVIEW_Y - HERO_Y),
-        },
-    );
-    preview_effects::draw(
-        canvas,
-        render,
-        scenario,
-        component_action_hit_rect(scenario.selected_page),
-    );
-    draw_runtime_state(canvas, render, scenario);
+            component_action_hit_rect(scenario.selected_page),
+        );
+        draw_runtime_state(canvas, render, scenario);
+    });
 }
 
 fn draw_runtime_state(

@@ -57,7 +57,8 @@ pub(super) fn draw(canvas: &mut Canvas, context: ShellContext<'_>) {
         selected_story(context.root, context.render, context.scenario),
         context.scenario,
     );
-    panel_scrollbars::draw(canvas, palette, context.scenario.panel_scroll);
+    panel_scrollbars::draw(canvas, palette, context.scenario);
+    preview::draw_overlay(canvas, context.render, context.scenario);
 }
 
 fn draw_theme_control(canvas: &mut Canvas, context: &ShellContext<'_>) {

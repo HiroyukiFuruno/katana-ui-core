@@ -207,6 +207,7 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::MotionPrimitive
             | UiNodeKind::WindowControlButtonGroup
             | UiNodeKind::StartupStatePanel
+            | UiNodeKind::Panel
             | UiNodeKind::Row
             | UiNodeKind::Column
             | UiNodeKind::Stack

@@ -4,6 +4,7 @@ use super::layout_metrics::{
 };
 use super::palette::VisualPalette;
 use super::panel_scroll_state::{PanelScrollOffsets, PanelScrollRegion};
+use super::render_context::ScenarioContext;
 use super::scrollbar_model::ScrollbarModel;
 
 pub(super) const NAV_SCROLL_X: usize = 272;
@@ -23,11 +24,51 @@ const TRACK_RADIUS: usize = 4;
 const THUMB_RADIUS: usize = 4;
 const HORIZONTAL_TRACK_Y_GAP: usize = 10;
 
-pub(super) fn draw(canvas: &mut Canvas, palette: &VisualPalette, offsets: PanelScrollOffsets) {
-    draw_vertical_bar(canvas, palette, PanelScrollRegion::Navigation, offsets);
-    draw_vertical_bar(canvas, palette, PanelScrollRegion::Preview, offsets);
-    draw_vertical_bar(canvas, palette, PanelScrollRegion::Inspector, offsets);
-    draw_horizontal_bar(canvas, palette, PanelScrollRegion::Preview, offsets);
+pub(super) fn draw(canvas: &mut Canvas, palette: &VisualPalette, scenario: ScenarioContext<'_>) {
+    for region in [
+        PanelScrollRegion::Navigation,
+        PanelScrollRegion::Preview,
+        PanelScrollRegion::Inspector,
+    ] {
+        if vertical_bar_visible(region, scenario.selected_page, scenario.scrollbar_visible) {
+            draw_vertical_bar(canvas, palette, region, scenario.panel_scroll);
+        }
+    }
+    if horizontal_bar_visible(
+        PanelScrollRegion::Preview,
+        scenario.selected_page,
+        scenario.scrollbar_visible,
+    ) {
+        draw_horizontal_bar(
+            canvas,
+            palette,
+            PanelScrollRegion::Preview,
+            scenario.panel_scroll,
+        );
+    }
+}
+
+pub(super) fn vertical_bar_visible(
+    region: PanelScrollRegion,
+    selected_page: &str,
+    scrollbar_visible: bool,
+) -> bool {
+    if !scrollbar_visible {
+        return false;
+    }
+    match region {
+        PanelScrollRegion::Navigation | PanelScrollRegion::Inspector => true,
+        PanelScrollRegion::Preview => selected_page == "panel",
+        PanelScrollRegion::Root => false,
+    }
+}
+
+pub(super) fn horizontal_bar_visible(
+    region: PanelScrollRegion,
+    selected_page: &str,
+    scrollbar_visible: bool,
+) -> bool {
+    scrollbar_visible && selected_page == "panel" && region == PanelScrollRegion::Preview
 }
 
 pub(super) fn thumb_rect_for(region: PanelScrollRegion, offsets: PanelScrollOffsets) -> LayoutRect {
@@ -44,6 +85,11 @@ pub(super) fn horizontal_thumb_rect_for(
 #[cfg(test)]
 pub(super) fn track_rect_for(region: PanelScrollRegion) -> LayoutRect {
     vertical_model_for(region).track
+}
+
+#[cfg(test)]
+pub(super) fn horizontal_track_rect_for(region: PanelScrollRegion) -> LayoutRect {
+    horizontal_model_for(region).track
 }
 
 pub(super) fn region_from_thumb(

@@ -3,6 +3,7 @@ mod atom_motion_interactions;
 mod atoms;
 #[cfg(test)]
 mod color_picker_story_tests;
+mod foundation;
 mod layouts;
 mod molecules;
 #[cfg(test)]
@@ -39,6 +40,7 @@ impl StoryCatalog {
     #[must_use]
     pub fn examples(self) -> Vec<StoryExample> {
         let mut examples = Vec::new();
+        examples.extend(foundation::examples());
         examples.extend(atoms::examples());
         examples.extend(molecules::examples());
         examples.extend(layouts::examples());

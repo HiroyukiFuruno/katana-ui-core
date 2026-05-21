@@ -6,12 +6,13 @@ use katana_ui_core::theme::ThemeSnapshot;
 
 const DARK_THEME: &str = "dark";
 const BUTTON_PAGE: &str = "button";
+const PANEL_PAGE: &str = "panel";
 const DEFAULT_PRESET: usize = 0;
 const PANEL_DIFF_THRESHOLD: usize = 80;
 const MARKER_COLORS: &[u32] = &[0xd7ba7d, 0xf44747, 0x9cdcfe, 0x6a9955, 0xc586c0];
 
 #[test]
-fn storybook_draws_independent_panel_scrollbars() {
+fn storybook_hides_preview_scrollbars_when_selected_component_does_not_overflow() {
     let canvas = StorybookVisual.render_preset(DARK_THEME, BUTTON_PAGE, DEFAULT_PRESET, 0);
     let accent = palette::VisualPalette::from_theme(&ThemeSnapshot::dark()).accent;
 
@@ -30,17 +31,17 @@ fn storybook_draws_independent_panel_scrollbars() {
         pixel_at_rect(
             &canvas,
             panel_scrollbars::thumb_rect_for(
-                panel_scroll_state::PanelScrollRegion::Preview,
+                panel_scroll_state::PanelScrollRegion::Inspector,
                 Default::default()
             )
         )
     );
-    assert_eq!(
+    assert_ne!(
         Some(accent),
         pixel_at_rect(
             &canvas,
             panel_scrollbars::thumb_rect_for(
-                panel_scroll_state::PanelScrollRegion::Inspector,
+                panel_scroll_state::PanelScrollRegion::Preview,
                 Default::default()
             )
         )
@@ -53,7 +54,7 @@ fn panel_scrollbar_thumbs_move_only_for_scrolled_panel() {
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
 
     assert!(offsets.scroll_delta(panel_scroll_state::PanelScrollRegion::Navigation, -1.0));
-    let canvas = render_with_offsets(offsets);
+    let canvas = render_panel_with_offsets(offsets);
     let nav_thumb = panel_scrollbars::thumb_rect_for(
         panel_scroll_state::PanelScrollRegion::Navigation,
         offsets,
@@ -84,13 +85,13 @@ fn panel_scrollbar_thumbs_move_only_for_scrolled_panel() {
 
 #[test]
 fn panel_scroll_offsets_move_only_target_panel_content() {
-    let baseline = render_with_offsets(Default::default());
+    let baseline = render_panel_with_offsets(Default::default());
     let mut preview_offsets = panel_scroll_state::PanelScrollOffsets::default();
     assert!(preview_offsets.scroll_delta(panel_scroll_state::PanelScrollRegion::Preview, -1.0));
-    let preview_scrolled = render_with_offsets(preview_offsets);
+    let preview_scrolled = render_panel_with_offsets(preview_offsets);
     let mut inspector_offsets = panel_scroll_state::PanelScrollOffsets::default();
     assert!(inspector_offsets.scroll_delta(panel_scroll_state::PanelScrollRegion::Inspector, -1.0));
-    let inspector_scrolled = render_with_offsets(inspector_offsets);
+    let inspector_scrolled = render_panel_with_offsets(inspector_offsets);
 
     let preview_diff = preview_panel_pixel_diff(&baseline, &preview_scrolled);
     let inspector_diff_after_preview_scroll =
@@ -136,7 +137,7 @@ fn storybook_draws_preview_horizontal_scrollbar() {
     let accent = palette::VisualPalette::from_theme(&ThemeSnapshot::dark()).accent;
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
     offsets.scroll_delta_x(panel_scroll_state::PanelScrollRegion::Preview, -1.0);
-    let canvas = render_with_offsets(offsets);
+    let canvas = render_panel_with_offsets(offsets);
     let thumb = panel_scrollbars::horizontal_thumb_rect_for(
         panel_scroll_state::PanelScrollRegion::Preview,
         offsets,
@@ -165,6 +166,19 @@ fn render_with_offsets(offsets: panel_scroll_state::PanelScrollOffsets) -> Canva
     render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
         theme_id: DARK_THEME,
         selected_page: BUTTON_PAGE,
+        preset_index: DEFAULT_PRESET,
+        scroll_y: 0,
+        scrollbar_visible: true,
+        panel_scroll: offsets,
+        tree_expansion: Default::default(),
+        screen_state: Default::default(),
+    })
+}
+
+fn render_panel_with_offsets(offsets: panel_scroll_state::PanelScrollOffsets) -> Canvas {
+    render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
+        theme_id: DARK_THEME,
+        selected_page: PANEL_PAGE,
         preset_index: DEFAULT_PRESET,
         scroll_y: 0,
         scrollbar_visible: true,

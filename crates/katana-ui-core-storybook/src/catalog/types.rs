@@ -7,6 +7,7 @@ use std::collections::BTreeSet;
 const GENERIC_PRESET_LABELS: &[&str] = &["default", "interactive", "edge", "theme"];
 const PASSIVE_CONTRACT_PAGES: &[&str] = &[
     "theme-tokens",
+    "panel",
     "text",
     "icon",
     "badge",

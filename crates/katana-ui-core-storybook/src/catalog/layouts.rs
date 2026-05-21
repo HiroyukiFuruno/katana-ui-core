@@ -3,7 +3,7 @@ use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::{UiAction, UiCallbackLog};
 use katana_ui_core::layout::SplitPaneResizeSource;
 use katana_ui_core::render_model::{UiRect, UiScrollbarVisibility, UiStateId};
-use katana_ui_core::{atom, layout, molecule};
+use katana_ui_core::{atom, layout};
 const SPLIT_PANE_MIN_PERCENT: u8 = 20;
 const SPLIT_PANE_MAX_PERCENT: u8 = 80;
 const SPLIT_PANE_RESET_PERCENT: u8 = 50;
@@ -43,12 +43,6 @@ pub(super) fn examples() -> Vec<StoryExample> {
         StoryCatalog::story(
             "align-center",
             layout::AlignCenter::new().child(atom::Text::new("Centered")),
-        ),
-        StoryCatalog::story(
-            "theme-tokens",
-            molecule::Card::new("Theme tokens")
-                .child(atom::Badge::new("Light/Dark"))
-                .child(atom::ColorSwatch::new("Accent")),
         ),
     ]
 }

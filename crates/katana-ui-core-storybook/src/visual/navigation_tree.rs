@@ -110,7 +110,7 @@ pub(super) fn row_from_click(
 
 pub(super) fn group_for_page(page: &str) -> NavigationGroup {
     match page {
-        "theme-tokens" => NavigationGroup::Foundation,
+        "panel" | "theme-tokens" => NavigationGroup::Foundation,
         "text" | "icon" | "button" | "text-button" | "svg-button" | "icon-text-button"
         | "text-input" | "text-area" | "checkbox" | "radio" | "badge" | "divider" | "spacer"
         | "key-cap" | "loading-dots" | "spinner" | "progress-bar" | "color-swatch" | "toggle"
@@ -218,5 +218,26 @@ mod tests {
         assert!(atoms_index.is_some());
         assert!(text_area_index.is_some());
         assert!(atoms_index < text_area_index);
+    }
+
+    #[test]
+    fn panel_is_grouped_under_foundation() {
+        let rows = visible_rows(TreeExpansionState::default());
+        let foundation_index = rows
+            .iter()
+            .position(|it| matches!(it, NavigationRow::Group(super::NavigationGroup::Foundation)));
+        let panel_index = rows.iter().position(|it| {
+            matches!(
+                it,
+                NavigationRow::Page {
+                    page: "panel",
+                    group: super::NavigationGroup::Foundation
+                }
+            )
+        });
+
+        assert!(foundation_index.is_some());
+        assert!(panel_index.is_some());
+        assert!(foundation_index < panel_index);
     }
 }

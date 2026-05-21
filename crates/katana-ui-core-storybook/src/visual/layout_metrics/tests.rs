@@ -35,6 +35,14 @@ fn storybook_regions_stay_inside_canvas_without_overlap() {
 }
 
 #[test]
+fn storybook_main_content_reaches_root_scrollbar_without_right_gap() {
+    assert_eq!(
+        super::super::scrollbar::track_rect().x,
+        storybook_content_right_edge()
+    );
+}
+
+#[test]
 fn navigation_header_controls_are_balanced_segmented_pairs() {
     let light = light_theme_rect();
     let dark = dark_theme_rect();

@@ -1,6 +1,8 @@
 use minifb::{MouseButton, MouseMode, Window};
 
 mod button_operation;
+mod content_position;
+mod panel_scroll_drag;
 mod state_store;
 
 use super::layout_metrics::MAX_SCROLL_Y;
@@ -16,6 +18,8 @@ use super::window_coordinates::{
 use crate::catalog::StoryPresetLabels;
 pub(super) use button_operation::apply_hover_at;
 use button_operation::button_operation_at;
+pub(super) use content_position::click_content_y;
+use panel_scroll_drag::PanelScrollDragTarget;
 use state_store::StorybookScreenStateStore;
 use std::collections::BTreeMap;
 
@@ -35,12 +39,6 @@ pub(super) struct StorybookWindowState {
     pub(super) screen_state: StorybookScreenState,
     pub(super) screen_states: StorybookScreenStateStore,
     pub(super) drag_scroll_target: Option<PanelScrollDragTarget>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum PanelScrollDragTarget {
-    Vertical(PanelScrollRegion),
-    Horizontal(PanelScrollRegion),
 }
 
 impl Default for StorybookWindowState {
@@ -139,14 +137,25 @@ pub(super) fn apply_mouse_click(
         return false;
     }
     if left_started
-        && let Some(region) = panel_scrollbars::region_from_thumb(x, raw_y, state.panel_scroll)
+        && let Some(region) = panel_scroll_drag::vertical_region_at(
+            x,
+            raw_y,
+            state.panel_scroll,
+            state.selected_page,
+            state.scrollbar_visible,
+        )
     {
         state.drag_scroll_target = Some(PanelScrollDragTarget::Vertical(region));
         return apply_scrollbar_drag(state, region, raw_y);
     }
     if left_started
-        && let Some(region) =
-            panel_scrollbars::horizontal_region_from_thumb(x, raw_y, state.panel_scroll)
+        && let Some(region) = panel_scroll_drag::horizontal_region_at(
+            x,
+            raw_y,
+            state.panel_scroll,
+            state.selected_page,
+            state.scrollbar_visible,
+        )
     {
         state.drag_scroll_target = Some(PanelScrollDragTarget::Horizontal(region));
         return apply_horizontal_scrollbar_drag(state, region, x);
@@ -277,16 +286,6 @@ fn apply_horizontal_scrollbar_drag(
 ) -> bool {
     let next = panel_scrollbars::horizontal_offset_from_drag(region, x);
     state.panel_scroll.set_drag_offset_x(region, next)
-}
-
-fn click_content_y(state: &StorybookWindowState, x: usize, y: usize) -> usize {
-    let content_y = y + state.panel_scroll.root_y;
-    match region_at(x, content_y) {
-        PanelScrollRegion::Root => content_y,
-        PanelScrollRegion::Navigation => content_y,
-        PanelScrollRegion::Preview => content_y + state.panel_scroll.preview_y,
-        PanelScrollRegion::Inspector => content_y + state.panel_scroll.inspector_y,
-    }
 }
 
 fn normalized_preset_index(page: &str, preset_index: usize) -> usize {

@@ -4,9 +4,11 @@ use crate::panel::{ROOT_SCROLL_CONTENT, ROOT_SCROLL_VIEWPORT};
 use katana_ui_core::panel::{Panel, PanelRegion};
 use katana_ui_core::render_model::UiTree;
 
+const DEFAULT_SELECTED_PAGE: &str = "button";
+
 impl StorybookPanel {
     pub fn build(&self, examples: &[StoryExample]) -> UiTree {
-        self.build_selected(examples, examples.first().map_or("", |it| it.page))
+        self.build_selected(examples, DEFAULT_SELECTED_PAGE)
     }
 
     pub fn build_selected(&self, examples: &[StoryExample], selected_page: &str) -> UiTree {

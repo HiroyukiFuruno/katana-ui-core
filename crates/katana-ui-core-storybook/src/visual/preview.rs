@@ -44,6 +44,15 @@ pub(super) fn draw(
     }
 }
 
+pub(super) fn draw_overlay(
+    canvas: &mut Canvas,
+    render: RenderContext<'_>,
+    scenario: ScenarioContext<'_>,
+) {
+    let samples = summary_samples(scenario);
+    draw_summary_tooltip(canvas, render, scenario, &samples);
+}
+
 fn draw_header(canvas: &mut Canvas, render: RenderContext<'_>, scenario: ScenarioContext<'_>) {
     render.text.draw(
         canvas,
@@ -94,7 +103,6 @@ fn draw_summary_controls(
             render.palette.muted,
         );
     }
-    draw_summary_tooltip(canvas, render, scenario, &samples);
 }
 
 fn short_value(value: &str) -> String {

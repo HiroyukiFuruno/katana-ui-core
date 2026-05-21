@@ -2,6 +2,13 @@ use super::{StorybookInteractionSpec, spec};
 
 pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
     match page {
+        "panel" => Some(spec(
+            "panel_scroll",
+            "panel_scrolled",
+            "panel.overflow",
+            "clip",
+            "overflow=clipped",
+        )),
         "row" => Some(spec(
             "row_align",
             "layout_changed",

@@ -67,6 +67,7 @@ const REQUIRED_PAGES: &[&str] = &[
     "tree-view",
     "drag-and-drop",
     "closeable-tab-strip",
+    "panel",
     "row",
     "column",
     "stack",
@@ -146,6 +147,7 @@ impl StoryRequirements {
             | "tree-view"
             | "drag-and-drop"
             | "closeable-tab-strip"
+            | "panel"
             | "theme-tokens" => MIN_COMPOSITE_NODE,
             "command-palette" => MIN_COMMAND_PALETTE_NODE,
             _ => MIN_CHILDREN_NODE,

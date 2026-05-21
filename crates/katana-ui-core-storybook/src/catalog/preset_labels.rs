@@ -3,6 +3,12 @@ pub(crate) struct StoryPresetLabels;
 impl StoryPresetLabels {
     pub(crate) fn for_page(page: &str) -> &'static [&'static str] {
         match page {
+            "panel" => &[
+                "nested panels",
+                "overflow clip",
+                "horizontal local",
+                "theme panel",
+            ],
             "theme-tokens" => &["overview"],
             "text" => &["role grid", "mixed script", "empty text", "theme color"],
             "icon" => &["svg grid", "accent icon", "missing label", "muted icon"],
@@ -321,5 +327,18 @@ mod tests {
     #[test]
     fn theme_tokens_has_no_fake_option_presets() {
         assert_eq!(&["overview"], StoryPresetLabels::for_page("theme-tokens"));
+    }
+
+    #[test]
+    fn panel_presets_describe_actual_panel_controls() {
+        assert_eq!(
+            &[
+                "nested panels",
+                "overflow clip",
+                "horizontal local",
+                "theme panel"
+            ],
+            StoryPresetLabels::for_page("panel")
+        );
     }
 }

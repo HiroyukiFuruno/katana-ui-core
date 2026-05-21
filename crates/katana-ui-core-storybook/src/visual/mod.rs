@@ -1,6 +1,8 @@
 mod button_options;
 mod button_options_draw;
 mod canvas;
+mod canvas_clip;
+mod canvas_model;
 mod canvas_round_rect;
 mod coverage;
 mod coverage_markers;
@@ -45,6 +47,7 @@ mod dedicated_dod_molecule_tree_parts;
 mod dedicated_dod_molecules;
 mod dedicated_dod_status;
 mod dedicated_feedback;
+mod dedicated_foundation_panel;
 mod inspector;
 mod inspector_rows;
 mod interaction_spec;
@@ -54,6 +57,8 @@ mod navigation;
 mod navigation_icons;
 mod navigation_tree;
 mod palette;
+#[cfg(test)]
+mod panel_scroll_contract_tests;
 #[cfg(test)]
 mod panel_scroll_interaction_tests;
 mod panel_scroll_state;

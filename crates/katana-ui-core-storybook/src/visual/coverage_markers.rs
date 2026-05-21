@@ -95,7 +95,7 @@ pub(super) fn build(examples: &[StoryExample]) -> CoverageMarkers {
 }
 
 fn panel_scrollbars_visible() -> bool {
-    let canvas = render::render_storybook_canvas_for("dark", "button", false);
+    let canvas = render::render_storybook_canvas_for("dark", "panel", false);
     let accent =
         palette::VisualPalette::from_theme(&katana_ui_core::theme::ThemeSnapshot::dark()).accent;
     panel_scrollbar_center_is_accent(

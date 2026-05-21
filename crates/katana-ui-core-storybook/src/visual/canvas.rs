@@ -1,6 +1,8 @@
 use image::{ImageBuffer, Rgba};
 use std::path::Path;
 
+use super::canvas_clip::CanvasClip;
+pub use super::canvas_model::Canvas;
 use super::canvas_round_rect;
 
 const RED_SHIFT: u32 = 16;
@@ -10,13 +12,6 @@ const ALPHA_MAX: u32 = 255;
 const OPAQUE_ALPHA: u8 = 255;
 const RECT_BORDER_WIDTH: usize = 1;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Canvas {
-    width: usize,
-    height: usize,
-    pixels: Vec<u32>,
-}
-
 impl Canvas {
     #[must_use]
     pub fn new(width: usize, height: usize, color: u32) -> Self {
@@ -24,6 +19,7 @@ impl Canvas {
             width,
             height,
             pixels: vec![color; width * height],
+            clip: None,
         }
     }
 
@@ -48,13 +44,49 @@ impl Canvas {
     }
 
     pub fn fill_rect(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32) {
-        let right = x.saturating_add(width).min(self.width);
-        let bottom = y.saturating_add(height).min(self.height);
-        for current_y in y..bottom {
-            let start = current_y * self.width + x.min(self.width);
-            let end = current_y * self.width + right;
+        let Some(rect) = self.visible_rect(x, y, width, height) else {
+            return;
+        };
+        for current_y in rect.y..rect.bottom() {
+            let start = current_y * self.width + rect.x;
+            let end = current_y * self.width + rect.right();
             self.pixels[start..end].fill(color);
         }
+    }
+
+    pub(crate) fn with_clip<F>(&mut self, x: usize, y: usize, width: usize, height: usize, draw: F)
+    where
+        F: FnOnce(&mut Self),
+    {
+        let Some(next) = CanvasClip::from_rect(x, y, width, height, self.width, self.height) else {
+            return;
+        };
+        let previous = self.clip;
+        self.clip = match previous {
+            Some(current) => current.intersect(next),
+            None => Some(next),
+        };
+        if self.clip.is_some() {
+            draw(self);
+        }
+        self.clip = previous;
+    }
+
+    #[must_use]
+    fn visible_rect(&self, x: usize, y: usize, width: usize, height: usize) -> Option<CanvasClip> {
+        let rect = CanvasClip::from_rect(x, y, width, height, self.width, self.height)?;
+        match self.clip {
+            Some(clip) => rect.intersect(clip),
+            None => Some(rect),
+        }
+    }
+
+    #[must_use]
+    fn point_visible(&self, x: usize, y: usize) -> bool {
+        if x >= self.width || y >= self.height {
+            return false;
+        }
+        self.clip.is_none_or(|clip| clip.contains(x, y))
     }
 
     pub fn stroke_rect(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32) {
@@ -92,7 +124,7 @@ impl Canvas {
     }
 
     pub fn set(&mut self, x: usize, y: usize, color: u32) {
-        if x < self.width && y < self.height {
+        if self.point_visible(x, y) {
             self.pixels[y * self.width + x] = color;
         }
     }
@@ -114,7 +146,7 @@ impl Canvas {
     }
 
     pub fn blend(&mut self, x: usize, y: usize, color: u32, alpha: u8) {
-        if x >= self.width || y >= self.height {
+        if !self.point_visible(x, y) {
             return;
         }
         let index = y * self.width + x;
@@ -168,3 +200,6 @@ fn blend_channel(destination: u32, source: u32, alpha: u32, inverse: u32, shift:
     let source_channel = (source >> shift) & CHANNEL_MASK;
     (source_channel * alpha + destination_channel * inverse) / ALPHA_MAX
 }
+
+#[cfg(test)]
+mod tests;

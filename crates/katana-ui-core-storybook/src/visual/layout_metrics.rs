@@ -36,7 +36,7 @@ pub(super) const PRESET_CONTAINER_PADDING: usize = 5;
 pub(super) const PRESET_ACTIVE_BOTTOM_BORDER_HEIGHT: usize = 3;
 pub(super) const INSPECTOR_X: usize = 1072;
 pub(super) const INSPECTOR_Y: usize = 22;
-pub(super) const INSPECTOR_WIDTH: usize = 334;
+pub(super) const INSPECTOR_WIDTH: usize = 352;
 pub(super) const INSPECTOR_HEIGHT: usize = VIEWPORT_HEIGHT - 44;
 const INSPECTOR_SECTION_X_OFFSET: usize = 28;
 const INSPECTOR_FIRST_ROW_Y_OFFSET: usize = 112;
@@ -197,6 +197,11 @@ pub(super) fn button_setting_hit_rect() -> LayoutRect {
 #[cfg(test)]
 pub(super) fn inspector_rect() -> LayoutRect {
     LayoutRect::new(INSPECTOR_X, INSPECTOR_Y, INSPECTOR_WIDTH, INSPECTOR_HEIGHT)
+}
+
+#[cfg(test)]
+pub(super) fn storybook_content_right_edge() -> usize {
+    inspector_rect().right()
 }
 
 #[cfg(test)]

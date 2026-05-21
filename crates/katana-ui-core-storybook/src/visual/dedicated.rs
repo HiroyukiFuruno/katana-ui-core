@@ -9,6 +9,7 @@ use super::dedicated_dod_forms;
 use super::dedicated_dod_molecule_menu;
 use super::dedicated_dod_molecules;
 use super::dedicated_feedback;
+use super::dedicated_foundation_panel;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::text::TextRenderer;
@@ -35,6 +36,7 @@ pub(super) fn draw_page(canvas: &mut Canvas, request: DedicatedPageRequest<'_>) 
         y,
     } = request;
     match page {
+        "panel" => dedicated_foundation_panel::draw(canvas, text, palette, scenario, x, y),
         "theme-tokens" => dedicated_dod_atoms::theme(canvas, text, palette, scenario, x, y),
         "text" => dedicated_dod_atoms::text_grid(canvas, text, palette, scenario, x, y),
         "icon" => dedicated_dod_atoms::icon_grid(canvas, text, palette, scenario, x, y),
@@ -226,6 +228,7 @@ fn label_for(kind: UiNodeKind) -> &'static str {
         UiNodeKind::ScrollArea => "scroll area",
         UiNodeKind::SplitPane => "split pane",
         UiNodeKind::AlignCenter => "align center",
+        UiNodeKind::Panel => "panel surface",
         _ => "node",
     }
 }
