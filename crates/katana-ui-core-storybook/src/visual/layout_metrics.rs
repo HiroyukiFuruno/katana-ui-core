@@ -42,6 +42,10 @@ const INSPECTOR_SECTION_X_OFFSET: usize = 28;
 const INSPECTOR_FIRST_ROW_Y_OFFSET: usize = 112;
 const INSPECTOR_SETTING_ROW_WIDTH_OFFSET: usize = 56;
 const INSPECTOR_SETTING_ROW_HEIGHT: usize = 22;
+const NAV_PANEL_X_INSET: usize = 6;
+const NAV_PANEL_Y_INSET: usize = 8;
+const NAV_PANEL_WIDTH_INSET: usize = 12;
+const NAV_PANEL_BOTTOM_MARGIN: usize = 20;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct LayoutRect {
@@ -125,6 +129,15 @@ pub(super) fn scrollbar_off_rect() -> LayoutRect {
         SCROLLBAR_CONTROL_Y,
         SCROLLBAR_CONTROL_WIDTH,
         SCROLLBAR_CONTROL_HEIGHT,
+    )
+}
+
+pub(super) fn navigation_menu_panel_rect() -> LayoutRect {
+    LayoutRect::new(
+        NAV_ROW_X - NAV_PANEL_X_INSET,
+        NAV_FIRST_ROW_Y - NAV_PANEL_Y_INSET,
+        NAV_ROW_WIDTH + NAV_PANEL_WIDTH_INSET,
+        VIEWPORT_HEIGHT - NAV_FIRST_ROW_Y - NAV_PANEL_BOTTOM_MARGIN,
     )
 }
 

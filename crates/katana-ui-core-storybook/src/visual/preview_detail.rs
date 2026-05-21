@@ -87,6 +87,7 @@ pub(super) fn draw_selected_hero(
         PRESET_TEXT_SIZE,
         render.palette.muted,
     );
+    let preview_x = HERO_PREVIEW_X.saturating_sub(scenario.panel_scroll.preview_x);
     dedicated::draw_page(
         canvas,
         dedicated::DedicatedPageRequest {
@@ -95,7 +96,7 @@ pub(super) fn draw_selected_hero(
             node,
             palette: render.palette,
             scenario,
-            x: HERO_PREVIEW_X,
+            x: preview_x,
             y: hero_y + (HERO_PREVIEW_Y - HERO_Y),
         },
     );

@@ -39,6 +39,7 @@ pub enum UiScrollbarPlacement {
 pub struct UiScrollbarDragState {
     pub dragging: bool,
     pub pointer_id: Option<u64>,
+    pub origin_x: i32,
     pub origin_y: i32,
     pub origin_offset: u32,
 }
@@ -71,6 +72,7 @@ impl UiScrollbarModel {
             drag_state: UiScrollbarDragState {
                 dragging: false,
                 pointer_id: None,
+                origin_x: 0,
                 origin_y: 0,
                 origin_offset: offset,
             },
@@ -82,6 +84,19 @@ impl UiScrollbarModel {
         self.drag_state = UiScrollbarDragState {
             dragging: true,
             pointer_id: Some(pointer_id),
+            origin_x: 0,
+            origin_y,
+            origin_offset: self.offset,
+        };
+        self
+    }
+
+    #[must_use]
+    pub const fn dragging_at(mut self, pointer_id: u64, origin_x: i32, origin_y: i32) -> Self {
+        self.drag_state = UiScrollbarDragState {
+            dragging: true,
+            pointer_id: Some(pointer_id),
+            origin_x,
             origin_y,
             origin_offset: self.offset,
         };
@@ -91,10 +106,15 @@ impl UiScrollbarModel {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiPanelProps {
+    pub scroll_x: u32,
     pub scroll_y: u32,
+    pub viewport_width: u32,
     pub viewport_height: u32,
+    pub content_width: u32,
     pub content_height: u32,
+    pub horizontal_scrollbar_visible: bool,
     pub vertical_scrollbar_visible: bool,
+    pub horizontal_scrollbar: UiScrollbarModel,
     pub vertical_scrollbar: UiScrollbarModel,
 }
 
@@ -106,23 +126,69 @@ impl UiPanelProps {
         content_height: u32,
         visible: bool,
     ) -> Self {
-        Self {
+        Self::default().with_vertical_scroll(scroll_y, viewport_height, content_height, visible)
+    }
+
+    #[must_use]
+    pub fn horizontal_scroll(
+        scroll_x: u32,
+        viewport_width: u32,
+        content_width: u32,
+        visible: bool,
+    ) -> Self {
+        Self::default().with_horizontal_scroll(scroll_x, viewport_width, content_width, visible)
+    }
+
+    #[must_use]
+    pub fn with_vertical_scroll(
+        mut self,
+        scroll_y: u32,
+        viewport_height: u32,
+        content_height: u32,
+        visible: bool,
+    ) -> Self {
+        self.scroll_y = scroll_y;
+        self.viewport_height = viewport_height;
+        self.content_height = content_height;
+        self.vertical_scrollbar_visible = visible;
+        self.vertical_scrollbar = UiScrollbarModel::new(
+            if visible {
+                UiScrollbarVisibility::Always
+            } else {
+                UiScrollbarVisibility::Hidden
+            },
+            UiScrollbarPlacement::Reserved,
+            UiRect::new(0, 0, 0, viewport_height),
+            UiRect::new(0, scroll_y as i32, 0, viewport_height.min(content_height)),
             scroll_y,
-            viewport_height,
-            content_height,
-            vertical_scrollbar_visible: visible,
-            vertical_scrollbar: UiScrollbarModel::new(
-                if visible {
-                    UiScrollbarVisibility::Always
-                } else {
-                    UiScrollbarVisibility::Hidden
-                },
-                UiScrollbarPlacement::Reserved,
-                UiRect::new(0, 0, 0, viewport_height),
-                UiRect::new(0, scroll_y as i32, 0, viewport_height.min(content_height)),
-                scroll_y,
-            ),
-        }
+        );
+        self
+    }
+
+    #[must_use]
+    pub fn with_horizontal_scroll(
+        mut self,
+        scroll_x: u32,
+        viewport_width: u32,
+        content_width: u32,
+        visible: bool,
+    ) -> Self {
+        self.scroll_x = scroll_x;
+        self.viewport_width = viewport_width;
+        self.content_width = content_width;
+        self.horizontal_scrollbar_visible = visible;
+        self.horizontal_scrollbar = UiScrollbarModel::new(
+            if visible {
+                UiScrollbarVisibility::Always
+            } else {
+                UiScrollbarVisibility::Hidden
+            },
+            UiScrollbarPlacement::Reserved,
+            UiRect::new(0, 0, viewport_width, 0),
+            UiRect::new(scroll_x as i32, 0, viewport_width.min(content_width), 0),
+            scroll_x,
+        );
+        self
     }
 
     #[must_use]
@@ -131,6 +197,15 @@ impl UiPanelProps {
             !matches!(value.visibility, UiScrollbarVisibility::Hidden);
         self.scroll_y = value.offset;
         self.vertical_scrollbar = value;
+        self
+    }
+
+    #[must_use]
+    pub fn horizontal_scrollbar(mut self, value: UiScrollbarModel) -> Self {
+        self.horizontal_scrollbar_visible =
+            !matches!(value.visibility, UiScrollbarVisibility::Hidden);
+        self.scroll_x = value.offset;
+        self.horizontal_scrollbar = value;
         self
     }
 }

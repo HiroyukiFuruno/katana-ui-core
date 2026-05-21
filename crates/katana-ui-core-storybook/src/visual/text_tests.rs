@@ -59,6 +59,21 @@ fn mixed_japanese_english_and_emoji_are_vertically_centered() {
 }
 
 #[test]
+fn latin_lowercase_glyphs_keep_the_same_vertical_center() {
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+    let samples = ["e", "a", "c", "o", "x", "m", "n", "s"];
+
+    for sample in samples {
+        let center_delta = centered_text_delta(&renderer, sample);
+        assert!(
+            center_delta <= MAX_CENTER_DELTA,
+            "{sample} center delta was {center_delta}"
+        );
+    }
+}
+
+#[test]
 fn code_role_draws_mixed_japanese_status_text() {
     let facade = UiCoreFacade::default();
     let code_renderer = TextRenderer::load(&facade, "code");

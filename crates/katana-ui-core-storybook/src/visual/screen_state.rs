@@ -13,6 +13,7 @@ pub(super) struct StorybookScreenState {
     pub(super) button_options: StorybookButtonOptions,
     pub(super) button_pressed: bool,
     pub(super) preview_hovered: bool,
+    pub(super) hovered_summary_index: Option<usize>,
 }
 
 impl Default for StorybookScreenState {
@@ -28,6 +29,7 @@ impl Default for StorybookScreenState {
             button_options: StorybookButtonOptions::default(),
             button_pressed: false,
             preview_hovered: false,
+            hovered_summary_index: None,
         }
     }
 }
@@ -81,6 +83,14 @@ impl StorybookScreenState {
             return false;
         }
         self.preview_hovered = hovered;
+        true
+    }
+
+    pub(super) fn set_hovered_summary_index(&mut self, index: Option<usize>) -> bool {
+        if self.hovered_summary_index == index {
+            return false;
+        }
+        self.hovered_summary_index = index;
         true
     }
 

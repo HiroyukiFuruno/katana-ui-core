@@ -3,12 +3,7 @@ pub(crate) struct StoryPresetLabels;
 impl StoryPresetLabels {
     pub(crate) fn for_page(page: &str) -> &'static [&'static str] {
         match page {
-            "theme-tokens" => &[
-                "token table",
-                "theme switch",
-                "missing token",
-                "katana accent",
-            ],
+            "theme-tokens" => &["overview"],
             "text" => &["role grid", "mixed script", "empty text", "theme color"],
             "icon" => &["svg grid", "accent icon", "missing label", "muted icon"],
             "chip" => &["filter tag", "dismiss", "selected", "tone matrix"],
@@ -321,5 +316,10 @@ mod tests {
                 "{page} still exposes generic preset labels: {labels:?}"
             );
         }
+    }
+
+    #[test]
+    fn theme_tokens_has_no_fake_option_presets() {
+        assert_eq!(&["overview"], StoryPresetLabels::for_page("theme-tokens"));
     }
 }

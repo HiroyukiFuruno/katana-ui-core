@@ -1,6 +1,7 @@
 use super::canvas::Canvas;
 use super::layout_metrics::{
     NAV_FIRST_ROW_Y, NAV_ROW_HEIGHT, NAV_ROW_STEP, NAV_ROW_WIDTH, NAV_ROW_X,
+    navigation_menu_panel_rect,
 };
 use super::navigation_icons::{draw_disclosure, draw_file_icon, draw_folder_icon};
 use super::navigation_tree::{NavigationGroup, NavigationRow, TreeExpansionState, visible_rows};
@@ -25,6 +26,7 @@ pub(super) fn draw(
     expansion: TreeExpansionState,
     scroll_y: usize,
 ) {
+    draw_navigation_panel(canvas, palette);
     let first_index = scroll_y / NAV_ROW_STEP;
     let row_offset = scroll_y % NAV_ROW_STEP;
     let mut row_y = NAV_FIRST_ROW_Y.saturating_sub(row_offset);
@@ -46,6 +48,12 @@ pub(super) fn draw(
         }
         row_y += NAV_ROW_STEP;
     }
+}
+
+fn draw_navigation_panel(canvas: &mut Canvas, palette: &VisualPalette) {
+    let panel = navigation_menu_panel_rect();
+    canvas.fill_rect(panel.x, panel.y, panel.width, panel.height, palette.panel);
+    canvas.stroke_rect(panel.x, panel.y, panel.width, panel.height, palette.border);
 }
 
 fn draw_group(

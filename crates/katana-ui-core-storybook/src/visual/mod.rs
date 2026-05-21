@@ -38,6 +38,7 @@ mod dedicated_dod_molecule_code_diff;
 mod dedicated_dod_molecule_color_diff;
 mod dedicated_dod_molecule_disclosure;
 mod dedicated_dod_molecule_key_cap;
+mod dedicated_dod_molecule_menu;
 mod dedicated_dod_molecule_surfaces;
 mod dedicated_dod_molecule_tree;
 mod dedicated_dod_molecule_tree_parts;
@@ -82,6 +83,8 @@ mod visual_interaction_button_tests;
 mod visual_interaction_test_support;
 #[cfg(test)]
 mod visual_interaction_tests;
+#[cfg(test)]
+mod visual_menu_panel_tests;
 #[cfg(test)]
 mod visual_preset_marker_tests;
 #[cfg(test)]

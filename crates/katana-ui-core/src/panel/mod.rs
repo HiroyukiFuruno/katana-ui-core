@@ -64,8 +64,29 @@ impl Panel {
         content_height: u32,
         visible: bool,
     ) -> Self {
-        self.state.scroll =
-            UiPanelProps::vertical_scroll(scroll_y, viewport_height, content_height, visible);
+        self.state.scroll = self.state.scroll.with_vertical_scroll(
+            scroll_y,
+            viewport_height,
+            content_height,
+            visible,
+        );
+        self
+    }
+
+    #[must_use]
+    pub fn horizontal_scroll(
+        mut self,
+        scroll_x: u32,
+        viewport_width: u32,
+        content_width: u32,
+        visible: bool,
+    ) -> Self {
+        self.state.scroll = self.state.scroll.with_horizontal_scroll(
+            scroll_x,
+            viewport_width,
+            content_width,
+            visible,
+        );
         self
     }
 
@@ -78,6 +99,12 @@ impl Panel {
     #[must_use]
     pub fn scrollbar(mut self, value: UiScrollbarModel) -> Self {
         self.state.scroll = self.state.scroll.scrollbar(value);
+        self
+    }
+
+    #[must_use]
+    pub fn horizontal_scrollbar(mut self, value: UiScrollbarModel) -> Self {
+        self.state.scroll = self.state.scroll.horizontal_scrollbar(value);
         self
     }
 
@@ -187,5 +214,35 @@ mod tests {
         );
         assert!(panel.vertical_scrollbar.drag_state.dragging);
         assert_eq!(Some(7), panel.vertical_scrollbar.drag_state.pointer_id);
+    }
+
+    #[test]
+    fn panel_carries_independent_horizontal_scrollbar_model() {
+        let horizontal = UiScrollbarModel::new(
+            UiScrollbarVisibility::Always,
+            UiScrollbarPlacement::Overlay,
+            UiRect::new(0, 300, 420, 8),
+            UiRect::new(96, 300, 120, 8),
+            96,
+        );
+        let tree = UiTree::new(
+            Panel::new("Menu", PanelRegion::Navigation, ThemeSnapshot::dark())
+                .horizontal_scroll(96, 420, 960, true)
+                .horizontal_scrollbar(horizontal),
+        );
+        let panel = &tree.root().props().panel;
+
+        assert_eq!(96, panel.scroll_x);
+        assert_eq!(420, panel.viewport_width);
+        assert_eq!(960, panel.content_width);
+        assert!(panel.horizontal_scrollbar_visible);
+        assert_eq!(
+            UiScrollbarPlacement::Overlay,
+            panel.horizontal_scrollbar.placement
+        );
+        assert_eq!(
+            UiRect::new(96, 300, 120, 8),
+            panel.horizontal_scrollbar.thumb_bounds
+        );
     }
 }

@@ -13,6 +13,7 @@ use super::screen_state::StorybookScreenState;
 use super::window_coordinates::{
     CanvasPoint, SurfaceSize, WindowPoint, window_point_to_canvas_point,
 };
+use crate::catalog::StoryPresetLabels;
 pub(super) use button_operation::apply_hover_at;
 use button_operation::button_operation_at;
 use state_store::StorybookScreenStateStore;
@@ -33,7 +34,13 @@ pub(super) struct StorybookWindowState {
     pub(super) tree_expansion: TreeExpansionState,
     pub(super) screen_state: StorybookScreenState,
     pub(super) screen_states: StorybookScreenStateStore,
-    pub(super) drag_scroll_region: Option<PanelScrollRegion>,
+    pub(super) drag_scroll_target: Option<PanelScrollDragTarget>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) enum PanelScrollDragTarget {
+    Vertical(PanelScrollRegion),
+    Horizontal(PanelScrollRegion),
 }
 
 impl Default for StorybookWindowState {
@@ -49,7 +56,7 @@ impl Default for StorybookWindowState {
             tree_expansion: TreeExpansionState::default(),
             screen_state: StorybookScreenState::default(),
             screen_states: StorybookScreenStateStore::default(),
-            drag_scroll_region: None,
+            drag_scroll_target: None,
         }
     }
 }
@@ -61,11 +68,14 @@ impl StorybookWindowState {
             .get(page)
             .copied()
             .unwrap_or_default();
-        self.switch_screen_state(page, preset_index);
+        self.switch_screen_state(page, normalized_preset_index(page, preset_index));
     }
 
     fn select_preset(&mut self, preset_index: usize) {
-        self.switch_screen_state(self.selected_page, preset_index);
+        self.switch_screen_state(
+            self.selected_page,
+            normalized_preset_index(self.selected_page, preset_index),
+        );
     }
 
     fn switch_screen_state(&mut self, page: &'static str, preset_index: usize) {
@@ -81,10 +91,10 @@ impl StorybookWindowState {
 }
 
 pub(super) fn apply_scroll(window: &Window, state: &mut StorybookWindowState) -> bool {
-    let Some((_, delta_y)) = window.get_scroll_wheel() else {
+    let Some((delta_x, delta_y)) = window.get_scroll_wheel() else {
         return false;
     };
-    if delta_y == 0.0 {
+    if delta_x == 0.0 && delta_y == 0.0 {
         return false;
     }
     let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) else {
@@ -93,7 +103,9 @@ pub(super) fn apply_scroll(window: &Window, state: &mut StorybookWindowState) ->
     let Some(point) = normalize_mouse_point(window, x, y) else {
         return false;
     };
-    apply_scroll_delta_at(state, point.x, point.y, delta_y)
+    let vertical_changed = apply_scroll_delta_at(state, point.x, point.y, delta_y);
+    let horizontal_changed = apply_scroll_delta_x_at(state, point.x, point.y, delta_x);
+    vertical_changed || horizontal_changed
 }
 
 pub(super) fn apply_mouse_click(
@@ -113,15 +125,15 @@ pub(super) fn apply_mouse_click(
     let x = point.x;
     let raw_y = point.y;
     if !window.get_mouse_down(MouseButton::Left) {
-        state.drag_scroll_region = None;
+        state.drag_scroll_target = None;
         if state.screen_state.release_button_press() {
             return true;
         }
     }
     if window.get_mouse_down(MouseButton::Left)
-        && let Some(region) = state.drag_scroll_region
+        && let Some(target) = state.drag_scroll_target
     {
-        return apply_scrollbar_drag(state, region, raw_y);
+        return apply_scrollbar_drag_target(state, target, x, raw_y);
     }
     if !left_started && !right_started {
         return false;
@@ -129,8 +141,15 @@ pub(super) fn apply_mouse_click(
     if left_started
         && let Some(region) = panel_scrollbars::region_from_thumb(x, raw_y, state.panel_scroll)
     {
-        state.drag_scroll_region = Some(region);
+        state.drag_scroll_target = Some(PanelScrollDragTarget::Vertical(region));
         return apply_scrollbar_drag(state, region, raw_y);
+    }
+    if left_started
+        && let Some(region) =
+            panel_scrollbars::horizontal_region_from_thumb(x, raw_y, state.panel_scroll)
+    {
+        state.drag_scroll_target = Some(PanelScrollDragTarget::Horizontal(region));
+        return apply_horizontal_scrollbar_drag(state, region, x);
     }
     let y = click_content_y(state, x, raw_y);
     if right_started {
@@ -192,12 +211,28 @@ fn apply_scroll_delta_at(
     y: usize,
     delta_y: f32,
 ) -> bool {
+    if delta_y == 0.0 {
+        return false;
+    }
     let region = region_at(x, y + state.panel_scroll.root_y);
     let changed = state.panel_scroll.scroll_delta(region, delta_y);
     if region == PanelScrollRegion::Root {
         state.scroll_y = state.panel_scroll.root_y;
     }
     changed
+}
+
+fn apply_scroll_delta_x_at(
+    state: &mut StorybookWindowState,
+    x: usize,
+    y: usize,
+    delta_x: f32,
+) -> bool {
+    if delta_x == 0.0 {
+        return false;
+    }
+    let region = region_at(x, y + state.panel_scroll.root_y);
+    state.panel_scroll.scroll_delta_x(region, delta_x)
 }
 
 fn apply_scroll_delta_at_root(state: &mut StorybookWindowState, delta_y: f32) -> bool {
@@ -221,6 +256,29 @@ fn apply_scrollbar_drag(
     changed
 }
 
+fn apply_scrollbar_drag_target(
+    state: &mut StorybookWindowState,
+    target: PanelScrollDragTarget,
+    x: usize,
+    y: usize,
+) -> bool {
+    match target {
+        PanelScrollDragTarget::Vertical(region) => apply_scrollbar_drag(state, region, y),
+        PanelScrollDragTarget::Horizontal(region) => {
+            apply_horizontal_scrollbar_drag(state, region, x)
+        }
+    }
+}
+
+fn apply_horizontal_scrollbar_drag(
+    state: &mut StorybookWindowState,
+    region: PanelScrollRegion,
+    x: usize,
+) -> bool {
+    let next = panel_scrollbars::horizontal_offset_from_drag(region, x);
+    state.panel_scroll.set_drag_offset_x(region, next)
+}
+
 fn click_content_y(state: &StorybookWindowState, x: usize, y: usize) -> usize {
     let content_y = y + state.panel_scroll.root_y;
     match region_at(x, content_y) {
@@ -229,6 +287,10 @@ fn click_content_y(state: &StorybookWindowState, x: usize, y: usize) -> usize {
         PanelScrollRegion::Preview => content_y + state.panel_scroll.preview_y,
         PanelScrollRegion::Inspector => content_y + state.panel_scroll.inspector_y,
     }
+}
+
+fn normalized_preset_index(page: &str, preset_index: usize) -> usize {
+    preset_index.min(StoryPresetLabels::for_page(page).len().saturating_sub(1))
 }
 
 #[cfg(test)]

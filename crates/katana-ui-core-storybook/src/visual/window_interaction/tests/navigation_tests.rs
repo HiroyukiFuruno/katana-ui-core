@@ -42,6 +42,18 @@ fn preset_tab_selection_is_owned_by_component() {
 }
 
 #[test]
+fn optionless_theme_tokens_ignores_hidden_preset_tabs() {
+    let mut state = StorybookWindowState {
+        selected_page: "theme-tokens",
+        ..StorybookWindowState::default()
+    };
+    let hidden = layout_metrics::preset_tab_rect(1);
+
+    assert!(!apply_click(&mut state, hidden.x + 1, hidden.y + 1));
+    assert_eq!(0, state.preset_index);
+}
+
+#[test]
 fn click_mapping_toggles_tree_groups() {
     let mut state = StorybookWindowState::default();
     let target = group_click_target(NavigationGroup::Atoms);

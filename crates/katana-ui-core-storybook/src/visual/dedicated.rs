@@ -6,6 +6,7 @@ use super::dedicated_complex;
 use super::dedicated_context_menu;
 use super::dedicated_dod_atoms;
 use super::dedicated_dod_forms;
+use super::dedicated_dod_molecule_menu;
 use super::dedicated_dod_molecules;
 use super::dedicated_feedback;
 use super::palette::VisualPalette;
@@ -87,6 +88,9 @@ pub(super) fn draw_page(canvas: &mut Canvas, request: DedicatedPageRequest<'_>) 
             dedicated_dod_molecules::color_picker(canvas, text, palette, scenario, x, y);
         }
         "code-diff" => dedicated_dod_molecules::code_diff(canvas, text, palette, scenario, x, y),
+        "menu" => dedicated_dod_molecule_menu::menu(canvas, text, palette, x, y),
+        "menu-button" => dedicated_dod_molecule_menu::menu_button(canvas, text, palette, x, y),
+        "side-menu" => dedicated_dod_molecule_menu::side_menu(canvas, text, palette, x, y),
         _ => draw(canvas, text, node, palette, x, y),
     }
 }

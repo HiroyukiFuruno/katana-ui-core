@@ -51,9 +51,9 @@ impl Canvas {
         let right = x.saturating_add(width).min(self.width);
         let bottom = y.saturating_add(height).min(self.height);
         for current_y in y..bottom {
-            for current_x in x..right {
-                self.set(current_x, current_y, color);
-            }
+            let start = current_y * self.width + x.min(self.width);
+            let end = current_y * self.width + right;
+            self.pixels[start..end].fill(color);
         }
     }
 
