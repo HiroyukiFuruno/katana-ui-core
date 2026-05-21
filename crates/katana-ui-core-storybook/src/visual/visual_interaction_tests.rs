@@ -1,6 +1,6 @@
 use super::visual_interaction_test_support::{
     assert_clicked_page_changes_body, assert_settings_page_changes_body, component_body_pixel_diff,
-    left_half_color_count, pixel_at, right_half_color_count,
+    pixel_at,
 };
 use super::{StorybookVisual, palette, preview_detail};
 use katana_ui_core::theme::ThemeSnapshot;
@@ -38,6 +38,15 @@ const COMPONENT_BODY_DIFF_THRESHOLD: usize = 80;
 const TREE_SCROLL_TRACK_X_OFFSET: usize = 186;
 const TREE_SCROLL_TRACK_Y_OFFSET: usize = 32;
 const TREE_SCROLL_THUMB_EDGE_OFFSET: usize = 24;
+const BRIGHT_PIXEL_THRESHOLD: u32 = 180;
+const RED_SHIFT: u32 = 16;
+const GREEN_SHIFT: u32 = 8;
+const BLUE_SHIFT: u32 = 0;
+const CHANNEL_MASK: u32 = 0xff;
+const LUMINANCE_RED_WEIGHT: u32 = 299;
+const LUMINANCE_GREEN_WEIGHT: u32 = 587;
+const LUMINANCE_BLUE_WEIGHT: u32 = 114;
+const LUMINANCE_SCALE: u32 = 1000;
 
 #[test]
 fn settings_change_updates_passive_atom_preview_bodies() {
@@ -69,12 +78,12 @@ fn clicked_toggle_updates_visible_switch_body() {
 
     assert!(rect.width >= super::dedicated_dod_atom_buttons::TOGGLE_ROW_WIDTH);
     assert!(
-        right_half_color_count(switch_rect, &after, palette::DEFAULT_BACKGROUND)
-            > left_half_color_count(switch_rect, &after, palette::DEFAULT_BACKGROUND)
+        left_bright_pixel_count(switch_rect, &before)
+            > right_bright_pixel_count(switch_rect, &before)
     );
     assert!(
-        left_half_color_count(switch_rect, &before, palette::DEFAULT_BACKGROUND)
-            > right_half_color_count(switch_rect, &before, palette::DEFAULT_BACKGROUND)
+        right_bright_pixel_count(switch_rect, &after)
+            > left_bright_pixel_count(switch_rect, &after)
     );
     assert!(
         component_body_pixel_diff(TOGGLE_PAGE, &before, &after) > COMPONENT_BODY_DIFF_THRESHOLD
@@ -127,4 +136,51 @@ fn tree_view_preview_has_independent_vertical_scroll_thumb() {
     assert!(
         component_body_pixel_diff(TREE_VIEW_PAGE, &before, &after) > COMPONENT_BODY_DIFF_THRESHOLD
     );
+}
+
+fn left_bright_pixel_count(
+    rect: super::layout_metrics::LayoutRect,
+    canvas: &super::Canvas,
+) -> usize {
+    bright_pixel_count(rect.x, rect.y, rect.width / 2, rect.height, canvas)
+}
+
+fn right_bright_pixel_count(
+    rect: super::layout_metrics::LayoutRect,
+    canvas: &super::Canvas,
+) -> usize {
+    bright_pixel_count(
+        rect.x + rect.width / 2,
+        rect.y,
+        rect.width / 2,
+        rect.height,
+        canvas,
+    )
+}
+
+fn bright_pixel_count(
+    x: usize,
+    y: usize,
+    width: usize,
+    height: usize,
+    canvas: &super::Canvas,
+) -> usize {
+    let mut count = 0;
+    for current_y in y..y + height {
+        for current_x in x..x + width {
+            let index = current_y * canvas.width() + current_x;
+            if luminance(canvas.pixels()[index]) > BRIGHT_PIXEL_THRESHOLD {
+                count += 1;
+            }
+        }
+    }
+    count
+}
+
+fn luminance(color: u32) -> u32 {
+    let red = (color >> RED_SHIFT) & CHANNEL_MASK;
+    let green = (color >> GREEN_SHIFT) & CHANNEL_MASK;
+    let blue = (color >> BLUE_SHIFT) & CHANNEL_MASK;
+    (red * LUMINANCE_RED_WEIGHT + green * LUMINANCE_GREEN_WEIGHT + blue * LUMINANCE_BLUE_WEIGHT)
+        / LUMINANCE_SCALE
 }

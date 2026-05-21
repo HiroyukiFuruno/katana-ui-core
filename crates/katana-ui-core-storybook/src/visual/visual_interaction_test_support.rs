@@ -40,21 +40,6 @@ pub(super) fn rect_non_background_pixels(
     count
 }
 
-pub(super) fn left_half_color_count(rect: LayoutRect, canvas: &Canvas, color: u32) -> usize {
-    color_count(rect.x, rect.y, rect.width / 2, rect.height, canvas, color)
-}
-
-pub(super) fn right_half_color_count(rect: LayoutRect, canvas: &Canvas, color: u32) -> usize {
-    color_count(
-        rect.x + rect.width / 2,
-        rect.y,
-        rect.width / 2,
-        rect.height,
-        canvas,
-        color,
-    )
-}
-
 pub(super) fn component_body_pixel_diff(page: &str, before: &Canvas, after: &Canvas) -> usize {
     rect_pixel_diff(
         preview_detail::component_action_hit_rect(page),
@@ -98,24 +83,4 @@ pub(super) fn assert_settings_page_changes_body(page: &'static str) {
     );
 
     assert!(component_body_pixel_diff(page, &before, &after) > COMPONENT_BODY_DIFF_THRESHOLD);
-}
-
-fn color_count(
-    x: usize,
-    y: usize,
-    width: usize,
-    height: usize,
-    canvas: &Canvas,
-    color: u32,
-) -> usize {
-    let mut count = 0;
-    for current_y in y..(y + height) {
-        for current_x in x..(x + width) {
-            let index = current_y * canvas.width() + current_x;
-            if canvas.pixels()[index] == color {
-                count += 1;
-            }
-        }
-    }
-    count
 }
