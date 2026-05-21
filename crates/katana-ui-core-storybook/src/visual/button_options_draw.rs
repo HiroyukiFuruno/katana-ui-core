@@ -1,8 +1,11 @@
 use super::button_options::{
     CONTROL_COUNT, FIRST_ROW_Y_OFFSET, ROW_GAP, ROW_HEIGHT, ROW_WIDTH, ROW_X, SECTION_WIDTH,
-    SECTION_X, StorybookButtonOptionControl, StorybookButtonOptions, control_index,
+    SECTION_X, StorybookButtonHeightMode, StorybookButtonOptionControl, StorybookButtonOptions,
+    StorybookButtonWidthMode, control_index,
 };
 use super::canvas::Canvas;
+use super::dedicated_dod_atom_button_live::ButtonLiveKind;
+use super::dedicated_dod_atom_button_live_surface::button_layout;
 use super::layout_metrics::LayoutRect;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
@@ -25,6 +28,8 @@ const TOGGLE_X_OFFSET: usize = ROW_WIDTH - TOGGLE_WIDTH - 12;
 const TOGGLE_Y_OFFSET: usize = 4;
 const TEXT_X_OFFSET: usize = 10;
 const TEXT_SIZE: f32 = 10.0;
+const WIDTH_VALUE_SUFFIX: &str = "px";
+const HEIGHT_VALUE_SUFFIX: &str = "px";
 
 pub(super) fn draw_controls(
     canvas: &mut Canvas,
@@ -96,7 +101,7 @@ fn draw_value(
         | StorybookButtonOptionControl::Height
         | StorybookButtonOptionControl::TabIndex
         | StorybookButtonOptionControl::ZIndex => {
-            draw_value_button(canvas, text, palette, options, row, control);
+            draw_value_button(canvas, text, palette, scenario, row, control);
         }
     }
 }
@@ -128,20 +133,88 @@ fn draw_value_button(
     canvas: &mut Canvas,
     text: &TextRenderer,
     palette: &VisualPalette,
-    options: StorybookButtonOptions,
+    scenario: ScenarioContext<'_>,
     row: LayoutRect,
     control: StorybookButtonOptionControl,
 ) {
     let x = row.x + CONTROL_X_OFFSET;
     let y = row.y + CONTROL_Y_OFFSET;
+    let value = effective_setting_value(scenario, control);
     canvas.fill_rect(x, y, CONTROL_WIDTH, CONTROL_HEIGHT, palette.surface);
     canvas.stroke_rect(x, y, CONTROL_WIDTH, CONTROL_HEIGHT, palette.accent);
     text.draw_centered(
         canvas,
-        control.setting_value(options),
+        &value,
         x + TEXT_X_OFFSET,
         TextVerticalBox::new(y, CONTROL_HEIGHT as f32),
         TEXT_SIZE,
         palette.text,
     );
+}
+
+fn effective_setting_value(
+    scenario: ScenarioContext<'_>,
+    control: StorybookButtonOptionControl,
+) -> String {
+    let options = scenario.screen_state.button_options;
+    match control {
+        StorybookButtonOptionControl::Width
+            if options.width_mode == StorybookButtonWidthMode::Auto =>
+        {
+            format!("auto {}{WIDTH_VALUE_SUFFIX}", effective_width(scenario))
+        }
+        StorybookButtonOptionControl::Height
+            if options.height_mode == StorybookButtonHeightMode::Auto =>
+        {
+            format!("auto {}{HEIGHT_VALUE_SUFFIX}", effective_height(scenario))
+        }
+        _ => control.setting_value(options).to_string(),
+    }
+}
+
+fn effective_width(scenario: ScenarioContext<'_>) -> usize {
+    effective_layout_dimension(scenario).0
+}
+
+fn effective_height(scenario: ScenarioContext<'_>) -> usize {
+    effective_layout_dimension(scenario).1
+}
+
+fn effective_layout_dimension(scenario: ScenarioContext<'_>) -> (usize, usize) {
+    let kind = button_kind_for_page(scenario.selected_page);
+    let layout = button_layout(
+        scenario.preset_index,
+        scenario.screen_state.button_options.width_mode,
+        scenario.screen_state.button_options.height_mode,
+        button_label_for_kind(kind),
+        kind.has_icon(),
+        kind.has_visible_label(),
+    );
+    (layout.width, layout.height)
+}
+
+fn button_kind_for_page(page: &str) -> ButtonLiveKind {
+    match page {
+        "text-button" => ButtonLiveKind::TextButton,
+        "svg-button" => ButtonLiveKind::SvgButton,
+        "icon-text-button" => ButtonLiveKind::IconTextButton,
+        _ => ButtonLiveKind::Button,
+    }
+}
+
+const fn button_label_for_kind(kind: ButtonLiveKind) -> &'static str {
+    match kind {
+        ButtonLiveKind::Button => "Save changes",
+        ButtonLiveKind::TextButton => "Text action",
+        ButtonLiveKind::SvgButton => "Svg action",
+        ButtonLiveKind::IconTextButton => "Open folder",
+    }
+}
+
+#[cfg(test)]
+pub(super) fn effective_setting_value_for_test(
+    scenario: ScenarioContext<'_>,
+    control: StorybookButtonOptionControl,
+) -> String {
+    effective_setting_value(scenario, control)
 }

@@ -1,4 +1,5 @@
 use super::button_options::{StorybookButtonOptionControl, StorybookButtonOptions, control_rect};
+use super::button_options_draw;
 use super::render_context::ScenarioContext;
 use super::visual_interaction_test_support::{
     component_body_pixel_diff, pixel_at, rect_non_background_pixels, rect_pixel_diff,
@@ -183,6 +184,26 @@ fn button_preset_tab_updates_summary_setting_value() {
         classic[SUMMARY_SETTING_INDEX]
     );
     assert_ne!(classic[SUMMARY_SETTING_INDEX], basic[SUMMARY_SETTING_INDEX]);
+}
+
+#[test]
+fn button_preset_tab_updates_inspector_effective_setting_values() {
+    let modern = button_options_draw::effective_setting_value_for_test(
+        button_summary_scenario(DEFAULT_PRESET),
+        StorybookButtonOptionControl::Height,
+    );
+    let classic = button_options_draw::effective_setting_value_for_test(
+        button_summary_scenario(INTERACTIVE_PRESET),
+        StorybookButtonOptionControl::Height,
+    );
+    let basic = button_options_draw::effective_setting_value_for_test(
+        button_summary_scenario(EDGE_PRESET),
+        StorybookButtonOptionControl::Height,
+    );
+
+    assert_eq!("auto 40px", modern);
+    assert_eq!("auto 38px", classic);
+    assert_eq!("auto 34px", basic);
 }
 
 #[test]
