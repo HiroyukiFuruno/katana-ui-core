@@ -1,6 +1,7 @@
 use minifb::{MouseButton, MouseMode, Window};
 
 mod button_operation;
+mod state_store;
 
 use super::layout_metrics::MAX_SCROLL_Y;
 use super::navigation_tree::{NavigationRow, TreeExpansionState, row_from_click};
@@ -14,6 +15,7 @@ use super::window_coordinates::{
 };
 pub(super) use button_operation::apply_hover_at;
 use button_operation::button_operation_at;
+use state_store::StorybookScreenStateStore;
 
 const DEFAULT_SELECTED_PAGE: &str = "button";
 const DEFAULT_THEME_ID: &str = "dark";
@@ -28,6 +30,7 @@ pub(super) struct StorybookWindowState {
     pub(super) scrollbar_visible: bool,
     pub(super) tree_expansion: TreeExpansionState,
     pub(super) screen_state: StorybookScreenState,
+    pub(super) screen_states: StorybookScreenStateStore,
     pub(super) drag_scroll_region: Option<PanelScrollRegion>,
 }
 
@@ -42,8 +45,27 @@ impl Default for StorybookWindowState {
             scrollbar_visible: true,
             tree_expansion: TreeExpansionState::default(),
             screen_state: StorybookScreenState::default(),
+            screen_states: StorybookScreenStateStore::default(),
             drag_scroll_region: None,
         }
+    }
+}
+
+impl StorybookWindowState {
+    fn select_page(&mut self, page: &'static str) {
+        self.switch_screen_state(page, self.preset_index);
+    }
+
+    fn select_preset(&mut self, preset_index: usize) {
+        self.switch_screen_state(self.selected_page, preset_index);
+    }
+
+    fn switch_screen_state(&mut self, page: &'static str, preset_index: usize) {
+        self.screen_states
+            .save(self.selected_page, self.preset_index, self.screen_state);
+        self.selected_page = page;
+        self.preset_index = preset_index;
+        self.screen_state = self.screen_states.restore(page, preset_index);
     }
 }
 
@@ -111,7 +133,7 @@ pub(super) fn apply_click(state: &mut StorybookWindowState, x: usize, y: usize) 
     {
         match row {
             NavigationRow::Group(group) => state.tree_expansion.toggle(group),
-            NavigationRow::Page { page, .. } => state.selected_page = page,
+            NavigationRow::Page { page, .. } => state.select_page(page),
         }
         return true;
     }

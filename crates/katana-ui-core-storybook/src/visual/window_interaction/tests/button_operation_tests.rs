@@ -1,10 +1,12 @@
 use super::super::button_operation::{StorybookButtonOperation, button_operation_at};
 use super::super::{StorybookWindowState, apply_click};
 use crate::visual::button_options::{StorybookButtonOptionControl, control_rect};
-use crate::visual::{preview_detail, render};
+use crate::visual::navigation_tree::{NavigationRow, row_from_click};
+use crate::visual::{layout_metrics, preview_detail, render};
 
 const UI_INTERACTION_DIFF_THRESHOLD: usize = 500;
 const BUTTON_BODY_DIFF_THRESHOLD: usize = 40;
+const TEXT_BUTTON_PAGE: &str = "text-button";
 
 #[test]
 fn click_button_operation_updates_action_event_state_for_button_preview() {
@@ -20,6 +22,58 @@ fn click_button_operation_updates_action_event_state_for_button_preview() {
     assert_eq!("button_press", state.screen_state.last_action);
     assert_eq!("button_clicked", state.screen_state.last_event);
     assert_eq!("pressed=true", state.screen_state.state_label);
+}
+
+#[test]
+fn preset_tabs_do_not_share_button_press_state() {
+    let mut state = StorybookWindowState::default();
+    let button = preview_detail::button_action_hit_rect("button");
+    let classic = layout_metrics::preset_tab_rect(layout_metrics::PRESET_INTERACTIVE_INDEX);
+
+    assert!(apply_click(&mut state, button.x + 1, button.y + 1));
+    assert_eq!("pressed=true", state.screen_state.state_label);
+    assert!(apply_click(&mut state, classic.x + 1, classic.y + 1));
+
+    assert_eq!(layout_metrics::PRESET_INTERACTIVE_INDEX, state.preset_index);
+    assert_eq!("idle", state.screen_state.state_label);
+    assert_eq!("none", state.screen_state.last_action);
+    assert_eq!(0, state.screen_state.action_count);
+
+    let modern = layout_metrics::preset_tab_rect(0);
+    assert!(apply_click(&mut state, modern.x + 1, modern.y + 1));
+    assert_eq!(0, state.preset_index);
+    assert_eq!("pressed=true", state.screen_state.state_label);
+    assert_eq!("button_press", state.screen_state.last_action);
+}
+
+#[test]
+fn button_and_text_button_do_not_share_button_press_state() {
+    let mut state = StorybookWindowState::default();
+    let button = preview_detail::button_action_hit_rect("button");
+
+    assert!(apply_click(&mut state, button.x + 1, button.y + 1));
+    assert_eq!("pressed=true", state.screen_state.state_label);
+    click_page(&mut state, TEXT_BUTTON_PAGE);
+
+    assert_eq!(TEXT_BUTTON_PAGE, state.selected_page);
+    assert_eq!("idle", state.screen_state.state_label);
+    assert_eq!("none", state.screen_state.last_action);
+    assert_eq!(0, state.screen_state.action_count);
+
+    let text_button = preview_detail::button_action_hit_rect(TEXT_BUTTON_PAGE);
+    assert!(apply_click(
+        &mut state,
+        text_button.x + 1,
+        text_button.y + 1
+    ));
+    assert_eq!("text_button_press", state.screen_state.last_action);
+
+    click_page(&mut state, "button");
+    assert_eq!("button", state.selected_page);
+    assert_eq!("button_press", state.screen_state.last_action);
+
+    click_page(&mut state, TEXT_BUTTON_PAGE);
+    assert_eq!("text_button_press", state.screen_state.last_action);
 }
 
 #[test]
@@ -141,4 +195,26 @@ fn component_body_pixel_diff(
         }
     }
     diff
+}
+
+fn click_page(state: &mut StorybookWindowState, page: &'static str) {
+    let target = click_target_for_page(page);
+
+    assert!(target.is_some());
+    if let Some((x, y)) = target {
+        assert!(apply_click(state, x, y));
+    }
+}
+
+fn click_target_for_page(page: &str) -> Option<(usize, usize)> {
+    for y in 0..layout_metrics::CONTENT_HEIGHT {
+        let x = layout_metrics::NAV_ROW_X + 1;
+        if matches!(
+            row_from_click(x, y, Default::default()),
+            Some(NavigationRow::Page { page: found, .. }) if found == page
+        ) {
+            return Some((x, y));
+        }
+    }
+    None
 }

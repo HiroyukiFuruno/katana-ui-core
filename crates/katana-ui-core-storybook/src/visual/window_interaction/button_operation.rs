@@ -26,7 +26,7 @@ impl StorybookButtonOperation {
             Self::DarkTheme => state.theme_id = "dark",
             Self::ScrollbarOn => state.scrollbar_visible = true,
             Self::ScrollbarOff => state.scrollbar_visible = false,
-            Self::Preset(index) => state.preset_index = index,
+            Self::Preset(index) => state.select_preset(index),
             Self::PreviewButton => state
                 .screen_state
                 .register_button_click(state.selected_page),
