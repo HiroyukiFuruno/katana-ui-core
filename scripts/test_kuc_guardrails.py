@@ -301,6 +301,29 @@ class KucGuardrailsTest(unittest.TestCase):
 
             self.assertEqual([], failures)
 
+    def test_checks_storybook_reflection_audit_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            failures = KucGuardrails(root).storybook_reflection_audit_policy_failures()
+
+            self.assertEqual(1, len(failures))
+            write_text(
+                root / "Justfile",
+                "kuc-guardrails:\n"
+                "    python3 scripts/test_storybook_reflection_audit.py\n"
+                "storybook-reflection-audit:\n"
+                "    python3 scripts/assert-storybook-reflection-audit.py --strict\n",
+            )
+            write_text(
+                root / "docs/architecture/ui-separation/ui-core-parity-gap.md",
+                "just storybook-reflection-audit missing-* page 固有 surface\n",
+            )
+
+            failures = KucGuardrails(root).storybook_reflection_audit_policy_failures()
+
+            self.assertEqual([], failures)
+
     def test_requires_typed_action_model(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

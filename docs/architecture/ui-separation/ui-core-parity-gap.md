@@ -47,3 +47,19 @@
 6. guard
 
 Storybook は release readiness の根拠にしない。要件行から 1〜6 のいずれかの自動検査へ追跡できない場合は、テストシナリオ漏れとして扱う。
+
+## Storybook 未反映監査
+
+`just storybook-reflection-audit` は、required page が Storybook の固有画面へ反映されているかを監査する。
+この監査は、ページが存在するだけ、汎用 renderer へ落ちるだけ、汎用 preset / 汎用 interaction spec へ逃げるだけの状態を未反映として扱う。
+
+監査対象:
+
+- required page が `dedicated.rs` の page 固有 surface に接続されていること。
+- required page が page 固有 preset label を持つこと。
+- required page が option / action / event / state の明示 spec を持つこと。
+
+現在の用途:
+
+- `just check` の代替ではなく、Storybook 完成度の不足を一覧化するための明示監査とする。
+- v0.1.0 release readiness へ昇格する前に、この監査の `missing-*` を 0 にする。

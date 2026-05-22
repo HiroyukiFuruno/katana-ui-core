@@ -56,6 +56,7 @@ ast-lint:
 # Run katana-ui-core specific guardrails
 kuc-guardrails:
     python3 scripts/test_kuc_guardrails.py
+    python3 scripts/test_storybook_reflection_audit.py
     python3 scripts/assert-kuc-release-readiness.py --self-test
     python3 scripts/assert-kuc-release-readiness.py
     python3 scripts/assert-kuc-guardrails.py
@@ -73,6 +74,10 @@ install-hooks:
 # Run Storybook page structure checks
 storybook-ast-lint:
     python3 scripts/assert-storybook-page-layout.py
+
+# Audit required Storybook pages are reflected into page-specific surfaces.
+storybook-reflection-audit:
+    python3 scripts/assert-storybook-reflection-audit.py --strict
 
 # Reject direct Floem overlay lifecycle calls outside the shared guard.
 overlay-lifecycle-lint:

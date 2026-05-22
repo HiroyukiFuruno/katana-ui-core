@@ -48,6 +48,7 @@ class KucGuardrails:
         failures.extend(self.typed_action_model_failures())
         failures.extend(self.storybook_panel_evidence_failures())
         failures.extend(self.visual_fallback_policy_failures())
+        failures.extend(self.storybook_reflection_audit_policy_failures())
         failures.extend(self.repo_local_guardrail_policy_failures())
         failures.extend(self.agent_stop_policy_failures())
         failures.extend(self.agent_hook_policy_failures())
@@ -339,6 +340,34 @@ class KucGuardrails:
             f"visual fallback policy missing token: {token}"
             for token in required_tokens
             if token not in docs
+        ]
+
+    def storybook_reflection_audit_policy_failures(self) -> list[str]:
+        justfile = self.root / "Justfile"
+        docs = self.guard_docs_source()
+        if not justfile.exists():
+            return ["Justfile: storybook reflection audit recipe is missing"]
+        justfile_source = self.read(justfile)
+        checks = (
+            (justfile_source, "storybook-reflection-audit:", "Justfile"),
+            (
+                justfile_source,
+                "scripts/assert-storybook-reflection-audit.py --strict",
+                "Justfile",
+            ),
+            (
+                justfile_source,
+                "scripts/test_storybook_reflection_audit.py",
+                "Justfile",
+            ),
+            (docs, "just storybook-reflection-audit", "guard docs"),
+            (docs, "missing-*", "guard docs"),
+            (docs, "page 固有 surface", "guard docs"),
+        )
+        return [
+            f"{label}: storybook reflection audit missing token: {token}"
+            for source, token, label in checks
+            if token not in source
         ]
 
     def guard_docs_source(self) -> str:
