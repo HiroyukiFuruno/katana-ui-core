@@ -100,6 +100,23 @@ mod tests {
     }
 
     #[test]
+    fn mouse_point_and_window_surface_must_share_the_same_coordinate_space() {
+        let canvas = SurfaceSize::new(1440, 920);
+        let window = SurfaceSize::new(2160, 1380);
+        let surface_space_point = WindowPoint::new(465.0, 156.0);
+        let scaled_mouse_point = WindowPoint::new(310.0, 104.0);
+
+        assert_eq!(
+            Some(CanvasPoint { x: 310, y: 104 }),
+            window_point_to_canvas_point(surface_space_point, window, canvas)
+        );
+        assert_ne!(
+            Some(CanvasPoint { x: 310, y: 104 }),
+            window_point_to_canvas_point(scaled_mouse_point, window, canvas)
+        );
+    }
+
+    #[test]
     fn letterboxed_window_point_removes_margin_before_mapping() {
         let canvas = SurfaceSize::new(1440, 920);
         let window = SurfaceSize::new(2000, 1200);

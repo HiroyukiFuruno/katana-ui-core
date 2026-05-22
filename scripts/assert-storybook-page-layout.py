@@ -205,6 +205,7 @@ def main() -> int:
         "panel_content_viewports_reserve_scrollbar_gutters",
         "non_overflowing_preview_has_no_scroll_offset",
         "rendered_panel_content_does_not_paint_reserved_scrollbar_gutter",
+        "get_unscaled_mouse_pos",
     )
     evidence_tokens = (
         "storybook-panel-interaction-report.json",
@@ -241,6 +242,19 @@ def main() -> int:
         print("storybook must not render through Floem", file=sys.stderr)
         for token in leaked:
             print(f"- forbidden token: {token}", file=sys.stderr)
+        return 1
+    mouse_position_leaks = []
+    for path in (
+        Path("crates/katana-ui-core-storybook/src/visual/window.rs"),
+        Path("crates/katana-ui-core-storybook/src/visual/window_interaction.rs"),
+    ):
+        candidate = path.read_text(encoding="utf-8")
+        if ".get_mouse_pos(" in candidate:
+            mouse_position_leaks.append(str(path))
+    if mouse_position_leaks:
+        print("storybook mouse hit testing must use unscaled coordinates", file=sys.stderr)
+        for path in mouse_position_leaks:
+            print(f"- scaled mouse coordinate remains: {path}", file=sys.stderr)
         return 1
     legacy_setting_sources = (
         Path("crates/katana-ui-core-storybook/src/catalog/panel_interaction/legacy_detail.rs"),

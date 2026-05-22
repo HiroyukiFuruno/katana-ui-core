@@ -124,7 +124,7 @@ fn present_for_window(window: &Window, frame: &Canvas) -> Canvas {
 }
 
 fn apply_hover(window: &Window, state: &mut StorybookWindowState) -> bool {
-    let Some((x, y)) = window.get_mouse_pos(minifb::MouseMode::Discard) else {
+    let Some((x, y)) = window.get_unscaled_mouse_pos(minifb::MouseMode::Discard) else {
         return state.screen_state.set_preview_hovered(false);
     };
     let (width, height) = window.get_size();

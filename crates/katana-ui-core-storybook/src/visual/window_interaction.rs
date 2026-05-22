@@ -98,7 +98,7 @@ pub(super) fn apply_scroll(window: &Window, state: &mut StorybookWindowState) ->
     if delta_x == 0.0 && delta_y == 0.0 {
         return false;
     }
-    let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) else {
+    let Some((x, y)) = window.get_unscaled_mouse_pos(MouseMode::Discard) else {
         return apply_scroll_delta(state, delta_y);
     };
     let Some(point) = normalize_mouse_point(window, x, y) else {
@@ -117,20 +117,20 @@ pub(super) fn apply_mouse_click(
 ) -> bool {
     let left_started = click_started(window, MouseButton::Left, left_mouse_was_down);
     let right_started = click_started(window, MouseButton::Right, right_mouse_was_down);
-    let Some((x, y)) = window.get_mouse_pos(MouseMode::Discard) else {
-        return false;
-    };
-    let Some(point) = normalize_mouse_point(window, x, y) else {
-        return false;
-    };
-    let x = point.x;
-    let raw_y = point.y;
     if !window.get_mouse_down(MouseButton::Left) {
         state.drag_scroll_target = None;
         if state.screen_state.release_button_press() {
             return true;
         }
     }
+    let Some((mouse_x, mouse_y)) = window.get_unscaled_mouse_pos(MouseMode::Discard) else {
+        return false;
+    };
+    let Some(point) = normalize_mouse_point(window, mouse_x, mouse_y) else {
+        return false;
+    };
+    let x = point.x;
+    let raw_y = point.y;
     if window.get_mouse_down(MouseButton::Left)
         && let Some(target) = state.drag_scroll_target
     {
