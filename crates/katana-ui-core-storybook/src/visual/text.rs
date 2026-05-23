@@ -8,6 +8,9 @@ use std::cell::RefCell;
 
 const TEXT_BUFFER_WIDTH: f32 = 4096.0;
 const LINE_HEIGHT_RATIO: f32 = 1.45;
+const TEXT_SUPERSAMPLE_SCALE: f32 = 2.0;
+const TEXT_SUPERSAMPLE_SCALE_I32: i32 = 2;
+const TEXT_SUPERSAMPLE_SAMPLES: u32 = 4;
 const REGULAR_WEIGHT: u16 = 400;
 const FALLBACK_FONT_SIZE: f32 = 14.0;
 const RED_SHIFT: u32 = 16;
@@ -21,6 +24,7 @@ const SHORTCUT_FONT_ROLE: &str = "shortcut";
 pub(crate) struct TextRenderer {
     font_system: RefCell<FontSystem>,
     swash_cache: RefCell<SwashCache>,
+    raster_cache: RefCell<TextRasterCache>,
     font: FontToken,
 }
 
@@ -30,6 +34,7 @@ impl TextRenderer {
         Self {
             font_system: RefCell::new(FontSystem::new()),
             swash_cache: RefCell::new(SwashCache::new()),
+            raster_cache: RefCell::new(TextRasterCache::default()),
             font,
         }
     }
@@ -76,28 +81,24 @@ impl TextRenderer {
         self.font.family
     }
 
+    #[cfg(test)]
+    #[must_use]
+    pub(crate) fn cache_stats(&self) -> TextCacheStats {
+        self.raster_cache.borrow().stats()
+    }
+
     fn draw_layout(&self, canvas: &mut Canvas, text: &str, x: usize, y: usize, style: TextStyle) {
-        let metrics = Metrics::new(style.size, style.line_height);
-        let mut font_system = self.font_system.borrow_mut();
-        let mut swash_cache = self.swash_cache.borrow_mut();
-        let mut buffer = Buffer::new(&mut font_system, metrics);
-        let mut buffer = buffer.borrow_with(&mut font_system);
-        buffer.set_wrap(Wrap::None);
-        buffer.set_size(Some(TEXT_BUFFER_WIDTH), Some(metrics.line_height));
-        buffer.set_text(
+        let mut raster_cache = self.raster_cache.borrow_mut();
+        let raster_index = raster_cache.index_or_insert(
             text,
-            &attrs_for_text(&self.font, text),
-            Shaping::Advanced,
-            None,
+            style,
+            &self.font,
+            &mut self.font_system.borrow_mut(),
+            &mut self.swash_cache.borrow_mut(),
         );
-        buffer.shape_until_scroll(false);
-        buffer.draw(
-            &mut swash_cache,
-            text_color(style.color),
-            |left, top, _, _, color| {
-                draw_text_pixel(canvas, left, top, x, y, color);
-            },
-        );
+        raster_cache.entries[raster_index]
+            .raster
+            .draw(canvas, x, y, style.color);
     }
 }
 
@@ -113,6 +114,7 @@ impl TextVerticalBox {
     }
 }
 
+#[derive(Clone, Copy)]
 struct TextStyle {
     size: f32,
     line_height: f32,
@@ -127,6 +129,175 @@ impl TextStyle {
             color,
         }
     }
+}
+
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct TextCacheStats {
+    pub(crate) entries: usize,
+    pub(crate) raster_misses: usize,
+}
+
+#[derive(Default)]
+struct TextRasterCache {
+    entries: Vec<TextRasterCacheEntry>,
+    raster_misses: usize,
+}
+
+impl TextRasterCache {
+    fn index_or_insert(
+        &mut self,
+        text: &str,
+        style: TextStyle,
+        font: &FontToken,
+        font_system: &mut FontSystem,
+        swash_cache: &mut SwashCache,
+    ) -> usize {
+        if let Some(index) = self
+            .entries
+            .iter()
+            .position(|entry| entry.matches(text, style, font))
+        {
+            return index;
+        }
+        self.raster_misses += 1;
+        let raster = rasterize_text(text, style, font, font_system, swash_cache);
+        self.entries.push(TextRasterCacheEntry {
+            text: text.to_string(),
+            size_bits: style.size.to_bits(),
+            line_height_bits: style.line_height.to_bits(),
+            family: font.family,
+            weight: font.weight,
+            raster,
+        });
+        self.entries.len() - 1
+    }
+
+    #[cfg(test)]
+    fn stats(&self) -> TextCacheStats {
+        TextCacheStats {
+            entries: self.entries.len(),
+            raster_misses: self.raster_misses,
+        }
+    }
+}
+
+struct TextRasterCacheEntry {
+    text: String,
+    size_bits: u32,
+    line_height_bits: u32,
+    family: FontFamily,
+    weight: u16,
+    raster: CachedTextRaster,
+}
+
+impl TextRasterCacheEntry {
+    fn matches(&self, text: &str, style: TextStyle, font: &FontToken) -> bool {
+        self.text == text
+            && self.size_bits == style.size.to_bits()
+            && self.line_height_bits == style.line_height.to_bits()
+            && self.family == font.family
+            && self.weight == font.weight
+    }
+}
+
+struct CachedTextRaster {
+    pixels: Vec<CachedTextPixel>,
+}
+
+impl CachedTextRaster {
+    fn draw(&self, canvas: &mut Canvas, origin_x: usize, origin_y: usize, color: u32) {
+        let origin_x = origin_x as i32;
+        let origin_y = origin_y as i32;
+        for pixel in &self.pixels {
+            let x = origin_x + pixel.x;
+            let y = origin_y + pixel.y;
+            if x < 0 || y < 0 {
+                continue;
+            }
+            canvas.blend(x as usize, y as usize, color, pixel.alpha);
+        }
+    }
+}
+
+struct CachedTextPixel {
+    x: i32,
+    y: i32,
+    alpha: u8,
+}
+
+#[derive(Clone, Copy)]
+struct SuperSample {
+    x: i32,
+    y: i32,
+    alpha: u8,
+}
+
+fn rasterize_text(
+    text: &str,
+    style: TextStyle,
+    font: &FontToken,
+    font_system: &mut FontSystem,
+    swash_cache: &mut SwashCache,
+) -> CachedTextRaster {
+    let metrics = Metrics::new(
+        style.size * TEXT_SUPERSAMPLE_SCALE,
+        style.line_height * TEXT_SUPERSAMPLE_SCALE,
+    );
+    let mut buffer = Buffer::new(font_system, metrics);
+    let mut buffer = buffer.borrow_with(font_system);
+    buffer.set_wrap(Wrap::None);
+    buffer.set_size(
+        Some(TEXT_BUFFER_WIDTH * TEXT_SUPERSAMPLE_SCALE),
+        Some(metrics.line_height),
+    );
+    buffer.set_text(text, &attrs_for_text(font, text), Shaping::Advanced, None);
+    buffer.shape_until_scroll(false);
+
+    let mut samples = Vec::new();
+    buffer.draw(
+        swash_cache,
+        text_color(style.color),
+        |left, top, _, _, color| {
+            if color.a() == 0 {
+                return;
+            }
+            samples.push(SuperSample {
+                x: left.div_euclid(TEXT_SUPERSAMPLE_SCALE_I32),
+                y: top.div_euclid(TEXT_SUPERSAMPLE_SCALE_I32),
+                alpha: color.a(),
+            });
+        },
+    );
+    samples.sort_unstable_by_key(|sample| (sample.y, sample.x));
+
+    let mut pixels = Vec::with_capacity(samples.len());
+    let mut index = 0;
+    while index < samples.len() {
+        let current = samples[index];
+        let mut alpha_sum = 0u32;
+        while index < samples.len()
+            && samples[index].x == current.x
+            && samples[index].y == current.y
+        {
+            alpha_sum += u32::from(samples[index].alpha);
+            index += 1;
+        }
+        let alpha = (alpha_sum / TEXT_SUPERSAMPLE_SAMPLES)
+            .min(u32::from(OPAQUE_ALPHA))
+            .try_into()
+            .unwrap_or(OPAQUE_ALPHA);
+        if alpha == 0 {
+            continue;
+        }
+        pixels.push(CachedTextPixel {
+            x: current.x,
+            y: current.y,
+            alpha,
+        });
+    }
+
+    CachedTextRaster { pixels }
 }
 
 fn resolve_font(facade: &UiCoreFacade, role: &str) -> FontToken {
@@ -165,26 +336,6 @@ fn family_for_text(family: FontFamily, text: &str) -> Family<'static> {
 
 fn text_color(color: u32) -> Color {
     Color::rgba(red(color), green(color), blue(color), OPAQUE_ALPHA)
-}
-
-fn draw_text_pixel(
-    canvas: &mut Canvas,
-    left: i32,
-    top: i32,
-    origin_x: usize,
-    origin_y: usize,
-    color: Color,
-) {
-    let x = left + origin_x as i32;
-    let y = top + origin_y as i32;
-    if x < 0 || y < 0 {
-        return;
-    }
-    canvas.blend(x as usize, y as usize, rgb(color), color.a());
-}
-
-fn rgb(color: Color) -> u32 {
-    ((color.r() as u32) << RED_SHIFT) | ((color.g() as u32) << GREEN_SHIFT) | color.b() as u32
 }
 
 fn red(color: u32) -> u8 {

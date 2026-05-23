@@ -155,6 +155,36 @@ fn completed_widget_preview_text_boxes_keep_vertical_alignment() {
     }
 }
 
+#[test]
+fn text_renderer_reuses_raster_cache_for_repeated_draws() {
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+    let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
+
+    renderer.draw_centered(
+        &mut canvas,
+        "Foundation",
+        TEXT_X,
+        TextVerticalBox::new(TEXT_Y, WIDGET_LABEL_BOX_HEIGHT),
+        WIDGET_LABEL_TEXT_SIZE,
+        TEXT,
+    );
+    let after_first = renderer.cache_stats();
+    renderer.draw_centered(
+        &mut canvas,
+        "Foundation",
+        TEXT_X + 80,
+        TextVerticalBox::new(TEXT_Y, WIDGET_LABEL_BOX_HEIGHT),
+        WIDGET_LABEL_TEXT_SIZE,
+        TEXT,
+    );
+    let after_second = renderer.cache_stats();
+
+    assert_eq!(1, after_first.entries);
+    assert_eq!(1, after_first.raster_misses);
+    assert_eq!(after_first, after_second);
+}
+
 fn centered_text_delta(renderer: &TextRenderer, sample: &str) -> f32 {
     centered_text_delta_with_size(renderer, sample, TEXT_SIZE, ALIGN_BOX_HEIGHT)
 }

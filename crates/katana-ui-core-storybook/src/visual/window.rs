@@ -16,14 +16,15 @@ const MODAL_WINDOW_TITLE: &str = "katana-ui-core Modal";
 impl StorybookVisual {
     pub fn open_window(self, frames: usize) -> Result<(), minifb::Error> {
         let state = StorybookWindowState::default();
-        let frame = render_frame(&state);
+        let mut renderer = render::StorybookFrameRenderer::new();
+        let frame = render_frame(&mut renderer, &state);
         let mut window = Window::new(
             MAIN_WINDOW_TITLE,
             frame.width(),
             frame.height(),
             main_window_options(),
         )?;
-        run_single_window(&mut window, frame, frames)
+        run_single_window(&mut window, &mut renderer, frame, frames)
     }
 
     pub fn open_modal_window(
@@ -79,6 +80,7 @@ fn create_window(title: &str, frame: &Canvas) -> Result<Window, minifb::Error> {
 
 fn run_single_window(
     window: &mut Window,
+    renderer: &mut render::StorybookFrameRenderer,
     mut frame: Canvas,
     frames: usize,
 ) -> Result<(), minifb::Error> {
@@ -102,7 +104,7 @@ fn run_single_window(
                 &mut right_mouse_was_down,
             )
         {
-            frame = render_frame(&state);
+            frame = render_frame(renderer, &state);
             frame_changed = true;
         }
         let window_size = window.get_size();
@@ -138,8 +140,11 @@ fn apply_hover(window: &Window, state: &mut StorybookWindowState) -> bool {
     super::window_interaction::apply_hover_at(state, point.x, point.y)
 }
 
-fn render_frame(state: &StorybookWindowState) -> Canvas {
-    render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
+fn render_frame(
+    renderer: &mut render::StorybookFrameRenderer,
+    state: &StorybookWindowState,
+) -> Canvas {
+    renderer.render(render::StorybookRenderOptions {
         theme_id: state.theme_id,
         selected_page: state.selected_page,
         preset_index: state.preset_index,

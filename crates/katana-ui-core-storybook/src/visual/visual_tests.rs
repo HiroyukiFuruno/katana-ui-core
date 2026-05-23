@@ -331,6 +331,99 @@ fn navigation_section_disclosure_is_indented_right_of_group_disclosure() {
 }
 
 #[test]
+fn navigation_horizontal_connectors_reach_label_start_for_each_depth() {
+    let expansion = TreeExpansionState::default();
+    let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
+    let canvas = StorybookVisual.render_scenario("dark", "tree-view", false);
+    let rows = [
+        (
+            0,
+            navigation_row_y_for_group(expansion, StoryGroup::Foundation)
+                .expect("group row should be visible"),
+        ),
+        (
+            1,
+            navigation_row_y_for_section(expansion).expect("section row should be visible"),
+        ),
+        (
+            2,
+            navigation_row_y_for_section_page(expansion).expect("page row should be visible"),
+        ),
+    ];
+
+    for (depth, row_y) in rows {
+        let y = row_y + layout_metrics::NAV_ROW_HEIGHT / 2;
+        for x in navigation_line_x(depth)..navigation_connector_target_x(depth) {
+            assert_eq!(
+                Some(palette.border),
+                pixel_at(&canvas, x, y),
+                "navigation connector should continue at depth {depth} ({x}, {y})"
+            );
+        }
+    }
+}
+
+#[test]
+fn navigation_disclosure_and_labels_share_row_center() {
+    let expansion = TreeExpansionState::default();
+    let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
+    let canvas = StorybookVisual.render_scenario("dark", "tree-view", false);
+    let rows = [
+        (
+            0,
+            navigation_row_y_for_group(expansion, StoryGroup::Foundation)
+                .expect("group row should be visible"),
+        ),
+        (
+            1,
+            navigation_row_y_for_section(expansion).expect("section row should be visible"),
+        ),
+    ];
+
+    for (depth, row_y) in rows {
+        let disclosure_center_y = navigation_disclosure_center_y(row_y) as f32;
+        let bounds = ink_vertical_bounds_in_rect(
+            &canvas,
+            navigation_label_x(depth),
+            row_y,
+            navigation_label_sample_width(depth),
+            layout_metrics::NAV_ROW_HEIGHT,
+            palette.code_background,
+        )
+        .expect("navigation label should have visible ink");
+        let label_center_y = (bounds.top + bounds.bottom) as f32 / 2.0;
+
+        assert!(
+            (label_center_y - disclosure_center_y).abs() <= 2.0,
+            "navigation depth {depth} label center {label_center_y} should align with disclosure center {disclosure_center_y}"
+        );
+    }
+}
+
+#[test]
+fn navigation_label_text_uses_antialiased_edges() {
+    let expansion = TreeExpansionState::default();
+    let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
+    let canvas = StorybookVisual.render_scenario("dark", "tree-view", false);
+    let group_row_y = navigation_row_y_for_group(expansion, StoryGroup::Foundation)
+        .expect("group row should be visible");
+    let antialiased_pixels = count_text_antialias_pixels(
+        &canvas,
+        navigation_label_x(0),
+        group_row_y,
+        navigation_label_sample_width(0),
+        layout_metrics::NAV_ROW_HEIGHT,
+        palette.code_background,
+        palette.muted,
+    );
+
+    assert!(
+        antialiased_pixels > 0,
+        "navigation label should contain blended edge pixels"
+    );
+}
+
+#[test]
 fn navigation_selected_page_does_not_render_page_icon_style_square_marker() {
     const LEGACY_MARK_X: usize = 74;
     const LEGACY_MARK_SIZE: usize = 14;
@@ -420,6 +513,33 @@ fn navigation_row_y_for_section(expansion: TreeExpansionState) -> Option<usize> 
         .map(|index| layout_metrics::NAV_FIRST_ROW_Y + index * layout_metrics::NAV_ROW_STEP)
 }
 
+fn navigation_row_y_for_section_page(expansion: TreeExpansionState) -> Option<usize> {
+    visible_rows(expansion)
+        .iter()
+        .position(|row| matches!(row, NavigationRow::Page { .. }))
+        .map(|index| layout_metrics::NAV_FIRST_ROW_Y + index * layout_metrics::NAV_ROW_STEP)
+}
+
+fn navigation_label_x(depth: usize) -> usize {
+    match depth {
+        0 => 62,
+        1 => 78,
+        _ => 98,
+    }
+}
+
+fn navigation_connector_target_x(depth: usize) -> usize {
+    navigation_label_x(depth).saturating_sub(1)
+}
+
+fn navigation_label_sample_width(depth: usize) -> usize {
+    match depth {
+        0 => 140,
+        1 => 140,
+        _ => 160,
+    }
+}
+
 fn navigation_disclosure_center_x(depth: usize) -> usize {
     navigation_disclosure_left_x(depth) + navigation_disclosure_center_offset()
 }
@@ -437,9 +557,60 @@ fn navigation_disclosure_size() -> usize {
 }
 
 fn navigation_disclosure_center_y(row_y: usize) -> usize {
-    row_y
-        + (layout_metrics::NAV_ROW_HEIGHT - navigation_disclosure_size()) / 2
-        + navigation_disclosure_center_offset()
+    row_y + layout_metrics::NAV_ROW_HEIGHT / 2
+}
+
+struct InkVerticalBounds {
+    top: usize,
+    bottom: usize,
+}
+
+fn ink_vertical_bounds_in_rect(
+    canvas: &Canvas,
+    x: usize,
+    y: usize,
+    width: usize,
+    height: usize,
+    background: u32,
+) -> Option<InkVerticalBounds> {
+    let mut top = y + height;
+    let mut bottom = y;
+    for current_y in y..y + height {
+        for current_x in x..x + width {
+            if pixel_at(canvas, current_x, current_y) == Some(background) {
+                continue;
+            }
+            top = top.min(current_y);
+            bottom = bottom.max(current_y);
+        }
+    }
+    if top > bottom {
+        return None;
+    }
+    Some(InkVerticalBounds { top, bottom })
+}
+
+fn count_text_antialias_pixels(
+    canvas: &Canvas,
+    x: usize,
+    y: usize,
+    width: usize,
+    height: usize,
+    background: u32,
+    text: u32,
+) -> usize {
+    let mut count = 0;
+    for current_y in y..y + height {
+        for current_x in x..x + width {
+            let Some(pixel) = pixel_at(canvas, current_x, current_y) else {
+                continue;
+            };
+            if pixel != background && pixel != text {
+                count += 1;
+            }
+        }
+    }
+    count
 }
 
 fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {

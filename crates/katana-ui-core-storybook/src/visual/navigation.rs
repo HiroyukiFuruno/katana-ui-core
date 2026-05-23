@@ -17,7 +17,7 @@ const GROUP_LINE_X: usize = 54;
 const GROUP_TEXT_X: usize = 62;
 const SECTION_TEXT_X: usize = 78;
 const PAGE_TEXT_X: usize = 98;
-const DISCLOSURE_SIZE: usize = 7;
+const CONNECTOR_LABEL_GAP: usize = 1;
 const NAV_TEXT_SIZE: f32 = 12.0;
 const NAV_GROUP_TEXT_SIZE: f32 = 11.0;
 const TREE_LINE_WIDTH: usize = 1;
@@ -322,7 +322,7 @@ fn guide_x(level: usize) -> usize {
 }
 
 fn guide_target_x(depth: NavigationDepth) -> usize {
-    disclosure_target_x(depth)
+    text_x(depth).saturating_sub(CONNECTOR_LABEL_GAP)
 }
 
 fn disclosure_x(depth: NavigationDepth) -> usize {
@@ -330,14 +330,6 @@ fn disclosure_x(depth: NavigationDepth) -> usize {
         NavigationDepth::Group => GROUP_LINE_X.saturating_sub(4),
         NavigationDepth::Section => SECTION_LINE_X.saturating_sub(4),
         NavigationDepth::Page => PAGE_LINE_X.saturating_sub(4),
-    }
-}
-
-fn disclosure_target_x(depth: NavigationDepth) -> usize {
-    match depth {
-        NavigationDepth::Group => disclosure_x(NavigationDepth::Group) + DISCLOSURE_SIZE,
-        NavigationDepth::Section => disclosure_x(NavigationDepth::Section) + DISCLOSURE_SIZE,
-        NavigationDepth::Page => disclosure_x(NavigationDepth::Page) + DISCLOSURE_SIZE,
     }
 }
 
@@ -368,5 +360,13 @@ fn page_text_x(depth: PageDepth) -> usize {
     match depth {
         PageDepth::Section => PAGE_TEXT_X,
         PageDepth::Sectionless => SECTION_TEXT_X,
+    }
+}
+
+fn text_x(depth: NavigationDepth) -> usize {
+    match depth {
+        NavigationDepth::Group => GROUP_TEXT_X,
+        NavigationDepth::Section => SECTION_TEXT_X,
+        NavigationDepth::Page => PAGE_TEXT_X,
     }
 }

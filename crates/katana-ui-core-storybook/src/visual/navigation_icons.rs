@@ -44,5 +44,5 @@ fn draw_closed_disclosure(canvas: &mut Canvas, palette: &VisualPalette, x: usize
 }
 
 fn centered_icon_y(row_y: usize, icon_size: usize) -> usize {
-    row_y + (NAV_ROW_HEIGHT - icon_size) / 2
+    row_y + NAV_ROW_HEIGHT / 2 - icon_size / 2
 }
