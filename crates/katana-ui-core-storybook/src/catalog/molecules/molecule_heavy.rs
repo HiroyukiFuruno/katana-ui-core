@@ -179,7 +179,12 @@ fn tree_view_story() -> StoryExample {
                 .expanded(true),
         )
         .item(
-            TreeNode::new("button", "Button", TREE_CHILD_DEPTH)
+            TreeNode::new("controls", "Controls", TREE_CHILD_DEPTH)
+                .directory()
+                .expanded(true),
+        )
+        .item(
+            TreeNode::new("button", "Button", TREE_CHILD_DEPTH + 1)
                 .file()
                 .selected(true),
         )

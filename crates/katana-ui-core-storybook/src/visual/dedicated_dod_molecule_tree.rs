@@ -145,6 +145,10 @@ fn draw_tree_row(
     y: usize,
 ) {
     let row_y = y + parts::TREE_PANEL_Y + m::PX_6 + index * parts::ROW_HEIGHT;
+    let row_center_y = row_y + m::PX_8;
+    let disclosure_x = x + parts::DISCLOSURE_X + node.depth * parts::INDENT_STEP;
+    let marker_x = x + parts::NODE_ICON_X + node.depth * parts::INDENT_STEP;
+    let label_x = x + parts::LABEL_X + node.depth * parts::INDENT_STEP;
     if node.selected {
         common::fill(
             canvas,
@@ -157,33 +161,68 @@ fn draw_tree_row(
             palette.accent,
         );
     }
-    text.draw(
-        canvas,
-        toggle_label(node),
-        x + m::PX_22,
-        row_y + m::PX_2,
-        m::FONT_8,
-        palette.text,
-    );
-    let icon_x = parts::NODE_ICON_X + node.depth * m::PX_20;
     if matches!(node.kind, UiTreeNodeKind::Directory) {
-        parts::branch_marker(canvas, x + icon_x, row_y);
+        parts::draw_disclosure(canvas, palette.muted, disclosure_x, row_y, node.expanded);
+    }
+    draw_indent_guides(
+        canvas,
+        palette,
+        node,
+        disclosure_x + m::PX_4 + m::PX_1,
+        row_center_y,
+        row_y,
+    );
+    if matches!(node.kind, UiTreeNodeKind::Directory) {
+        parts::branch_marker(canvas, marker_x, row_y);
     } else {
-        parts::leaf_marker(canvas, x + icon_x, row_y);
+        parts::leaf_marker(canvas, marker_x, row_y);
     }
     text.draw(
         canvas,
         &node.label,
-        x + parts::LABEL_X + node.depth * m::PX_20,
+        label_x,
         row_y + m::PX_2,
         m::FONT_8,
         palette.text,
     );
 }
 
-fn toggle_label(node: &UiTreeNodeProps) -> &'static str {
-    if !matches!(node.kind, UiTreeNodeKind::Directory) {
-        return "";
+fn draw_indent_guides(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    node: &UiTreeNodeProps,
+    guide_center_x: usize,
+    row_center_y: usize,
+    row_y: usize,
+) {
+    for level in 0..node.depth {
+        let level_x = guide_center_x - node.depth * parts::INDENT_STEP + level * parts::INDENT_STEP;
+        common::fill(
+            canvas,
+            Rect::new(
+                level_x,
+                row_y.saturating_sub(m::PX_2),
+                m::PX_1,
+                parts::ROW_HEIGHT + m::PX_2,
+            ),
+            palette.border,
+        );
     }
-    if node.expanded { "v" } else { ">" }
+    common::fill(
+        canvas,
+        Rect::new(
+            guide_center_x,
+            row_center_y,
+            parts::INDENT_STEP - m::PX_4,
+            m::PX_1,
+        ),
+        palette.border,
+    );
+    if matches!(node.kind, UiTreeNodeKind::Directory) && node.expanded {
+        common::fill(
+            canvas,
+            Rect::new(guide_center_x, row_center_y, m::PX_1, parts::ROW_HEIGHT),
+            palette.border,
+        );
+    }
 }

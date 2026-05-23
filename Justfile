@@ -59,6 +59,8 @@ kuc-guardrails:
     python3 scripts/test_storybook_reflection_audit.py
     python3 scripts/assert-kuc-release-readiness.py --self-test
     python3 scripts/assert-kuc-release-readiness.py
+    python3 scripts/assert-storybook-consumer-contract.py --self-test
+    python3 scripts/assert-storybook-consumer-contract.py
     python3 scripts/assert-kuc-guardrails.py
     bash scripts/assert-core-dependency-boundary.sh
     bash scripts/assert-core-public-api-neutral.sh

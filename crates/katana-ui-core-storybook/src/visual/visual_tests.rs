@@ -1,6 +1,5 @@
 use super::{
-    Canvas, StorybookVisual, dedicated_dod_molecule_tree_parts as tree_parts, layout_metrics,
-    palette, preview, preview_contract, preview_detail,
+    Canvas, StorybookVisual, layout_metrics, palette, preview, preview_contract, preview_detail,
 };
 use katana_ui_core::theme::ThemeSnapshot;
 use std::collections::BTreeMap;
@@ -201,44 +200,6 @@ fn legacy_01_24_pages_have_dedicated_preview_signatures() {
     }
 
     assert_eq!(LEGACY_DOD_PREVIEW_PAGES.len(), signatures.len());
-}
-
-#[test]
-fn tree_view_preview_draws_tree_specific_affordances() {
-    let canvas = StorybookVisual.render_preset("dark", "tree-view", 1, 0);
-    let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
-    let rect = preview_detail::component_action_hit_rect("tree-view");
-    let row_y = rect.y + tree_parts::TREE_PANEL_Y + 6;
-    let selected_row_y = row_y + tree_parts::ROW_HEIGHT;
-
-    assert_eq!(
-        Some(palette.accent),
-        pixel_at(
-            &canvas,
-            rect.x + tree_parts::TREE_PANEL_X + 4,
-            selected_row_y - 1
-        )
-    );
-    assert_eq!(
-        Some(0xd7ba7d),
-        pixel_at(&canvas, rect.x + tree_parts::NODE_ICON_X + 2, row_y + 5)
-    );
-    assert_eq!(
-        Some(0x9cdcfe),
-        pixel_at(
-            &canvas,
-            rect.x + tree_parts::CHILD_ICON_X + 2,
-            selected_row_y + 5
-        )
-    );
-    assert_eq!(
-        Some(palette.border),
-        pixel_at(
-            &canvas,
-            rect.x + tree_parts::LINE_X,
-            rect.y + tree_parts::TREE_PANEL_Y + 48
-        )
-    );
 }
 
 fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {

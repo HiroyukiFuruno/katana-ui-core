@@ -11,42 +11,67 @@ pub(super) const TREE_PANEL_WIDTH: usize = 178;
 pub(super) const TREE_PANEL_HEIGHT: usize = 68;
 pub(super) const ROW_HEIGHT: usize = 17;
 pub(super) const LINE_X: usize = 31;
-pub(super) const NODE_ICON_X: usize = 48;
+pub(super) const DISCLOSURE_X: usize = 24;
+pub(super) const INDENT_STEP: usize = 18;
+pub(super) const NODE_ICON_X: usize = 36;
 #[cfg(test)]
-pub(super) const CHILD_ICON_X: usize = 68;
-pub(super) const LABEL_X: usize = 82;
+pub(super) const CHILD_ICON_X: usize = 54;
+#[cfg(test)]
+pub(super) const GRANDCHILD_ICON_X: usize = 72;
+pub(super) const LABEL_X: usize = 50;
 const CONTEXT_X: usize = 212;
 const CONTEXT_Y: usize = 30;
 const CONTEXT_WIDTH: usize = 112;
 const CONTEXT_HEIGHT: usize = 58;
-const BRANCH_MARKER_COLOR: u32 = 0xd7ba7d;
-const LEAF_MARKER_COLOR: u32 = 0x9cdcfe;
+const BRANCH_MARKER_COLOR: u32 = 0x9aa4b2;
+const LEAF_MARKER_COLOR: u32 = 0xb7c0cd;
 const MENU_COLOR: u32 = 0x252a33;
 
 pub(super) fn branch_marker(canvas: &mut Canvas, x: usize, y: usize) {
     common::fill(
         canvas,
-        Rect::new(x, y + m::PX_2 + m::PX_2, m::PX_14, m::PX_10),
+        Rect::new(x + m::PX_2, y + m::PX_4, m::PX_8, m::PX_8),
         BRANCH_MARKER_COLOR,
     );
     common::fill(
         canvas,
-        Rect::new(x + m::PX_2, y + m::PX_1, m::PX_8, m::PX_2 + m::PX_2),
-        BRANCH_MARKER_COLOR,
+        Rect::new(x + m::PX_4, y + m::PX_6, m::PX_4, m::PX_4),
+        MENU_COLOR,
     );
 }
 
 pub(super) fn leaf_marker(canvas: &mut Canvas, x: usize, y: usize) {
     common::fill(
         canvas,
-        Rect::new(x + m::PX_2, y + m::PX_1, m::PX_10, m::PX_13),
+        Rect::new(x + m::PX_4, y + m::PX_6, m::PX_4, m::PX_4),
         LEAF_MARKER_COLOR,
     );
-    common::fill(
-        canvas,
-        Rect::new(x + m::PX_8 + m::PX_1, y + m::PX_1, m::PX_3, m::PX_3),
-        MENU_COLOR,
-    );
+}
+
+pub(super) fn draw_disclosure(canvas: &mut Canvas, color: u32, x: usize, y: usize, expanded: bool) {
+    if expanded {
+        common::fill(
+            canvas,
+            Rect::new(x + m::PX_3, y + m::PX_8, m::PX_6, m::PX_2),
+            color,
+        );
+        common::fill(
+            canvas,
+            Rect::new(x + m::PX_4 + m::PX_1, y + m::PX_10, m::PX_2, m::PX_2),
+            color,
+        );
+    } else {
+        common::fill(
+            canvas,
+            Rect::new(x + m::PX_4, y + m::PX_6, m::PX_2, m::PX_6),
+            color,
+        );
+        common::fill(
+            canvas,
+            Rect::new(x + m::PX_6, y + m::PX_8, m::PX_2, m::PX_2),
+            color,
+        );
+    }
 }
 
 pub(super) fn draw_context_menu(
