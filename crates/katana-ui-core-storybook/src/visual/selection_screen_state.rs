@@ -16,8 +16,11 @@ pub(super) struct SelectionScreenState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum SelectionScreenAction {
+    SelectStateRead,
     SelectOpen,
+    SelectClose,
     SelectOption(usize),
+    SelectReset,
     ComboFilter,
     ComboOption(usize),
     SelectionListToggle(usize),
@@ -33,12 +36,23 @@ pub(super) struct SelectionScreenUpdate {
 impl SelectionScreenState {
     pub(super) fn apply(&mut self, action: SelectionScreenAction) -> SelectionScreenUpdate {
         match action {
+            SelectionScreenAction::SelectStateRead => self.read_select_state(),
             SelectionScreenAction::SelectOpen => self.open_select(),
+            SelectionScreenAction::SelectClose => self.close_select(),
             SelectionScreenAction::SelectOption(index) => self.select_option(index),
+            SelectionScreenAction::SelectReset => self.reset_select(),
             SelectionScreenAction::ComboFilter => self.filter_combo(),
             SelectionScreenAction::ComboOption(index) => self.select_combo_option(index),
             SelectionScreenAction::SelectionListToggle(index) => self.toggle_selection_list(index),
         }
+    }
+
+    fn read_select_state(&mut self) -> SelectionScreenUpdate {
+        SelectionScreenUpdate::new(
+            "select_state_read",
+            "select_state_read",
+            select_read_state(self.select_open, self.select_selected_index),
+        )
     }
 
     fn open_select(&mut self) -> SelectionScreenUpdate {
@@ -46,10 +60,21 @@ impl SelectionScreenState {
         SelectionScreenUpdate::new("select_open", "select_opened", "open=true")
     }
 
+    fn close_select(&mut self) -> SelectionScreenUpdate {
+        self.select_open = false;
+        SelectionScreenUpdate::new("select_close", "select_closed", "open=false")
+    }
+
     fn select_option(&mut self, index: usize) -> SelectionScreenUpdate {
         self.select_open = false;
         self.select_selected_index = Some(index);
         SelectionScreenUpdate::new("select_option", "select_changed", select_state(index))
+    }
+
+    fn reset_select(&mut self) -> SelectionScreenUpdate {
+        self.select_open = false;
+        self.select_selected_index = None;
+        SelectionScreenUpdate::new("select_reset", "select_reset", "selected=none")
     }
 
     fn filter_combo(&mut self) -> SelectionScreenUpdate {
@@ -86,6 +111,19 @@ fn select_state(index: usize) -> &'static str {
         DARK_OPTION_INDEX => "selected=dark",
         SYSTEM_OPTION_INDEX => "selected=system",
         _ => "selected=none",
+    }
+}
+
+fn select_read_state(is_open: bool, selected_index: Option<usize>) -> &'static str {
+    match (is_open, selected_index) {
+        (true, Some(LIGHT_OPTION_INDEX)) => "open=true selected=light",
+        (true, Some(DARK_OPTION_INDEX)) => "open=true selected=dark",
+        (true, Some(SYSTEM_OPTION_INDEX)) => "open=true selected=system",
+        (true, _) => "open=true selected=none",
+        (false, Some(LIGHT_OPTION_INDEX)) => "open=false selected=light",
+        (false, Some(DARK_OPTION_INDEX)) => "open=false selected=dark",
+        (false, Some(SYSTEM_OPTION_INDEX)) => "open=false selected=system",
+        (false, _) => "open=false selected=none",
     }
 }
 

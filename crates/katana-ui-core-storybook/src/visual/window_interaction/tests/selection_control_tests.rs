@@ -1,13 +1,20 @@
 use super::super::{StorybookWindowState, apply_click};
+use crate::catalog::StoryCatalog;
+use crate::visual::dedicated_dod_form_select_live;
 use crate::visual::visual_interaction_test_support::component_body_pixel_diff;
 use crate::visual::{layout_metrics::LayoutRect, selection_control_metrics as sc};
 use crate::visual::{preview_detail, render};
+use katana_ui_core::component::ComponentAction;
+use katana_ui_core::interaction::UiAction;
+use katana_ui_core::molecule;
+use std::collections::BTreeSet;
 
 const SELECT_BOX_PAGE: &str = "select-box";
 const COMBO_BOX_PAGE: &str = "combo-box";
 const SEARCH_BOX_PAGE: &str = "search-box";
 const SELECTION_LIST_PAGE: &str = "selection-list";
 const COMPONENT_BODY_DIFF_THRESHOLD: usize = 80;
+const CLICK_CENTER: usize = 2;
 const TRIGGER_X_OFFSET: usize = 20;
 const TRIGGER_Y_OFFSET: usize = 34;
 const OPTION_X_OFFSET: usize = 20;
@@ -204,6 +211,188 @@ fn select_box_layout_parts_do_not_overlap_in_open_and_base_states() {
         )
     };
     assert!(!opened_rect.overlaps(status));
+}
+
+#[test]
+fn select_box_control_buttons_apply_expected_actions_and_state_changes() {
+    let mut state = state_for(SELECT_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(SELECT_BOX_PAGE);
+    let read = dedicated_dod_form_select_live::select_state_read_button_rect(rect.x, rect.y);
+    let open = dedicated_dod_form_select_live::select_open_button_rect(rect.x, rect.y);
+    let close = dedicated_dod_form_select_live::select_close_button_rect(rect.x, rect.y);
+    let reset = dedicated_dod_form_select_live::select_reset_button_rect(rect.x, rect.y);
+
+    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
+    assert_eq!("select_state_read", state.screen_state.last_action);
+    assert_eq!("select_state_read", state.screen_state.last_event);
+    assert_eq!("open=false selected=none", state.screen_state.state_label);
+
+    assert!(apply_click(&mut state, open.x + CLICK_CENTER, open.y + CLICK_CENTER));
+    assert_eq!("select_open", state.screen_state.last_action);
+    assert_eq!("select_opened", state.screen_state.last_event);
+    assert_eq!("open=true", state.screen_state.state_label);
+    assert!(state.screen_state.selection.select_open);
+
+    assert!(apply_click(
+        &mut state,
+        close.x + CLICK_CENTER,
+        close.y + CLICK_CENTER
+    ));
+    assert_eq!("select_close", state.screen_state.last_action);
+    assert_eq!("select_closed", state.screen_state.last_event);
+    assert_eq!("open=false", state.screen_state.state_label);
+    assert!(!state.screen_state.selection.select_open);
+
+    assert!(apply_click(&mut state, open.x + CLICK_CENTER, open.y + CLICK_CENTER));
+    assert!(apply_click(
+        &mut state,
+        rect.x + OPTION_X_OFFSET,
+        rect.y + SELECT_DARK_OPTION_Y_OFFSET
+    ));
+    assert_eq!("selected=dark", state.screen_state.state_label);
+
+    assert!(apply_click(
+        &mut state,
+        reset.x + CLICK_CENTER,
+        reset.y + CLICK_CENTER
+    ));
+    assert_eq!("select_reset", state.screen_state.last_action);
+    assert_eq!("select_reset", state.screen_state.last_event);
+    assert_eq!("selected=none", state.screen_state.state_label);
+    assert_eq!(None, state.screen_state.selection.select_selected_index);
+    assert!(!state.screen_state.selection.select_open);
+}
+
+#[test]
+fn select_box_hit_target_includes_trigger_option_and_control_buttons() {
+    let mut state = state_for(SELECT_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(SELECT_BOX_PAGE);
+    let trigger = LayoutRect::new(
+        rect.x + sc::TRIGGER_X,
+        rect.y + sc::TRIGGER_Y,
+        sc::TRIGGER_WIDTH,
+        sc::TRIGGER_HEIGHT,
+    );
+    let option_label_x = rect.x + sc::TRIGGER_X + sc::TEXT_X;
+    let option_label_y = rect.y + sc::SELECT_OPTIONS_Y + sc::SELECT_OPTION_HEIGHT * 2 + CLICK_CENTER;
+    let read = dedicated_dod_form_select_live::select_state_read_button_rect(rect.x, rect.y);
+    let open = dedicated_dod_form_select_live::select_open_button_rect(rect.x, rect.y);
+    let close = dedicated_dod_form_select_live::select_close_button_rect(rect.x, rect.y);
+    let reset = dedicated_dod_form_select_live::select_reset_button_rect(rect.x, rect.y);
+
+    assert!(rect.contains(trigger.x + CLICK_CENTER, trigger.y + CLICK_CENTER));
+    assert!(!read.overlaps(open));
+    assert!(!open.overlaps(close));
+    assert!(!close.overlaps(reset));
+
+    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
+    assert_eq!("select_state_read", state.screen_state.last_action);
+    assert!(apply_click(&mut state, open.x + CLICK_CENTER, open.y + CLICK_CENTER));
+    assert_eq!("select_open", state.screen_state.last_action);
+    assert!(apply_click(
+        &mut state,
+        close.x + CLICK_CENTER,
+        close.y + CLICK_CENTER
+    ));
+    assert_eq!("select_close", state.screen_state.last_action);
+    assert!(apply_click(
+        &mut state,
+        reset.x + CLICK_CENTER,
+        reset.y + CLICK_CENTER
+    ));
+    assert_eq!("select_reset", state.screen_state.last_action);
+
+    assert!(apply_click(
+        &mut state,
+        trigger.x + CLICK_CENTER,
+        trigger.y + CLICK_CENTER
+    ));
+    assert!(apply_click(&mut state, option_label_x, option_label_y));
+    assert_eq!("select_option", state.screen_state.last_action);
+    assert_eq!("select_changed", state.screen_state.last_event);
+    assert_eq!("selected=dark", state.screen_state.state_label);
+}
+
+#[test]
+fn select_box_visual_and_catalog_use_same_typed_action_names() {
+    let select = StoryCatalog
+        .examples()
+        .into_iter()
+        .find(|it| it.page == "select-box")
+        .expect("select-box story missing");
+    let catalog_actions: BTreeSet<String> = select
+        .callback_logs
+        .iter()
+        .map(|it| it.action.clone())
+        .filter(|it| {
+            matches!(
+                it.as_str(),
+                "select_state_read"
+                    | "select_open"
+                    | "select_close"
+                    | "select_option"
+                    | "select_reset"
+            )
+        })
+        .collect();
+
+    let mut state = state_for(SELECT_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(SELECT_BOX_PAGE);
+    let read = dedicated_dod_form_select_live::select_state_read_button_rect(rect.x, rect.y);
+    let open = dedicated_dod_form_select_live::select_open_button_rect(rect.x, rect.y);
+    let close = dedicated_dod_form_select_live::select_close_button_rect(rect.x, rect.y);
+    let reset = dedicated_dod_form_select_live::select_reset_button_rect(rect.x, rect.y);
+    let mut visual_actions: BTreeSet<String> = BTreeSet::new();
+    for point in [
+        (read.x + CLICK_CENTER, read.y + CLICK_CENTER),
+        (open.x + CLICK_CENTER, open.y + CLICK_CENTER),
+        (close.x + CLICK_CENTER, close.y + CLICK_CENTER),
+        (open.x + CLICK_CENTER, open.y + CLICK_CENTER),
+        (rect.x + OPTION_X_OFFSET, rect.y + SELECT_DARK_OPTION_Y_OFFSET),
+        (reset.x + CLICK_CENTER, reset.y + CLICK_CENTER),
+    ] {
+        assert!(apply_click(&mut state, point.0, point.1));
+        visual_actions.insert(state.screen_state.last_action.to_string());
+    }
+
+    assert_eq!(catalog_actions, visual_actions);
+}
+
+#[test]
+fn select_box_visual_state_matches_core_select_box_selected_contract() {
+    let mut core_select = molecule::SelectBox::new("Select box")
+        .item(molecule::ChoiceItem::new("light", "Light"))
+        .item(molecule::ChoiceItem::new("dark", "Dark"))
+        .item(molecule::ChoiceItem::new("system", "System"));
+    let target = core_select.state_id().clone();
+    let core_result = core_select.apply_action(&UiAction::select_box_selected(target, 1));
+    assert!(
+        core_result
+            .callback_log
+            .iter()
+            .any(|it| it.action == "select_box_selected")
+    );
+    let core_node: katana_ui_core::render_model::UiNode = core_select.into();
+    let core_interaction = &core_node.props().interaction;
+    assert_eq!(1, core_interaction.selected_index);
+    assert!(core_interaction.has_selection);
+    assert_eq!("dark", core_interaction.value);
+    assert!(!core_interaction.open);
+
+    let mut visual = state_for(SELECT_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(SELECT_BOX_PAGE);
+    assert!(apply_click(
+        &mut visual,
+        rect.x + sc::TRIGGER_X + CLICK_CENTER,
+        rect.y + sc::TRIGGER_Y + CLICK_CENTER
+    ));
+    assert!(apply_click(
+        &mut visual,
+        rect.x + OPTION_X_OFFSET,
+        rect.y + SELECT_DARK_OPTION_Y_OFFSET
+    ));
+    assert_eq!(Some(2), visual.screen_state.selection.select_selected_index);
+    assert_eq!("selected=dark", visual.screen_state.state_label);
 }
 
 #[test]

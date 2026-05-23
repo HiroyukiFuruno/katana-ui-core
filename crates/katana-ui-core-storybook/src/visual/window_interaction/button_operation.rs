@@ -1,5 +1,6 @@
 use super::StorybookWindowState;
 use crate::visual::dedicated_dod_form_binary_choice_live as binary_choice_live;
+use crate::visual::dedicated_dod_form_select_live as select_live;
 use crate::catalog::StoryPresetLabels;
 use crate::visual::button_options::{StorybookButtonOptionControl, control_at, is_button_page};
 use crate::visual::layout_metrics::{
@@ -133,6 +134,28 @@ fn selection_control_operation_at(
 ) -> Option<StorybookButtonOperation> {
     let page = state.selected_page;
     let component = preview_detail::component_action_hit_rect(page);
+    if page == "select-box" {
+        if select_live::select_state_read_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SelectionControl(
+                SelectionScreenAction::SelectStateRead,
+            ));
+        }
+        if select_live::select_open_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SelectionControl(
+                SelectionScreenAction::SelectOpen,
+            ));
+        }
+        if select_live::select_close_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SelectionControl(
+                SelectionScreenAction::SelectClose,
+            ));
+        }
+        if select_live::select_reset_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SelectionControl(
+                SelectionScreenAction::SelectReset,
+            ));
+        }
+    }
     let action = match page {
         "select-box" => selection_control_metrics::select_action_at(
             component,

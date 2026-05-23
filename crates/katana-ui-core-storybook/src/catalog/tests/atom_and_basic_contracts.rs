@@ -213,3 +213,44 @@ fn radio_story_uses_public_props_and_typed_callback_log() -> Result<(), &'static
     );
     Ok(())
 }
+
+#[test]
+fn select_box_story_root_props_match_initial_callback_log() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let select_box = examples
+        .iter()
+        .find(|it| it.page == "select-box")
+        .ok_or("select-box page missing")?;
+    let harness = select_box.tree.root();
+    let select_node = harness
+        .children()
+        .first()
+        .ok_or("select-box node missing from harness")?;
+    let control_row = harness
+        .children()
+        .get(1)
+        .ok_or("select-box control row missing")?;
+    let callback = select_box
+        .callback_logs
+        .first()
+        .ok_or("select-box callback log missing")?;
+
+    let control_labels: Vec<&str> = control_row
+        .children()
+        .iter()
+        .map(|it| it.props().label.as_str())
+        .collect();
+    assert_eq!(
+        &["state read", "open", "close", "select dark", "reset"],
+        &control_labels[..]
+    );
+    assert_eq!(callback.target.as_str(), select_node.props().state_id.as_str());
+    assert_eq!("select_state_read", callback.action);
+    assert_eq!("open=false selected=none", callback.before);
+    assert_eq!("open=false selected=none", callback.after);
+    assert!(!select_node.props().interaction.open);
+    assert!(!select_node.props().interaction.has_selection);
+    assert_eq!(0, select_node.props().interaction.selected_index);
+    assert!(select_node.props().interaction.value.is_empty());
+    Ok(())
+}

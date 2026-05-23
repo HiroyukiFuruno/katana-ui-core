@@ -7,6 +7,12 @@ use super::selection_control_metrics as sm;
 use super::text::{TextRenderer, TextVerticalBox};
 
 const FIELD: u32 = 0x1f242d;
+const CONTROL_BUTTON_X: usize = sm::STATUS_X;
+const CONTROL_BUTTON_Y: usize = 116;
+const CONTROL_BUTTON_WIDTH: usize = 56;
+const CONTROL_BUTTON_HEIGHT: usize = 20;
+const CONTROL_BUTTON_GAP: usize = 8;
+const CONTROL_TEXT_Y: usize = 6;
 const LIGHT_OPTION_INDEX: usize = 1;
 const DARK_OPTION_INDEX: usize = 2;
 const SYSTEM_OPTION_INDEX: usize = 3;
@@ -22,6 +28,7 @@ pub(super) fn select_box(
     common::frame(canvas, text, palette, x, y, "SelectBox");
     draw_trigger(canvas, text, palette, scenario, x, y);
     draw_options(canvas, text, palette, scenario, x, y);
+    draw_controls(canvas, text, palette, x, y);
     draw_status(canvas, text, palette, scenario, x, y);
 }
 
@@ -140,6 +147,26 @@ fn draw_status(
     }
 }
 
+fn draw_controls(canvas: &mut Canvas, text: &TextRenderer, palette: &VisualPalette, x: usize, y: usize) {
+    for (rect, label) in [
+        (select_state_read_button_rect(x, y), "read"),
+        (select_open_button_rect(x, y), "open"),
+        (select_close_button_rect(x, y), "close"),
+        (select_reset_button_rect(x, y), "reset"),
+    ] {
+        canvas.fill_rect(rect.x, rect.y, rect.width, rect.height, palette.surface);
+        canvas.stroke_rect(rect.x, rect.y, rect.width, rect.height, palette.border);
+        text.draw(
+            canvas,
+            label,
+            rect.x + CONTROL_BUTTON_GAP,
+            rect.y + CONTROL_TEXT_Y,
+            m::FONT_8,
+            palette.text,
+        );
+    }
+}
+
 fn select_value(scenario: ScenarioContext<'_>) -> &'static str {
     match scenario.screen_state.selection.select_selected_index {
         Some(LIGHT_OPTION_INDEX) => "Light",
@@ -168,4 +195,43 @@ fn status_state(scenario: ScenarioContext<'_>) -> &'static str {
         return "selected=none";
     }
     scenario.screen_state.state_label
+}
+
+pub(super) fn select_state_read_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    super::layout_metrics::LayoutRect::new(
+        x + CONTROL_BUTTON_X,
+        y + CONTROL_BUTTON_Y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn select_open_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    let read = select_state_read_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        read.right() + CONTROL_BUTTON_GAP,
+        read.y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn select_close_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    let read = select_state_read_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        read.x,
+        read.bottom() + CONTROL_BUTTON_GAP,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn select_reset_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    let close = select_close_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        close.right() + CONTROL_BUTTON_GAP,
+        close.y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
 }

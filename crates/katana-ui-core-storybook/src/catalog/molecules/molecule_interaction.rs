@@ -7,7 +7,7 @@ use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::placement::Placement;
 use katana_ui_core::interaction::{UiAction, UiCallbackLog};
 use katana_ui_core::render_model::{UiNodeId, UiStateId};
-use katana_ui_core::{atom, molecule};
+use katana_ui_core::{atom, layout, molecule};
 
 const TOOLTIP_DELAY_MS: u16 = 240;
 const TOOLTIP_MAX_WIDTH: u16 = 280;
@@ -99,14 +99,64 @@ fn segmented_toggle_story() -> StoryExample {
 }
 
 fn select_box_story() -> StoryExample {
-    let mut select = molecule::SelectBox::new("Select box")
-        .open(true)
+    let select = molecule::SelectBox::new("Select box")
         .placement("bottom-start")
         .item(molecule::ChoiceItem::new("light", "Light"))
         .item(molecule::ChoiceItem::new("dark", "Dark"))
+        .item(molecule::ChoiceItem::new("system", "System"))
         .child(atom::Button::new("Trigger"))
         .child(molecule::List::new("Options"));
     let target = select.state_id().clone();
-    let result = select.apply_action(&UiAction::select_box_selected(target, SECOND_OPTION_INDEX));
-    StoryCatalog::interactive_story("select-box", select, result.callback_log)
+    let mut logs = vec![UiCallbackLog::new(
+        target.clone(),
+        "select_state_read",
+        "open=false selected=none",
+        "open=false selected=none",
+    )];
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "select_open",
+        "open=false",
+        "open=true",
+    ));
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "select_close",
+        "open=true",
+        "open=false",
+    ));
+    let mut log_select = select.clone();
+    let result =
+        log_select.apply_action(&UiAction::select_box_selected(target.clone(), SECOND_OPTION_INDEX));
+    logs.extend(result.callback_log);
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "select_option",
+        "selected=none",
+        "selected=dark",
+    ));
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "select_reset",
+        "selected=dark",
+        "selected=none",
+    ));
+    let typed: katana_ui_core::render_model::UiNode = select.clone().into();
+    let typed_state = typed.props().interaction.summary();
+    let harness = layout::Column::new()
+        .child(select)
+        .child(
+            layout::Row::new()
+                .child(atom::Button::new("state read"))
+                .child(atom::Button::new("open"))
+                .child(atom::Button::new("close"))
+                .child(atom::Button::new("select dark"))
+                .child(atom::Button::new("reset")),
+        )
+        .child(atom::Text::new(format!(
+            "typed state: state_id={} {}",
+            target.as_str(),
+            typed_state
+        )));
+    StoryCatalog::interactive_story("select-box", harness, logs)
 }

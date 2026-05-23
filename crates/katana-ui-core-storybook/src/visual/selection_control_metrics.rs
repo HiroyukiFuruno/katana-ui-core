@@ -31,6 +31,9 @@ pub(super) fn select_action_at(
     y: usize,
 ) -> Option<SelectionScreenAction> {
     if trigger_rect(component).contains(x, y) {
+        if is_open {
+            return Some(SelectionScreenAction::SelectClose);
+        }
         return Some(SelectionScreenAction::SelectOpen);
     }
     if !is_open {
