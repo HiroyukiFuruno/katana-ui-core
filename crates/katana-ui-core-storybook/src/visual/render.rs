@@ -28,6 +28,7 @@ pub(super) struct StorybookRenderOptions<'a> {
     pub(super) panel_scroll: PanelScrollOffsets,
     pub(super) tree_expansion: TreeExpansionState,
     pub(super) screen_state: StorybookScreenState,
+    pub(super) show_navigation_lines: bool,
 }
 
 pub(super) fn render_storybook_canvas() -> Canvas {
@@ -65,6 +66,7 @@ pub(super) fn render_storybook_canvas_for_preset(
         scrollbar_visible: true,
         panel_scroll: PanelScrollOffsets::default(),
         tree_expansion: TreeExpansionState::default(),
+        show_navigation_lines: true,
         screen_state: StorybookScreenState::default(),
     })
 }
@@ -92,6 +94,7 @@ pub(super) fn render_storybook_canvas_with_options(options: StorybookRenderOptio
         tree_expansion: options.tree_expansion,
         scrollbar_visible: options.scrollbar_visible,
         panel_scroll: options.panel_scroll,
+        show_navigation_lines: options.show_navigation_lines,
         screen_state: &screen_state,
     };
     shell::draw(
@@ -124,6 +127,7 @@ pub(super) fn render_storybook_canvas_with_screen_state(
         scrollbar_visible: true,
         panel_scroll: PanelScrollOffsets::default(),
         tree_expansion: TreeExpansionState::default(),
+        show_navigation_lines: true,
         screen_state,
     })
 }

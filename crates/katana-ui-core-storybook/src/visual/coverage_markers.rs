@@ -168,6 +168,7 @@ fn tree_view_option_visible(tree_view: Option<&StoryExample>, expected: &str) ->
         tree_expansion: Default::default(),
         scrollbar_visible: true,
         panel_scroll: Default::default(),
+        show_navigation_lines: true,
         screen_state: &screen_state,
     };
     tree_view.is_some_and(|example| {
@@ -189,6 +190,7 @@ fn navigation_collapsed_pixels_changed() -> usize {
         scrollbar_visible: true,
         panel_scroll: panel_scroll_state::PanelScrollOffsets::default(),
         tree_expansion: collapsed,
+        show_navigation_lines: true,
         screen_state: StorybookScreenState::default(),
     });
     let diff = pixel_difference(open.pixels(), closed.pixels());

@@ -258,6 +258,7 @@ fn button_status_scenario(
         tree_expansion: Default::default(),
         scrollbar_visible: true,
         panel_scroll: Default::default(),
+        show_navigation_lines: true,
         screen_state,
     }
 }
@@ -280,6 +281,7 @@ fn button_summary_scenario_with_state(
         tree_expansion: Default::default(),
         scrollbar_visible: true,
         panel_scroll: Default::default(),
+        show_navigation_lines: true,
         screen_state,
     }
 }

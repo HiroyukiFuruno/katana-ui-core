@@ -1,8 +1,12 @@
 use super::{
     Canvas, StorybookVisual, layout_metrics, palette, preview, preview_contract, preview_detail,
 };
+use crate::catalog::story_map::StoryGroup;
 use crate::visual::dedicated_dod_molecule_tree_parts as tree_parts;
-use crate::visual::navigation_tree::{NavigationRow, TreeExpansionState, row_from_click};
+use crate::visual::navigation_tree::{
+    NavigationRow, TreeExpansionState, row_from_click, visible_rows,
+};
+use crate::visual::render;
 use katana_ui_core::theme::ThemeSnapshot;
 use std::collections::BTreeMap;
 
@@ -245,6 +249,88 @@ fn tree_view_preview_renders_depth_guides_disclosure_and_markers() {
 }
 
 #[test]
+fn navigation_tree_lines_obey_show_navigation_lines_option() {
+    let expansion = TreeExpansionState::default();
+    let with_lines = render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
+        theme_id: "dark",
+        selected_page: "button",
+        preset_index: 0,
+        scroll_y: 0,
+        scrollbar_visible: true,
+        panel_scroll: crate::visual::panel_scroll_state::PanelScrollOffsets::default(),
+        tree_expansion: expansion,
+        show_navigation_lines: true,
+        screen_state: crate::visual::screen_state::StorybookScreenState::default(),
+    });
+    let without_lines =
+        render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
+            theme_id: "dark",
+            selected_page: "button",
+            preset_index: 0,
+            scroll_y: 0,
+            scrollbar_visible: true,
+            panel_scroll: crate::visual::panel_scroll_state::PanelScrollOffsets::default(),
+            tree_expansion: expansion,
+            show_navigation_lines: false,
+            screen_state: crate::visual::screen_state::StorybookScreenState::default(),
+        });
+    let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
+
+    let (row_y, row_depth) = row_y_and_depth_in_navigation("tree-view", expansion)
+        .expect("target row should be visible");
+    let line_x = navigation_line_x(row_depth);
+    let row_center_y = row_y + layout_metrics::NAV_ROW_HEIGHT / 2;
+    let below_row_center_y = row_center_y + 2;
+
+    assert_eq!(
+        Some(palette.border),
+        pixel_at(&with_lines, line_x, row_center_y)
+    );
+    assert_eq!(
+        Some(palette.code_background),
+        pixel_at(&without_lines, line_x, row_center_y)
+    );
+    assert_eq!(
+        Some(palette.code_background),
+        pixel_at(&without_lines, line_x, below_row_center_y)
+    );
+    assert_ne!(
+        pixel_at(&without_lines, line_x, row_center_y),
+        Some(palette.border)
+    );
+}
+
+#[test]
+fn navigation_section_disclosure_is_indented_right_of_group_disclosure() {
+    let expansion = TreeExpansionState::default();
+    let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
+    let canvas = StorybookVisual.render_scenario("dark", "tree-view", false);
+
+    let group_row_y = navigation_row_y_for_group(expansion, StoryGroup::Foundation)
+        .expect("group row should be present in default navigation expansion");
+    let section_row_y = navigation_row_y_for_section(expansion)
+        .expect("section row should be present in default navigation expansion");
+    let group_disclosure_x = navigation_disclosure_center_x(0);
+    let section_disclosure_x = navigation_disclosure_center_x(1);
+    let group_row_disclosure_y = navigation_disclosure_center_y(group_row_y);
+    let section_row_disclosure_y = navigation_disclosure_center_y(section_row_y);
+
+    assert!(section_disclosure_x > group_disclosure_x);
+    assert_eq!(
+        Some(palette.text),
+        pixel_at(&canvas, group_disclosure_x, group_row_disclosure_y)
+    );
+    assert_eq!(
+        Some(palette.text),
+        pixel_at(&canvas, section_disclosure_x, section_row_disclosure_y)
+    );
+    assert_ne!(
+        Some(palette.text),
+        pixel_at(&canvas, group_disclosure_x, section_row_disclosure_y)
+    );
+}
+
+#[test]
 fn navigation_selected_page_does_not_render_page_icon_style_square_marker() {
     const LEGACY_MARK_X: usize = 74;
     const LEGACY_MARK_SIZE: usize = 14;
@@ -290,6 +376,70 @@ fn navigation_selected_page_does_not_render_page_icon_style_square_marker() {
         0, accent_border_pixels,
         "left navigation must not render page icon-like accent square marker"
     );
+}
+
+fn navigation_line_x(depth: usize) -> usize {
+    match depth {
+        0 => 54,
+        1 => 68,
+        _ => 84,
+    }
+}
+
+fn row_y_and_depth_in_navigation(
+    page: &str,
+    expansion: TreeExpansionState,
+) -> Option<(usize, usize)> {
+    for y in layout_metrics::NAV_FIRST_ROW_Y..layout_metrics::CONTENT_HEIGHT {
+        let Some(row) = row_from_click(layout_metrics::NAV_ROW_X + 1, y, expansion) else {
+            continue;
+        };
+        let depth = match row {
+            NavigationRow::Group { .. } => 0,
+            NavigationRow::Section { .. } => 1,
+            NavigationRow::Page { page: row_page, .. } if row_page == page => 2,
+            NavigationRow::PageWithoutSection { page: row_page, .. } if row_page == page => 1,
+            _ => continue,
+        };
+        return Some((y, depth));
+    }
+    None
+}
+
+fn navigation_row_y_for_group(expansion: TreeExpansionState, group: StoryGroup) -> Option<usize> {
+    visible_rows(expansion)
+        .iter()
+        .position(|row| matches!(row, NavigationRow::Group(found_group) if *found_group == group))
+        .map(|index| layout_metrics::NAV_FIRST_ROW_Y + index * layout_metrics::NAV_ROW_STEP)
+}
+
+fn navigation_row_y_for_section(expansion: TreeExpansionState) -> Option<usize> {
+    visible_rows(expansion)
+        .iter()
+        .position(|row| matches!(row, NavigationRow::Section { .. }))
+        .map(|index| layout_metrics::NAV_FIRST_ROW_Y + index * layout_metrics::NAV_ROW_STEP)
+}
+
+fn navigation_disclosure_center_x(depth: usize) -> usize {
+    navigation_disclosure_left_x(depth) + navigation_disclosure_center_offset()
+}
+
+fn navigation_disclosure_left_x(depth: usize) -> usize {
+    navigation_line_x(depth).saturating_sub(4)
+}
+
+fn navigation_disclosure_center_offset() -> usize {
+    navigation_disclosure_size() / 2
+}
+
+fn navigation_disclosure_size() -> usize {
+    7
+}
+
+fn navigation_disclosure_center_y(row_y: usize) -> usize {
+    row_y
+        + (layout_metrics::NAV_ROW_HEIGHT - navigation_disclosure_size()) / 2
+        + navigation_disclosure_center_offset()
 }
 
 fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {

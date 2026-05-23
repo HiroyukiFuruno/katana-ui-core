@@ -12,6 +12,7 @@ pub(super) fn rows_fit(examples: &[StoryExample]) -> bool {
         tree_expansion: Default::default(),
         scrollbar_visible: true,
         panel_scroll: Default::default(),
+        show_navigation_lines: true,
         screen_state: &screen_state,
     };
     examples.iter().all(|example| {

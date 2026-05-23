@@ -10,7 +10,6 @@ pub(super) const TREE_PANEL_Y: usize = 30;
 pub(super) const TREE_PANEL_WIDTH: usize = 178;
 pub(super) const TREE_PANEL_HEIGHT: usize = 68;
 pub(super) const ROW_HEIGHT: usize = 17;
-pub(super) const LINE_X: usize = 31;
 pub(super) const DISCLOSURE_X: usize = 24;
 pub(super) const INDENT_STEP: usize = 18;
 pub(super) const NODE_ICON_X: usize = 36;

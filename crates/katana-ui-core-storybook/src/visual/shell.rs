@@ -49,6 +49,7 @@ pub(super) fn draw(canvas: &mut Canvas, context: ShellContext<'_>) {
         context.scenario.selected_page,
         context.scenario.tree_expansion,
         context.scenario.panel_scroll.navigation_y,
+        context.scenario.show_navigation_lines,
     );
     preview::draw(canvas, context.root, context.render, context.scenario);
     inspector::draw(

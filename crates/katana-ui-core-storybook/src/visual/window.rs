@@ -147,6 +147,7 @@ fn render_frame(state: &StorybookWindowState) -> Canvas {
         scrollbar_visible: state.scrollbar_visible,
         panel_scroll: state.panel_scroll,
         tree_expansion: state.tree_expansion,
+        show_navigation_lines: state.show_navigation_lines,
         screen_state: state.screen_state.clone(),
     })
 }

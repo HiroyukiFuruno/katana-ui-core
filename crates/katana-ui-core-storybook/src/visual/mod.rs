@@ -244,6 +244,7 @@ impl StorybookVisual {
             scrollbar_visible,
             panel_scroll: panel_scroll_state::PanelScrollOffsets::default(),
             tree_expansion: navigation_tree::TreeExpansionState::default(),
+            show_navigation_lines: true,
             screen_state: screen_state::StorybookScreenState::default(),
         })
     }
@@ -271,6 +272,7 @@ impl StorybookVisual {
             scrollbar_visible,
             panel_scroll: panel_scroll_state::PanelScrollOffsets::default(),
             tree_expansion: navigation_tree::TreeExpansionState::default(),
+            show_navigation_lines: true,
             screen_state,
         })
     }

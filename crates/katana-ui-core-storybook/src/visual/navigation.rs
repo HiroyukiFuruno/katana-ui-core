@@ -11,13 +11,13 @@ use super::panel_scroll_state::PanelScrollRegion;
 use super::text::{TextRenderer, TextVerticalBox};
 use crate::catalog::story_map::{StoryGroup, StorySection};
 
-const PAGE_LINE_X: usize = 84;
 const SECTION_LINE_X: usize = 68;
-const SECTION_CONNECTOR_WIDTH: usize = 12;
-const PAGE_CONNECTOR_WIDTH: usize = 10;
+const PAGE_LINE_X: usize = 84;
+const GROUP_LINE_X: usize = 54;
 const GROUP_TEXT_X: usize = 62;
 const SECTION_TEXT_X: usize = 78;
 const PAGE_TEXT_X: usize = 98;
+const DISCLOSURE_SIZE: usize = 7;
 const NAV_TEXT_SIZE: f32 = 12.0;
 const NAV_GROUP_TEXT_SIZE: f32 = 11.0;
 const TREE_LINE_WIDTH: usize = 1;
@@ -30,7 +30,9 @@ pub(super) fn draw(
     selected_page: &str,
     expansion: TreeExpansionState,
     scroll_y: usize,
+    show_navigation_lines: bool,
 ) {
+    let rows = visible_rows(expansion);
     draw_navigation_panel(canvas, palette);
     let viewport = panel_layout::region_layout(PanelScrollRegion::Navigation).content_viewport;
     canvas.with_clip(
@@ -42,15 +44,18 @@ pub(super) fn draw(
             let first_index = scroll_y / NAV_ROW_STEP;
             let row_offset = scroll_y % NAV_ROW_STEP;
             let mut row_y = NAV_FIRST_ROW_Y.saturating_sub(row_offset);
-            for row in visible_rows(expansion).into_iter().skip(first_index) {
+            for (row_index, row) in rows.iter().enumerate().skip(first_index) {
                 match row {
                     NavigationRow::Group(group) => {
                         draw_group(
                             canvas,
                             text,
                             palette,
-                            group,
-                            expansion.is_open(group),
+                            *group,
+                            expansion.is_open(*group),
+                            show_navigation_lines,
+                            &rows,
+                            row_index,
                             row_y,
                         );
                     }
@@ -59,16 +64,41 @@ pub(super) fn draw(
                             canvas,
                             text,
                             palette,
-                            section,
-                            expansion.is_section_open(group, section),
+                            *section,
+                            expansion.is_section_open(*group, *section),
+                            show_navigation_lines,
+                            &rows,
+                            row_index,
                             row_y,
                         );
                     }
                     NavigationRow::Page { page, .. } => {
-                        draw_page(canvas, text, palette, page, page == selected_page, row_y);
+                        draw_page(
+                            canvas,
+                            text,
+                            palette,
+                            page,
+                            *page == selected_page,
+                            show_navigation_lines,
+                            &rows,
+                            row_index,
+                            row_y,
+                            PageDepth::Section,
+                        );
                     }
                     NavigationRow::PageWithoutSection { page, .. } => {
-                        draw_page(canvas, text, palette, page, page == selected_page, row_y);
+                        draw_page(
+                            canvas,
+                            text,
+                            palette,
+                            page,
+                            *page == selected_page,
+                            show_navigation_lines,
+                            &rows,
+                            row_index,
+                            row_y,
+                            PageDepth::Sectionless,
+                        );
                     }
                 }
                 row_y += NAV_ROW_STEP;
@@ -89,6 +119,9 @@ fn draw_group(
     palette: &VisualPalette,
     group: StoryGroup,
     open: bool,
+    show_lines: bool,
+    rows: &[NavigationRow],
+    row_index: usize,
     y: usize,
 ) {
     canvas.fill_rect(
@@ -98,7 +131,16 @@ fn draw_group(
         NAV_ROW_HEIGHT,
         palette.code_background,
     );
-    draw_disclosure(canvas, palette, open, y);
+    draw_disclosure(
+        canvas,
+        palette,
+        disclosure_x(NavigationDepth::Group),
+        open,
+        y,
+    );
+    if show_lines {
+        draw_row_guides(canvas, palette, NavigationDepth::Group, rows, row_index, y);
+    }
     text.draw_centered(
         canvas,
         group.label(),
@@ -115,6 +157,9 @@ fn draw_section(
     palette: &VisualPalette,
     section: StorySection,
     open: bool,
+    show_lines: bool,
+    rows: &[NavigationRow],
+    row_index: usize,
     y: usize,
 ) {
     canvas.fill_rect(
@@ -124,21 +169,23 @@ fn draw_section(
         NAV_ROW_HEIGHT,
         palette.code_background,
     );
-    draw_disclosure(canvas, palette, open, y);
-    canvas.fill_rect(
-        SECTION_LINE_X,
-        y.saturating_sub(NAV_ROW_STEP / 2),
-        TREE_LINE_WIDTH,
-        NAV_ROW_HEIGHT + NAV_ROW_STEP / 2,
-        palette.border,
+    draw_disclosure(
+        canvas,
+        palette,
+        disclosure_x(NavigationDepth::Section),
+        open,
+        y,
     );
-    canvas.fill_rect(
-        SECTION_LINE_X,
-        y + NAV_ROW_HEIGHT / 2,
-        SECTION_CONNECTOR_WIDTH,
-        TREE_LINE_WIDTH,
-        palette.border,
-    );
+    if show_lines {
+        draw_row_guides(
+            canvas,
+            palette,
+            NavigationDepth::Section,
+            rows,
+            row_index,
+            y,
+        );
+    }
     text.draw_centered(
         canvas,
         section.label(),
@@ -149,13 +196,24 @@ fn draw_section(
     );
 }
 
+#[derive(Clone, Copy)]
+enum NavigationDepth {
+    Group,
+    Section,
+    Page,
+}
+
 fn draw_page(
     canvas: &mut Canvas,
     text: &TextRenderer,
     palette: &VisualPalette,
     page: &str,
     selected: bool,
+    show_lines: bool,
+    rows: &[NavigationRow],
+    row_index: usize,
     y: usize,
+    page_depth: PageDepth,
 ) {
     let fill = if selected {
         palette.selection
@@ -177,33 +235,138 @@ fn draw_page(
             palette.accent,
         );
     }
-    canvas.fill_rect(
-        SECTION_LINE_X,
-        y.saturating_sub(NAV_ROW_STEP / 2),
-        TREE_LINE_WIDTH,
-        NAV_ROW_HEIGHT + NAV_ROW_STEP / 2,
-        palette.border,
-    );
-    canvas.fill_rect(
-        PAGE_LINE_X,
-        y,
-        TREE_LINE_WIDTH,
-        NAV_ROW_HEIGHT + NAV_ROW_STEP / 2,
-        palette.border,
-    );
-    canvas.fill_rect(
-        PAGE_LINE_X - PAGE_CONNECTOR_WIDTH,
-        y + NAV_ROW_HEIGHT / 2,
-        PAGE_CONNECTOR_WIDTH,
-        TREE_LINE_WIDTH,
-        palette.border,
-    );
+    if show_lines {
+        let depth = match page_depth {
+            PageDepth::Sectionless => NavigationDepth::Section,
+            PageDepth::Section => NavigationDepth::Page,
+        };
+        draw_row_guides(canvas, palette, depth, rows, row_index, y);
+    }
     text.draw_centered(
         canvas,
         page,
-        PAGE_TEXT_X,
+        page_text_x(page_depth),
         TextVerticalBox::new(y, NAV_ROW_HEIGHT as f32),
         NAV_TEXT_SIZE,
         text_color,
     );
+}
+
+fn draw_row_guides(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    row_depth: NavigationDepth,
+    rows: &[NavigationRow],
+    row_index: usize,
+    row_y: usize,
+) {
+    let current_depth = navigation_depth(row_depth);
+    let previous_depth = row_index
+        .checked_sub(1)
+        .and_then(|index| rows.get(index).map(depth_from_row));
+    let next_depth = rows.get(row_index + 1).map(depth_from_row);
+    let row_center_y = row_y + NAV_ROW_HEIGHT / 2;
+
+    for level in 0..=current_depth {
+        let has_up = if current_depth > level {
+            previous_depth.is_some_and(|depth| depth >= level)
+        } else {
+            false
+        };
+        let has_down = next_depth.is_some_and(|depth| depth > level);
+        let start_y = if has_up { row_y } else { row_center_y };
+        let end_y = if has_down {
+            row_y + NAV_ROW_HEIGHT
+        } else {
+            row_center_y + 1
+        };
+        if has_up || has_down {
+            canvas.fill_rect(
+                guide_x(level),
+                start_y,
+                TREE_LINE_WIDTH,
+                end_y.saturating_sub(start_y),
+                palette.border,
+            );
+        } else if level == current_depth {
+            canvas.fill_rect(
+                guide_x(level),
+                row_center_y,
+                TREE_LINE_WIDTH,
+                1,
+                palette.border,
+            );
+        }
+    }
+
+    let current_guide_x = guide_x(current_depth);
+    let connector_target_x = guide_target_x(row_depth);
+    let connector_width = connector_target_x.saturating_sub(current_guide_x);
+    if connector_width > 0 {
+        canvas.fill_rect(
+            current_guide_x,
+            row_center_y,
+            connector_width,
+            TREE_LINE_WIDTH,
+            palette.border,
+        );
+    }
+}
+
+fn guide_x(level: usize) -> usize {
+    match level {
+        0 => GROUP_LINE_X,
+        1 => SECTION_LINE_X,
+        _ => PAGE_LINE_X,
+    }
+}
+
+fn guide_target_x(depth: NavigationDepth) -> usize {
+    disclosure_target_x(depth)
+}
+
+fn disclosure_x(depth: NavigationDepth) -> usize {
+    match depth {
+        NavigationDepth::Group => GROUP_LINE_X.saturating_sub(4),
+        NavigationDepth::Section => SECTION_LINE_X.saturating_sub(4),
+        NavigationDepth::Page => PAGE_LINE_X.saturating_sub(4),
+    }
+}
+
+fn disclosure_target_x(depth: NavigationDepth) -> usize {
+    match depth {
+        NavigationDepth::Group => disclosure_x(NavigationDepth::Group) + DISCLOSURE_SIZE,
+        NavigationDepth::Section => disclosure_x(NavigationDepth::Section) + DISCLOSURE_SIZE,
+        NavigationDepth::Page => disclosure_x(NavigationDepth::Page) + DISCLOSURE_SIZE,
+    }
+}
+
+fn navigation_depth(row: NavigationDepth) -> usize {
+    match row {
+        NavigationDepth::Group => 0,
+        NavigationDepth::Section => 1,
+        NavigationDepth::Page => 2,
+    }
+}
+
+fn depth_from_row(row: &NavigationRow) -> usize {
+    match row {
+        NavigationRow::Group { .. } => 0,
+        NavigationRow::Section { .. } => 1,
+        NavigationRow::Page { .. } => 2,
+        NavigationRow::PageWithoutSection { .. } => 1,
+    }
+}
+
+#[derive(Clone, Copy)]
+enum PageDepth {
+    Section,
+    Sectionless,
+}
+
+fn page_text_x(depth: PageDepth) -> usize {
+    match depth {
+        PageDepth::Section => PAGE_TEXT_X,
+        PageDepth::Sectionless => SECTION_TEXT_X,
+    }
 }

@@ -144,6 +144,7 @@ fn render_panel_with_offsets(offsets: panel_scroll_state::PanelScrollOffsets) ->
         scrollbar_visible: true,
         panel_scroll: offsets,
         tree_expansion: Default::default(),
+        show_navigation_lines: true,
         screen_state: Default::default(),
     })
 }

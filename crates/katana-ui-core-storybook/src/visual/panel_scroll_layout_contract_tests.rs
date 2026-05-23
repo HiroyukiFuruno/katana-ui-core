@@ -97,6 +97,7 @@ fn rendered_panel_content_does_not_paint_reserved_scrollbar_gutter() {
         scrollbar_visible: true,
         panel_scroll: Default::default(),
         tree_expansion: Default::default(),
+        show_navigation_lines: true,
         screen_state: Default::default(),
     });
     let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
