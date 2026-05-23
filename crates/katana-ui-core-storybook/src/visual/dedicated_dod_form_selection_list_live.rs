@@ -8,6 +8,11 @@ use super::text::TextRenderer;
 
 const ROW_LABELS: [&str; 4] = ["First", "Second", "Third", "Fourth"];
 const FOURTH_ROW_INDEX: usize = 3;
+const CONTROL_BUTTON_X: usize = sm::STATUS_X;
+const CONTROL_BUTTON_Y: usize = 116;
+const CONTROL_BUTTON_WIDTH: usize = 56;
+const CONTROL_BUTTON_HEIGHT: usize = 20;
+const CONTROL_BUTTON_GAP: usize = 8;
 
 pub(super) fn selection_list(
     canvas: &mut Canvas,
@@ -19,6 +24,7 @@ pub(super) fn selection_list(
 ) {
     common::frame(canvas, text, palette, x, y, "SelectionList");
     draw_rows(canvas, text, palette, scenario, x, y);
+    draw_controls(canvas, text, palette, x, y);
     draw_status(canvas, text, palette, scenario, x, y);
 }
 
@@ -127,22 +133,99 @@ fn status_event(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 fn status_state(scenario: ScenarioContext<'_>) -> &'static str {
-    match scenario
-        .screen_state
-        .selection
-        .selection_list_selected_index
-    {
-        Some(index) => list_value(index),
-        None => "selected=none",
+    if scenario.screen_state.state_label == "idle" {
+        return "single=none multi=none focus=none";
+    }
+    scenario.screen_state.state_label
+}
+
+fn draw_controls(
+    canvas: &mut Canvas,
+    text: &TextRenderer,
+    palette: &VisualPalette,
+    x: usize,
+    y: usize,
+) {
+    for (rect, label) in [
+        (selection_list_state_read_button_rect(x, y), "state"),
+        (selection_list_select_row_button_rect(x, y), "select"),
+        (selection_list_multi_toggle_button_rect(x, y), "multi"),
+        (selection_list_keyboard_next_button_rect(x, y), "next"),
+        (selection_list_reset_button_rect(x, y), "reset"),
+    ] {
+        canvas.fill_rect(rect.x, rect.y, rect.width, rect.height, palette.surface);
+        canvas.stroke_rect(rect.x, rect.y, rect.width, rect.height, palette.border);
+        text.draw(
+            canvas,
+            label,
+            rect.x + CONTROL_BUTTON_GAP,
+            rect.y + sm::TEXT_Y,
+            m::FONT_8,
+            palette.text,
+        );
     }
 }
 
-fn list_value(index: usize) -> &'static str {
-    match index {
-        0 => "selected=0",
-        1 => "selected=1",
-        2 => "selected=2",
-        FOURTH_ROW_INDEX => "selected=3",
-        _ => "selected=none",
-    }
+pub(super) fn selection_list_state_read_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
+    super::layout_metrics::LayoutRect::new(
+        x + CONTROL_BUTTON_X,
+        y + CONTROL_BUTTON_Y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn selection_list_select_row_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
+    let state_read = selection_list_state_read_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        state_read.right() + CONTROL_BUTTON_GAP,
+        state_read.y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn selection_list_multi_toggle_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
+    let state_read = selection_list_state_read_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        state_read.x,
+        state_read.bottom() + CONTROL_BUTTON_GAP,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn selection_list_keyboard_next_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
+    let multi = selection_list_multi_toggle_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        multi.x,
+        multi.bottom() + CONTROL_BUTTON_GAP,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn selection_list_reset_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
+    let multi = selection_list_multi_toggle_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        multi.right() + CONTROL_BUTTON_GAP,
+        multi.y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
 }

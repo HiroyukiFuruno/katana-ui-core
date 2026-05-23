@@ -26,7 +26,6 @@ const PASSIVE_CONTRACT_PAGES: &[&str] = &[
     "toolbar",
     "form-field",
     "breadcrumb",
-    "selection-list",
     "side-menu",
     "status-bar",
     "command-palette",

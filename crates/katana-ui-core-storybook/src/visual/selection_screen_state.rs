@@ -12,6 +12,8 @@ pub(super) struct SelectionScreenState {
     pub(super) combo_filtered: bool,
     pub(super) combo_selected_index: Option<usize>,
     pub(super) selection_list_selected_index: Option<usize>,
+    pub(super) selection_list_multi_mask: u8,
+    pub(super) selection_list_focus_index: Option<usize>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -25,6 +27,11 @@ pub(super) enum SelectionScreenAction {
     ComboFilter,
     ComboOption(usize),
     ComboReset,
+    SelectionListStateRead,
+    SelectionListSelectRow(usize),
+    SelectionListMultiToggle(usize),
+    SelectionListKeyboardNext,
+    SelectionListReset,
     SelectionListToggle(usize),
 }
 
@@ -47,7 +54,18 @@ impl SelectionScreenState {
             SelectionScreenAction::ComboFilter => self.filter_combo(),
             SelectionScreenAction::ComboOption(index) => self.select_combo_option(index),
             SelectionScreenAction::ComboReset => self.reset_combo(),
-            SelectionScreenAction::SelectionListToggle(index) => self.toggle_selection_list(index),
+            SelectionScreenAction::SelectionListStateRead => self.read_selection_list_state(),
+            SelectionScreenAction::SelectionListSelectRow(index) => {
+                self.select_selection_list_row(index)
+            }
+            SelectionScreenAction::SelectionListMultiToggle(index) => {
+                self.toggle_selection_list_multi(index)
+            }
+            SelectionScreenAction::SelectionListKeyboardNext => self.selection_list_keyboard_next(),
+            SelectionScreenAction::SelectionListReset => self.reset_selection_list(),
+            SelectionScreenAction::SelectionListToggle(index) => {
+                self.select_selection_list_row(index)
+            }
         }
     }
 
@@ -112,9 +130,74 @@ impl SelectionScreenState {
         SelectionScreenUpdate::new("combo_reset", "combo_reset", "query=empty selected=none")
     }
 
-    fn toggle_selection_list(&mut self, index: usize) -> SelectionScreenUpdate {
+    fn read_selection_list_state(&mut self) -> SelectionScreenUpdate {
+        SelectionScreenUpdate::new(
+            "selection_list_state_read",
+            "selection_list_state_read",
+            selection_list_state(
+                self.selection_list_selected_index,
+                self.selection_list_multi_mask,
+                self.selection_list_focus_index,
+            ),
+        )
+    }
+
+    fn select_selection_list_row(&mut self, index: usize) -> SelectionScreenUpdate {
         self.selection_list_selected_index = Some(index);
-        SelectionScreenUpdate::new("selection_toggle", "selection_changed", list_state(index))
+        self.selection_list_focus_index = Some(index);
+        SelectionScreenUpdate::new(
+            "selection_list_select_row",
+            "selection_list_changed",
+            selection_list_state(
+                self.selection_list_selected_index,
+                self.selection_list_multi_mask,
+                self.selection_list_focus_index,
+            ),
+        )
+    }
+
+    fn toggle_selection_list_multi(&mut self, index: usize) -> SelectionScreenUpdate {
+        let bit = 1u8 << index.min(3);
+        self.selection_list_multi_mask ^= bit;
+        self.selection_list_focus_index = Some(index.min(3));
+        SelectionScreenUpdate::new(
+            "selection_list_multi_toggle",
+            "selection_list_multi_changed",
+            selection_list_state(
+                self.selection_list_selected_index,
+                self.selection_list_multi_mask,
+                self.selection_list_focus_index,
+            ),
+        )
+    }
+
+    fn selection_list_keyboard_next(&mut self) -> SelectionScreenUpdate {
+        let next = match self.selection_list_focus_index {
+            Some(index) if index < FOURTH_LIST_INDEX => index + 1,
+            _ => 0,
+        };
+        self.selection_list_focus_index = Some(next);
+        self.selection_list_selected_index = Some(next);
+        SelectionScreenUpdate::new(
+            "selection_list_keyboard_next",
+            "selection_list_keyboard_moved",
+            selection_list_state(
+                self.selection_list_selected_index,
+                self.selection_list_multi_mask,
+                self.selection_list_focus_index,
+            ),
+        )
+    }
+
+    fn reset_selection_list(&mut self) -> SelectionScreenUpdate {
+        self.selection_list_selected_index = None;
+        self.selection_list_multi_mask = 0;
+        self.selection_list_focus_index = None;
+        SelectionScreenUpdate::new(
+            "selection_list_reset",
+            "selection_list_reset",
+            "single=none multi=none focus=none",
+        )
     }
 }
 
@@ -171,12 +254,27 @@ fn combo_read_state(
     }
 }
 
-fn list_state(index: usize) -> &'static str {
-    match index {
-        0 => "selected=0",
-        1 => "selected=1",
-        2 => "selected=2",
-        FOURTH_LIST_INDEX => "selected=3",
-        _ => "selected=none",
+fn selection_list_state(
+    single: Option<usize>,
+    multi_mask: u8,
+    focus: Option<usize>,
+) -> &'static str {
+    match (single, multi_mask & 0b1111, focus) {
+        (None, 0, None) => "single=none multi=none focus=none",
+        (Some(0), 0, Some(0)) => "single=0 multi=none focus=0",
+        (Some(1), 0, Some(1)) => "single=1 multi=none focus=1",
+        (Some(2), 0, Some(2)) => "single=2 multi=none focus=2",
+        (Some(3), 0, Some(3)) => "single=3 multi=none focus=3",
+        (Some(1), 0b0010, Some(1)) => "single=1 multi=1 focus=1",
+        (Some(1), 0b0110, Some(2)) => "single=1 multi=1,2 focus=2",
+        (Some(2), 0b0110, Some(2)) => "single=2 multi=1,2 focus=2",
+        (Some(2), 0b0110, Some(3)) => "single=2 multi=1,2 focus=3",
+        (Some(3), 0b0110, Some(3)) => "single=3 multi=1,2 focus=3",
+        (Some(3), 0b0110, Some(0)) => "single=3 multi=1,2 focus=0",
+        (Some(0), 0b0110, Some(0)) => "single=0 multi=1,2 focus=0",
+        (Some(2), 0b0010, Some(2)) => "single=2 multi=1 focus=2",
+        (Some(3), 0b0010, Some(3)) => "single=3 multi=1 focus=3",
+        (Some(0), 0b0010, Some(0)) => "single=0 multi=1 focus=0",
+        _ => "single=none multi=none focus=none",
     }
 }

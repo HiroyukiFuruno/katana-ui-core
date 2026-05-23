@@ -3,6 +3,7 @@ use crate::catalog::StoryCatalog;
 use crate::visual::dedicated_dod_form_combo_live;
 use crate::visual::dedicated_dod_form_input_live;
 use crate::visual::dedicated_dod_form_select_live;
+use crate::visual::dedicated_dod_form_selection_list_live;
 use crate::visual::visual_interaction_test_support::component_body_pixel_diff;
 use crate::visual::{layout_metrics::LayoutRect, selection_control_metrics as sc};
 use crate::visual::{preview_detail, render};
@@ -890,9 +891,12 @@ fn selection_list_row_click_updates_list_state_and_component_body() {
         Some(1),
         state.screen_state.selection.selection_list_selected_index
     );
-    assert_eq!("selection_toggle", state.screen_state.last_action);
-    assert_eq!("selection_changed", state.screen_state.last_event);
-    assert_eq!("selected=1", state.screen_state.state_label);
+    assert_eq!("selection_list_select_row", state.screen_state.last_action);
+    assert_eq!("selection_list_changed", state.screen_state.last_event);
+    assert_eq!(
+        "single=1 multi=none focus=1",
+        state.screen_state.state_label
+    );
     assert!(
         component_body_pixel_diff(SELECTION_LIST_PAGE, &before, &render_state(&state))
             > COMPONENT_BODY_DIFF_THRESHOLD
@@ -928,6 +932,188 @@ fn selection_list_rows_and_status_do_not_overlap() {
         assert!(rows.contains(row.x, row.y));
         assert!(rows.contains(row.right() - 1, row.bottom() - 1));
     }
+}
+
+#[test]
+fn selection_list_control_buttons_apply_expected_actions_and_state_changes() {
+    let mut state = state_for(SELECTION_LIST_PAGE);
+    let rect = preview_detail::component_action_hit_rect(SELECTION_LIST_PAGE);
+    let state_read = dedicated_dod_form_selection_list_live::selection_list_state_read_button_rect(
+        rect.x, rect.y,
+    );
+    let select_row = dedicated_dod_form_selection_list_live::selection_list_select_row_button_rect(
+        rect.x, rect.y,
+    );
+    let multi_toggle =
+        dedicated_dod_form_selection_list_live::selection_list_multi_toggle_button_rect(
+            rect.x, rect.y,
+        );
+    let keyboard_next =
+        dedicated_dod_form_selection_list_live::selection_list_keyboard_next_button_rect(
+            rect.x, rect.y,
+        );
+    let reset =
+        dedicated_dod_form_selection_list_live::selection_list_reset_button_rect(rect.x, rect.y);
+
+    assert!(apply_click(
+        &mut state,
+        state_read.x + CLICK_CENTER,
+        state_read.y + CLICK_CENTER
+    ));
+    assert_eq!("selection_list_state_read", state.screen_state.last_action);
+    assert_eq!(
+        "single=none multi=none focus=none",
+        state.screen_state.state_label
+    );
+
+    assert!(apply_click(
+        &mut state,
+        select_row.x + CLICK_CENTER,
+        select_row.y + CLICK_CENTER
+    ));
+    assert_eq!("selection_list_select_row", state.screen_state.last_action);
+    assert_eq!(
+        "single=1 multi=none focus=1",
+        state.screen_state.state_label
+    );
+
+    assert!(apply_click(
+        &mut state,
+        multi_toggle.x + CLICK_CENTER,
+        multi_toggle.y + CLICK_CENTER
+    ));
+    assert_eq!(
+        "selection_list_multi_toggle",
+        state.screen_state.last_action
+    );
+    assert_eq!("single=1 multi=1 focus=1", state.screen_state.state_label);
+
+    assert!(apply_click(
+        &mut state,
+        keyboard_next.x + CLICK_CENTER,
+        keyboard_next.y + CLICK_CENTER
+    ));
+    assert_eq!(
+        "selection_list_keyboard_next",
+        state.screen_state.last_action
+    );
+    assert_eq!("single=2 multi=1 focus=2", state.screen_state.state_label);
+
+    assert!(apply_click(
+        &mut state,
+        reset.x + CLICK_CENTER,
+        reset.y + CLICK_CENTER
+    ));
+    assert_eq!("selection_list_reset", state.screen_state.last_action);
+    assert_eq!(
+        "single=none multi=none focus=none",
+        state.screen_state.state_label
+    );
+}
+
+#[test]
+fn selection_list_visual_and_catalog_use_same_typed_action_names() {
+    let list = StoryCatalog
+        .examples()
+        .into_iter()
+        .find(|it| it.page == SELECTION_LIST_PAGE)
+        .expect("selection-list story missing");
+    let catalog_actions: BTreeSet<String> = list
+        .callback_logs
+        .iter()
+        .map(|it| it.action.clone())
+        .filter(|it| {
+            matches!(
+                it.as_str(),
+                "selection_list_state_read"
+                    | "selection_list_select_row"
+                    | "selection_list_multi_toggle"
+                    | "selection_list_keyboard_next"
+                    | "selection_list_reset"
+            )
+        })
+        .collect();
+
+    let mut state = state_for(SELECTION_LIST_PAGE);
+    let rect = preview_detail::component_action_hit_rect(SELECTION_LIST_PAGE);
+    let mut visual_actions: BTreeSet<String> = BTreeSet::new();
+    for point in [
+        dedicated_dod_form_selection_list_live::selection_list_state_read_button_rect(
+            rect.x, rect.y,
+        ),
+        dedicated_dod_form_selection_list_live::selection_list_select_row_button_rect(
+            rect.x, rect.y,
+        ),
+        dedicated_dod_form_selection_list_live::selection_list_multi_toggle_button_rect(
+            rect.x, rect.y,
+        ),
+        dedicated_dod_form_selection_list_live::selection_list_keyboard_next_button_rect(
+            rect.x, rect.y,
+        ),
+        dedicated_dod_form_selection_list_live::selection_list_reset_button_rect(rect.x, rect.y),
+    ] {
+        assert!(apply_click(
+            &mut state,
+            point.x + CLICK_CENTER,
+            point.y + CLICK_CENTER
+        ));
+        visual_actions.insert(state.screen_state.last_action.to_string());
+    }
+    assert_eq!(catalog_actions, visual_actions);
+}
+
+#[test]
+fn selection_list_visual_state_matches_core_selection_list_state_contract() {
+    let mut core_list = molecule::SelectionList::new("Selection list")
+        .item(molecule::ChoiceItem::new("first", "First"))
+        .item(molecule::ChoiceItem::new("second", "Second"))
+        .item(molecule::ChoiceItem::new("third", "Third"));
+    let target = core_list.state_id().clone();
+    let selected = core_list.apply_action(&UiAction::select_box_selected(target.clone(), 1));
+    let moved = core_list.apply_action(&UiAction::set_selected_index(target, 2));
+    assert!(
+        selected
+            .callback_log
+            .iter()
+            .any(|it| it.action == "select_box_selected")
+    );
+    assert!(
+        moved
+            .callback_log
+            .iter()
+            .any(|it| it.action == "set_selected_index")
+    );
+    let core_node: katana_ui_core::render_model::UiNode = core_list.into();
+    let core_interaction = &core_node.props().interaction;
+    assert_eq!(2, core_interaction.selected_index);
+    assert!(core_interaction.has_selection);
+    assert_eq!("third", core_interaction.value);
+    assert!(!core_interaction.open);
+
+    let mut visual = state_for(SELECTION_LIST_PAGE);
+    let rect = preview_detail::component_action_hit_rect(SELECTION_LIST_PAGE);
+    for point in [
+        dedicated_dod_form_selection_list_live::selection_list_select_row_button_rect(
+            rect.x, rect.y,
+        ),
+        dedicated_dod_form_selection_list_live::selection_list_keyboard_next_button_rect(
+            rect.x, rect.y,
+        ),
+    ] {
+        assert!(apply_click(
+            &mut visual,
+            point.x + CLICK_CENTER,
+            point.y + CLICK_CENTER
+        ));
+    }
+    assert_eq!(
+        "selection_list_keyboard_next",
+        visual.screen_state.last_action
+    );
+    assert_eq!(
+        "single=2 multi=none focus=2",
+        visual.screen_state.state_label
+    );
 }
 
 fn state_for(page: &'static str) -> StorybookWindowState {

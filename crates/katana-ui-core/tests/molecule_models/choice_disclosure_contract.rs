@@ -197,3 +197,35 @@ fn disclosure_molecules_update_open_value_and_dismiss_state() {
             .value
     );
 }
+
+#[test]
+fn selection_list_accepts_typed_select_actions_and_syncs_state() {
+    let mut list = SelectionList::new("Selection")
+        .item(ChoiceItem::new("first", "First"))
+        .item(ChoiceItem::new("second", "Second"))
+        .item(ChoiceItem::new("third", "Third"));
+    let target = list.state_id().clone();
+    let selected = list.apply_action(&UiAction::select_box_selected(target.clone(), 1));
+    let moved = list.apply_action(&UiAction::set_selected_index(target, 2));
+    let tree = UiTree::new(list);
+    let interaction = &tree.root().props().interaction;
+
+    assert!(selected.handled);
+    assert!(
+        selected
+            .callback_log
+            .iter()
+            .any(|it| it.action == "select_box_selected")
+    );
+    assert!(moved.handled);
+    assert!(
+        moved
+            .callback_log
+            .iter()
+            .any(|it| it.action == "set_selected_index")
+    );
+    assert_eq!(2, interaction.selected_index);
+    assert!(interaction.has_selection);
+    assert_eq!("third", interaction.value);
+    assert!(!interaction.open);
+}

@@ -320,3 +320,44 @@ fn combo_box_story_root_props_match_initial_callback_log() -> Result<(), &'stati
     );
     Ok(())
 }
+
+#[test]
+fn selection_list_story_root_props_match_initial_callback_log() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let selection_list = examples
+        .iter()
+        .find(|it| it.page == "selection-list")
+        .ok_or("selection-list page missing")?;
+    let list_node = selection_list.tree.root();
+    let callback = selection_list
+        .callback_logs
+        .iter()
+        .find(|it| it.action == "selection_list_state_read")
+        .ok_or("selection-list state read callback log missing")?;
+
+    assert_eq!(
+        callback.target.as_str(),
+        list_node.props().state_id.as_str()
+    );
+    assert_eq!("single=none multi=none focus=none", callback.before);
+    assert_eq!("single=none multi=none focus=none", callback.after);
+    assert!(!list_node.props().interaction.open);
+    assert!(!list_node.props().interaction.has_selection);
+    assert_eq!(0, list_node.props().interaction.selected_index);
+    assert!(list_node.props().interaction.value.is_empty());
+    assert!(
+        selection_list
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "select_box_selected")
+    );
+    assert!(
+        selection_list
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "set_selected_index")
+    );
+    assert!(selection_list.contract.action_history);
+    assert!(selection_list.contract.event_history);
+    Ok(())
+}

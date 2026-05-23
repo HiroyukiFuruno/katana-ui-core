@@ -5,6 +5,7 @@ use crate::visual::dedicated_dod_form_binary_choice_live as binary_choice_live;
 use crate::visual::dedicated_dod_form_combo_live as combo_live;
 use crate::visual::dedicated_dod_form_input_live as input_live;
 use crate::visual::dedicated_dod_form_select_live as select_live;
+use crate::visual::dedicated_dod_form_selection_list_live as selection_list_live;
 use crate::visual::layout_metrics::{
     button_setting_hit_rect, dark_theme_rect, light_theme_rect, preset_tab_rect,
     scrollbar_off_rect, scrollbar_on_rect,
@@ -237,6 +238,43 @@ fn selection_control_operation_at(
         }
         if input_live::search_regex_toggle_button_rect(component.x, component.y).contains(x, y) {
             return Some(StorybookButtonOperation::SearchRegexToggle);
+        }
+    }
+    if page == "selection-list" {
+        if selection_list_live::selection_list_state_read_button_rect(component.x, component.y)
+            .contains(x, y)
+        {
+            return Some(StorybookButtonOperation::SelectionControl(
+                SelectionScreenAction::SelectionListStateRead,
+            ));
+        }
+        if selection_list_live::selection_list_select_row_button_rect(component.x, component.y)
+            .contains(x, y)
+        {
+            return Some(StorybookButtonOperation::SelectionControl(
+                SelectionScreenAction::SelectionListSelectRow(1),
+            ));
+        }
+        if selection_list_live::selection_list_multi_toggle_button_rect(component.x, component.y)
+            .contains(x, y)
+        {
+            return Some(StorybookButtonOperation::SelectionControl(
+                SelectionScreenAction::SelectionListMultiToggle(1),
+            ));
+        }
+        if selection_list_live::selection_list_keyboard_next_button_rect(component.x, component.y)
+            .contains(x, y)
+        {
+            return Some(StorybookButtonOperation::SelectionControl(
+                SelectionScreenAction::SelectionListKeyboardNext,
+            ));
+        }
+        if selection_list_live::selection_list_reset_button_rect(component.x, component.y)
+            .contains(x, y)
+        {
+            return Some(StorybookButtonOperation::SelectionControl(
+                SelectionScreenAction::SelectionListReset,
+            ));
         }
     }
     let action = match page {
