@@ -153,6 +153,7 @@ fn render_frame(
         panel_scroll: state.panel_scroll,
         tree_expansion: state.tree_expansion,
         show_navigation_lines: state.show_navigation_lines,
+        show_navigation_text_connectors: state.show_navigation_text_connectors,
         screen_state: state.screen_state.clone(),
     })
 }

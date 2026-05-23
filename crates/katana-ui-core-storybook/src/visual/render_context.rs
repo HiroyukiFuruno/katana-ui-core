@@ -23,6 +23,7 @@ pub(super) struct ScenarioContext<'a> {
     pub(super) panel_scroll: PanelScrollOffsets,
     pub(super) screen_state: &'a StorybookScreenState,
     pub(super) show_navigation_lines: bool,
+    pub(super) show_navigation_text_connectors: bool,
 }
 
 #[derive(Clone, Copy)]

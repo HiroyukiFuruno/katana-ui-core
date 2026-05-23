@@ -260,6 +260,7 @@ fn navigation_tree_lines_obey_show_navigation_lines_option() {
         panel_scroll: crate::visual::panel_scroll_state::PanelScrollOffsets::default(),
         tree_expansion: expansion,
         show_navigation_lines: true,
+        show_navigation_text_connectors: false,
         screen_state: crate::visual::screen_state::StorybookScreenState::default(),
     });
     let without_lines =
@@ -272,6 +273,7 @@ fn navigation_tree_lines_obey_show_navigation_lines_option() {
             panel_scroll: crate::visual::panel_scroll_state::PanelScrollOffsets::default(),
             tree_expansion: expansion,
             show_navigation_lines: false,
+            show_navigation_text_connectors: true,
             screen_state: crate::visual::screen_state::StorybookScreenState::default(),
         });
     let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
@@ -279,6 +281,7 @@ fn navigation_tree_lines_obey_show_navigation_lines_option() {
     let (row_y, row_depth) = row_y_and_depth_in_navigation("tree-view", expansion)
         .expect("target row should be visible");
     let line_x = navigation_line_x(row_depth);
+    let text_connector_x = navigation_text_connector_sample_x(row_depth);
     let row_center_y = row_y + layout_metrics::NAV_ROW_HEIGHT / 2;
     let below_row_center_y = row_center_y + 2;
 
@@ -296,6 +299,10 @@ fn navigation_tree_lines_obey_show_navigation_lines_option() {
     );
     assert_ne!(
         pixel_at(&without_lines, line_x, row_center_y),
+        Some(palette.border)
+    );
+    assert_ne!(
+        pixel_at(&without_lines, text_connector_x, row_center_y),
         Some(palette.border)
     );
 }
@@ -331,10 +338,101 @@ fn navigation_section_disclosure_is_indented_right_of_group_disclosure() {
 }
 
 #[test]
-fn navigation_horizontal_connectors_reach_label_start_for_each_depth() {
+fn navigation_text_connectors_are_hidden_by_default() {
     let expansion = TreeExpansionState::default();
     let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
     let canvas = StorybookVisual.render_scenario("dark", "tree-view", false);
+    for (depth, row_y) in navigation_sample_rows(expansion) {
+        let y = row_y + layout_metrics::NAV_ROW_HEIGHT / 2;
+        assert_ne!(
+            Some(palette.border),
+            pixel_at(&canvas, navigation_text_connector_sample_x(depth), y),
+            "navigation text connector should be hidden by default at depth {depth}"
+        );
+    }
+}
+
+#[test]
+fn navigation_text_connectors_extend_to_label_when_enabled() {
+    let expansion = TreeExpansionState::default();
+    let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
+    let canvas = render_navigation_canvas(true, true, "tree-view");
+    for (depth, row_y) in navigation_sample_rows(expansion) {
+        let y = row_y + layout_metrics::NAV_ROW_HEIGHT / 2;
+        for x in navigation_line_x(depth)..navigation_connector_target_x(depth) {
+            assert_eq!(
+                Some(palette.border),
+                pixel_at(&canvas, x, y),
+                "navigation text connector should continue at depth {depth} ({x}, {y})"
+            );
+        }
+    }
+}
+
+#[test]
+fn navigation_tree_lines_remain_continuous_without_text_connectors() {
+    let expansion = TreeExpansionState::default();
+    let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
+    let canvas = render_navigation_canvas(true, false, "button");
+    let foundation_row_y = navigation_row_y_for_group(expansion, StoryGroup::Foundation)
+        .expect("foundation group row should be visible");
+    let section_row_y =
+        navigation_row_y_for_section(expansion).expect("section row should be visible");
+    let first_page_row_y =
+        navigation_row_y_for_section_page(expansion).expect("section page row should be visible");
+    let (button_row_y, button_depth) = navigation_row_y_and_depth_for_page(expansion, "button")
+        .expect("button row should be visible");
+    let next_button_sibling_row_y = navigation_next_page_row_y_after_page(expansion, "button")
+        .expect("button sibling row should be visible");
+    let line_x = navigation_line_x(button_depth);
+    let selected_row_center_y = button_row_y + layout_metrics::NAV_ROW_HEIGHT / 2;
+    let selected_row_top_y = button_row_y + 1;
+    let sibling_gap_y = button_row_y + layout_metrics::NAV_ROW_HEIGHT + 1;
+
+    assert_vertical_tree_segment(
+        &canvas,
+        navigation_line_x(0),
+        navigation_disclosure_center_y(foundation_row_y) + 1,
+        section_row_y.saturating_sub(1),
+        palette.border,
+    );
+    assert_vertical_tree_segment(
+        &canvas,
+        navigation_line_x(1),
+        navigation_disclosure_center_y(section_row_y) + 1,
+        first_page_row_y.saturating_sub(1),
+        palette.border,
+    );
+    assert_vertical_tree_segment(
+        &canvas,
+        line_x,
+        selected_row_center_y + 1,
+        next_button_sibling_row_y.saturating_sub(1),
+        palette.border,
+    );
+    assert_eq!(
+        Some(palette.border),
+        pixel_at(&canvas, line_x, selected_row_top_y)
+    );
+    assert_eq!(
+        Some(palette.border),
+        pixel_at(&canvas, line_x, selected_row_center_y)
+    );
+    assert_eq!(
+        Some(palette.border),
+        pixel_at(&canvas, line_x, sibling_gap_y)
+    );
+    assert_ne!(
+        Some(palette.border),
+        pixel_at(
+            &canvas,
+            navigation_text_connector_sample_x(button_depth),
+            selected_row_center_y
+        )
+    );
+}
+
+fn navigation_sample_rows(expansion: TreeExpansionState) -> [(usize, usize); 3] {
     let rows = [
         (
             0,
@@ -350,17 +448,7 @@ fn navigation_horizontal_connectors_reach_label_start_for_each_depth() {
             navigation_row_y_for_section_page(expansion).expect("page row should be visible"),
         ),
     ];
-
-    for (depth, row_y) in rows {
-        let y = row_y + layout_metrics::NAV_ROW_HEIGHT / 2;
-        for x in navigation_line_x(depth)..navigation_connector_target_x(depth) {
-            assert_eq!(
-                Some(palette.border),
-                pixel_at(&canvas, x, y),
-                "navigation connector should continue at depth {depth} ({x}, {y})"
-            );
-        }
-    }
+    rows
 }
 
 #[test]
@@ -520,6 +608,59 @@ fn navigation_row_y_for_section_page(expansion: TreeExpansionState) -> Option<us
         .map(|index| layout_metrics::NAV_FIRST_ROW_Y + index * layout_metrics::NAV_ROW_STEP)
 }
 
+fn navigation_next_page_row_y_after_page(
+    expansion: TreeExpansionState,
+    page: &str,
+) -> Option<usize> {
+    let rows = visible_rows(expansion);
+    let current = rows.iter().position(|row| {
+        matches!(
+            row,
+            NavigationRow::Page { page: row_page, .. }
+                | NavigationRow::PageWithoutSection { page: row_page, .. }
+                if *row_page == page
+        )
+    })?;
+    rows.iter()
+        .enumerate()
+        .skip(current + 1)
+        .find(|(_, row)| {
+            matches!(
+                row,
+                NavigationRow::Page { .. } | NavigationRow::PageWithoutSection { .. }
+            )
+        })
+        .map(|(index, _)| layout_metrics::NAV_FIRST_ROW_Y + index * layout_metrics::NAV_ROW_STEP)
+}
+
+fn navigation_row_y_and_depth_for_page(
+    expansion: TreeExpansionState,
+    page: &str,
+) -> Option<(usize, usize)> {
+    visible_rows(expansion)
+        .iter()
+        .position(|row| {
+            matches!(
+                row,
+                NavigationRow::Page { page: row_page, .. }
+                    | NavigationRow::PageWithoutSection { page: row_page, .. }
+                    if *row_page == page
+            )
+        })
+        .and_then(|index| {
+            let row = visible_rows(expansion).get(index).copied()?;
+            let depth = match row {
+                NavigationRow::Page { .. } => 2,
+                NavigationRow::PageWithoutSection { .. } => 1,
+                _ => return None,
+            };
+            Some((
+                layout_metrics::NAV_FIRST_ROW_Y + index * layout_metrics::NAV_ROW_STEP,
+                depth,
+            ))
+        })
+}
+
 fn navigation_label_x(depth: usize) -> usize {
     match depth {
         0 => 62,
@@ -530,6 +671,10 @@ fn navigation_label_x(depth: usize) -> usize {
 
 fn navigation_connector_target_x(depth: usize) -> usize {
     navigation_label_x(depth).saturating_sub(1)
+}
+
+fn navigation_text_connector_sample_x(depth: usize) -> usize {
+    navigation_label_x(depth).saturating_sub(2)
 }
 
 fn navigation_label_sample_width(depth: usize) -> usize {
@@ -611,6 +756,39 @@ fn count_text_antialias_pixels(
         }
     }
     count
+}
+
+fn render_navigation_canvas(
+    show_navigation_lines: bool,
+    show_navigation_text_connectors: bool,
+    selected_page: &'static str,
+) -> Canvas {
+    render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
+        theme_id: "dark",
+        selected_page,
+        preset_index: 0,
+        scroll_y: 0,
+        scrollbar_visible: true,
+        panel_scroll: crate::visual::panel_scroll_state::PanelScrollOffsets::default(),
+        tree_expansion: TreeExpansionState::default(),
+        show_navigation_lines,
+        show_navigation_text_connectors,
+        screen_state: crate::visual::screen_state::StorybookScreenState::default(),
+    })
+}
+
+fn assert_vertical_tree_segment(canvas: &Canvas, x: usize, from_y: usize, to_y: usize, color: u32) {
+    assert!(
+        from_y <= to_y,
+        "vertical tree segment range should be non-empty"
+    );
+    for y in from_y..=to_y {
+        assert_eq!(
+            Some(color),
+            pixel_at(canvas, x, y),
+            "vertical tree segment should continue at ({x}, {y})"
+        );
+    }
 }
 
 fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {

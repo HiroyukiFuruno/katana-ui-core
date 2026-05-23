@@ -259,6 +259,7 @@ fn button_status_scenario(
         scrollbar_visible: true,
         panel_scroll: Default::default(),
         show_navigation_lines: true,
+        show_navigation_text_connectors: false,
         screen_state,
     }
 }
@@ -282,6 +283,7 @@ fn button_summary_scenario_with_state(
         scrollbar_visible: true,
         panel_scroll: Default::default(),
         show_navigation_lines: true,
+        show_navigation_text_connectors: false,
         screen_state,
     }
 }

@@ -17,6 +17,7 @@ const GROUP_LINE_X: usize = 54;
 const GROUP_TEXT_X: usize = 62;
 const SECTION_TEXT_X: usize = 78;
 const PAGE_TEXT_X: usize = 98;
+const DISCLOSURE_SIZE: usize = 7;
 const CONNECTOR_LABEL_GAP: usize = 1;
 const NAV_TEXT_SIZE: f32 = 12.0;
 const NAV_GROUP_TEXT_SIZE: f32 = 11.0;
@@ -31,6 +32,7 @@ pub(super) fn draw(
     expansion: TreeExpansionState,
     scroll_y: usize,
     show_navigation_lines: bool,
+    show_navigation_text_connectors: bool,
 ) {
     let rows = visible_rows(expansion);
     draw_navigation_panel(canvas, palette);
@@ -54,6 +56,7 @@ pub(super) fn draw(
                             *group,
                             expansion.is_open(*group),
                             show_navigation_lines,
+                            show_navigation_text_connectors,
                             &rows,
                             row_index,
                             row_y,
@@ -67,6 +70,7 @@ pub(super) fn draw(
                             *section,
                             expansion.is_section_open(*group, *section),
                             show_navigation_lines,
+                            show_navigation_text_connectors,
                             &rows,
                             row_index,
                             row_y,
@@ -80,6 +84,7 @@ pub(super) fn draw(
                             page,
                             *page == selected_page,
                             show_navigation_lines,
+                            show_navigation_text_connectors,
                             &rows,
                             row_index,
                             row_y,
@@ -94,6 +99,7 @@ pub(super) fn draw(
                             page,
                             *page == selected_page,
                             show_navigation_lines,
+                            show_navigation_text_connectors,
                             &rows,
                             row_index,
                             row_y,
@@ -120,6 +126,7 @@ fn draw_group(
     group: StoryGroup,
     open: bool,
     show_lines: bool,
+    show_text_connectors: bool,
     rows: &[NavigationRow],
     row_index: usize,
     y: usize,
@@ -139,7 +146,15 @@ fn draw_group(
         y,
     );
     if show_lines {
-        draw_row_guides(canvas, palette, NavigationDepth::Group, rows, row_index, y);
+        draw_row_guides(
+            canvas,
+            palette,
+            NavigationDepth::Group,
+            show_text_connectors,
+            rows,
+            row_index,
+            y,
+        );
     }
     text.draw_centered(
         canvas,
@@ -158,6 +173,7 @@ fn draw_section(
     section: StorySection,
     open: bool,
     show_lines: bool,
+    show_text_connectors: bool,
     rows: &[NavigationRow],
     row_index: usize,
     y: usize,
@@ -181,6 +197,7 @@ fn draw_section(
             canvas,
             palette,
             NavigationDepth::Section,
+            show_text_connectors,
             rows,
             row_index,
             y,
@@ -210,6 +227,7 @@ fn draw_page(
     page: &str,
     selected: bool,
     show_lines: bool,
+    show_text_connectors: bool,
     rows: &[NavigationRow],
     row_index: usize,
     y: usize,
@@ -240,7 +258,15 @@ fn draw_page(
             PageDepth::Sectionless => NavigationDepth::Section,
             PageDepth::Section => NavigationDepth::Page,
         };
-        draw_row_guides(canvas, palette, depth, rows, row_index, y);
+        draw_row_guides(
+            canvas,
+            palette,
+            depth,
+            show_text_connectors,
+            rows,
+            row_index,
+            y,
+        );
     }
     text.draw_centered(
         canvas,
@@ -256,6 +282,7 @@ fn draw_row_guides(
     canvas: &mut Canvas,
     palette: &VisualPalette,
     row_depth: NavigationDepth,
+    show_text_connector: bool,
     rows: &[NavigationRow],
     row_index: usize,
     row_y: usize,
@@ -268,15 +295,11 @@ fn draw_row_guides(
     let row_center_y = row_y + NAV_ROW_HEIGHT / 2;
 
     for level in 0..=current_depth {
-        let has_up = if current_depth > level {
-            previous_depth.is_some_and(|depth| depth >= level)
-        } else {
-            false
-        };
-        let has_down = next_depth.is_some_and(|depth| depth > level);
+        let has_up = level_continues_up(level, current_depth, previous_depth);
+        let has_down = level_continues_down(level, current_depth, next_depth);
         let start_y = if has_up { row_y } else { row_center_y };
         let end_y = if has_down {
-            row_y + NAV_ROW_HEIGHT
+            row_y + NAV_ROW_STEP
         } else {
             row_center_y + 1
         };
@@ -300,7 +323,7 @@ fn draw_row_guides(
     }
 
     let current_guide_x = guide_x(current_depth);
-    let connector_target_x = guide_target_x(row_depth);
+    let connector_target_x = guide_target_x(row_depth, show_text_connector);
     let connector_width = connector_target_x.saturating_sub(current_guide_x);
     if connector_width > 0 {
         canvas.fill_rect(
@@ -321,8 +344,28 @@ fn guide_x(level: usize) -> usize {
     }
 }
 
-fn guide_target_x(depth: NavigationDepth) -> usize {
-    text_x(depth).saturating_sub(CONNECTOR_LABEL_GAP)
+fn level_continues_up(level: usize, current_depth: usize, previous_depth: Option<usize>) -> bool {
+    if current_depth == 0 {
+        return false;
+    }
+    previous_depth.is_some_and(|depth| depth >= level)
+}
+
+fn level_continues_down(level: usize, current_depth: usize, next_depth: Option<usize>) -> bool {
+    if current_depth == 0 {
+        return next_depth.is_some_and(|depth| depth > current_depth);
+    }
+    if level < current_depth {
+        return next_depth.is_some_and(|depth| depth > level);
+    }
+    next_depth.is_some_and(|depth| depth >= level)
+}
+
+fn guide_target_x(depth: NavigationDepth, show_text_connector: bool) -> usize {
+    if show_text_connector {
+        return text_x(depth).saturating_sub(CONNECTOR_LABEL_GAP);
+    }
+    disclosure_x(depth) + DISCLOSURE_SIZE
 }
 
 fn disclosure_x(depth: NavigationDepth) -> usize {

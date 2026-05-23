@@ -31,6 +31,7 @@ pub(super) struct StorybookRenderOptions<'a> {
     pub(super) tree_expansion: TreeExpansionState,
     pub(super) screen_state: StorybookScreenState,
     pub(super) show_navigation_lines: bool,
+    pub(super) show_navigation_text_connectors: bool,
 }
 
 pub(super) fn render_storybook_canvas() -> Canvas {
@@ -69,6 +70,7 @@ pub(super) fn render_storybook_canvas_for_preset(
         panel_scroll: PanelScrollOffsets::default(),
         tree_expansion: TreeExpansionState::default(),
         show_navigation_lines: true,
+        show_navigation_text_connectors: false,
         screen_state: StorybookScreenState::default(),
     })
 }
@@ -191,6 +193,7 @@ impl ThemeFrameCache {
             scrollbar_visible: options.scrollbar_visible,
             panel_scroll: options.panel_scroll,
             show_navigation_lines: options.show_navigation_lines,
+            show_navigation_text_connectors: options.show_navigation_text_connectors,
             screen_state: &options.screen_state,
         };
         shell::draw(
@@ -223,6 +226,7 @@ struct ContentFrameKey {
     tree_expansion: TreeExpansionState,
     screen_state: StorybookScreenState,
     show_navigation_lines: bool,
+    show_navigation_text_connectors: bool,
 }
 
 impl ContentFrameKey {
@@ -239,6 +243,7 @@ impl ContentFrameKey {
             tree_expansion: options.tree_expansion,
             screen_state: options.screen_state.clone(),
             show_navigation_lines: options.show_navigation_lines,
+            show_navigation_text_connectors: options.show_navigation_text_connectors,
         }
     }
 }
@@ -306,6 +311,7 @@ mod tests {
             tree_expansion: TreeExpansionState::default(),
             screen_state,
             show_navigation_lines: true,
+            show_navigation_text_connectors: false,
         }
     }
 }
@@ -326,6 +332,7 @@ pub(super) fn render_storybook_canvas_with_screen_state(
         panel_scroll: PanelScrollOffsets::default(),
         tree_expansion: TreeExpansionState::default(),
         show_navigation_lines: true,
+        show_navigation_text_connectors: false,
         screen_state,
     })
 }
