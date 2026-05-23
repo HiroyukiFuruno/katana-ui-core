@@ -162,3 +162,57 @@ fn option_summary(tree: &UiTreeProps) -> String {
         tree.default_open
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sample_tree_props() -> UiTreeProps {
+        UiTreeProps {
+            active_id: "tree-active".to_string(),
+            line_display: true,
+            line_style: UiTreeLineStyle::Solid,
+            line_width: 1,
+            icons_visible: true,
+            directory_icon: "<svg data-icon=\"branch\"/>".to_string(),
+            file_icon: "<svg data-icon=\"leaf\"/>".to_string(),
+            font_role: "body".to_string(),
+            theme_id: "dark".to_string(),
+            default_open: true,
+            nodes: Vec::new(),
+            empty_area_context_menu: true,
+            toggle_icon: "<svg data-icon=\"chevron\"/>".to_string(),
+            toggle_trigger_area: UiTreeToggleTriggerArea::IconAndText,
+        }
+    }
+
+    #[test]
+    fn option_summary_tracks_marker_visibility_toggle() {
+        let visible = sample_tree_props();
+        let mut hidden = sample_tree_props();
+        hidden.icons_visible = false;
+
+        assert_eq!(
+            "solid line / branch+leaf / default open=true",
+            option_summary(&visible)
+        );
+        assert_eq!(
+            "solid line / icons hidden / default open=true",
+            option_summary(&hidden)
+        );
+    }
+
+    #[test]
+    fn trigger_label_covers_all_trigger_areas() {
+        assert_eq!("icon", trigger_label(UiTreeToggleTriggerArea::IconOnly));
+        assert_eq!(
+            "icon+text",
+            trigger_label(UiTreeToggleTriggerArea::IconAndText)
+        );
+        assert_eq!(
+            "full row",
+            trigger_label(UiTreeToggleTriggerArea::WholeElement)
+        );
+        assert_eq!("text", trigger_label(UiTreeToggleTriggerArea::TextOnly));
+    }
+}

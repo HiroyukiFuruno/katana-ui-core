@@ -170,6 +170,48 @@ fn virtualized_collection_pages_expose_range_settings_and_logs() -> Result<(), &
 }
 
 #[test]
+fn tree_view_story_exposes_marker_depth_and_trigger_contract() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "tree-view")
+        .ok_or("tree-view page missing")?;
+    let tree = &story.tree.root().props().tree;
+    let depths: Vec<usize> = tree.nodes.iter().map(|it| it.depth).collect();
+
+    assert_eq!(&[0, 1, 2], &depths[..]);
+    assert!(tree.icons_visible, "tree-view markers should be visible");
+    assert_eq!("<svg data-icon=\"branch\"/>", tree.directory_icon);
+    assert_eq!("<svg data-icon=\"leaf\"/>", tree.file_icon);
+    assert!(tree.line_display);
+    assert_eq!(1, tree.line_width);
+    assert_eq!(
+        katana_ui_core::render_model::UiTreeLineStyle::Solid,
+        tree.line_style
+    );
+    assert_eq!(
+        katana_ui_core::render_model::UiTreeToggleTriggerArea::IconAndText,
+        tree.toggle_trigger_area
+    );
+    assert!(
+        story
+            .callback_logs
+            .iter()
+            .any(|it| it.action.starts_with("tree_")
+                && it.action != "tree_view_virtualization_range"),
+        "tree-view callback log lacks typed tree interaction action"
+    );
+    assert!(
+        story
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "tree_view_virtualization_range"),
+        "tree-view callback log lacks virtualization range action"
+    );
+    Ok(())
+}
+
+#[test]
 fn empty_state_story_exposes_settings_presets_and_logs() -> Result<(), &'static str> {
     let examples = StoryCatalog.examples();
     let story = examples

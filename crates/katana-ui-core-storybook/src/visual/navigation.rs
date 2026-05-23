@@ -12,6 +12,9 @@ use super::text::{TextRenderer, TextVerticalBox};
 use crate::catalog::story_map::{StoryGroup, StorySection};
 
 const PAGE_LINE_X: usize = 84;
+const SECTION_LINE_X: usize = 68;
+const SECTION_CONNECTOR_WIDTH: usize = 12;
+const PAGE_CONNECTOR_WIDTH: usize = 10;
 const GROUP_TEXT_X: usize = 62;
 const SECTION_TEXT_X: usize = 78;
 const PAGE_TEXT_X: usize = 98;
@@ -19,8 +22,6 @@ const NAV_TEXT_SIZE: f32 = 12.0;
 const NAV_GROUP_TEXT_SIZE: f32 = 11.0;
 const TREE_LINE_WIDTH: usize = 1;
 const SELECTED_ACCENT_WIDTH: usize = 3;
-const PAGE_SELECTED_MARK_X: usize = 74;
-const PAGE_SELECTED_MARK_SIZE: usize = 14;
 
 pub(super) fn draw(
     canvas: &mut Canvas,
@@ -124,6 +125,20 @@ fn draw_section(
         palette.code_background,
     );
     draw_disclosure(canvas, palette, open, y);
+    canvas.fill_rect(
+        SECTION_LINE_X,
+        y.saturating_sub(NAV_ROW_STEP / 2),
+        TREE_LINE_WIDTH,
+        NAV_ROW_HEIGHT + NAV_ROW_STEP / 2,
+        palette.border,
+    );
+    canvas.fill_rect(
+        SECTION_LINE_X,
+        y + NAV_ROW_HEIGHT / 2,
+        SECTION_CONNECTOR_WIDTH,
+        TREE_LINE_WIDTH,
+        palette.border,
+    );
     text.draw_centered(
         canvas,
         section.label(),
@@ -161,19 +176,26 @@ fn draw_page(
             NAV_ROW_HEIGHT,
             palette.accent,
         );
-        canvas.stroke_rect(
-            PAGE_SELECTED_MARK_X,
-            y + (NAV_ROW_HEIGHT - PAGE_SELECTED_MARK_SIZE) / 2,
-            PAGE_SELECTED_MARK_SIZE,
-            PAGE_SELECTED_MARK_SIZE,
-            palette.accent,
-        );
     }
+    canvas.fill_rect(
+        SECTION_LINE_X,
+        y.saturating_sub(NAV_ROW_STEP / 2),
+        TREE_LINE_WIDTH,
+        NAV_ROW_HEIGHT + NAV_ROW_STEP / 2,
+        palette.border,
+    );
     canvas.fill_rect(
         PAGE_LINE_X,
         y,
         TREE_LINE_WIDTH,
         NAV_ROW_HEIGHT + NAV_ROW_STEP / 2,
+        palette.border,
+    );
+    canvas.fill_rect(
+        PAGE_LINE_X - PAGE_CONNECTOR_WIDTH,
+        y + NAV_ROW_HEIGHT / 2,
+        PAGE_CONNECTOR_WIDTH,
+        TREE_LINE_WIDTH,
         palette.border,
     );
     text.draw_centered(

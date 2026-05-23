@@ -32,9 +32,9 @@
 
 ## 4. TreeView（今回の未コミット差分の扱い）
 
-- [ ] 4.1 TreeView 表示修正は完了扱いにしない。depth / disclosure / guide line / marker の契約を P0 と同粒度で再評価する。
-- [ ] 4.2 `molecule_heavy.rs` / `dedicated_dod_molecule_tree.rs` / `dedicated_dod_molecule_tree_parts.rs` / `visual_tests.rs` の未コミット差分は、readiness audit 完了まで「検証待ち」として扱う。
-- [ ] 4.3 TreeView の visual contract test を削った状態で完了扱いしない。必要な検査ケースを再追加する。
+- [x] 4.1 TreeView 表示修正は完了扱いにしない。depth / disclosure / guide line / marker の契約を P0 と同粒度で再評価する。
+- [x] 4.2 `molecule_heavy.rs` / `dedicated_dod_molecule_tree.rs` / `dedicated_dod_molecule_tree_parts.rs` / `visual_tests.rs` の未コミット差分は、readiness audit 完了まで「検証待ち」として扱う。
+- [x] 4.3 TreeView の visual contract test を削った状態で完了扱いしない。必要な検査ケースを再追加する。
 
 ## 5. 01〜24 の完了取消しと再評価
 

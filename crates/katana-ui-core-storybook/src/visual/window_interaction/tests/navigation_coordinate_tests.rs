@@ -96,6 +96,20 @@ fn click_mapping_remains_stable_with_retina_letterboxed_window_and_scrolled_navi
     assert_eq!(target_page, state.selected_page);
 }
 
+#[test]
+fn row_hit_rect_keeps_right_edge_exclusive_under_scaled_window_coordinates() {
+    let state = StorybookWindowState::default();
+    let x_inside = layout_metrics::NAV_ROW_X + layout_metrics::NAV_ROW_WIDTH - 1;
+    let x_outside = layout_metrics::NAV_ROW_X + layout_metrics::NAV_ROW_WIDTH;
+    let y = layout_metrics::NAV_FIRST_ROW_Y + 1;
+
+    assert!(matches!(
+        row_from_click(x_inside, y, state.tree_expansion),
+        Some(NavigationRow::Group(_))
+    ));
+    assert_eq!(None, row_from_click(x_outside, y, state.tree_expansion));
+}
+
 fn navigation_page_target_after_scroll(
     minimum_y: usize,
     state: &StorybookWindowState,

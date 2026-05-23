@@ -184,6 +184,20 @@ fn click_mapping_can_select_nested_story_with_navigation_scroll() {
     }
 }
 
+#[test]
+fn navigation_page_row_hit_target_accepts_last_pixel_and_rejects_outside_x() {
+    let mut state = StorybookWindowState::default();
+    let target = click_target_for_page("tree-view");
+    assert!(target.is_some());
+    if let Some((_, y)) = target {
+        let hit_x = layout_metrics::NAV_ROW_X + layout_metrics::NAV_ROW_WIDTH - 1;
+        let outside_x = layout_metrics::NAV_ROW_X + layout_metrics::NAV_ROW_WIDTH;
+        assert!(apply_click(&mut state, hit_x, y));
+        assert_eq!("tree-view", state.selected_page);
+        assert!(!apply_click(&mut state, outside_x, y));
+    }
+}
+
 fn click_scrollbar_off(state: &mut StorybookWindowState) {
     let scrollbar_off = layout_metrics::scrollbar_off_rect();
     assert!(apply_click(state, scrollbar_off.x + 1, scrollbar_off.y + 1));

@@ -4,6 +4,8 @@ use crate::catalog::story_map::{
     STORY_GROUPS, STORY_PATH_GROUPS, StoryGroup, StoryPath, StorySection,
 };
 use crate::requirements::StoryRequirements;
+use crate::visual::layout_metrics;
+use crate::visual::navigation_tree::row_from_click;
 
 #[cfg(test)]
 #[test]
@@ -245,4 +247,54 @@ fn section_expansion_state_is_scoped_by_group_and_section_pair() {
 
     assert!(!expansion.is_section_open(StoryGroup::Forms, StorySection::Selection));
     assert!(expansion.is_section_open(StoryGroup::Atoms, StorySection::Selection));
+}
+
+#[cfg(test)]
+#[test]
+fn tree_rows_model_information_hierarchy_not_directory_file_icons() {
+    let rows = visible_rows(TreeExpansionState::default());
+    assert!(
+        rows.iter()
+            .any(|it| matches!(it, NavigationRow::Group(StoryGroup::Data)))
+    );
+    assert!(rows.iter().any(|it| {
+        matches!(
+            it,
+            NavigationRow::Section {
+                group: StoryGroup::Data,
+                section: StorySection::Structured
+            }
+        )
+    }));
+    assert!(rows.iter().any(|it| {
+        matches!(
+            it,
+            NavigationRow::Page {
+                page: "tree-view",
+                group: StoryGroup::Data,
+                section: StorySection::Structured
+            }
+        )
+    }));
+}
+
+#[cfg(test)]
+#[test]
+fn row_from_click_uses_navigation_hit_rect_boundaries() {
+    let expansion = TreeExpansionState::default();
+    let x = layout_metrics::NAV_ROW_X + 1;
+    let y = layout_metrics::NAV_FIRST_ROW_Y + 1;
+    let outside_left_x = layout_metrics::NAV_ROW_X.saturating_sub(1);
+    let outside_right_x = layout_metrics::NAV_ROW_X + layout_metrics::NAV_ROW_WIDTH;
+    let outside_top_y = layout_metrics::NAV_FIRST_ROW_Y.saturating_sub(1);
+    let outside_bottom_y = layout_metrics::NAV_FIRST_ROW_Y + layout_metrics::NAV_ROW_HEIGHT;
+
+    assert_eq!(
+        Some(NavigationRow::Group(StoryGroup::Foundation)),
+        row_from_click(x, y, expansion)
+    );
+    assert_eq!(None, row_from_click(outside_left_x, y, expansion));
+    assert_eq!(None, row_from_click(outside_right_x, y, expansion));
+    assert_eq!(None, row_from_click(x, outside_top_y, expansion));
+    assert_eq!(None, row_from_click(x, outside_bottom_y, expansion));
 }

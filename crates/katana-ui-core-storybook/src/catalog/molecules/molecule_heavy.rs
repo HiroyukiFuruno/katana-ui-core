@@ -205,5 +205,17 @@ fn tree_view_story() -> StoryExample {
         "tree_view_virtualization_range",
         &virtualization,
     ));
+    logs.push(katana_ui_core::interaction::UiCallbackLog::new(
+        tree.state_id().clone(),
+        "tree_icons_visible",
+        "icons_visible=false markers=hidden",
+        "icons_visible=true markers=branch+leaf",
+    ));
+    logs.push(katana_ui_core::interaction::UiCallbackLog::new(
+        tree.state_id().clone(),
+        "tree_marker_icons",
+        "directory_icon=none file_icon=none",
+        "directory_icon=branch file_icon=leaf",
+    ));
     StoryCatalog::interactive_story("tree-view", tree, logs)
 }
