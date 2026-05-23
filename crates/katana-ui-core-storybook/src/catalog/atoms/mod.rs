@@ -1,4 +1,6 @@
-use super::{StoryCatalog, StoryExample, atom_interactions, atom_motion_interactions};
+mod atom_interactions;
+mod atom_motion_interactions;
+use super::{StoryCatalog, StoryExample};
 use katana_ui_core::atom;
 use katana_ui_core::render_model::{UiSize, UiVisualRole};
 

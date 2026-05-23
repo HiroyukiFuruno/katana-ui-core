@@ -178,7 +178,11 @@ pub(super) fn apply_click(state: &mut StorybookWindowState, x: usize, y: usize) 
     {
         match row {
             NavigationRow::Group(group) => state.tree_expansion.toggle(group),
+            NavigationRow::Section { group, section } => {
+                state.tree_expansion.toggle_section(group, section)
+            }
             NavigationRow::Page { page, .. } => state.select_page(page),
+            NavigationRow::PageWithoutSection { page, .. } => state.select_page(page),
         }
         return true;
     }

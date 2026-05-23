@@ -1,98 +1,135 @@
 use super::layout_metrics::{
     NAV_FIRST_ROW_Y, NAV_ROW_HEIGHT, NAV_ROW_STEP, navigation_hit_rect, navigation_menu_panel_rect,
 };
-use crate::requirements::StoryRequirements;
-
-const NAVIGATION_GROUP_COUNT: usize = 5;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum NavigationGroup {
-    Foundation,
-    Atoms,
-    Selection,
-    Molecules,
-    Layout,
-}
+use crate::catalog::story_map::{STORY_GROUPS, STORY_PATH_GROUPS, StoryGroup, StorySection};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum NavigationRow {
-    Group(NavigationGroup),
+    Group(StoryGroup),
+    Section {
+        group: StoryGroup,
+        section: StorySection,
+    },
     Page {
         page: &'static str,
-        group: NavigationGroup,
+        group: StoryGroup,
+        section: StorySection,
+    },
+    PageWithoutSection {
+        page: &'static str,
+        group: StoryGroup,
     },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct TreeExpansionState {
-    foundation: bool,
-    atoms: bool,
-    selection: bool,
-    molecules: bool,
-    layout: bool,
+    groups: [bool; StoryGroup::COUNT],
+    sections: [[bool; StorySection::COUNT]; StoryGroup::COUNT],
 }
 
 impl Default for TreeExpansionState {
     fn default() -> Self {
         Self {
-            foundation: true,
-            atoms: true,
-            selection: true,
-            molecules: true,
-            layout: true,
+            groups: [true; StoryGroup::COUNT],
+            sections: [[true; StorySection::COUNT]; StoryGroup::COUNT],
         }
     }
 }
 
 impl TreeExpansionState {
-    pub(super) fn is_open(self, group: NavigationGroup) -> bool {
-        match group {
-            NavigationGroup::Foundation => self.foundation,
-            NavigationGroup::Atoms => self.atoms,
-            NavigationGroup::Selection => self.selection,
-            NavigationGroup::Molecules => self.molecules,
-            NavigationGroup::Layout => self.layout,
-        }
+    pub(super) fn is_open(self, group: StoryGroup) -> bool {
+        self.groups[group.index()]
     }
 
-    pub(super) fn toggle(&mut self, group: NavigationGroup) {
-        match group {
-            NavigationGroup::Foundation => self.foundation = !self.foundation,
-            NavigationGroup::Atoms => self.atoms = !self.atoms,
-            NavigationGroup::Selection => self.selection = !self.selection,
-            NavigationGroup::Molecules => self.molecules = !self.molecules,
-            NavigationGroup::Layout => self.layout = !self.layout,
-        }
+    pub(super) fn is_section_open(self, group: StoryGroup, section: StorySection) -> bool {
+        self.sections[group.index()][section.index()]
     }
-}
 
-impl NavigationGroup {
-    pub(super) fn label(self) -> &'static str {
-        match self {
-            NavigationGroup::Foundation => "Foundation",
-            NavigationGroup::Atoms => "Atoms",
-            NavigationGroup::Selection => "Selection",
-            NavigationGroup::Molecules => "Molecules",
-            NavigationGroup::Layout => "Layout",
-        }
+    pub(super) fn toggle(&mut self, group: StoryGroup) {
+        self.groups[group.index()] = !self.groups[group.index()];
+    }
+
+    pub(super) fn toggle_section(&mut self, group: StoryGroup, section: StorySection) {
+        self.sections[group.index()][section.index()] =
+            !self.sections[group.index()][section.index()];
     }
 }
 
 pub(super) fn visible_rows(expansion: TreeExpansionState) -> Vec<NavigationRow> {
     let mut rows = Vec::new();
-    for group in groups() {
+    for group in STORY_GROUPS.iter().copied() {
         rows.push(NavigationRow::Group(group));
-        if expansion.is_open(group) {
-            rows.extend(
-                StoryRequirements::required_pages()
-                    .iter()
-                    .copied()
-                    .filter(move |page| group_for_page(page) == group)
-                    .map(move |page| NavigationRow::Page { page, group }),
-            );
+        if !expansion.is_open(group) {
+            continue;
         }
+        let section_opened = section_opened_for_group(group);
+        append_sectionless_pages(group, &mut rows);
+        append_section_rows(group, expansion, &section_opened, &mut rows);
     }
     rows
+}
+
+fn append_section_rows(
+    group: StoryGroup,
+    expansion: TreeExpansionState,
+    section_opened: &[bool; StorySection::COUNT],
+    rows: &mut Vec<NavigationRow>,
+) {
+    for section in StorySection::ALL.iter().copied() {
+        if !section_opened[section.index()] {
+            continue;
+        }
+        rows.push(NavigationRow::Section { group, section });
+        if !expansion.is_section_open(group, section) {
+            continue;
+        }
+        append_section_pages(group, section, rows);
+    }
+}
+
+fn append_section_pages(group: StoryGroup, section: StorySection, rows: &mut Vec<NavigationRow>) {
+    for paths in STORY_PATH_GROUPS.iter() {
+        for path in *paths {
+            if path.group != group || path.section != Some(section) {
+                continue;
+            }
+            rows.push(NavigationRow::Page {
+                page: path.page,
+                group,
+                section,
+            });
+        }
+    }
+}
+
+fn append_sectionless_pages(group: StoryGroup, rows: &mut Vec<NavigationRow>) {
+    for paths in STORY_PATH_GROUPS.iter() {
+        for path in *paths {
+            if path.group != group || path.section.is_some() {
+                continue;
+            }
+            rows.push(NavigationRow::PageWithoutSection {
+                page: path.page,
+                group,
+            });
+        }
+    }
+}
+
+fn section_opened_for_group(group: StoryGroup) -> [bool; StorySection::COUNT] {
+    let mut section_opened = [false; StorySection::COUNT];
+    for paths in STORY_PATH_GROUPS.iter() {
+        for path in *paths {
+            let Some(section) = path.section else {
+                continue;
+            };
+            if path.group != group {
+                continue;
+            }
+            section_opened[section.index()] = true;
+        }
+    }
+    section_opened
 }
 
 pub(super) fn row_from_click(
@@ -123,31 +160,6 @@ pub(super) fn last_row_bottom_at_scroll(expansion: TreeExpansionState, scroll_y:
     NAV_FIRST_ROW_Y + (row_count - 1) * NAV_ROW_STEP + NAV_ROW_HEIGHT - scroll_y
 }
 
-pub(super) fn group_for_page(page: &str) -> NavigationGroup {
-    match page {
-        "panel" | "theme-tokens" => NavigationGroup::Foundation,
-        "text" | "icon" | "button" | "text-button" | "svg-button" | "icon-text-button"
-        | "text-input" | "text-area" | "checkbox" | "radio" | "badge" | "divider" | "spacer"
-        | "key-cap" | "loading-dots" | "spinner" | "progress-bar" | "color-swatch" | "toggle"
-        | "slide-control" => NavigationGroup::Atoms,
-        "closeable-tab-strip" | "context-menu" | "selection-list" => NavigationGroup::Selection,
-        "row" | "column" | "stack" | "grid" | "scroll-area" | "split-pane" | "align-center" => {
-            NavigationGroup::Layout
-        }
-        _ => NavigationGroup::Molecules,
-    }
-}
-
-fn groups() -> [NavigationGroup; NAVIGATION_GROUP_COUNT] {
-    [
-        NavigationGroup::Foundation,
-        NavigationGroup::Atoms,
-        NavigationGroup::Selection,
-        NavigationGroup::Molecules,
-        NavigationGroup::Layout,
-    ]
-}
-
 fn navigation_content_height(expansion: TreeExpansionState) -> usize {
     let row_count = visible_rows(expansion).len();
     if row_count == 0 {
@@ -163,121 +175,5 @@ fn navigation_viewport_height() -> usize {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{NavigationRow, TreeExpansionState, visible_rows};
-
-    #[test]
-    fn tree_rows_include_groups_and_can_collapse_atoms() {
-        let mut expansion = TreeExpansionState::default();
-        let before = visible_rows(expansion);
-        expansion.toggle(super::NavigationGroup::Atoms);
-        let after = visible_rows(expansion);
-
-        assert!(before.len() > after.len());
-        assert!(
-            after
-                .iter()
-                .any(|it| { matches!(it, NavigationRow::Group(super::NavigationGroup::Atoms)) })
-        );
-        assert!(
-            !after
-                .iter()
-                .any(|it| { matches!(it, NavigationRow::Page { page: "button", .. }) })
-        );
-    }
-
-    #[test]
-    fn context_menu_is_grouped_under_selection() {
-        let rows = visible_rows(TreeExpansionState::default());
-        let selection_index = rows
-            .iter()
-            .position(|it| matches!(it, NavigationRow::Group(super::NavigationGroup::Selection)));
-        let context_menu_index = rows.iter().position(|it| {
-            matches!(
-                it,
-                NavigationRow::Page {
-                    page: "context-menu",
-                    group: super::NavigationGroup::Selection
-                }
-            )
-        });
-
-        assert!(selection_index.is_some());
-        assert!(context_menu_index.is_some());
-        assert!(selection_index < context_menu_index);
-    }
-
-    #[test]
-    fn closeable_tab_strip_is_grouped_under_selection() {
-        let rows = visible_rows(TreeExpansionState::default());
-        let selection_index = rows
-            .iter()
-            .position(|it| matches!(it, NavigationRow::Group(super::NavigationGroup::Selection)));
-        let tab_strip_index = rows.iter().position(|it| {
-            matches!(
-                it,
-                NavigationRow::Page {
-                    page: "closeable-tab-strip",
-                    group: super::NavigationGroup::Selection
-                }
-            )
-        });
-
-        assert!(selection_index.is_some());
-        assert!(tab_strip_index.is_some());
-        assert!(selection_index < tab_strip_index);
-    }
-
-    #[test]
-    fn text_area_is_grouped_under_atoms() {
-        let rows = visible_rows(TreeExpansionState::default());
-        let atoms_index = rows
-            .iter()
-            .position(|it| matches!(it, NavigationRow::Group(super::NavigationGroup::Atoms)));
-        let text_area_index = rows.iter().position(|it| {
-            matches!(
-                it,
-                NavigationRow::Page {
-                    page: "text-area",
-                    group: super::NavigationGroup::Atoms
-                }
-            )
-        });
-
-        assert!(atoms_index.is_some());
-        assert!(text_area_index.is_some());
-        assert!(atoms_index < text_area_index);
-    }
-
-    #[test]
-    fn panel_is_grouped_under_foundation() {
-        let rows = visible_rows(TreeExpansionState::default());
-        let foundation_index = rows
-            .iter()
-            .position(|it| matches!(it, NavigationRow::Group(super::NavigationGroup::Foundation)));
-        let panel_index = rows.iter().position(|it| {
-            matches!(
-                it,
-                NavigationRow::Page {
-                    page: "panel",
-                    group: super::NavigationGroup::Foundation
-                }
-            )
-        });
-
-        assert!(foundation_index.is_some());
-        assert!(panel_index.is_some());
-        assert!(foundation_index < panel_index);
-    }
-
-    #[test]
-    fn max_scroll_places_last_navigation_row_at_panel_bottom() {
-        let expansion = TreeExpansionState::default();
-        let max_scroll = super::max_scroll_y(expansion);
-
-        assert_eq!(
-            super::navigation_menu_panel_rect().bottom(),
-            super::last_row_bottom_at_scroll(expansion, max_scroll)
-        );
-    }
-}
+#[path = "navigation_tree_tests.rs"]
+mod navigation_tree_tests;

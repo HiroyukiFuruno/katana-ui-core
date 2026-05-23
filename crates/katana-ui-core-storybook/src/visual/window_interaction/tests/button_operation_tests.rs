@@ -268,7 +268,10 @@ fn click_target_for_page(page: &str) -> Option<(usize, usize)> {
         let x = layout_metrics::NAV_ROW_X + 1;
         if matches!(
             row_from_click(x, y, Default::default()),
-            Some(NavigationRow::Page { page: found, .. }) if found == page
+            Some(
+                NavigationRow::Page { page: found, .. }
+                | NavigationRow::PageWithoutSection { page: found, .. }
+            ) if found == page
         ) {
             return Some((x, y));
         }

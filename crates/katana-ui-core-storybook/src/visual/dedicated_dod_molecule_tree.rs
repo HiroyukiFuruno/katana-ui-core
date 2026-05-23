@@ -167,9 +167,9 @@ fn draw_tree_row(
     );
     let icon_x = parts::NODE_ICON_X + node.depth * m::PX_20;
     if matches!(node.kind, UiTreeNodeKind::Directory) {
-        parts::folder_icon(canvas, x + icon_x, row_y);
+        parts::branch_marker(canvas, x + icon_x, row_y);
     } else {
-        parts::file_icon(canvas, x + icon_x, row_y);
+        parts::leaf_marker(canvas, x + icon_x, row_y);
     }
     text.draw(
         canvas,

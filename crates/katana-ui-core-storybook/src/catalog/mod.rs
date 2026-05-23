@@ -1,23 +1,36 @@
-mod atom_interactions;
-mod atom_motion_interactions;
 mod atoms;
 #[cfg(test)]
 mod color_picker_story_tests;
-mod foundation;
-mod layouts;
+mod data_structured;
+mod feedback_overlay;
+mod forms_selection;
+mod foundation_theme;
+mod layout;
 mod molecules;
 #[cfg(test)]
 mod motion_story_tests;
+mod navigation;
 mod panel_interaction;
 mod panel_operations;
 mod panel_report;
 mod preset_labels;
+mod runtime_app_primitives;
 #[cfg(test)]
 mod scroll_area_story_tests;
 #[cfg(test)]
 mod search_control_strip_story_tests;
 #[cfg(test)]
 mod split_pane_story_tests;
+mod story_hierarchy;
+pub(crate) mod story_map;
+mod story_paths_atoms;
+mod story_paths_data;
+mod story_paths_feedback;
+mod story_paths_forms;
+mod story_paths_foundation;
+mod story_paths_layout;
+mod story_paths_navigation;
+mod story_paths_runtime;
 #[cfg(test)]
 mod tests;
 mod types;
@@ -40,10 +53,14 @@ impl StoryCatalog {
     #[must_use]
     pub fn examples(self) -> Vec<StoryExample> {
         let mut examples = Vec::new();
-        examples.extend(foundation::examples());
+        examples.extend(foundation_theme::examples());
         examples.extend(atoms::examples());
-        examples.extend(molecules::examples());
-        examples.extend(layouts::examples());
+        examples.extend(forms_selection::examples());
+        examples.extend(layout::examples());
+        examples.extend(navigation::examples());
+        examples.extend(feedback_overlay::examples());
+        examples.extend(data_structured::examples());
+        examples.extend(runtime_app_primitives::examples());
         examples
     }
 
@@ -55,6 +72,13 @@ impl StoryCatalog {
 
     #[must_use]
     pub fn verify_examples(self, examples: &[StoryExample]) -> StoryCatalogReport {
+        let _ = story_map::STORY_GROUPS
+            .iter()
+            .all(|category| !category.label().is_empty());
+        let _ = examples
+            .iter()
+            .all(|it| story_map::StoryPath::path_for_page(it.page).is_some());
+
         let state_conflicts = examples
             .iter()
             .filter(|it| Self::has_state_conflict(&it.tree))

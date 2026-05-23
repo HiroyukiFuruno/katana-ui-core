@@ -4,14 +4,12 @@ use super::dedicated_dod_metrics as m;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::selection_control_metrics as sm;
-use super::text::{TextRenderer, TextVerticalBox};
+use super::text::TextRenderer;
 
-const FIELD: u32 = 0x1f242d;
-const LIGHT_OPTION_INDEX: usize = 1;
-const DARK_OPTION_INDEX: usize = 2;
-const SYSTEM_OPTION_INDEX: usize = 3;
+const ROW_LABELS: [&str; 4] = ["First", "Second", "Third", "Fourth"];
+const FOURTH_ROW_INDEX: usize = 3;
 
-pub(super) fn select_box(
+pub(super) fn selection_list(
     canvas: &mut Canvas,
     text: &TextRenderer,
     palette: &VisualPalette,
@@ -19,13 +17,12 @@ pub(super) fn select_box(
     x: usize,
     y: usize,
 ) {
-    common::frame(canvas, text, palette, x, y, "SelectBox");
-    draw_trigger(canvas, text, palette, scenario, x, y);
-    draw_options(canvas, text, palette, scenario, x, y);
+    common::frame(canvas, text, palette, x, y, "SelectionList");
+    draw_rows(canvas, text, palette, scenario, x, y);
     draw_status(canvas, text, palette, scenario, x, y);
 }
 
-fn draw_trigger(
+fn draw_rows(
     canvas: &mut Canvas,
     text: &TextRenderer,
     palette: &VisualPalette,
@@ -35,57 +32,25 @@ fn draw_trigger(
 ) {
     canvas.fill_rect(
         x + sm::TRIGGER_X,
-        y + sm::TRIGGER_Y,
+        y + sm::SELECTION_LIST_Y,
         sm::TRIGGER_WIDTH,
-        sm::TRIGGER_HEIGHT,
-        FIELD,
-    );
-    canvas.stroke_rect(
-        x + sm::TRIGGER_X,
-        y + sm::TRIGGER_Y,
-        sm::TRIGGER_WIDTH,
-        sm::TRIGGER_HEIGHT,
-        palette.border,
-    );
-    text.draw_centered(
-        canvas,
-        select_value(scenario),
-        x + sm::TRIGGER_X + sm::TEXT_X,
-        TextVerticalBox::new(y + sm::TRIGGER_Y, sm::TRIGGER_HEIGHT as f32),
-        m::FONT_9,
-        palette.text,
-    );
-}
-
-fn draw_options(
-    canvas: &mut Canvas,
-    text: &TextRenderer,
-    palette: &VisualPalette,
-    scenario: ScenarioContext<'_>,
-    x: usize,
-    y: usize,
-) {
-    if !scenario.screen_state.selection.select_open {
-        return;
-    }
-    canvas.fill_rect(
-        x + sm::TRIGGER_X,
-        y + sm::SELECT_OPTIONS_Y,
-        sm::TRIGGER_WIDTH,
-        sm::SELECT_OPTION_HEIGHT * sm::SELECT_OPTION_COUNT,
+        sm::SELECTION_LIST_ROW_HEIGHT * ROW_LABELS.len(),
         palette.surface,
     );
-    for (index, label) in ["Placeholder", "Light", "Dark", "System"]
-        .into_iter()
-        .enumerate()
-    {
-        let row_y = y + sm::SELECT_OPTIONS_Y + index * sm::SELECT_OPTION_HEIGHT;
-        if scenario.screen_state.selection.select_selected_index == Some(index) {
+
+    for (index, label) in ROW_LABELS.iter().enumerate() {
+        let row_y = y + sm::SELECTION_LIST_Y + index * sm::SELECTION_LIST_ROW_HEIGHT;
+        if scenario
+            .screen_state
+            .selection
+            .selection_list_selected_index
+            == Some(index)
+        {
             canvas.fill_rect(
                 x + sm::TRIGGER_X + sm::OPTION_ROW_INSET,
                 row_y,
                 sm::TRIGGER_WIDTH - sm::OPTION_ROW_WIDTH_REDUCTION,
-                sm::SELECT_OPTION_HEIGHT,
+                sm::SELECTION_LIST_ROW_HEIGHT,
                 palette.accent,
             );
         }
@@ -96,6 +61,13 @@ fn draw_options(
             row_y + m::PX_3,
             m::FONT_7,
             palette.text,
+        );
+        canvas.stroke_rect(
+            x + sm::TRIGGER_X,
+            row_y + sm::SELECTION_LIST_ROW_HEIGHT - 1,
+            sm::TRIGGER_WIDTH,
+            1,
+            palette.border,
         );
     }
 }
@@ -140,15 +112,6 @@ fn draw_status(
     }
 }
 
-fn select_value(scenario: ScenarioContext<'_>) -> &'static str {
-    match scenario.screen_state.selection.select_selected_index {
-        Some(LIGHT_OPTION_INDEX) => "Light",
-        Some(DARK_OPTION_INDEX) => "Dark",
-        Some(SYSTEM_OPTION_INDEX) => "System",
-        _ => "Placeholder",
-    }
-}
-
 fn status_action(scenario: ScenarioContext<'_>) -> &'static str {
     if scenario.screen_state.last_action == "none" {
         return "action ready";
@@ -164,8 +127,22 @@ fn status_event(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 fn status_state(scenario: ScenarioContext<'_>) -> &'static str {
-    if scenario.screen_state.state_label == "idle" {
-        return "selected=none";
+    match scenario
+        .screen_state
+        .selection
+        .selection_list_selected_index
+    {
+        Some(index) => list_value(index),
+        None => "selected=none",
     }
-    scenario.screen_state.state_label
+}
+
+fn list_value(index: usize) -> &'static str {
+    match index {
+        0 => "selected=0",
+        1 => "selected=1",
+        2 => "selected=2",
+        FOURTH_ROW_INDEX => "selected=3",
+        _ => "selected=none",
+    }
 }

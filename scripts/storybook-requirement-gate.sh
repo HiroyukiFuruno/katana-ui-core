@@ -7,7 +7,7 @@ binary="$ROOT_DIR/target/release/katana-ui-core-storybook"
 legacy_preview_signatures=28
 output="$("$binary" --headless-scenario)"
 case "$output" in
-  *"stories="*"validated=76"*"state_conflicts=0"*"structure_failures=0"*"missing_required_pages=0"*"page_contract_failures=0"*"nodes="*"panel_nodes=4"*"panel_theme_configured=true"*"panel_theme_variants=2"*"themed_story_roots=1"*"styled_story_roots=1"*"details_panel_configured=true"*"detail_sections=6"*"panel_scroll_configured=true"*"independent_panel_scrolls=4"*"story_selection=button"*"theme_switch=light->dark"*"theme_control=true"*"operation_sequence=1"*"selector_operations=4"*"overlay_dismissals=5"*"color_picker_updates=10"*"settings_mutations=199"*"legacy_ui_markers=30"*"legacy_settings_mutations=39"*"legacy_preset_differences=30"*"tree_view_option_mutations=12"*"callback_log=1"*"required_ui=76"*"dedicated_ui=76"*"required_ui_fallbacks=0"*"initial_visible_fallbacks=0"*"modal_required=true"*"non_empty_pixels="*"theme_difference_pixels="*"operation_difference_pixels="*"selected_preview_visible=true"*"selected_preview_interaction_visible=true"*"detail_tables_hidden=true"*"scrollbar_thumb_bottom=true"*"contract_rows_fit=true"*"inspector_rows_fit=true"*"tree_view_selected=true"*"tree_view_settings_visible=true"*"tree_view_line_option_visible=true"*"tree_view_icon_option_visible=true"*"tree_view_trigger_option_visible=true"*"tree_view_action_logged=true"*"panel_scrollbars_visible=true"*"navigation_collapsed_pixels_changed="*"legacy_preview_signatures=${legacy_preview_signatures}"*"legacy_preview_signature_collisions=0"*) ;;
+  *"stories="*"validated=77"*"state_conflicts=0"*"structure_failures=0"*"missing_required_pages=0"*"page_contract_failures=0"*"nodes="*"panel_nodes=4"*"panel_theme_configured=true"*"panel_theme_variants=2"*"themed_story_roots=1"*"styled_story_roots=1"*"details_panel_configured=true"*"detail_sections=6"*"panel_scroll_configured=true"*"independent_panel_scrolls=4"*"story_selection=button"*"theme_switch=light->dark"*"theme_control=true"*"operation_sequence=1"*"selector_operations=4"*"overlay_dismissals=5"*"color_picker_updates=10"*"settings_mutations=200"*"legacy_ui_markers=30"*"legacy_settings_mutations=39"*"legacy_preset_differences=30"*"tree_view_option_mutations=12"*"callback_log=1"*"required_ui=77"*"dedicated_ui=77"*"required_ui_fallbacks=0"*"initial_visible_fallbacks=0"*"modal_required=true"*"non_empty_pixels="*"theme_difference_pixels="*"operation_difference_pixels="*"selected_preview_visible=true"*"selected_preview_interaction_visible=true"*"detail_tables_hidden=true"*"scrollbar_thumb_bottom=true"*"contract_rows_fit=true"*"inspector_rows_fit=true"*"tree_view_selected=true"*"tree_view_settings_visible=true"*"tree_view_line_option_visible=true"*"tree_view_node_marker_option_visible=true"*"tree_view_trigger_option_visible=true"*"tree_view_action_logged=true"*"panel_scrollbars_visible=true"*"navigation_collapsed_pixels_changed="*"legacy_preview_signatures=${legacy_preview_signatures}"*"legacy_preview_signature_collisions=0"*) ;;
   *)
     echo "storybook requirement gate failed"
     echo "$output"
@@ -31,8 +31,8 @@ if ! grep -q '"theme_control": true' "$panel_report"; then
   cat "$panel_report"
   exit 1
 fi
-if ! grep -q '"required_ui": 76' "$coverage_report" \
-  || ! grep -q '"dedicated_ui": 76' "$coverage_report" \
+if ! grep -q '"required_ui": 77' "$coverage_report" \
+  || ! grep -q '"dedicated_ui": 77' "$coverage_report" \
   || ! grep -q '"modal_required": true' "$coverage_report"; then
   echo "storybook modal coverage failed"
   cat "$coverage_report"
@@ -118,7 +118,7 @@ fi
 if ! grep -q '"tree_view_selected": true' "$coverage_report" \
   || ! grep -q '"tree_view_settings_visible": true' "$coverage_report" \
   || ! grep -q '"tree_view_line_option_visible": true' "$coverage_report" \
-  || ! grep -q '"tree_view_icon_option_visible": true' "$coverage_report" \
+  || ! grep -q '"tree_view_node_marker_option_visible": true' "$coverage_report" \
   || ! grep -q '"tree_view_trigger_option_visible": true' "$coverage_report" \
   || ! grep -q '"tree_view_action_logged": true' "$coverage_report" \
   || ! grep -q '"panel_scrollbars_visible": true' "$coverage_report" \

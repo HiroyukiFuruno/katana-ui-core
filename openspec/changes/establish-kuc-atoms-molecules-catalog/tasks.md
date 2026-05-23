@@ -232,6 +232,7 @@ TreeView は Storybook 自身の左ペインにも関わるため、単なる st
 - [x] 16.2 TreeView preview が汎用 structured 表示に戻らないよう、選択行、folder icon、file icon、垂直線の rendering contract test を追加する。
 - [x] 16.3 実ウィンドウ入力モデルに右クリック相当の context click を追加し、TreeView preview 上で action / event / state が変わることを固定する。
 - [x] 16.4 TreeView 専用 preview が generic fallback に戻らないことを rendering contract で検査する。
+- [x] 16.5 Storybook 左ペインのカテゴリは `StoryGroup` / `StorySection` / `StoryPath` を中心とした正本へ統合し、`Forms > Selection` のような2段階入れ子を明示表現で描画する。`Foundation / Theme` 風の slash ラベルや TreeView `folder/file icon` は左ペインから排除する。
 
 ## 17. Panel ごとの縦スクロールと MDN 型 Storybook 操作
 
@@ -360,6 +361,7 @@ Storybook は「見た目の描画」ではなく、選択中 UI の layout / op
 - [x] 30.4 Storybook の Navigation / Preview / Inspector の panel 別 scroll を `PanelScrollOffsets` と契約テストで固定する。
 - [x] 30.5 `just storybook-regression`、`openspec validate establish-kuc-atoms-molecules-catalog --strict`、`openspec validate ui-core-root-plan --strict`、`git diff --check` を通す。
 - [x] 30.6 旧方式の完了証跡を rendering contract と requirement gate に移す。
+- [x] 30.7 クリック座標回帰テストが `Window` の高解像度実座標（`get_unscaled_mouse_pos` 経由）→`window_point_to_canvas_point`→`click_content_y` の一連を通した navigation で再現するケース（group 構造、scroll 同時、Retina レイアウト）を持つことを検知条件に追加し、実座標ずれで再発しないことをテストで固定する。
 
 ## 31. v0.1.0 DoD と最新 P0/P1 要求の正本化
 
@@ -420,3 +422,21 @@ Panel を KUC foundation として成立させるため、詳細設計からや�
 - [x] 34.6 縦横 scroll の最大 offset で thumb bottom / right が track bottom / right と一致することを contract test で固定する。
 - [x] 34.7 Navigation / Preview / Inspector の描画を ContentViewport で clip し、子 Panel や Inspector が隣の Panel へめり込まないことを rendering contract で固定する。
 - [x] 34.8 34.2〜34.7 を含めて `just check` を通す。
+
+## User Review Phase
+
+- [x] 2026-05-23 SelectBox / ComboBox は、Storybook で開閉、候補選択、入力絞り込みの挙動へフィードバックできる画面にし、正しさは window interaction regression と rendering diff の自動テストで固定する。
+- [x] 2026-05-23 Left TreeView の `story_map` / `story_paths_*` の分散を見直し、`catalog/story_hierarchy.rs` を正本として group / subsection / page / source path を一元管理する。
+- [x] 2026-05-23 左メニューは folder/file アイコンを前提にしない概念階層（`Foundation > Theme > ...` / `Forms > Selection > ...`）として描画し、2段ネスト行を表示・クリック・スクロール付きでテストする。
+- [x] 2026-05-23 slash 連結ラベル（`Forms / Selection` 等）を概念階層表現として残さず、`StorySection` ベースの階層行と行クリック操作を guard で固定する。
+- [x] 2026-05-23 `tree-view` story の preview / settings / coverage marker / visual test から folder/file 前提表現を除去し、branch/leaf の node marker 表現へ統一する。
+
+## 35. Storybook カタログのディレクトリ再編
+
+Left TreeView の分類を directory 構成へ反映する。大量移動は影響範囲が大きいため、現状は safe な再編計画を先行して固定する。
+
+- [x] 35.1 `crates/katana-ui-core-storybook/src/catalog/` 下で、既存 `__stories__/legacy/*` を新規の `foundation_theme/`、`atoms/`、`forms_selection/`、`layout/`、`navigation/`、`feedback_overlay/`、`data_structured/`、`runtime_app_primitives/` に段階移動する。  
+- [x] 35.2 `story_map.rs` か `navigation` 生成ロジックからページ名マッピングを `story_path`（カテゴリ＋ファイル名）に統一し、左ペインの group / row 生成を実ファイル配置と同期させる。  
+- [x] 35.3 既存相対参照を整理し、必要なら `mod.rs` / `catalog` の再エクスポート追加で import 破壊を回避する。  
+- [x] 35.4 `required_pages` / `navigation_tree` / `tests` を更新し、再編後も required page 全件と選択保持テストを継続的に担保する。  
+- [x] 35.5 35.1〜35.4 の再編をグループ単位の module 分割として反映し、移動後の module 宣言、required page、navigation tests、guard を更新する。

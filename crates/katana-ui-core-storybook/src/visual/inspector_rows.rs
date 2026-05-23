@@ -18,7 +18,7 @@ pub(super) fn settings_rows(
     if example.page == "tree-view" {
         return vec![
             "line: solid 1px enabled".to_string(),
-            "icons: folder/file visible".to_string(),
+            "node markers: branch/leaf visible".to_string(),
             "font/theme: body / dark".to_string(),
             "context menu: enabled".to_string(),
             "default open: true".to_string(),

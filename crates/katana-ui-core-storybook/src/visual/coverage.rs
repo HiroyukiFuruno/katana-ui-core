@@ -28,7 +28,7 @@ pub struct StorybookVisualCoverageReport {
     pub tree_view_selected: bool,
     pub tree_view_settings_visible: bool,
     pub tree_view_line_option_visible: bool,
-    pub tree_view_icon_option_visible: bool,
+    pub tree_view_node_marker_option_visible: bool,
     pub tree_view_trigger_option_visible: bool,
     pub tree_view_action_logged: bool,
     pub panel_scrollbars_visible: bool,
@@ -42,7 +42,7 @@ impl StorybookVisualCoverageReport {
     #[must_use]
     pub fn summary(&self) -> String {
         format!(
-            "required_ui={} dedicated_ui={} required_ui_fallbacks={} initial_visible_fallbacks={} modal_required={} non_empty_pixels={} theme_difference_pixels={} operation_difference_pixels={} selected_preview_visible={} selected_preview_interaction_visible={} detail_tables_hidden={} scrollbar_thumb_bottom={} contract_rows_fit={} inspector_rows_fit={} tree_view_selected={} tree_view_settings_visible={} tree_view_line_option_visible={} tree_view_icon_option_visible={} tree_view_trigger_option_visible={} tree_view_action_logged={} panel_scrollbars_visible={} navigation_collapsed_pixels_changed={} legacy_preview_signatures={} legacy_preview_signature_collisions={}",
+            "required_ui={} dedicated_ui={} required_ui_fallbacks={} initial_visible_fallbacks={} modal_required={} non_empty_pixels={} theme_difference_pixels={} operation_difference_pixels={} selected_preview_visible={} selected_preview_interaction_visible={} detail_tables_hidden={} scrollbar_thumb_bottom={} contract_rows_fit={} inspector_rows_fit={} tree_view_selected={} tree_view_settings_visible={} tree_view_line_option_visible={} tree_view_node_marker_option_visible={} tree_view_trigger_option_visible={} tree_view_action_logged={} panel_scrollbars_visible={} navigation_collapsed_pixels_changed={} legacy_preview_signatures={} legacy_preview_signature_collisions={}",
             self.required_ui,
             self.dedicated_ui,
             self.required_ui_fallbacks,
@@ -60,7 +60,7 @@ impl StorybookVisualCoverageReport {
             self.tree_view_selected,
             self.tree_view_settings_visible,
             self.tree_view_line_option_visible,
-            self.tree_view_icon_option_visible,
+            self.tree_view_node_marker_option_visible,
             self.tree_view_trigger_option_visible,
             self.tree_view_action_logged,
             self.panel_scrollbars_visible,
@@ -108,7 +108,7 @@ pub(super) fn visual_coverage_report(examples: &[StoryExample]) -> StorybookVisu
         tree_view_selected: markers.tree_view_selected,
         tree_view_settings_visible: markers.tree_view_settings_visible,
         tree_view_line_option_visible: markers.tree_view_line_option_visible,
-        tree_view_icon_option_visible: markers.tree_view_icon_option_visible,
+        tree_view_node_marker_option_visible: markers.tree_view_node_marker_option_visible,
         tree_view_trigger_option_visible: markers.tree_view_trigger_option_visible,
         tree_view_action_logged: markers.tree_view_action_logged,
         panel_scrollbars_visible: markers.panel_scrollbars_visible,

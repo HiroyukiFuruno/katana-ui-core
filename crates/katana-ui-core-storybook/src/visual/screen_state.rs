@@ -1,5 +1,6 @@
 use super::button_options::{StorybookButtonOptionControl, StorybookButtonOptions};
 use super::interaction_spec::StorybookInteractionSpec;
+use super::selection_screen_state::{SelectionScreenAction, SelectionScreenState};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct StorybookScreenState {
@@ -14,6 +15,7 @@ pub(super) struct StorybookScreenState {
     pub(super) button_pressed: bool,
     pub(super) preview_hovered: bool,
     pub(super) hovered_summary_index: Option<usize>,
+    pub(super) selection: SelectionScreenState,
 }
 
 impl Default for StorybookScreenState {
@@ -30,6 +32,7 @@ impl Default for StorybookScreenState {
             button_pressed: false,
             preview_hovered: false,
             hovered_summary_index: None,
+            selection: SelectionScreenState::default(),
         }
     }
 }
@@ -113,6 +116,14 @@ impl StorybookScreenState {
         self.last_setting = spec.option;
         self.last_setting_value = spec.after;
         self.state_label = spec.state;
+    }
+
+    pub(super) fn register_selection_action(&mut self, action: SelectionScreenAction) {
+        self.action_count += 1;
+        let update = self.selection.apply(action);
+        self.last_action = update.action;
+        self.last_event = update.event;
+        self.state_label = update.state;
     }
 
     pub(super) fn has_widget_action(self) -> bool {

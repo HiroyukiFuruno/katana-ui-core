@@ -53,7 +53,7 @@ pub(super) struct CoverageMarkers {
     pub(super) tree_view_selected: bool,
     pub(super) tree_view_settings_visible: bool,
     pub(super) tree_view_line_option_visible: bool,
-    pub(super) tree_view_icon_option_visible: bool,
+    pub(super) tree_view_node_marker_option_visible: bool,
     pub(super) tree_view_trigger_option_visible: bool,
     pub(super) tree_view_action_logged: bool,
     pub(super) panel_scrollbars_visible: bool,
@@ -78,9 +78,9 @@ pub(super) fn build(examples: &[StoryExample]) -> CoverageMarkers {
             tree_view,
             "line: solid 1px enabled",
         ),
-        tree_view_icon_option_visible: tree_view_option_visible(
+        tree_view_node_marker_option_visible: tree_view_option_visible(
             tree_view,
-            "icons: folder/file visible",
+            "node markers: branch/leaf visible",
         ),
         tree_view_trigger_option_visible: tree_view_option_visible(
             tree_view,
@@ -179,7 +179,7 @@ fn tree_view_option_visible(tree_view: Option<&StoryExample>, expected: &str) ->
 fn navigation_collapsed_pixels_changed() -> usize {
     let open = render::render_storybook_canvas_for("dark", "button", false);
     let mut collapsed = navigation_tree::TreeExpansionState::default();
-    collapsed.toggle(navigation_tree::NavigationGroup::Atoms);
+    collapsed.toggle(crate::catalog::story_map::StoryGroup::Atoms);
     let closed = render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
         theme_id: "dark",
         selected_page: "button",

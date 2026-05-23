@@ -1,5 +1,6 @@
 use super::super::{StorybookWindowState, apply_click, click_content_y};
-use crate::visual::navigation_tree::{NavigationGroup, NavigationRow, row_from_click};
+use crate::catalog::story_map::{StoryGroup, StorySection};
+use crate::visual::navigation_tree::{NavigationRow, row_from_click};
 use crate::visual::panel_scroll_state::PanelScrollOffsets;
 use crate::visual::{layout_metrics, render};
 
@@ -56,14 +57,66 @@ fn optionless_theme_tokens_ignores_hidden_preset_tabs() {
 #[test]
 fn click_mapping_toggles_tree_groups() {
     let mut state = StorybookWindowState::default();
-    let target = group_click_target(NavigationGroup::Atoms);
+    let target = group_click_target(StoryGroup::Atoms);
 
     assert!(target.is_some());
-    assert!(state.tree_expansion.is_open(NavigationGroup::Atoms));
+    assert!(state.tree_expansion.is_open(StoryGroup::Atoms));
     if let Some((x, y)) = target {
         assert!(apply_click(&mut state, x, y));
     }
-    assert!(!state.tree_expansion.is_open(NavigationGroup::Atoms));
+    assert!(!state.tree_expansion.is_open(StoryGroup::Atoms));
+}
+
+#[test]
+fn click_group_toggle_keeps_selected_page() {
+    let mut state = StorybookWindowState::default();
+    click_page(&mut state, "text");
+    let target = group_click_target(StoryGroup::Atoms);
+    assert!(target.is_some());
+    assert_eq!("text", state.selected_page);
+
+    if let Some((x, y)) = target {
+        assert!(apply_click(&mut state, x, y));
+    }
+
+    assert_eq!("text", state.selected_page);
+    assert!(!state.tree_expansion.is_open(StoryGroup::Atoms));
+
+    if let Some((x, y)) = target {
+        assert!(apply_click(&mut state, x, y));
+    }
+    assert!(state.tree_expansion.is_open(StoryGroup::Atoms));
+    assert_eq!("text", state.selected_page);
+}
+
+#[test]
+fn click_mapping_toggles_tree_sections() {
+    let mut state = StorybookWindowState::default();
+    let target = section_click_target(StoryGroup::Forms, StorySection::Selection);
+
+    assert!(target.is_some());
+    assert!(
+        state
+            .tree_expansion
+            .is_section_open(StoryGroup::Forms, StorySection::Selection)
+    );
+    if let Some((x, y)) = target {
+        assert!(apply_click(&mut state, x, y));
+    }
+    assert!(
+        !state
+            .tree_expansion
+            .is_section_open(StoryGroup::Forms, StorySection::Selection)
+    );
+
+    if let Some((x, y)) = target {
+        assert!(apply_click(&mut state, x, y));
+    }
+    assert!(
+        state
+            .tree_expansion
+            .is_section_open(StoryGroup::Forms, StorySection::Selection)
+    );
 }
 
 #[test]
@@ -95,15 +148,39 @@ fn viewport_click_mapping_keeps_navigation_rows_aligned_after_root_scroll() {
         },
         ..StorybookWindowState::default()
     };
-    let target = logical_click_target_for_page("tree-view");
+    let target = visible_navigation_target(&state);
 
     assert!(target.is_some());
-    if let Some((x, logical_y)) = target {
-        let visible_y = logical_y - state.panel_scroll.navigation_y - state.panel_scroll.root_y;
+    if let Some((x, logical_y, target_page)) = target {
+        let visible_y =
+            logical_y.saturating_sub(state.panel_scroll.navigation_y + state.panel_scroll.root_y);
         let content_y = click_content_y(&state, x, visible_y);
 
         assert!(apply_click(&mut state, x, content_y));
-        assert_eq!("tree-view", state.selected_page);
+        assert_eq!(target_page, state.selected_page);
+    }
+}
+
+#[test]
+fn click_mapping_can_select_nested_story_with_navigation_scroll() {
+    let mut state = StorybookWindowState {
+        selected_page: "button",
+        panel_scroll: PanelScrollOffsets {
+            root_y: layout_metrics::SCROLL_STEP,
+            navigation_y: layout_metrics::NAV_ROW_STEP,
+            ..PanelScrollOffsets::default()
+        },
+        ..StorybookWindowState::default()
+    };
+    let target = click_target_for_page_in_state("select-box", &state);
+
+    assert!(target.is_some());
+    if let Some((x, logical_y)) = target {
+        let visible_y =
+            logical_y.saturating_sub(state.panel_scroll.navigation_y + state.panel_scroll.root_y);
+        let content_y = click_content_y(&state, x, visible_y);
+        assert!(apply_click(&mut state, x, content_y));
+        assert_eq!("select-box", state.selected_page);
     }
 }
 
@@ -130,35 +207,68 @@ fn click_page(state: &mut StorybookWindowState, page: &'static str) {
 }
 
 fn click_target_for_page(page: &str) -> Option<(usize, usize)> {
+    click_target_for_page_in_state(page, &StorybookWindowState::default())
+}
+
+fn click_target_for_page_in_state(
+    page: &str,
+    state: &StorybookWindowState,
+) -> Option<(usize, usize)> {
     for y in 0..layout_metrics::CONTENT_HEIGHT {
         let x = layout_metrics::NAV_ROW_X + 1;
-        if matches!(
-            row_from_click(x, y, Default::default()),
-            Some(NavigationRow::Page { page: found, .. }) if found == page
-        ) {
-            return Some((x, y));
+        let logical_y =
+            y.saturating_add(state.panel_scroll.navigation_y + state.panel_scroll.root_y);
+        if let Some(row) = row_from_click(x, logical_y, state.tree_expansion) {
+            let is_target = matches!(
+                row,
+                NavigationRow::Page { page: found, .. }
+                | NavigationRow::PageWithoutSection { page: found, .. }
+                    if found == page
+            );
+            if is_target {
+                return Some((x, logical_y));
+            }
         }
     }
     None
 }
 
-fn logical_click_target_for_page(page: &str) -> Option<(usize, usize)> {
-    for y in 0..layout_metrics::CONTENT_HEIGHT {
-        let x = layout_metrics::NAV_ROW_X + 1;
-        if matches!(
-            row_from_click(x, y, Default::default()),
-            Some(NavigationRow::Page { page: found, .. }) if found == page
+fn visible_navigation_target(state: &StorybookWindowState) -> Option<(usize, usize, &'static str)> {
+    let panel = layout_metrics::navigation_menu_panel_rect();
+    let max_visible = panel
+        .bottom()
+        .saturating_sub(state.panel_scroll.root_y + state.panel_scroll.navigation_y);
+    for visible_y in 0..max_visible {
+        let logical_y = visible_y + state.panel_scroll.root_y + state.panel_scroll.navigation_y;
+        if let Some(
+            NavigationRow::Page { page, .. } | NavigationRow::PageWithoutSection { page, .. },
+        ) = row_from_click(
+            layout_metrics::NAV_ROW_X + 1,
+            logical_y,
+            state.tree_expansion,
         ) {
-            return Some((x, y));
+            return Some((layout_metrics::NAV_ROW_X + 1, logical_y, page));
         }
     }
     None
 }
 
-fn group_click_target(group: NavigationGroup) -> Option<(usize, usize)> {
+fn group_click_target(group: StoryGroup) -> Option<(usize, usize)> {
     for y in 0..render::HEIGHT {
         let x = layout_metrics::NAV_ROW_X + 1;
         if row_from_click(x, y, Default::default()) == Some(NavigationRow::Group(group)) {
+            return Some((x, y));
+        }
+    }
+    None
+}
+
+fn section_click_target(group: StoryGroup, section: StorySection) -> Option<(usize, usize)> {
+    for y in 0..render::HEIGHT {
+        let x = layout_metrics::NAV_ROW_X + 1;
+        if row_from_click(x, y, Default::default())
+            == Some(NavigationRow::Section { group, section })
+        {
             return Some((x, y));
         }
     }

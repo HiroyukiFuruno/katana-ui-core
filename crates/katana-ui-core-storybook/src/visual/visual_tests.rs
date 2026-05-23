@@ -76,7 +76,7 @@ fn visual_renderer_covers_required_ui_without_fallback() {
     assert!(report.tree_view_selected);
     assert!(report.tree_view_settings_visible);
     assert!(report.tree_view_line_option_visible);
-    assert!(report.tree_view_icon_option_visible);
+    assert!(report.tree_view_node_marker_option_visible);
     assert!(report.tree_view_trigger_option_visible);
     assert!(report.tree_view_action_logged);
     assert!(report.panel_scrollbars_visible);

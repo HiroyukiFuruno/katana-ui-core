@@ -85,7 +85,14 @@ struct RenderedCanvasRect {
 
 #[cfg(test)]
 mod tests {
-    use super::{CanvasPoint, SurfaceSize, WindowPoint, window_point_to_canvas_point};
+    use super::{
+        CanvasPoint, SurfaceSize, WindowPoint, rendered_canvas_rect, window_point_to_canvas_point,
+    };
+
+    const RETINA_WINDOW_WIDTH: usize = 2879;
+    const RETINA_WINDOW_HEIGHT: usize = 1728;
+    const CANVAS_WIDTH: usize = 1440;
+    const CANVAS_HEIGHT: usize = 920;
 
     #[test]
     fn scaled_window_point_maps_back_to_canvas_point() {
@@ -96,6 +103,42 @@ mod tests {
         assert_eq!(
             Some(CanvasPoint { x: 310, y: 104 }),
             window_point_to_canvas_point(point, window, canvas)
+        );
+    }
+
+    #[test]
+    fn non_integer_scale_mapping_keeps_canvas_point_center() {
+        let canvas = SurfaceSize::new(CANVAS_WIDTH, CANVAS_HEIGHT);
+        let window = SurfaceSize::new(RETINA_WINDOW_WIDTH, RETINA_WINDOW_HEIGHT);
+        let rect = rendered_canvas_rect(window, canvas);
+
+        let sample = CanvasPoint { x: 310, y: 120 };
+        let point = WindowPoint::new(
+            rect.x + (sample.x as f32 + 0.5) * rect.width / canvas.width as f32,
+            rect.y + (sample.y as f32 + 0.5) * rect.height / canvas.height as f32,
+        );
+
+        assert_eq!(
+            Some(sample),
+            window_point_to_canvas_point(point, window, canvas),
+        );
+    }
+
+    #[test]
+    fn non_integer_scale_mapping_keeps_canvas_bottom_row_center() {
+        let canvas = SurfaceSize::new(CANVAS_WIDTH, CANVAS_HEIGHT);
+        let window = SurfaceSize::new(RETINA_WINDOW_WIDTH, RETINA_WINDOW_HEIGHT);
+        let rect = rendered_canvas_rect(window, canvas);
+
+        let sample = CanvasPoint {
+            x: CANVAS_WIDTH - 1,
+            y: CANVAS_HEIGHT - 1,
+        };
+        let point = WindowPoint::new(rect.x + rect.width - 0.5, rect.y + rect.height - 0.5);
+
+        assert_eq!(
+            Some(sample),
+            window_point_to_canvas_point(point, window, canvas),
         );
     }
 

@@ -5,6 +5,8 @@ use crate::visual::layout_metrics::{
     button_setting_hit_rect, dark_theme_rect, light_theme_rect, preset_tab_rect,
     scrollbar_off_rect, scrollbar_on_rect,
 };
+use crate::visual::selection_control_metrics;
+use crate::visual::selection_screen_state::SelectionScreenAction;
 use crate::visual::{preview, preview_detail};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -18,6 +20,7 @@ pub(super) enum StorybookButtonOperation {
     PreviewComponent,
     ButtonOption(StorybookButtonOptionControl),
     SettingsOption,
+    SelectionControl(SelectionScreenAction),
 }
 
 impl StorybookButtonOperation {
@@ -38,6 +41,7 @@ impl StorybookButtonOperation {
             Self::SettingsOption => state
                 .screen_state
                 .register_settings_change(state.selected_page),
+            Self::SelectionControl(action) => state.screen_state.register_selection_action(action),
         }
         true
     }
@@ -51,6 +55,7 @@ pub(super) fn button_operation_at(
     theme_operation_at(x, y)
         .or_else(|| scrollbar_operation_at(x, y))
         .or_else(|| preset_operation_at(state.selected_page, x, y))
+        .or_else(|| selection_control_operation_at(state, x, y))
         .or_else(|| preview_operation_at(state.selected_page, x, y))
         .or_else(|| settings_operation_at(state.selected_page, x, y))
 }
@@ -104,6 +109,50 @@ fn preview_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButto
         return Some(StorybookButtonOperation::PreviewComponent);
     }
     None
+}
+
+fn selection_control_operation_at(
+    state: &StorybookWindowState,
+    x: usize,
+    y: usize,
+) -> Option<StorybookButtonOperation> {
+    let page = state.selected_page;
+    let component = preview_detail::component_action_hit_rect(page);
+    let action = match page {
+        "select-box" => selection_control_metrics::select_action_at(
+            component,
+            state.screen_state.selection.select_open,
+            x,
+            y,
+        ),
+        "combo-box" => combo_action_at(state, component, x, y),
+        "selection-list" => selection_control_metrics::selection_list_action_at(component, x, y),
+        _ => None,
+    };
+    action.map(StorybookButtonOperation::SelectionControl)
+}
+
+fn combo_action_at(
+    state: &StorybookWindowState,
+    component: crate::visual::layout_metrics::LayoutRect,
+    x: usize,
+    y: usize,
+) -> Option<SelectionScreenAction> {
+    let action = selection_control_metrics::combo_action_at(
+        component,
+        state.screen_state.selection.combo_open,
+        state.screen_state.selection.combo_filtered,
+        x,
+        y,
+    )?;
+    match action {
+        SelectionScreenAction::ComboOption(index)
+            if state.screen_state.selection.combo_filtered =>
+        {
+            Some(SelectionScreenAction::ComboOption(index + 1))
+        }
+        _ => Some(action),
+    }
 }
 
 fn settings_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {

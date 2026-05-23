@@ -68,11 +68,17 @@ impl StorybookOperationSequences {
         tree = tree.icons_visible(true);
         push_step(&mut steps, "tree_icons_visible", &target, before, &tree);
         let before = tree_options_summary(&tree);
-        tree = tree.directory_icon("<svg data-icon=\"folder\"/>");
-        push_step(&mut steps, "tree_directory_icon", &target, before, &tree);
+        tree = tree.directory_icon("<svg data-icon=\"branch\"/>");
+        push_step(
+            &mut steps,
+            "tree_branch_marker_icon",
+            &target,
+            before,
+            &tree,
+        );
         let before = tree_options_summary(&tree);
-        tree = tree.file_icon("<svg data-icon=\"file\"/>");
-        push_step(&mut steps, "tree_file_icon", &target, before, &tree);
+        tree = tree.file_icon("<svg data-icon=\"leaf\"/>");
+        push_step(&mut steps, "tree_leaf_marker_icon", &target, before, &tree);
         let before = tree_options_summary(&tree);
         tree = tree.tree_font_role("body").tree_theme_id("dark");
         push_step(&mut steps, "tree_font_theme", &target, before, &tree);
@@ -148,7 +154,7 @@ fn push_step(
 
 fn tree_options_summary(tree: &TreeView) -> String {
     format!(
-        "lines={} style={:?} width={} icons={} directory_icon={} file_icon={} font={} theme={} context_menu={} default_open={} toggle_icon={} trigger={:?}",
+        "lines={} style={:?} width={} icons={} branch_marker={} leaf_marker={} font={} theme={} context_menu={} default_open={} toggle_icon={} trigger={:?}",
         tree.line_display_model(),
         tree.line_style_model(),
         tree.line_width_model(),

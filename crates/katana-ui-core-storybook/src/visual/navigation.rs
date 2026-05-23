@@ -3,21 +3,23 @@ use super::layout_metrics::{
     NAV_FIRST_ROW_Y, NAV_ROW_HEIGHT, NAV_ROW_STEP, NAV_ROW_WIDTH, NAV_ROW_X,
     navigation_menu_panel_rect,
 };
-use super::navigation_icons::{draw_disclosure, draw_file_icon, draw_folder_icon};
-use super::navigation_tree::{NavigationGroup, NavigationRow, TreeExpansionState, visible_rows};
+use super::navigation_icons::draw_disclosure;
+use super::navigation_tree::{NavigationRow, TreeExpansionState, visible_rows};
 use super::palette::VisualPalette;
 use super::panel_layout;
 use super::panel_scroll_state::PanelScrollRegion;
 use super::text::{TextRenderer, TextVerticalBox};
+use crate::catalog::story_map::{StoryGroup, StorySection};
 
-const PAGE_LINE_X: usize = 44;
+const PAGE_LINE_X: usize = 84;
 const GROUP_TEXT_X: usize = 62;
-const PAGE_TEXT_X: usize = 78;
+const SECTION_TEXT_X: usize = 78;
+const PAGE_TEXT_X: usize = 98;
 const NAV_TEXT_SIZE: f32 = 12.0;
 const NAV_GROUP_TEXT_SIZE: f32 = 11.0;
 const TREE_LINE_WIDTH: usize = 1;
 const SELECTED_ACCENT_WIDTH: usize = 3;
-const PAGE_SELECTED_MARK_X: usize = 52;
+const PAGE_SELECTED_MARK_X: usize = 74;
 const PAGE_SELECTED_MARK_SIZE: usize = 14;
 
 pub(super) fn draw(
@@ -51,7 +53,20 @@ pub(super) fn draw(
                             row_y,
                         );
                     }
+                    NavigationRow::Section { group, section } => {
+                        draw_section(
+                            canvas,
+                            text,
+                            palette,
+                            section,
+                            expansion.is_section_open(group, section),
+                            row_y,
+                        );
+                    }
                     NavigationRow::Page { page, .. } => {
+                        draw_page(canvas, text, palette, page, page == selected_page, row_y);
+                    }
+                    NavigationRow::PageWithoutSection { page, .. } => {
                         draw_page(canvas, text, palette, page, page == selected_page, row_y);
                     }
                 }
@@ -71,7 +86,7 @@ fn draw_group(
     canvas: &mut Canvas,
     text: &TextRenderer,
     palette: &VisualPalette,
-    group: NavigationGroup,
+    group: StoryGroup,
     open: bool,
     y: usize,
 ) {
@@ -83,11 +98,36 @@ fn draw_group(
         palette.code_background,
     );
     draw_disclosure(canvas, palette, open, y);
-    draw_folder_icon(canvas, palette, y);
     text.draw_centered(
         canvas,
         group.label(),
         GROUP_TEXT_X,
+        TextVerticalBox::new(y, NAV_ROW_HEIGHT as f32),
+        NAV_GROUP_TEXT_SIZE,
+        palette.muted,
+    );
+}
+
+fn draw_section(
+    canvas: &mut Canvas,
+    text: &TextRenderer,
+    palette: &VisualPalette,
+    section: StorySection,
+    open: bool,
+    y: usize,
+) {
+    canvas.fill_rect(
+        NAV_ROW_X,
+        y,
+        NAV_ROW_WIDTH,
+        NAV_ROW_HEIGHT,
+        palette.code_background,
+    );
+    draw_disclosure(canvas, palette, open, y);
+    text.draw_centered(
+        canvas,
+        section.label(),
+        SECTION_TEXT_X,
         TextVerticalBox::new(y, NAV_ROW_HEIGHT as f32),
         NAV_GROUP_TEXT_SIZE,
         palette.muted,
@@ -136,7 +176,6 @@ fn draw_page(
         NAV_ROW_HEIGHT + NAV_ROW_STEP / 2,
         palette.border,
     );
-    draw_file_icon(canvas, palette, y, selected);
     text.draw_centered(
         canvas,
         page,

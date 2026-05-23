@@ -19,28 +19,28 @@ const CONTEXT_X: usize = 212;
 const CONTEXT_Y: usize = 30;
 const CONTEXT_WIDTH: usize = 112;
 const CONTEXT_HEIGHT: usize = 58;
-const FOLDER_COLOR: u32 = 0xd7ba7d;
-const FILE_COLOR: u32 = 0x9cdcfe;
+const BRANCH_MARKER_COLOR: u32 = 0xd7ba7d;
+const LEAF_MARKER_COLOR: u32 = 0x9cdcfe;
 const MENU_COLOR: u32 = 0x252a33;
 
-pub(super) fn folder_icon(canvas: &mut Canvas, x: usize, y: usize) {
+pub(super) fn branch_marker(canvas: &mut Canvas, x: usize, y: usize) {
     common::fill(
         canvas,
         Rect::new(x, y + m::PX_2 + m::PX_2, m::PX_14, m::PX_10),
-        FOLDER_COLOR,
+        BRANCH_MARKER_COLOR,
     );
     common::fill(
         canvas,
         Rect::new(x + m::PX_2, y + m::PX_1, m::PX_8, m::PX_2 + m::PX_2),
-        FOLDER_COLOR,
+        BRANCH_MARKER_COLOR,
     );
 }
 
-pub(super) fn file_icon(canvas: &mut Canvas, x: usize, y: usize) {
+pub(super) fn leaf_marker(canvas: &mut Canvas, x: usize, y: usize) {
     common::fill(
         canvas,
         Rect::new(x + m::PX_2, y + m::PX_1, m::PX_10, m::PX_13),
-        FILE_COLOR,
+        LEAF_MARKER_COLOR,
     );
     common::fill(
         canvas,
@@ -69,7 +69,7 @@ pub(super) fn draw_context_menu(
     );
     text.draw(
         canvas,
-        "New folder",
+        "New branch",
         x + CONTEXT_X + m::PX_8,
         y + CONTEXT_Y + m::PX_24,
         m::FONT_8,
@@ -77,7 +77,7 @@ pub(super) fn draw_context_menu(
     );
     text.draw(
         canvas,
-        "Reveal file",
+        "Open item",
         x + CONTEXT_X + m::PX_8,
         y + CONTEXT_Y + m::PX_40,
         m::FONT_8,
@@ -128,7 +128,7 @@ fn option_summary(tree: &UiTreeProps) -> String {
     };
     if tree.icons_visible {
         return format!(
-            "{line} line / folder+file / default open={}",
+            "{line} line / branch+leaf / default open={}",
             tree.default_open
         );
     }

@@ -66,10 +66,14 @@ pub(super) fn draw_page(canvas: &mut Canvas, request: DedicatedPageRequest<'_>) 
         "toggle" => dedicated_dod_atoms::toggle(canvas, text, palette, scenario, x, y),
         "segmented-toggle" => dedicated_dod_forms::segmented(canvas, text, palette, scenario, x, y),
         "select-box" => dedicated_dod_forms::select_box(canvas, text, palette, scenario, x, y),
+        "combo-box" => dedicated_dod_forms::combo_box(canvas, text, palette, scenario, x, y),
         "color-swatch" => dedicated_dod_atoms::swatch(canvas, text, palette, scenario, x, y),
         "text-input" => dedicated_dod_forms::input(canvas, text, palette, scenario, x, y),
         "text-area" => dedicated_dod_forms::text_area(canvas, text, palette, scenario, x, y),
         "search-box" => dedicated_dod_forms::search(canvas, text, palette, scenario, x, y),
+        "selection-list" => {
+            dedicated_dod_forms::selection_list(canvas, text, palette, scenario, x, y)
+        }
         "checkbox" => dedicated_dod_forms::checkbox(canvas, text, palette, scenario, x, y),
         "radio" => dedicated_dod_forms::radio(canvas, text, palette, scenario, x, y),
         "tooltip" => dedicated_dod_forms::tooltip(canvas, text, palette, scenario, x, y),
