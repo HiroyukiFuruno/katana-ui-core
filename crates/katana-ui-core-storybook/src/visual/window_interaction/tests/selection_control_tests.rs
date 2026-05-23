@@ -1,5 +1,6 @@
 use super::super::{StorybookWindowState, apply_click};
 use crate::catalog::StoryCatalog;
+use crate::visual::dedicated_dod_form_combo_live;
 use crate::visual::dedicated_dod_form_select_live;
 use crate::visual::visual_interaction_test_support::component_body_pixel_diff;
 use crate::visual::{layout_metrics::LayoutRect, selection_control_metrics as sc};
@@ -393,6 +394,187 @@ fn select_box_visual_state_matches_core_select_box_selected_contract() {
     ));
     assert_eq!(Some(2), visual.screen_state.selection.select_selected_index);
     assert_eq!("selected=dark", visual.screen_state.state_label);
+}
+
+#[test]
+fn combo_box_control_buttons_apply_expected_actions_and_state_changes() {
+    let mut state = state_for(COMBO_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(COMBO_BOX_PAGE);
+    let read = dedicated_dod_form_combo_live::combo_state_read_button_rect(rect.x, rect.y);
+    let filter = dedicated_dod_form_combo_live::combo_filter_button_rect(rect.x, rect.y);
+    let select = dedicated_dod_form_combo_live::combo_select_button_rect(rect.x, rect.y);
+    let reset = dedicated_dod_form_combo_live::combo_reset_button_rect(rect.x, rect.y);
+
+    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
+    assert_eq!("combo_state_read", state.screen_state.last_action);
+    assert_eq!("combo_state_read", state.screen_state.last_event);
+    assert_eq!(
+        "open=false query=empty selected=none",
+        state.screen_state.state_label
+    );
+
+    assert!(apply_click(
+        &mut state,
+        filter.x + CLICK_CENTER,
+        filter.y + CLICK_CENTER
+    ));
+    assert_eq!("combo_filter", state.screen_state.last_action);
+    assert_eq!("combo_filtered", state.screen_state.last_event);
+    assert_eq!("query=tw", state.screen_state.state_label);
+    assert!(state.screen_state.selection.combo_open);
+    assert!(state.screen_state.selection.combo_filtered);
+
+    assert!(apply_click(
+        &mut state,
+        select.x + CLICK_CENTER,
+        select.y + CLICK_CENTER
+    ));
+    assert_eq!("combo_select", state.screen_state.last_action);
+    assert_eq!("combo_selected", state.screen_state.last_event);
+    assert_eq!("selected=two", state.screen_state.state_label);
+    assert_eq!(Some(1), state.screen_state.selection.combo_selected_index);
+    assert!(!state.screen_state.selection.combo_open);
+
+    assert!(apply_click(
+        &mut state,
+        reset.x + CLICK_CENTER,
+        reset.y + CLICK_CENTER
+    ));
+    assert_eq!("combo_reset", state.screen_state.last_action);
+    assert_eq!("combo_reset", state.screen_state.last_event);
+    assert_eq!("query=empty selected=none", state.screen_state.state_label);
+    assert_eq!(None, state.screen_state.selection.combo_selected_index);
+    assert!(!state.screen_state.selection.combo_open);
+    assert!(!state.screen_state.selection.combo_filtered);
+}
+
+#[test]
+fn combo_box_hit_target_includes_trigger_option_and_control_buttons() {
+    let mut state = state_for(COMBO_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(COMBO_BOX_PAGE);
+    let trigger = LayoutRect::new(
+        rect.x + sc::TRIGGER_X,
+        rect.y + sc::TRIGGER_Y,
+        sc::TRIGGER_WIDTH,
+        sc::TRIGGER_HEIGHT,
+    );
+    let option_label_x = rect.x + sc::TRIGGER_X + sc::TEXT_X;
+    let option_label_y = rect.y + sc::COMBO_OPTIONS_Y + CLICK_CENTER;
+    let read = dedicated_dod_form_combo_live::combo_state_read_button_rect(rect.x, rect.y);
+    let filter = dedicated_dod_form_combo_live::combo_filter_button_rect(rect.x, rect.y);
+    let select = dedicated_dod_form_combo_live::combo_select_button_rect(rect.x, rect.y);
+    let reset = dedicated_dod_form_combo_live::combo_reset_button_rect(rect.x, rect.y);
+
+    assert!(rect.contains(trigger.x + CLICK_CENTER, trigger.y + CLICK_CENTER));
+    assert!(!read.overlaps(filter));
+    assert!(!filter.overlaps(select));
+    assert!(!select.overlaps(reset));
+
+    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
+    assert_eq!("combo_state_read", state.screen_state.last_action);
+    assert!(apply_click(
+        &mut state,
+        filter.x + CLICK_CENTER,
+        filter.y + CLICK_CENTER
+    ));
+    assert_eq!("combo_filter", state.screen_state.last_action);
+    assert!(apply_click(
+        &mut state,
+        select.x + CLICK_CENTER,
+        select.y + CLICK_CENTER
+    ));
+    assert_eq!("combo_select", state.screen_state.last_action);
+    assert!(apply_click(
+        &mut state,
+        reset.x + CLICK_CENTER,
+        reset.y + CLICK_CENTER
+    ));
+    assert_eq!("combo_reset", state.screen_state.last_action);
+
+    assert!(apply_click(
+        &mut state,
+        trigger.x + CLICK_CENTER,
+        trigger.y + CLICK_CENTER
+    ));
+    assert!(apply_click(&mut state, option_label_x, option_label_y));
+    assert_eq!("combo_select", state.screen_state.last_action);
+    assert_eq!("combo_selected", state.screen_state.last_event);
+    assert_eq!("selected=two", state.screen_state.state_label);
+}
+
+#[test]
+fn combo_box_visual_and_catalog_use_same_typed_action_names() {
+    let combo = StoryCatalog
+        .examples()
+        .into_iter()
+        .find(|it| it.page == "combo-box")
+        .expect("combo-box story missing");
+    let catalog_actions: BTreeSet<String> = combo
+        .callback_logs
+        .iter()
+        .map(|it| it.action.clone())
+        .filter(|it| {
+            matches!(
+                it.as_str(),
+                "combo_state_read" | "combo_filter" | "combo_select" | "combo_reset"
+            )
+        })
+        .collect();
+
+    let mut state = state_for(COMBO_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(COMBO_BOX_PAGE);
+    let read = dedicated_dod_form_combo_live::combo_state_read_button_rect(rect.x, rect.y);
+    let filter = dedicated_dod_form_combo_live::combo_filter_button_rect(rect.x, rect.y);
+    let select = dedicated_dod_form_combo_live::combo_select_button_rect(rect.x, rect.y);
+    let reset = dedicated_dod_form_combo_live::combo_reset_button_rect(rect.x, rect.y);
+    let mut visual_actions: BTreeSet<String> = BTreeSet::new();
+    for point in [
+        (read.x + CLICK_CENTER, read.y + CLICK_CENTER),
+        (filter.x + CLICK_CENTER, filter.y + CLICK_CENTER),
+        (select.x + CLICK_CENTER, select.y + CLICK_CENTER),
+        (reset.x + CLICK_CENTER, reset.y + CLICK_CENTER),
+    ] {
+        assert!(apply_click(&mut state, point.0, point.1));
+        visual_actions.insert(state.screen_state.last_action.to_string());
+    }
+
+    assert_eq!(catalog_actions, visual_actions);
+}
+
+#[test]
+fn combo_box_visual_state_matches_core_combo_box_selected_contract() {
+    let mut core_combo = molecule::ComboBox::new("Combo box")
+        .item(molecule::ChoiceItem::new("one", "One"))
+        .item(molecule::ChoiceItem::new("two", "Two"));
+    let target = core_combo.state_id().clone();
+    let core_result = core_combo.apply_action(&UiAction::select_box_selected(target, 1));
+    assert!(
+        core_result
+            .callback_log
+            .iter()
+            .any(|it| it.action == "select_box_selected")
+    );
+    let core_node: katana_ui_core::render_model::UiNode = core_combo.into();
+    let core_interaction = &core_node.props().interaction;
+    assert_eq!(1, core_interaction.selected_index);
+    assert!(core_interaction.has_selection);
+    assert_eq!("two", core_interaction.value);
+    assert!(!core_interaction.open);
+
+    let mut visual = state_for(COMBO_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(COMBO_BOX_PAGE);
+    assert!(apply_click(
+        &mut visual,
+        rect.x + sc::TRIGGER_X + CLICK_CENTER,
+        rect.y + sc::TRIGGER_Y + CLICK_CENTER
+    ));
+    assert!(apply_click(
+        &mut visual,
+        rect.x + OPTION_X_OFFSET,
+        rect.y + COMBO_TWO_OPTION_Y_OFFSET
+    ));
+    assert_eq!(Some(1), visual.screen_state.selection.combo_selected_index);
+    assert_eq!("selected=two", visual.screen_state.state_label);
 }
 
 #[test]

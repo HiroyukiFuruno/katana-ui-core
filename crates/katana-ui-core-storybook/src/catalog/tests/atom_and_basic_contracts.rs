@@ -254,3 +254,50 @@ fn select_box_story_root_props_match_initial_callback_log() -> Result<(), &'stat
     assert!(select_node.props().interaction.value.is_empty());
     Ok(())
 }
+
+#[test]
+fn combo_box_story_root_props_match_initial_callback_log() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let combo_box = examples
+        .iter()
+        .find(|it| it.page == "combo-box")
+        .ok_or("combo-box page missing")?;
+    let harness = combo_box.tree.root();
+    let combo_node = harness
+        .children()
+        .first()
+        .ok_or("combo-box node missing from harness")?;
+    let control_row = harness
+        .children()
+        .get(1)
+        .ok_or("combo-box control row missing")?;
+    let callback = combo_box
+        .callback_logs
+        .first()
+        .ok_or("combo-box callback log missing")?;
+
+    let control_labels: Vec<&str> = control_row
+        .children()
+        .iter()
+        .map(|it| it.props().label.as_str())
+        .collect();
+    assert_eq!(
+        &["state read", "filter", "select two", "reset"],
+        &control_labels[..]
+    );
+    assert_eq!(callback.target.as_str(), combo_node.props().state_id.as_str());
+    assert_eq!("combo_state_read", callback.action);
+    assert_eq!("open=false query=empty selected=none", callback.before);
+    assert_eq!("open=false query=empty selected=none", callback.after);
+    assert!(!combo_node.props().interaction.open);
+    assert!(!combo_node.props().interaction.has_selection);
+    assert_eq!(0, combo_node.props().interaction.selected_index);
+    assert!(combo_node.props().interaction.value.is_empty());
+    assert!(
+        combo_box
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "select_box_selected")
+    );
+    Ok(())
+}

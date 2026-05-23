@@ -1,5 +1,6 @@
 use super::StorybookWindowState;
 use crate::visual::dedicated_dod_form_binary_choice_live as binary_choice_live;
+use crate::visual::dedicated_dod_form_combo_live as combo_live;
 use crate::visual::dedicated_dod_form_select_live as select_live;
 use crate::catalog::StoryPresetLabels;
 use crate::visual::button_options::{StorybookButtonOptionControl, control_at, is_button_page};
@@ -29,6 +30,10 @@ pub(super) enum StorybookButtonOperation {
     RadioStateRead,
     RadioSelect,
     RadioReset,
+    ComboStateRead,
+    ComboFilter,
+    ComboSelect,
+    ComboReset,
 }
 
 impl StorybookButtonOperation {
@@ -56,6 +61,18 @@ impl StorybookButtonOperation {
             Self::RadioStateRead => state.screen_state.register_radio_state_read(),
             Self::RadioSelect => state.screen_state.register_radio_select(),
             Self::RadioReset => state.screen_state.register_radio_reset(),
+            Self::ComboStateRead => state
+                .screen_state
+                .register_selection_action(SelectionScreenAction::ComboStateRead),
+            Self::ComboFilter => state
+                .screen_state
+                .register_selection_action(SelectionScreenAction::ComboFilter),
+            Self::ComboSelect => state
+                .screen_state
+                .register_selection_action(SelectionScreenAction::ComboOption(1)),
+            Self::ComboReset => state
+                .screen_state
+                .register_selection_action(SelectionScreenAction::ComboReset),
         }
         true
     }
@@ -154,6 +171,20 @@ fn selection_control_operation_at(
             return Some(StorybookButtonOperation::SelectionControl(
                 SelectionScreenAction::SelectReset,
             ));
+        }
+    }
+    if page == "combo-box" {
+        if combo_live::combo_state_read_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::ComboStateRead);
+        }
+        if combo_live::combo_filter_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::ComboFilter);
+        }
+        if combo_live::combo_select_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::ComboSelect);
+        }
+        if combo_live::combo_reset_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::ComboReset);
         }
     }
     let action = match page {

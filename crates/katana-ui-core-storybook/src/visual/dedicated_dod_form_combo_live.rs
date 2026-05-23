@@ -14,6 +14,12 @@ const FILTER_BADGE_HEIGHT: usize = 10;
 const FILTER_BADGE_TEXT_X_OFFSET: usize = 5;
 const COMBO_OPTION_TEXT_Y_OFFSET: usize = 5;
 const STATUS_ROW_COUNT: usize = 3;
+const CONTROL_BUTTON_X: usize = sm::STATUS_X;
+const CONTROL_BUTTON_Y: usize = 116;
+const CONTROL_BUTTON_WIDTH: usize = 56;
+const CONTROL_BUTTON_HEIGHT: usize = 20;
+const CONTROL_BUTTON_GAP: usize = 8;
+const CONTROL_TEXT_Y: usize = 6;
 
 pub(super) fn combo_box(
     canvas: &mut Canvas,
@@ -26,6 +32,7 @@ pub(super) fn combo_box(
     common::frame(canvas, text, palette, x, y, "ComboBox");
     draw_input(canvas, text, palette, scenario, x, y);
     draw_options(canvas, text, palette, scenario, x, y);
+    draw_controls(canvas, text, palette, x, y);
     draw_status(canvas, text, palette, scenario, x, y);
 }
 
@@ -154,6 +161,26 @@ fn draw_status(
     }
 }
 
+fn draw_controls(canvas: &mut Canvas, text: &TextRenderer, palette: &VisualPalette, x: usize, y: usize) {
+    for (rect, label) in [
+        (combo_state_read_button_rect(x, y), "read"),
+        (combo_filter_button_rect(x, y), "filter"),
+        (combo_select_button_rect(x, y), "select"),
+        (combo_reset_button_rect(x, y), "reset"),
+    ] {
+        canvas.fill_rect(rect.x, rect.y, rect.width, rect.height, palette.surface);
+        canvas.stroke_rect(rect.x, rect.y, rect.width, rect.height, palette.border);
+        text.draw(
+            canvas,
+            label,
+            rect.x + CONTROL_BUTTON_GAP,
+            rect.y + CONTROL_TEXT_Y,
+            m::FONT_8,
+            palette.text,
+        );
+    }
+}
+
 fn input_value(scenario: ScenarioContext<'_>) -> &'static str {
     if scenario.screen_state.selection.combo_selected_index == Some(1) {
         return "Two";
@@ -188,4 +215,43 @@ fn status_or_default(value: &'static str, default_value: &'static str) -> &'stat
         return default_value;
     }
     value
+}
+
+pub(super) fn combo_state_read_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    super::layout_metrics::LayoutRect::new(
+        x + CONTROL_BUTTON_X,
+        y + CONTROL_BUTTON_Y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn combo_filter_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    let read = combo_state_read_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        read.right() + CONTROL_BUTTON_GAP,
+        read.y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn combo_select_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    let read = combo_state_read_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        read.x,
+        read.bottom() + CONTROL_BUTTON_GAP,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn combo_reset_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    let select = combo_select_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        select.right() + CONTROL_BUTTON_GAP,
+        select.y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
 }

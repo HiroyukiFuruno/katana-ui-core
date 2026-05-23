@@ -54,15 +54,57 @@ fn tooltip_story() -> StoryExample {
 }
 
 fn combo_box_story() -> StoryExample {
-    let mut combo = molecule::ComboBox::new("Combo box")
-        .open(true)
+    let combo = molecule::ComboBox::new("Combo box")
         .item(molecule::ChoiceItem::new("one", "One"))
         .item(molecule::ChoiceItem::new("two", "Two"))
         .child(atom::Input::new("Search"))
         .child(atom::Text::new("Option"));
     let target = combo.state_id().clone();
-    let result = combo.apply_action(&UiAction::select_box_selected(target, SECOND_OPTION_INDEX));
-    StoryCatalog::interactive_story("combo-box", combo, result.callback_log)
+    let mut logs = vec![UiCallbackLog::new(
+        target.clone(),
+        "combo_state_read",
+        "open=false query=empty selected=none",
+        "open=false query=empty selected=none",
+    )];
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "combo_filter",
+        "query=empty",
+        "query=tw",
+    ));
+    let mut log_select = combo.clone().open(true).value("tw");
+    let result =
+        log_select.apply_action(&UiAction::select_box_selected(target.clone(), SECOND_OPTION_INDEX));
+    logs.extend(result.callback_log);
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "combo_select",
+        "selected=none",
+        "selected=two",
+    ));
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "combo_reset",
+        "query=tw selected=two",
+        "query=empty selected=none",
+    ));
+    let typed: katana_ui_core::render_model::UiNode = combo.clone().into();
+    let typed_state = typed.props().interaction.summary();
+    let harness = layout::Column::new()
+        .child(combo)
+        .child(
+            layout::Row::new()
+                .child(atom::Button::new("state read"))
+                .child(atom::Button::new("filter"))
+                .child(atom::Button::new("select two"))
+                .child(atom::Button::new("reset")),
+        )
+        .child(atom::Text::new(format!(
+            "typed state: state_id={} {}",
+            target.as_str(),
+            typed_state
+        )));
+    StoryCatalog::interactive_story("combo-box", harness, logs)
 }
 
 fn menu_button_story() -> StoryExample {
