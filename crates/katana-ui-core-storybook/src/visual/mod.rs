@@ -85,6 +85,7 @@ mod runtime;
 mod screen_state;
 mod scrollbar;
 mod scrollbar_model;
+mod search_box_screen_state;
 mod selection_control_metrics;
 mod selection_screen_state;
 mod shell;

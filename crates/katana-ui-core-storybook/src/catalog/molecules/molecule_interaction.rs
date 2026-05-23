@@ -73,8 +73,10 @@ fn combo_box_story() -> StoryExample {
         "query=tw",
     ));
     let mut log_select = combo.clone().open(true).value("tw");
-    let result =
-        log_select.apply_action(&UiAction::select_box_selected(target.clone(), SECOND_OPTION_INDEX));
+    let result = log_select.apply_action(&UiAction::select_box_selected(
+        target.clone(),
+        SECOND_OPTION_INDEX,
+    ));
     logs.extend(result.callback_log);
     logs.push(UiCallbackLog::new(
         target.clone(),
@@ -168,8 +170,10 @@ fn select_box_story() -> StoryExample {
         "open=false",
     ));
     let mut log_select = select.clone();
-    let result =
-        log_select.apply_action(&UiAction::select_box_selected(target.clone(), SECOND_OPTION_INDEX));
+    let result = log_select.apply_action(&UiAction::select_box_selected(
+        target.clone(),
+        SECOND_OPTION_INDEX,
+    ));
     logs.extend(result.callback_log);
     logs.push(UiCallbackLog::new(
         target.clone(),

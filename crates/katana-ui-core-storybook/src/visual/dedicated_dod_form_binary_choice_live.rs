@@ -100,7 +100,13 @@ fn draw_checkbox_controls(
     } else {
         "checked=false"
     };
-    draw_status_row(canvas, text, palette, checkbox_state_row_rect(x, y), checked_state);
+    draw_status_row(
+        canvas,
+        text,
+        palette,
+        checkbox_state_row_rect(x, y),
+        checked_state,
+    );
     draw_status_row(
         canvas,
         text,
@@ -126,7 +132,14 @@ fn draw_status_row(
 ) {
     canvas.fill_rect(row.x, row.y, row.width, row.height, palette.panel);
     canvas.stroke_rect(row.x, row.y, row.width, row.height, palette.border);
-    text.draw(canvas, value, row.x + m::PX_4, row.y + CONTROL_TEXT_Y, m::FONT_8, palette.muted);
+    text.draw(
+        canvas,
+        value,
+        row.x + m::PX_4,
+        row.y + CONTROL_TEXT_Y,
+        m::FONT_8,
+        palette.muted,
+    );
 }
 
 fn event_label(scenario: ScenarioContext<'_>) -> &'static str {
@@ -199,8 +212,20 @@ fn draw_radio_controls(
     } else {
         "selected=false"
     };
-    draw_status_row(canvas, text, palette, radio_state_row_rect(x, y), selected_state);
-    draw_status_row(canvas, text, palette, radio_event_row_rect(x, y), event_label(scenario));
+    draw_status_row(
+        canvas,
+        text,
+        palette,
+        radio_state_row_rect(x, y),
+        selected_state,
+    );
+    draw_status_row(
+        canvas,
+        text,
+        palette,
+        radio_event_row_rect(x, y),
+        event_label(scenario),
+    );
     draw_status_row(
         canvas,
         text,
@@ -296,10 +321,7 @@ pub(super) fn checkbox_state_read_button_rect(
     )
 }
 
-pub(super) fn checkbox_toggle_button_rect(
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
+pub(super) fn checkbox_toggle_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
     let read = checkbox_state_read_button_rect(x, y);
     super::layout_metrics::LayoutRect::new(
         read.right() + CONTROL_GAP,
@@ -309,10 +331,7 @@ pub(super) fn checkbox_toggle_button_rect(
     )
 }
 
-pub(super) fn checkbox_reset_button_rect(
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
+pub(super) fn checkbox_reset_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
     let toggle = checkbox_toggle_button_rect(x, y);
     super::layout_metrics::LayoutRect::new(
         toggle.right() + CONTROL_GAP,
@@ -352,12 +371,20 @@ pub(super) fn checkbox_log_row_rect(x: usize, y: usize) -> super::layout_metrics
 }
 
 #[cfg(test)]
-pub(super) fn radio_row_rect(index: usize, x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+pub(super) fn radio_row_rect(
+    index: usize,
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
     row_rect(index, x, y)
 }
 
 #[cfg(test)]
-pub(super) fn radio_mark_rect(index: usize, x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+pub(super) fn radio_mark_rect(
+    index: usize,
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
     let row = radio_row_rect(index, x, y);
     super::layout_metrics::LayoutRect::new(
         row.x + CHOICE_MARK_X,
@@ -368,7 +395,11 @@ pub(super) fn radio_mark_rect(index: usize, x: usize, y: usize) -> super::layout
 }
 
 #[cfg(test)]
-pub(super) fn radio_label_rect(index: usize, x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+pub(super) fn radio_label_rect(
+    index: usize,
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
     let row = radio_row_rect(index, x, y);
     super::layout_metrics::LayoutRect::new(
         row.x + CHOICE_LABEL_X,
@@ -378,7 +409,10 @@ pub(super) fn radio_label_rect(index: usize, x: usize, y: usize) -> super::layou
     )
 }
 
-pub(super) fn radio_state_read_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+pub(super) fn radio_state_read_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
     checkbox_state_read_button_rect(x, y)
 }
 

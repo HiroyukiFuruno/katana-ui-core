@@ -1,6 +1,7 @@
 use super::super::{StorybookWindowState, apply_click};
 use crate::catalog::StoryCatalog;
 use crate::visual::dedicated_dod_form_combo_live;
+use crate::visual::dedicated_dod_form_input_live;
 use crate::visual::dedicated_dod_form_select_live;
 use crate::visual::visual_interaction_test_support::component_body_pixel_diff;
 use crate::visual::{layout_metrics::LayoutRect, selection_control_metrics as sc};
@@ -154,10 +155,21 @@ fn search_box_layout_parts_do_not_overlap_on_base_state() {
         SEARCH_STATUS_HEIGHT,
     );
     let status_row_span = SEARCH_STATUS_HEIGHT + SEARCH_STATUS_GAP;
+    let read = dedicated_dod_form_input_live::search_state_read_button_rect(rect.x, rect.y);
+    let type_query = dedicated_dod_form_input_live::search_type_query_button_rect(rect.x, rect.y);
+    let submit = dedicated_dod_form_input_live::search_submit_button_rect(rect.x, rect.y);
+    let clear_button = dedicated_dod_form_input_live::search_clear_button_rect(rect.x, rect.y);
+    let case_toggle = dedicated_dod_form_input_live::search_case_toggle_button_rect(rect.x, rect.y);
+    let regex_toggle =
+        dedicated_dod_form_input_live::search_regex_toggle_button_rect(rect.x, rect.y);
 
     assert!(field.contains(clear.x, clear.y));
     assert!(field.contains(clear.right() - 1, clear.bottom() - 1));
     assert!(!field.overlaps(status));
+    assert!(!status.overlaps(read));
+    assert!(!read.overlaps(type_query));
+    assert!(!submit.overlaps(clear_button));
+    assert!(!case_toggle.overlaps(regex_toggle));
     let mut prev_row: Option<LayoutRect> = None;
     for row in 0..SEARCH_STATUS_ROW_COUNT {
         let row_rect = LayoutRect::new(
@@ -177,6 +189,253 @@ fn search_box_layout_parts_do_not_overlap_on_base_state() {
         assert!(!field.overlaps(row_rect));
         prev_row = Some(row_rect);
     }
+}
+
+#[test]
+fn search_box_control_buttons_apply_expected_actions_and_state_changes() {
+    let mut state = state_for(SEARCH_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(SEARCH_BOX_PAGE);
+    let read = dedicated_dod_form_input_live::search_state_read_button_rect(rect.x, rect.y);
+    let type_query = dedicated_dod_form_input_live::search_type_query_button_rect(rect.x, rect.y);
+    let submit = dedicated_dod_form_input_live::search_submit_button_rect(rect.x, rect.y);
+    let clear = dedicated_dod_form_input_live::search_clear_button_rect(rect.x, rect.y);
+    let case_toggle = dedicated_dod_form_input_live::search_case_toggle_button_rect(rect.x, rect.y);
+    let regex_toggle =
+        dedicated_dod_form_input_live::search_regex_toggle_button_rect(rect.x, rect.y);
+
+    assert!(apply_click(
+        &mut state,
+        read.x + CLICK_CENTER,
+        read.y + CLICK_CENTER
+    ));
+    assert_eq!("search_state_read", state.screen_state.last_action);
+    assert_eq!("search_value_read", state.screen_state.last_event);
+    assert_eq!(
+        "value=query case=false regex=false",
+        state.screen_state.state_label
+    );
+
+    assert!(apply_click(
+        &mut state,
+        type_query.x + CLICK_CENTER,
+        type_query.y + CLICK_CENTER
+    ));
+    assert_eq!("search_type_query", state.screen_state.last_action);
+    assert_eq!("input_value", state.screen_state.last_event);
+    assert_eq!(
+        "value=typed query case=false regex=false",
+        state.screen_state.state_label
+    );
+    assert!(state.screen_state.search_box.typed);
+    assert!(!state.screen_state.search_box.cleared);
+    assert!(!state.screen_state.search_box.submitted);
+
+    assert!(apply_click(
+        &mut state,
+        submit.x + CLICK_CENTER,
+        submit.y + CLICK_CENTER
+    ));
+    assert_eq!("search_submit", state.screen_state.last_action);
+    assert_eq!("search_submitted", state.screen_state.last_event);
+    assert_eq!(
+        "value=typed query submitted=true",
+        state.screen_state.state_label
+    );
+    assert!(state.screen_state.search_box.typed);
+    assert!(state.screen_state.search_box.submitted);
+
+    assert!(apply_click(
+        &mut state,
+        clear.x + CLICK_CENTER,
+        clear.y + CLICK_CENTER
+    ));
+    assert_eq!("search_clear", state.screen_state.last_action);
+    assert_eq!("clear_value", state.screen_state.last_event);
+    assert_eq!(
+        "value=empty case=false regex=false",
+        state.screen_state.state_label
+    );
+    assert!(state.screen_state.search_box.cleared);
+    assert!(!state.screen_state.search_box.typed);
+    assert!(!state.screen_state.search_box.submitted);
+
+    assert!(apply_click(
+        &mut state,
+        case_toggle.x + CLICK_CENTER,
+        case_toggle.y + CLICK_CENTER
+    ));
+    assert_eq!("search_case_toggle", state.screen_state.last_action);
+    assert_eq!("search_option_changed", state.screen_state.last_event);
+    assert_eq!(
+        "value=empty case=true regex=false",
+        state.screen_state.state_label
+    );
+
+    assert!(apply_click(
+        &mut state,
+        regex_toggle.x + CLICK_CENTER,
+        regex_toggle.y + CLICK_CENTER
+    ));
+    assert_eq!("search_regex_toggle", state.screen_state.last_action);
+    assert_eq!("search_option_changed", state.screen_state.last_event);
+    assert_eq!(
+        "value=empty case=true regex=true",
+        state.screen_state.state_label
+    );
+}
+
+#[test]
+fn search_box_hit_target_includes_field_clear_and_control_buttons() {
+    let mut state = state_for(SEARCH_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(SEARCH_BOX_PAGE);
+    let read = dedicated_dod_form_input_live::search_state_read_button_rect(rect.x, rect.y);
+    let type_query = dedicated_dod_form_input_live::search_type_query_button_rect(rect.x, rect.y);
+    let submit = dedicated_dod_form_input_live::search_submit_button_rect(rect.x, rect.y);
+    let clear = dedicated_dod_form_input_live::search_clear_button_rect(rect.x, rect.y);
+    let case_toggle = dedicated_dod_form_input_live::search_case_toggle_button_rect(rect.x, rect.y);
+    let regex_toggle =
+        dedicated_dod_form_input_live::search_regex_toggle_button_rect(rect.x, rect.y);
+
+    let field = dedicated_dod_form_input_live::search_field_rect(rect.x, rect.y);
+    let inline_clear = dedicated_dod_form_input_live::search_inline_clear_rect(rect.x, rect.y);
+    assert!(rect.contains(SEARCH_CLEAR_X + rect.x, SEARCH_CLEAR_Y + rect.y));
+    assert!(apply_click(
+        &mut state,
+        field.x + CLICK_CENTER,
+        field.y + CLICK_CENTER
+    ));
+    assert_eq!("search_type_query", state.screen_state.last_action);
+    assert!(apply_click(
+        &mut state,
+        inline_clear.x + CLICK_CENTER,
+        inline_clear.y + CLICK_CENTER
+    ));
+    assert_eq!("search_clear", state.screen_state.last_action);
+    assert!(apply_click(
+        &mut state,
+        read.x + CLICK_CENTER,
+        read.y + CLICK_CENTER
+    ));
+    assert!(apply_click(
+        &mut state,
+        type_query.x + CLICK_CENTER,
+        type_query.y + CLICK_CENTER
+    ));
+    assert!(apply_click(
+        &mut state,
+        submit.x + CLICK_CENTER,
+        submit.y + CLICK_CENTER
+    ));
+    assert!(apply_click(
+        &mut state,
+        clear.x + CLICK_CENTER,
+        clear.y + CLICK_CENTER
+    ));
+    assert!(apply_click(
+        &mut state,
+        case_toggle.x + CLICK_CENTER,
+        case_toggle.y + CLICK_CENTER
+    ));
+    assert!(apply_click(
+        &mut state,
+        regex_toggle.x + CLICK_CENTER,
+        regex_toggle.y + CLICK_CENTER
+    ));
+    assert_eq!("search_regex_toggle", state.screen_state.last_action);
+}
+
+#[test]
+fn search_box_visual_and_catalog_use_same_typed_action_names() {
+    let search = StoryCatalog
+        .examples()
+        .into_iter()
+        .find(|it| it.page == SEARCH_BOX_PAGE)
+        .expect("search-box story missing");
+    let catalog_actions: BTreeSet<String> = search
+        .callback_logs
+        .iter()
+        .map(|it| it.action.clone())
+        .filter(|it| {
+            matches!(
+                it.as_str(),
+                "search_state_read"
+                    | "search_type_query"
+                    | "search_submit"
+                    | "search_clear"
+                    | "search_case_toggle"
+                    | "search_regex_toggle"
+            )
+        })
+        .collect();
+
+    let mut state = state_for(SEARCH_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(SEARCH_BOX_PAGE);
+    let mut visual_actions: BTreeSet<String> = BTreeSet::new();
+    for point in [
+        dedicated_dod_form_input_live::search_state_read_button_rect(rect.x, rect.y),
+        dedicated_dod_form_input_live::search_type_query_button_rect(rect.x, rect.y),
+        dedicated_dod_form_input_live::search_submit_button_rect(rect.x, rect.y),
+        dedicated_dod_form_input_live::search_clear_button_rect(rect.x, rect.y),
+        dedicated_dod_form_input_live::search_case_toggle_button_rect(rect.x, rect.y),
+        dedicated_dod_form_input_live::search_regex_toggle_button_rect(rect.x, rect.y),
+    ] {
+        assert!(apply_click(
+            &mut state,
+            point.x + CLICK_CENTER,
+            point.y + CLICK_CENTER
+        ));
+        visual_actions.insert(state.screen_state.last_action.to_string());
+    }
+
+    assert_eq!(catalog_actions, visual_actions);
+}
+
+#[test]
+fn search_box_visual_state_matches_core_search_box_state_contract() {
+    let mut core_search = molecule::SearchBox::new("Search box")
+        .value("query")
+        .submit_on_enter(true);
+    let target = core_search.state_id().clone();
+    let _ = core_search.apply_action(&UiAction::input_value(target.clone(), "typed query"));
+    let _ = core_search.apply_action(&UiAction::cursor_selection(target.clone(), 11, 0, 11));
+    let core_result = core_search.apply_action(&UiAction::search_submitted(target.clone()));
+    assert!(
+        core_result
+            .callback_log
+            .iter()
+            .any(|it| it.action == "search_submitted")
+    );
+    let _ = core_search.apply_action(&UiAction::clear_value(target));
+    let core_node: katana_ui_core::render_model::UiNode = core_search.into();
+    let core_interaction = &core_node.props().interaction;
+    assert_eq!("", core_interaction.value);
+    assert_eq!(11, core_interaction.cursor);
+    assert_eq!(0, core_interaction.selection_start);
+    assert_eq!(11, core_interaction.selection_end);
+
+    let mut visual = state_for(SEARCH_BOX_PAGE);
+    let rect = preview_detail::component_action_hit_rect(SEARCH_BOX_PAGE);
+    for point in [
+        dedicated_dod_form_input_live::search_type_query_button_rect(rect.x, rect.y),
+        dedicated_dod_form_input_live::search_submit_button_rect(rect.x, rect.y),
+        dedicated_dod_form_input_live::search_clear_button_rect(rect.x, rect.y),
+    ] {
+        assert!(apply_click(
+            &mut visual,
+            point.x + CLICK_CENTER,
+            point.y + CLICK_CENTER
+        ));
+    }
+    assert_eq!("search_clear", visual.screen_state.last_action);
+    assert_eq!(
+        "value=empty case=false regex=false",
+        visual.screen_state.state_label
+    );
+    assert!(!visual.screen_state.search_box.typed);
+    assert!(visual.screen_state.search_box.cleared);
+    assert!(!visual.screen_state.search_box.submitted);
+    assert!(!visual.screen_state.search_box.case_sensitive);
+    assert!(!visual.screen_state.search_box.regex);
 }
 
 #[test]
@@ -223,12 +482,20 @@ fn select_box_control_buttons_apply_expected_actions_and_state_changes() {
     let close = dedicated_dod_form_select_live::select_close_button_rect(rect.x, rect.y);
     let reset = dedicated_dod_form_select_live::select_reset_button_rect(rect.x, rect.y);
 
-    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
+    assert!(apply_click(
+        &mut state,
+        read.x + CLICK_CENTER,
+        read.y + CLICK_CENTER
+    ));
     assert_eq!("select_state_read", state.screen_state.last_action);
     assert_eq!("select_state_read", state.screen_state.last_event);
     assert_eq!("open=false selected=none", state.screen_state.state_label);
 
-    assert!(apply_click(&mut state, open.x + CLICK_CENTER, open.y + CLICK_CENTER));
+    assert!(apply_click(
+        &mut state,
+        open.x + CLICK_CENTER,
+        open.y + CLICK_CENTER
+    ));
     assert_eq!("select_open", state.screen_state.last_action);
     assert_eq!("select_opened", state.screen_state.last_event);
     assert_eq!("open=true", state.screen_state.state_label);
@@ -244,7 +511,11 @@ fn select_box_control_buttons_apply_expected_actions_and_state_changes() {
     assert_eq!("open=false", state.screen_state.state_label);
     assert!(!state.screen_state.selection.select_open);
 
-    assert!(apply_click(&mut state, open.x + CLICK_CENTER, open.y + CLICK_CENTER));
+    assert!(apply_click(
+        &mut state,
+        open.x + CLICK_CENTER,
+        open.y + CLICK_CENTER
+    ));
     assert!(apply_click(
         &mut state,
         rect.x + OPTION_X_OFFSET,
@@ -275,7 +546,8 @@ fn select_box_hit_target_includes_trigger_option_and_control_buttons() {
         sc::TRIGGER_HEIGHT,
     );
     let option_label_x = rect.x + sc::TRIGGER_X + sc::TEXT_X;
-    let option_label_y = rect.y + sc::SELECT_OPTIONS_Y + sc::SELECT_OPTION_HEIGHT * 2 + CLICK_CENTER;
+    let option_label_y =
+        rect.y + sc::SELECT_OPTIONS_Y + sc::SELECT_OPTION_HEIGHT * 2 + CLICK_CENTER;
     let read = dedicated_dod_form_select_live::select_state_read_button_rect(rect.x, rect.y);
     let open = dedicated_dod_form_select_live::select_open_button_rect(rect.x, rect.y);
     let close = dedicated_dod_form_select_live::select_close_button_rect(rect.x, rect.y);
@@ -286,9 +558,17 @@ fn select_box_hit_target_includes_trigger_option_and_control_buttons() {
     assert!(!open.overlaps(close));
     assert!(!close.overlaps(reset));
 
-    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
+    assert!(apply_click(
+        &mut state,
+        read.x + CLICK_CENTER,
+        read.y + CLICK_CENTER
+    ));
     assert_eq!("select_state_read", state.screen_state.last_action);
-    assert!(apply_click(&mut state, open.x + CLICK_CENTER, open.y + CLICK_CENTER));
+    assert!(apply_click(
+        &mut state,
+        open.x + CLICK_CENTER,
+        open.y + CLICK_CENTER
+    ));
     assert_eq!("select_open", state.screen_state.last_action);
     assert!(apply_click(
         &mut state,
@@ -349,7 +629,10 @@ fn select_box_visual_and_catalog_use_same_typed_action_names() {
         (open.x + CLICK_CENTER, open.y + CLICK_CENTER),
         (close.x + CLICK_CENTER, close.y + CLICK_CENTER),
         (open.x + CLICK_CENTER, open.y + CLICK_CENTER),
-        (rect.x + OPTION_X_OFFSET, rect.y + SELECT_DARK_OPTION_Y_OFFSET),
+        (
+            rect.x + OPTION_X_OFFSET,
+            rect.y + SELECT_DARK_OPTION_Y_OFFSET,
+        ),
         (reset.x + CLICK_CENTER, reset.y + CLICK_CENTER),
     ] {
         assert!(apply_click(&mut state, point.0, point.1));
@@ -405,7 +688,11 @@ fn combo_box_control_buttons_apply_expected_actions_and_state_changes() {
     let select = dedicated_dod_form_combo_live::combo_select_button_rect(rect.x, rect.y);
     let reset = dedicated_dod_form_combo_live::combo_reset_button_rect(rect.x, rect.y);
 
-    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
+    assert!(apply_click(
+        &mut state,
+        read.x + CLICK_CENTER,
+        read.y + CLICK_CENTER
+    ));
     assert_eq!("combo_state_read", state.screen_state.last_action);
     assert_eq!("combo_state_read", state.screen_state.last_event);
     assert_eq!(
@@ -470,7 +757,11 @@ fn combo_box_hit_target_includes_trigger_option_and_control_buttons() {
     assert!(!filter.overlaps(select));
     assert!(!select.overlaps(reset));
 
-    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
+    assert!(apply_click(
+        &mut state,
+        read.x + CLICK_CENTER,
+        read.y + CLICK_CENTER
+    ));
     assert_eq!("combo_state_read", state.screen_state.last_action);
     assert!(apply_click(
         &mut state,

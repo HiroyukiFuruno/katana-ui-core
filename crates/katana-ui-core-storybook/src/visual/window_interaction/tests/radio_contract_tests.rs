@@ -73,7 +73,11 @@ fn radio_control_buttons_apply_expected_actions_and_state_changes() {
     let reset = dedicated_dod_form_binary_choice_live::radio_reset_button_rect(HERO_X, HERO_Y);
     let row = dedicated_dod_form_binary_choice_live::radio_row_rect(0, HERO_X, HERO_Y);
 
-    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
+    assert!(apply_click(
+        &mut state,
+        read.x + CLICK_CENTER,
+        read.y + CLICK_CENTER
+    ));
     assert_eq!("radio_state_read", state.screen_state.last_action);
     assert_eq!("selected_read", state.screen_state.last_event);
     assert_eq!("before=false after=false", state.screen_state.state_label);
@@ -120,7 +124,12 @@ fn radio_visual_and_catalog_use_same_typed_action_names() {
         .callback_logs
         .iter()
         .map(|it| it.action.clone())
-        .filter(|it| matches!(it.as_str(), "radio_state_read" | "radio_select" | "radio_reset"))
+        .filter(|it| {
+            matches!(
+                it.as_str(),
+                "radio_state_read" | "radio_select" | "radio_reset"
+            )
+        })
         .collect();
 
     let mut state = StorybookWindowState {
@@ -154,8 +163,15 @@ fn radio_state_read_and_select_keep_core_state_id_and_selected_in_sync() {
     let reset = dedicated_dod_form_binary_choice_live::radio_reset_button_rect(HERO_X, HERO_Y);
     let initial_state_id = state.screen_state.radio_state_snapshot().state_id.clone();
 
-    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
-    assert_eq!(initial_state_id, state.screen_state.radio_state_snapshot().state_id);
+    assert!(apply_click(
+        &mut state,
+        read.x + CLICK_CENTER,
+        read.y + CLICK_CENTER
+    ));
+    assert_eq!(
+        initial_state_id,
+        state.screen_state.radio_state_snapshot().state_id
+    );
     assert!(!state.screen_state.radio_state_snapshot().checked);
 
     assert!(apply_click(
@@ -163,7 +179,10 @@ fn radio_state_read_and_select_keep_core_state_id_and_selected_in_sync() {
         select.x + CLICK_CENTER,
         select.y + CLICK_CENTER
     ));
-    assert_eq!(initial_state_id, state.screen_state.radio_state_snapshot().state_id);
+    assert_eq!(
+        initial_state_id,
+        state.screen_state.radio_state_snapshot().state_id
+    );
     assert!(state.screen_state.radio_state_snapshot().checked);
     assert_eq!("before=false after=true", state.screen_state.state_label);
 
@@ -172,7 +191,10 @@ fn radio_state_read_and_select_keep_core_state_id_and_selected_in_sync() {
         reset.x + CLICK_CENTER,
         reset.y + CLICK_CENTER
     ));
-    assert_eq!(initial_state_id, state.screen_state.radio_state_snapshot().state_id);
+    assert_eq!(
+        initial_state_id,
+        state.screen_state.radio_state_snapshot().state_id
+    );
     assert!(!state.screen_state.radio_state_snapshot().checked);
     assert_eq!("before=true after=false", state.screen_state.state_label);
 }

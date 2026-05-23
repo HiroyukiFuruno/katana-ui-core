@@ -47,7 +47,8 @@ fn checkbox_hit_target_includes_mark_label_and_row() {
 fn checkbox_hit_target_rect_stays_inside_preview_body() {
     let hit_rect = preview_detail::component_action_hit_rect("checkbox");
     let row = dedicated_dod_form_binary_choice_live::checkbox_row_rect(0, HERO_X, HERO_Y);
-    let read = dedicated_dod_form_binary_choice_live::checkbox_state_read_button_rect(HERO_X, HERO_Y);
+    let read =
+        dedicated_dod_form_binary_choice_live::checkbox_state_read_button_rect(HERO_X, HERO_Y);
     let toggle = dedicated_dod_form_binary_choice_live::checkbox_toggle_button_rect(HERO_X, HERO_Y);
     let reset = dedicated_dod_form_binary_choice_live::checkbox_reset_button_rect(HERO_X, HERO_Y);
 
@@ -70,12 +71,17 @@ fn checkbox_control_buttons_apply_expected_actions_and_state_changes() {
         selected_page: "checkbox",
         ..StorybookWindowState::default()
     };
-    let read = dedicated_dod_form_binary_choice_live::checkbox_state_read_button_rect(HERO_X, HERO_Y);
+    let read =
+        dedicated_dod_form_binary_choice_live::checkbox_state_read_button_rect(HERO_X, HERO_Y);
     let toggle = dedicated_dod_form_binary_choice_live::checkbox_toggle_button_rect(HERO_X, HERO_Y);
     let reset = dedicated_dod_form_binary_choice_live::checkbox_reset_button_rect(HERO_X, HERO_Y);
     let row = dedicated_dod_form_binary_choice_live::checkbox_row_rect(0, HERO_X, HERO_Y);
 
-    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
+    assert!(apply_click(
+        &mut state,
+        read.x + CLICK_CENTER,
+        read.y + CLICK_CENTER
+    ));
     assert_eq!("checkbox_state_read", state.screen_state.last_action);
     assert_eq!("checked_read", state.screen_state.last_event);
     assert_eq!("before=false after=false", state.screen_state.state_label);
@@ -134,7 +140,8 @@ fn checkbox_visual_and_catalog_use_same_typed_action_names() {
         selected_page: "checkbox",
         ..StorybookWindowState::default()
     };
-    let read = dedicated_dod_form_binary_choice_live::checkbox_state_read_button_rect(HERO_X, HERO_Y);
+    let read =
+        dedicated_dod_form_binary_choice_live::checkbox_state_read_button_rect(HERO_X, HERO_Y);
     let toggle = dedicated_dod_form_binary_choice_live::checkbox_toggle_button_rect(HERO_X, HERO_Y);
     let reset = dedicated_dod_form_binary_choice_live::checkbox_reset_button_rect(HERO_X, HERO_Y);
     let mut visual_actions: BTreeSet<String> = BTreeSet::new();
@@ -156,7 +163,8 @@ fn checkbox_state_read_and_toggle_keep_core_state_id_and_checked_in_sync() {
         selected_page: "checkbox",
         ..StorybookWindowState::default()
     };
-    let read = dedicated_dod_form_binary_choice_live::checkbox_state_read_button_rect(HERO_X, HERO_Y);
+    let read =
+        dedicated_dod_form_binary_choice_live::checkbox_state_read_button_rect(HERO_X, HERO_Y);
     let toggle = dedicated_dod_form_binary_choice_live::checkbox_toggle_button_rect(HERO_X, HERO_Y);
     let reset = dedicated_dod_form_binary_choice_live::checkbox_reset_button_rect(HERO_X, HERO_Y);
     let initial_state_id = state
@@ -165,7 +173,11 @@ fn checkbox_state_read_and_toggle_keep_core_state_id_and_checked_in_sync() {
         .state_id
         .clone();
 
-    assert!(apply_click(&mut state, read.x + CLICK_CENTER, read.y + CLICK_CENTER));
+    assert!(apply_click(
+        &mut state,
+        read.x + CLICK_CENTER,
+        read.y + CLICK_CENTER
+    ));
     assert_eq!(
         initial_state_id,
         state.screen_state.checkbox_state_snapshot().state_id

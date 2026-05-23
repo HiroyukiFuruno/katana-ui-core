@@ -199,12 +199,25 @@ fn radio_story_uses_public_props_and_typed_callback_log() -> Result<(), &'static
         .map(|it| it.props().label.as_str())
         .collect();
     assert_eq!(&["state read", "select", "reset"], &control_labels[..]);
-    assert_eq!(callback.target.as_str(), radio_node.props().state_id.as_str());
+    assert_eq!(
+        callback.target.as_str(),
+        radio_node.props().state_id.as_str()
+    );
     assert_eq!("radio_state_read", callback.action);
     assert_eq!("selected=false", callback.before);
     assert_eq!("selected=false", callback.after);
-    assert!(radio.callback_logs.iter().any(|it| it.action == "radio_select"));
-    assert!(radio.callback_logs.iter().any(|it| it.action == "radio_reset"));
+    assert!(
+        radio
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "radio_select")
+    );
+    assert!(
+        radio
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "radio_reset")
+    );
     assert!(
         radio
             .callback_logs
@@ -244,7 +257,10 @@ fn select_box_story_root_props_match_initial_callback_log() -> Result<(), &'stat
         &["state read", "open", "close", "select dark", "reset"],
         &control_labels[..]
     );
-    assert_eq!(callback.target.as_str(), select_node.props().state_id.as_str());
+    assert_eq!(
+        callback.target.as_str(),
+        select_node.props().state_id.as_str()
+    );
     assert_eq!("select_state_read", callback.action);
     assert_eq!("open=false selected=none", callback.before);
     assert_eq!("open=false selected=none", callback.after);
@@ -285,7 +301,10 @@ fn combo_box_story_root_props_match_initial_callback_log() -> Result<(), &'stati
         &["state read", "filter", "select two", "reset"],
         &control_labels[..]
     );
-    assert_eq!(callback.target.as_str(), combo_node.props().state_id.as_str());
+    assert_eq!(
+        callback.target.as_str(),
+        combo_node.props().state_id.as_str()
+    );
     assert_eq!("combo_state_read", callback.action);
     assert_eq!("open=false query=empty selected=none", callback.before);
     assert_eq!("open=false query=empty selected=none", callback.after);

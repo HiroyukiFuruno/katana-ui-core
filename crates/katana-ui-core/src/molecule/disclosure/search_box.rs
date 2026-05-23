@@ -90,7 +90,7 @@ impl From<SearchBox> for UiNode {
         let mut node = value
             .state
             .node(UiNodeKind::SearchBox, value.label)
-            .text_entry(text_entry_props(value.clear_action));
+            .text_entry(text_entry_props(value.clear_action, value.submit_on_enter));
         for child in value.children {
             node = node.child(child);
         }
@@ -98,9 +98,13 @@ impl From<SearchBox> for UiNode {
     }
 }
 
-fn text_entry_props(clear_action: Option<UiClearActionSpec>) -> UiTextEntryProps {
+fn text_entry_props(
+    clear_action: Option<UiClearActionSpec>,
+    submit_on_enter: bool,
+) -> UiTextEntryProps {
     UiTextEntryProps {
         clear_action,
+        submit_on_enter,
         ..UiTextEntryProps::default()
     }
 }

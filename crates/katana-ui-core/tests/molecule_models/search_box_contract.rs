@@ -34,15 +34,21 @@ fn search_box_owns_input_options_and_clear_affordance() {
 fn search_box_input_clear_and_submit_update_owned_state() {
     let mut search = SearchBox::new("Search").value("katana");
     let input = UiAction::input_value(search.state_id().clone(), "query");
+    let selection = UiAction::cursor_selection(search.state_id().clone(), 5, 1, 5);
     let clear = UiAction::clear_value(search.state_id().clone());
     let submit = UiAction::search_submitted(search.state_id().clone());
 
     let input_result = search.apply_action(&input);
+    let selection_result = search.apply_action(&selection);
     let clear_result = search.apply_action(&clear);
     let submit_result = search.apply_action(&submit);
 
     assert!(input_result.handled);
     assert_eq!("query", input_result.after.value);
+    assert!(selection_result.handled);
+    assert_eq!(5, selection_result.after.cursor);
+    assert_eq!(1, selection_result.after.selection_start);
+    assert_eq!(5, selection_result.after.selection_end);
     assert!(clear_result.handled);
     assert_eq!("", clear_result.after.value);
     assert!(submit_result.handled);

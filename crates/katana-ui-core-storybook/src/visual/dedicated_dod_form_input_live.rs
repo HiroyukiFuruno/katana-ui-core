@@ -38,6 +38,12 @@ const CHIP_HEIGHT: usize = 18;
 const CHIP_GAP: usize = 8;
 const CHIP_LABEL_COUNT: usize = 3;
 const LABEL_SIZE: f32 = 10.0;
+const CONTROL_BUTTON_X: usize = STATUS_X;
+const CONTROL_BUTTON_Y: usize = 116;
+const CONTROL_BUTTON_WIDTH: usize = 56;
+const CONTROL_BUTTON_HEIGHT: usize = 20;
+const CONTROL_BUTTON_GAP: usize = 8;
+const CONTROL_TEXT_Y: usize = 6;
 const TEXT_AREA_Y: usize = 32;
 const TEXT_AREA_WIDTH: usize = 236;
 const TEXT_AREA_HEIGHT: usize = 92;
@@ -92,6 +98,7 @@ pub(super) fn search(
         search_value(scenario),
     );
     draw_clear_button(canvas, x, y);
+    draw_search_controls(canvas, text, palette, x, y);
     draw_status(canvas, text, palette, scenario, x, y);
     draw_search_chips(canvas, text, palette, x, y);
 }
@@ -189,6 +196,34 @@ fn draw_search_chips(
     draw_chips(canvas, text, palette, x, y, ["regex", "word", "case"]);
 }
 
+fn draw_search_controls(
+    canvas: &mut Canvas,
+    text: &TextRenderer,
+    palette: &VisualPalette,
+    x: usize,
+    y: usize,
+) {
+    for (rect, label) in [
+        (search_state_read_button_rect(x, y), "read"),
+        (search_type_query_button_rect(x, y), "type"),
+        (search_submit_button_rect(x, y), "submit"),
+        (search_clear_button_rect(x, y), "clear"),
+        (search_case_toggle_button_rect(x, y), "case"),
+        (search_regex_toggle_button_rect(x, y), "regex"),
+    ] {
+        canvas.fill_rect(rect.x, rect.y, rect.width, rect.height, palette.surface);
+        canvas.stroke_rect(rect.x, rect.y, rect.width, rect.height, palette.border);
+        text.draw(
+            canvas,
+            label,
+            rect.x + CONTROL_BUTTON_GAP,
+            rect.y + CONTROL_TEXT_Y,
+            m::FONT_8,
+            palette.text,
+        );
+    }
+}
+
 fn draw_chips(
     canvas: &mut Canvas,
     text: &TextRenderer,
@@ -267,10 +302,13 @@ fn input_value(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 fn search_value(scenario: ScenarioContext<'_>) -> &'static str {
-    if scenario.screen_state.has_widget_action() {
-        return "Query submitted";
+    if scenario.screen_state.search_box.cleared {
+        return "";
     }
-    "Query: error"
+    if scenario.screen_state.search_box.typed {
+        return "typed query";
+    }
+    "query"
 }
 
 fn status_action(scenario: ScenarioContext<'_>) -> &'static str {
@@ -288,8 +326,87 @@ fn status_event(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 fn status_state(scenario: ScenarioContext<'_>) -> &'static str {
-    if scenario.screen_state.state_label == "idle" {
-        return "value idle";
+    if scenario.screen_state.last_action == "none" {
+        return "value=query case=false regex=false";
     }
     scenario.screen_state.state_label
+}
+
+pub(super) fn search_state_read_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
+    super::layout_metrics::LayoutRect::new(
+        x + CONTROL_BUTTON_X,
+        y + CONTROL_BUTTON_Y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn search_field_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    super::layout_metrics::LayoutRect::new(x + FIELD_X, y + FIELD_Y, FIELD_WIDTH, FIELD_HEIGHT)
+}
+
+pub(super) fn search_inline_clear_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    super::layout_metrics::LayoutRect::new(x + CLEAR_X, y + CLEAR_Y, CLEAR_SIZE, CLEAR_SIZE)
+}
+
+pub(super) fn search_type_query_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
+    let read = search_state_read_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        read.right() + CONTROL_BUTTON_GAP,
+        read.y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn search_submit_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    let read = search_state_read_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        read.x,
+        read.bottom() + CONTROL_BUTTON_GAP,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn search_clear_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    let submit = search_submit_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        submit.right() + CONTROL_BUTTON_GAP,
+        submit.y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn search_case_toggle_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
+    let submit = search_submit_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        submit.x,
+        submit.bottom() + CONTROL_BUTTON_GAP,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
+}
+
+pub(super) fn search_regex_toggle_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
+    let case = search_case_toggle_button_rect(x, y);
+    super::layout_metrics::LayoutRect::new(
+        case.right() + CONTROL_BUTTON_GAP,
+        case.y,
+        CONTROL_BUTTON_WIDTH,
+        CONTROL_BUTTON_HEIGHT,
+    )
 }

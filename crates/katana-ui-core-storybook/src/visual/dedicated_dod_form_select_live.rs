@@ -147,7 +147,13 @@ fn draw_status(
     }
 }
 
-fn draw_controls(canvas: &mut Canvas, text: &TextRenderer, palette: &VisualPalette, x: usize, y: usize) {
+fn draw_controls(
+    canvas: &mut Canvas,
+    text: &TextRenderer,
+    palette: &VisualPalette,
+    x: usize,
+    y: usize,
+) {
     for (rect, label) in [
         (select_state_read_button_rect(x, y), "read"),
         (select_open_button_rect(x, y), "open"),
@@ -197,7 +203,10 @@ fn status_state(scenario: ScenarioContext<'_>) -> &'static str {
     scenario.screen_state.state_label
 }
 
-pub(super) fn select_state_read_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+pub(super) fn select_state_read_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
     super::layout_metrics::LayoutRect::new(
         x + CONTROL_BUTTON_X,
         y + CONTROL_BUTTON_Y,

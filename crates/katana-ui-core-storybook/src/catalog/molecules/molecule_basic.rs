@@ -285,14 +285,76 @@ fn card_story() -> StoryExample {
 }
 
 fn search_box_story() -> StoryExample {
-    let mut search = molecule::SearchBox::new("Search box")
+    let mut harness_root = molecule::SearchBox::new("Search box")
         .placeholder("Search")
         .value("query")
         .clear_action("Clear")
-        .submit_on_enter(true)
+        .submit_on_enter(true);
+    harness_root = harness_root
         .child(atom::Input::new("Query"))
-        .child(atom::Button::new("Clear"));
-    let target = search.state_id().clone();
-    let result = search.apply_action(&UiAction::search_submitted(target));
-    StoryCatalog::interactive_story("search-box", search, result.callback_log)
+        .child(atom::Button::new("state read"))
+        .child(atom::Button::new("type query"))
+        .child(atom::Button::new("submit"))
+        .child(atom::Button::new("clear"))
+        .child(atom::Button::new("case toggle"))
+        .child(atom::Button::new("regex toggle"))
+        .child(atom::Text::new("state: value=query case=false regex=false"))
+        .child(atom::Text::new(
+            "event: search_value_read input_value search_submitted clear_value",
+        ))
+        .child(atom::Text::new(
+            "action: search_state_read search_type_query search_submit search_clear search_case_toggle search_regex_toggle",
+        ))
+        .child(atom::Text::new(
+            "quality: typed state action event submit_on_enter clear_action",
+        ));
+
+    let mut log_search = harness_root.clone();
+    let target = log_search.state_id().clone();
+    let _ = log_search.apply_action(&UiAction::focus(target.clone()));
+    let _ = log_search.apply_action(&UiAction::input_value(target.clone(), "typed query"));
+    let _ = log_search.apply_action(&UiAction::search_submitted(target.clone()));
+    let _ = log_search.apply_action(&UiAction::clear_value(target.clone()));
+    let _ = log_search.apply_action(&UiAction::set_value(target.clone(), "case=true"));
+    let _ = log_search.apply_action(&UiAction::set_value(target, "regex=true"));
+
+    let mut callback_logs = Vec::new();
+    callback_logs.push(UiCallbackLog::new(
+        harness_root.state_id().clone(),
+        "search_state_read",
+        "value=query case=false regex=false",
+        "value=query case=false regex=false",
+    ));
+    callback_logs.push(UiCallbackLog::new(
+        harness_root.state_id().clone(),
+        "search_type_query",
+        "value=query case=false regex=false",
+        "value=typed query case=false regex=false",
+    ));
+    callback_logs.push(UiCallbackLog::new(
+        harness_root.state_id().clone(),
+        "search_submit",
+        "value=typed query case=false regex=false",
+        "value=typed query submitted=true",
+    ));
+    callback_logs.push(UiCallbackLog::new(
+        harness_root.state_id().clone(),
+        "search_clear",
+        "value=typed query submitted=true",
+        "value=empty case=false regex=false",
+    ));
+    callback_logs.push(UiCallbackLog::new(
+        harness_root.state_id().clone(),
+        "search_case_toggle",
+        "value=empty case=false regex=false",
+        "value=empty case=true regex=false",
+    ));
+    callback_logs.push(UiCallbackLog::new(
+        harness_root.state_id().clone(),
+        "search_regex_toggle",
+        "value=empty case=true regex=false",
+        "value=empty case=true regex=true",
+    ));
+
+    StoryCatalog::interactive_story("search-box", harness_root, callback_logs)
 }

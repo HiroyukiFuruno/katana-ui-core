@@ -168,7 +168,8 @@ fn assert_required_page_keeps_action_and_settings_state_separate_between_presets
 
     state.select_preset(0);
     assert_eq!(
-        stored_screen_state, state.screen_state.clone(),
+        stored_screen_state,
+        state.screen_state.clone(),
         "{page} lost preset-local state"
     );
 }

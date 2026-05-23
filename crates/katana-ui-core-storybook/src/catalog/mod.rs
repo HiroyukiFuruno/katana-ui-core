@@ -18,6 +18,8 @@ mod runtime_app_primitives;
 #[cfg(test)]
 mod scroll_area_story_tests;
 #[cfg(test)]
+mod search_box_story_tests;
+#[cfg(test)]
 mod search_control_strip_story_tests;
 #[cfg(test)]
 mod split_pane_story_tests;

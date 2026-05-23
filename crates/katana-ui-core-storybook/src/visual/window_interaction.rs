@@ -80,8 +80,11 @@ impl StorybookWindowState {
     }
 
     fn switch_screen_state(&mut self, page: &'static str, preset_index: usize) {
-        self.screen_states
-            .save(self.selected_page, self.preset_index, self.screen_state.clone());
+        self.screen_states.save(
+            self.selected_page,
+            self.preset_index,
+            self.screen_state.clone(),
+        );
         self.selected_component_presets
             .insert(self.selected_page, self.preset_index);
         self.selected_page = page;

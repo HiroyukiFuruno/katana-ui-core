@@ -1,13 +1,15 @@
 use super::StorybookWindowState;
-use crate::visual::dedicated_dod_form_binary_choice_live as binary_choice_live;
-use crate::visual::dedicated_dod_form_combo_live as combo_live;
-use crate::visual::dedicated_dod_form_select_live as select_live;
 use crate::catalog::StoryPresetLabels;
 use crate::visual::button_options::{StorybookButtonOptionControl, control_at, is_button_page};
+use crate::visual::dedicated_dod_form_binary_choice_live as binary_choice_live;
+use crate::visual::dedicated_dod_form_combo_live as combo_live;
+use crate::visual::dedicated_dod_form_input_live as input_live;
+use crate::visual::dedicated_dod_form_select_live as select_live;
 use crate::visual::layout_metrics::{
     button_setting_hit_rect, dark_theme_rect, light_theme_rect, preset_tab_rect,
     scrollbar_off_rect, scrollbar_on_rect,
 };
+use crate::visual::search_box_screen_state::SearchBoxScreenAction;
 use crate::visual::selection_control_metrics;
 use crate::visual::selection_screen_state::SelectionScreenAction;
 use crate::visual::{preview, preview_detail};
@@ -34,6 +36,12 @@ pub(super) enum StorybookButtonOperation {
     ComboFilter,
     ComboSelect,
     ComboReset,
+    SearchStateRead,
+    SearchTypeQuery,
+    SearchSubmit,
+    SearchClear,
+    SearchCaseToggle,
+    SearchRegexToggle,
 }
 
 impl StorybookButtonOperation {
@@ -73,6 +81,24 @@ impl StorybookButtonOperation {
             Self::ComboReset => state
                 .screen_state
                 .register_selection_action(SelectionScreenAction::ComboReset),
+            Self::SearchStateRead => state
+                .screen_state
+                .register_search_box_action(SearchBoxScreenAction::StateRead),
+            Self::SearchTypeQuery => state
+                .screen_state
+                .register_search_box_action(SearchBoxScreenAction::TypeQuery),
+            Self::SearchSubmit => state
+                .screen_state
+                .register_search_box_action(SearchBoxScreenAction::Submit),
+            Self::SearchClear => state
+                .screen_state
+                .register_search_box_action(SearchBoxScreenAction::Clear),
+            Self::SearchCaseToggle => state
+                .screen_state
+                .register_search_box_action(SearchBoxScreenAction::ToggleCase),
+            Self::SearchRegexToggle => state
+                .screen_state
+                .register_search_box_action(SearchBoxScreenAction::ToggleRegex),
         }
         true
     }
@@ -187,6 +213,32 @@ fn selection_control_operation_at(
             return Some(StorybookButtonOperation::ComboReset);
         }
     }
+    if page == "search-box" {
+        if input_live::search_inline_clear_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SearchClear);
+        }
+        if input_live::search_field_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SearchTypeQuery);
+        }
+        if input_live::search_state_read_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SearchStateRead);
+        }
+        if input_live::search_type_query_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SearchTypeQuery);
+        }
+        if input_live::search_submit_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SearchSubmit);
+        }
+        if input_live::search_clear_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SearchClear);
+        }
+        if input_live::search_case_toggle_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SearchCaseToggle);
+        }
+        if input_live::search_regex_toggle_button_rect(component.x, component.y).contains(x, y) {
+            return Some(StorybookButtonOperation::SearchRegexToggle);
+        }
+    }
     let action = match page {
         "select-box" => selection_control_metrics::select_action_at(
             component,
@@ -237,11 +289,7 @@ fn settings_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButt
     None
 }
 
-fn checkbox_operation_at(
-    page: &str,
-    x: usize,
-    y: usize,
-) -> Option<StorybookButtonOperation> {
+fn checkbox_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
     if page != "checkbox" {
         return None;
     }

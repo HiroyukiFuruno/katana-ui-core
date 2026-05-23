@@ -1,5 +1,6 @@
 use super::button_options::{StorybookButtonOptionControl, StorybookButtonOptions};
 use super::interaction_spec::StorybookInteractionSpec;
+use super::search_box_screen_state::{SearchBoxScreenAction, SearchBoxScreenState};
 use super::selection_screen_state::{SelectionScreenAction, SelectionScreenState};
 use katana_ui_core::atom;
 use katana_ui_core::component::ComponentAction;
@@ -20,6 +21,7 @@ pub(super) struct StorybookScreenState {
     pub(super) preview_hovered: bool,
     pub(super) hovered_summary_index: Option<usize>,
     pub(super) selection: SelectionScreenState,
+    pub(super) search_box: SearchBoxScreenState,
     pub(super) checkbox_state: UiComponentState,
     pub(super) radio_state: UiComponentState,
 }
@@ -39,6 +41,7 @@ impl Default for StorybookScreenState {
             preview_hovered: false,
             hovered_summary_index: None,
             selection: SelectionScreenState::default(),
+            search_box: SearchBoxScreenState::default(),
             checkbox_state: default_checkbox_state(),
             radio_state: default_radio_state(),
         }
@@ -81,7 +84,8 @@ impl StorybookScreenState {
         self.action_count += 1;
         self.last_action = "checkbox_state_read";
         self.last_event = "checked_read";
-        self.state_label = checkbox_state_label(self.checkbox_state.checked, self.checkbox_state.checked);
+        self.state_label =
+            checkbox_state_label(self.checkbox_state.checked, self.checkbox_state.checked);
     }
 
     pub(super) fn register_checkbox_toggle(&mut self) {
@@ -192,6 +196,14 @@ impl StorybookScreenState {
         self.state_label = update.state;
     }
 
+    pub(super) fn register_search_box_action(&mut self, action: SearchBoxScreenAction) {
+        self.action_count += 1;
+        let update = self.search_box.apply(action);
+        self.last_action = update.action;
+        self.last_event = update.event;
+        self.state_label = update.state;
+    }
+
     pub(super) fn has_widget_action(&self) -> bool {
         self.action_count > 0
     }
@@ -237,12 +249,17 @@ fn default_checkbox_state() -> UiComponentState {
 }
 
 fn default_radio_state() -> UiComponentState {
-    atom::Radio::new("Storybook Radio").selected(false).state_snapshot()
+    atom::Radio::new("Storybook Radio")
+        .selected(false)
+        .state_snapshot()
 }
 
 fn apply_checkbox_checked_state(before: &UiComponentState, checked: bool) -> UiComponentState {
     let mut checkbox = atom::Checkbox::new("Storybook Checkbox").set_state(before.clone());
-    let _result = checkbox.apply_action(&UiAction::checkbox_checked(before.state_id.clone(), checked));
+    let _result = checkbox.apply_action(&UiAction::checkbox_checked(
+        before.state_id.clone(),
+        checked,
+    ));
     checkbox.state_snapshot()
 }
 

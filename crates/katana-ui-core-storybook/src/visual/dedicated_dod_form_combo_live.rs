@@ -161,7 +161,13 @@ fn draw_status(
     }
 }
 
-fn draw_controls(canvas: &mut Canvas, text: &TextRenderer, palette: &VisualPalette, x: usize, y: usize) {
+fn draw_controls(
+    canvas: &mut Canvas,
+    text: &TextRenderer,
+    palette: &VisualPalette,
+    x: usize,
+    y: usize,
+) {
     for (rect, label) in [
         (combo_state_read_button_rect(x, y), "read"),
         (combo_filter_button_rect(x, y), "filter"),
@@ -217,7 +223,10 @@ fn status_or_default(value: &'static str, default_value: &'static str) -> &'stat
     value
 }
 
-pub(super) fn combo_state_read_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+pub(super) fn combo_state_read_button_rect(
+    x: usize,
+    y: usize,
+) -> super::layout_metrics::LayoutRect {
     super::layout_metrics::LayoutRect::new(
         x + CONTROL_BUTTON_X,
         y + CONTROL_BUTTON_Y,

@@ -157,7 +157,11 @@ fn combo_state(index: usize) -> &'static str {
     }
 }
 
-fn combo_read_state(is_open: bool, is_filtered: bool, selected_index: Option<usize>) -> &'static str {
+fn combo_read_state(
+    is_open: bool,
+    is_filtered: bool,
+    selected_index: Option<usize>,
+) -> &'static str {
     match (is_open, is_filtered, selected_index) {
         (true, true, Some(COMBO_TWO_INDEX)) => "open=true query=tw selected=two",
         (true, true, _) => "open=true query=tw selected=none",
