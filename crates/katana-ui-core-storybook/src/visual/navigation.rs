@@ -151,6 +151,7 @@ fn draw_group(
             palette,
             NavigationDepth::Group,
             show_text_connectors,
+            true,
             rows,
             row_index,
             y,
@@ -198,6 +199,7 @@ fn draw_section(
             palette,
             NavigationDepth::Section,
             show_text_connectors,
+            true,
             rows,
             row_index,
             y,
@@ -263,6 +265,7 @@ fn draw_page(
             palette,
             depth,
             show_text_connectors,
+            false,
             rows,
             row_index,
             y,
@@ -283,6 +286,7 @@ fn draw_row_guides(
     palette: &VisualPalette,
     row_depth: NavigationDepth,
     show_text_connector: bool,
+    draw_horizontal_connector: bool,
     rows: &[NavigationRow],
     row_index: usize,
     row_y: usize,
@@ -322,17 +326,19 @@ fn draw_row_guides(
         }
     }
 
-    let current_guide_x = guide_x(current_depth);
-    let connector_target_x = guide_target_x(row_depth, show_text_connector);
-    let connector_width = connector_target_x.saturating_sub(current_guide_x);
-    if connector_width > 0 {
-        canvas.fill_rect(
-            current_guide_x,
-            row_center_y,
-            connector_width,
-            TREE_LINE_WIDTH,
-            palette.border,
-        );
+    if draw_horizontal_connector {
+        let current_guide_x = guide_x(current_depth);
+        let connector_target_x = guide_target_x(row_depth, show_text_connector);
+        let connector_width = connector_target_x.saturating_sub(current_guide_x);
+        if connector_width > 0 {
+            canvas.fill_rect(
+                current_guide_x,
+                row_center_y,
+                connector_width,
+                TREE_LINE_WIDTH,
+                palette.border,
+            );
+        }
     }
 }
 

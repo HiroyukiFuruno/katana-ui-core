@@ -4,7 +4,7 @@ use super::render::{HEIGHT, WIDTH};
 
 pub(super) const CONTENT_HEIGHT: usize = CANVAS_HEIGHT;
 pub(super) const MAX_SCROLL_Y: usize = CONTENT_HEIGHT - VIEWPORT_HEIGHT;
-pub(super) const SCROLL_STEP: usize = 80;
+pub(super) const SCROLL_STEP: usize = 40;
 
 pub(super) const NAV_WIDTH: usize = 280;
 pub(super) const NAV_FIRST_ROW_Y: usize = 132;

@@ -235,3 +235,18 @@ fn inspector_overflow() -> PanelOverflow {
         viewport.height + INSPECTOR_EXTRA_SCROLL_Y,
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn wheel_scroll_step_stays_moderate_for_viewport_size() {
+        let mut offsets = PanelScrollOffsets::default();
+        let max_reasonable_step = super::super::render::VIEWPORT_HEIGHT / 16;
+
+        assert!(SCROLL_STEP <= max_reasonable_step);
+        assert!(offsets.scroll_delta(PanelScrollRegion::Root, -1.0));
+        assert_eq!(SCROLL_STEP, offsets.root_y);
+    }
+}

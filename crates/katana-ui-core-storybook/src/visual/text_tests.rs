@@ -156,6 +156,27 @@ fn completed_widget_preview_text_boxes_keep_vertical_alignment() {
 }
 
 #[test]
+fn text_renderer_uses_antialiased_edges_for_common_draw_paths() {
+    let facade = UiCoreFacade::default();
+    let body_renderer = TextRenderer::load(&facade, "body");
+    let code_renderer = TextRenderer::load(&facade, "code");
+
+    assert!(
+        antialias_pixels_for_draw(&body_renderer, "Body text", 16.0) > 0,
+        "body draw path should contain blended glyph edge pixels"
+    );
+    assert!(
+        antialias_pixels_for_draw(&code_renderer, "count 0", SMALL_CODE_TEXT_SIZE) > 0,
+        "code draw path should contain blended glyph edge pixels"
+    );
+    assert!(
+        antialias_pixels_for_centered_draw(&body_renderer, "Centered UI", WIDGET_LABEL_TEXT_SIZE)
+            > 0,
+        "centered draw path should contain blended glyph edge pixels"
+    );
+}
+
+#[test]
 fn text_renderer_reuses_raster_cache_for_repeated_draws() {
     let facade = UiCoreFacade::default();
     let renderer = TextRenderer::load(&facade, "body");
@@ -208,6 +229,33 @@ fn centered_text_delta_with_size(
     let ink_center = (bounds.top + bounds.bottom) as f32 / 2.0;
     let box_center = TEXT_Y as f32 + box_height / 2.0;
     (ink_center - box_center).abs()
+}
+
+fn antialias_pixels_for_draw(renderer: &TextRenderer, sample: &str, size: f32) -> usize {
+    let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
+    renderer.draw(&mut canvas, sample, TEXT_X, TEXT_Y, size, TEXT);
+    antialias_pixel_count(&canvas)
+}
+
+fn antialias_pixels_for_centered_draw(renderer: &TextRenderer, sample: &str, size: f32) -> usize {
+    let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
+    renderer.draw_centered(
+        &mut canvas,
+        sample,
+        TEXT_X,
+        TextVerticalBox::new(TEXT_Y, WIDGET_LABEL_BOX_HEIGHT),
+        size,
+        TEXT,
+    );
+    antialias_pixel_count(&canvas)
+}
+
+fn antialias_pixel_count(canvas: &Canvas) -> usize {
+    canvas
+        .pixels()
+        .iter()
+        .filter(|&&pixel| pixel != BACKGROUND && pixel != TEXT)
+        .count()
 }
 
 struct VerticalBounds {

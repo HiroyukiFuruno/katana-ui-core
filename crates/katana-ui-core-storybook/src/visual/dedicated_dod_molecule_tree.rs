@@ -109,6 +109,7 @@ fn draw_tree_row(
             x,
             line_style,
             usize::from(line_width.max(1)),
+            matches!(node.kind, UiTreeNodeKind::Directory),
         );
     }
     if icons_visible && matches!(node.kind, UiTreeNodeKind::Directory) {
@@ -137,6 +138,7 @@ fn draw_indent_guides(
     x: usize,
     line_style: UiTreeLineStyle,
     line_width: usize,
+    draw_horizontal_connector: bool,
 ) {
     let row_center_x =
         x + parts::DISCLOSURE_X + m::PX_4 + m::PX_1 + node.depth * parts::INDENT_STEP;
@@ -180,16 +182,18 @@ fn draw_indent_guides(
             );
         }
     }
-    draw_styled_line(
-        canvas,
-        row_center_x - (parts::INDENT_STEP - m::PX_4),
-        row_center_y,
-        parts::INDENT_STEP - m::PX_4,
-        line_width,
-        line_style,
-        false,
-        palette.border,
-    );
+    if draw_horizontal_connector {
+        draw_styled_line(
+            canvas,
+            row_center_x - (parts::INDENT_STEP - m::PX_4),
+            row_center_y,
+            parts::INDENT_STEP - m::PX_4,
+            line_width,
+            line_style,
+            false,
+            palette.border,
+        );
+    }
 }
 
 fn draw_styled_line(
@@ -441,6 +445,32 @@ mod tests {
     }
 
     #[test]
+    fn tree_view_draws_horizontal_elbow_for_directory_rows() {
+        let nodes = [(0, "root", true), (1, "child", true)];
+        let (canvas, palette) = render_tree_with_style(true, TreeLineStyle::Solid, 1, true, &nodes);
+        let child_row_center_y = row_center_y(1);
+        let child_connector_x = horizontal_connector_sample_x(1);
+
+        assert_eq!(
+            Some(palette.border),
+            pixel_at(&canvas, child_connector_x, child_row_center_y)
+        );
+    }
+
+    #[test]
+    fn tree_view_skips_horizontal_elbow_for_leaf_rows() {
+        let nodes = [(0, "root", true), (1, "child", false)];
+        let (canvas, palette) = render_tree_with_style(true, TreeLineStyle::Solid, 1, true, &nodes);
+        let child_row_center_y = row_center_y(1);
+        let child_connector_x = horizontal_connector_sample_x(1);
+
+        assert_ne!(
+            Some(palette.border),
+            pixel_at(&canvas, child_connector_x, child_row_center_y)
+        );
+    }
+
+    #[test]
     fn tree_view_hides_icons_when_icons_visible_is_false() {
         let nodes = [(0, "", true)];
         let (with_icons, _) = render_tree_with_style(true, TreeLineStyle::Solid, 1, true, &nodes);
@@ -469,5 +499,10 @@ mod tests {
         (from_y..to_y)
             .filter(|&y| pixel_at(canvas, x, y) == Some(color))
             .count()
+    }
+
+    fn horizontal_connector_sample_x(depth: usize) -> usize {
+        let depth_center_x = parts::DISCLOSURE_X + m::PX_4 + m::PX_1 + depth * parts::INDENT_STEP;
+        depth_center_x - (parts::INDENT_STEP - m::PX_4) + 1
     }
 }

@@ -67,6 +67,6 @@ mod tests {
         assert_eq!(track.x, top.x);
         assert_eq!(track.x, bottom.x);
         assert!(bottom.y > top.y);
-        assert!(bottom.bottom() <= track.bottom());
+        assert_eq!(track.bottom(), bottom.bottom());
     }
 }
