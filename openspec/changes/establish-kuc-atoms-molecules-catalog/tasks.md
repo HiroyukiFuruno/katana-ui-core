@@ -16,10 +16,10 @@
 
 ## 2. 全 page readiness audit（必須・最優先）
 
-- [ ] 2.1 全 Storybook page の readiness audit（consumer contract 観点）を最初に実施する。
-- [ ] 2.2 page ごとに `public API` / typed props / typed state / typed action / typed event / layout bounds / hit target / rendering contract の未達一覧を作る。
-- [ ] 2.3 `ready` を名乗るページは、未達 0 かつ対応テスト/guard の参照行を紐付ける。
-- [ ] 2.4 audit 結果を tasks と test/guard へ追記し、目視根拠の行を除外する。
+- [x] 2.1 全 Storybook page の readiness audit（consumer contract 観点）を最初に実施する。
+- [x] 2.2 page ごとに `public API` / typed props / typed state / typed action / typed event / layout bounds / hit target / rendering contract の未達一覧を作る。
+- [x] 2.3 `ready` を名乗るページは、未達 0 かつ対応テスト/guard の参照行を紐付ける。
+- [x] 2.4 audit 結果を tasks と test/guard へ追記し、目視根拠の行を除外する。
 
 ## 3. P0 再着手（基礎部品）
 
