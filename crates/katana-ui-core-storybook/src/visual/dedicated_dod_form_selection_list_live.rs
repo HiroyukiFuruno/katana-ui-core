@@ -6,8 +6,7 @@ use super::render_context::ScenarioContext;
 use super::selection_control_metrics as sm;
 use super::text::TextRenderer;
 
-const ROW_LABELS: [&str; 4] = ["First", "Second", "Third", "Fourth"];
-const FOURTH_ROW_INDEX: usize = 3;
+const ROW_LABELS: [&str; sm::SELECTION_LIST_ROW_COUNT] = ["First", "Second", "Third", "Fourth"];
 const CONTROL_BUTTON_X: usize = sm::STATUS_X;
 const CONTROL_BUTTON_Y: usize = 116;
 const CONTROL_BUTTON_WIDTH: usize = 56;
