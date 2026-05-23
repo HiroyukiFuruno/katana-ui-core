@@ -7,6 +7,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_DOC = ROOT / "docs/storybook-consumer-contract.md"
 READINESS_AUDIT_DOC = ROOT / "docs/storybook-consumer-readiness-audit.md"
+LEGACY_RECHECK_DOC = ROOT / "docs/legacy-01-24-consumer-recheck.md"
 TASKS = ROOT / "openspec/changes/establish-kuc-atoms-molecules-catalog/tasks.md"
 JUSTFILE = ROOT / "Justfile"
 REQUIREMENT_GATE = ROOT / "scripts/storybook-requirement-gate.sh"
@@ -61,6 +62,28 @@ READY_LINK_TOKENS = (
     "rendering contract",
 )
 READY_STATUS_TOKENS = ("ready", "partial", "not-ready")
+LEGACY_RECHECK_HEADERS = (
+    "legacy id",
+    "page",
+    "public api",
+    "typed props/options",
+    "typed state",
+    "typed action",
+    "typed event",
+    "preset",
+    "preview",
+    "settings",
+    "test/guard",
+    "visual",
+)
+LEGACY_RECHECK_REQUIRED_PATHS = (
+    "crates/katana-ui-core-storybook/src/requirements.rs",
+    "crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_01_12.rs",
+    "crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_13_24.rs",
+    "crates/katana-ui-core-storybook/tests/legacy_01_24_catalog_contract.rs",
+    "crates/katana-ui-core-storybook/tests/legacy_01_24_detail_contract.rs",
+)
+LEGACY_RECHECK_DATE_TOKEN = "2026-05-23"
 P0_READY_PAGES = (
     "checkbox",
     "radio",
@@ -291,6 +314,74 @@ def readiness_audit_failures() -> list[str]:
     return readiness_audit_source_failures(source, required)
 
 
+def legacy_recheck_source_failures(source: str) -> list[str]:
+    lowered = source.lower()
+    failures: list[str] = []
+    if LEGACY_RECHECK_DATE_TOKEN not in source:
+        failures.append(
+            f"{relative(LEGACY_RECHECK_DOC)}: missing recheck date"
+        )
+    for header in LEGACY_RECHECK_HEADERS:
+        if header not in lowered:
+            failures.append(
+                f"{relative(LEGACY_RECHECK_DOC)}: missing table header `{header}`"
+            )
+    for path in LEGACY_RECHECK_REQUIRED_PATHS:
+        if path not in source:
+            failures.append(
+                f"{relative(LEGACY_RECHECK_DOC)}: missing evidence path `{path}`"
+            )
+
+    ids: set[int] = set()
+    for line in source.splitlines():
+        if not line.startswith("|"):
+            continue
+        parts = [part.strip() for part in line.strip().strip("|").split("|")]
+        if len(parts) != len(LEGACY_RECHECK_HEADERS):
+            continue
+        if parts[0] in {"legacy id", "---"}:
+            continue
+        if not re.fullmatch(r"\d{2}", parts[0]):
+            failures.append(
+                f"{relative(LEGACY_RECHECK_DOC)}: invalid legacy id format `{parts[0]}`"
+            )
+            continue
+        legacy_id = int(parts[0])
+        if legacy_id < 1 or legacy_id > 24:
+            failures.append(
+                f"{relative(LEGACY_RECHECK_DOC)}: legacy id out of range `{parts[0]}`"
+            )
+            continue
+        if legacy_id in ids:
+            failures.append(
+                f"{relative(LEGACY_RECHECK_DOC)}: duplicate legacy id `{parts[0]}`"
+            )
+            continue
+        ids.add(legacy_id)
+        if any(not item for item in parts[1:]):
+            failures.append(
+                f"{relative(LEGACY_RECHECK_DOC)}: legacy id `{parts[0]}` has an empty column"
+            )
+            continue
+        if any(".rs" not in item for item in parts[2:]):
+            failures.append(
+                f"{relative(LEGACY_RECHECK_DOC)}: legacy id `{parts[0]}` columns must reference `.rs` evidence"
+            )
+
+    missing_ids = [str(it).zfill(2) for it in range(1, 25) if it not in ids]
+    if missing_ids:
+        failures.append(
+            f"{relative(LEGACY_RECHECK_DOC)}: missing legacy ids: {', '.join(missing_ids)}"
+        )
+    return failures
+
+
+def legacy_recheck_failures() -> list[str]:
+    if not LEGACY_RECHECK_DOC.exists():
+        return [f"{relative(LEGACY_RECHECK_DOC)}: legacy recheck doc is missing"]
+    return legacy_recheck_source_failures(read(LEGACY_RECHECK_DOC))
+
+
 def ready_evidence_failures(paths: tuple[Path, ...]) -> list[str]:
     failures: list[str] = []
     for path in paths:
@@ -438,6 +529,74 @@ def self_test() -> int:
     if not any("table row count mismatch" in failure for failure in row_count_mismatch):
         print("storybook consumer contract self-test failed", file=sys.stderr)
         return 1
+    legacy_doc_fixture = """# Legacy 01〜24 Consumer Harness 再評価（2026-05-23）
+| legacy id | page | public API | typed props/options | typed state | typed action | typed event | preset | preview | settings | test/guard | visual |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+"""
+    valid_row = "| {id} | `page` | `crates/katana-ui-core-storybook/src/requirements.rs` | `crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_01_12.rs` | `crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_01_12.rs` | `crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_01_12.rs` | `crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_01_12.rs` | `crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_01_12.rs` | `crates/katana-ui-core-storybook/tests/legacy_01_24_catalog_contract.rs` | `crates/katana-ui-core-storybook/tests/legacy_01_24_detail_contract.rs` | `crates/katana-ui-core-storybook/tests/legacy_01_24_detail_contract.rs` | `crates/katana-ui-core-storybook/tests/legacy_01_24_catalog_contract.rs` |"
+    valid_rows = "\n".join(valid_row.format(id=str(it).zfill(2)) for it in range(1, 24))
+    row_24 = (
+        "| 24 | `page` | `crates/katana-ui-core-storybook/src/requirements.rs` | "
+        "`crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_13_24.rs` | "
+        "`crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_13_24.rs` | "
+        "`crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_13_24.rs` | "
+        "`crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_13_24.rs` | "
+        "`crates/katana-ui-core-storybook/src/visual/legacy_01_24_contract/legacy_13_24.rs` | "
+        "`crates/katana-ui-core-storybook/tests/legacy_01_24_catalog_contract.rs` | "
+        "`crates/katana-ui-core-storybook/tests/legacy_01_24_detail_contract.rs` | "
+        "`crates/katana-ui-core-storybook/tests/legacy_01_24_detail_contract.rs` | "
+        "`crates/katana-ui-core-storybook/tests/legacy_01_24_catalog_contract.rs` |"
+    )
+    valid_source = (
+        f"{legacy_doc_fixture}{valid_rows}\n"
+        f"{row_24}\n"
+    )
+    if legacy_recheck_source_failures(valid_source):
+        print("storybook consumer contract self-test failed", file=sys.stderr)
+        return 1
+
+    missing_id_source = valid_source.replace(f"{row_24}\n", "")
+    missing_id_failures = legacy_recheck_source_failures(missing_id_source)
+    if not any("missing legacy ids: 24" in failure for failure in missing_id_failures):
+        print("storybook consumer contract self-test failed", file=sys.stderr)
+        return 1
+
+    duplicate_source = valid_source + valid_row.format(id="01") + "\n"
+    duplicate_failures = legacy_recheck_source_failures(duplicate_source)
+    if not any("duplicate legacy id `01`" in failure for failure in duplicate_failures):
+        print("storybook consumer contract self-test failed", file=sys.stderr)
+        return 1
+
+    empty_column_source = valid_source.replace("`page`", "", 1)
+    empty_column_failures = legacy_recheck_source_failures(empty_column_source)
+    if not any("has an empty column" in failure for failure in empty_column_failures):
+        print("storybook consumer contract self-test failed", file=sys.stderr)
+        return 1
+
+    missing_rs_source = valid_source.replace(
+        "crates/katana-ui-core-storybook/tests/legacy_01_24_catalog_contract.rs",
+        "docs/storybook-consumer-contract.md",
+        1,
+    )
+    missing_rs_failures = legacy_recheck_source_failures(missing_rs_source)
+    if not any("must reference `.rs` evidence" in failure for failure in missing_rs_failures):
+        print("storybook consumer contract self-test failed", file=sys.stderr)
+        return 1
+
+    missing_path_source = valid_source.replace(
+        "crates/katana-ui-core-storybook/src/requirements.rs",
+        "docs/legacy-01-24-consumer-recheck.md",
+    )
+    missing_path_failures = legacy_recheck_source_failures(missing_path_source)
+    if not any("missing evidence path `crates/katana-ui-core-storybook/src/requirements.rs`" in failure for failure in missing_path_failures):
+        print("storybook consumer contract self-test failed", file=sys.stderr)
+        return 1
+
+    missing_date_source = valid_source.replace(LEGACY_RECHECK_DATE_TOKEN, "")
+    missing_date_failures = legacy_recheck_source_failures(missing_date_source)
+    if not any("missing recheck date" in failure for failure in missing_date_failures):
+        print("storybook consumer contract self-test failed", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -447,6 +606,7 @@ def main() -> int:
     failures: list[str] = []
     failures.extend(doc_failures())
     failures.extend(readiness_audit_failures())
+    failures.extend(legacy_recheck_failures())
     failures.extend(gate_failures())
     failures.extend(tasks_failures())
     failures.extend(ready_evidence_failures((CONTRACT_DOC, TASKS, ROOT / "AGENTS.md")))

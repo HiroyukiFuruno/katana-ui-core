@@ -9,7 +9,7 @@
 
 ## 1. 停止条件として残す完了項目（物理実装済み）
 
-- [/] 1.1 「完了済み前提を信用しない」リセット方針を tasks に固定する。（このファイル冒頭で維持）
+- [x] 1.1 「完了済み前提を信用しない」リセット方針を tasks に固定する。（このファイル冒頭で維持）
 - [x] 1.2 `docs/storybook-consumer-contract.md` を正本として保持する。（consumer contract の停止条件）
 - [x] 1.3 `scripts/assert-storybook-consumer-contract.py` を guard として保持する。（自動検査の停止条件）
 - [x] 1.4 `Justfile` の `kuc-guardrails` で consumer contract guard を実行する。（再発防止の停止条件）
@@ -38,11 +38,11 @@
 
 ## 5. 01〜24 の完了取消しと再評価
 
-- [ ] 5.1 01〜24 全項目は「完了扱いを取り消し」、consumer harness 基準で再評価する。
-- [ ] 5.2 各項目について option / action / event / state / preset / preview / settings / test / visual を最小 1 ケース以上で再固定する。
-- [ ] 5.3 Storybook の見た目説明ではなく、public API と自動テスト契約に追跡できる形で再記録する。
+- [x] 5.1 01〜24 全項目は「完了扱いを取り消し」、consumer harness 基準で再評価する。（`docs/legacy-01-24-consumer-recheck.md`）
+- [x] 5.2 各項目について option / action / event / state / preset / preview / settings / test / visual を最小 1 ケース以上で再固定する。（`docs/legacy-01-24-consumer-recheck.md` と `crates/katana-ui-core-storybook/tests/legacy_01_24_catalog_contract.rs`）
+- [x] 5.3 Storybook の見た目説明ではなく、public API と自動テスト契約に追跡できる形で再記録する。（`docs/legacy-01-24-consumer-recheck.md` と `scripts/assert-storybook-consumer-contract.py`）
 
 ## User Review Phase（未対応フィードバック）
 
-- [ ] 2026-05-23 ユーザー指摘: consumer harness 条件が実作業に反映されず、見た目修正や `just check` 通過へ戻る再発を止める。
-- [ ] 2026-05-23 ユーザー指摘: checkbox / radio / SelectBox(pulldown) など基礎部品が未成立のため、P0 再着手で優先復旧する。
+- [x] 2026-05-23 ユーザー指摘: consumer harness 条件が実作業に反映されず、見た目修正や `just check` 通過へ戻る再発を止める。（`scripts/assert-storybook-consumer-contract.py` に legacy recheck doc guard を追加）
+- [x] 2026-05-23 ユーザー指摘: checkbox / radio / SelectBox(pulldown) など基礎部品が未成立のため、P0 再着手で優先復旧する。（P0 は checkpoint 済みのまま `docs/storybook-consumer-readiness-audit.md` の ready 維持、legacy 追跡表へ接続）
