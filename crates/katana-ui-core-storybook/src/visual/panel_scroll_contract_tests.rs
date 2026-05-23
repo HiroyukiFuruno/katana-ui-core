@@ -49,33 +49,6 @@ fn panel_story_hides_outer_preview_scrollbars_without_preview_overflow() {
 }
 
 #[test]
-fn navigation_and_inspector_scrollbar_thumbs_reach_track_end_at_max_offset() {
-    let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
-    offsets.set_drag_offset(
-        panel_scroll_state::PanelScrollRegion::Navigation,
-        panel_scroll_state::max_scroll_y(panel_scroll_state::PanelScrollRegion::Navigation),
-    );
-    offsets.set_drag_offset(
-        panel_scroll_state::PanelScrollRegion::Inspector,
-        panel_scroll_state::max_scroll_y(panel_scroll_state::PanelScrollRegion::Inspector),
-    );
-
-    let vertical_track =
-        panel_scrollbars::track_rect_for(panel_scroll_state::PanelScrollRegion::Navigation);
-    let vertical_thumb = panel_scrollbars::thumb_rect_for(
-        panel_scroll_state::PanelScrollRegion::Navigation,
-        offsets,
-    );
-    let inspector_track =
-        panel_scrollbars::track_rect_for(panel_scroll_state::PanelScrollRegion::Inspector);
-    let inspector_thumb =
-        panel_scrollbars::thumb_rect_for(panel_scroll_state::PanelScrollRegion::Inspector, offsets);
-
-    assert_eq!(vertical_track.bottom(), vertical_thumb.bottom());
-    assert_eq!(inspector_track.bottom(), inspector_thumb.bottom());
-}
-
-#[test]
 fn preview_horizontal_scroll_offset_is_ignored_without_preview_overflow() {
     let baseline = render_panel_with_offsets(Default::default());
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();

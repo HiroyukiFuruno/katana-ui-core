@@ -71,6 +71,10 @@ mod panel_scroll_interaction_tests;
 #[cfg(test)]
 mod panel_scroll_layout_contract_tests;
 mod panel_scroll_state;
+mod panel_scrollbar_hit_test;
+mod panel_scrollbar_metrics;
+#[cfg(test)]
+mod panel_scrollbar_metrics_tests;
 mod panel_scrollbars;
 mod presentation;
 mod preset_tabs;

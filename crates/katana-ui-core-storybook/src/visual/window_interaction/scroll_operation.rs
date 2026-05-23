@@ -19,7 +19,11 @@ pub(super) fn apply_scroll_delta_at(
         return false;
     }
     let region = region_at(x, y + state.panel_scroll.root_y);
-    if !panel_scrollbars::vertical_region_scrollable(region, state.selected_page) {
+    if !panel_scrollbars::vertical_region_scrollable_for(
+        region,
+        state.selected_page,
+        state.tree_expansion,
+    ) {
         return false;
     }
     let changed = state.panel_scroll.scroll_delta_with_max(
@@ -43,7 +47,11 @@ pub(super) fn apply_scroll_delta_x_at(
         return false;
     }
     let region = region_at(x, y + state.panel_scroll.root_y);
-    if !panel_scrollbars::horizontal_region_scrollable(region, state.selected_page) {
+    if !panel_scrollbars::horizontal_region_scrollable_for(
+        region,
+        state.selected_page,
+        state.tree_expansion,
+    ) {
         return false;
     }
     state.panel_scroll.scroll_delta_x(region, delta_x)
@@ -63,7 +71,12 @@ pub(super) fn apply_scrollbar_drag(
     region: PanelScrollRegion,
     y: usize,
 ) -> bool {
-    let next = panel_scrollbars::offset_from_drag(region, y);
+    let next = panel_scrollbars::offset_from_drag_for(
+        region,
+        y,
+        state.selected_page,
+        state.tree_expansion,
+    );
     let changed = state.panel_scroll.set_drag_offset_with_max(
         region,
         next,
@@ -101,6 +114,11 @@ pub(super) fn apply_horizontal_scrollbar_drag(
     region: PanelScrollRegion,
     x: usize,
 ) -> bool {
-    let next = panel_scrollbars::horizontal_offset_from_drag(region, x);
+    let next = panel_scrollbars::horizontal_offset_from_drag_for(
+        region,
+        x,
+        state.selected_page,
+        state.tree_expansion,
+    );
     state.panel_scroll.set_drag_offset_x(region, next)
 }

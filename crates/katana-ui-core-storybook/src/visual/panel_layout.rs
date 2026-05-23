@@ -9,8 +9,6 @@ use super::render::{VIEWPORT_HEIGHT, WIDTH};
 pub(super) const PANEL_EDGE_INSET: usize = 8;
 pub(super) const SCROLLBAR_TRACK_WIDTH: usize = 8;
 pub(super) const HORIZONTAL_TRACK_HEIGHT: usize = 8;
-pub(super) const VERTICAL_THUMB_HEIGHT: usize = 64;
-pub(super) const HORIZONTAL_THUMB_WIDTH: usize = 96;
 const PREVIEW_RIGHT_GAP: usize = 24;
 const PREVIEW_BOTTOM_GAP: usize = 28;
 const INSPECTOR_SCROLL_TOP_OFFSET: usize = 78;

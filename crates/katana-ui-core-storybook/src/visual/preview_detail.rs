@@ -116,9 +116,10 @@ pub(super) fn draw_selected_hero(
 }
 
 fn preview_scroll_y(scenario: ScenarioContext<'_>) -> usize {
-    if panel_scrollbars::vertical_region_scrollable(
+    if panel_scrollbars::vertical_region_scrollable_for(
         PanelScrollRegion::Preview,
         scenario.selected_page,
+        scenario.tree_expansion,
     ) {
         return scenario.panel_scroll.preview_y;
     }
@@ -126,9 +127,10 @@ fn preview_scroll_y(scenario: ScenarioContext<'_>) -> usize {
 }
 
 fn preview_scroll_x(scenario: ScenarioContext<'_>) -> usize {
-    if panel_scrollbars::horizontal_region_scrollable(
+    if panel_scrollbars::horizontal_region_scrollable_for(
         PanelScrollRegion::Preview,
         scenario.selected_page,
+        scenario.tree_expansion,
     ) {
         return scenario.panel_scroll.preview_x;
     }

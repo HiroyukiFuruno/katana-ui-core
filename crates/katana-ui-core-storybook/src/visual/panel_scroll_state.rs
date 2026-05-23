@@ -241,12 +241,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn wheel_scroll_step_stays_moderate_for_viewport_size() {
+    fn visible_scrollbar_offset_step_stays_moderate_for_viewport_size() {
         let mut offsets = PanelScrollOffsets::default();
         let max_reasonable_step = super::super::render::VIEWPORT_HEIGHT / 16;
 
         assert!(SCROLL_STEP <= max_reasonable_step);
         assert!(offsets.scroll_delta(PanelScrollRegion::Root, -1.0));
         assert_eq!(SCROLL_STEP, offsets.root_y);
+    }
+
+    #[test]
+    fn visible_scrollbar_small_overflow_reaches_max_with_existing_step_limit() {
+        let mut offsets = PanelScrollOffsets::default();
+        let small_max_offset = SCROLL_STEP + SCROLL_STEP / 2;
+
+        assert!(offsets.scroll_delta_with_max(PanelScrollRegion::Root, small_max_offset, -1.0));
+        assert_eq!(SCROLL_STEP, offsets.root_y);
+        assert!(offsets.scroll_delta_with_max(PanelScrollRegion::Root, small_max_offset, -1.0));
+        assert_eq!(small_max_offset, offsets.root_y);
+        assert!(!offsets.scroll_delta_with_max(PanelScrollRegion::Root, small_max_offset, -1.0));
+        assert_eq!(small_max_offset, offsets.root_y);
     }
 }

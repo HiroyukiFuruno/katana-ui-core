@@ -152,6 +152,7 @@ pub(super) fn apply_mouse_click(
             raw_y,
             state.panel_scroll,
             state.selected_page,
+            state.tree_expansion,
             state.scrollbar_visible,
         )
     {
@@ -164,6 +165,7 @@ pub(super) fn apply_mouse_click(
             raw_y,
             state.panel_scroll,
             state.selected_page,
+            state.tree_expansion,
             state.scrollbar_visible,
         )
     {
