@@ -44,7 +44,7 @@ fn settings_update_selected_preview_body() {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     let setting = control_rect(StorybookButtonOptionControl::Disabled);
 
@@ -53,7 +53,7 @@ fn settings_update_selected_preview_body() {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
 
     assert!(
@@ -95,7 +95,7 @@ fn hovering_button_preview_updates_surface_without_click_action() {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     let rect = preview_detail::button_action_hit_rect(BUTTON_PAGE);
 
@@ -111,7 +111,7 @@ fn hovering_button_preview_updates_surface_without_click_action() {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
 
     assert!(component_body_pixel_diff(BUTTON_PAGE, &before, &after) > BUTTON_HOVER_DIFF_THRESHOLD);
@@ -213,7 +213,7 @@ fn summary_ellipsis_exposes_full_value_with_tooltip_state() {
         last_setting_value: "保存する長いラベルを確認する",
         ..Default::default()
     };
-    let scenario = button_summary_scenario_with_state(DEFAULT_PRESET, screen_state);
+    let scenario = button_summary_scenario_with_state(DEFAULT_PRESET, screen_state.clone());
     let full = preview::summary_full_samples_for_test(scenario);
     let visible = preview::summary_visible_samples_for_test(scenario);
 
@@ -227,7 +227,7 @@ fn summary_ellipsis_exposes_full_value_with_tooltip_state() {
         DARK_THEME,
         BUTTON_PAGE,
         DEFAULT_PRESET,
-        screen_state,
+        screen_state.clone(),
     );
     screen_state.hovered_summary_index = Some(SUMMARY_SETTING_INDEX);
     let shown = render::render_storybook_canvas_with_screen_state(
@@ -245,19 +245,20 @@ fn button_status_scenario(
     last_event: &'static str,
     state_label: &'static str,
 ) -> ScenarioContext<'static> {
+    let screen_state = Box::leak(Box::new(super::screen_state::StorybookScreenState {
+        last_action,
+        last_event,
+        state_label,
+        button_options: StorybookButtonOptions::default(),
+        ..Default::default()
+    }));
     ScenarioContext {
         selected_page: BUTTON_PAGE,
         preset_index: DEFAULT_PRESET,
         tree_expansion: Default::default(),
         scrollbar_visible: true,
         panel_scroll: Default::default(),
-        screen_state: super::screen_state::StorybookScreenState {
-            last_action,
-            last_event,
-            state_label,
-            button_options: StorybookButtonOptions::default(),
-            ..Default::default()
-        },
+        screen_state,
     }
 }
 
@@ -272,6 +273,7 @@ fn button_summary_scenario_with_state(
     preset_index: usize,
     screen_state: super::screen_state::StorybookScreenState,
 ) -> ScenarioContext<'static> {
+    let screen_state = Box::leak(Box::new(screen_state));
     ScenarioContext {
         selected_page: BUTTON_PAGE,
         preset_index,

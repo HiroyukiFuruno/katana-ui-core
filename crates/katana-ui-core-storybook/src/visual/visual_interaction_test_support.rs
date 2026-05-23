@@ -70,7 +70,7 @@ pub(super) fn assert_settings_page_changes_body(page: &'static str) {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     let setting = super::layout_metrics::button_setting_hit_rect();
 
@@ -79,7 +79,7 @@ pub(super) fn assert_settings_page_changes_body(page: &'static str) {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
 
     assert!(component_body_pixel_diff(page, &before, &after) > COMPONENT_BODY_DIFF_THRESHOLD);

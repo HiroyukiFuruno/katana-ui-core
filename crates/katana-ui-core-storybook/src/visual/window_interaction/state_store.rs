@@ -34,7 +34,7 @@ impl StorybookScreenStateStore {
                 component_id,
                 preset_index,
             })
-            .copied()
+            .cloned()
             .unwrap_or_default()
     }
 }

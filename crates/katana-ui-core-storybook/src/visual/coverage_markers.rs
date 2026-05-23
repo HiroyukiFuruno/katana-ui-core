@@ -161,13 +161,14 @@ fn scrollbar_thumb_bottom() -> bool {
 }
 
 fn tree_view_option_visible(tree_view: Option<&StoryExample>, expected: &str) -> bool {
+    let screen_state = StorybookScreenState::default();
     let scenario = ScenarioContext {
         selected_page: "tree-view",
         preset_index: 0,
         tree_expansion: Default::default(),
         scrollbar_visible: true,
         panel_scroll: Default::default(),
-        screen_state: StorybookScreenState::default(),
+        screen_state: &screen_state,
     };
     tree_view.is_some_and(|example| {
         inspector_rows::settings_rows(example.tree.root(), example, scenario)

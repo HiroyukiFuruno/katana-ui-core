@@ -150,7 +150,7 @@ fn assert_required_page_keeps_action_and_settings_state_separate_between_presets
     assert_setting_click(&mut state, page);
     assert_eq!(1, state.screen_state.action_count, "{page} action");
     assert_eq!(1, state.screen_state.settings_revision, "{page} setting");
-    let stored_screen_state = state.screen_state;
+    let stored_screen_state = state.screen_state.clone();
 
     state.select_preset(SECOND_PRESET_INDEX);
     assert_eq!(
@@ -168,7 +168,7 @@ fn assert_required_page_keeps_action_and_settings_state_separate_between_presets
 
     state.select_preset(0);
     assert_eq!(
-        stored_screen_state, state.screen_state,
+        stored_screen_state, state.screen_state.clone(),
         "{page} lost preset-local state"
     );
 }
@@ -263,7 +263,7 @@ fn render_state(state: &StorybookWindowState) -> crate::visual::Canvas {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     )
 }
 

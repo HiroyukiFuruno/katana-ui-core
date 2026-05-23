@@ -30,7 +30,7 @@ fn clicking_preview_button_emits_action_event_and_changes_rendering() {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     let button = preview_detail::button_action_hit_rect("button");
 
@@ -43,7 +43,7 @@ fn clicking_preview_button_emits_action_event_and_changes_rendering() {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     assert!(pixel_diff(&before, &after) > UI_INTERACTION_DIFF_THRESHOLD);
 }
@@ -55,7 +55,7 @@ fn clicking_button_setting_updates_props_and_rendering() {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     let setting = control_rect(StorybookButtonOptionControl::Border);
 
@@ -70,7 +70,7 @@ fn clicking_button_setting_updates_props_and_rendering() {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     assert!(pixel_diff(&before, &after) > UI_INTERACTION_DIFF_THRESHOLD);
 }
@@ -112,7 +112,7 @@ fn clicking_settings_row_mutates_selected_component_options() {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     let setting = layout_metrics::button_setting_hit_rect();
 
@@ -125,7 +125,7 @@ fn clicking_settings_row_mutates_selected_component_options() {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     assert!(pixel_diff(&before, &after) > UI_INTERACTION_DIFF_THRESHOLD);
 }
@@ -182,7 +182,7 @@ fn assert_preview_click_updates_state_and_pixels(page: &'static str) {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     let target = preview_detail::component_action_hit_rect(state.selected_page);
 
@@ -201,7 +201,7 @@ fn assert_preview_click_updates_state_and_pixels(page: &'static str) {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     assert!(
         pixel_diff(&before, &after) > UI_INTERACTION_DIFF_THRESHOLD,

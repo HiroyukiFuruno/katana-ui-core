@@ -1,4 +1,5 @@
 use super::StorybookWindowState;
+use crate::visual::dedicated_dod_form_binary_choice_live as checkbox_live;
 use crate::catalog::StoryPresetLabels;
 use crate::visual::button_options::{StorybookButtonOptionControl, control_at, is_button_page};
 use crate::visual::layout_metrics::{
@@ -21,6 +22,9 @@ pub(super) enum StorybookButtonOperation {
     ButtonOption(StorybookButtonOptionControl),
     SettingsOption,
     SelectionControl(SelectionScreenAction),
+    CheckboxStateRead,
+    CheckboxToggle,
+    CheckboxReset,
 }
 
 impl StorybookButtonOperation {
@@ -42,6 +46,9 @@ impl StorybookButtonOperation {
                 .screen_state
                 .register_settings_change(state.selected_page),
             Self::SelectionControl(action) => state.screen_state.register_selection_action(action),
+            Self::CheckboxStateRead => state.screen_state.register_checkbox_state_read(),
+            Self::CheckboxToggle => state.screen_state.register_checkbox_toggle(),
+            Self::CheckboxReset => state.screen_state.register_checkbox_reset(),
         }
         true
     }
@@ -56,6 +63,7 @@ pub(super) fn button_operation_at(
         .or_else(|| scrollbar_operation_at(x, y))
         .or_else(|| preset_operation_at(state.selected_page, x, y))
         .or_else(|| selection_control_operation_at(state, x, y))
+        .or_else(|| checkbox_operation_at(state.selected_page, x, y))
         .or_else(|| preview_operation_at(state.selected_page, x, y))
         .or_else(|| settings_operation_at(state.selected_page, x, y))
 }
@@ -164,6 +172,27 @@ fn settings_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButt
     }
     if button_setting_hit_rect().contains(x, y) {
         return Some(StorybookButtonOperation::SettingsOption);
+    }
+    None
+}
+
+fn checkbox_operation_at(
+    page: &str,
+    x: usize,
+    y: usize,
+) -> Option<StorybookButtonOperation> {
+    if page != "checkbox" {
+        return None;
+    }
+    let base = preview_detail::component_action_hit_rect(page);
+    if checkbox_live::checkbox_state_read_button_rect(base.x, base.y).contains(x, y) {
+        return Some(StorybookButtonOperation::CheckboxStateRead);
+    }
+    if checkbox_live::checkbox_toggle_button_rect(base.x, base.y).contains(x, y) {
+        return Some(StorybookButtonOperation::CheckboxToggle);
+    }
+    if checkbox_live::checkbox_reset_button_rect(base.x, base.y).contains(x, y) {
+        return Some(StorybookButtonOperation::CheckboxReset);
     }
     None
 }

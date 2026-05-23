@@ -18,7 +18,7 @@ pub(super) const CANVAS_HEIGHT: usize = 3840;
 pub(super) const HEIGHT: usize = VIEWPORT_HEIGHT;
 pub(super) const FRAME_DELAY_MS: u64 = 16;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(super) struct StorybookRenderOptions<'a> {
     pub(super) theme_id: &'a str,
     pub(super) selected_page: &'a str,
@@ -85,13 +85,14 @@ pub(super) fn render_storybook_canvas_with_options(options: StorybookRenderOptio
         examples: &examples,
         palette: &palette,
     };
+    let screen_state = options.screen_state;
     let scenario = ScenarioContext {
         selected_page: options.selected_page,
         preset_index: options.preset_index,
         tree_expansion: options.tree_expansion,
         scrollbar_visible: options.scrollbar_visible,
         panel_scroll: options.panel_scroll,
-        screen_state: options.screen_state,
+        screen_state: &screen_state,
     };
     shell::draw(
         &mut canvas,

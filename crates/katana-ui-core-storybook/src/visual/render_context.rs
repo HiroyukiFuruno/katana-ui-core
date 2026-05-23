@@ -21,7 +21,7 @@ pub(super) struct ScenarioContext<'a> {
     pub(super) tree_expansion: TreeExpansionState,
     pub(super) scrollbar_visible: bool,
     pub(super) panel_scroll: PanelScrollOffsets,
-    pub(super) screen_state: StorybookScreenState,
+    pub(super) screen_state: &'a StorybookScreenState,
 }
 
 #[derive(Clone, Copy)]

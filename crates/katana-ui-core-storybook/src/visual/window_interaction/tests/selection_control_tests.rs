@@ -280,6 +280,6 @@ fn render_state(state: &StorybookWindowState) -> crate::visual::Canvas {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     )
 }

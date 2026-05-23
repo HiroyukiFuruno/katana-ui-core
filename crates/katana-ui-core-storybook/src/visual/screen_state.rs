@@ -1,8 +1,12 @@
 use super::button_options::{StorybookButtonOptionControl, StorybookButtonOptions};
 use super::interaction_spec::StorybookInteractionSpec;
 use super::selection_screen_state::{SelectionScreenAction, SelectionScreenState};
+use katana_ui_core::atom;
+use katana_ui_core::component::ComponentAction;
+use katana_ui_core::interaction::UiAction;
+use katana_ui_core::state::UiComponentState;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) struct StorybookScreenState {
     pub(super) action_count: usize,
     pub(super) settings_revision: usize,
@@ -16,6 +20,7 @@ pub(super) struct StorybookScreenState {
     pub(super) preview_hovered: bool,
     pub(super) hovered_summary_index: Option<usize>,
     pub(super) selection: SelectionScreenState,
+    pub(super) checkbox_state: UiComponentState,
 }
 
 impl Default for StorybookScreenState {
@@ -33,6 +38,7 @@ impl Default for StorybookScreenState {
             preview_hovered: false,
             hovered_summary_index: None,
             selection: SelectionScreenState::default(),
+            checkbox_state: default_checkbox_state(),
         }
     }
 }
@@ -54,11 +60,40 @@ impl StorybookScreenState {
     }
 
     pub(super) fn register_preview_action(&mut self, page: &str) {
+        if page == "checkbox" {
+            self.register_checkbox_toggle();
+            return;
+        }
         self.action_count += 1;
         let spec = StorybookInteractionSpec::for_page(page);
         self.last_action = spec.action;
         self.last_event = spec.event;
         self.state_label = spec.state;
+    }
+
+    pub(super) fn register_checkbox_state_read(&mut self) {
+        self.action_count += 1;
+        self.last_action = "checkbox_state_read";
+        self.last_event = "checked_read";
+        self.state_label = checkbox_state_label(self.checkbox_state.checked, self.checkbox_state.checked);
+    }
+
+    pub(super) fn register_checkbox_toggle(&mut self) {
+        self.action_count += 1;
+        let before = self.checkbox_state.checked;
+        self.checkbox_state = apply_checkbox_checked_state(&self.checkbox_state, !before);
+        self.last_action = "checkbox_toggle";
+        self.last_event = "checked_changed";
+        self.state_label = checkbox_state_label(before, self.checkbox_state.checked);
+    }
+
+    pub(super) fn register_checkbox_reset(&mut self) {
+        self.action_count += 1;
+        let before = self.checkbox_state.checked;
+        self.checkbox_state = apply_checkbox_checked_state(&self.checkbox_state, false);
+        self.last_action = "checkbox_reset";
+        self.last_event = "checked_changed";
+        self.state_label = checkbox_state_label(before, self.checkbox_state.checked);
     }
 
     pub(super) fn register_settings_change(&mut self, page: &str) {
@@ -126,11 +161,11 @@ impl StorybookScreenState {
         self.state_label = update.state;
     }
 
-    pub(super) fn has_widget_action(self) -> bool {
+    pub(super) fn has_widget_action(&self) -> bool {
         self.action_count > 0
     }
 
-    pub(super) const fn is_button_pressed(self) -> bool {
+    pub(super) const fn is_button_pressed(&self) -> bool {
         self.button_pressed
     }
 
@@ -143,8 +178,36 @@ impl StorybookScreenState {
         true
     }
 
-    pub(super) fn has_settings_override(self) -> bool {
+    pub(super) fn has_settings_override(&self) -> bool {
         self.settings_revision % 2 == 1
+    }
+
+    pub(super) const fn is_checkbox_checked(&self) -> bool {
+        self.checkbox_state.checked
+    }
+
+    #[cfg(test)]
+    pub(super) fn checkbox_state_snapshot(&self) -> &UiComponentState {
+        &self.checkbox_state
+    }
+}
+
+fn default_checkbox_state() -> UiComponentState {
+    atom::Checkbox::new("Storybook Checkbox").state_snapshot()
+}
+
+fn apply_checkbox_checked_state(before: &UiComponentState, checked: bool) -> UiComponentState {
+    let mut checkbox = atom::Checkbox::new("Storybook Checkbox").set_state(before.clone());
+    let _result = checkbox.apply_action(&UiAction::checkbox_checked(before.state_id.clone(), checked));
+    checkbox.state_snapshot()
+}
+
+fn checkbox_state_label(before: bool, after: bool) -> &'static str {
+    match (before, after) {
+        (false, true) => "before=false after=true",
+        (true, false) => "before=true after=false",
+        (true, true) => "before=true after=true",
+        (false, false) => "before=false after=false",
     }
 }
 

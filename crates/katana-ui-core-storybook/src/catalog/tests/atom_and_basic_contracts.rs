@@ -109,3 +109,62 @@ fn color_picker_and_code_diff_presets_are_dod_specific() {
         StoryPresetLabels::for_page("code-diff")
     );
 }
+
+#[test]
+fn checkbox_story_uses_public_props_and_typed_callback_log() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let checkbox = examples
+        .iter()
+        .find(|it| it.page == "checkbox")
+        .ok_or("checkbox page missing")?;
+    let harness = checkbox.tree.root();
+    let checkbox_node = harness
+        .children()
+        .first()
+        .ok_or("checkbox node missing from harness")?;
+    let control_row = harness
+        .children()
+        .get(1)
+        .ok_or("checkbox control row missing")?;
+    let callback = checkbox
+        .callback_logs
+        .first()
+        .ok_or("checkbox callback log missing")?;
+
+    assert_eq!("Markdown Linter", checkbox_node.props().label);
+    assert_eq!("Checkbox", checkbox_node.props().accessibility_label);
+    assert!(!checkbox_node.props().checked);
+    assert!(!checkbox_node.props().disabled);
+    let control_labels: Vec<&str> = control_row
+        .children()
+        .iter()
+        .map(|it| it.props().label.as_str())
+        .collect();
+    assert_eq!(&["state read", "toggle", "reset"], &control_labels[..]);
+    assert_eq!(
+        callback.target.as_str(),
+        checkbox_node.props().state_id.as_str()
+    );
+    assert_eq!("checkbox_state_read", callback.action);
+    assert_eq!("checked=false", callback.before);
+    assert_eq!("checked=false", callback.after);
+    assert!(
+        checkbox
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "checkbox_toggle")
+    );
+    assert!(
+        checkbox
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "checkbox_reset")
+    );
+    assert!(
+        checkbox
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "checkbox_state_read" && it.before == it.after)
+    );
+    Ok(())
+}

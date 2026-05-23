@@ -33,7 +33,9 @@ const CARD_PAGE: &str = "card";
 const TOGGLE_PAGE: &str = "toggle";
 const TREE_VIEW_PAGE: &str = "tree-view";
 const DEFAULT_PRESET: usize = 0;
+const CHECKED_PRESET: usize = 1;
 const EDGE_PRESET: usize = 2;
+const DISABLED_PRESET: usize = 2;
 const COMPONENT_BODY_DIFF_THRESHOLD: usize = 80;
 const TREE_SCROLL_TRACK_X_OFFSET: usize = 186;
 const TREE_SCROLL_TRACK_Y_OFFSET: usize = 32;
@@ -95,6 +97,22 @@ fn checkbox_and_radio_clicks_change_material_control_bodies() {
     for page in [CHECKBOX_PAGE, RADIO_PAGE] {
         assert_clicked_page_changes_body(page);
     }
+}
+
+#[test]
+fn checkbox_presets_render_distinct_states_for_unchecked_checked_disabled() {
+    let unchecked = StorybookVisual.render_preset(DARK_THEME, CHECKBOX_PAGE, DEFAULT_PRESET, 0);
+    let checked = StorybookVisual.render_preset(DARK_THEME, CHECKBOX_PAGE, CHECKED_PRESET, 0);
+    let disabled = StorybookVisual.render_preset(DARK_THEME, CHECKBOX_PAGE, DISABLED_PRESET, 0);
+
+    assert!(
+        component_body_pixel_diff(CHECKBOX_PAGE, &unchecked, &checked)
+            > COMPONENT_BODY_DIFF_THRESHOLD
+    );
+    assert!(
+        component_body_pixel_diff(CHECKBOX_PAGE, &unchecked, &disabled)
+            > COMPONENT_BODY_DIFF_THRESHOLD
+    );
 }
 
 #[test]

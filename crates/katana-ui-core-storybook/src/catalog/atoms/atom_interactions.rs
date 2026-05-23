@@ -7,6 +7,7 @@ use katana_ui_core::atom::{
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::interaction::UiCallbackLog;
+use katana_ui_core::layout;
 use katana_ui_core::render_model::{UiSize, UiTone, UiVariant, UiVisualRole};
 
 const TEXT_AREA_MIN_ROWS: u16 = 2;
@@ -172,12 +173,60 @@ pub(super) fn text_area() -> StoryExample {
 }
 
 pub(super) fn checkbox() -> StoryExample {
-    let mut checkbox = atom::Checkbox::new("Checkbox")
+    let mut checkbox = atom::Checkbox::new("Markdown Linter")
+        .accessibility_label("Checkbox")
         .visual_role(UiVisualRole::Control)
         .checked(false);
     let target = checkbox.state_id().clone();
-    let result = checkbox.apply_action(&UiAction::checkbox_checked(target, true));
-    StoryCatalog::interactive_story("checkbox", checkbox, result.callback_log)
+    let mut logs = vec![UiCallbackLog::new(
+        target.clone(),
+        "checkbox_state_read",
+        "checked=false",
+        "checked=false",
+    )];
+    let toggle = checkbox.apply_action(&UiAction::checkbox_checked(target.clone(), true));
+    logs.extend(toggle.callback_log);
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "checkbox_toggle",
+        "checked=false",
+        "checked=true",
+    ));
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "checkbox_state_read",
+        "checked=true",
+        "checked=true",
+    ));
+    let reset = checkbox.apply_action(&UiAction::checkbox_checked(target.clone(), false));
+    logs.extend(reset.callback_log);
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "checkbox_reset",
+        "checked=true",
+        "checked=false",
+    ));
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "checkbox_state_read",
+        "checked=false",
+        "checked=false",
+    ));
+    let state = checkbox.state_snapshot();
+    let harness = layout::Column::new()
+        .child(checkbox)
+        .child(
+            layout::Row::new()
+                .child(atom::Button::new("state read"))
+                .child(atom::Button::new("toggle"))
+                .child(atom::Button::new("reset")),
+        )
+        .child(atom::Text::new(format!(
+            "typed state: state_id={} checked={}",
+            state.state_id.as_str(),
+            state.checked
+        )));
+    StoryCatalog::interactive_story("checkbox", harness, logs)
 }
 
 pub(super) fn radio() -> StoryExample {

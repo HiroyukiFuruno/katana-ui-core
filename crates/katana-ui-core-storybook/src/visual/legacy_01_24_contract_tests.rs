@@ -167,7 +167,7 @@ fn legacy_01_24_state_is_isolated_by_page_and_preset() {
             "{} settings",
             case.label
         );
-        let stored = state.screen_state;
+        let stored = state.screen_state.clone();
 
         state.select_page(other_page(case.page));
         assert_eq!(
@@ -187,7 +187,7 @@ fn legacy_01_24_state_is_isolated_by_page_and_preset() {
         );
 
         state.select_page(case.page);
-        assert_eq!(stored, state.screen_state, "{} page restore", case.label);
+        assert_eq!(stored, state.screen_state.clone(), "{} page restore", case.label);
         if StoryPresetLabels::for_page(case.page).len() > SECOND_PRESET_INDEX {
             state.select_preset(SECOND_PRESET_INDEX);
             assert_eq!(
@@ -196,7 +196,7 @@ fn legacy_01_24_state_is_isolated_by_page_and_preset() {
                 case.label
             );
             state.select_preset(0);
-            assert_eq!(stored, state.screen_state, "{} preset restore", case.label);
+            assert_eq!(stored, state.screen_state.clone(), "{} preset restore", case.label);
         }
     }
 }
@@ -213,7 +213,7 @@ fn render_state(state: &StorybookWindowState) -> Canvas {
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     )
 }
 

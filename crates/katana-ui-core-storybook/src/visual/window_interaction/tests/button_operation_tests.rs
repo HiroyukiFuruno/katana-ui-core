@@ -140,7 +140,7 @@ fn click_button_option_operation_updates_action_event_state_option_and_rendering
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     let setting = control_rect(StorybookButtonOptionControl::Label);
 
@@ -162,7 +162,7 @@ fn click_button_option_operation_updates_action_event_state_option_and_rendering
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     assert!(pixel_diff(&before, &after) > UI_INTERACTION_DIFF_THRESHOLD);
 }
@@ -182,7 +182,7 @@ fn assert_button_option_control_updates_action_event_state_option_and_rendering(
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     let rect = control_rect(control);
 
@@ -208,7 +208,7 @@ fn assert_button_option_control_updates_action_event_state_option_and_rendering(
         state.theme_id,
         state.selected_page,
         state.preset_index,
-        state.screen_state,
+        state.screen_state.clone(),
     );
     assert!(pixel_diff(&before, &after) > UI_INTERACTION_DIFF_THRESHOLD);
     assert!(component_body_pixel_diff(&before, &after) > BUTTON_BODY_DIFF_THRESHOLD);
