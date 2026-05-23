@@ -1,5 +1,5 @@
 use super::StorybookWindowState;
-use crate::visual::dedicated_dod_form_binary_choice_live as checkbox_live;
+use crate::visual::dedicated_dod_form_binary_choice_live as binary_choice_live;
 use crate::catalog::StoryPresetLabels;
 use crate::visual::button_options::{StorybookButtonOptionControl, control_at, is_button_page};
 use crate::visual::layout_metrics::{
@@ -25,6 +25,9 @@ pub(super) enum StorybookButtonOperation {
     CheckboxStateRead,
     CheckboxToggle,
     CheckboxReset,
+    RadioStateRead,
+    RadioSelect,
+    RadioReset,
 }
 
 impl StorybookButtonOperation {
@@ -49,6 +52,9 @@ impl StorybookButtonOperation {
             Self::CheckboxStateRead => state.screen_state.register_checkbox_state_read(),
             Self::CheckboxToggle => state.screen_state.register_checkbox_toggle(),
             Self::CheckboxReset => state.screen_state.register_checkbox_reset(),
+            Self::RadioStateRead => state.screen_state.register_radio_state_read(),
+            Self::RadioSelect => state.screen_state.register_radio_select(),
+            Self::RadioReset => state.screen_state.register_radio_reset(),
         }
         true
     }
@@ -64,6 +70,7 @@ pub(super) fn button_operation_at(
         .or_else(|| preset_operation_at(state.selected_page, x, y))
         .or_else(|| selection_control_operation_at(state, x, y))
         .or_else(|| checkbox_operation_at(state.selected_page, x, y))
+        .or_else(|| radio_operation_at(state.selected_page, x, y))
         .or_else(|| preview_operation_at(state.selected_page, x, y))
         .or_else(|| settings_operation_at(state.selected_page, x, y))
 }
@@ -185,14 +192,31 @@ fn checkbox_operation_at(
         return None;
     }
     let base = preview_detail::component_action_hit_rect(page);
-    if checkbox_live::checkbox_state_read_button_rect(base.x, base.y).contains(x, y) {
+    if binary_choice_live::checkbox_state_read_button_rect(base.x, base.y).contains(x, y) {
         return Some(StorybookButtonOperation::CheckboxStateRead);
     }
-    if checkbox_live::checkbox_toggle_button_rect(base.x, base.y).contains(x, y) {
+    if binary_choice_live::checkbox_toggle_button_rect(base.x, base.y).contains(x, y) {
         return Some(StorybookButtonOperation::CheckboxToggle);
     }
-    if checkbox_live::checkbox_reset_button_rect(base.x, base.y).contains(x, y) {
+    if binary_choice_live::checkbox_reset_button_rect(base.x, base.y).contains(x, y) {
         return Some(StorybookButtonOperation::CheckboxReset);
+    }
+    None
+}
+
+fn radio_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
+    if page != "radio" {
+        return None;
+    }
+    let base = preview_detail::component_action_hit_rect(page);
+    if binary_choice_live::radio_state_read_button_rect(base.x, base.y).contains(x, y) {
+        return Some(StorybookButtonOperation::RadioStateRead);
+    }
+    if binary_choice_live::radio_select_button_rect(base.x, base.y).contains(x, y) {
+        return Some(StorybookButtonOperation::RadioSelect);
+    }
+    if binary_choice_live::radio_reset_button_rect(base.x, base.y).contains(x, y) {
+        return Some(StorybookButtonOperation::RadioReset);
     }
     None
 }

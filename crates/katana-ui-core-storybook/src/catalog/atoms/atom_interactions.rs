@@ -231,11 +231,62 @@ pub(super) fn checkbox() -> StoryExample {
 
 pub(super) fn radio() -> StoryExample {
     let mut radio = atom::Radio::new("Radio")
+        .accessibility_label("Radio")
         .visual_role(UiVisualRole::Control)
         .selected(false);
     let target = radio.state_id().clone();
-    let result = radio.apply_action(&UiAction::radio_selected(target));
-    StoryCatalog::interactive_story("radio", radio, result.callback_log)
+    let mut logs = vec![UiCallbackLog::new(
+        target.clone(),
+        "radio_state_read",
+        "selected=false",
+        "selected=false",
+    )];
+    let select = radio.apply_action(&UiAction::radio_selected(target.clone()));
+    logs.extend(select.callback_log);
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "radio_select",
+        "selected=false",
+        "selected=true",
+    ));
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "radio_state_read",
+        "selected=true",
+        "selected=true",
+    ));
+    let reset = atom::Radio::new("Radio")
+        .accessibility_label("Radio")
+        .visual_role(UiVisualRole::Control)
+        .set_state(radio.state_snapshot())
+        .selected(false);
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "radio_reset",
+        "selected=true",
+        "selected=false",
+    ));
+    logs.push(UiCallbackLog::new(
+        target.clone(),
+        "radio_state_read",
+        "selected=false",
+        "selected=false",
+    ));
+    let state = reset.state_snapshot();
+    let harness = layout::Column::new()
+        .child(reset)
+        .child(
+            layout::Row::new()
+                .child(atom::Button::new("state read"))
+                .child(atom::Button::new("select"))
+                .child(atom::Button::new("reset")),
+        )
+        .child(atom::Text::new(format!(
+            "typed state: state_id={} checked={}",
+            state.state_id.as_str(),
+            state.checked
+        )));
+    StoryCatalog::interactive_story("radio", harness, logs)
 }
 
 pub(super) fn badge() -> StoryExample {

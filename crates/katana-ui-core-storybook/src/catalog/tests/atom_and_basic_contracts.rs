@@ -168,3 +168,48 @@ fn checkbox_story_uses_public_props_and_typed_callback_log() -> Result<(), &'sta
     );
     Ok(())
 }
+
+#[test]
+fn radio_story_uses_public_props_and_typed_callback_log() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let radio = examples
+        .iter()
+        .find(|it| it.page == "radio")
+        .ok_or("radio page missing")?;
+    let harness = radio.tree.root();
+    let radio_node = harness
+        .children()
+        .first()
+        .ok_or("radio node missing from harness")?;
+    let control_row = harness
+        .children()
+        .get(1)
+        .ok_or("radio control row missing")?;
+    let callback = radio
+        .callback_logs
+        .first()
+        .ok_or("radio callback log missing")?;
+
+    assert_eq!("Radio", radio_node.props().label);
+    assert_eq!("Radio", radio_node.props().accessibility_label);
+    assert!(!radio_node.props().checked);
+    let control_labels: Vec<&str> = control_row
+        .children()
+        .iter()
+        .map(|it| it.props().label.as_str())
+        .collect();
+    assert_eq!(&["state read", "select", "reset"], &control_labels[..]);
+    assert_eq!(callback.target.as_str(), radio_node.props().state_id.as_str());
+    assert_eq!("radio_state_read", callback.action);
+    assert_eq!("selected=false", callback.before);
+    assert_eq!("selected=false", callback.after);
+    assert!(radio.callback_logs.iter().any(|it| it.action == "radio_select"));
+    assert!(radio.callback_logs.iter().any(|it| it.action == "radio_reset"));
+    assert!(
+        radio
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "radio_state_read" && it.before == it.after)
+    );
+    Ok(())
+}

@@ -1,5 +1,6 @@
 mod button_operation_tests;
 mod checkbox_contract_tests;
+mod radio_contract_tests;
 mod navigation_coordinate_tests;
 mod navigation_tests;
 mod preview_action_tests;

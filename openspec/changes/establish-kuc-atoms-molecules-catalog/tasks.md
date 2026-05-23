@@ -24,7 +24,7 @@
 ## 3. P0 再着手（基礎部品）
 
 - [x] 3.1 Checkbox: option / action / event / state / preset / preview / settings / test を consumer contract 粒度で再実装・再検証する。
-- [ ] 3.2 Radio: option / action / event / state / preset / preview / settings / test を consumer contract 粒度で再実装・再検証する。
+- [x] 3.2 Radio: option / action / event / state / preset / preview / settings / test を consumer contract 粒度で再実装・再検証する。
 - [ ] 3.3 SelectBox（pulldown）: 開閉、候補選択、focus、hit target、typed state 反映を再実装・再検証する。
 - [ ] 3.4 ComboBox: 入力、絞り込み、選択、typed action/event の一致を再実装・再検証する。
 - [ ] 3.5 SearchBox: 入力、クリア、検索条件操作、typed state/action の一致を再実装・再検証する。

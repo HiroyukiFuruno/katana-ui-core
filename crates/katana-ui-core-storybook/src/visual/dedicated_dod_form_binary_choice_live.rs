@@ -48,7 +48,7 @@ pub(super) fn radio(
 ) {
     common::frame(canvas, text, palette, x, y, "Radio");
     draw_radio_rows(canvas, text, palette, scenario, x, y);
-    choice_status::draw(canvas, text, palette, scenario, x, y, "selected=none");
+    draw_radio_controls(canvas, text, palette, scenario, x, y);
 }
 
 fn draw_checkbox_rows(
@@ -143,6 +143,13 @@ fn state_log_label(scenario: ScenarioContext<'_>) -> &'static str {
     scenario.screen_state.state_label
 }
 
+fn radio_state_log_label(scenario: ScenarioContext<'_>) -> &'static str {
+    if scenario.screen_state.state_label == "idle" {
+        return "before=false after=false";
+    }
+    scenario.screen_state.state_label
+}
+
 fn draw_radio_rows(
     canvas: &mut Canvas,
     text: &TextRenderer,
@@ -151,7 +158,9 @@ fn draw_radio_rows(
     x: usize,
     y: usize,
 ) {
-    let selected = if scenario.screen_state.has_widget_action() {
+    let selected = if scenario.preset_index == m::PX_0 {
+        usize::from(scenario.screen_state.is_radio_selected())
+    } else if scenario.screen_state.has_widget_action() {
         1
     } else {
         scenario.preset_index.min(1)
@@ -160,6 +169,45 @@ fn draw_radio_rows(
         draw_choice_row(canvas, text, palette, row_rect(index, x, y), label, false);
         choice_marks::draw_radio_mark(canvas, palette, x, y, index, index == selected);
     }
+}
+
+fn draw_radio_controls(
+    canvas: &mut Canvas,
+    text: &TextRenderer,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    x: usize,
+    y: usize,
+) {
+    let read = radio_state_read_button_rect(x, y);
+    let select = radio_select_button_rect(x, y);
+    let reset = radio_reset_button_rect(x, y);
+    for (rect, label) in [(read, "state read"), (select, "select"), (reset, "reset")] {
+        canvas.fill_rect(rect.x, rect.y, rect.width, rect.height, palette.surface);
+        canvas.stroke_rect(rect.x, rect.y, rect.width, rect.height, palette.border);
+        text.draw(
+            canvas,
+            label,
+            rect.x + m::PX_4,
+            rect.y + CONTROL_TEXT_Y,
+            m::FONT_8,
+            palette.text,
+        );
+    }
+    let selected_state = if scenario.screen_state.is_radio_selected() {
+        "selected=true"
+    } else {
+        "selected=false"
+    };
+    draw_status_row(canvas, text, palette, radio_state_row_rect(x, y), selected_state);
+    draw_status_row(canvas, text, palette, radio_event_row_rect(x, y), event_label(scenario));
+    draw_status_row(
+        canvas,
+        text,
+        palette,
+        radio_log_row_rect(x, y),
+        radio_state_log_label(scenario),
+    );
 }
 
 fn draw_choice_row(
@@ -301,4 +349,55 @@ pub(super) fn checkbox_log_row_rect(x: usize, y: usize) -> super::layout_metrics
         event.width,
         event.height,
     )
+}
+
+#[cfg(test)]
+pub(super) fn radio_row_rect(index: usize, x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    row_rect(index, x, y)
+}
+
+#[cfg(test)]
+pub(super) fn radio_mark_rect(index: usize, x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    let row = radio_row_rect(index, x, y);
+    super::layout_metrics::LayoutRect::new(
+        row.x + CHOICE_MARK_X,
+        row.y + 5,
+        CHOICE_MARK_SIZE,
+        CHOICE_MARK_SIZE,
+    )
+}
+
+#[cfg(test)]
+pub(super) fn radio_label_rect(index: usize, x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    let row = radio_row_rect(index, x, y);
+    super::layout_metrics::LayoutRect::new(
+        row.x + CHOICE_LABEL_X,
+        row.y,
+        CHOICE_ROW_WIDTH - CHOICE_LABEL_X - 6,
+        CHOICE_ROW_HEIGHT,
+    )
+}
+
+pub(super) fn radio_state_read_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    checkbox_state_read_button_rect(x, y)
+}
+
+pub(super) fn radio_select_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    checkbox_toggle_button_rect(x, y)
+}
+
+pub(super) fn radio_reset_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    checkbox_reset_button_rect(x, y)
+}
+
+pub(super) fn radio_state_row_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    checkbox_state_row_rect(x, y)
+}
+
+pub(super) fn radio_event_row_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    checkbox_event_row_rect(x, y)
+}
+
+pub(super) fn radio_log_row_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
+    checkbox_log_row_rect(x, y)
 }

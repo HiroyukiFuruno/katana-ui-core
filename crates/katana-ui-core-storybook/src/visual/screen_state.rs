@@ -21,6 +21,7 @@ pub(super) struct StorybookScreenState {
     pub(super) hovered_summary_index: Option<usize>,
     pub(super) selection: SelectionScreenState,
     pub(super) checkbox_state: UiComponentState,
+    pub(super) radio_state: UiComponentState,
 }
 
 impl Default for StorybookScreenState {
@@ -39,6 +40,7 @@ impl Default for StorybookScreenState {
             hovered_summary_index: None,
             selection: SelectionScreenState::default(),
             checkbox_state: default_checkbox_state(),
+            radio_state: default_radio_state(),
         }
     }
 }
@@ -62,6 +64,10 @@ impl StorybookScreenState {
     pub(super) fn register_preview_action(&mut self, page: &str) {
         if page == "checkbox" {
             self.register_checkbox_toggle();
+            return;
+        }
+        if page == "radio" {
+            self.register_radio_select();
             return;
         }
         self.action_count += 1;
@@ -94,6 +100,31 @@ impl StorybookScreenState {
         self.last_action = "checkbox_reset";
         self.last_event = "checked_changed";
         self.state_label = checkbox_state_label(before, self.checkbox_state.checked);
+    }
+
+    pub(super) fn register_radio_state_read(&mut self) {
+        self.action_count += 1;
+        self.last_action = "radio_state_read";
+        self.last_event = "selected_read";
+        self.state_label = radio_state_label(self.radio_state.checked, self.radio_state.checked);
+    }
+
+    pub(super) fn register_radio_select(&mut self) {
+        self.action_count += 1;
+        let before = self.radio_state.checked;
+        self.radio_state = apply_radio_selected_state(&self.radio_state, true);
+        self.last_action = "radio_select";
+        self.last_event = "radio_selected";
+        self.state_label = radio_state_label(before, self.radio_state.checked);
+    }
+
+    pub(super) fn register_radio_reset(&mut self) {
+        self.action_count += 1;
+        let before = self.radio_state.checked;
+        self.radio_state = apply_radio_selected_state(&self.radio_state, false);
+        self.last_action = "radio_reset";
+        self.last_event = "radio_selected";
+        self.state_label = radio_state_label(before, self.radio_state.checked);
     }
 
     pub(super) fn register_settings_change(&mut self, page: &str) {
@@ -186,14 +217,27 @@ impl StorybookScreenState {
         self.checkbox_state.checked
     }
 
+    pub(super) const fn is_radio_selected(&self) -> bool {
+        self.radio_state.checked
+    }
+
     #[cfg(test)]
     pub(super) fn checkbox_state_snapshot(&self) -> &UiComponentState {
         &self.checkbox_state
+    }
+
+    #[cfg(test)]
+    pub(super) fn radio_state_snapshot(&self) -> &UiComponentState {
+        &self.radio_state
     }
 }
 
 fn default_checkbox_state() -> UiComponentState {
     atom::Checkbox::new("Storybook Checkbox").state_snapshot()
+}
+
+fn default_radio_state() -> UiComponentState {
+    atom::Radio::new("Storybook Radio").selected(false).state_snapshot()
 }
 
 fn apply_checkbox_checked_state(before: &UiComponentState, checked: bool) -> UiComponentState {
@@ -202,7 +246,27 @@ fn apply_checkbox_checked_state(before: &UiComponentState, checked: bool) -> UiC
     checkbox.state_snapshot()
 }
 
+fn apply_radio_selected_state(before: &UiComponentState, selected: bool) -> UiComponentState {
+    let mut radio = atom::Radio::new("Storybook Radio").set_state(before.clone());
+    if !selected {
+        radio = radio.selected(false);
+    }
+    if selected {
+        let _result = radio.apply_action(&UiAction::radio_selected(before.state_id.clone()));
+    }
+    radio.state_snapshot()
+}
+
 fn checkbox_state_label(before: bool, after: bool) -> &'static str {
+    match (before, after) {
+        (false, true) => "before=false after=true",
+        (true, false) => "before=true after=false",
+        (true, true) => "before=true after=true",
+        (false, false) => "before=false after=false",
+    }
+}
+
+fn radio_state_label(before: bool, after: bool) -> &'static str {
     match (before, after) {
         (false, true) => "before=false after=true",
         (true, false) => "before=true after=false",
