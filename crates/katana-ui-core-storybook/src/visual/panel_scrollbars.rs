@@ -4,11 +4,6 @@ use super::navigation_tree::TreeExpansionState;
 use super::palette::VisualPalette;
 use super::panel_scroll_state::{PanelScrollOffsets, PanelScrollRegion};
 #[cfg(test)]
-pub(super) use super::panel_scrollbar_hit_test::{horizontal_region_from_thumb, region_from_thumb};
-pub(super) use super::panel_scrollbar_hit_test::{
-    horizontal_region_from_thumb_for, region_from_thumb_for,
-};
-#[cfg(test)]
 pub(super) use super::panel_scrollbar_metrics::{
     PANEL_SCROLLBAR_THUMB_MIN_LENGTH, horizontal_thumb_rect_for,
 };

@@ -1,5 +1,5 @@
 use super::StorybookWindowState;
-use crate::visual::panel_scroll_state::{PanelScrollRegion, region_at};
+use crate::visual::panel_scroll_state::{self, PanelScrollRegion, region_at};
 
 pub(in crate::visual) fn click_content_y(
     state: &StorybookWindowState,
@@ -10,7 +10,27 @@ pub(in crate::visual) fn click_content_y(
     match region_at(x, content_y) {
         PanelScrollRegion::Root => content_y,
         PanelScrollRegion::Navigation => content_y,
-        PanelScrollRegion::Preview => content_y + state.panel_scroll.preview_y,
-        PanelScrollRegion::Inspector => content_y + state.panel_scroll.inspector_y,
+        PanelScrollRegion::Preview => {
+            let max_preview_y = panel_scroll_state::max_scroll_y_for(
+                PanelScrollRegion::Preview,
+                state.selected_page,
+                state.tree_expansion,
+            );
+            content_y
+                + state
+                    .panel_scroll
+                    .offset_with_max(PanelScrollRegion::Preview, max_preview_y)
+        }
+        PanelScrollRegion::Inspector => {
+            let max_inspector_y = panel_scroll_state::max_scroll_y_for(
+                PanelScrollRegion::Inspector,
+                state.selected_page,
+                state.tree_expansion,
+            );
+            content_y
+                + state
+                    .panel_scroll
+                    .offset_with_max(PanelScrollRegion::Inspector, max_inspector_y)
+        }
     }
 }

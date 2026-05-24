@@ -69,6 +69,44 @@ fn collapsed_navigation_visible_scrollbar_is_not_hit_test_target() {
     );
 }
 
+#[test]
+fn horizontal_scrollbar_hit_test_ignores_axis_without_overflow() {
+    let track = panel_scrollbars::horizontal_track_rect_for(PanelScrollRegion::Preview);
+    let x = track.x + track.width / 2;
+    let y = track.y + 1;
+
+    assert_eq!(
+        None,
+        panel_scroll_drag::horizontal_region_at(
+            x,
+            y,
+            PanelScrollOffsets::default(),
+            "panel",
+            TreeExpansionState::default(),
+            true,
+        )
+    );
+}
+
+#[test]
+fn hidden_inspector_horizontal_scrollbar_without_overflow_has_no_hit_target() {
+    let track = panel_scrollbars::horizontal_track_rect_for(PanelScrollRegion::Inspector);
+    let x = track.x + track.width / 2;
+    let y = track.y + 1;
+
+    assert_eq!(
+        None,
+        panel_scroll_drag::horizontal_region_at(
+            x,
+            y,
+            PanelScrollOffsets::default(),
+            "button",
+            TreeExpansionState::default(),
+            true,
+        )
+    );
+}
+
 fn collapsed_navigation_expansion() -> TreeExpansionState {
     let mut expansion = TreeExpansionState::default();
     for group in STORY_GROUPS.iter().copied() {

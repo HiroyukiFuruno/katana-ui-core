@@ -2,15 +2,6 @@ use super::navigation_tree::TreeExpansionState;
 use super::panel_scroll_state::{PanelScrollOffsets, PanelScrollRegion};
 use super::panel_scrollbar_metrics;
 
-#[cfg(test)]
-pub(super) fn region_from_thumb(
-    x: usize,
-    y: usize,
-    offsets: PanelScrollOffsets,
-) -> Option<PanelScrollRegion> {
-    region_from_thumb_for(x, y, offsets, "", Default::default())
-}
-
 pub(super) fn region_from_thumb_for(
     x: usize,
     y: usize,
@@ -33,15 +24,6 @@ pub(super) fn region_from_thumb_for(
         )
         .contains(x, y)
     })
-}
-
-#[cfg(test)]
-pub(super) fn horizontal_region_from_thumb(
-    x: usize,
-    y: usize,
-    offsets: PanelScrollOffsets,
-) -> Option<PanelScrollRegion> {
-    horizontal_region_from_thumb_for(x, y, offsets, "", Default::default())
 }
 
 pub(super) fn horizontal_region_from_thumb_for(

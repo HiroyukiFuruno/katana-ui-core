@@ -54,7 +54,11 @@ fn preview_horizontal_scroll_offset_is_ignored_without_preview_overflow() {
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
     offsets.set_drag_offset_x(
         panel_scroll_state::PanelScrollRegion::Preview,
-        panel_scroll_state::max_scroll_x(panel_scroll_state::PanelScrollRegion::Preview),
+        panel_scroll_state::max_scroll_x_for(
+            panel_scroll_state::PanelScrollRegion::Preview,
+            "button",
+            Default::default(),
+        ),
     );
     let scrolled = render_panel_with_offsets(offsets);
 

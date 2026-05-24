@@ -98,14 +98,14 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "checked_changed",
             "checked",
             "true",
-            "checked=true",
+            "before=false after=true",
         )),
         "radio" => Some(spec(
             "radio_select",
             "radio_selected",
             "checked",
             "true",
-            "selected=true",
+            "before=false after=true",
         )),
         "badge" => Some(spec(
             "badge_passive",

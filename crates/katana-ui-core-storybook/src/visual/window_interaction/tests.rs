@@ -6,6 +6,8 @@ mod preview_action_tests;
 mod preview_scroll_tests;
 mod radio_contract_tests;
 mod required_page_tests;
+mod scroll_axis_isolation_tests;
+mod scroll_preview_tests;
 mod scroll_tests;
 mod scrollbar_visibility_tests;
 mod selection_control_tests;

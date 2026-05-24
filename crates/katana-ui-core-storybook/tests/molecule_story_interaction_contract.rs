@@ -9,7 +9,7 @@ const REQUIRED_INTERACTIVE_MOLECULES: [(&str, &str); 15] = [
     ("menu-button", "select_box_selected"),
     ("notification-toast", "dismiss"),
     ("popover", "popover_open"),
-    ("search-box", "search_submitted"),
+    ("search-box", "search_submit"),
     ("segmented-toggle", "segmented_toggle_selected"),
     ("select-box", "select_box_selected"),
     ("modal-overlay", "modal_escape"),

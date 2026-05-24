@@ -117,11 +117,19 @@ fn visible_panel_scrollbar_thumbs_reach_track_end_at_max_offset() {
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
     offsets.set_drag_offset(
         panel_scroll_state::PanelScrollRegion::Navigation,
-        panel_scroll_state::max_scroll_y(panel_scroll_state::PanelScrollRegion::Navigation),
+        panel_scroll_state::max_scroll_y_for(
+            panel_scroll_state::PanelScrollRegion::Navigation,
+            "button",
+            Default::default(),
+        ),
     );
     offsets.set_drag_offset(
         panel_scroll_state::PanelScrollRegion::Inspector,
-        panel_scroll_state::max_scroll_y(panel_scroll_state::PanelScrollRegion::Inspector),
+        panel_scroll_state::max_scroll_y_for(
+            panel_scroll_state::PanelScrollRegion::Inspector,
+            "button",
+            Default::default(),
+        ),
     );
 
     let vertical_track =
@@ -144,7 +152,11 @@ fn visible_panel_horizontal_scrollbar_thumb_reaches_track_end_at_max_offset() {
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
     offsets.set_drag_offset_x(
         panel_scroll_state::PanelScrollRegion::Inspector,
-        panel_scroll_state::max_scroll_x(panel_scroll_state::PanelScrollRegion::Inspector),
+        panel_scroll_state::max_scroll_x_for(
+            panel_scroll_state::PanelScrollRegion::Inspector,
+            "button",
+            Default::default(),
+        ),
     );
 
     let track = panel_scrollbars::horizontal_track_rect_for(

@@ -183,8 +183,15 @@ pub(super) fn apply_click(state: &mut StorybookWindowState, x: usize, y: usize) 
     if let Some(operation) = button_operation_at(state, x, y) {
         return operation.apply(state);
     }
-    if let Some(row) = row_from_click(x, y + state.panel_scroll.navigation_y, state.tree_expansion)
-    {
+    let logical_navigation_y = state.panel_scroll.offset_with_max(
+        super::panel_scroll_state::PanelScrollRegion::Navigation,
+        super::panel_scroll_state::max_scroll_y_for(
+            super::panel_scroll_state::PanelScrollRegion::Navigation,
+            state.selected_page,
+            state.tree_expansion,
+        ),
+    );
+    if let Some(row) = row_from_click(x, y + logical_navigation_y, state.tree_expansion) {
         match row {
             NavigationRow::Group(group) => state.tree_expansion.toggle(group),
             NavigationRow::Section { group, section } => {

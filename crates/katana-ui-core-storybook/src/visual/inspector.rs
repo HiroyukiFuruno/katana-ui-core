@@ -3,6 +3,7 @@ use super::canvas::Canvas;
 use super::layout_metrics::{INSPECTOR_HEIGHT, INSPECTOR_WIDTH, INSPECTOR_X, INSPECTOR_Y};
 use super::palette::VisualPalette;
 use super::panel_layout;
+use super::panel_scroll_state;
 use super::panel_scroll_state::PanelScrollRegion;
 use super::render_context::{RenderContext, ScenarioContext};
 use super::text::TextRenderer;
@@ -72,7 +73,16 @@ pub(super) fn draw(
         viewport.width,
         viewport.height,
         |canvas| {
-            let mut y = FIRST_SECTION_Y.saturating_sub(scenario.panel_scroll.inspector_y);
+            let max_inspector_y = panel_scroll_state::max_scroll_y_for(
+                PanelScrollRegion::Inspector,
+                scenario.selected_page,
+                scenario.tree_expansion,
+            );
+            let mut y = FIRST_SECTION_Y.saturating_sub(
+                scenario
+                    .panel_scroll
+                    .offset_with_max(PanelScrollRegion::Inspector, max_inspector_y),
+            );
             let Some((node, example)) = selected else {
                 draw_section(canvas, render.text, palette, "No selection", &[], y);
                 return;

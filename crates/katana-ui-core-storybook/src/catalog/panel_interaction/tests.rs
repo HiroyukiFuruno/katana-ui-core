@@ -9,6 +9,7 @@ use settings_switch_app_assertions::*;
 use settings_switch_core_assertions::*;
 use settings_switch_interaction_assertions::*;
 const LEGACY_UI_MARKER_COUNT: usize = 30;
+const SELECTOR_OPERATION_COUNT: usize = 13;
 const DND_SETTINGS_MUTATION_COUNT: usize = 3;
 const CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT: usize = 5;
 const OVERLAY_SETTINGS_MUTATION_COUNT: usize = 9;
@@ -38,7 +39,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     let examples = StoryCatalog.examples();
     let report = StorybookPanelInteractionReport::build(&examples);
 
-    assert_eq!(4, report.selector_operations.len());
+    assert_eq!(SELECTOR_OPERATION_COUNT, report.selector_operations.len());
     assert_eq!(5, report.overlay_dismissals.len());
     assert_eq!(COLOR_PICKER_UPDATE_COUNT, report.color_picker_updates.len());
     assert_eq!(

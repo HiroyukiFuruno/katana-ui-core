@@ -73,7 +73,11 @@ fn inspector_horizontal_thumb_reaches_track_end_at_max_offset() {
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
     offsets.set_drag_offset_x(
         panel_scroll_state::PanelScrollRegion::Inspector,
-        panel_scroll_state::max_scroll_x(panel_scroll_state::PanelScrollRegion::Inspector),
+        panel_scroll_state::max_scroll_x_for(
+            panel_scroll_state::PanelScrollRegion::Inspector,
+            "button",
+            Default::default(),
+        ),
     );
 
     let track = panel_scrollbars::horizontal_track_rect_for(
