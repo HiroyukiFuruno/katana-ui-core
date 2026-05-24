@@ -103,7 +103,15 @@ impl StorybookFrameRenderer {
     }
 
     pub(super) fn render(&mut self, options: StorybookRenderOptions<'_>) -> Canvas {
-        let key = ContentFrameKey::from_options(&options);
+        self.render_for_scale(options, 1.0)
+    }
+
+    pub(super) fn render_for_scale(
+        &mut self,
+        options: StorybookRenderOptions<'_>,
+        scale_factor: f32,
+    ) -> Canvas {
+        let key = ContentFrameKey::from_options_scaled(&options, scale_factor);
         if self
             .content_cache
             .as_ref()
@@ -115,9 +123,11 @@ impl StorybookFrameRenderer {
             content_options.scroll_y = 0;
             content_options.panel_scroll.root_x = 0;
             content_options.panel_scroll.root_y = 0;
-            let canvas = self
-                .theme_cache(options.theme_id)
-                .render_content(&self.examples, &content_options);
+            let canvas = self.theme_cache(options.theme_id).render_content(
+                &self.examples,
+                &content_options,
+                scale_factor,
+            );
             self.content_renders += 1;
             self.content_cache = Some(ContentFrameCache { key, canvas });
         }
@@ -178,8 +188,10 @@ impl ThemeFrameCache {
         &self,
         examples: &[StoryExample],
         options: &StorybookRenderOptions<'_>,
+        scale_factor: f32,
     ) -> Canvas {
-        let mut canvas = Canvas::new(WIDTH, CANVAS_HEIGHT, self.palette.background);
+        let mut canvas =
+            Canvas::new_scaled(WIDTH, CANVAS_HEIGHT, scale_factor, self.palette.background);
         let render = RenderContext {
             text: &self.text,
             code_text: &self.code_text,
@@ -221,6 +233,7 @@ struct ContentFrameKey {
     theme_id: &'static str,
     selected_page: String,
     preset_index: usize,
+    scale_bits: u32,
     scrollbar_visible: bool,
     panel_scroll: PanelScrollOffsets,
     tree_expansion: TreeExpansionState,
@@ -230,7 +243,7 @@ struct ContentFrameKey {
 }
 
 impl ContentFrameKey {
-    fn from_options(options: &StorybookRenderOptions<'_>) -> Self {
+    fn from_options_scaled(options: &StorybookRenderOptions<'_>, scale_factor: f32) -> Self {
         let mut panel_scroll = options.panel_scroll;
         panel_scroll.root_x = 0;
         panel_scroll.root_y = 0;
@@ -238,6 +251,7 @@ impl ContentFrameKey {
             theme_id: theme_key(options.theme_id),
             selected_page: options.selected_page.to_string(),
             preset_index: options.preset_index,
+            scale_bits: scale_factor.to_bits(),
             scrollbar_visible: options.scrollbar_visible,
             panel_scroll,
             tree_expansion: options.tree_expansion,
@@ -270,7 +284,7 @@ fn theme_key(theme_id: &str) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::{StorybookFrameRenderer, StorybookRenderOptions};
+    use super::{HEIGHT, StorybookFrameRenderer, StorybookRenderOptions, WIDTH};
     use crate::visual::layout_metrics::SCROLL_STEP;
     use crate::visual::navigation_tree::TreeExpansionState;
     use crate::visual::panel_scroll_state::PanelScrollOffsets;
@@ -296,6 +310,23 @@ mod tests {
         assert_eq!(1, stats.content_cache_hits);
     }
 
+    #[test]
+    fn render_for_scale_keeps_logical_size_and_scales_physical_size() {
+        let mut renderer = StorybookFrameRenderer::new();
+        let screen_state = StorybookScreenState::default();
+        let options = options(0, PanelScrollOffsets::default(), screen_state);
+        let frame = renderer.render_for_scale(options.clone(), 1.0);
+        let scaled = renderer.render_for_scale(options, 2.0);
+
+        assert_eq!(WIDTH, frame.logical_width());
+        assert_eq!(HEIGHT, frame.logical_height());
+        assert_eq!(WIDTH * 2, scaled.width());
+        assert_eq!(HEIGHT * 2, scaled.height());
+        assert_eq!(frame.logical_width(), scaled.logical_width());
+        assert_eq!(frame.logical_height(), scaled.logical_height());
+        assert_eq!(2.0, scaled.scale_factor());
+    }
+
     fn options(
         scroll_y: usize,
         panel_scroll: PanelScrollOffsets,
@@ -313,6 +344,22 @@ mod tests {
             show_navigation_lines: true,
             show_navigation_text_connectors: false,
         }
+    }
+
+    #[test]
+    fn render_for_scale_uses_separate_content_cache_per_scale() {
+        let mut renderer = StorybookFrameRenderer::new();
+        let screen_state = StorybookScreenState::default();
+        let base_options = options(0, PanelScrollOffsets::default(), screen_state);
+
+        renderer.render_for_scale(base_options.clone(), 1.0);
+        renderer.render_for_scale(base_options.clone(), 2.0);
+        renderer.render_for_scale(base_options.clone(), 1.0);
+        renderer.render_for_scale(base_options, 1.0);
+
+        let stats = renderer.stats();
+        assert_eq!(3, stats.content_renders);
+        assert_eq!(1, stats.content_cache_hits);
     }
 }
 

@@ -8,22 +8,19 @@ use super::window_interaction::{StorybookWindowState, apply_mouse_click, apply_s
 use super::window_modal_plan;
 use super::window_options::{main_window_options, modal_window_options};
 use minifb::{Key, Window};
+use std::env;
 use std::thread;
 use std::time::Duration;
 const MAIN_WINDOW_TITLE: &str = "katana-ui-core Storybook";
 const MODAL_WINDOW_TITLE: &str = "katana-ui-core Modal";
+const STORYBOOK_SCALE_ENV: &str = "KUC_STORYBOOK_SCALE";
 
 impl StorybookVisual {
     pub fn open_window(self, frames: usize) -> Result<(), minifb::Error> {
         let state = StorybookWindowState::default();
         let mut renderer = render::StorybookFrameRenderer::new();
-        let frame = render_frame(&mut renderer, &state);
-        let mut window = Window::new(
-            MAIN_WINDOW_TITLE,
-            frame.width(),
-            frame.height(),
-            main_window_options(),
-        )?;
+        let frame = render_frame_for_scale(&mut renderer, &state, storybook_scale_factor());
+        let mut window = create_main_window(MAIN_WINDOW_TITLE, &frame)?;
         run_single_window(&mut window, &mut renderer, frame, frames)
     }
 
@@ -78,6 +75,16 @@ fn create_window(title: &str, frame: &Canvas) -> Result<Window, minifb::Error> {
     Window::new(title, frame.width(), frame.height(), options)
 }
 
+fn create_main_window(title: &str, frame: &Canvas) -> Result<Window, minifb::Error> {
+    let options = main_window_options();
+    Window::new(
+        title,
+        window_width_for_canvas(frame),
+        window_height_for_canvas(frame),
+        options,
+    )
+}
+
 fn run_single_window(
     window: &mut Window,
     renderer: &mut render::StorybookFrameRenderer,
@@ -104,7 +111,7 @@ fn run_single_window(
                 &mut right_mouse_was_down,
             )
         {
-            frame = render_frame(renderer, &state);
+            frame = render_frame_for_window_scale(renderer, &state, window);
             frame_changed = true;
         }
         let window_size = window.get_size();
@@ -120,9 +127,19 @@ fn run_single_window(
 }
 
 fn present_for_window(window: &Window, frame: &Canvas) -> Canvas {
-    let (width, height) = window.get_size();
+    let window_size = window.get_size();
+    if should_present_physical_frame_directly(frame, window_size) {
+        return frame.clone();
+    }
+    let (width, height) = window_size;
     let fill = frame.pixels().first().copied().unwrap_or_default();
     presentation::present_frame(frame, width, height, fill)
+}
+
+fn should_present_physical_frame_directly(frame: &Canvas, window_size: (usize, usize)) -> bool {
+    frame.scale_factor() > 1.0
+        && frame.logical_width() == window_size.0
+        && frame.logical_height() == window_size.1
 }
 
 fn apply_hover(window: &Window, state: &mut StorybookWindowState) -> bool {
@@ -140,22 +157,61 @@ fn apply_hover(window: &Window, state: &mut StorybookWindowState) -> bool {
     super::window_interaction::apply_hover_at(state, point.x, point.y)
 }
 
-fn render_frame(
+fn render_frame_for_window_scale(
     renderer: &mut render::StorybookFrameRenderer,
     state: &StorybookWindowState,
+    _window: &Window,
 ) -> Canvas {
-    renderer.render(render::StorybookRenderOptions {
-        theme_id: state.theme_id,
-        selected_page: state.selected_page,
-        preset_index: state.preset_index,
-        scroll_y: state.scroll_y,
-        scrollbar_visible: state.scrollbar_visible,
-        panel_scroll: state.panel_scroll,
-        tree_expansion: state.tree_expansion,
-        show_navigation_lines: state.show_navigation_lines,
-        show_navigation_text_connectors: state.show_navigation_text_connectors,
-        screen_state: state.screen_state.clone(),
-    })
+    render_frame_for_scale(renderer, state, storybook_scale_factor())
+}
+
+fn render_frame_for_scale(
+    renderer: &mut render::StorybookFrameRenderer,
+    state: &StorybookWindowState,
+    scale_factor: f32,
+) -> Canvas {
+    renderer.render_for_scale(
+        render::StorybookRenderOptions {
+            theme_id: state.theme_id,
+            selected_page: state.selected_page,
+            preset_index: state.preset_index,
+            scroll_y: state.scroll_y,
+            scrollbar_visible: state.scrollbar_visible,
+            panel_scroll: state.panel_scroll,
+            tree_expansion: state.tree_expansion,
+            show_navigation_lines: state.show_navigation_lines,
+            show_navigation_text_connectors: state.show_navigation_text_connectors,
+            screen_state: state.screen_state.clone(),
+        },
+        scale_factor,
+    )
+}
+
+fn storybook_scale_factor() -> f32 {
+    env::var(STORYBOOK_SCALE_ENV)
+        .ok()
+        .and_then(|value| parse_storybook_scale_factor(value.as_str()))
+        .unwrap_or_else(default_storybook_scale_factor)
+}
+
+fn parse_storybook_scale_factor(value: &str) -> Option<f32> {
+    let scale = value.parse::<u32>().ok()?;
+    match scale {
+        1 | 2 => Some(scale as f32),
+        _ => None,
+    }
+}
+
+fn default_storybook_scale_factor() -> f32 {
+    if cfg!(target_os = "macos") { 2.0 } else { 1.0 }
+}
+
+fn window_width_for_canvas(frame: &Canvas) -> usize {
+    frame.logical_width()
+}
+
+fn window_height_for_canvas(frame: &Canvas) -> usize {
+    frame.logical_height()
 }
 
 fn run_window_pair(
@@ -185,6 +241,11 @@ fn run_window_pair(
 #[cfg(test)]
 mod tests {
     use super::StorybookVisual;
+    use super::{
+        parse_storybook_scale_factor, should_present_physical_frame_directly,
+        window_height_for_canvas, window_width_for_canvas,
+    };
+    use crate::visual::canvas::Canvas;
 
     #[test]
     fn runtime_report_requires_state_overlay_and_modal_plan() {
@@ -194,5 +255,40 @@ mod tests {
         assert!(report.overlay_rendered);
         assert!(report.modal_plan_same_display);
         assert!(report.modal_plan_frontmost);
+    }
+
+    #[test]
+    fn main_window_is_created_with_logical_canvas_size() {
+        let canvas = Canvas::new_scaled(1440, 920, 2.0, 0x111111);
+        assert_eq!(1440, window_width_for_canvas(&canvas));
+        assert_eq!(920, window_height_for_canvas(&canvas));
+    }
+
+    #[test]
+    fn parse_storybook_scale_factor_is_strict_for_supported_values() {
+        assert_eq!(Some(1.0), parse_storybook_scale_factor("1"));
+        assert_eq!(Some(2.0), parse_storybook_scale_factor("2"));
+        assert_eq!(None, parse_storybook_scale_factor("0"));
+        assert_eq!(None, parse_storybook_scale_factor("3"));
+        assert_eq!(None, parse_storybook_scale_factor("invalid"));
+    }
+
+    #[test]
+    fn should_present_physical_frame_directly_when_scale_2_and_window_matches_logical_size() {
+        let frame = Canvas::new_scaled(1440, 920, 2.0, 0x111111);
+        assert!(should_present_physical_frame_directly(&frame, (1440, 920)));
+    }
+
+    #[test]
+    fn should_not_present_physical_frame_directly_when_scale_2_and_window_differs_from_logical_size()
+     {
+        let frame = Canvas::new_scaled(1440, 920, 2.0, 0x111111);
+        assert!(!should_present_physical_frame_directly(&frame, (1440, 800)));
+    }
+
+    #[test]
+    fn should_not_present_physical_frame_directly_when_scale_is_1_even_if_sizes_match() {
+        let frame = Canvas::new_scaled(1440, 920, 1.0, 0x111111);
+        assert!(!should_present_physical_frame_directly(&frame, (1440, 920)));
     }
 }

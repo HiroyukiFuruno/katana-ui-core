@@ -177,6 +177,103 @@ fn text_renderer_uses_antialiased_edges_for_common_draw_paths() {
 }
 
 #[test]
+fn text_on_hidpi_canvas_has_more_anti_aliased_pixels_than_nearest_scaled_1x_canvas() {
+    const HI_DPI_BACKGROUND: u32 = 0x000000;
+    const HI_DPI_TEXT: u32 = 0xffffff;
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+    let mut logical = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, HI_DPI_BACKGROUND);
+    let mut scaled = Canvas::new_scaled(CANVAS_WIDTH, CANVAS_HEIGHT, 2.0, HI_DPI_BACKGROUND);
+
+    renderer.draw(
+        &mut logical,
+        "retina",
+        TEXT_X,
+        TEXT_Y,
+        WIDGET_LABEL_TEXT_SIZE,
+        HI_DPI_TEXT,
+    );
+    renderer.draw(
+        &mut scaled,
+        "retina",
+        TEXT_X,
+        TEXT_Y,
+        WIDGET_LABEL_TEXT_SIZE,
+        HI_DPI_TEXT,
+    );
+
+    let scaled_from_logical = scale_nearest(&logical, 2);
+    let antialias_hidpi = antialias_pixel_count_for_colors(&scaled, HI_DPI_BACKGROUND, HI_DPI_TEXT);
+    let antialias_nearest =
+        antialias_pixel_count_for_colors(&scaled_from_logical, HI_DPI_BACKGROUND, HI_DPI_TEXT);
+    let avg_alpha_hidpi =
+        average_alpha_for_antialias_pixels(&scaled, HI_DPI_BACKGROUND, HI_DPI_TEXT);
+    let avg_alpha_nearest =
+        average_alpha_for_antialias_pixels(&scaled_from_logical, HI_DPI_BACKGROUND, HI_DPI_TEXT);
+    let differing_pixels = scaled
+        .pixels()
+        .iter()
+        .zip(scaled_from_logical.pixels())
+        .filter(|(lhs, rhs)| lhs != rhs)
+        .count();
+
+    assert_eq!(false, scaled.pixels() == scaled_from_logical.pixels());
+    assert!(
+        antialias_hidpi > 0 && antialias_nearest > 0,
+        "both render paths should produce anti-aliased pixels"
+    );
+    assert!(
+        antialias_intensity_levels_count(&scaled, HI_DPI_BACKGROUND, HI_DPI_TEXT)
+            > antialias_intensity_levels_count(
+                &scaled_from_logical,
+                HI_DPI_BACKGROUND,
+                HI_DPI_TEXT
+            ),
+        "hidpi rendering should expose a finer anti-aliased intensity spread than nearest scaling"
+    );
+    assert_ne!(
+        avg_alpha_hidpi, avg_alpha_nearest,
+        "hidpi and nearest-scaled rendering should differ in antialias intensity"
+    );
+    assert!(
+        differing_pixels > 0,
+        "hidpi rendering should produce different raster than nearest-scaling 1x"
+    );
+}
+
+#[test]
+fn text_raster_cache_keeps_scale_separated_entries_for_hidpi_and_standard_layout() {
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+    let mut logical = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
+    let mut scaled = Canvas::new_scaled(CANVAS_WIDTH, CANVAS_HEIGHT, 2.0, BACKGROUND);
+
+    renderer.draw(
+        &mut logical,
+        "cache check",
+        TEXT_X,
+        TEXT_Y,
+        WIDGET_LABEL_TEXT_SIZE,
+        TEXT,
+    );
+    renderer.draw(
+        &mut scaled,
+        "cache check",
+        TEXT_X,
+        TEXT_Y,
+        WIDGET_LABEL_TEXT_SIZE,
+        TEXT,
+    );
+
+    assert_eq!(
+        2,
+        renderer.cache_stats().entries,
+        "scale factor should split raster cache entries"
+    );
+    assert_eq!(2, renderer.cache_stats().raster_misses);
+}
+
+#[test]
 fn text_renderer_reuses_raster_cache_for_repeated_draws() {
     let facade = UiCoreFacade::default();
     let renderer = TextRenderer::load(&facade, "body");
@@ -250,12 +347,69 @@ fn antialias_pixels_for_centered_draw(renderer: &TextRenderer, sample: &str, siz
     antialias_pixel_count(&canvas)
 }
 
+fn antialias_pixel_count_for_colors(canvas: &Canvas, background: u32, text: u32) -> usize {
+    canvas
+        .pixels()
+        .iter()
+        .filter(|&&pixel| pixel != background && pixel != text)
+        .count()
+}
+
+fn average_alpha_for_antialias_pixels(canvas: &Canvas, background: u32, text: u32) -> f32 {
+    let mut alpha_sum = 0u32;
+    let mut count = 0u32;
+    for &pixel in canvas.pixels() {
+        if pixel == background || pixel == text {
+            continue;
+        }
+        let red = (pixel >> 16) & 0xff;
+        let green = (pixel >> 8) & 0xff;
+        let blue = pixel & 0xff;
+        alpha_sum += (red + green + blue) / 3;
+        count += 1;
+    }
+    if count == 0 {
+        return 0.0;
+    }
+    alpha_sum as f32 / count as f32
+}
+
+fn antialias_intensity_levels_count(canvas: &Canvas, background: u32, text: u32) -> usize {
+    let mut levels = std::collections::HashSet::<u32>::new();
+    for &pixel in canvas.pixels() {
+        if pixel == background || pixel == text {
+            continue;
+        }
+        let red = (pixel >> 16) & 0xff;
+        let green = (pixel >> 8) & 0xff;
+        let blue = pixel & 0xff;
+        let intensity = (red + green + blue) / 3;
+        levels.insert(intensity);
+    }
+    levels.len()
+}
+
 fn antialias_pixel_count(canvas: &Canvas) -> usize {
     canvas
         .pixels()
         .iter()
         .filter(|&&pixel| pixel != BACKGROUND && pixel != TEXT)
         .count()
+}
+
+fn scale_nearest(canvas: &Canvas, scale: usize) -> Canvas {
+    let mut output = Canvas::new(canvas.width() * scale, canvas.height() * scale, BACKGROUND);
+    for y in 0..canvas.height() {
+        for x in 0..canvas.width() {
+            let color = canvas.pixels()[y * canvas.width() + x];
+            for offset_y in 0..scale {
+                for offset_x in 0..scale {
+                    output.set(x * scale + offset_x, y * scale + offset_y, color);
+                }
+            }
+        }
+    }
+    output
 }
 
 struct VerticalBounds {

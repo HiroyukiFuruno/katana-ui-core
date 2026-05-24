@@ -5,7 +5,7 @@ const EDGE_SAMPLE_TOTAL: usize = EDGE_SAMPLE_COUNT * EDGE_SAMPLE_COUNT;
 const OPAQUE_ALPHA: u8 = 255;
 const SAMPLE_CENTER_OFFSET: f32 = 0.5;
 
-pub(super) fn fill(
+pub(super) fn fill_physical(
     canvas: &mut Canvas,
     x: usize,
     y: usize,
@@ -24,7 +24,7 @@ pub(super) fn fill(
             if alpha == 0 {
                 continue;
             }
-            canvas.blend(current_x, current_y, color, alpha);
+            canvas.blend_physical(current_x, current_y, color, alpha);
         }
     }
 }
@@ -147,6 +147,17 @@ mod tests {
         assert!(round_rect_color_count(&canvas) >= MIN_SMOOTH_COLOR_COUNT);
     }
 
+    #[test]
+    fn fill_round_rect_scales_logical_rect_to_physical_canvas() {
+        let mut canvas = Canvas::new_scaled(12, 12, 2.0, BACKGROUND);
+
+        canvas.fill_round_rect(2, 3, 3, 2, 1, SURFACE);
+
+        assert_eq!(Some(BACKGROUND), pixel_at(&canvas, 3, 6));
+        assert_eq!(Some(SURFACE), pixel_at(&canvas, 7, 7));
+        assert_eq!(Some(BACKGROUND), pixel_at(&canvas, 10, 7));
+    }
+
     fn round_rect_color_count(canvas: &Canvas) -> usize {
         let mut colors = HashSet::new();
         for y in RECT_Y..RECT_Y + RECT_HEIGHT {
@@ -155,5 +166,9 @@ mod tests {
             }
         }
         colors.len()
+    }
+
+    fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {
+        canvas.pixels().get(y * canvas.width() + x).copied()
     }
 }

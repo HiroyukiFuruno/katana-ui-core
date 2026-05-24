@@ -14,15 +14,90 @@ pub(super) fn present_frame(source: &Canvas, width: usize, height: usize, fill: 
     if source.width() == width && source.height() == height {
         return source.clone();
     }
+    if source.width() == 0 || source.height() == 0 {
+        return Canvas::new(width, height, fill);
+    }
     let rect = PresentationRect::fit(source.width(), source.height(), width, height);
+    if rect.x == 0 && rect.y == 0 && rect.width == width && rect.height == height {
+        if exact_integer_scale(source.width(), source.height(), width, height).is_some() {
+            return scale_nearest(source, width, height);
+        }
+    }
     let mut target = Canvas::new(width, height, fill);
     for y in rect.y..rect.bottom().min(height) {
         for x in rect.x..rect.right().min(width) {
             let sample = SourceSample::from_target(x, y, source, rect);
-            target.set(x, y, sample_bilinear(source, sample));
+            target.set_physical(x, y, sample_bilinear(source, sample));
         }
     }
     target
+}
+
+fn exact_integer_scale(
+    source_width: usize,
+    source_height: usize,
+    target_width: usize,
+    target_height: usize,
+) -> Option<usize> {
+    if source_width == 0 || source_height == 0 || target_width == 0 || target_height == 0 {
+        return None;
+    }
+    let width_scale = if source_width >= target_width {
+        (source_width % target_width == 0).then_some(source_width / target_width)?
+    } else {
+        (target_width % source_width == 0).then_some(target_width / source_width)?
+    };
+    let height_scale = if source_height >= target_height {
+        (source_height % target_height == 0).then_some(source_height / target_height)?
+    } else {
+        (target_height % source_height == 0).then_some(target_height / source_height)?
+    };
+    (width_scale == height_scale).then_some(width_scale)
+}
+
+fn scale_nearest(source: &Canvas, width: usize, height: usize) -> Canvas {
+    if source.width() == width && source.height() == height {
+        return source.clone();
+    }
+    let mut target = Canvas::new(width, height, source.pixels()[0]);
+    if width >= source.width() {
+        let scale_x = width / source.width();
+        let scale_y = height / source.height();
+        for y in 0..source.height() {
+            for x in 0..source.width() {
+                let color = source.pixels()[y * source.width() + x];
+                for offset_y in 0..scale_y {
+                    let target_y = y * scale_y + offset_y;
+                    let row_start = target_y * target.width() + x * scale_x;
+                    target
+                        .pixels_mut()
+                        .iter_mut()
+                        .skip(row_start)
+                        .take(scale_x)
+                        .for_each(|it| *it = color);
+                }
+            }
+        }
+    } else {
+        let scale_x = source.width() / width;
+        let scale_y = source.height() / height;
+        for target_y in 0..height {
+            let source_y = target_y * scale_y;
+            let source_row = source_y * source.width();
+            let target_row = target_y * target.width();
+            for target_x in 0..width {
+                let source_x = target_x * scale_x;
+                target.pixels_mut()[target_row + target_x] = source.pixels()[source_row + source_x];
+            }
+        }
+    }
+    target
+}
+
+impl Canvas {
+    fn pixels_mut(&mut self) -> &mut [u32] {
+        self.pixels.as_mut_slice()
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -142,13 +217,31 @@ mod tests {
     }
 
     #[test]
-    fn presented_frame_uses_interpolation_instead_of_nearest_neighbor() {
+    fn presented_frame_uses_interpolation_when_scale_is_fractional() {
+        let mut source = Canvas::new(2, 1, BLACK);
+        source.set(1, 0, WHITE);
+
+        let presented = present_frame(&source, 5, 2, BACKGROUND);
+        let interpolation_x = 1;
+        let second_interpolation_x = 2;
+        let interpolated_y = 1;
+        let dark_index = presented.width() * interpolated_y + interpolation_x;
+        let light_index = presented.width() * interpolated_y + second_interpolation_x;
+
+        assert_eq!(DARK_MID, presented.pixels()[dark_index]);
+        assert_eq!(LIGHT_MID, presented.pixels()[light_index]);
+    }
+
+    #[test]
+    fn presented_frame_uses_nearest_neighbor_when_integer_scale_matches() {
         let mut source = Canvas::new(2, 1, BLACK);
         source.set(1, 0, WHITE);
 
         let presented = present_frame(&source, 4, 2, BACKGROUND);
 
-        assert_eq!(DARK_MID, presented.pixels()[presented.width() + 1]);
-        assert_eq!(LIGHT_MID, presented.pixels()[presented.width() + 2]);
+        assert_eq!(BLACK, presented.pixels()[0]);
+        assert_eq!(BLACK, presented.pixels()[1]);
+        assert_eq!(WHITE, presented.pixels()[2]);
+        assert_eq!(WHITE, presented.pixels()[3]);
     }
 }

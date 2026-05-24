@@ -91,6 +91,8 @@ mod tests {
 
     const RETINA_WINDOW_WIDTH: usize = 2879;
     const RETINA_WINDOW_HEIGHT: usize = 1728;
+    const WINDOW_2X_WIDTH: usize = 2880;
+    const WINDOW_2X_HEIGHT: usize = 1840;
     const CANVAS_WIDTH: usize = 1440;
     const CANVAS_HEIGHT: usize = 920;
 
@@ -139,6 +141,23 @@ mod tests {
         assert_eq!(
             Some(sample),
             window_point_to_canvas_point(point, window, canvas),
+        );
+    }
+
+    #[test]
+    fn integer_scale_mapping_keeps_logical_canvas_point() {
+        let canvas = SurfaceSize::new(CANVAS_WIDTH, CANVAS_HEIGHT);
+        let window = SurfaceSize::new(WINDOW_2X_WIDTH, WINDOW_2X_HEIGHT);
+        let rect = rendered_canvas_rect(window, canvas);
+        let canvas_point = CanvasPoint { x: 310, y: 104 };
+        let window_point = WindowPoint::new(
+            rect.x + (canvas_point.x as f32) * rect.width / canvas.width as f32 + 0.5,
+            rect.y + (canvas_point.y as f32) * rect.height / canvas.height as f32 + 0.5,
+        );
+
+        assert_eq!(
+            Some(canvas_point),
+            window_point_to_canvas_point(window_point, window, canvas),
         );
     }
 

@@ -9,7 +9,6 @@ use std::cell::RefCell;
 const TEXT_BUFFER_WIDTH: f32 = 4096.0;
 const LINE_HEIGHT_RATIO: f32 = 1.45;
 const TEXT_SUPERSAMPLE_SCALE: f32 = 2.0;
-const TEXT_SUPERSAMPLE_SCALE_I32: i32 = 2;
 const TEXT_SUPERSAMPLE_SAMPLES: u32 = 4;
 const REGULAR_WEIGHT: u16 = 400;
 const FALLBACK_FONT_SIZE: f32 = 14.0;
@@ -54,6 +53,7 @@ impl TextRenderer {
             x,
             y,
             TextStyle::new(size, size * LINE_HEIGHT_RATIO, color),
+            canvas.scale_factor(),
         );
     }
 
@@ -72,6 +72,7 @@ impl TextRenderer {
             x,
             vertical_box.y,
             TextStyle::new(size, vertical_box.height, color),
+            canvas.scale_factor(),
         );
     }
 
@@ -87,7 +88,20 @@ impl TextRenderer {
         self.raster_cache.borrow().stats()
     }
 
-    fn draw_layout(&self, canvas: &mut Canvas, text: &str, x: usize, y: usize, style: TextStyle) {
+    fn draw_layout(
+        &self,
+        canvas: &mut Canvas,
+        text: &str,
+        x: usize,
+        y: usize,
+        style: TextStyle,
+        scale_factor: f32,
+    ) {
+        let normalized_scale_factor = if scale_factor.is_finite() && scale_factor >= 1.0 {
+            scale_factor
+        } else {
+            1.0
+        };
         let mut raster_cache = self.raster_cache.borrow_mut();
         let raster_index = raster_cache.index_or_insert(
             text,
@@ -95,10 +109,13 @@ impl TextRenderer {
             &self.font,
             &mut self.font_system.borrow_mut(),
             &mut self.swash_cache.borrow_mut(),
+            normalized_scale_factor,
         );
+        let origin_x = (x as f64 * f64::from(normalized_scale_factor)).round() as usize;
+        let origin_y = (y as f64 * f64::from(normalized_scale_factor)).round() as usize;
         raster_cache.entries[raster_index]
             .raster
-            .draw(canvas, x, y, style.color);
+            .draw(canvas, origin_x, origin_y, style.color);
     }
 }
 
@@ -152,20 +169,22 @@ impl TextRasterCache {
         font: &FontToken,
         font_system: &mut FontSystem,
         swash_cache: &mut SwashCache,
+        scale_factor: f32,
     ) -> usize {
         if let Some(index) = self
             .entries
             .iter()
-            .position(|entry| entry.matches(text, style, font))
+            .position(|entry| entry.matches(text, style, font, scale_factor))
         {
             return index;
         }
         self.raster_misses += 1;
-        let raster = rasterize_text(text, style, font, font_system, swash_cache);
+        let raster = rasterize_text(text, style, font, font_system, swash_cache, scale_factor);
         self.entries.push(TextRasterCacheEntry {
             text: text.to_string(),
             size_bits: style.size.to_bits(),
             line_height_bits: style.line_height.to_bits(),
+            scale_bits: scale_factor.to_bits(),
             family: font.family,
             weight: font.weight,
             raster,
@@ -186,16 +205,18 @@ struct TextRasterCacheEntry {
     text: String,
     size_bits: u32,
     line_height_bits: u32,
+    scale_bits: u32,
     family: FontFamily,
     weight: u16,
     raster: CachedTextRaster,
 }
 
 impl TextRasterCacheEntry {
-    fn matches(&self, text: &str, style: TextStyle, font: &FontToken) -> bool {
+    fn matches(&self, text: &str, style: TextStyle, font: &FontToken, scale_factor: f32) -> bool {
         self.text == text
             && self.size_bits == style.size.to_bits()
             && self.line_height_bits == style.line_height.to_bits()
+            && self.scale_bits == scale_factor.to_bits()
             && self.family == font.family
             && self.weight == font.weight
     }
@@ -215,7 +236,7 @@ impl CachedTextRaster {
             if x < 0 || y < 0 {
                 continue;
             }
-            canvas.blend(x as usize, y as usize, color, pixel.alpha);
+            canvas.blend_physical(x as usize, y as usize, color, pixel.alpha);
         }
     }
 }
@@ -239,16 +260,23 @@ fn rasterize_text(
     font: &FontToken,
     font_system: &mut FontSystem,
     swash_cache: &mut SwashCache,
+    scale_factor: f32,
 ) -> CachedTextRaster {
+    let scale_factor = if scale_factor.is_finite() && scale_factor >= 1.0 {
+        scale_factor
+    } else {
+        1.0
+    };
+    let supersample_scale = TEXT_SUPERSAMPLE_SCALE * scale_factor;
     let metrics = Metrics::new(
-        style.size * TEXT_SUPERSAMPLE_SCALE,
-        style.line_height * TEXT_SUPERSAMPLE_SCALE,
+        style.size * supersample_scale,
+        style.line_height * supersample_scale,
     );
     let mut buffer = Buffer::new(font_system, metrics);
     let mut buffer = buffer.borrow_with(font_system);
     buffer.set_wrap(Wrap::None);
     buffer.set_size(
-        Some(TEXT_BUFFER_WIDTH * TEXT_SUPERSAMPLE_SCALE),
+        Some(TEXT_BUFFER_WIDTH * supersample_scale),
         Some(metrics.line_height),
     );
     buffer.set_text(text, &attrs_for_text(font, text), Shaping::Advanced, None);
@@ -263,8 +291,8 @@ fn rasterize_text(
                 return;
             }
             samples.push(SuperSample {
-                x: left.div_euclid(TEXT_SUPERSAMPLE_SCALE_I32),
-                y: top.div_euclid(TEXT_SUPERSAMPLE_SCALE_I32),
+                x: (left as f32 / TEXT_SUPERSAMPLE_SCALE).floor() as i32,
+                y: (top as f32 / TEXT_SUPERSAMPLE_SCALE).floor() as i32,
                 alpha: color.a(),
             });
         },
@@ -283,17 +311,15 @@ fn rasterize_text(
             alpha_sum += u32::from(samples[index].alpha);
             index += 1;
         }
-        let alpha = (alpha_sum / TEXT_SUPERSAMPLE_SAMPLES)
-            .min(u32::from(OPAQUE_ALPHA))
-            .try_into()
-            .unwrap_or(OPAQUE_ALPHA);
+        let sample_area = TEXT_SUPERSAMPLE_SAMPLES as f32;
+        let alpha = ((alpha_sum as f32 / sample_area).round() as u32).min(u32::from(OPAQUE_ALPHA));
         if alpha == 0 {
             continue;
         }
         pixels.push(CachedTextPixel {
             x: current.x,
             y: current.y,
-            alpha,
+            alpha: alpha as u8,
         });
     }
 

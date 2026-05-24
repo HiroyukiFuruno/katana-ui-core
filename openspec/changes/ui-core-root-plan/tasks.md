@@ -201,3 +201,4 @@
 - [/] 9.10 ユーザーFB: KUC は JSX / TSX 互換ではなく、純 Rust の部品（component）合成 API として React に近い使い心地を目指す。
 - [/] 9.11 ユーザーFB: 見た目設定（style）は CSS のように後付けで差し替え可能にし、component 構造と内部 state から分離する。
 - [/] 9.12 ユーザーFB: 9.10 / 9.11 を満たせない場合、KUC 独自実装ではなく GPUI など既存 UI framework base へ戻す Go / No-Go 条件を design に明記する。
+- [/] 9.13 ユーザーFB: Retina / HiDPI 対応を利用側に意識させず、Canvas/Text/Window/Presentation の基盤契約として固定し、対応内容を自動テスト・`-D warnings` ビルド・`storybook` release 起動で確認済み。
