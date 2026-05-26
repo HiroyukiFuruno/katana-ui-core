@@ -181,9 +181,10 @@ class KucGuardrails:
     def repo_local_guardrail_policy_failures(self) -> list[str]:
         required_files = (
             self.root / "docs/architecture/ui-separation/owned-ui-task-map.md",
-            self.root / "openspec/changes/ui-core-interaction-visual-parity/tasks.md",
             self.root
-            / "openspec/changes/ui-core-interaction-visual-parity/specs/ui-core-interaction-visual-parity/spec.md",
+            / "openspec/changes/establish-kuc-atoms-molecules-catalog/quality-gates-contract.md",
+            self.root
+            / "openspec/changes/establish-kuc-atoms-molecules-catalog/specs/kuc-quality-gates/spec.md",
             self.root / "tmp/reports/2026-05-17-overnight-residual-scope.md",
         )
         missing_files = [path for path in required_files if not path.exists()]
@@ -198,8 +199,8 @@ class KucGuardrails:
             "KUC repo",
             "`scripts/`",
             "`kal` 側",
-            "no `kal` repository changes are required",
-            "KUC-specific UI ownership and Storybook rules MUST be implemented inside this repository",
+            "KUC-specific guards MUST live in this repository",
+            "Storybook is an interactive feedback surface",
         )
         failures = [
             f"KUC repo-local guardrail policy missing token: {token}"

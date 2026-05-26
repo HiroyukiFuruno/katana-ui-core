@@ -49,6 +49,7 @@ ast-lint-install:
 
 # Run shared KatanA Rust syntax checks
 ast-lint:
+    python3 scripts/assert-storybook-ui-harness.py
     kal check
     python3 scripts/assert-kuc-state-ownership.py
     python3 scripts/assert-storybook-page-layout.py
@@ -57,6 +58,7 @@ ast-lint:
 kuc-guardrails:
     python3 scripts/test_kuc_guardrails.py
     python3 scripts/test_storybook_reflection_audit.py
+    python3 scripts/test_storybook_ui_harness.py
     python3 scripts/assert-kuc-release-readiness.py --self-test
     python3 scripts/assert-kuc-release-readiness.py
     python3 scripts/assert-storybook-consumer-contract.py --self-test

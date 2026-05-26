@@ -14,20 +14,20 @@ def write_text(path: Path, source: str) -> None:
 def write_repo_policy(root: Path, spec_extra: str = "") -> None:
     baseline = "KUC repo `scripts/` `kal` 側\n"
     spec = (
-        "KUC-specific UI ownership and Storybook rules MUST be implemented inside this repository\n"
-        "no `kal` repository changes are required\n"
+        "KUC-specific guards MUST live in this repository\n"
+        "Storybook is an interactive feedback surface\n"
         f"{spec_extra}"
     )
     paths = (
         "docs/architecture/ui-separation/owned-ui-task-map.md",
-        "openspec/changes/ui-core-interaction-visual-parity/tasks.md",
+        "openspec/changes/establish-kuc-atoms-molecules-catalog/quality-gates-contract.md",
         "tmp/reports/2026-05-17-overnight-residual-scope.md",
     )
     for path in paths:
         write_text(root / path, baseline)
     write_text(
         root
-        / "openspec/changes/ui-core-interaction-visual-parity/specs/ui-core-interaction-visual-parity/spec.md",
+        / "openspec/changes/establish-kuc-atoms-molecules-catalog/specs/kuc-quality-gates/spec.md",
         spec,
     )
 

@@ -43,7 +43,7 @@ GATE_FILES = (
     ROOT / "scripts/assert-storybook-page-layout.py",
 )
 
-INCOMPLETE_TASK = re.compile(r"^- \[(?: |/)\] .+", re.MULTILINE)
+INCOMPLETE_TASK = re.compile(r"^- \[ \] .+", re.MULTILINE)
 RELEASE_TRACK_CHANGE = re.compile(r"^\d{2}-add-.+")
 NO_IMAGE_POLICY_TERMS = (
     "画像回帰",
@@ -466,6 +466,9 @@ def self_test() -> int:
         active_task = active_root / "openspec/changes/01-add-context-menu/tasks.md"
         active_task.parent.mkdir(parents=True)
         active_task.write_text("- [ ] 1. 未完了 task\n", encoding="utf-8")
+        feedback_task = active_root / "openspec/changes/02-add-drag-drop-primitive/tasks.md"
+        feedback_task.parent.mkdir(parents=True)
+        feedback_task.write_text("- [/] 1. 対応完了 feedback\n", encoding="utf-8")
         archived_task = active_root / "openspec/changes/archive/01-old/tasks.md"
         archived_task.parent.mkdir(parents=True)
         archived_task.write_text("- [ ] 1. archive task\n", encoding="utf-8")
@@ -503,7 +506,11 @@ def self_test() -> int:
     image_gate_rejected_passed = not any(term in image_gate_rejected for term in FORBIDDEN_IMAGE_GATE_TERMS)
     legacy_trace_good_failed = bool(legacy_trace_good)
     legacy_trace_bad_passed = not any("02" in line for line in legacy_trace_bad)
-    active_task_bad_passed = len(active_task_bad) != 1 or "archive" in active_task_bad[0]
+    active_task_bad_passed = (
+        len(active_task_bad) != 1
+        or "archive" in active_task_bad[0]
+        or "02-add-drag-drop-primitive" in active_task_bad[0]
+    )
     active_task_missing_passed = not any("tasks.md is missing" in line for line in active_task_missing)
     if (
         allowed_failed

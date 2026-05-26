@@ -96,7 +96,10 @@ REQUIRED_PAGES_BLOCK_PATTERN = re.compile(
     r"const\s+REQUIRED_PAGES:\s*&\[\s*&str\s*\]\s*=\s*&\[(?P<body>.*?)\];",
     flags=re.DOTALL,
 )
-REQUIRED_COUNT_PATTERN = re.compile(r"required\s+(?P<count>\d+)\s+pages", flags=re.IGNORECASE)
+REQUIRED_COUNT_PATTERN = re.compile(
+    r"(?:required\s+(?P<required_count>\d+)\s+pages|存在する\s+(?P<menu_count>\d+)\s+page)",
+    flags=re.IGNORECASE,
+)
 SUMMARY_COUNT_PATTERN = re.compile(
     r"-\s*(?P<status>ready|partial|not-ready):\s*(?P<count>\d+)\s*$",
     flags=re.IGNORECASE | re.MULTILINE,
@@ -198,11 +201,101 @@ def parse_readiness_rows(source: str) -> list[tuple[str, str, str, str]]:
     return rows
 
 
+def parse_leaf_change_rows(source: str) -> list[tuple[str, str, str, str, str, str]]:
+    rows: list[tuple[str, str, str, str, str, str]] = []
+    for line in source.splitlines():
+        if not line.startswith("|"):
+            continue
+        parts = [part.strip() for part in line.strip().strip("|").split("|")]
+        if len(parts) != 6:
+            continue
+        group, page, leaf_change, input_source, page_rendering, remaining = parts
+        if group in {"group", "---"}:
+            continue
+        rows.append(
+            (
+                group,
+                page.strip("`"),
+                leaf_change.strip("`"),
+                input_source,
+                page_rendering,
+                remaining,
+            )
+        )
+    return rows
+
+
 def parse_summary_counts(source: str) -> dict[str, int]:
     counts: dict[str, int] = {}
     for match in SUMMARY_COUNT_PATTERN.finditer(source):
         counts[match.group("status").lower()] = int(match.group("count"))
     return counts
+
+
+def documented_required_count(source: str) -> int | None:
+    match = REQUIRED_COUNT_PATTERN.search(source)
+    if match is None:
+        return None
+    raw_count = match.group("required_count") or match.group("menu_count")
+    return int(raw_count)
+
+
+def leaf_readiness_audit_source_failures(
+    source: str, required: tuple[str, ...]
+) -> list[str]:
+    failures: list[str] = []
+    documented_count = documented_required_count(source)
+    if documented_count is None:
+        failures.append(
+            f"{relative(READINESS_AUDIT_DOC)}: required page count line is missing"
+        )
+    elif documented_count != len(required):
+        failures.append(
+            f"{relative(READINESS_AUDIT_DOC)}: required count mismatch doc={documented_count} actual={len(required)}"
+        )
+
+    if "leaf change DoD 完了" not in source:
+        failures.append(
+            f"{relative(READINESS_AUDIT_DOC)}: leaf change DoD summary is missing"
+        )
+
+    rows = parse_leaf_change_rows(source)
+    if not rows:
+        return [f"{relative(READINESS_AUDIT_DOC)}: readiness table is missing"]
+
+    row_map: dict[str, tuple[str, str, str, str, str]] = {}
+    for group, page, leaf_change, input_source, page_rendering, remaining in rows:
+        if page in row_map:
+            failures.append(
+                f"{relative(READINESS_AUDIT_DOC)}: duplicate page entry `{page}`"
+            )
+            continue
+        row_map[page] = (group, leaf_change, input_source, page_rendering, remaining)
+        if not all((group, leaf_change, input_source, page_rendering, remaining)):
+            failures.append(
+                f"{relative(READINESS_AUDIT_DOC)}: `{page}` has an empty column"
+            )
+        expected_leaf = f"storybook-page-{page}"
+        if leaf_change != expected_leaf:
+            failures.append(
+                f"{relative(READINESS_AUDIT_DOC)}: `{page}` leaf change mismatch `{leaf_change}`"
+            )
+
+    missing_pages = [page for page in required if page not in row_map]
+    if missing_pages:
+        failures.append(
+            f"{relative(READINESS_AUDIT_DOC)}: missing page rows: {', '.join(missing_pages)}"
+        )
+    extra_pages = [page for page in row_map if page not in required]
+    if extra_pages:
+        failures.append(
+            f"{relative(READINESS_AUDIT_DOC)}: unknown page rows: {', '.join(extra_pages)}"
+        )
+    if len(rows) != len(required):
+        failures.append(
+            f"{relative(READINESS_AUDIT_DOC)}: table row count mismatch rows={len(rows)} required={len(required)}"
+        )
+    return failures
 
 
 def readiness_audit_source_failures(source: str, required: tuple[str, ...]) -> list[str]:
@@ -211,18 +304,17 @@ def readiness_audit_source_failures(source: str, required: tuple[str, ...]) -> l
         return [f"{relative(READINESS_AUDIT_DOC)}: missing audit title"]
     rows = parse_readiness_rows(source)
     if not rows:
-        return [f"{relative(READINESS_AUDIT_DOC)}: readiness table is missing"]
+        return leaf_readiness_audit_source_failures(source, required)
 
-    required_count_match = REQUIRED_COUNT_PATTERN.search(source)
-    if required_count_match is None:
+    documented_count = documented_required_count(source)
+    if documented_count is None:
         failures.append(
             f"{relative(READINESS_AUDIT_DOC)}: required page count line is missing"
         )
     else:
-        documented_required_count = int(required_count_match.group("count"))
-        if documented_required_count != len(required):
+        if documented_count != len(required):
             failures.append(
-                f"{relative(READINESS_AUDIT_DOC)}: required count mismatch doc={documented_required_count} actual={len(required)}"
+                f"{relative(READINESS_AUDIT_DOC)}: required count mismatch doc={documented_count} actual={len(required)}"
             )
 
     summary_counts = parse_summary_counts(source)
