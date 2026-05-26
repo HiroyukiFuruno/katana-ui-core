@@ -42,7 +42,21 @@
 - [x] 5.2 各項目について option / action / event / state / preset / preview / settings / test / visual を最小 1 ケース以上で再固定する。（`docs/legacy-01-24-consumer-recheck.md` と `crates/katana-ui-core-storybook/tests/legacy_01_24_catalog_contract.rs`）
 - [x] 5.3 Storybook の見た目説明ではなく、public API と自動テスト契約に追跡できる形で再記録する。（`docs/legacy-01-24-consumer-recheck.md` と `scripts/assert-storybook-consumer-contract.py`）
 
+## 6. Storybook UI Harness 棚卸し（2026-05-25）
+
+- [x] 6.1 `storybook-ui-harness` skill の必須構成に照らし、実装側の `requirements.rs`、`catalog/story_paths_*.rs`、`visual/dedicated.rs`、`visual/storybook_ui_option_contract.rs`、`catalog/preset_labels.rs`、`visual/legacy_01_24_contract*.rs` を解析した。
+- [x] 6.2 `requirements.rs` の required 77 pages と Storybook menu 77 pages は一致しており、現時点で「menu にはあるが required にはない」page はない。
+- [x] 6.3 01〜24 の unique page 26 件はすべて `visual/dedicated.rs::draw_page` の page 別描画へ到達している。`scripts/assert-storybook-ui-harness.py` と `cargo test -p katana-ui-core-storybook --locked legacy_01_24` は通過済み。
+- [x] 6.4 旧 01〜24 ではなく Storybook menu 77 pages を change 分割の正本にする。leaf change 名は `storybook-page-<menu-page>` とし、対応表を `storybook-menu-change-split.md` に固定した。
+- [x] 6.5 既存の `NN-add-*` / archive / parity backlog / interaction parity change は、menu page leaf change の入力元または umbrella として扱い、完了判定単位から外す。
+- [x] 6.6 追加対象を 51 pages ではなく、Storybook menu 77 pages 全体へ拡張する。既に page 別描画がある 38 pages も、leaf change の `option / action / event / state / preset / preview / settings / test / visual` 契約へ接続するまで完了扱いにしない。
+- [x] 6.7 優先順位番号は change 名に入れず、`storybook-menu-priority-order.md` で `SB-001`〜`SB-077` として管理する。順序組み換えはこの表だけを更新する。
+- [/] 6.8 `scripts/assert-storybook-ui-harness.py` を、required page だけでなく `storybook-menu-change-split.md` の 77 leaf change と `storybook-menu-priority-order.md` の priority も入力にして、menu / required / option contract / preset labels / `draw_page` page 別分岐 / `window_interaction` 操作テストの接続漏れを検出できる guard へ拡張する。（leaf change / priority と menu / required の接続検査は実装済み。`window_interaction` 操作テストの page 別接続検査は未完了）
+- [x] 6.9 `docs/storybook-consumer-readiness-audit.md` を 2026-05-25 の skill audit 基準で再生成し、generic renderer 経由の page と 77 leaf change の残作業をこの tasks / `storybook-menu-change-split.md` と一致させる。
+- [x] 6.10 ユーザーが `次をすすめて`、`continue`、`次` と依頼したときに full の OpenSpec change ディレクトリ名を要求しないよう、`scripts/next-storybook-page-change.py --json` と `storybook-ui-harness` skill に次 leaf change 解決手順を固定する。
+
 ## User Review Phase（未対応フィードバック）
 
 - [x] 2026-05-23 ユーザー指摘: consumer harness 条件が実作業に反映されず、見た目修正や `just check` 通過へ戻る再発を止める。（`scripts/assert-storybook-consumer-contract.py` に legacy recheck doc guard を追加）
 - [x] 2026-05-23 ユーザー指摘: checkbox / radio / SelectBox(pulldown) など基礎部品が未成立のため、P0 再着手で優先復旧する。（P0 は checkpoint 済みのまま `docs/storybook-consumer-readiness-audit.md` の ready 維持、legacy 追跡表へ接続）
+- [/] 2026-05-25 ユーザー指摘: 01〜24 を `storybook-ui-harness` skill に照らして残作業を更新し、01〜24 外でも Storybook menu に存在する UI を追加対象にする。（6.1〜6.10 に棚卸し結果と次作業解決手順を固定。`window_interaction` の page 別 guard 拡張は未完了）

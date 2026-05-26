@@ -79,8 +79,8 @@ theme、font、text、input、event、state、layout は全部品に影響する
 
 ### 6. 古い change は削除より先に移管する
 
-`katana-widget-parity-backlog` と `ui-core-interaction-visual-parity` は、要件をこの change に移したうえで superseded と明記する。
-`18-accordion`、`23-color-picker-complete-parity`、`24-code-diff` は、個別要件を移したうえで archive 候補にする。
+`archive/2026-05-25-katana-widget-parity-backlog` と `archive/2026-05-25-ui-core-interaction-visual-parity` は、要件をこの change に移した superseded 履歴として扱う。
+`archive/2026-05-25-18-accordion`、`archive/2026-05-25-23-color-picker-complete-parity`、`archive/2026-05-25-24-code-diff` は、個別要件を移した履歴入力元として扱う。
 archive 済み 01〜17、19〜22 は履歴として残し、復帰しない。
 
 ## Risks / Trade-offs

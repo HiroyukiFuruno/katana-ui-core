@@ -23,11 +23,11 @@
 - `docs/widget-extraction-policy.md`
 - `openspec/changes/README.md`
 - `openspec/changes/establish-kuc-atoms-molecules-catalog/**`
-- `openspec/changes/katana-widget-parity-backlog/{proposal.md,tasks.md}`
-- `openspec/changes/ui-core-interaction-visual-parity/**`
-- `openspec/changes/18-accordion/proposal.md`
-- `openspec/changes/23-color-picker-complete-parity/proposal.md`
-- `openspec/changes/24-code-diff/proposal.md`
+- `openspec/changes/archive/2026-05-25-katana-widget-parity-backlog/{proposal.md,tasks.md}`
+- `openspec/changes/archive/2026-05-25-ui-core-interaction-visual-parity/**`
+- `openspec/changes/archive/2026-05-25-18-accordion/proposal.md`
+- `openspec/changes/archive/2026-05-25-23-color-picker-complete-parity/proposal.md`
+- `openspec/changes/archive/2026-05-25-24-code-diff/proposal.md`
 - `openspec/changes/ui-core-root-plan/{design.md,tasks.md}`
 
 ### B. root plan / dependency docs の既存更新

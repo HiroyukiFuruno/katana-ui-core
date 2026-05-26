@@ -10,13 +10,32 @@ root 計画の根拠は `openspec/changes/ui-core-root-plan/` と `docs/architec
 | order | change | 役割 | 着手条件 |
 | --- | --- | --- | --- |
 | root | `ui-core-root-plan` | KUC をフレームワーク非依存（framework-neutral）UI Core として再定義し、runtime / window / surface / adapter 境界を固定する親 change | この change を先に読む |
-| implementation | `establish-kuc-atoms-molecules-catalog` | 01〜24 を KUC の atoms / molecules と Storybook へ移管し、自動品質ゲートを正本化する change | `ui-core-root-plan` の境界を確認後に読む |
+| implementation | `establish-kuc-atoms-molecules-catalog` | Storybook menu 77 page を KUC の atoms / molecules と Storybook harness へ移管し、自動品質ゲートを正本化する親 change | `ui-core-root-plan` の境界を確認後に読む |
 
-## sibling parity 拡張 — `NN-add-*` 系列
+## 現行 Storybook 実装キュー
+
+現行の実装単位は、番号無しの `storybook-page-*` leaf change に統一する。
+次に着手する順番は change 名ではなく、`establish-kuc-atoms-molecules-catalog/storybook-menu-priority-order.md` の `SB-001`〜`SB-077` で管理する。
+
+この運用は「番号無しで統一、優先順を別途一覧で可視化」を採用する。
+理由は、Storybook menu page の安定 ID と実装順を分離し、順序を組み換えるときに change rename を不要にするためである。
+
+| queue | 正本 |
+| --- | --- |
+| leaf change 一覧 | `openspec/changes/establish-kuc-atoms-molecules-catalog/storybook-menu-change-split.md` |
+| 優先順位 | `openspec/changes/establish-kuc-atoms-molecules-catalog/storybook-menu-priority-order.md` |
+| readiness audit | `docs/storybook-consumer-readiness-audit.md` |
+
+次に作業する change は、優先順位表のうち leaf change DoD が未完了で最小の `SB-*` とする。
+ユーザーが `次をすすめて`、`continue`、`次` のように抽象的に依頼した場合は、`rtk proxy python3 scripts/next-storybook-page-change.py --json` を実行し、返った `change` を現在の OpenSpec leaf change として扱う。
+`NN-add-*` や archive 済み 01〜24 は入力元であり、現在の着手キューではない。
+
+## 履歴入力元 — `NN-add-*` 系列
 
 `katana` / `katana-chat-ui` / KDV / KLE の利用側画面を KUC の atoms / molecules で組めるようにするための、優先度順 (`01` が最優先) の機能追加 change。
-prefix の数字は優先度を表すもので、`18-accordion` などの旧 archive 候補 change（命名がそのまま prefix 番号を持つ）とは別系列。
-旧系列は機能名そのもの (`18-accordion`)、新系列は `NN-add-*` 形式で識別する。
+prefix の数字は優先度を表すもので、`archive/2026-05-25-18-accordion` などの旧 archive change（命名がそのまま prefix 番号を持つ）とは別系列。
+旧系列は機能名そのもの (`18-accordion`) を archive した履歴、現行系列は `NN-add-*` 形式で識別する。
+現在は Storybook menu leaf change の入力元として扱い、新規実装の着手順には使わない。
 
 KUC の公開対象は最小部品（atoms）と複合部品（molecules）までとする。
 画面全体の構造（organisms）、画面ひな形（templates）、本文エディター、本文プレビュー、チャット画面全体は KUC に入れない。
@@ -75,15 +94,15 @@ KDV (`katana-document-viewer`) / KLE (`katana-language-editor`) は、KUC や他
 - 部品の正しさは Storybook や手動操作ではなく、自動テスト、数値化された layout / rendering contract、入力回帰、静的検査を主根拠にする。
 - 依存境界は `docs/dependency-policy.md` と `docs/directory-structure.md` を基準にする。
 
-## Superseded / archive candidates
+## Archived / superseded input sources
 
 | change | 現在の扱い |
 | --- | --- |
-| `katana-widget-parity-backlog` | 01〜24 と追加 UI の入力元。要件は `establish-kuc-atoms-molecules-catalog` へ移管し、実装正本にはしない。 |
-| `ui-core-interaction-visual-parity` | 旧 interaction / visual gate の入力元。Storybook 目視寄りの完了扱いは新 change の品質ゲートへ移す。 |
-| `18-accordion` | 要件移管後の archive 候補。 |
-| `23-color-picker-complete-parity` | 要件移管後の archive 候補。 |
-| `24-code-diff` | 要件移管後の archive 候補。 |
+| `archive/2026-05-25-katana-widget-parity-backlog` | 01〜24 と追加 UI の入力元。要件は `establish-kuc-atoms-molecules-catalog` へ移管済みで、実装正本にはしない。 |
+| `archive/2026-05-25-ui-core-interaction-visual-parity` | 旧 interaction / visual gate の入力元。Storybook 目視寄りの完了扱いは現行品質ゲートへ移管済み。 |
+| `archive/2026-05-25-18-accordion` | Accordion 要件の履歴入力元。現行実装単位は `storybook-page-accordion`。 |
+| `archive/2026-05-25-23-color-picker-complete-parity` | ColorPicker parity 要件の履歴入力元。現行実装単位は `storybook-page-color-picker-rgba`。 |
+| `archive/2026-05-25-24-code-diff` | CodeDiff 要件の履歴入力元。現行実装単位は `storybook-page-code-diff`。 |
 
 ## Archive change group
 

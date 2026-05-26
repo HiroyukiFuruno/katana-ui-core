@@ -9,8 +9,8 @@
 - core 基盤として、テーマ（theme）、フォント（font）、文字描画、入力、イベント配送、状態所有、レイアウトを先に固める。
 - Storybook は、KUC 部品を実画面で触ってフィードバックするための場として定義する。左ペインは KUC 自身の TreeView、preset 切替は KUC 自身の Tabs、各部品は preview と settings を持つ。
 - 部品の正しさは Storybook やユーザー操作に委ねず、自動テスト、数値化された layout / rendering contract、入力回帰、静的検査（guard）を CI/CD 品質ゲートにする。
-- `katana-widget-parity-backlog` と `ui-core-interaction-visual-parity` は要件移管後の superseded change として扱う。
-- active な `18-accordion`、`23-color-picker-complete-parity`、`24-code-diff` は要件移管後に archive 候補として扱う。
+- `archive/2026-05-25-katana-widget-parity-backlog` と `archive/2026-05-25-ui-core-interaction-visual-parity` は要件移管済みの superseded change として扱う。
+- `archive/2026-05-25-18-accordion`、`archive/2026-05-25-23-color-picker-complete-parity`、`archive/2026-05-25-24-code-diff` は移管済みの履歴入力元として扱う。
 - archive 済み 01〜17、19〜22 は復帰しない。履歴として残し、KUC 実装タスクへの入力元に限定する。
 - README と docs は、root architecture の説明、KUC 現在スコープ、旧文書の扱い、Storybook の位置付けが矛盾しないよう更新する。
 

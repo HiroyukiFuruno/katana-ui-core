@@ -202,3 +202,9 @@
 - [/] 9.11 ユーザーFB: 見た目設定（style）は CSS のように後付けで差し替え可能にし、component 構造と内部 state から分離する。
 - [/] 9.12 ユーザーFB: 9.10 / 9.11 を満たせない場合、KUC 独自実装ではなく GPUI など既存 UI framework base へ戻す Go / No-Go 条件を design に明記する。
 - [/] 9.13 ユーザーFB: Retina / HiDPI 対応を利用側に意識させず、Canvas/Text/Window/Presentation の基盤契約として固定し、対応内容を自動テスト・`-D warnings` ビルド・`storybook` release 起動で確認済み。
+- [/] 9.14 ユーザーFB: Panel Storybook の `Panel In Panel` は静的なスクロールバー描画を禁止し、内側 Panel の scroll state、Inspector の scrollbar visibility 設定、preset ごとの明確な描画差分を自動テストで固定する。
+- [/] 9.15 ユーザーFB: Storybook 全体の右端スクロールバーは既定で非表示にし、Panel 部品の scrollbar on/off は Storybook 共通操作ではなく Inspector の Panel 設定で切り替える。
+- [/] 9.16 ユーザーFB: Panel Storybook は `active panel` を state として持ち、`nav` / `preview` / `details` ごとの scroll offset と scrollbar visibility を分離し、Inspector 操作と wheel 入力が active または hit した panel だけに反映されることを自動テストで固定する。
+- [/] 9.17 ユーザーFB: Panel は全 UI を描画する根本基盤として扱い、Storybook の中央 playground は小さな見せかけ wireframe ではなく、root viewport / child panel composition / clipping / independent scroll / Inspector targeted state を実操作で確認できる表現にする。
+- [/] 9.18 ユーザーFB: Storybook UI ごとの構築ルールを skill 化し、theme / preset / Inspector option / state-event-action / 実操作確認を必須構成として固定する。
+- [/] 9.19 ユーザーFB: Storybook の option 網羅と見せかけ preset を人間の注意に頼らず検出するため、internal ast-lint に UI option contract / preset count / Inspector route の構造制約を追加する。
