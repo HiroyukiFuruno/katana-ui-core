@@ -5,11 +5,11 @@ use super::palette::VisualPalette;
 use super::panel_scroll_state::{PanelScrollOffsets, PanelScrollRegion};
 #[cfg(test)]
 pub(super) use super::panel_scrollbar_metrics::{
-    PANEL_SCROLLBAR_THUMB_MIN_LENGTH, horizontal_thumb_rect_for,
+    PANEL_SCROLLBAR_THUMB_MIN_LENGTH, horizontal_thumb_rect_for, thumb_rect_for,
 };
 pub(super) use super::panel_scrollbar_metrics::{
     horizontal_bar_visible_for, horizontal_offset_from_drag_for, horizontal_region_scrollable_for,
-    horizontal_thumb_rect_for_state, offset_from_drag_for, thumb_rect_for, thumb_rect_for_state,
+    horizontal_thumb_rect_for_state, offset_from_drag_for, thumb_rect_for_state,
     vertical_bar_visible_for, vertical_region_scrollable_for,
 };
 #[cfg(test)]

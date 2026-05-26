@@ -4,7 +4,6 @@ use super::palette::VisualPalette;
 use super::panel_scroll_state::PanelScrollOffsets;
 use super::render_context::{RenderContext, ScenarioContext, ShellContext};
 use super::screen_state::StorybookScreenState;
-use super::scrollbar;
 use super::shell;
 use super::text::TextRenderer;
 use crate::catalog::StoryCatalog;
@@ -137,11 +136,7 @@ impl StorybookFrameRenderer {
             .as_ref()
             .expect("content cache should be present after render")
             .canvas;
-        let mut viewport =
-            content.viewport_y(options.scroll_y, VIEWPORT_HEIGHT, theme.background());
-        if options.scrollbar_visible {
-            scrollbar::draw(&mut viewport, theme.palette(), options.scroll_y);
-        }
+        let viewport = content.viewport_y(options.scroll_y, VIEWPORT_HEIGHT, theme.background());
         viewport
     }
 
@@ -221,10 +216,6 @@ impl ThemeFrameCache {
 
     fn background(&self) -> u32 {
         self.palette.background
-    }
-
-    fn palette(&self) -> &VisualPalette {
-        &self.palette
     }
 }
 

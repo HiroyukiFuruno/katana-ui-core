@@ -1,5 +1,8 @@
+pub(super) use super::inspector_row_text::ROW_MAX_CHARS;
+use super::inspector_row_text::row_value;
 use super::interaction_spec::StorybookInteractionSpec;
 use super::render_context::ScenarioContext;
+use super::storybook_ui_option_contract;
 use crate::catalog::StoryExample;
 
 #[path = "inspector_rows_fit.rs"]
@@ -7,9 +10,6 @@ mod inspector_rows_fit;
 use katana_ui_core::render_model::UiNode;
 
 const INSPECTOR_ROW_GROUP_COUNT: usize = 4;
-const ROW_MAX_CHARS: usize = 34;
-const CLIP_SUFFIX: &str = "...";
-
 pub(super) fn settings_rows(
     node: &UiNode,
     example: &StoryExample,
@@ -25,6 +25,23 @@ pub(super) fn settings_rows(
             "trigger: icon+text chevron".to_string(),
             "virtual: on range + total".to_string(),
             "rows: overscan/provider".to_string(),
+        ];
+    }
+    if example.page == "panel" {
+        let panel = scenario.screen_state.panel;
+        let active = panel.child(panel.active_panel);
+        return vec![
+            row_value(format!("panel.active: {}", panel.active_panel.label())),
+            row_value(format!("panel.vertical_scroll: y={}", active.scroll_y)),
+            row_value(format!("panel.horizontal_scroll: x={}", active.scroll_x)),
+            row_value(format!(
+                "panel.scrollbar_visibility: {}",
+                if active.scrollbar_visible {
+                    "on"
+                } else {
+                    "off"
+                }
+            )),
         ];
     }
     if is_virtualized_page(example.page) {
@@ -68,27 +85,6 @@ pub(super) fn settings_rows(
             "mode/density: icon/default".to_string(),
         ];
     }
-    if example.page == "text-area" {
-        let props = &node.props().text_area;
-        return vec![
-            row_value(format!(
-                "submit/newline: {:?}/{:?}",
-                props.submit_key, props.newline_key
-            )),
-            row_value(format!(
-                "tab/wrap: {:?}/{:?}",
-                props.tab_behavior, props.wrap_policy
-            )),
-            row_value(format!(
-                "rows: {}..{} auto={}",
-                props.min_rows, props.max_rows, props.auto_grow
-            )),
-            row_value(format!(
-                "ime/scroll: {} / {}",
-                props.ime_enabled, props.internal_scroll
-            )),
-        ];
-    }
     if example.page == "badge" {
         return vec![
             "role: passive status".to_string(),
@@ -113,62 +109,6 @@ pub(super) fn settings_rows(
             "duration/pause: 8000/off".to_string(),
         ];
     }
-    if example.page == "status-bar" {
-        return vec![
-            "mode: single -> multi".to_string(),
-            "segments: 1 -> 4".to_string(),
-            "density: default -> compact".to_string(),
-            "popover/progress: enabled".to_string(),
-        ];
-    }
-    if example.page == "shortcut-combo" {
-        return vec![
-            "platform: auto -> macOS".to_string(),
-            "separator: plus -> none".to_string(),
-            "size: medium -> large".to_string(),
-            "tone: neutral -> accent".to_string(),
-        ];
-    }
-    if example.page == "chip" {
-        return vec![
-            "variant: outline -> filled".to_string(),
-            "tone: accent -> danger".to_string(),
-            "size: medium -> large".to_string(),
-            "dismiss: backspace/delete".to_string(),
-        ];
-    }
-    if example.page == "attachment-chip" {
-        return vec![
-            "kind: file/image/url".to_string(),
-            "status: uploading -> error".to_string(),
-            "progress: 42 -> 100".to_string(),
-            "retry: child button".to_string(),
-        ];
-    }
-    if example.page == "chip-group" {
-        return vec![
-            "overflow: menu -> scroll".to_string(),
-            "wrap: false -> true".to_string(),
-            "reorder: on/off".to_string(),
-            "menu: hidden chips".to_string(),
-        ];
-    }
-    if example.page == "diagnostics-list" {
-        return vec![
-            "group_by: severity".to_string(),
-            "sort_by: severity".to_string(),
-            "filter: error+warning".to_string(),
-            "bulk/fix: preview on".to_string(),
-        ];
-    }
-    if example.page == "empty-state" {
-        return vec![
-            "tone: accent -> danger".to_string(),
-            "size: default -> large".to_string(),
-            "align: center -> leading".to_string(),
-            "actions: primary+secondary".to_string(),
-        ];
-    }
     if is_button_page(example.page) {
         let spec = StorybookInteractionSpec::for_page(example.page);
         let variant = if scenario.screen_state.has_settings_override() {
@@ -188,19 +128,16 @@ pub(super) fn settings_rows(
             row_value(format!("event: {event}")),
         ];
     }
-    let props = node.props();
     let spec = StorybookInteractionSpec::for_page(example.page);
-    let variant = if scenario.screen_state.has_settings_override() {
-        spec.after.to_string()
-    } else {
-        format!("{:?}", props.variant)
-    };
-    vec![
-        row_value(format!("{}: {variant}", spec.option)),
-        row_value(format!("tone: {:?}", props.tone)),
-        row_value(format!("size: {:?}", props.size)),
-        row_value(format!("font: {}", props.font_role)),
-    ]
+    storybook_ui_option_contract::settings_rows_for(example.page)
+        .into_iter()
+        .map(|row| {
+            if row.starts_with(spec.option) && scenario.screen_state.has_settings_override() {
+                return row_value(format!("{}: active -> {}", spec.option, spec.after));
+            }
+            row_value(row)
+        })
+        .collect()
 }
 
 pub(super) fn settings_title(example: &StoryExample) -> &'static str {
@@ -209,6 +146,9 @@ pub(super) fn settings_title(example: &StoryExample) -> &'static str {
     }
     if example.page == "context-menu" {
         return "ContextMenu settings";
+    }
+    if example.page == "panel" {
+        return "Panel settings";
     }
     "Settings"
 }
@@ -279,13 +219,4 @@ fn is_virtualized_page(page: &str) -> bool {
         page,
         "list" | "selection-list" | "command-palette" | "diagnostics-list"
     )
-}
-
-fn row_value(value: String) -> String {
-    if value.chars().count() <= ROW_MAX_CHARS {
-        return value;
-    }
-    let keep = ROW_MAX_CHARS - CLIP_SUFFIX.len();
-    let clipped: String = value.chars().take(keep).collect();
-    format!("{clipped}{CLIP_SUFFIX}")
 }

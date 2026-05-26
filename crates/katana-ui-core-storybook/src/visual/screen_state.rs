@@ -1,10 +1,15 @@
 use super::button_options::{StorybookButtonOptionControl, StorybookButtonOptions};
 use super::interaction_spec::StorybookInteractionSpec;
+use super::panel_screen_state::{
+    PanelChildKey, PanelOptionControl, PanelScreenState, PanelScreenUpdate,
+};
+use super::screen_state_forms::{
+    apply_checkbox_checked_state, apply_radio_selected_state, checkbox_state_label,
+    radio_state_label,
+};
+use super::screen_state_settings::{format_setting_action, format_setting_event};
 use super::search_box_screen_state::{SearchBoxScreenAction, SearchBoxScreenState};
 use super::selection_screen_state::{SelectionScreenAction, SelectionScreenState};
-use katana_ui_core::atom;
-use katana_ui_core::component::ComponentAction;
-use katana_ui_core::interaction::UiAction;
 use katana_ui_core::state::UiComponentState;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -22,30 +27,11 @@ pub(super) struct StorybookScreenState {
     pub(super) hovered_summary_index: Option<usize>,
     pub(super) selection: SelectionScreenState,
     pub(super) search_box: SearchBoxScreenState,
+    pub(super) panel: PanelScreenState,
     pub(super) checkbox_state: UiComponentState,
     pub(super) radio_state: UiComponentState,
-}
-
-impl Default for StorybookScreenState {
-    fn default() -> Self {
-        Self {
-            action_count: 0,
-            settings_revision: 0,
-            last_action: "none",
-            last_event: "none",
-            last_setting: "none",
-            last_setting_value: "none",
-            state_label: "idle",
-            button_options: StorybookButtonOptions::default(),
-            button_pressed: false,
-            preview_hovered: false,
-            hovered_summary_index: None,
-            selection: SelectionScreenState::default(),
-            search_box: SearchBoxScreenState::default(),
-            checkbox_state: default_checkbox_state(),
-            radio_state: default_radio_state(),
-        }
-    }
+    pub(super) text_input_state: UiComponentState,
+    pub(super) text_input_uses_live_value: bool,
 }
 
 impl StorybookScreenState {
@@ -71,6 +57,12 @@ impl StorybookScreenState {
         }
         if page == "radio" {
             self.register_radio_select();
+            return;
+        }
+        if page == "panel" {
+            self.action_count += 1;
+            let update = self.panel.apply_preview_action();
+            self.apply_panel_update(update);
             return;
         }
         self.action_count += 1;
@@ -132,6 +124,14 @@ impl StorybookScreenState {
     }
 
     pub(super) fn register_settings_change(&mut self, page: &str) {
+        if page == "panel" {
+            self.settings_revision += 1;
+            let update = self
+                .panel
+                .apply_option(PanelOptionControl::ScrollbarVisible(false));
+            self.apply_panel_update(update);
+            return;
+        }
         self.settings_revision += 1;
         let spec = StorybookInteractionSpec::for_page(page);
         self.last_action = format_setting_action(spec.option);
@@ -149,6 +149,20 @@ impl StorybookScreenState {
         self.last_setting = control.setting_name();
         self.last_setting_value = control.setting_value(self.button_options);
         self.state_label = control.state_label(self.button_options);
+    }
+
+    pub(super) fn register_panel_option(&mut self, control: PanelOptionControl) {
+        self.settings_revision += 1;
+        let update = self.panel.apply_option(control);
+        self.apply_panel_update(update);
+    }
+
+    pub(super) fn register_panel_active_child(&mut self, panel: PanelChildKey) {
+        self.action_count += 1;
+        let update = self
+            .panel
+            .apply_option(PanelOptionControl::ActivePanel(panel));
+        self.apply_panel_update(update);
     }
 
     pub(super) fn set_preview_hovered(&mut self, hovered: bool) -> bool {
@@ -225,6 +239,32 @@ impl StorybookScreenState {
         self.settings_revision % 2 == 1
     }
 
+    pub(super) fn scroll_panel_vertical(&mut self, panel: PanelChildKey, delta_y: f32) -> bool {
+        if !self.panel.scroll_vertical(panel, delta_y) {
+            return false;
+        }
+        self.action_count += 1;
+        self.last_action = "panel_wheel_y";
+        self.last_event = "panel_scroll_changed";
+        self.last_setting = "panel.vertical_scroll";
+        self.last_setting_value = "wheel";
+        self.state_label = "panel_scroll_y=changed";
+        true
+    }
+
+    pub(super) fn scroll_panel_horizontal(&mut self, panel: PanelChildKey, delta_x: f32) -> bool {
+        if !self.panel.scroll_horizontal(panel, delta_x) {
+            return false;
+        }
+        self.action_count += 1;
+        self.last_action = "panel_wheel_x";
+        self.last_event = "panel_scroll_changed";
+        self.last_setting = "panel.horizontal_scroll";
+        self.last_setting_value = "wheel";
+        self.state_label = "panel_scroll_x=changed";
+        true
+    }
+
     pub(super) const fn is_checkbox_checked(&self) -> bool {
         self.checkbox_state.checked
     }
@@ -242,81 +282,12 @@ impl StorybookScreenState {
     pub(super) fn radio_state_snapshot(&self) -> &UiComponentState {
         &self.radio_state
     }
-}
 
-fn default_checkbox_state() -> UiComponentState {
-    atom::Checkbox::new("Storybook Checkbox").state_snapshot()
-}
-
-fn default_radio_state() -> UiComponentState {
-    atom::Radio::new("Storybook Radio")
-        .selected(false)
-        .state_snapshot()
-}
-
-fn apply_checkbox_checked_state(before: &UiComponentState, checked: bool) -> UiComponentState {
-    let mut checkbox = atom::Checkbox::new("Storybook Checkbox").set_state(before.clone());
-    let _result = checkbox.apply_action(&UiAction::checkbox_checked(
-        before.state_id.clone(),
-        checked,
-    ));
-    checkbox.state_snapshot()
-}
-
-fn apply_radio_selected_state(before: &UiComponentState, selected: bool) -> UiComponentState {
-    let mut radio = atom::Radio::new("Storybook Radio").set_state(before.clone());
-    if !selected {
-        radio = radio.selected(false);
-    }
-    if selected {
-        let _result = radio.apply_action(&UiAction::radio_selected(before.state_id.clone()));
-    }
-    radio.state_snapshot()
-}
-
-fn checkbox_state_label(before: bool, after: bool) -> &'static str {
-    match (before, after) {
-        (false, true) => "before=false after=true",
-        (true, false) => "before=true after=false",
-        (true, true) => "before=true after=true",
-        (false, false) => "before=false after=false",
-    }
-}
-
-fn radio_state_label(before: bool, after: bool) -> &'static str {
-    match (before, after) {
-        (false, true) => "before=false after=true",
-        (true, false) => "before=true after=false",
-        (true, true) => "before=true after=true",
-        (false, false) => "before=false after=false",
-    }
-}
-
-fn format_setting_action(option: &str) -> &'static str {
-    match option {
-        "theme_id" => "settings_theme_id",
-        "text.role" => "settings_text_role",
-        "icon.svg_source" => "settings_icon_svg_source",
-        "interaction.open" => "settings_interaction_open",
-        "interaction.selected_index" => "settings_selected_index",
-        "interaction.value" => "settings_interaction_value",
-        "color_swatch.selected_color" => "settings_color_value",
-        "layout.align" => "settings_layout_align",
-        "context_menu.anchor" => "settings_context_menu_anchor",
-        _ => "settings_option_changed",
-    }
-}
-
-fn format_setting_event(page: &str) -> &'static str {
-    match page {
-        "theme-tokens" => "theme_settings_changed",
-        "text" => "text_settings_changed",
-        "icon" => "icon_settings_changed",
-        "button" | "text-button" | "svg-button" | "icon-text-button" => "button_settings_changed",
-        "text-input" | "search-box" => "input_settings_changed",
-        "color-swatch" | "color-picker-rgba" => "color_settings_changed",
-        "tree-view" => "tree_settings_changed",
-        "context-menu" => "context_menu_settings_changed",
-        _ => "component_settings_changed",
+    fn apply_panel_update(&mut self, update: PanelScreenUpdate) {
+        self.last_action = update.action;
+        self.last_event = update.event;
+        self.last_setting = update.setting;
+        self.last_setting_value = update.value;
+        self.state_label = update.state;
     }
 }

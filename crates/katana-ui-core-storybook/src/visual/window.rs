@@ -5,6 +5,7 @@ use super::render;
 use super::runtime::{StorybookRuntimeReport, StorybookVisualError, StorybookWindowRun};
 use super::types::StorybookVisual;
 use super::window_interaction::{StorybookWindowState, apply_mouse_click, apply_scroll};
+use super::window_keyboard::apply_keyboard;
 use super::window_modal_plan;
 use super::window_options::{main_window_options, modal_window_options};
 use minifb::{Key, Window};
@@ -101,18 +102,18 @@ fn run_single_window(
         if !window.is_open() || window.is_key_down(Key::Escape) {
             break;
         }
-        let mut frame_changed = false;
-        if apply_scroll(window, &mut state)
-            || apply_hover(window, &mut state)
-            || apply_mouse_click(
-                window,
-                &mut state,
-                &mut left_mouse_was_down,
-                &mut right_mouse_was_down,
-            )
-        {
+        let scrolled = apply_scroll(window, &mut state);
+        let hovered = apply_hover(window, &mut state);
+        let clicked = apply_mouse_click(
+            window,
+            &mut state,
+            &mut left_mouse_was_down,
+            &mut right_mouse_was_down,
+        );
+        let keyed = apply_keyboard(window, &mut state);
+        let frame_changed = scrolled || hovered || clicked || keyed;
+        if frame_changed {
             frame = render_frame_for_window_scale(renderer, &state, window);
-            frame_changed = true;
         }
         let window_size = window.get_size();
         if frame_changed || window_size != presented_window_size {

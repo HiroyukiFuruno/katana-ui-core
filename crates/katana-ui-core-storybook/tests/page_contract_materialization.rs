@@ -122,9 +122,6 @@ fn detail_text<'a>(details: &'a UiNode, label: &str) -> Option<&'a str> {
 }
 
 fn expected_preset_count(page: &str) -> usize {
-    if page == "theme-tokens" {
-        return 1;
-    }
     if matches!(
         page,
         "context-menu"

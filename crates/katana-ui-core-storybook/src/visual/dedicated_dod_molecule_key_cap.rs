@@ -9,6 +9,9 @@ const STATUS_Y: usize = 92;
 const STATUS_WIDTH: usize = 92;
 const STATUS_HEIGHT: usize = 16;
 const STATUS_GAP: usize = 8;
+const COMBO_PRESET: usize = 1;
+const NON_MACOS_PRESET: usize = 2;
+const THEME_PRESET: usize = 3;
 
 pub(super) fn key_cap(
     canvas: &mut Canvas,
@@ -58,15 +61,27 @@ fn active_platform_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) 
     if scenario.screen_state.has_settings_override() {
         return common::SUCCESS;
     }
-    if scenario.screen_state.has_widget_action() {
+    if scenario.preset_index == NON_MACOS_PRESET {
+        return palette.panel;
+    }
+    if scenario.screen_state.has_widget_action() || scenario.preset_index == COMBO_PRESET {
         return palette.accent;
+    }
+    if scenario.preset_index == THEME_PRESET {
+        return common::TOKEN;
     }
     palette.surface
 }
 
 fn inactive_platform_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.preset_index == NON_MACOS_PRESET {
+        return palette.accent;
+    }
     if scenario.screen_state.has_widget_action() {
         return palette.panel;
+    }
+    if scenario.preset_index == THEME_PRESET {
+        return palette.text;
     }
     palette.surface
 }
@@ -129,6 +144,15 @@ fn event_label(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 fn state_label(scenario: ScenarioContext<'_>) -> &'static str {
+    if scenario.preset_index == COMBO_PRESET {
+        return "combo=shown";
+    }
+    if scenario.preset_index == NON_MACOS_PRESET {
+        return "platform=nonmac";
+    }
+    if scenario.preset_index == THEME_PRESET {
+        return "theme=key";
+    }
     if scenario.screen_state.state_label == "idle" {
         return "platform=ready";
     }

@@ -3,6 +3,7 @@ use super::canvas::Canvas;
 use super::layout_metrics::{INSPECTOR_HEIGHT, INSPECTOR_WIDTH, INSPECTOR_X, INSPECTOR_Y};
 use super::palette::VisualPalette;
 use super::panel_layout;
+use super::panel_options;
 use super::panel_scroll_state;
 use super::panel_scroll_state::PanelScrollRegion;
 use super::render_context::{RenderContext, ScenarioContext};
@@ -73,7 +74,7 @@ pub(super) fn draw(
         viewport.width,
         viewport.height,
         |canvas| {
-            let max_inspector_y = panel_scroll_state::max_scroll_y_for(
+            let max_inspector_y = panel_scroll_state::PanelScrollOverflowModel::max_scroll_y_for(
                 PanelScrollRegion::Inspector,
                 scenario.selected_page,
                 scenario.tree_expansion,
@@ -106,6 +107,9 @@ fn draw_settings(
 ) -> usize {
     if button_options::is_button_page(example.page) {
         return button_options::draw_controls(canvas, render.text, render.palette, scenario, y);
+    }
+    if example.page == "panel" {
+        return panel_options::draw_controls(canvas, render.code_text, render.palette, scenario, y);
     }
     draw_section(
         canvas,

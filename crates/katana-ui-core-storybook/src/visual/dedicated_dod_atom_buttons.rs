@@ -69,21 +69,40 @@ fn draw_toggle_row(
     y: usize,
 ) {
     let on = scenario.screen_state.has_widget_action() || scenario.preset_index == m::PX_1;
+    let disabled = scenario.preset_index == m::PX_2;
+    let themed = scenario.preset_index == m::PX_3;
     let row = Rect::new(
         x + TOGGLE_ROW_X,
         y + TOGGLE_ROW_Y,
         TOGGLE_ROW_WIDTH,
         TOGGLE_ROW_HEIGHT,
     );
-    canvas.fill_rect(row.x, row.y, row.width, row.height, palette.surface);
-    canvas.stroke_rect(row.x, row.y, row.width, row.height, palette.border);
+    let fill = if themed {
+        palette.background
+    } else {
+        palette.surface
+    };
+    let border = if themed {
+        palette.accent
+    } else if disabled {
+        palette.muted
+    } else {
+        palette.border
+    };
+    let text_color = if disabled {
+        palette.muted
+    } else {
+        palette.text
+    };
+    canvas.fill_rect(row.x, row.y, row.width, row.height, fill);
+    canvas.stroke_rect(row.x, row.y, row.width, row.height, border);
     text.draw_centered(
         canvas,
         "Markdown Linter",
         row.x + TOGGLE_LABEL_X,
         TextVerticalBox::new(row.y, row.height as f32),
         m::FONT_10,
-        palette.text,
+        text_color,
     );
     switch_control::draw_switch(
         canvas,

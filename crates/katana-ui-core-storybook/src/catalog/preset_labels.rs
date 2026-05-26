@@ -4,12 +4,17 @@ impl StoryPresetLabels {
     pub(crate) fn for_page(page: &str) -> &'static [&'static str] {
         match page {
             "panel" => &[
+                "vertical scroll",
+                "horizontal scroll",
+                "scrollbar toggle",
                 "nested panels",
-                "overflow clip",
-                "horizontal local",
-                "theme panel",
             ],
-            "theme-tokens" => &["overview"],
+            "theme-tokens" => &[
+                "dark palette",
+                "light palette",
+                "contrast surface",
+                "accent override",
+            ],
             "text" => &["role grid", "mixed script", "empty text", "theme color"],
             "icon" => &["svg grid", "accent icon", "custom SVG", "muted icon"],
             "chip" => &["filter tag", "dismiss", "selected", "tone matrix"],
@@ -73,227 +78,12 @@ impl StoryPresetLabels {
             "card" => &["slots", "card click", "nested controls", "theme border"],
             "list" => &["rows", "selection", "empty", "theme list", "Virtualization"],
             "menu" => &["menu items", "shortcut", "disabled", "theme menu"],
-            "context-menu" => &[
-                "編集器右クリック",
-                "explorer 空領域",
-                "tab bar",
-                "message 行",
-                "leading icon + shortcut",
-            ],
-            "banner" => &[
-                "保存失敗",
-                "vendor 未接続",
-                "添付サイズ超過",
-                "成功通知",
-                "details 展開",
-            ],
-            "toast-stack-manager" => &[
-                "位置 6 種類",
-                "dedup ById",
-                "pause_on_hover",
-                "queue 上限超過",
-                "action 付き toast",
-            ],
-            "tabs" => &["browser tab", "switch", "overflow", "theme line"],
-            "toolbar" => &[
-                "overflow menu",
-                "split action",
-                "display mode",
-                "density",
-                "accelerator",
-            ],
-            "breadcrumb" => &["trail", "click", "overflow", "theme crumb"],
-            "accordion" => &[
-                "closed",
-                "open",
-                "disabled",
-                "controlled",
-                "multiple",
-                "tree mode",
-                "reduced motion",
-                "trigger areas",
-            ],
-            "split-pane" => &[
-                "horizontal",
-                "vertical",
-                "min clamp",
-                "reset",
-                "keyboard resize",
-                "nested",
-            ],
-            "modal" => &[
-                "native window",
-                "escape close",
-                "focus return",
-                "parent block",
-                "title footer size",
-            ],
-            "modal-overlay" => &[
-                "overlay dialog",
-                "backdrop close",
-                "escape close",
-                "focus trap",
-                "dismiss disabled",
-            ],
-            "notification-toast" => &["toast", "dismiss", "ToastStackManager", "theme toast"],
-            "popover" => &[
-                "anchor",
-                "placement",
-                "auto flip",
-                "offset width",
-                "outside+escape close",
-                "focus handling",
-                "slot content",
-            ],
-            "hover-card" => &[
-                "delayed open",
-                "pointer follow",
-                "focus trigger",
-                "rich content",
-                "actions",
-            ],
-            "color-picker-rgba" => &[
-                "rgba panel",
-                "color trigger",
-                "size presets",
-                "borderless",
-                "floating panel",
-            ],
-            "code-diff" => &[
-                "split left-right",
-                "split top-bottom",
-                "inline",
-                "collapsed",
-                "japanese whitespace",
-            ],
-            "command-palette" => &[
-                "command palette",
-                "search results",
-                "slash launcher",
-                "disabled rows",
-                "virtualized results",
-                "Virtualization",
-            ],
-            "dynamic-array-editor" => &["rows", "add remove", "reorder", "theme row"],
-            "selection-list" => &["items", "select", "multi", "theme list", "Virtualization"],
-            "side-menu" => &["nav tree", "select", "collapse", "theme side"],
-            "status-bar" => &[
-                "editor status bar",
-                "chat usage bar",
-                "linter summary",
-                "progress segment",
-                "popover segment",
-            ],
-            "shortcut-combo" => &[
-                "macOS",
-                "Windows",
-                "Linux",
-                "custom separator",
-                "a11y label",
-            ],
-            "shortcut-cheatsheet" => &[
-                "cheatsheet sample",
-                "カテゴリ filter",
-                "two column",
-                "one column",
-                "select combo",
-            ],
-            "settings-list" => &[
-                "app settings",
-                "chat settings",
-                "lint settings",
-                "dirty 表示",
-                "query filter",
-                "reset",
-            ],
-            "collapsible-panel" => &[
-                "Explorer panel",
-                "Chat history panel",
-                "TOC panel",
-                "Floating overlay",
-                "IconOnly",
-            ],
-            "virtualization" => &[
-                "fixed rows",
-                "variable rows",
-                "focused sentinel",
-                "measured correction",
-            ],
-            "skeleton-cluster" => &[
-                "list loading",
-                "message loading",
-                "card loading",
-                "paragraph loading",
-                "code block loading",
-                "image card loading",
-            ],
-            "motion" => &[
-                "4 primitive",
-                "reduced-motion respect",
-                "force ignore",
-                "per-molecule motion",
-            ],
-            "window-control-button-group" => &[
-                "macOS",
-                "Windows",
-                "Linux",
-                "fullscreen hover",
-                "close only",
-            ],
-            "startup-state-panel" => &["app boot", "session init", "update install", "error retry"],
-            "attachment-chip" => &[
-                "file attachment",
-                "image attachment",
-                "url attachment",
-                "uploading",
-                "error retry",
-            ],
-            "chip-group" => &["wrap", "overflow menu", "horizontal scroll", "reorder"],
-            "diagnostics-list" => &[
-                "lint result",
-                "editor inline",
-                "tool result",
-                "empty",
-                "loading",
-                "bulk fix",
-                "Virtualization",
-            ],
-            "empty-state" => &[
-                "explorer empty",
-                "search no result",
-                "diagnostics clean",
-                "history empty",
-                "error fallback",
-            ],
-            "tree-view" => &[
-                "folders",
-                "toggle",
-                "context",
-                "theme tree",
-                "Virtualization",
-            ],
-            "drag-and-drop" => &[
-                "reorder list",
-                "file drop",
-                "tab reorder",
-                "attachment drop",
-                "keyboard drag",
-            ],
-            "closeable-tab-strip" => &[
-                "tab row default",
-                "overflow",
-                "pinned",
-                "groups",
-                "dirty",
-                "dragging",
-            ],
-            "row" => &["row layout", "align", "overflow", "theme gap"],
-            "column" => &["column", "align", "overflow", "theme gap"],
-            "stack" => &["stacked", "z order", "overlay", "theme stack"],
-            "grid" => &["grid cells", "span", "overflow", "theme grid"],
-            "scroll-area" => &["viewport", "scroll", "scrollbar", "theme scroll"],
-            "align-center" => &["center box", "baseline", "mixed text", "theme align"],
-            _ => &["overview", "operate", "edge case", "theme view"],
+            page => super::preset_label_extra::for_page(page).unwrap_or(&[
+                "overview",
+                "operate",
+                "edge case",
+                "theme view",
+            ]),
         }
     }
 }
@@ -325,18 +115,26 @@ mod tests {
     }
 
     #[test]
-    fn theme_tokens_has_no_fake_option_presets() {
-        assert_eq!(&["overview"], StoryPresetLabels::for_page("theme-tokens"));
+    fn theme_tokens_presets_describe_token_surfaces() {
+        assert_eq!(
+            &[
+                "dark palette",
+                "light palette",
+                "contrast surface",
+                "accent override"
+            ],
+            StoryPresetLabels::for_page("theme-tokens")
+        );
     }
 
     #[test]
     fn panel_presets_describe_actual_panel_controls() {
         assert_eq!(
             &[
-                "nested panels",
-                "overflow clip",
-                "horizontal local",
-                "theme panel"
+                "vertical scroll",
+                "horizontal scroll",
+                "scrollbar toggle",
+                "nested panels"
             ],
             StoryPresetLabels::for_page("panel")
         );

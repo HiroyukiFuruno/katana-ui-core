@@ -1,6 +1,45 @@
 use super::*;
 
 #[test]
+fn panel_story_exposes_real_axis_scroll_models_and_inspector_contract() -> Result<(), &'static str>
+{
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "panel")
+        .ok_or("panel page missing")?;
+    let root = story.tree.root();
+    let navigation = panel_child(root, "Navigation panel").ok_or("navigation panel missing")?;
+    let preview = panel_child(root, "Preview panel").ok_or("preview panel missing")?;
+    let details = StoryDetailContent::from_example(story);
+
+    assert!(
+        navigation.props().panel.vertical_scrollbar_visible,
+        "panel story navigation must expose a real vertical scrollbar"
+    );
+    assert!(
+        preview.props().panel.vertical_scrollbar_visible,
+        "panel story preview must expose a real vertical scrollbar"
+    );
+    assert!(
+        preview.props().panel.horizontal_scrollbar_visible,
+        "panel story preview must expose a real horizontal scrollbar"
+    );
+    for setting in [
+        "panel.vertical_scroll",
+        "panel.horizontal_scroll",
+        "panel.scrollbar_visibility",
+        "panel.nested_state",
+    ] {
+        assert!(
+            details.settings.contains(setting),
+            "panel settings inspector lacks {setting}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn settings_list_story_exposes_presets_settings_and_logs() -> Result<(), &'static str> {
     let examples = StoryCatalog.examples();
     let story = examples
@@ -67,6 +106,12 @@ fn settings_list_story_exposes_presets_settings_and_logs() -> Result<(), &'stati
         );
     }
     Ok(())
+}
+
+fn panel_child<'a>(root: &'a UiNode, label: &str) -> Option<&'a UiNode> {
+    root.children()
+        .iter()
+        .find(|it| it.kind() == UiNodeKind::Panel && it.props().label == label)
 }
 
 #[test]

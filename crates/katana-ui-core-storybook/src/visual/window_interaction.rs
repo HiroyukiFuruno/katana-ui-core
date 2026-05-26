@@ -5,6 +5,7 @@ mod content_position;
 mod panel_scroll_drag;
 mod scroll_operation;
 mod state_store;
+mod text_input_keyboard;
 
 use super::navigation_tree::{NavigationRow, TreeExpansionState, row_from_click};
 use super::panel_scroll_state::PanelScrollOffsets;
@@ -25,6 +26,7 @@ use scroll_operation::{
 };
 use state_store::StorybookScreenStateStore;
 use std::collections::BTreeMap;
+pub(super) use text_input_keyboard::{TextInputKey, apply_text_input_key};
 
 const DEFAULT_SELECTED_PAGE: &str = "button";
 const DEFAULT_THEME_ID: &str = "dark";
@@ -185,7 +187,7 @@ pub(super) fn apply_click(state: &mut StorybookWindowState, x: usize, y: usize) 
     }
     let logical_navigation_y = state.panel_scroll.offset_with_max(
         super::panel_scroll_state::PanelScrollRegion::Navigation,
-        super::panel_scroll_state::max_scroll_y_for(
+        super::panel_scroll_state::PanelScrollOverflowModel::max_scroll_y_for(
             super::panel_scroll_state::PanelScrollRegion::Navigation,
             state.selected_page,
             state.tree_expansion,
@@ -235,6 +237,16 @@ fn normalize_mouse_point(window: &Window, x: f32, y: f32) -> Option<CanvasPoint>
 
 fn normalized_preset_index(page: &str, preset_index: usize) -> usize {
     preset_index.min(StoryPresetLabels::for_page(page).len().saturating_sub(1))
+}
+
+#[cfg(test)]
+pub(super) fn apply_scroll_delta_at_for_test(
+    state: &mut StorybookWindowState,
+    x: usize,
+    y: usize,
+    delta_y: f32,
+) -> bool {
+    scroll_operation::apply_scroll_delta_at(state, x, y, delta_y)
 }
 
 #[cfg(test)]

@@ -2,29 +2,29 @@ use super::StorybookWindowState;
 use crate::catalog::StoryPresetLabels;
 use crate::visual::button_options::{StorybookButtonOptionControl, control_at, is_button_page};
 use crate::visual::dedicated_dod_form_binary_choice_live as binary_choice_live;
-use crate::visual::dedicated_dod_form_combo_live as combo_live;
 use crate::visual::dedicated_dod_form_input_live as input_live;
-use crate::visual::dedicated_dod_form_select_live as select_live;
-use crate::visual::dedicated_dod_form_selection_list_live as selection_list_live;
 use crate::visual::layout_metrics::{
     button_setting_hit_rect, dark_theme_rect, light_theme_rect, preset_tab_rect,
-    scrollbar_off_rect, scrollbar_on_rect,
 };
+use crate::visual::panel_options;
+use crate::visual::panel_screen_state::{PanelChildKey, PanelOptionControl};
 use crate::visual::search_box_screen_state::SearchBoxScreenAction;
-use crate::visual::selection_control_metrics;
 use crate::visual::selection_screen_state::SelectionScreenAction;
 use crate::visual::{preview, preview_detail};
+
+#[path = "button_operation/selection_operation.rs"]
+mod selection_operation;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum StorybookButtonOperation {
     LightTheme,
     DarkTheme,
-    ScrollbarOn,
-    ScrollbarOff,
     Preset(usize),
     PreviewButton,
     PreviewComponent,
     ButtonOption(StorybookButtonOptionControl),
+    PanelOption(PanelOptionControl),
+    PanelChild(PanelChildKey),
     SettingsOption,
     SelectionControl(SelectionScreenAction),
     CheckboxStateRead,
@@ -43,6 +43,7 @@ pub(super) enum StorybookButtonOperation {
     SearchClear,
     SearchCaseToggle,
     SearchRegexToggle,
+    TextInputFocus,
 }
 
 impl StorybookButtonOperation {
@@ -50,8 +51,6 @@ impl StorybookButtonOperation {
         match self {
             Self::LightTheme => state.theme_id = "light",
             Self::DarkTheme => state.theme_id = "dark",
-            Self::ScrollbarOn => state.scrollbar_visible = true,
-            Self::ScrollbarOff => state.scrollbar_visible = false,
             Self::Preset(index) => state.select_preset(index),
             Self::PreviewButton => state
                 .screen_state
@@ -60,6 +59,8 @@ impl StorybookButtonOperation {
                 .screen_state
                 .register_preview_action(state.selected_page),
             Self::ButtonOption(control) => state.screen_state.register_button_option(control),
+            Self::PanelOption(control) => state.screen_state.register_panel_option(control),
+            Self::PanelChild(panel) => state.screen_state.register_panel_active_child(panel),
             Self::SettingsOption => state
                 .screen_state
                 .register_settings_change(state.selected_page),
@@ -100,6 +101,7 @@ impl StorybookButtonOperation {
             Self::SearchRegexToggle => state
                 .screen_state
                 .register_search_box_action(SearchBoxScreenAction::ToggleRegex),
+            Self::TextInputFocus => state.screen_state.register_text_input_focus(),
         }
         true
     }
@@ -111,11 +113,12 @@ pub(super) fn button_operation_at(
     y: usize,
 ) -> Option<StorybookButtonOperation> {
     theme_operation_at(x, y)
-        .or_else(|| scrollbar_operation_at(x, y))
         .or_else(|| preset_operation_at(state.selected_page, x, y))
-        .or_else(|| selection_control_operation_at(state, x, y))
+        .or_else(|| selection_operation::SelectionOperation::operation_at(state, x, y))
         .or_else(|| checkbox_operation_at(state.selected_page, x, y))
         .or_else(|| radio_operation_at(state.selected_page, x, y))
+        .or_else(|| panel_operation_at(state.selected_page, x, y))
+        .or_else(|| text_input_operation_at(state.selected_page, x, y))
         .or_else(|| preview_operation_at(state.selected_page, x, y))
         .or_else(|| settings_operation_at(state.selected_page, x, y))
 }
@@ -142,16 +145,6 @@ fn theme_operation_at(x: usize, y: usize) -> Option<StorybookButtonOperation> {
     None
 }
 
-fn scrollbar_operation_at(x: usize, y: usize) -> Option<StorybookButtonOperation> {
-    if scrollbar_on_rect().contains(x, y) {
-        return Some(StorybookButtonOperation::ScrollbarOn);
-    }
-    if scrollbar_off_rect().contains(x, y) {
-        return Some(StorybookButtonOperation::ScrollbarOff);
-    }
-    None
-}
-
 fn preset_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
     let visible_count = StoryPresetLabels::for_page(page)
         .len()
@@ -171,147 +164,27 @@ fn preview_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButto
     None
 }
 
-fn selection_control_operation_at(
-    state: &StorybookWindowState,
-    x: usize,
-    y: usize,
-) -> Option<StorybookButtonOperation> {
-    let page = state.selected_page;
-    let component = preview_detail::component_action_hit_rect(page);
-    if page == "select-box" {
-        if select_live::select_state_read_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SelectionControl(
-                SelectionScreenAction::SelectStateRead,
-            ));
-        }
-        if select_live::select_open_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SelectionControl(
-                SelectionScreenAction::SelectOpen,
-            ));
-        }
-        if select_live::select_close_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SelectionControl(
-                SelectionScreenAction::SelectClose,
-            ));
-        }
-        if select_live::select_reset_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SelectionControl(
-                SelectionScreenAction::SelectReset,
-            ));
-        }
+fn panel_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
+    if page != "panel" {
+        return None;
     }
-    if page == "combo-box" {
-        if combo_live::combo_state_read_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::ComboStateRead);
-        }
-        if combo_live::combo_filter_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::ComboFilter);
-        }
-        if combo_live::combo_select_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::ComboSelect);
-        }
-        if combo_live::combo_reset_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::ComboReset);
-        }
+    if let Some(control) = panel_options::control_at(x, y) {
+        return Some(StorybookButtonOperation::PanelOption(control));
     }
-    if page == "search-box" {
-        if input_live::search_inline_clear_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SearchClear);
-        }
-        if input_live::search_field_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SearchTypeQuery);
-        }
-        if input_live::search_state_read_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SearchStateRead);
-        }
-        if input_live::search_type_query_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SearchTypeQuery);
-        }
-        if input_live::search_submit_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SearchSubmit);
-        }
-        if input_live::search_clear_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SearchClear);
-        }
-        if input_live::search_case_toggle_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SearchCaseToggle);
-        }
-        if input_live::search_regex_toggle_button_rect(component.x, component.y).contains(x, y) {
-            return Some(StorybookButtonOperation::SearchRegexToggle);
-        }
-    }
-    if page == "selection-list" {
-        if selection_list_live::selection_list_state_read_button_rect(component.x, component.y)
-            .contains(x, y)
-        {
-            return Some(StorybookButtonOperation::SelectionControl(
-                SelectionScreenAction::SelectionListStateRead,
-            ));
-        }
-        if selection_list_live::selection_list_select_row_button_rect(component.x, component.y)
-            .contains(x, y)
-        {
-            return Some(StorybookButtonOperation::SelectionControl(
-                SelectionScreenAction::SelectionListSelectRow(1),
-            ));
-        }
-        if selection_list_live::selection_list_multi_toggle_button_rect(component.x, component.y)
-            .contains(x, y)
-        {
-            return Some(StorybookButtonOperation::SelectionControl(
-                SelectionScreenAction::SelectionListMultiToggle(1),
-            ));
-        }
-        if selection_list_live::selection_list_keyboard_next_button_rect(component.x, component.y)
-            .contains(x, y)
-        {
-            return Some(StorybookButtonOperation::SelectionControl(
-                SelectionScreenAction::SelectionListKeyboardNext,
-            ));
-        }
-        if selection_list_live::selection_list_reset_button_rect(component.x, component.y)
-            .contains(x, y)
-        {
-            return Some(StorybookButtonOperation::SelectionControl(
-                SelectionScreenAction::SelectionListReset,
-            ));
-        }
-    }
-    let action = match page {
-        "select-box" => selection_control_metrics::select_action_at(
-            component,
-            state.screen_state.selection.select_open,
-            x,
-            y,
-        ),
-        "combo-box" => combo_action_at(state, component, x, y),
-        "selection-list" => selection_control_metrics::selection_list_action_at(component, x, y),
-        _ => None,
-    };
-    action.map(StorybookButtonOperation::SelectionControl)
+    let origin = preview_detail::component_action_hit_rect(page);
+    crate::visual::dedicated_foundation_panel::panel_at(origin.x, origin.y, x, y)
+        .map(StorybookButtonOperation::PanelChild)
 }
 
-fn combo_action_at(
-    state: &StorybookWindowState,
-    component: crate::visual::layout_metrics::LayoutRect,
-    x: usize,
-    y: usize,
-) -> Option<SelectionScreenAction> {
-    let action = selection_control_metrics::combo_action_at(
-        component,
-        state.screen_state.selection.combo_open,
-        state.screen_state.selection.combo_filtered,
-        x,
-        y,
-    )?;
-    match action {
-        SelectionScreenAction::ComboOption(index)
-            if state.screen_state.selection.combo_filtered =>
-        {
-            Some(SelectionScreenAction::ComboOption(index + 1))
-        }
-        _ => Some(action),
+fn text_input_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
+    if page != "text-input" {
+        return None;
     }
+    let origin = preview_detail::component_action_hit_rect(page);
+    if input_live::search_field_rect(origin.x, origin.y).contains(x, y) {
+        return Some(StorybookButtonOperation::TextInputFocus);
+    }
+    None
 }
 
 fn settings_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {

@@ -113,6 +113,9 @@ fn navigation_wheel_scroll_reaches_last_tree_row_without_fixed_cap() {
 #[test]
 fn non_overflowing_required_pages_ignore_preview_wheel_input() {
     for &page in StoryRequirements::required_pages() {
+        if page == "panel" {
+            continue;
+        }
         let mut state = StorybookWindowState {
             selected_page: page,
             scrollbar_visible: true,

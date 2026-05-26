@@ -15,11 +15,12 @@ fn viewport_click_mapping_keeps_preview_actions_aligned_after_nested_scroll() {
         ..StorybookWindowState::default()
     };
     let target = preview_detail::button_action_hit_rect("button");
-    let max_preview_y = crate::visual::panel_scroll_state::max_scroll_y_for(
-        PanelScrollRegion::Preview,
-        state.selected_page,
-        state.tree_expansion,
-    );
+    let max_preview_y =
+        crate::visual::panel_scroll_state::PanelScrollOverflowModel::max_scroll_y_for(
+            PanelScrollRegion::Preview,
+            state.selected_page,
+            state.tree_expansion,
+        );
     let visible_y = target.y
         - state.panel_scroll.root_y
         - state

@@ -13,7 +13,12 @@ const UNCHANGED: u32 = 0x2d2d30;
 const CODE_DIFF_SLOT_COUNT: usize = 7;
 const VERTICAL_SPLIT_PRESET_INDEX: usize = 1;
 const INLINE_PRESET_INDEX: usize = 2;
+const COLLAPSED_PRESET_INDEX: usize = 3;
 const JAPANESE_WHITESPACE_PRESET_INDEX: usize = 4;
+const SURFACE_TOKEN_X: usize = 338;
+const SURFACE_TOKEN_Y: usize = 20;
+const SURFACE_TOKEN_WIDTH: usize = 140;
+const SURFACE_TOKEN_HEIGHT: usize = 18;
 
 pub(super) fn code_diff(
     canvas: &mut Canvas,
@@ -37,6 +42,7 @@ pub(super) fn code_diff(
         &code_diff_blocks(scenario.preset_index, mode_fill),
         &code_diff_texts(palette, scenario.preset_index),
     );
+    draw_surface_token(canvas, palette, x, y);
     dedicated_dod_status::draw(canvas, text, palette, scenario, x, y);
 }
 
@@ -44,8 +50,20 @@ fn code_diff_blocks(preset_index: usize, mode_fill: u32) -> [Block; CODE_DIFF_SL
     match preset_index {
         VERTICAL_SPLIT_PRESET_INDEX => vertical_split_blocks(mode_fill),
         INLINE_PRESET_INDEX => inline_blocks(mode_fill),
+        COLLAPSED_PRESET_INDEX => horizontal_split_blocks(common::WARN),
         _ => horizontal_split_blocks(mode_fill),
     }
+}
+
+fn draw_surface_token(canvas: &mut Canvas, palette: &VisualPalette, x: usize, y: usize) {
+    let token = Rect::new(
+        x + SURFACE_TOKEN_X,
+        y + SURFACE_TOKEN_Y,
+        SURFACE_TOKEN_WIDTH,
+        SURFACE_TOKEN_HEIGHT,
+    );
+    common::fill(canvas, token, palette.surface);
+    common::outline(canvas, palette, token);
 }
 
 fn horizontal_split_blocks(mode_fill: u32) -> [Block; CODE_DIFF_SLOT_COUNT] {

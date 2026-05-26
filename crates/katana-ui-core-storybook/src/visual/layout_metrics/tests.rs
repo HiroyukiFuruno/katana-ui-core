@@ -46,14 +46,8 @@ fn storybook_main_content_reaches_root_scrollbar_without_right_gap() {
 fn navigation_header_controls_are_balanced_segmented_pairs() {
     let light = light_theme_rect();
     let dark = dark_theme_rect();
-    let scrollbar_on = scrollbar_on_rect();
-    let scrollbar_off = scrollbar_off_rect();
 
     assert_eq!(light.width, dark.width);
-    assert_eq!(scrollbar_on.width, scrollbar_off.width);
     assert_eq!(light.right(), dark.x);
-    assert_eq!(scrollbar_on.right(), scrollbar_off.x);
-    assert_eq!(light.x, scrollbar_on.x);
-    assert_eq!(dark.right(), scrollbar_off.right());
     assert!(dark.right() <= NAV_WIDTH - BRAND_X);
 }

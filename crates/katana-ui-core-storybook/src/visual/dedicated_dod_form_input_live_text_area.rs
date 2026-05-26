@@ -1,6 +1,6 @@
 use super::{
-    Canvas, FIELD, FIELD_X, LABEL_SIZE, STATUS_GAP, STATUS_HEIGHT, STATUS_TEXT_X, STATUS_TEXT_Y,
-    STATUS_Y, ScenarioContext, TEXT_AREA_HEIGHT, TEXT_AREA_LINE_FIRST_Y, TEXT_AREA_LINE_STEP,
+    Canvas, FIELD_X, LABEL_SIZE, STATUS_GAP, STATUS_HEIGHT, STATUS_TEXT_X, STATUS_TEXT_Y, STATUS_Y,
+    ScenarioContext, TEXT_AREA_HEIGHT, TEXT_AREA_LINE_FIRST_Y, TEXT_AREA_LINE_STEP,
     TEXT_AREA_LINE_X, TEXT_AREA_STATUS_WIDTH, TEXT_AREA_STATUS_X, TEXT_AREA_WIDTH, TEXT_AREA_Y,
     TextRenderer, VisualPalette, common, m,
 };
@@ -34,7 +34,7 @@ pub(super) fn text_area(
         y + TEXT_AREA_Y,
         TEXT_AREA_WIDTH,
         TEXT_AREA_HEIGHT,
-        FIELD,
+        palette.surface,
     );
     canvas.stroke_rect(
         x + FIELD_X,

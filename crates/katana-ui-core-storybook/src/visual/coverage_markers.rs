@@ -1,48 +1,25 @@
+use super::coverage_legacy_preview::legacy_preview_signature_stats;
 use super::render_context::ScenarioContext;
 use super::screen_state::StorybookScreenState;
 use super::{
     inspector_rows, layout_metrics, navigation_tree, palette, panel_scroll_state, panel_scrollbars,
-    preview_contract, preview_contract_rows, preview_detail, render, scrollbar,
+    preview_contract_rows, preview_detail, render, scrollbar,
 };
 use crate::catalog::StoryExample;
-use std::collections::BTreeMap;
 
 const MIN_NAV_COLLAPSE_DIFF: usize = 1_000;
-const PREVIEW_SIGNATURE_SEED: u64 = 17;
-const PREVIEW_SIGNATURE_PRIME: u64 = 1_099_511_628_211;
 const LEGACY_DETAIL_TABLE_Y: usize = 398;
 const LEGACY_DETAIL_TABLE_SAMPLE_OFFSET: usize = 10;
-const LEGACY_DOD_PREVIEW_PAGES: &[&str] = &[
-    "theme-tokens",
-    "text",
-    "icon",
-    "chip",
-    "loading-dots",
-    "spinner",
-    "button",
-    "text-button",
-    "svg-button",
-    "icon-text-button",
-    "toggle",
-    "segmented-toggle",
-    "select-box",
-    "color-swatch",
-    "text-input",
-    "search-box",
-    "tooltip",
-    "badge",
-    "key-cap",
-    "card",
-    "accordion",
-    "split-pane",
-    "modal",
-    "popover",
-    "color-picker-rgba",
-    "code-diff",
-    "attachment-chip",
-    "chip-group",
-];
-
+const PANEL_PREVIEW_SLOT_X: usize = 174;
+const PANEL_PREVIEW_SLOT_Y: usize = 64;
+const PANEL_PREVIEW_SLOT_WIDTH: usize = 296;
+const PANEL_PREVIEW_SLOT_HEIGHT: usize = 192;
+const PANEL_CHILD_BAR_THICKNESS: usize = 5;
+const PANEL_CHILD_HORIZONTAL_TRACK_X_OFFSET: usize = 10;
+const PANEL_CHILD_TRACK_EDGE_OFFSET: usize = 12;
+const PANEL_CHILD_HORIZONTAL_TRACK_WIDTH_INSET: usize = 24;
+const PANEL_CHILD_VERTICAL_TRACK_Y_OFFSET: usize = 8;
+const PANEL_CHILD_VERTICAL_TRACK_HEIGHT_INSET: usize = 16;
 pub(super) struct CoverageMarkers {
     pub(super) selected_preview_visible: bool,
     pub(super) selected_preview_interaction_visible: bool,
@@ -102,29 +79,80 @@ fn panel_scrollbars_visible() -> bool {
         &canvas,
         accent,
         panel_scroll_state::PanelScrollRegion::Navigation,
+        false,
     ) && panel_scrollbar_center_is_accent(
         &canvas,
         accent,
         panel_scroll_state::PanelScrollRegion::Inspector,
-    ) && !panel_scrollbar_center_is_accent(
-        &canvas,
-        accent,
-        panel_scroll_state::PanelScrollRegion::Preview,
-    )
+        false,
+    ) && internal_panel_preview_scrollbar_visible(&canvas, accent, false)
+        && internal_panel_preview_scrollbar_visible(&canvas, accent, true)
 }
 
 fn panel_scrollbar_center_is_accent(
     canvas: &super::Canvas,
     accent: u32,
     region: panel_scroll_state::PanelScrollRegion,
+    horizontal: bool,
 ) -> bool {
-    let thumb =
-        panel_scrollbars::thumb_rect_for(region, panel_scroll_state::PanelScrollOffsets::default());
+    let thumb = if horizontal {
+        panel_scrollbars::horizontal_thumb_rect_for_state(
+            region,
+            panel_scroll_state::PanelScrollOffsets::default(),
+            "panel",
+            Default::default(),
+        )
+    } else {
+        panel_scrollbars::thumb_rect_for_state(
+            region,
+            panel_scroll_state::PanelScrollOffsets::default(),
+            "panel",
+            Default::default(),
+        )
+    };
     pixel_at(
         canvas,
         thumb.x + thumb.width / 2,
         thumb.y + thumb.height / 2,
     ) == Some(accent)
+}
+
+fn internal_panel_preview_scrollbar_visible(
+    canvas: &super::Canvas,
+    accent: u32,
+    horizontal: bool,
+) -> bool {
+    let component = preview_detail::component_action_hit_rect("panel");
+    let rect = if horizontal {
+        layout_metrics::LayoutRect::new(
+            component.x + PANEL_PREVIEW_SLOT_X + PANEL_CHILD_HORIZONTAL_TRACK_X_OFFSET,
+            component.y + PANEL_PREVIEW_SLOT_Y + PANEL_PREVIEW_SLOT_HEIGHT
+                - PANEL_CHILD_TRACK_EDGE_OFFSET,
+            PANEL_PREVIEW_SLOT_WIDTH - PANEL_CHILD_HORIZONTAL_TRACK_WIDTH_INSET,
+            PANEL_CHILD_BAR_THICKNESS,
+        )
+    } else {
+        layout_metrics::LayoutRect::new(
+            component.x + PANEL_PREVIEW_SLOT_X + PANEL_PREVIEW_SLOT_WIDTH
+                - PANEL_CHILD_TRACK_EDGE_OFFSET,
+            component.y + PANEL_PREVIEW_SLOT_Y + PANEL_CHILD_VERTICAL_TRACK_Y_OFFSET,
+            PANEL_CHILD_BAR_THICKNESS,
+            PANEL_PREVIEW_SLOT_HEIGHT - PANEL_CHILD_VERTICAL_TRACK_HEIGHT_INSET,
+        )
+    };
+    color_count(canvas, rect, accent) > 0
+}
+
+fn color_count(canvas: &super::Canvas, rect: layout_metrics::LayoutRect, color: u32) -> usize {
+    let mut count = 0;
+    for current_y in rect.y..rect.bottom() {
+        for current_x in rect.x..rect.right() {
+            if pixel_at(canvas, current_x, current_y) == Some(color) {
+                count += 1;
+            }
+        }
+    }
+    count
 }
 
 fn pixel_at(canvas: &super::Canvas, x: usize, y: usize) -> Option<u32> {
@@ -207,39 +235,4 @@ fn pixel_difference(left: &[u32], right: &[u32]) -> usize {
         .zip(right.iter())
         .filter(|(left, right)| left != right)
         .count()
-}
-
-fn legacy_preview_signature_stats() -> LegacyPreviewSignatureStats {
-    let mut signatures = BTreeMap::new();
-    let mut collisions = 0;
-    for page in LEGACY_DOD_PREVIEW_PAGES {
-        let canvas = render::render_storybook_canvas_for("dark", page, false);
-        let signature = hero_preview_signature(&canvas);
-        if signatures.insert(signature, *page).is_some() {
-            collisions += 1;
-        }
-    }
-    LegacyPreviewSignatureStats {
-        signatures: signatures.len(),
-        collisions,
-    }
-}
-
-fn hero_preview_signature(canvas: &super::Canvas) -> u64 {
-    let (x, y, width, height) = preview_contract::selected_detail_rect();
-    let mut signature = PREVIEW_SIGNATURE_SEED;
-    for current_y in y..y + height {
-        for current_x in x..x + width {
-            let index = current_y * canvas.width() + current_x;
-            let pixel = u64::from(canvas.pixels()[index]);
-            signature ^= pixel.wrapping_add(index as u64);
-            signature = signature.wrapping_mul(PREVIEW_SIGNATURE_PRIME);
-        }
-    }
-    signature
-}
-
-struct LegacyPreviewSignatureStats {
-    signatures: usize,
-    collisions: usize,
 }

@@ -53,7 +53,7 @@ fn panel_content_viewports_reserve_scrollbar_gutters() {
 
 #[test]
 fn non_overflowing_preview_has_no_scroll_offset() {
-    let overflow = panel_scroll_state::overflow_for(
+    let overflow = panel_scroll_state::PanelScrollOverflowModel::overflow_for(
         panel_scroll_state::PanelScrollRegion::Preview,
         BUTTON_PAGE,
         Default::default(),
@@ -73,7 +73,7 @@ fn inspector_horizontal_thumb_reaches_track_end_at_max_offset() {
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
     offsets.set_drag_offset_x(
         panel_scroll_state::PanelScrollRegion::Inspector,
-        panel_scroll_state::max_scroll_x_for(
+        panel_scroll_state::PanelScrollOverflowModel::max_scroll_x_for(
             panel_scroll_state::PanelScrollRegion::Inspector,
             "button",
             Default::default(),

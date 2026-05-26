@@ -1,5 +1,10 @@
 use super::canvas::Canvas;
 use super::dedicated_dod_common::{self as common};
+pub(super) use super::dedicated_dod_form_selection_list_layout::{
+    selection_list_keyboard_next_button_rect, selection_list_multi_toggle_button_rect,
+    selection_list_reset_button_rect, selection_list_select_row_button_rect,
+    selection_list_state_read_button_rect,
+};
 use super::dedicated_dod_metrics as m;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
@@ -7,11 +12,17 @@ use super::selection_control_metrics as sm;
 use super::text::TextRenderer;
 
 const ROW_LABELS: [&str; sm::SELECTION_LIST_ROW_COUNT] = ["First", "Second", "Third", "Fourth"];
-const CONTROL_BUTTON_X: usize = sm::STATUS_X;
-const CONTROL_BUTTON_Y: usize = 116;
-const CONTROL_BUTTON_WIDTH: usize = 56;
-const CONTROL_BUTTON_HEIGHT: usize = 20;
 const CONTROL_BUTTON_GAP: usize = 8;
+const ITEMS_PRESET_INDEX: usize = 0;
+const SELECT_PRESET_INDEX: usize = 1;
+const MULTI_PRESET_INDEX: usize = 2;
+const THEME_PRESET_INDEX: usize = 3;
+const SELECTED_ROW_INDEX: usize = 1;
+const MULTI_FOCUS_INDEX: usize = 2;
+const MULTI_PRESET_MASK: u8 = 0b0101;
+const MULTI_MARK_X_OFFSET: usize = 146;
+const MULTI_MARK_Y_OFFSET: usize = 4;
+const MULTI_MARK_SIZE: usize = 6;
 
 pub(super) fn selection_list(
     canvas: &mut Canvas,
@@ -35,30 +46,18 @@ fn draw_rows(
     x: usize,
     y: usize,
 ) {
+    let fill = list_surface(palette, scenario);
     canvas.fill_rect(
         x + sm::TRIGGER_X,
         y + sm::SELECTION_LIST_Y,
         sm::TRIGGER_WIDTH,
         sm::SELECTION_LIST_ROW_HEIGHT * ROW_LABELS.len(),
-        palette.surface,
+        fill,
     );
 
     for (index, label) in ROW_LABELS.iter().enumerate() {
         let row_y = y + sm::SELECTION_LIST_Y + index * sm::SELECTION_LIST_ROW_HEIGHT;
-        if scenario
-            .screen_state
-            .selection
-            .selection_list_selected_index
-            == Some(index)
-        {
-            canvas.fill_rect(
-                x + sm::TRIGGER_X + sm::OPTION_ROW_INSET,
-                row_y,
-                sm::TRIGGER_WIDTH - sm::OPTION_ROW_WIDTH_REDUCTION,
-                sm::SELECTION_LIST_ROW_HEIGHT,
-                palette.accent,
-            );
-        }
+        draw_row_state(canvas, palette, scenario, x, row_y, index);
         text.draw(
             canvas,
             label,
@@ -73,6 +72,52 @@ fn draw_rows(
             sm::TRIGGER_WIDTH,
             1,
             palette.border,
+        );
+    }
+    if scenario.preset_index == THEME_PRESET_INDEX {
+        canvas.stroke_rect(
+            x + sm::TRIGGER_X,
+            y + sm::SELECTION_LIST_Y,
+            sm::TRIGGER_WIDTH,
+            sm::SELECTION_LIST_ROW_HEIGHT * ROW_LABELS.len(),
+            palette.accent,
+        );
+    }
+}
+
+fn draw_row_state(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    x: usize,
+    row_y: usize,
+    index: usize,
+) {
+    if selection_list_selected_index(scenario) == Some(index) {
+        canvas.fill_rect(
+            x + sm::TRIGGER_X + sm::OPTION_ROW_INSET,
+            row_y,
+            sm::TRIGGER_WIDTH - sm::OPTION_ROW_WIDTH_REDUCTION,
+            sm::SELECTION_LIST_ROW_HEIGHT,
+            palette.accent,
+        );
+    }
+    if selection_list_multi_mask(scenario) & (1u8 << index) != 0 {
+        canvas.fill_rect(
+            x + sm::TRIGGER_X + MULTI_MARK_X_OFFSET,
+            row_y + MULTI_MARK_Y_OFFSET,
+            MULTI_MARK_SIZE,
+            MULTI_MARK_SIZE,
+            palette.accent,
+        );
+    }
+    if selection_list_focus_index(scenario) == Some(index) {
+        canvas.stroke_rect(
+            x + sm::TRIGGER_X + sm::OPTION_ROW_INSET,
+            row_y,
+            sm::TRIGGER_WIDTH - sm::OPTION_ROW_WIDTH_REDUCTION,
+            sm::SELECTION_LIST_ROW_HEIGHT,
+            palette.text,
         );
     }
 }
@@ -165,66 +210,54 @@ fn draw_controls(
     }
 }
 
-pub(super) fn selection_list_state_read_button_rect(
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    super::layout_metrics::LayoutRect::new(
-        x + CONTROL_BUTTON_X,
-        y + CONTROL_BUTTON_Y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
+fn list_surface(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.preset_index == THEME_PRESET_INDEX {
+        return palette.background;
+    }
+    palette.surface
 }
 
-pub(super) fn selection_list_select_row_button_rect(
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    let state_read = selection_list_state_read_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        state_read.right() + CONTROL_BUTTON_GAP,
-        state_read.y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
+fn selection_list_selected_index(scenario: ScenarioContext<'_>) -> Option<usize> {
+    if scenario
+        .screen_state
+        .selection
+        .selection_list_selected_index
+        .is_some()
+    {
+        return scenario
+            .screen_state
+            .selection
+            .selection_list_selected_index;
+    }
+    if scenario.preset_index == SELECT_PRESET_INDEX {
+        return Some(SELECTED_ROW_INDEX);
+    }
+    None
 }
 
-pub(super) fn selection_list_multi_toggle_button_rect(
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    let state_read = selection_list_state_read_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        state_read.x,
-        state_read.bottom() + CONTROL_BUTTON_GAP,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
+fn selection_list_multi_mask(scenario: ScenarioContext<'_>) -> u8 {
+    if scenario.screen_state.selection.selection_list_multi_mask != 0 {
+        return scenario.screen_state.selection.selection_list_multi_mask;
+    }
+    if scenario.preset_index == MULTI_PRESET_INDEX {
+        return MULTI_PRESET_MASK;
+    }
+    0
 }
 
-pub(super) fn selection_list_keyboard_next_button_rect(
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    let multi = selection_list_multi_toggle_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        multi.x,
-        multi.bottom() + CONTROL_BUTTON_GAP,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
-}
-
-pub(super) fn selection_list_reset_button_rect(
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    let multi = selection_list_multi_toggle_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        multi.right() + CONTROL_BUTTON_GAP,
-        multi.y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
+fn selection_list_focus_index(scenario: ScenarioContext<'_>) -> Option<usize> {
+    if scenario
+        .screen_state
+        .selection
+        .selection_list_focus_index
+        .is_some()
+    {
+        return scenario.screen_state.selection.selection_list_focus_index;
+    }
+    match scenario.preset_index {
+        SELECT_PRESET_INDEX => Some(SELECTED_ROW_INDEX),
+        MULTI_PRESET_INDEX => Some(MULTI_FOCUS_INDEX),
+        ITEMS_PRESET_INDEX | THEME_PRESET_INDEX => None,
+        _ => None,
+    }
 }

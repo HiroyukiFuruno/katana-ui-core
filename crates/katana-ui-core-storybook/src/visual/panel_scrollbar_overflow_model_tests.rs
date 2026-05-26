@@ -5,7 +5,11 @@ use super::{panel_layout, panel_scroll_state, panel_scrollbars};
 fn horizontal_bar_hidden_when_outer_preview_content_fits_viewport() {
     let region = panel_scroll_state::PanelScrollRegion::Preview;
     let track = panel_scrollbars::horizontal_track_rect_for(region);
-    let overflow = panel_scroll_state::overflow_for(region, "button", Default::default());
+    let overflow = panel_scroll_state::PanelScrollOverflowModel::overflow_for(
+        region,
+        "button",
+        Default::default(),
+    );
     let model = ScrollbarModel::horizontal(
         track,
         overflow.viewport_width,

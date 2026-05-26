@@ -1,29 +1,22 @@
 use super::canvas::Canvas;
 use super::dedicated_dod_common::{self as common};
+pub(super) use super::dedicated_dod_form_binary_choice_layout::{
+    CHOICE_LABEL_X, CHOICE_ROW_HEIGHT, CONTROL_TEXT_Y, checkbox_event_row_rect,
+    checkbox_log_row_rect, checkbox_reset_button_rect, checkbox_state_read_button_rect,
+    checkbox_state_row_rect, checkbox_toggle_button_rect, radio_event_row_rect, radio_log_row_rect,
+    radio_reset_button_rect, radio_select_button_rect, radio_state_read_button_rect,
+    radio_state_row_rect, row_rect,
+};
+#[cfg(test)]
+pub(super) use super::dedicated_dod_form_binary_choice_layout::{
+    checkbox_label_rect, checkbox_mark_rect, checkbox_row_rect, radio_label_rect, radio_mark_rect,
+    radio_row_rect,
+};
 use super::dedicated_dod_form_choice_marks as choice_marks;
-use super::dedicated_dod_form_choice_status as choice_status;
 use super::dedicated_dod_metrics as m;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::text::{TextRenderer, TextVerticalBox};
-
-const CHOICE_ROW_X: usize = 18;
-const CHOICE_ROW_WIDTH: usize = 174;
-const CHOICE_ROW_HEIGHT: usize = 22;
-const CHOICE_ROW_GAP: usize = 10;
-const CHOICE_LABEL_X: usize = 32;
-#[cfg(test)]
-const CHOICE_MARK_X: usize = 10;
-#[cfg(test)]
-const CHOICE_MARK_SIZE: usize = 12;
-const CONTROL_BUTTON_Y: usize = 78;
-const CONTROL_STATUS_Y: usize = choice_status::CHOICE_ROW_Y;
-const CONTROL_HEIGHT: usize = 20;
-const CONTROL_GAP: usize = 8;
-const CONTROL_TEXT_Y: usize = 6;
-const CONTROL_STATE_X: usize = 214;
-const CONTROL_STATE_WIDTH: usize = 120;
-const CONTROL_BUTTON_WIDTH: usize = 52;
 
 pub(super) fn checkbox(
     canvas: &mut Canvas,
@@ -60,6 +53,7 @@ fn draw_checkbox_rows(
     y: usize,
 ) {
     let disabled = scenario.preset_index == m::PX_2;
+    let focused = scenario.preset_index == m::PX_3;
     let checked = if scenario.preset_index == m::PX_0 || scenario.preset_index == m::PX_2 {
         scenario.screen_state.is_checkbox_checked()
     } else {
@@ -68,6 +62,9 @@ fn draw_checkbox_rows(
     for (index, label) in ["Markdown Linter", "Strict mode"].into_iter().enumerate() {
         let row = row_rect(index, x, y);
         draw_choice_row(canvas, text, palette, row, label, disabled);
+        if focused && index == m::PX_0 {
+            canvas.stroke_rect(row.x, row.y, row.width, row.height, palette.accent);
+        }
         choice_marks::draw_checkbox_mark(canvas, palette, x, y, index, checked && index == 0);
     }
 }
@@ -171,17 +168,26 @@ fn draw_radio_rows(
     x: usize,
     y: usize,
 ) {
-    let selected = if scenario.preset_index == m::PX_0 {
-        usize::from(scenario.screen_state.is_radio_selected())
-    } else if scenario.screen_state.has_widget_action() {
-        1
-    } else {
-        scenario.preset_index.min(1)
-    };
+    let selected = radio_selected_index(scenario);
+    let focused = scenario.preset_index == m::PX_3;
     for (index, label) in ["Preview", "Code"].into_iter().enumerate() {
-        draw_choice_row(canvas, text, palette, row_rect(index, x, y), label, false);
-        choice_marks::draw_radio_mark(canvas, palette, x, y, index, index == selected);
+        let row = row_rect(index, x, y);
+        draw_choice_row(canvas, text, palette, row, label, false);
+        if selected == Some(index) || (focused && index == m::PX_1) {
+            canvas.stroke_rect(row.x, row.y, row.width, row.height, palette.accent);
+        }
+        choice_marks::draw_radio_mark(canvas, palette, x, y, index, selected == Some(index));
     }
+}
+
+fn radio_selected_index(scenario: ScenarioContext<'_>) -> Option<usize> {
+    if scenario.preset_index == m::PX_0 {
+        return scenario.screen_state.is_radio_selected().then_some(m::PX_0);
+    }
+    if scenario.preset_index == m::PX_2 {
+        return Some(m::PX_1);
+    }
+    Some(m::PX_0)
 }
 
 fn draw_radio_controls(
@@ -258,180 +264,4 @@ fn draw_choice_row(
         m::FONT_9,
         text_color,
     );
-}
-
-fn row_rect(index: usize, x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    let row_y = y + choice_status::CHOICE_ROW_Y + index * (CHOICE_ROW_HEIGHT + CHOICE_ROW_GAP);
-    super::layout_metrics::LayoutRect::new(
-        x + CHOICE_ROW_X,
-        row_y,
-        CHOICE_ROW_WIDTH,
-        CHOICE_ROW_HEIGHT,
-    )
-}
-
-#[cfg(test)]
-pub(super) fn checkbox_row_rect(
-    index: usize,
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    row_rect(index, x, y)
-}
-
-#[cfg(test)]
-pub(super) fn checkbox_mark_rect(
-    index: usize,
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    let row = checkbox_row_rect(index, x, y);
-    super::layout_metrics::LayoutRect::new(
-        row.x + CHOICE_MARK_X,
-        row.y + 5,
-        CHOICE_MARK_SIZE,
-        CHOICE_MARK_SIZE,
-    )
-}
-
-#[cfg(test)]
-pub(super) fn checkbox_label_rect(
-    index: usize,
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    let row = checkbox_row_rect(index, x, y);
-    super::layout_metrics::LayoutRect::new(
-        row.x + CHOICE_LABEL_X,
-        row.y,
-        CHOICE_ROW_WIDTH - CHOICE_LABEL_X - 6,
-        CHOICE_ROW_HEIGHT,
-    )
-}
-
-pub(super) fn checkbox_state_read_button_rect(
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    super::layout_metrics::LayoutRect::new(
-        x + CHOICE_ROW_X,
-        y + CONTROL_BUTTON_Y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_HEIGHT,
-    )
-}
-
-pub(super) fn checkbox_toggle_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    let read = checkbox_state_read_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        read.right() + CONTROL_GAP,
-        read.y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_HEIGHT,
-    )
-}
-
-pub(super) fn checkbox_reset_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    let toggle = checkbox_toggle_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        toggle.right() + CONTROL_GAP,
-        toggle.y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_HEIGHT,
-    )
-}
-
-pub(super) fn checkbox_state_row_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    super::layout_metrics::LayoutRect::new(
-        x + CONTROL_STATE_X,
-        y + CONTROL_STATUS_Y,
-        CONTROL_STATE_WIDTH,
-        CONTROL_HEIGHT,
-    )
-}
-
-pub(super) fn checkbox_event_row_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    let state = checkbox_state_row_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        state.x,
-        state.bottom() + CONTROL_GAP,
-        state.width,
-        state.height,
-    )
-}
-
-pub(super) fn checkbox_log_row_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    let event = checkbox_event_row_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        event.x,
-        event.bottom() + CONTROL_GAP,
-        event.width,
-        event.height,
-    )
-}
-
-#[cfg(test)]
-pub(super) fn radio_row_rect(
-    index: usize,
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    row_rect(index, x, y)
-}
-
-#[cfg(test)]
-pub(super) fn radio_mark_rect(
-    index: usize,
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    let row = radio_row_rect(index, x, y);
-    super::layout_metrics::LayoutRect::new(
-        row.x + CHOICE_MARK_X,
-        row.y + 5,
-        CHOICE_MARK_SIZE,
-        CHOICE_MARK_SIZE,
-    )
-}
-
-#[cfg(test)]
-pub(super) fn radio_label_rect(
-    index: usize,
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    let row = radio_row_rect(index, x, y);
-    super::layout_metrics::LayoutRect::new(
-        row.x + CHOICE_LABEL_X,
-        row.y,
-        CHOICE_ROW_WIDTH - CHOICE_LABEL_X - 6,
-        CHOICE_ROW_HEIGHT,
-    )
-}
-
-pub(super) fn radio_state_read_button_rect(
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    checkbox_state_read_button_rect(x, y)
-}
-
-pub(super) fn radio_select_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    checkbox_toggle_button_rect(x, y)
-}
-
-pub(super) fn radio_reset_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    checkbox_reset_button_rect(x, y)
-}
-
-pub(super) fn radio_state_row_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    checkbox_state_row_rect(x, y)
-}
-
-pub(super) fn radio_event_row_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    checkbox_event_row_rect(x, y)
-}
-
-pub(super) fn radio_log_row_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    checkbox_log_row_rect(x, y)
 }

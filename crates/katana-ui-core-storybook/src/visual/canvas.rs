@@ -1,15 +1,7 @@
-use image::{ImageBuffer, Rgba};
-use std::path::Path;
-
 use super::canvas_clip::CanvasClip;
+use super::canvas_color::blend_color;
 pub use super::canvas_model::Canvas;
-use super::canvas_round_rect;
-
-const RED_SHIFT: u32 = 16;
-const GREEN_SHIFT: u32 = 8;
-const CHANNEL_MASK: u32 = 0xff;
-const ALPHA_MAX: u32 = 255;
-const OPAQUE_ALPHA: u8 = 255;
+use super::canvas_scale::{normalized_scale, physical_size};
 const RECT_BORDER_WIDTH: usize = 1;
 
 impl Canvas {
@@ -127,31 +119,6 @@ impl Canvas {
         );
     }
 
-    pub fn fill_round_rect(
-        &mut self,
-        x: usize,
-        y: usize,
-        width: usize,
-        height: usize,
-        radius: usize,
-        color: u32,
-    ) {
-        let logical_x = x;
-        let logical_y = y;
-        let physical_x = self.to_physical_x(logical_x);
-        let physical_y = self.to_physical_y(logical_y);
-        let width = self
-            .to_physical_x(logical_x.saturating_add(width))
-            .saturating_sub(physical_x);
-        let height = self
-            .to_physical_y(logical_y.saturating_add(height))
-            .saturating_sub(physical_y);
-        let radius = self.logical_scale(radius);
-        canvas_round_rect::fill_physical(
-            self, physical_x, physical_y, width, height, radius, color,
-        );
-    }
-
     pub fn set(&mut self, x: usize, y: usize, color: u32) {
         let Some((left, right)) = self.physical_span_x(x) else {
             return;
@@ -164,28 +131,6 @@ impl Canvas {
                 self.set_physical(current_x, current_y, color);
             }
         }
-    }
-
-    #[must_use]
-    pub fn viewport_y(&self, offset_y: usize, height: usize, fill: u32) -> Self {
-        let mut viewport = Self::new_scaled(self.logical_width, height, self.scale_factor, fill);
-        if self.logical_height == 0 || self.logical_width == 0 || height == 0 {
-            return viewport;
-        }
-        let physical_offset_y = self.to_physical_y(offset_y);
-        for target_y in 0..viewport.height {
-            let source_y = physical_offset_y.saturating_add(target_y);
-            if source_y >= self.height {
-                break;
-            }
-            let source_start = source_y * self.width;
-            let target_start = target_y * viewport.width;
-            let copy_end = target_start + viewport.width;
-            let source_end = source_start + self.width;
-            viewport.pixels[target_start..copy_end]
-                .copy_from_slice(&self.pixels[source_start..source_end]);
-        }
-        viewport
     }
 
     pub fn blend(&mut self, x: usize, y: usize, color: u32, alpha: u8) {
@@ -277,15 +222,15 @@ impl Canvas {
         Some((top, bottom))
     }
 
-    fn to_physical_x(&self, x: usize) -> usize {
+    pub(super) fn to_physical_x(&self, x: usize) -> usize {
         self.logical_to_physical_position(x).min(self.width)
     }
 
-    fn to_physical_y(&self, y: usize) -> usize {
+    pub(super) fn to_physical_y(&self, y: usize) -> usize {
         self.logical_to_physical_position(y).min(self.height)
     }
 
-    fn logical_scale(&self, value: usize) -> usize {
+    pub(super) fn logical_scale(&self, value: usize) -> usize {
         self.logical_to_physical_position(value)
     }
 
@@ -337,47 +282,6 @@ impl Canvas {
             .max(top + 1);
         Some((left, top, right, bottom))
     }
-
-    pub fn save_png(&self, path: &Path) -> image::ImageResult<()> {
-        let mut image =
-            ImageBuffer::<Rgba<u8>, Vec<u8>>::new(self.width as u32, self.height as u32);
-        for (index, pixel) in self.pixels.iter().enumerate() {
-            let x = (index % self.width) as u32;
-            let y = (index / self.width) as u32;
-            let red = ((pixel >> RED_SHIFT) & CHANNEL_MASK) as u8;
-            let green = ((pixel >> GREEN_SHIFT) & CHANNEL_MASK) as u8;
-            let blue = (pixel & CHANNEL_MASK) as u8;
-            image.put_pixel(x, y, Rgba([red, green, blue, OPAQUE_ALPHA]));
-        }
-        image.save(path)
-    }
-}
-
-fn blend_color(destination: u32, source: u32, alpha: u8) -> u32 {
-    let alpha = u32::from(alpha);
-    let inverse = ALPHA_MAX - alpha;
-    let red = blend_channel(destination, source, alpha, inverse, RED_SHIFT);
-    let green = blend_channel(destination, source, alpha, inverse, GREEN_SHIFT);
-    let blue = blend_channel(destination, source, alpha, inverse, 0);
-    (red << RED_SHIFT) | (green << GREEN_SHIFT) | blue
-}
-
-fn blend_channel(destination: u32, source: u32, alpha: u32, inverse: u32, shift: u32) -> u32 {
-    let destination_channel = (destination >> shift) & CHANNEL_MASK;
-    let source_channel = (source >> shift) & CHANNEL_MASK;
-    (source_channel * alpha + destination_channel * inverse) / ALPHA_MAX
-}
-
-fn normalized_scale(scale: f32) -> f32 {
-    if scale.is_finite() && scale >= 1.0 {
-        scale
-    } else {
-        1.0
-    }
-}
-
-fn physical_size(size: usize, scale: f32) -> usize {
-    (size as f64 * f64::from(scale)).round() as usize
 }
 
 #[cfg(test)]

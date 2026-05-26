@@ -50,6 +50,7 @@ pub(super) const HERO_PREVIEW_Y_FOR_TEST: usize =
 const HERO_Y: usize = 136;
 const HERO_WIDTH: usize = 710;
 const HERO_HEIGHT: usize = 244;
+const PANEL_HERO_HEIGHT: usize = 520;
 const HERO_INSET: usize = 24;
 const HERO_PREVIEW_X: usize = PREVIEW_X + 34;
 const HERO_PREVIEW_Y: usize = HERO_Y + 86;
@@ -71,25 +72,26 @@ pub(super) fn draw_selected_hero(
     let preview_y = preview_scroll_y(scenario);
     let preview_x = preview_scroll_x(scenario);
     let hero_y = HERO_Y.saturating_sub(preview_y);
+    let hero_height = hero_height_for(scenario.selected_page);
     canvas.fill_rect(
         PREVIEW_X,
         hero_y,
         HERO_WIDTH,
-        HERO_HEIGHT,
+        hero_height,
         render.palette.surface,
     );
     canvas.stroke_rect(
         PREVIEW_X,
         hero_y,
         HERO_WIDTH,
-        HERO_HEIGHT,
+        hero_height,
         render.palette.border,
     );
     canvas.fill_rect(
         PREVIEW_X,
         hero_y,
         HERO_ACCENT_WIDTH,
-        HERO_HEIGHT,
+        hero_height,
         render.palette.accent,
     );
     render.text.draw(
@@ -109,7 +111,7 @@ pub(super) fn draw_selected_hero(
         render.palette.muted,
     );
     let component_x = HERO_PREVIEW_X.saturating_sub(preview_x);
-    canvas.with_clip(PREVIEW_X, hero_y, HERO_WIDTH, HERO_HEIGHT, |canvas| {
+    canvas.with_clip(PREVIEW_X, hero_y, HERO_WIDTH, hero_height, |canvas| {
         dedicated::draw_page(
             canvas,
             dedicated::DedicatedPageRequest {
@@ -130,6 +132,13 @@ pub(super) fn draw_selected_hero(
         );
         draw_runtime_state(canvas, render, scenario);
     });
+}
+
+fn hero_height_for(page: &str) -> usize {
+    if page == "panel" {
+        return PANEL_HERO_HEIGHT;
+    }
+    HERO_HEIGHT
 }
 
 fn selected_example<'a>(

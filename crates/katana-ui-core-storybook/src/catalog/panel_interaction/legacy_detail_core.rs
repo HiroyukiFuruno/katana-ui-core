@@ -1,5 +1,7 @@
 use super::{LegacyDodSpec, option_state_summary};
 use crate::catalog::{StoryExample, StoryPresetLabels};
+#[path = "legacy_detail_panel.rs"]
+mod panel;
 
 pub(super) fn state_line(
     example: &StoryExample,
@@ -8,6 +10,7 @@ pub(super) fn state_line(
     after_props: &katana_ui_core::render_model::UiProps,
 ) -> String {
     match example.page {
+        "panel" => panel::state_line(example, marker),
         "search-control-strip" => search_control_state_line(example, marker),
         "scroll-area" => scroll_area_state_line(example, marker),
         "command-palette" => command_palette_state_line(example, marker),
@@ -17,6 +20,7 @@ pub(super) fn state_line(
 
 pub(super) fn event_line(example: &StoryExample, marker: &str) -> String {
     match example.page {
+        "panel" => panel::event_line(marker),
         "search-control-strip" => search_control_event_line(example, marker),
         "scroll-area" => scroll_area_event_line(example, marker),
         "command-palette" => command_palette_event_line(example, marker),
@@ -26,6 +30,7 @@ pub(super) fn event_line(example: &StoryExample, marker: &str) -> String {
 
 pub(super) fn action_line(example: &StoryExample, marker: &str) -> String {
     match example.page {
+        "panel" => panel::action_line(marker),
         "search-control-strip" => search_control_action_line(example, marker),
         "scroll-area" => scroll_area_action_line(example, marker),
         "command-palette" => command_palette_action_line(example, marker),
@@ -35,6 +40,7 @@ pub(super) fn action_line(example: &StoryExample, marker: &str) -> String {
 
 pub(super) fn quality_line(spec: Option<&LegacyDodSpec>, page: &str, marker: &str) -> String {
     match page {
+        "panel" => panel::quality_line(marker),
         "search-control-strip" => {
             format!("{marker} quality: typed options state_id result_count event_contract")
         }

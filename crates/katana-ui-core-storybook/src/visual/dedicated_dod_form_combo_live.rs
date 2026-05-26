@@ -1,12 +1,15 @@
 use super::canvas::Canvas;
 use super::dedicated_dod_common::{self as common};
+pub(super) use super::dedicated_dod_form_combo_layout::{
+    combo_filter_button_rect, combo_reset_button_rect, combo_select_button_rect,
+    combo_state_read_button_rect,
+};
 use super::dedicated_dod_metrics as m;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::selection_control_metrics as sm;
 use super::text::{TextRenderer, TextVerticalBox};
 
-const FIELD: u32 = 0x1f242d;
 const FILTER_BADGE_X: usize = 62;
 const FILTER_BADGE_Y: usize = 7;
 const FILTER_BADGE_WIDTH: usize = 28;
@@ -14,12 +17,13 @@ const FILTER_BADGE_HEIGHT: usize = 10;
 const FILTER_BADGE_TEXT_X_OFFSET: usize = 5;
 const COMBO_OPTION_TEXT_Y_OFFSET: usize = 5;
 const STATUS_ROW_COUNT: usize = 3;
-const CONTROL_BUTTON_X: usize = sm::STATUS_X;
-const CONTROL_BUTTON_Y: usize = 116;
-const CONTROL_BUTTON_WIDTH: usize = 56;
-const CONTROL_BUTTON_HEIGHT: usize = 20;
 const CONTROL_BUTTON_GAP: usize = 8;
 const CONTROL_TEXT_Y: usize = 6;
+const INPUT_LIST_PRESET_INDEX: usize = 0;
+const SELECT_ROW_PRESET_INDEX: usize = 1;
+const FILTER_PRESET_INDEX: usize = 2;
+const THEME_PRESET_INDEX: usize = 3;
+const SELECTED_OPTION_INDEX: usize = 1;
 
 pub(super) fn combo_box(
     canvas: &mut Canvas,
@@ -44,19 +48,29 @@ fn draw_input(
     x: usize,
     y: usize,
 ) {
+    let fill = if scenario.preset_index == THEME_PRESET_INDEX {
+        palette.background
+    } else {
+        palette.surface
+    };
+    let border = if scenario.preset_index == THEME_PRESET_INDEX {
+        palette.accent
+    } else {
+        palette.border
+    };
     canvas.fill_rect(
         x + sm::TRIGGER_X,
         y + sm::TRIGGER_Y,
         sm::TRIGGER_WIDTH,
         sm::TRIGGER_HEIGHT,
-        FIELD,
+        fill,
     );
     canvas.stroke_rect(
         x + sm::TRIGGER_X,
         y + sm::TRIGGER_Y,
         sm::TRIGGER_WIDTH,
         sm::TRIGGER_HEIGHT,
-        palette.border,
+        border,
     );
     text.draw_centered(
         canvas,
@@ -66,7 +80,7 @@ fn draw_input(
         m::FONT_9,
         palette.text,
     );
-    if scenario.screen_state.selection.combo_filtered {
+    if combo_filtered(scenario) {
         draw_filter_badge(canvas, text, palette, x, y);
     }
 }
@@ -103,7 +117,7 @@ fn draw_options(
     x: usize,
     y: usize,
 ) {
-    if !scenario.screen_state.selection.combo_open {
+    if !combo_open(scenario) {
         return;
     }
     canvas.fill_rect(
@@ -188,20 +202,45 @@ fn draw_controls(
 }
 
 fn input_value(scenario: ScenarioContext<'_>) -> &'static str {
-    if scenario.screen_state.selection.combo_selected_index == Some(1) {
+    if combo_selected_index(scenario) == Some(SELECTED_OPTION_INDEX) {
         return "Two";
     }
-    if scenario.screen_state.selection.combo_filtered {
+    if combo_filtered(scenario) {
         return "tw";
     }
     "Type command"
 }
 
 fn option_labels(scenario: ScenarioContext<'_>) -> &'static [&'static str] {
-    if scenario.screen_state.selection.combo_filtered {
+    if combo_filtered(scenario) {
         return &["Two"];
     }
     &["One", "Two"]
+}
+
+fn combo_open(scenario: ScenarioContext<'_>) -> bool {
+    scenario.screen_state.selection.combo_open
+        || scenario.preset_index == INPUT_LIST_PRESET_INDEX
+        || scenario.preset_index == FILTER_PRESET_INDEX
+}
+
+fn combo_filtered(scenario: ScenarioContext<'_>) -> bool {
+    scenario.screen_state.selection.combo_filtered || scenario.preset_index == FILTER_PRESET_INDEX
+}
+
+fn combo_selected_index(scenario: ScenarioContext<'_>) -> Option<usize> {
+    if scenario
+        .screen_state
+        .selection
+        .combo_selected_index
+        .is_some()
+    {
+        return scenario.screen_state.selection.combo_selected_index;
+    }
+    if scenario.preset_index == SELECT_ROW_PRESET_INDEX {
+        return Some(SELECTED_OPTION_INDEX);
+    }
+    None
 }
 
 fn option_count(scenario: ScenarioContext<'_>) -> usize {
@@ -221,46 +260,4 @@ fn status_or_default(value: &'static str, default_value: &'static str) -> &'stat
         return default_value;
     }
     value
-}
-
-pub(super) fn combo_state_read_button_rect(
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    super::layout_metrics::LayoutRect::new(
-        x + CONTROL_BUTTON_X,
-        y + CONTROL_BUTTON_Y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
-}
-
-pub(super) fn combo_filter_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    let read = combo_state_read_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        read.right() + CONTROL_BUTTON_GAP,
-        read.y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
-}
-
-pub(super) fn combo_select_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    let read = combo_state_read_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        read.x,
-        read.bottom() + CONTROL_BUTTON_GAP,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
-}
-
-pub(super) fn combo_reset_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    let select = combo_select_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        select.right() + CONTROL_BUTTON_GAP,
-        select.y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
 }

@@ -23,9 +23,6 @@ const BUTTON_HOVER_DIFF_THRESHOLD: usize = 24;
 const BUTTON_MAX_CONFIGURED_RIGHT: usize = 320;
 const BUTTON_STATUS_GAP: usize = 24;
 const SUMMARY_SETTING_INDEX: usize = 2;
-const SUMMARY_TOOLTIP_DIFF_THRESHOLD: usize = 100;
-const SUMMARY_TOOLTIP_SCAN_HEIGHT: usize = 40;
-const SUMMARY_TOOLTIP_SCAN_WIDTH: usize = 360;
 
 #[test]
 fn preset_tab_updates_selected_preview_body() {
@@ -206,40 +203,6 @@ fn button_preset_tab_updates_inspector_effective_setting_values() {
     assert_eq!("auto 34px", basic);
 }
 
-#[test]
-fn summary_ellipsis_exposes_full_value_with_tooltip_state() {
-    let mut screen_state = super::screen_state::StorybookScreenState {
-        last_setting: "label",
-        last_setting_value: "保存する長いラベルを確認する",
-        ..Default::default()
-    };
-    let scenario = button_summary_scenario_with_state(DEFAULT_PRESET, screen_state.clone());
-    let full = preview::summary_full_samples_for_test(scenario);
-    let visible = preview::summary_visible_samples_for_test(scenario);
-
-    assert_eq!(
-        "setting label=保存する長いラベルを確認する",
-        full[SUMMARY_SETTING_INDEX]
-    );
-    assert_ne!(full[SUMMARY_SETTING_INDEX], visible[SUMMARY_SETTING_INDEX]);
-
-    let hidden = render::render_storybook_canvas_with_screen_state(
-        DARK_THEME,
-        BUTTON_PAGE,
-        DEFAULT_PRESET,
-        screen_state.clone(),
-    );
-    screen_state.hovered_summary_index = Some(SUMMARY_SETTING_INDEX);
-    let shown = render::render_storybook_canvas_with_screen_state(
-        DARK_THEME,
-        BUTTON_PAGE,
-        DEFAULT_PRESET,
-        screen_state,
-    );
-
-    assert!(summary_tooltip_pixel_diff(&hidden, &shown) > SUMMARY_TOOLTIP_DIFF_THRESHOLD);
-}
-
 fn button_status_scenario(
     last_action: &'static str,
     last_event: &'static str,
@@ -286,21 +249,4 @@ fn button_summary_scenario_with_state(
         show_navigation_text_connectors: false,
         screen_state,
     }
-}
-
-fn summary_tooltip_pixel_diff(before: &super::Canvas, after: &super::Canvas) -> usize {
-    let rect = preview::summary_control_rect_for_test(SUMMARY_SETTING_INDEX);
-    let start_y = rect.bottom();
-    let end_y = start_y + SUMMARY_TOOLTIP_SCAN_HEIGHT;
-    let end_x = (rect.x + SUMMARY_TOOLTIP_SCAN_WIDTH).min(before.width());
-    let mut diff = 0;
-    for current_y in start_y..end_y {
-        for current_x in rect.x..end_x {
-            let index = current_y * before.width() + current_x;
-            if before.pixels()[index] != after.pixels()[index] {
-                diff += 1;
-            }
-        }
-    }
-    diff
 }

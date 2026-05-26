@@ -5,18 +5,18 @@ use katana_ui_core::{atom, molecule, panel};
 const NAV_SCROLL_Y: u32 = 48;
 const NAV_VIEWPORT_HEIGHT: u32 = 180;
 const NAV_CONTENT_HEIGHT: u32 = 520;
-const PREVIEW_SCROLL_Y: u32 = 0;
+const PREVIEW_SCROLL_Y: u32 = 72;
 const PREVIEW_VIEWPORT_HEIGHT: u32 = 260;
-const PREVIEW_CONTENT_HEIGHT: u32 = 260;
+const PREVIEW_CONTENT_HEIGHT: u32 = 640;
 const PREVIEW_SCROLL_X: u32 = 96;
 const PREVIEW_VIEWPORT_WIDTH: u32 = 420;
 const PREVIEW_CONTENT_WIDTH: u32 = 900;
-const DETAILS_SCROLL_Y: u32 = 0;
+const DETAILS_SCROLL_Y: u32 = 36;
 const DETAILS_VIEWPORT_HEIGHT: u32 = 220;
-const DETAILS_CONTENT_HEIGHT: u32 = 220;
-const ROOT_SCROLL_Y: u32 = 0;
-const ROOT_VIEWPORT_HEIGHT: u32 = 600;
-const ROOT_CONTENT_HEIGHT: u32 = 600;
+const DETAILS_CONTENT_HEIGHT: u32 = 460;
+const ROOT_SCROLL_Y: u32 = 40;
+const ROOT_VIEWPORT_HEIGHT: u32 = 420;
+const ROOT_CONTENT_HEIGHT: u32 = 900;
 
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![panel_story(), theme_tokens_story()]
@@ -38,7 +38,7 @@ fn panel_story() -> StoryExample {
             PREVIEW_SCROLL_Y,
             PREVIEW_VIEWPORT_HEIGHT,
             PREVIEW_CONTENT_HEIGHT,
-            false,
+            true,
         )
         .horizontal_scroll(
             PREVIEW_SCROLL_X,
@@ -55,7 +55,7 @@ fn panel_story() -> StoryExample {
             DETAILS_SCROLL_Y,
             DETAILS_VIEWPORT_HEIGHT,
             DETAILS_CONTENT_HEIGHT,
-            false,
+            true,
         )
         .child(atom::Text::new("settings"))
         .child(atom::Text::new("state / event / action"));
@@ -64,19 +64,19 @@ fn panel_story() -> StoryExample {
             ROOT_SCROLL_Y,
             ROOT_VIEWPORT_HEIGHT,
             ROOT_CONTENT_HEIGHT,
-            false,
+            true,
         )
         .child(navigation)
         .child(preview)
         .child(details)
         .child(atom::Text::new(
-            "settings: region theme overflow clip vertical_scroll horizontal_scroll",
+            "settings: panel.vertical_scroll panel.horizontal_scroll panel.scrollbar_visibility",
         ))
         .child(atom::Text::new(
-            "state: parent and child panels keep independent scroll offsets",
+            "state: panel.nested_state parent and child panels keep independent offsets",
         ))
         .child(atom::Text::new(
-            "quality: clipping hit_target scrollbar_visibility nested_state",
+            "quality: clipping hit_target scrollbar_visibility nested_state axis_isolation",
         ));
     StoryCatalog::story("panel", root)
 }

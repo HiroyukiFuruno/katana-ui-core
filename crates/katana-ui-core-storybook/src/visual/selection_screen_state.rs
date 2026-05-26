@@ -1,8 +1,8 @@
-const LIGHT_OPTION_INDEX: usize = 1;
-const DARK_OPTION_INDEX: usize = 2;
-const SYSTEM_OPTION_INDEX: usize = 3;
+use super::selection_screen_state_labels::{
+    combo_read_state, combo_state, select_read_state, select_state, selection_list_state,
+};
+
 const FOURTH_LIST_INDEX: usize = 3;
-const COMBO_TWO_INDEX: usize = 1;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(super) struct SelectionScreenState {
@@ -157,9 +157,9 @@ impl SelectionScreenState {
     }
 
     fn toggle_selection_list_multi(&mut self, index: usize) -> SelectionScreenUpdate {
-        let bit = 1u8 << index.min(3);
+        let bit = 1u8 << index.min(FOURTH_LIST_INDEX);
         self.selection_list_multi_mask ^= bit;
-        self.selection_list_focus_index = Some(index.min(3));
+        self.selection_list_focus_index = Some(index.min(FOURTH_LIST_INDEX));
         SelectionScreenUpdate::new(
             "selection_list_multi_toggle",
             "selection_list_multi_changed",
@@ -208,73 +208,5 @@ impl SelectionScreenUpdate {
             event,
             state,
         }
-    }
-}
-
-fn select_state(index: usize) -> &'static str {
-    match index {
-        LIGHT_OPTION_INDEX => "selected=light",
-        DARK_OPTION_INDEX => "selected=dark",
-        SYSTEM_OPTION_INDEX => "selected=system",
-        _ => "selected=none",
-    }
-}
-
-fn select_read_state(is_open: bool, selected_index: Option<usize>) -> &'static str {
-    match (is_open, selected_index) {
-        (true, Some(LIGHT_OPTION_INDEX)) => "open=true selected=light",
-        (true, Some(DARK_OPTION_INDEX)) => "open=true selected=dark",
-        (true, Some(SYSTEM_OPTION_INDEX)) => "open=true selected=system",
-        (true, _) => "open=true selected=none",
-        (false, Some(LIGHT_OPTION_INDEX)) => "open=false selected=light",
-        (false, Some(DARK_OPTION_INDEX)) => "open=false selected=dark",
-        (false, Some(SYSTEM_OPTION_INDEX)) => "open=false selected=system",
-        (false, _) => "open=false selected=none",
-    }
-}
-
-fn combo_state(index: usize) -> &'static str {
-    match index {
-        COMBO_TWO_INDEX => "selected=two",
-        _ => "selected=one",
-    }
-}
-
-fn combo_read_state(
-    is_open: bool,
-    is_filtered: bool,
-    selected_index: Option<usize>,
-) -> &'static str {
-    match (is_open, is_filtered, selected_index) {
-        (true, true, Some(COMBO_TWO_INDEX)) => "open=true query=tw selected=two",
-        (true, true, _) => "open=true query=tw selected=none",
-        (false, false, Some(COMBO_TWO_INDEX)) => "open=false query=empty selected=two",
-        (false, false, _) => "open=false query=empty selected=none",
-        _ => "open=false query=empty selected=none",
-    }
-}
-
-fn selection_list_state(
-    single: Option<usize>,
-    multi_mask: u8,
-    focus: Option<usize>,
-) -> &'static str {
-    match (single, multi_mask & 0b1111, focus) {
-        (None, 0, None) => "single=none multi=none focus=none",
-        (Some(0), 0, Some(0)) => "single=0 multi=none focus=0",
-        (Some(1), 0, Some(1)) => "single=1 multi=none focus=1",
-        (Some(2), 0, Some(2)) => "single=2 multi=none focus=2",
-        (Some(3), 0, Some(3)) => "single=3 multi=none focus=3",
-        (Some(1), 0b0010, Some(1)) => "single=1 multi=1 focus=1",
-        (Some(1), 0b0110, Some(2)) => "single=1 multi=1,2 focus=2",
-        (Some(2), 0b0110, Some(2)) => "single=2 multi=1,2 focus=2",
-        (Some(2), 0b0110, Some(3)) => "single=2 multi=1,2 focus=3",
-        (Some(3), 0b0110, Some(3)) => "single=3 multi=1,2 focus=3",
-        (Some(3), 0b0110, Some(0)) => "single=3 multi=1,2 focus=0",
-        (Some(0), 0b0110, Some(0)) => "single=0 multi=1,2 focus=0",
-        (Some(2), 0b0010, Some(2)) => "single=2 multi=1 focus=2",
-        (Some(3), 0b0010, Some(3)) => "single=3 multi=1 focus=3",
-        (Some(0), 0b0010, Some(0)) => "single=0 multi=1 focus=0",
-        _ => "single=none multi=none focus=none",
     }
 }

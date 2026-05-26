@@ -1,9 +1,8 @@
 use super::canvas::Canvas;
 use super::inspector;
 use super::layout_metrics::{
-    BRAND_X, NAV_WIDTH, SCROLLBAR_CONTROL_HEIGHT, SCROLLBAR_CONTROL_WIDTH, SCROLLBAR_CONTROL_Y,
-    THEME_CONTROL_HEIGHT, THEME_CONTROL_WIDTH, THEME_CONTROL_Y, dark_theme_rect, light_theme_rect,
-    scrollbar_off_rect, scrollbar_on_rect,
+    BRAND_X, NAV_WIDTH, THEME_CONTROL_HEIGHT, THEME_CONTROL_WIDTH, THEME_CONTROL_Y,
+    dark_theme_rect, light_theme_rect,
 };
 use super::navigation;
 use super::panel_scrollbars;
@@ -18,7 +17,6 @@ const BRAND_TITLE_SIZE: f32 = 18.0;
 const BRAND_META_SIZE: f32 = 13.0;
 const CONTROL_TEXT_X_PADDING: usize = 14;
 const THEME_CONTROL_TEXT_SIZE: f32 = 12.0;
-const SCROLLBAR_CONTROL_TEXT_SIZE: f32 = 11.0;
 
 pub(super) fn draw(canvas: &mut Canvas, context: ShellContext<'_>) {
     let palette = context.render.palette;
@@ -41,7 +39,6 @@ pub(super) fn draw(canvas: &mut Canvas, context: ShellContext<'_>) {
         palette.muted,
     );
     draw_theme_control(canvas, &context);
-    draw_scrollbar_control(canvas, &context);
     navigation::draw(
         canvas,
         context.render.text,
@@ -67,65 +64,6 @@ fn draw_theme_control(canvas: &mut Canvas, context: &ShellContext<'_>) {
     let selected = context.root.props().theme_id.as_str();
     draw_theme_option(canvas, context, "light", selected, light_theme_rect().x);
     draw_theme_option(canvas, context, "dark", selected, dark_theme_rect().x);
-}
-
-fn draw_scrollbar_control(canvas: &mut Canvas, context: &ShellContext<'_>) {
-    draw_scrollbar_option(
-        canvas,
-        context,
-        "scroll on",
-        context.scenario.scrollbar_visible,
-        scrollbar_on_rect().x,
-    );
-    draw_scrollbar_option(
-        canvas,
-        context,
-        "off",
-        !context.scenario.scrollbar_visible,
-        scrollbar_off_rect().x,
-    );
-}
-
-fn draw_scrollbar_option(
-    canvas: &mut Canvas,
-    context: &ShellContext<'_>,
-    label: &str,
-    active: bool,
-    x: usize,
-) {
-    let palette = context.render.palette;
-    let fill = if active {
-        palette.accent
-    } else {
-        palette.panel
-    };
-    let text_color = if active {
-        palette.background
-    } else {
-        palette.text
-    };
-    canvas.fill_rect(
-        x,
-        SCROLLBAR_CONTROL_Y,
-        SCROLLBAR_CONTROL_WIDTH,
-        SCROLLBAR_CONTROL_HEIGHT,
-        fill,
-    );
-    canvas.stroke_rect(
-        x,
-        SCROLLBAR_CONTROL_Y,
-        SCROLLBAR_CONTROL_WIDTH,
-        SCROLLBAR_CONTROL_HEIGHT,
-        palette.border,
-    );
-    context.render.text.draw_centered(
-        canvas,
-        label,
-        x + CONTROL_TEXT_X_PADDING,
-        TextVerticalBox::new(SCROLLBAR_CONTROL_Y, SCROLLBAR_CONTROL_HEIGHT as f32),
-        SCROLLBAR_CONTROL_TEXT_SIZE,
-        text_color,
-    );
 }
 
 fn draw_theme_option(

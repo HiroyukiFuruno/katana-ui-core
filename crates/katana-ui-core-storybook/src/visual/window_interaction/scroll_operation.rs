@@ -1,6 +1,7 @@
 use crate::visual::layout_metrics::MAX_SCROLL_Y;
-use crate::visual::panel_scroll_state::{self, PanelScrollRegion, region_at};
+use crate::visual::panel_scroll_state::{self, PanelScrollRegion};
 use crate::visual::panel_scrollbars;
+use crate::visual::preview_detail;
 
 use super::StorybookWindowState;
 use super::panel_scroll_drag::PanelScrollDragTarget;
@@ -18,8 +19,12 @@ pub(super) fn apply_scroll_delta_at(
     if delta_y == 0.0 {
         return false;
     }
-    let region = region_at(x, y + state.panel_scroll.root_y);
+    let region =
+        panel_scroll_state::PanelScrollRegionModel::region_at(x, y + state.panel_scroll.root_y);
     let mut changed = clamp_vertical_offset(state, region);
+    if let Some(panel) = panel_child_at(state, region, x, y) {
+        return state.screen_state.scroll_panel_vertical(panel, delta_y) || changed;
+    }
     if !panel_scrollbars::vertical_region_scrollable_for(
         region,
         state.selected_page,
@@ -46,8 +51,12 @@ pub(super) fn apply_scroll_delta_x_at(
     if delta_x == 0.0 {
         return false;
     }
-    let region = region_at(x, y + state.panel_scroll.root_y);
+    let region =
+        panel_scroll_state::PanelScrollRegionModel::region_at(x, y + state.panel_scroll.root_y);
     let mut changed = clamp_horizontal_offset(state, region);
+    if let Some(panel) = panel_child_at(state, region, x, y) {
+        return state.screen_state.scroll_panel_horizontal(panel, delta_x) || changed;
+    }
     if !panel_scrollbars::horizontal_region_scrollable_for(
         region,
         state.selected_page,
@@ -112,11 +121,32 @@ fn clamp_horizontal_offset(state: &mut StorybookWindowState, region: PanelScroll
 }
 
 fn max_scroll_y(state: &StorybookWindowState, region: PanelScrollRegion) -> usize {
-    panel_scroll_state::max_scroll_y_for(region, state.selected_page, state.tree_expansion)
+    panel_scroll_state::PanelScrollOverflowModel::max_scroll_y_for(
+        region,
+        state.selected_page,
+        state.tree_expansion,
+    )
 }
 
 fn max_scroll_x(state: &StorybookWindowState, region: PanelScrollRegion) -> usize {
-    panel_scroll_state::max_scroll_x_for(region, state.selected_page, state.tree_expansion)
+    panel_scroll_state::PanelScrollOverflowModel::max_scroll_x_for(
+        region,
+        state.selected_page,
+        state.tree_expansion,
+    )
+}
+
+fn panel_child_at(
+    state: &StorybookWindowState,
+    region: PanelScrollRegion,
+    x: usize,
+    y: usize,
+) -> Option<crate::visual::panel_screen_state::PanelChildKey> {
+    if state.selected_page != "panel" || region != PanelScrollRegion::Preview {
+        return None;
+    }
+    let origin = preview_detail::component_action_hit_rect("panel");
+    crate::visual::dedicated_foundation_panel::panel_at(origin.x, origin.y, x, y)
 }
 
 pub(super) fn apply_scrollbar_drag_target(

@@ -5,7 +5,7 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
         "collapsible-panel" => Some(spec(
             "collapsible_panel_resize",
             "collapsible_panel_width_changed",
-            "panel.width",
+            "collapsible_panel.width",
             "320",
             "mode=floating_overlay",
         )),

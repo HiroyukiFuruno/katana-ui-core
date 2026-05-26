@@ -96,11 +96,12 @@ fn axis_isolated_drag_changes_only_vertical_offset_in_inspector() {
 
 #[test]
 fn drag_reverse_mapping_reclamps_with_current_preview_max() {
-    let max_for_preview = crate::visual::panel_scroll_state::max_scroll_x_for(
-        PanelScrollRegion::Preview,
-        "button",
-        Default::default(),
-    );
+    let max_for_preview =
+        crate::visual::panel_scroll_state::PanelScrollOverflowModel::max_scroll_x_for(
+            PanelScrollRegion::Preview,
+            "button",
+            Default::default(),
+        );
     let mut state = StorybookWindowState {
         panel_scroll: PanelScrollOffsets {
             preview_x: max_for_preview + layout_metrics::SCROLL_STEP,

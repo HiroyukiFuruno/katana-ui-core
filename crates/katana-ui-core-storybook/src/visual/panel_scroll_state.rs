@@ -1,11 +1,9 @@
 #[path = "panel_scroll_state_overflow.rs"]
 mod panel_scroll_state_overflow;
-pub(crate) use self::panel_scroll_state_overflow::{
-    max_scroll_x_for, max_scroll_y_for, overflow_for,
-};
+pub(crate) use self::panel_scroll_state_overflow::PanelScrollOverflowModel;
 #[path = "panel_scroll_state_region.rs"]
 mod panel_scroll_state_region;
-pub(crate) use self::panel_scroll_state_region::{next_offset, region_at};
+pub(crate) use self::panel_scroll_state_region::PanelScrollRegionModel;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum PanelScrollRegion {
@@ -72,7 +70,7 @@ impl PanelScrollOffsets {
     pub(super) fn scroll_delta(&mut self, region: PanelScrollRegion, delta_y: f32) -> bool {
         self.scroll_delta_with_max(
             region,
-            max_scroll_y_for(region, "", Default::default()),
+            PanelScrollOverflowModel::max_scroll_y_for(region, "", Default::default()),
             delta_y,
         )
     }
@@ -84,7 +82,7 @@ impl PanelScrollOffsets {
         delta_y: f32,
     ) -> bool {
         let before = self.offset(region);
-        let next = next_offset(before, max_offset, delta_y);
+        let next = PanelScrollRegionModel::next_offset(before, max_offset, delta_y);
         self.set_offset(region, next);
         before != next
     }
@@ -92,9 +90,9 @@ impl PanelScrollOffsets {
     #[cfg(test)]
     pub(super) fn scroll_delta_x(&mut self, region: PanelScrollRegion, delta_x: f32) -> bool {
         let before = self.offset_x(region);
-        let next = next_offset(
+        let next = PanelScrollRegionModel::next_offset(
             before,
-            max_scroll_x_for(region, "", Default::default()),
+            PanelScrollOverflowModel::max_scroll_x_for(region, "", Default::default()),
             delta_x,
         );
         self.set_offset_x(region, next);
@@ -108,7 +106,7 @@ impl PanelScrollOffsets {
         delta_x: f32,
     ) -> bool {
         let before = self.offset_x(region);
-        let next = next_offset(before, max_offset, delta_x);
+        let next = PanelScrollRegionModel::next_offset(before, max_offset, delta_x);
         self.set_offset_x(region, next);
         before != next
     }
@@ -118,7 +116,7 @@ impl PanelScrollOffsets {
         self.set_drag_offset_with_max(
             region,
             value,
-            max_scroll_y_for(region, "", Default::default()),
+            PanelScrollOverflowModel::max_scroll_y_for(region, "", Default::default()),
         )
     }
 
@@ -138,7 +136,11 @@ impl PanelScrollOffsets {
         let before = self.offset_x(region);
         self.set_offset_x(
             region,
-            value.min(max_scroll_x_for(region, "", Default::default())),
+            value.min(PanelScrollOverflowModel::max_scroll_x_for(
+                region,
+                "",
+                Default::default(),
+            )),
         );
         before != self.offset_x(region)
     }

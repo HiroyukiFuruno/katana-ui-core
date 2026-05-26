@@ -14,6 +14,7 @@ pub(super) fn settings_line(
         "badge" => {
             format!("{marker} settings: passive status -> use Chip for dismiss / interactive")
         }
+        "panel" => panel_settings_line(marker),
         "scroll-area" => scroll_area_settings_line(example, marker),
         "search-control-strip" => search_control_settings_line(example, marker),
         "modal" => modal_settings_line(example, marker),
@@ -37,6 +38,12 @@ pub(super) fn settings_line(
         page if is_virtualized_page(page) => virtualization_settings_line(example, marker),
         _ => secondary::settings_line(example, marker, option, value_type, before, after),
     }
+}
+
+fn panel_settings_line(marker: &str) -> String {
+    format!(
+        "{marker} settings: panel.vertical_scroll panel.horizontal_scroll panel.scrollbar_visibility panel.nested_state -> preview overflow x/y, inspector toggle hides panel bars, nested panels keep local offsets"
+    )
 }
 
 fn drag_and_drop_settings_line(example: &StoryExample, marker: &str) -> String {

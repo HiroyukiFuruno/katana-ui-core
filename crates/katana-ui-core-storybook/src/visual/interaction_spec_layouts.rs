@@ -3,11 +3,11 @@ use super::{StorybookInteractionSpec, spec};
 pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
     match page {
         "panel" => Some(spec(
-            "panel_scroll",
-            "panel_scrolled",
-            "panel.overflow",
-            "clip",
-            "overflow=clipped",
+            "panel_scroll_preview",
+            "panel_scroll_changed",
+            "panel.scrollbar_visibility",
+            "hidden",
+            "panel_scroll=advanced",
         )),
         "row" => Some(spec(
             "row_align",

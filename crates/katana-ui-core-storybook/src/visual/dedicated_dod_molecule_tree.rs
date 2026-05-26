@@ -9,6 +9,10 @@ use katana_ui_core::render_model::{
 };
 
 const VISIBLE_TREE_ROWS: usize = 3;
+const DOTTED_SEGMENT_LENGTH: usize = 4;
+const DOTTED_SEGMENT_GAP: usize = 6;
+const DASHED_SEGMENT_LENGTH: usize = 10;
+const DASHED_SEGMENT_GAP: usize = 6;
 
 pub(super) fn tree_view(
     canvas: &mut Canvas,
@@ -40,6 +44,7 @@ fn draw_tree_panel(
         parts::TREE_PANEL_WIDTH,
         parts::TREE_PANEL_HEIGHT,
     );
+    common::fill(canvas, panel, palette.surface);
     common::outline(canvas, palette, panel);
     for (index, node) in tree.nodes.iter().take(VISIBLE_TREE_ROWS).enumerate() {
         draw_tree_row(
@@ -206,8 +211,6 @@ fn draw_styled_line(
     vertical: bool,
     color: u32,
 ) {
-    let segment_length = 4usize;
-    let segment_gap = 6usize;
     match style {
         UiTreeLineStyle::Solid => {
             draw_segment(canvas, x, y, length, width, 0, width, vertical, color)
@@ -218,14 +221,22 @@ fn draw_styled_line(
             y,
             length,
             width,
-            segment_length,
-            segment_gap,
+            DOTTED_SEGMENT_LENGTH,
+            DOTTED_SEGMENT_GAP,
             vertical,
             color,
         ),
-        UiTreeLineStyle::Dashed => {
-            draw_segment(canvas, x, y, length, width, 10, 6, vertical, color)
-        }
+        UiTreeLineStyle::Dashed => draw_segment(
+            canvas,
+            x,
+            y,
+            length,
+            width,
+            DASHED_SEGMENT_LENGTH,
+            DASHED_SEGMENT_GAP,
+            vertical,
+            color,
+        ),
     }
 }
 
@@ -265,7 +276,7 @@ fn draw_segment(
             );
         }
     }
-    // Prevent full-width gaps at the end due to `step_by`.
+    /* WHY: Avoid leaving a full-width gap when `step_by` lands near the line edge. */
     if length > 0 && on_length > 0 {
         let tail_offset = (length / pitch) * pitch;
         if tail_offset < length {

@@ -6,15 +6,6 @@ use super::scrollbar_model::ScrollbarModel;
 
 pub(super) const PANEL_SCROLLBAR_THUMB_MIN_LENGTH: usize = 32;
 
-#[cfg(test)]
-pub(super) fn vertical_bar_visible(
-    region: PanelScrollRegion,
-    selected_page: &str,
-    scrollbar_visible: bool,
-) -> bool {
-    vertical_bar_visible_for(region, selected_page, Default::default(), scrollbar_visible)
-}
-
 pub(super) fn vertical_bar_visible_for(
     region: PanelScrollRegion,
     selected_page: &str,
@@ -28,26 +19,17 @@ pub(super) fn vertical_bar_visible_for(
         && region != PanelScrollRegion::Root
 }
 
-#[cfg(test)]
-pub(super) fn vertical_region_scrollable(region: PanelScrollRegion, selected_page: &str) -> bool {
-    vertical_region_scrollable_for(region, selected_page, Default::default())
-}
-
 pub(super) fn vertical_region_scrollable_for(
     region: PanelScrollRegion,
     selected_page: &str,
     tree_expansion: TreeExpansionState,
 ) -> bool {
-    super::panel_scroll_state::overflow_for(region, selected_page, tree_expansion).overflows_y()
-}
-
-#[cfg(test)]
-pub(super) fn horizontal_bar_visible(
-    region: PanelScrollRegion,
-    selected_page: &str,
-    scrollbar_visible: bool,
-) -> bool {
-    horizontal_bar_visible_for(region, selected_page, Default::default(), scrollbar_visible)
+    super::panel_scroll_state::PanelScrollOverflowModel::overflow_for(
+        region,
+        selected_page,
+        tree_expansion,
+    )
+    .overflows_y()
 }
 
 pub(super) fn horizontal_bar_visible_for(
@@ -59,19 +41,20 @@ pub(super) fn horizontal_bar_visible_for(
     scrollbar_visible && horizontal_region_scrollable_for(region, selected_page, tree_expansion)
 }
 
-#[cfg(test)]
-pub(super) fn horizontal_region_scrollable(region: PanelScrollRegion, selected_page: &str) -> bool {
-    horizontal_region_scrollable_for(region, selected_page, Default::default())
-}
-
 pub(super) fn horizontal_region_scrollable_for(
     region: PanelScrollRegion,
     selected_page: &str,
     tree_expansion: TreeExpansionState,
 ) -> bool {
-    super::panel_scroll_state::overflow_for(region, selected_page, tree_expansion).overflows_x()
+    super::panel_scroll_state::PanelScrollOverflowModel::overflow_for(
+        region,
+        selected_page,
+        tree_expansion,
+    )
+    .overflows_x()
 }
 
+#[cfg(test)]
 pub(super) fn thumb_rect_for(region: PanelScrollRegion, offsets: PanelScrollOffsets) -> LayoutRect {
     thumb_rect_for_state(region, offsets, "", Default::default())
 }
@@ -103,11 +86,6 @@ pub(super) fn horizontal_thumb_rect_for_state(
         .horizontal_thumb_rect(offsets.offset_x(region))
 }
 
-#[cfg(test)]
-pub(super) fn offset_from_drag(region: PanelScrollRegion, y: usize) -> usize {
-    offset_from_drag_for(region, y, "", Default::default())
-}
-
 pub(super) fn offset_from_drag_for(
     region: PanelScrollRegion,
     y: usize,
@@ -115,11 +93,6 @@ pub(super) fn offset_from_drag_for(
     tree_expansion: TreeExpansionState,
 ) -> usize {
     vertical_model_for(region, selected_page, tree_expansion).offset_from_thumb_y(y)
-}
-
-#[cfg(test)]
-pub(super) fn horizontal_offset_from_drag(region: PanelScrollRegion, x: usize) -> usize {
-    horizontal_offset_from_drag_for(region, x, "", Default::default())
 }
 
 pub(super) fn horizontal_offset_from_drag_for(
@@ -154,7 +127,11 @@ fn vertical_model_for(
     selected_page: &str,
     tree_expansion: TreeExpansionState,
 ) -> ScrollbarModel {
-    let overflow = super::panel_scroll_state::overflow_for(region, selected_page, tree_expansion);
+    let overflow = super::panel_scroll_state::PanelScrollOverflowModel::overflow_for(
+        region,
+        selected_page,
+        tree_expansion,
+    );
     ScrollbarModel::vertical(
         vertical_track_rect(region),
         overflow.viewport_height,
@@ -168,7 +145,11 @@ fn horizontal_model_for(
     selected_page: &str,
     tree_expansion: TreeExpansionState,
 ) -> ScrollbarModel {
-    let overflow = super::panel_scroll_state::overflow_for(region, selected_page, tree_expansion);
+    let overflow = super::panel_scroll_state::PanelScrollOverflowModel::overflow_for(
+        region,
+        selected_page,
+        tree_expansion,
+    );
     ScrollbarModel::horizontal(
         horizontal_track_rect(region),
         overflow.viewport_width,

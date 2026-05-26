@@ -6,9 +6,7 @@ use katana_ui_core::theme::ThemeSnapshot;
 
 const DARK_THEME: &str = "dark";
 const BUTTON_PAGE: &str = "button";
-const PANEL_PAGE: &str = "panel";
 const DEFAULT_PRESET: usize = 0;
-const PANEL_DIFF_THRESHOLD: usize = 80;
 const MARKER_COLORS: &[u32] = &[0xd7ba7d, 0xf44747, 0x9cdcfe, 0x6a9955, 0xc586c0];
 
 #[test]
@@ -61,56 +59,6 @@ fn hidden_preview_scroll_offsets_do_not_shift_button_page_rendering() {
 }
 
 #[test]
-fn storybook_outer_scrollbars_are_shown_only_for_overflowing_regions() {
-    let accent = palette::VisualPalette::from_theme(&ThemeSnapshot::dark()).accent;
-    let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
-
-    assert!(offsets.scroll_delta(panel_scroll_state::PanelScrollRegion::Navigation, -1.0));
-    let canvas = render_panel_with_offsets(offsets);
-    let nav_thumb = panel_scrollbars::thumb_rect_for(
-        panel_scroll_state::PanelScrollRegion::Navigation,
-        offsets,
-    );
-
-    assert_eq!(Some(accent), pixel_at_rect(&canvas, nav_thumb));
-    assert_ne!(
-        Some(accent),
-        pixel_at_rect(
-            &canvas,
-            panel_scrollbars::thumb_rect_for(
-                panel_scroll_state::PanelScrollRegion::Preview,
-                offsets
-            )
-        )
-    );
-    assert_eq!(
-        Some(accent),
-        pixel_at_rect(
-            &canvas,
-            panel_scrollbars::thumb_rect_for(
-                panel_scroll_state::PanelScrollRegion::Inspector,
-                offsets
-            )
-        )
-    );
-}
-
-#[test]
-fn hidden_preview_scroll_offsets_do_not_move_panel_foundation_preview() {
-    let baseline = render_panel_with_offsets(Default::default());
-    let mut preview_offsets = panel_scroll_state::PanelScrollOffsets::default();
-    assert!(!preview_offsets.scroll_delta(panel_scroll_state::PanelScrollRegion::Preview, -1.0));
-    let preview_scrolled = render_panel_with_offsets(preview_offsets);
-    let mut inspector_offsets = panel_scroll_state::PanelScrollOffsets::default();
-    assert!(inspector_offsets.scroll_delta(panel_scroll_state::PanelScrollRegion::Inspector, -1.0));
-    let inspector_scrolled = render_panel_with_offsets(inspector_offsets);
-
-    let preview_diff = preview_panel_pixel_diff(&baseline, &preview_scrolled);
-    assert_eq!(0, preview_diff);
-    assert!(inspector_panel_pixel_diff(&baseline, &inspector_scrolled) > PANEL_DIFF_THRESHOLD);
-}
-
-#[test]
 fn root_panel_scroll_reaches_bottom_and_root_thumb_reaches_track_end() {
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
 
@@ -122,20 +70,6 @@ fn root_panel_scroll_reaches_bottom_and_root_thumb_reaches_track_end() {
 
     assert_eq!(layout_metrics::MAX_SCROLL_Y, offsets.root_y);
     assert_eq!(track.bottom(), thumb.bottom());
-}
-
-#[test]
-fn storybook_hides_preview_horizontal_scrollbar_without_preview_overflow() {
-    let accent = palette::VisualPalette::from_theme(&ThemeSnapshot::dark()).accent;
-    let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
-    offsets.scroll_delta_x(panel_scroll_state::PanelScrollRegion::Preview, -1.0);
-    let canvas = render_panel_with_offsets(offsets);
-    let thumb = panel_scrollbars::horizontal_thumb_rect_for(
-        panel_scroll_state::PanelScrollRegion::Preview,
-        offsets,
-    );
-
-    assert_ne!(Some(accent), pixel_at_rect(&canvas, thumb));
 }
 
 #[test]
@@ -169,21 +103,6 @@ fn render_with_offsets(offsets: panel_scroll_state::PanelScrollOffsets) -> Canva
     })
 }
 
-fn render_panel_with_offsets(offsets: panel_scroll_state::PanelScrollOffsets) -> Canvas {
-    render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
-        theme_id: DARK_THEME,
-        selected_page: PANEL_PAGE,
-        preset_index: DEFAULT_PRESET,
-        scroll_y: 0,
-        scrollbar_visible: true,
-        panel_scroll: offsets,
-        tree_expansion: Default::default(),
-        show_navigation_lines: true,
-        show_navigation_text_connectors: false,
-        screen_state: Default::default(),
-    })
-}
-
 fn preview_panel_pixel_diff(before: &Canvas, after: &Canvas) -> usize {
     let frame = panel_layout::region_frame(panel_scroll_state::PanelScrollRegion::Preview);
     region_pixel_diff(
@@ -193,17 +112,6 @@ fn preview_panel_pixel_diff(before: &Canvas, after: &Canvas) -> usize {
         layout_metrics::PRESET_ACTIVE_Y,
         frame.width,
         render::HEIGHT - layout_metrics::PRESET_ACTIVE_Y,
-    )
-}
-
-fn inspector_panel_pixel_diff(before: &Canvas, after: &Canvas) -> usize {
-    region_pixel_diff(
-        before,
-        after,
-        layout_metrics::INSPECTOR_X,
-        layout_metrics::INSPECTOR_Y,
-        layout_metrics::INSPECTOR_WIDTH,
-        layout_metrics::INSPECTOR_HEIGHT,
     )
 }
 

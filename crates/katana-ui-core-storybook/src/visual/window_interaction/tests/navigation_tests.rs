@@ -20,7 +20,6 @@ fn click_mapping_updates_theme_preset_and_story_selection() {
         interactive.y + 1
     ));
     assert_eq!(1, state.preset_index);
-    click_scrollbar_off(&mut state);
     click_preset(&mut state, 2);
     click_preset(&mut state, 3);
     click_page(&mut state, "button");
@@ -43,15 +42,19 @@ fn preset_tab_selection_is_owned_by_component() {
 }
 
 #[test]
-fn optionless_theme_tokens_ignores_hidden_preset_tabs() {
+fn theme_tokens_accepts_component_owned_preset_tabs() {
     let mut state = StorybookWindowState {
         selected_page: "theme-tokens",
         ..StorybookWindowState::default()
     };
-    let hidden = layout_metrics::preset_tab_rect(1);
+    let light_palette = layout_metrics::preset_tab_rect(1);
 
-    assert!(!apply_click(&mut state, hidden.x + 1, hidden.y + 1));
-    assert_eq!(0, state.preset_index);
+    assert!(apply_click(
+        &mut state,
+        light_palette.x + 1,
+        light_palette.y + 1
+    ));
+    assert_eq!(1, state.preset_index);
 }
 
 #[test]
@@ -196,12 +199,6 @@ fn navigation_page_row_hit_target_accepts_last_pixel_and_rejects_outside_x() {
         assert_eq!("tree-view", state.selected_page);
         assert!(!apply_click(&mut state, outside_x, y));
     }
-}
-
-fn click_scrollbar_off(state: &mut StorybookWindowState) {
-    let scrollbar_off = layout_metrics::scrollbar_off_rect();
-    assert!(apply_click(state, scrollbar_off.x + 1, scrollbar_off.y + 1));
-    assert!(!state.scrollbar_visible);
 }
 
 fn click_preset(state: &mut StorybookWindowState, index: usize) {

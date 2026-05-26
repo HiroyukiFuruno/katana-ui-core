@@ -35,9 +35,11 @@ const HERO_WIDTH: usize = 710;
 const HERO_HEIGHT: usize = 244;
 const HERO_PREVIEW_X: usize = PREVIEW_X + 34;
 const HERO_PREVIEW_Y: usize = HERO_Y + 86;
+const PANEL_ACTION_WIDTH: usize = 676;
+const PANEL_ACTION_HEIGHT: usize = 344;
 
 pub(super) fn preview_scroll_y(scenario: ScenarioContext<'_>) -> usize {
-    let max_scroll = panel_scroll_state::max_scroll_y_for(
+    let max_scroll = panel_scroll_state::PanelScrollOverflowModel::max_scroll_y_for(
         PanelScrollRegion::Preview,
         scenario.selected_page,
         scenario.tree_expansion,
@@ -52,7 +54,7 @@ pub(super) fn preview_scroll_y(scenario: ScenarioContext<'_>) -> usize {
 }
 
 pub(super) fn preview_scroll_x(scenario: ScenarioContext<'_>) -> usize {
-    let max_scroll = panel_scroll_state::max_scroll_x_for(
+    let max_scroll = panel_scroll_state::PanelScrollOverflowModel::max_scroll_x_for(
         PanelScrollRegion::Preview,
         scenario.selected_page,
         scenario.tree_expansion,
@@ -72,6 +74,9 @@ pub(super) fn draw_runtime_state(
     scenario: ScenarioContext<'_>,
 ) {
     if is_button_page(scenario.selected_page) {
+        return;
+    }
+    if scenario.selected_page == "panel" {
         return;
     }
 
@@ -152,6 +157,14 @@ pub(super) fn component_action_hit_rect(page: &str) -> LayoutRect {
     let button = button_action_hit_rect(page);
     if button.width > 0 {
         return button;
+    }
+    if page == "panel" {
+        return LayoutRect::new(
+            HERO_PREVIEW_X,
+            HERO_PREVIEW_Y,
+            PANEL_ACTION_WIDTH,
+            PANEL_ACTION_HEIGHT,
+        );
     }
     if page == "toggle" {
         return LayoutRect::new(

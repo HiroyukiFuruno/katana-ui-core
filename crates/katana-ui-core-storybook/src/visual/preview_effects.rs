@@ -16,6 +16,11 @@ const TREE_TRACK_HEIGHT: usize = 60;
 const TREE_THUMB_HEIGHT: usize = 18;
 const TREE_THUMB_STEP: usize = 12;
 const TREE_MAX_PRESET_INDEX: usize = 3;
+const TREE_VIRTUALIZATION_PRESET_INDEX: usize = 4;
+const TREE_VIRTUAL_MARKER_X_OFFSET: usize = 120;
+const TREE_VIRTUAL_MARKER_Y_OFFSET: usize = 46;
+const TREE_VIRTUAL_MARKER_WIDTH: usize = 80;
+const TREE_VIRTUAL_MARKER_HEIGHT: usize = 14;
 const CONTEXT_MARKER_WIDTH: usize = 92;
 const CONTEXT_MARKER_HEIGHT: usize = 14;
 
@@ -106,6 +111,15 @@ fn draw_tree_view_scroll(
         TREE_THUMB_HEIGHT,
         render.palette.accent,
     );
+    if scenario.preset_index >= TREE_VIRTUALIZATION_PRESET_INDEX {
+        canvas.fill_rect(
+            track_x.saturating_sub(TREE_VIRTUAL_MARKER_X_OFFSET),
+            track_y + TREE_VIRTUAL_MARKER_Y_OFFSET,
+            TREE_VIRTUAL_MARKER_WIDTH,
+            TREE_VIRTUAL_MARKER_HEIGHT,
+            render.palette.text,
+        );
+    }
     if scenario.screen_state.state_label != "context_menu=open" {
         return;
     }

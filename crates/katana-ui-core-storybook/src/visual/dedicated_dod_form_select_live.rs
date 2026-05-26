@@ -6,7 +6,6 @@ use super::render_context::ScenarioContext;
 use super::selection_control_metrics as sm;
 use super::text::{TextRenderer, TextVerticalBox};
 
-const FIELD: u32 = 0x1f242d;
 const CONTROL_BUTTON_X: usize = sm::STATUS_X;
 const CONTROL_BUTTON_Y: usize = 116;
 const CONTROL_BUTTON_WIDTH: usize = 56;
@@ -16,6 +15,9 @@ const CONTROL_TEXT_Y: usize = 6;
 const LIGHT_OPTION_INDEX: usize = 1;
 const DARK_OPTION_INDEX: usize = 2;
 const SYSTEM_OPTION_INDEX: usize = 3;
+const SELECT_ACTION_PRESET_INDEX: usize = 1;
+const LONG_LIST_PRESET_INDEX: usize = 2;
+const THEME_PRESET_INDEX: usize = 3;
 
 pub(super) fn select_box(
     canvas: &mut Canvas,
@@ -40,19 +42,29 @@ fn draw_trigger(
     x: usize,
     y: usize,
 ) {
+    let fill = if scenario.preset_index == THEME_PRESET_INDEX {
+        palette.background
+    } else {
+        palette.surface
+    };
+    let border = if scenario.preset_index == THEME_PRESET_INDEX {
+        palette.accent
+    } else {
+        palette.border
+    };
     canvas.fill_rect(
         x + sm::TRIGGER_X,
         y + sm::TRIGGER_Y,
         sm::TRIGGER_WIDTH,
         sm::TRIGGER_HEIGHT,
-        FIELD,
+        fill,
     );
     canvas.stroke_rect(
         x + sm::TRIGGER_X,
         y + sm::TRIGGER_Y,
         sm::TRIGGER_WIDTH,
         sm::TRIGGER_HEIGHT,
-        palette.border,
+        border,
     );
     text.draw_centered(
         canvas,
@@ -72,7 +84,7 @@ fn draw_options(
     x: usize,
     y: usize,
 ) {
-    if !scenario.screen_state.selection.select_open {
+    if !select_open(scenario) {
         return;
     }
     canvas.fill_rect(
@@ -87,7 +99,7 @@ fn draw_options(
         .enumerate()
     {
         let row_y = y + sm::SELECT_OPTIONS_Y + index * sm::SELECT_OPTION_HEIGHT;
-        if scenario.screen_state.selection.select_selected_index == Some(index) {
+        if selected_index(scenario) == Some(index) {
             canvas.fill_rect(
                 x + sm::TRIGGER_X + sm::OPTION_ROW_INSET,
                 row_y,
@@ -174,11 +186,33 @@ fn draw_controls(
 }
 
 fn select_value(scenario: ScenarioContext<'_>) -> &'static str {
-    match scenario.screen_state.selection.select_selected_index {
+    match selected_index(scenario) {
         Some(LIGHT_OPTION_INDEX) => "Light",
         Some(DARK_OPTION_INDEX) => "Dark",
         Some(SYSTEM_OPTION_INDEX) => "System",
         _ => "Placeholder",
+    }
+}
+
+fn select_open(scenario: ScenarioContext<'_>) -> bool {
+    scenario.screen_state.selection.select_open
+        || scenario.preset_index == SELECT_ACTION_PRESET_INDEX
+        || scenario.preset_index == LONG_LIST_PRESET_INDEX
+}
+
+fn selected_index(scenario: ScenarioContext<'_>) -> Option<usize> {
+    if scenario
+        .screen_state
+        .selection
+        .select_selected_index
+        .is_some()
+    {
+        return scenario.screen_state.selection.select_selected_index;
+    }
+    match scenario.preset_index {
+        SELECT_ACTION_PRESET_INDEX => Some(LIGHT_OPTION_INDEX),
+        LONG_LIST_PRESET_INDEX => Some(DARK_OPTION_INDEX),
+        _ => None,
     }
 }
 

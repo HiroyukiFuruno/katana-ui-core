@@ -17,9 +17,6 @@ pub(super) const THEME_CONTROL_Y: usize = 64;
 pub(super) const THEME_CONTROL_WIDTH: usize = 118;
 pub(super) const THEME_CONTROL_HEIGHT: usize = 24;
 pub(super) const THEME_CONTROL_GAP: usize = 0;
-pub(super) const SCROLLBAR_CONTROL_Y: usize = 96;
-pub(super) const SCROLLBAR_CONTROL_WIDTH: usize = 118;
-pub(super) const SCROLLBAR_CONTROL_HEIGHT: usize = 22;
 pub(super) const PREVIEW_X: usize = 310;
 pub(super) const PRESET_ACTIVE_Y: usize = 104;
 pub(super) const PRESET_INACTIVE_Y: usize = PRESET_ACTIVE_Y;
@@ -114,24 +111,6 @@ pub(super) fn dark_theme_rect() -> LayoutRect {
     )
 }
 
-pub(super) fn scrollbar_on_rect() -> LayoutRect {
-    LayoutRect::new(
-        BRAND_X,
-        SCROLLBAR_CONTROL_Y,
-        SCROLLBAR_CONTROL_WIDTH,
-        SCROLLBAR_CONTROL_HEIGHT,
-    )
-}
-
-pub(super) fn scrollbar_off_rect() -> LayoutRect {
-    LayoutRect::new(
-        BRAND_X + SCROLLBAR_CONTROL_WIDTH + THEME_CONTROL_GAP,
-        SCROLLBAR_CONTROL_Y,
-        SCROLLBAR_CONTROL_WIDTH,
-        SCROLLBAR_CONTROL_HEIGHT,
-    )
-}
-
 pub(super) fn navigation_menu_panel_rect() -> LayoutRect {
     LayoutRect::new(
         NAV_ROW_X - NAV_PANEL_X_INSET,
@@ -191,6 +170,54 @@ pub(super) fn button_setting_hit_rect() -> LayoutRect {
         INSPECTOR_Y + INSPECTOR_FIRST_ROW_Y_OFFSET,
         INSPECTOR_WIDTH - INSPECTOR_SETTING_ROW_WIDTH_OFFSET,
         INSPECTOR_SETTING_ROW_HEIGHT,
+    )
+}
+
+pub(super) fn panel_active_nav_rect() -> LayoutRect {
+    panel_active_rect(0)
+}
+
+pub(super) fn panel_active_preview_rect() -> LayoutRect {
+    panel_active_rect(1)
+}
+
+pub(super) fn panel_active_details_rect() -> LayoutRect {
+    panel_active_rect(2)
+}
+
+pub(super) fn panel_scrollbar_on_rect() -> LayoutRect {
+    panel_scrollbar_rect(0)
+}
+
+pub(super) fn panel_scrollbar_off_rect() -> LayoutRect {
+    panel_scrollbar_rect(1)
+}
+
+const PANEL_ACTIVE_OFFSET_X: usize = 94;
+const PANEL_ACTIVE_STEP_X: usize = 62;
+const PANEL_ACTIVE_WIDTH: usize = 58;
+const PANEL_SCROLLBAR_OFFSET_X: usize = 164;
+const PANEL_SCROLLBAR_STEP_X: usize = 54;
+const PANEL_SCROLLBAR_OFFSET_Y: usize = 30;
+const PANEL_SCROLLBAR_WIDTH: usize = 50;
+
+fn panel_active_rect(index: usize) -> LayoutRect {
+    let base = button_setting_hit_rect();
+    LayoutRect::new(
+        base.x + PANEL_ACTIVE_OFFSET_X + index * PANEL_ACTIVE_STEP_X,
+        base.y,
+        PANEL_ACTIVE_WIDTH,
+        base.height,
+    )
+}
+
+fn panel_scrollbar_rect(index: usize) -> LayoutRect {
+    let base = button_setting_hit_rect();
+    LayoutRect::new(
+        base.x + PANEL_SCROLLBAR_OFFSET_X + index * PANEL_SCROLLBAR_STEP_X,
+        base.y + PANEL_SCROLLBAR_OFFSET_Y,
+        PANEL_SCROLLBAR_WIDTH,
+        base.height,
     )
 }
 

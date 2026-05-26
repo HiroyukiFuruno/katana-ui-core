@@ -11,7 +11,11 @@ fn visible_panel_scrollbar_thumbs_follow_content_metrics() {
         panel_scroll_state::PanelScrollRegion::Inspector,
     ] {
         let track = panel_scrollbars::track_rect_for(region);
-        let overflow = panel_scroll_state::overflow_for(region, BUTTON_PAGE, Default::default());
+        let overflow = panel_scroll_state::PanelScrollOverflowModel::overflow_for(
+            region,
+            BUTTON_PAGE,
+            Default::default(),
+        );
         let thumb = panel_scrollbars::thumb_rect_for(region, Default::default());
         let expected = expected_thumb_len(
             track.height,
@@ -38,7 +42,11 @@ fn visible_panel_scrollbar_thumbs_follow_content_metrics() {
 fn visible_panel_horizontal_scrollbar_thumb_follows_content_metrics() {
     let region = panel_scroll_state::PanelScrollRegion::Inspector;
     let track = panel_scrollbars::horizontal_track_rect_for(region);
-    let overflow = panel_scroll_state::overflow_for(region, BUTTON_PAGE, Default::default());
+    let overflow = panel_scroll_state::PanelScrollOverflowModel::overflow_for(
+        region,
+        BUTTON_PAGE,
+        Default::default(),
+    );
     let thumb = panel_scrollbars::horizontal_thumb_rect_for(region, Default::default());
     let expected = expected_thumb_len(track.width, overflow.viewport_width, overflow.content_width);
 
@@ -117,7 +125,7 @@ fn visible_panel_scrollbar_thumbs_reach_track_end_at_max_offset() {
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
     offsets.set_drag_offset(
         panel_scroll_state::PanelScrollRegion::Navigation,
-        panel_scroll_state::max_scroll_y_for(
+        panel_scroll_state::PanelScrollOverflowModel::max_scroll_y_for(
             panel_scroll_state::PanelScrollRegion::Navigation,
             "button",
             Default::default(),
@@ -125,7 +133,7 @@ fn visible_panel_scrollbar_thumbs_reach_track_end_at_max_offset() {
     );
     offsets.set_drag_offset(
         panel_scroll_state::PanelScrollRegion::Inspector,
-        panel_scroll_state::max_scroll_y_for(
+        panel_scroll_state::PanelScrollOverflowModel::max_scroll_y_for(
             panel_scroll_state::PanelScrollRegion::Inspector,
             "button",
             Default::default(),
@@ -152,7 +160,7 @@ fn visible_panel_horizontal_scrollbar_thumb_reaches_track_end_at_max_offset() {
     let mut offsets = panel_scroll_state::PanelScrollOffsets::default();
     offsets.set_drag_offset_x(
         panel_scroll_state::PanelScrollRegion::Inspector,
-        panel_scroll_state::max_scroll_x_for(
+        panel_scroll_state::PanelScrollOverflowModel::max_scroll_x_for(
             panel_scroll_state::PanelScrollRegion::Inspector,
             "button",
             Default::default(),

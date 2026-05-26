@@ -28,6 +28,8 @@ struct SegmentRender<'a> {
     label: &'a str,
     index: usize,
     selected: usize,
+    disabled: bool,
+    themed: bool,
     origin_x: usize,
     origin_y: usize,
 }
@@ -53,11 +55,13 @@ fn draw_segments(
     x: usize,
     y: usize,
 ) {
-    let selected = if scenario.screen_state.has_widget_action() {
-        SELECTED_SEGMENT_INDEX
+    let selected = selected_segment(scenario);
+    let disabled_index = if scenario.preset_index == m::PX_2 {
+        Some(DISABLED_SEGMENT_INDEX)
     } else {
-        DEFAULT_SEGMENT_INDEX
+        None
     };
+    let themed = scenario.preset_index == m::PX_3;
     for (index, label) in ["Preview", "Code", "Diff"].into_iter().enumerate() {
         draw_segment(
             canvas,
@@ -67,11 +71,20 @@ fn draw_segments(
                 label,
                 index,
                 selected,
+                disabled: disabled_index == Some(index),
+                themed,
                 origin_x: x,
                 origin_y: y,
             },
         );
     }
+}
+
+fn selected_segment(scenario: ScenarioContext<'_>) -> usize {
+    if scenario.screen_state.has_widget_action() || scenario.preset_index == m::PX_1 {
+        return SELECTED_SEGMENT_INDEX;
+    }
+    DEFAULT_SEGMENT_INDEX
 }
 
 fn draw_segment(
@@ -87,36 +100,51 @@ fn draw_segment(
         segment.origin_y + SEGMENT_Y,
         SEGMENT_WIDTH,
         SEGMENT_HEIGHT,
-        segment_fill(palette, segment.index, active),
+        segment_fill(palette, active, segment.disabled),
     );
+    let border = if segment.themed {
+        palette.accent
+    } else {
+        palette.border
+    };
     canvas.stroke_rect(
         row_x,
         segment.origin_y + SEGMENT_Y,
         SEGMENT_WIDTH,
         SEGMENT_HEIGHT,
-        palette.border,
+        border,
     );
     if active {
+        let marker = if segment.themed {
+            palette.accent
+        } else {
+            common::WARN
+        };
         canvas.fill_rect(
             row_x,
             segment.origin_y + SEGMENT_Y + SEGMENT_HEIGHT - SEGMENT_MARKER_HEIGHT,
             SEGMENT_WIDTH,
             SEGMENT_MARKER_HEIGHT,
-            common::WARN,
+            marker,
         );
     }
+    let text_color = if segment.disabled {
+        palette.muted
+    } else {
+        palette.text
+    };
     text.draw_centered(
         canvas,
         segment.label,
         row_x + TEXT_X,
         TextVerticalBox::new(segment.origin_y + SEGMENT_Y, SEGMENT_HEIGHT as f32),
         m::FONT_9,
-        palette.text,
+        text_color,
     );
 }
 
-fn segment_fill(palette: &VisualPalette, index: usize, active: bool) -> u32 {
-    if index == DISABLED_SEGMENT_INDEX {
+fn segment_fill(palette: &VisualPalette, active: bool, disabled: bool) -> u32 {
+    if disabled {
         return DISABLED;
     }
     if active {

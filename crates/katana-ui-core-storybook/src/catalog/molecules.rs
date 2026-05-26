@@ -3,6 +3,7 @@ mod molecule_basic;
 mod molecule_color_diff;
 mod molecule_command_search;
 mod molecule_context_menu;
+mod molecule_forms;
 mod molecule_heavy;
 mod molecule_interaction;
 mod molecule_platform_primitives;
@@ -19,6 +20,7 @@ pub(super) fn examples() -> Vec<StoryExample> {
     examples.extend(molecule_color_diff::examples());
     examples.extend(molecule_command_search::examples());
     examples.extend(molecule_context_menu::examples());
+    examples.extend(molecule_forms::examples());
     examples.extend(molecule_heavy::examples());
     examples.extend(molecule_interaction::examples());
     examples.extend(molecule_platform_primitives::examples());

@@ -26,7 +26,7 @@ pub(super) const CONTRACTS: &[LegacyPageContract] = &[
         "theme_id",
         "light",
         "theme=light",
-        "overview",
+        "dark palette",
     ),
     contract!(
         2,

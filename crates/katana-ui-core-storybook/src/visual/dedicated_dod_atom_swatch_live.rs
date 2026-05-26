@@ -20,6 +20,9 @@ const STATUS_GAP: usize = 8;
 const TEXT_X: usize = 7;
 const TEXT_Y: usize = 6;
 const SELECTED_INDEX: usize = 2;
+const SELECT_PRESET_INDEX: usize = 1;
+const DISABLED_PRESET_INDEX: usize = 2;
+const THEME_PRESET_INDEX: usize = 3;
 
 pub(super) fn draw(
     canvas: &mut Canvas,
@@ -41,7 +44,7 @@ fn draw_grid(
     x: usize,
     y: usize,
 ) {
-    let selected_index = if scenario.screen_state.has_widget_action() {
+    let selected_index = if selected_visible(scenario) {
         SELECTED_INDEX
     } else {
         m::PX_0
@@ -54,10 +57,19 @@ fn draw_grid(
                 y + SWATCH_Y - SWATCH_RING_OFFSET,
                 SWATCH_SIZE + SWATCH_RING_OFFSET + SWATCH_RING_OFFSET,
                 SWATCH_SIZE + SWATCH_RING_OFFSET + SWATCH_RING_OFFSET,
-                common::WARN,
+                ring_color(palette, scenario),
             );
         }
         canvas.fill_rect(swatch_x, y + SWATCH_Y, SWATCH_SIZE, SWATCH_SIZE, color);
+    }
+    if scenario.preset_index == DISABLED_PRESET_INDEX {
+        canvas.fill_rect(
+            x + SWATCH_X + SWATCH_COUNT * (SWATCH_SIZE + SWATCH_GAP),
+            y + SWATCH_Y,
+            SWATCH_SIZE,
+            SWATCH_SIZE,
+            palette.panel,
+        );
     }
     canvas.stroke_rect(
         x + SWATCH_X + SWATCH_COUNT * (SWATCH_SIZE + SWATCH_GAP),
@@ -118,6 +130,22 @@ fn colors(palette: &VisualPalette) -> [u32; SWATCH_COUNT] {
     ]
 }
 
+fn selected_visible(scenario: ScenarioContext<'_>) -> bool {
+    scenario.screen_state.has_widget_action()
+        || scenario.screen_state.has_settings_override()
+        || matches!(
+            scenario.preset_index,
+            SELECT_PRESET_INDEX | THEME_PRESET_INDEX
+        )
+}
+
+fn ring_color(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.preset_index == THEME_PRESET_INDEX {
+        return palette.accent;
+    }
+    common::WARN
+}
+
 fn action_label(scenario: ScenarioContext<'_>) -> &'static str {
     if scenario.screen_state.last_action == "none" {
         return "action ready";
@@ -133,8 +161,13 @@ fn event_label(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 fn state_label(scenario: ScenarioContext<'_>) -> &'static str {
-    if scenario.screen_state.state_label == "idle" {
-        return "color=accent";
+    if scenario.screen_state.state_label != "idle" {
+        return scenario.screen_state.state_label;
     }
-    scenario.screen_state.state_label
+    match scenario.preset_index {
+        SELECT_PRESET_INDEX => "selected=warn",
+        DISABLED_PRESET_INDEX => "disabled=true",
+        THEME_PRESET_INDEX => "theme ring",
+        _ => "color=accent",
+    }
 }

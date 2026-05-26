@@ -11,6 +11,8 @@ const RADIO_PAGE: &str = "radio";
 const THEME_PAGE: &str = "theme-tokens";
 const TEXT_PAGE: &str = "text";
 const ICON_PAGE: &str = "icon";
+const DIVIDER_PAGE: &str = "divider";
+const SPACER_PAGE: &str = "spacer";
 const LOADING_DOTS_PAGE: &str = "loading-dots";
 const SPINNER_PAGE: &str = "spinner";
 const PROGRESS_PAGE: &str = "progress-bar";
@@ -40,6 +42,10 @@ const COMPONENT_BODY_DIFF_THRESHOLD: usize = 80;
 const TREE_SCROLL_TRACK_X_OFFSET: usize = 186;
 const TREE_SCROLL_TRACK_Y_OFFSET: usize = 32;
 const TREE_SCROLL_THUMB_EDGE_OFFSET: usize = 24;
+const TEXT_SURFACE_SAMPLE_X_OFFSET: usize = 256;
+const TEXT_SURFACE_SAMPLE_Y_OFFSET: usize = 38;
+const THEME_BACKGROUND_SAMPLE_X_OFFSET: usize = 52;
+const THEME_BACKGROUND_SAMPLE_Y_OFFSET: usize = 53;
 const BRIGHT_PIXEL_THRESHOLD: u32 = 180;
 const RED_SHIFT: u32 = 16;
 const GREEN_SHIFT: u32 = 8;
@@ -56,6 +62,8 @@ fn settings_change_updates_passive_atom_preview_bodies() {
         THEME_PAGE,
         TEXT_PAGE,
         ICON_PAGE,
+        DIVIDER_PAGE,
+        SPACER_PAGE,
         LOADING_DOTS_PAGE,
         SPINNER_PAGE,
         PROGRESS_PAGE,
@@ -136,6 +144,72 @@ fn clicked_operable_pages_update_preview_body() {
         CARD_PAGE,
     ] {
         assert_clicked_page_changes_body(page);
+    }
+}
+
+#[test]
+fn text_input_light_theme_uses_light_field_background() {
+    let canvas = StorybookVisual.render_preset("light", INPUT_PAGE, 3, 0);
+    let rect = preview_detail::component_action_hit_rect(INPUT_PAGE);
+    let field = super::dedicated_dod_form_input_live::search_field_rect(rect.x, rect.y);
+    let sample = pixel_at(
+        &canvas,
+        field.x + field.width / 2,
+        field.y + field.height / 2,
+    )
+    .expect("input field sample pixel");
+
+    assert!(luminance(sample) > BRIGHT_PIXEL_THRESHOLD);
+}
+
+#[test]
+fn primitive_presets_render_distinct_bodies() {
+    for page in [
+        THEME_PAGE,
+        TEXT_PAGE,
+        ICON_PAGE,
+        DIVIDER_PAGE,
+        SPACER_PAGE,
+        INPUT_PAGE,
+    ] {
+        let first = StorybookVisual.render_preset(DARK_THEME, page, 0, 0);
+        let second = StorybookVisual.render_preset(DARK_THEME, page, 1, 0);
+        let third = StorybookVisual.render_preset(DARK_THEME, page, 2, 0);
+        let fourth = StorybookVisual.render_preset(DARK_THEME, page, 3, 0);
+
+        assert!(component_body_pixel_diff(page, &first, &second) > COMPONENT_BODY_DIFF_THRESHOLD);
+        assert!(component_body_pixel_diff(page, &second, &third) > COMPONENT_BODY_DIFF_THRESHOLD);
+        assert!(component_body_pixel_diff(page, &third, &fourth) > COMPONENT_BODY_DIFF_THRESHOLD);
+    }
+}
+
+#[test]
+fn theme_tokens_light_theme_uses_light_background_token() {
+    let canvas = StorybookVisual.render_preset("light", THEME_PAGE, DEFAULT_PRESET, 0);
+    let rect = preview_detail::component_action_hit_rect(THEME_PAGE);
+    let sample = pixel_at(
+        &canvas,
+        rect.x + THEME_BACKGROUND_SAMPLE_X_OFFSET,
+        rect.y + THEME_BACKGROUND_SAMPLE_Y_OFFSET,
+    )
+    .expect("theme token background sample pixel");
+
+    assert!(luminance(sample) > BRIGHT_PIXEL_THRESHOLD);
+}
+
+#[test]
+fn text_and_icon_light_theme_use_light_preview_surface_token() {
+    for page in [TEXT_PAGE, ICON_PAGE, DIVIDER_PAGE, SPACER_PAGE] {
+        let canvas = StorybookVisual.render_preset("light", page, DEFAULT_PRESET, 0);
+        let rect = preview_detail::component_action_hit_rect(page);
+        let sample = pixel_at(
+            &canvas,
+            rect.x + TEXT_SURFACE_SAMPLE_X_OFFSET,
+            rect.y + TEXT_SURFACE_SAMPLE_Y_OFFSET,
+        )
+        .expect("preview surface sample pixel");
+
+        assert!(luminance(sample) > BRIGHT_PIXEL_THRESHOLD);
     }
 }
 
