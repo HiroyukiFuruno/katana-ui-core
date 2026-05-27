@@ -12,6 +12,9 @@ root 計画の根拠は `openspec/changes/ui-core-root-plan/` と `docs/architec
 | root | `ui-core-root-plan` | KUC をフレームワーク非依存（framework-neutral）UI Core として再定義し、runtime / window / surface / adapter 境界を固定する親 change | この change を先に読む |
 | implementation | `establish-kuc-atoms-molecules-catalog` | Storybook menu 77 page を KUC の atoms / molecules と Storybook harness へ移管し、自動品質ゲートを正本化する親 change | `ui-core-root-plan` の境界を確認後に読む |
 
+KDV の Markdown viewer UI 構築に必要な KUC 側の部品対応は、既存 change で足りるため新規 change を追加しない。
+対応表は `establish-kuc-atoms-molecules-catalog/kdv-ui-build-readiness.md` を正本にする。
+
 ## 現行 Storybook 実装キュー
 
 現行の実装単位は、番号無しの `storybook-page-*` leaf change に統一する。
