@@ -67,7 +67,37 @@ fn text_area_options() -> Vec<TextAreaSettingOption> {
             name: "text_area.wrap_policy",
             value_type: "TextAreaWrapPolicy",
             before: "Soft",
-            after: "Hard",
+            after: "None",
+        },
+        TextAreaSettingOption {
+            name: "text_area.resize_enabled",
+            value_type: "bool",
+            before: "false",
+            after: "true",
+        },
+        TextAreaSettingOption {
+            name: "text_area.vertical_scroll_enabled",
+            value_type: "bool",
+            before: "false",
+            after: "true",
+        },
+        TextAreaSettingOption {
+            name: "text_area.horizontal_scroll_enabled",
+            value_type: "bool",
+            before: "false",
+            after: "true",
+        },
+        TextAreaSettingOption {
+            name: "text_area.vertical_scrollbar_visible",
+            value_type: "bool",
+            before: "false",
+            after: "true",
+        },
+        TextAreaSettingOption {
+            name: "text_area.horizontal_scrollbar_visible",
+            value_type: "bool",
+            before: "false",
+            after: "true",
         },
     ]
 }

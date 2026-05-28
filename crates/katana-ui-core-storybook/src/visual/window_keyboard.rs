@@ -1,15 +1,37 @@
-use super::window_interaction::{StorybookWindowState, TextInputKey, apply_text_input_key};
+use super::window_interaction::{
+    StorybookWindowState, TextAreaKey, TextInputKey, apply_text_area_key, apply_text_input_key,
+};
 use minifb::{Key, KeyRepeat, Window};
 
 pub(super) fn apply_keyboard(window: &Window, state: &mut StorybookWindowState) -> bool {
     let shifted = window.is_key_down(Key::LeftShift) || window.is_key_down(Key::RightShift);
     let mut changed = false;
     for key in window.get_keys_pressed(KeyRepeat::Yes) {
+        if state.selected_page == "text-area"
+            && let Some(input) = text_area_key(key, shifted)
+        {
+            changed |= apply_text_area_key(state, input);
+            continue;
+        }
         if let Some(input) = text_input_key(key, shifted) {
             changed |= apply_text_input_key(state, input);
         }
     }
     changed
+}
+
+fn text_area_key(key: Key, shifted: bool) -> Option<TextAreaKey> {
+    if key == Key::Backspace {
+        return Some(TextAreaKey::Backspace);
+    }
+    if key == Key::Enter || key == Key::NumPadEnter {
+        return if shifted {
+            Some(TextAreaKey::Newline)
+        } else {
+            Some(TextAreaKey::Submit)
+        };
+    }
+    character_for_key(key, shifted).map(TextAreaKey::Character)
 }
 
 fn text_input_key(key: Key, shifted: bool) -> Option<TextInputKey> {

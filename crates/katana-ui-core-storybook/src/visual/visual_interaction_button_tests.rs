@@ -36,7 +36,7 @@ fn preset_tab_updates_selected_preview_body() {
 
 #[test]
 fn settings_update_selected_preview_body() {
-    let mut state = StorybookWindowState::default();
+    let mut state = button_state();
     let before = render::render_storybook_canvas_with_screen_state(
         state.theme_id,
         state.selected_page,
@@ -87,7 +87,7 @@ fn clicked_button_updates_visible_button_body() {
 
 #[test]
 fn hovering_button_preview_updates_surface_without_click_action() {
-    let mut state = StorybookWindowState::default();
+    let mut state = button_state();
     let before = render::render_storybook_canvas_with_screen_state(
         state.theme_id,
         state.selected_page,
@@ -218,6 +218,7 @@ fn button_status_scenario(
     ScenarioContext {
         selected_page: BUTTON_PAGE,
         preset_index: DEFAULT_PRESET,
+        preset_tab_scroll_x: 0,
         tree_expansion: Default::default(),
         scrollbar_visible: true,
         panel_scroll: Default::default(),
@@ -242,11 +243,19 @@ fn button_summary_scenario_with_state(
     ScenarioContext {
         selected_page: BUTTON_PAGE,
         preset_index,
+        preset_tab_scroll_x: 0,
         tree_expansion: Default::default(),
         scrollbar_visible: true,
         panel_scroll: Default::default(),
         show_navigation_lines: true,
         show_navigation_text_connectors: false,
         screen_state,
+    }
+}
+
+fn button_state() -> StorybookWindowState {
+    StorybookWindowState {
+        selected_page: BUTTON_PAGE,
+        ..StorybookWindowState::default()
     }
 }

@@ -166,9 +166,9 @@ pub(super) const CONTRACTS: &[LegacyPageContract] = &[
         "text-area",
         "text_area_type",
         "text_area_changed",
-        "text_area.submit_key",
+        "text_area.resize_enabled",
         "true",
-        "rows=4 scroll=true",
-        "ime input",
+        "resize=true",
+        "resize handle",
     ),
 ];

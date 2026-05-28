@@ -1,6 +1,6 @@
 use super::visual_interaction_test_support::{
     assert_clicked_page_changes_body, assert_settings_page_changes_body, component_body_pixel_diff,
-    pixel_at,
+    pixel_at, require_some,
 };
 use super::{StorybookVisual, palette, preview_detail};
 use katana_ui_core::theme::ThemeSnapshot;
@@ -148,18 +148,21 @@ fn clicked_operable_pages_update_preview_body() {
 }
 
 #[test]
-fn text_input_light_theme_uses_light_field_background() {
+fn text_input_light_theme_uses_light_field_background() -> Result<(), String> {
     let canvas = StorybookVisual.render_preset("light", INPUT_PAGE, 3, 0);
     let rect = preview_detail::component_action_hit_rect(INPUT_PAGE);
     let field = super::dedicated_dod_form_input_live::search_field_rect(rect.x, rect.y);
-    let sample = pixel_at(
-        &canvas,
-        field.x + field.width / 2,
-        field.y + field.height / 2,
-    )
-    .expect("input field sample pixel");
+    let sample = require_some(
+        pixel_at(
+            &canvas,
+            field.x + field.width / 2,
+            field.y + field.height / 2,
+        ),
+        "input field sample pixel",
+    )?;
 
     assert!(luminance(sample) > BRIGHT_PIXEL_THRESHOLD);
+    Ok(())
 }
 
 #[test]
@@ -184,33 +187,39 @@ fn primitive_presets_render_distinct_bodies() {
 }
 
 #[test]
-fn theme_tokens_light_theme_uses_light_background_token() {
+fn theme_tokens_light_theme_uses_light_background_token() -> Result<(), String> {
     let canvas = StorybookVisual.render_preset("light", THEME_PAGE, DEFAULT_PRESET, 0);
     let rect = preview_detail::component_action_hit_rect(THEME_PAGE);
-    let sample = pixel_at(
-        &canvas,
-        rect.x + THEME_BACKGROUND_SAMPLE_X_OFFSET,
-        rect.y + THEME_BACKGROUND_SAMPLE_Y_OFFSET,
-    )
-    .expect("theme token background sample pixel");
+    let sample = require_some(
+        pixel_at(
+            &canvas,
+            rect.x + THEME_BACKGROUND_SAMPLE_X_OFFSET,
+            rect.y + THEME_BACKGROUND_SAMPLE_Y_OFFSET,
+        ),
+        "theme token background sample pixel",
+    )?;
 
     assert!(luminance(sample) > BRIGHT_PIXEL_THRESHOLD);
+    Ok(())
 }
 
 #[test]
-fn text_and_icon_light_theme_use_light_preview_surface_token() {
+fn text_and_icon_light_theme_use_light_preview_surface_token() -> Result<(), String> {
     for page in [TEXT_PAGE, ICON_PAGE, DIVIDER_PAGE, SPACER_PAGE] {
         let canvas = StorybookVisual.render_preset("light", page, DEFAULT_PRESET, 0);
         let rect = preview_detail::component_action_hit_rect(page);
-        let sample = pixel_at(
-            &canvas,
-            rect.x + TEXT_SURFACE_SAMPLE_X_OFFSET,
-            rect.y + TEXT_SURFACE_SAMPLE_Y_OFFSET,
-        )
-        .expect("preview surface sample pixel");
+        let sample = require_some(
+            pixel_at(
+                &canvas,
+                rect.x + TEXT_SURFACE_SAMPLE_X_OFFSET,
+                rect.y + TEXT_SURFACE_SAMPLE_Y_OFFSET,
+            ),
+            "preview surface sample pixel",
+        )?;
 
         assert!(luminance(sample) > BRIGHT_PIXEL_THRESHOLD);
     }
+    Ok(())
 }
 
 #[test]

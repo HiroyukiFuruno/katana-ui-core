@@ -32,6 +32,8 @@ class StorybookUiHarness:
         failures.extend(self.leaf_change_failures(menu_pages, leaf_changes))
         failures.extend(self.dedicated_page_failures(leaf_statuses, dedicated_pages))
         failures.extend(self.priority_order_failures(menu_pages, leaf_changes, priority_order))
+        failures.extend(self.text_input_runtime_state_failures())
+        failures.extend(self.preset_tab_label_layout_failures())
         if "storybook_ui_option_contract::settings_rows_for" not in self.sources.read(
             "crates/katana-ui-core-storybook/src/visual/inspector_rows.rs"
         ):
@@ -178,3 +180,52 @@ class StorybookUiHarness:
             for page in required
             if preset_counts.get(page, 0) < MIN_PRESET_COUNT
         ]
+
+    def text_input_runtime_state_failures(self) -> list[str]:
+        screen_state = self.read_optional(
+            "crates/katana-ui-core-storybook/src/visual/screen_state.rs"
+        )
+        runtime_state = self.read_optional(
+            "crates/katana-ui-core-storybook/src/visual/text_input_screen_state.rs"
+        )
+        interaction_state = self.read_optional(
+            "crates/katana-ui-core-storybook/src/visual/screen_state_text_input.rs"
+        )
+        if not screen_state and not runtime_state and not interaction_state:
+            return []
+        failures: list[str] = []
+        forbidden = (
+            "text_input_state:",
+            "text_input_uses_live_value:",
+            "text_input_caret_visible:",
+        )
+        for token in forbidden:
+            if token in screen_state:
+                failures.append(f"text-input Storybook state must be instance-scoped, not `{token}`")
+        required = (
+            "TextInputStateStore",
+            "BTreeMap<&'static str, TextInputRuntimeState>",
+        )
+        for token in required:
+            if token not in runtime_state:
+                failures.append(f"text-input Storybook runtime state missing instance store token: {token}")
+        if "register_text_input_readonly_block" not in interaction_state:
+            failures.append("text-input Storybook keyboard path must block readonly mutation")
+        return failures
+
+    def preset_tab_label_layout_failures(self) -> list[str]:
+        source = self.read_optional("crates/katana-ui-core-storybook/src/visual/preset_tabs.rs")
+        if not source:
+            return []
+        required = ("measure_width", "with_clip", "tab_label_widths_for_test")
+        return [
+            f"preset tab labels must be measured and clipped inside each tab: missing {token}"
+            for token in required
+            if token not in source
+        ]
+
+    def read_optional(self, relative: str) -> str:
+        path = self.root / relative
+        if not path.exists():
+            return ""
+        return path.read_text(encoding="utf-8")

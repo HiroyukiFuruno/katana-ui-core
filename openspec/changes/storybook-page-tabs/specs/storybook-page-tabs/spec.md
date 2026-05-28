@@ -16,3 +16,10 @@ The page MUST expose a dedicated preview, at least four meaningful presets, at l
 - **WHEN** `tabs` has only a generic renderer or label-only preset changes
 - **THEN** the page is not considered ready
 - **AND** the missing dedicated preview, preset, option, Inspector, state/action/event, or rendering contract is reported
+
+#### Scenario: tabs page mirrors Katana workspace tab lifecycle
+
+- **WHEN** the `tabs` Storybook page is opened
+- **THEN** it exposes add, close, move, group, pin, unpin, and overflow controls
+- **AND** pinned tabs are rendered at the leading edge and are not closable until unpinned
+- **AND** each lifecycle operation updates Storybook state/action/event evidence

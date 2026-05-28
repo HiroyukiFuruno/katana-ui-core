@@ -241,9 +241,7 @@ impl Canvas {
         width: usize,
         height: usize,
     ) -> Option<CanvasClip> {
-        let Some(rect) = self.visible_logical_span(x, y, width, height) else {
-            return None;
-        };
+        let rect = self.visible_logical_span(x, y, width, height)?;
         if rect.0 >= rect.2 || rect.1 >= rect.3 {
             return None;
         }

@@ -17,10 +17,8 @@ const THEME_PRESET: usize = 3;
 const REQUIRED_PRESET_COUNT: usize = 4;
 const REQUIRED_OPTION_COUNT: usize = 4;
 const BODY_DIFF_THRESHOLD: usize = 80;
-const FIELD_FILL_SAMPLE_X_OFFSET: usize = 8;
+const FIELD_FILL_SAMPLE_X_OFFSET: usize = 180;
 const FIELD_FILL_SAMPLE_Y_OFFSET: usize = 8;
-const FIELD_CURSOR_SAMPLE_X_OFFSET: usize = 188;
-const FIELD_CURSOR_SAMPLE_Y_OFFSET: usize = 10;
 
 #[test]
 fn search_box_exposes_leaf_presets_options_and_submit_contract() {
@@ -94,8 +92,8 @@ fn assert_search_field_tokens(theme_id: &str, theme: ThemeSnapshot) {
         Some(colors.accent),
         pixel_at(
             &canvas,
-            field.x + FIELD_CURSOR_SAMPLE_X_OFFSET,
-            field.y + FIELD_CURSOR_SAMPLE_Y_OFFSET
+            rect.x + super::dedicated_dod_form_input_live::FIELD_ICON_X,
+            rect.y + super::dedicated_dod_form_input_live::FIELD_ICON_Y
         )
     );
 }

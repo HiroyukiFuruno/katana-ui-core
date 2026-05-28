@@ -1,63 +1,75 @@
 use super::canvas::Canvas;
-use super::dedicated_dod_common::{self as common, ChipSpec};
+use super::dedicated_dod_common as common;
 pub(super) use super::dedicated_dod_form_input_live_layout::{
+    CLEAR_SIZE, CLEAR_X, CLEAR_Y, CONTROL_BUTTON_GAP, FIELD_ICON_X, FIELD_ICON_Y, FIELD_X,
+    SEARCH_ICON_STEM_OFFSET, STATUS_TEXT_X, STATUS_TEXT_Y, TEXT_AREA_HEIGHT,
+    TEXT_AREA_LINE_FIRST_Y, TEXT_AREA_LINE_STEP, TEXT_AREA_LINE_X, TEXT_AREA_WIDTH, TEXT_AREA_Y,
     search_case_toggle_button_rect, search_clear_button_rect, search_field_rect,
     search_inline_clear_rect, search_regex_toggle_button_rect, search_state_read_button_rect,
-    search_submit_button_rect, search_type_query_button_rect,
-};
-use super::dedicated_dod_form_input_live_values::{
-    input_value, search_value, status_action, status_event, status_state,
+    search_submit_button_rect, search_type_query_button_rect, text_input_chip_rects,
+    text_input_status_rects, text_input_trailing_icon_button_rects,
 };
 use super::dedicated_dod_metrics as m;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
-use super::text::{TextRenderer, TextVerticalBox};
+use super::text::TextRenderer;
 
+#[path = "dedicated_dod_form_input_live_caret.rs"]
+mod dedicated_dod_form_input_live_caret;
 #[path = "dedicated_dod_form_input_live_chrome.rs"]
 mod dedicated_dod_form_input_live_chrome;
 #[path = "dedicated_dod_form_input_live_text_area.rs"]
 mod dedicated_dod_form_input_live_text_area;
+#[path = "dedicated_dod_form_input_live_text_area_chrome.rs"]
+mod dedicated_dod_form_input_live_text_area_chrome;
+#[path = "dedicated_dod_form_input_live_text_input.rs"]
+mod dedicated_dod_form_input_live_text_input;
+#[path = "dedicated_dod_form_input_live_text_input_chrome.rs"]
+mod dedicated_dod_form_input_live_text_input_chrome;
 
-const FIELD_X: usize = 18;
-const FIELD_Y: usize = 36;
-const FIELD_WIDTH: usize = 210;
-const FIELD_HEIGHT: usize = 34;
-const FIELD_TEXT_X: usize = 42;
-const FIELD_ICON_X: usize = 28;
-const FIELD_ICON_Y: usize = 47;
-const FIELD_CURSOR_X: usize = 206;
-const FIELD_CURSOR_Y: usize = 44;
-const FIELD_CURSOR_WIDTH: usize = 2;
-const FIELD_CURSOR_HEIGHT: usize = 18;
-const CLEAR_X: usize = 208;
-const CLEAR_Y: usize = 46;
-const CLEAR_SIZE: usize = 14;
-const SEARCH_ICON_STEM_OFFSET: usize = 4;
-const STATUS_X: usize = 246;
-const STATUS_Y: usize = 76;
-const STATUS_WIDTH: usize = 84;
-const STATUS_HEIGHT: usize = 20;
-const STATUS_GAP: usize = 8;
-const STATUS_TEXT_X: usize = 7;
-const STATUS_TEXT_Y: usize = 6;
-const CHIP_Y: usize = 84;
-const CHIP_WIDTH: usize = 68;
-const CHIP_HEIGHT: usize = 18;
-const CHIP_GAP: usize = 8;
-const CHIP_LABEL_COUNT: usize = 3;
 const LABEL_SIZE: f32 = 10.0;
-const CONTROL_BUTTON_GAP: usize = 8;
 const CONTROL_TEXT_Y: usize = 6;
-const TEXT_AREA_Y: usize = 32;
-const TEXT_AREA_WIDTH: usize = 236;
-const TEXT_AREA_HEIGHT: usize = 92;
-const TEXT_AREA_LINE_X: usize = 30;
-const TEXT_AREA_LINE_FIRST_Y: usize = 54;
-const TEXT_AREA_LINE_STEP: usize = 18;
-const TEXT_AREA_STATUS_X: usize = 272;
-const TEXT_AREA_STATUS_WIDTH: usize = 68;
-const INPUT_INVALID_PRESET_INDEX: usize = 2;
-const INPUT_THEME_PRESET_INDEX: usize = 3;
+const INPUT_READONLY_PRESET_INDEX: usize = 2;
+const INPUT_PLACEHOLDER_PRESET_INDEX: usize = 3;
+const INPUT_RESERVED_SLOT_PRESET_INDEX: usize = 4;
+const INPUT_LEADING_ICON_PRESET_INDEX: usize = 5;
+const INPUT_ICON_BUTTONS_PRESET_INDEX: usize = 6;
+const INPUT_INVALID_PRESET_INDEX: usize = 7;
+const INPUT_THEME_PRESET_INDEX: usize = 8;
+
+pub(super) use dedicated_dod_form_input_live_caret::text_area_caret_rect;
+
+#[cfg(test)]
+pub(super) use super::dedicated_dod_form_input_live_layout::FIELD_TEXT_X;
+#[cfg(test)]
+pub(super) use super::dedicated_dod_form_input_live_layout::FIELD_TEXT_X_WITH_LEADING_SLOT;
+#[cfg(test)]
+pub(super) use super::dedicated_dod_form_input_live_layout::{
+    text_area_rect, text_area_status_rects,
+};
+#[cfg(test)]
+pub(super) use super::dedicated_dod_form_input_live_layout::{
+    text_input_text_clip_width, text_input_text_x,
+};
+#[cfg(test)]
+pub(super) use dedicated_dod_form_input_live_caret::text_input_caret_rect as text_input_caret_rect_for_test;
+#[cfg(test)]
+pub(super) use dedicated_dod_form_input_live_caret::text_input_caret_rect_with_layout as text_input_caret_rect_with_layout_for_test;
+pub(super) use dedicated_dod_form_input_live_text_area::{
+    horizontal_scroll_max_offset_for as text_area_horizontal_scroll_max_offset_for,
+    vertical_scroll_max_offset_for as text_area_vertical_scroll_max_offset_for,
+};
+pub(super) use dedicated_dod_form_input_live_text_area_chrome::{
+    horizontal_scroll_enabled_for as text_area_horizontal_scroll_enabled_for,
+    resize_enabled_for as text_area_resize_enabled_for,
+    text_area_rect_for_state as text_area_rect_for_screen_state,
+    text_area_resize_delta_for_pointer, text_area_resize_grip_rect_for,
+    vertical_scroll_enabled_for as text_area_vertical_scroll_enabled_for,
+};
+#[cfg(test)]
+pub(super) use dedicated_dod_form_input_live_text_input_chrome::katana_search_svg_for_test as text_input_katana_search_svg_for_test;
+#[cfg(test)]
+pub(super) use dedicated_dod_form_input_live_text_input_chrome::search_icon_visual_rect_for_test as text_input_search_icon_visual_rect_for_test;
 
 pub(super) fn input(
     canvas: &mut Canvas,
@@ -67,10 +79,7 @@ pub(super) fn input(
     x: usize,
     y: usize,
 ) {
-    common::frame(canvas, text, palette, x, y, "Input / TextInput");
-    draw_input_field(canvas, text, palette, scenario, x, y, input_value(scenario));
-    draw_status(canvas, text, palette, scenario, x, y);
-    draw_input_chips(canvas, text, palette, x, y);
+    dedicated_dod_form_input_live_text_input::input(canvas, text, palette, scenario, x, y);
 }
 
 pub(super) fn text_area(
@@ -93,120 +102,12 @@ pub(super) fn search(
     y: usize,
 ) {
     common::frame(canvas, text, palette, x, y, "SearchBox");
+    dedicated_dod_form_input_live_text_input::search_field(canvas, text, palette, scenario, x, y);
     dedicated_dod_form_input_live_chrome::draw_search_icon(canvas, palette, x, y);
-    draw_input_field(
-        canvas,
-        text,
-        palette,
-        scenario,
-        x,
-        y,
-        search_value(scenario),
-    );
     dedicated_dod_form_input_live_chrome::draw_clear_button(canvas, x, y);
     draw_search_controls(canvas, text, palette, x, y);
-    draw_status(canvas, text, palette, scenario, x, y);
-    draw_search_chips(canvas, text, palette, x, y);
-}
-
-pub(super) fn draw_input_field(
-    canvas: &mut Canvas,
-    text: &TextRenderer,
-    palette: &VisualPalette,
-    scenario: ScenarioContext<'_>,
-    x: usize,
-    y: usize,
-    value: &str,
-) {
-    let border = if scenario.preset_index == INPUT_INVALID_PRESET_INDEX {
-        common::DANGER
-    } else if scenario.screen_state.has_widget_action() {
-        palette.accent
-    } else {
-        palette.border
-    };
-    let fill = if scenario.preset_index == INPUT_THEME_PRESET_INDEX {
-        palette.background
-    } else {
-        palette.surface
-    };
-    canvas.fill_rect(x + FIELD_X, y + FIELD_Y, FIELD_WIDTH, FIELD_HEIGHT, fill);
-    canvas.stroke_rect(x + FIELD_X, y + FIELD_Y, FIELD_WIDTH, FIELD_HEIGHT, border);
-    text.draw_centered(
-        canvas,
-        value,
-        x + FIELD_TEXT_X,
-        TextVerticalBox::new(y + FIELD_Y, FIELD_HEIGHT as f32),
-        LABEL_SIZE,
-        palette.text,
-    );
-    canvas.fill_rect(
-        x + FIELD_CURSOR_X,
-        y + FIELD_CURSOR_Y,
-        FIELD_CURSOR_WIDTH,
-        FIELD_CURSOR_HEIGHT,
-        palette.accent,
-    );
-}
-
-fn draw_status(
-    canvas: &mut Canvas,
-    text: &TextRenderer,
-    palette: &VisualPalette,
-    scenario: ScenarioContext<'_>,
-    x: usize,
-    y: usize,
-) {
-    let rows = [
-        status_action(scenario),
-        status_event(scenario),
-        status_state(scenario),
-    ];
-    for (index, row) in rows.into_iter().enumerate() {
-        let row_y = y + STATUS_Y + index * (STATUS_HEIGHT + STATUS_GAP);
-        canvas.fill_rect(
-            x + STATUS_X,
-            row_y,
-            STATUS_WIDTH,
-            STATUS_HEIGHT,
-            palette.panel,
-        );
-        canvas.stroke_rect(
-            x + STATUS_X,
-            row_y,
-            STATUS_WIDTH,
-            STATUS_HEIGHT,
-            palette.border,
-        );
-        text.draw(
-            canvas,
-            row,
-            x + STATUS_X + STATUS_TEXT_X,
-            row_y + STATUS_TEXT_Y,
-            m::FONT_8,
-            palette.muted,
-        );
-    }
-}
-
-fn draw_input_chips(
-    canvas: &mut Canvas,
-    text: &TextRenderer,
-    palette: &VisualPalette,
-    x: usize,
-    y: usize,
-) {
-    draw_chips(canvas, text, palette, x, y, ["IME", "emoji", "invalid"]);
-}
-
-fn draw_search_chips(
-    canvas: &mut Canvas,
-    text: &TextRenderer,
-    palette: &VisualPalette,
-    x: usize,
-    y: usize,
-) {
-    draw_chips(canvas, text, palette, x, y, ["regex", "word", "case"]);
+    dedicated_dod_form_input_live_text_input::draw_status(canvas, text, palette, scenario, x, y);
+    dedicated_dod_form_input_live_text_input::draw_search_chips(canvas, text, palette, x, y);
 }
 
 fn draw_search_controls(
@@ -235,47 +136,4 @@ fn draw_search_controls(
             palette.text,
         );
     }
-}
-
-fn draw_chips(
-    canvas: &mut Canvas,
-    text: &TextRenderer,
-    palette: &VisualPalette,
-    x: usize,
-    y: usize,
-    labels: [&'static str; CHIP_LABEL_COUNT],
-) {
-    common::draw_chips(
-        canvas,
-        text,
-        palette,
-        x,
-        y,
-        &[
-            ChipSpec::new(
-                FIELD_X,
-                CHIP_Y,
-                CHIP_WIDTH,
-                CHIP_HEIGHT,
-                labels[0],
-                palette.accent,
-            ),
-            ChipSpec::new(
-                FIELD_X + CHIP_WIDTH + CHIP_GAP,
-                CHIP_Y,
-                CHIP_WIDTH,
-                CHIP_HEIGHT,
-                labels[1],
-                palette.panel,
-            ),
-            ChipSpec::new(
-                FIELD_X + (CHIP_WIDTH + CHIP_GAP) * m::PX_2,
-                CHIP_Y,
-                CHIP_WIDTH,
-                CHIP_HEIGHT,
-                labels[2],
-                palette.code_background,
-            ),
-        ],
-    );
 }

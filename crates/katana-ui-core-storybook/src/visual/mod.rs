@@ -93,6 +93,7 @@ mod dedicated_dod_molecule_menu;
 mod dedicated_dod_molecule_split_pane;
 mod dedicated_dod_molecule_surfaces;
 mod dedicated_dod_molecule_tree;
+mod dedicated_dod_molecule_tree_lines;
 mod dedicated_dod_molecule_tree_parts;
 mod dedicated_dod_molecules;
 mod dedicated_dod_runtime_motion;
@@ -132,7 +133,9 @@ mod dedicated_startup_state_panel_style;
 mod dedicated_status_bar;
 mod dedicated_status_bar_style;
 mod dedicated_tabs;
-mod dedicated_tabs_style;
+mod dedicated_tabs_controls;
+mod dedicated_tabs_metrics;
+mod dedicated_tabs_strip;
 mod dedicated_toast_stack_manager;
 mod dedicated_toast_stack_manager_labels;
 mod dedicated_toast_stack_manager_style;
@@ -156,6 +159,7 @@ mod modal;
 mod navigation;
 mod navigation_guides;
 mod navigation_icons;
+mod navigation_render_types;
 mod navigation_tree;
 mod palette;
 #[cfg(test)]
@@ -186,6 +190,7 @@ mod panel_scrollbar_metrics_tests;
 mod panel_scrollbar_overflow_model_tests;
 mod panel_scrollbars;
 mod presentation;
+mod preset_tab_scroll;
 mod preset_tabs;
 mod preview;
 mod preview_contract;
@@ -196,9 +201,16 @@ mod render;
 mod render_context;
 mod runtime;
 mod screen_state;
+mod screen_state_action_bridge;
+mod screen_state_context_menu;
 mod screen_state_default;
 mod screen_state_forms;
 mod screen_state_settings;
+mod screen_state_tabs;
+mod screen_state_tabs_bridge;
+mod screen_state_tabs_types;
+mod screen_state_text_area;
+mod screen_state_text_area_scroll;
 mod screen_state_text_input;
 mod scrollbar;
 mod scrollbar_model;
@@ -209,12 +221,14 @@ mod selection_screen_state_labels;
 mod shell;
 mod storybook_ui_option_contract;
 mod storybook_ui_runtime_options;
+mod storybook_ui_tabs_options;
 mod switch_control;
 mod text;
 #[cfg(test)]
 mod text_antialias_tests;
 mod text_input_screen_state;
 mod text_raster;
+mod text_raster_request;
 #[cfg(test)]
 mod text_test_support;
 #[cfg(test)]
@@ -230,6 +244,8 @@ mod visual_interaction_badge_tests;
 mod visual_interaction_banner_tests;
 #[cfg(test)]
 mod visual_interaction_breadcrumb_tests;
+#[cfg(test)]
+mod visual_interaction_button_hover_tests;
 #[cfg(test)]
 mod visual_interaction_button_summary_tests;
 #[cfg(test)]
@@ -333,7 +349,15 @@ mod visual_interaction_test_support;
 #[cfg(test)]
 mod visual_interaction_tests;
 #[cfg(test)]
+mod visual_interaction_text_area_keyboard_tests;
+#[cfg(test)]
+mod visual_interaction_text_area_scroll_tests;
+#[cfg(test)]
 mod visual_interaction_text_area_tests;
+#[cfg(test)]
+mod visual_interaction_text_input_event_tests;
+#[cfg(test)]
+mod visual_interaction_text_input_layout_tests;
 #[cfg(test)]
 mod visual_interaction_text_input_tests;
 #[cfg(test)]
@@ -363,11 +387,16 @@ mod visual_navigation_line_tests;
 #[cfg(test)]
 mod visual_navigation_support;
 #[cfg(test)]
+mod visual_navigation_tree_line_continuity_tests;
+#[cfg(test)]
 mod visual_preset_marker_tests;
+#[cfg(test)]
+mod visual_preset_tab_scroll_tests;
 #[cfg(test)]
 mod visual_tests;
 mod window;
 mod window_coordinates;
+mod window_cursor;
 mod window_interaction;
 mod window_keyboard;
 mod window_modal_plan;
@@ -501,6 +530,10 @@ impl StorybookVisual {
             theme_id,
             selected_page,
             preset_index,
+            preset_tab_scroll_x: preset_tab_scroll::active_index_scroll_x(
+                selected_page,
+                preset_index,
+            ),
             scroll_y,
             scrollbar_visible,
             panel_scroll: panel_scroll_state::PanelScrollOffsets::default(),
@@ -530,6 +563,10 @@ impl StorybookVisual {
             theme_id,
             selected_page,
             preset_index,
+            preset_tab_scroll_x: preset_tab_scroll::active_index_scroll_x(
+                selected_page,
+                preset_index,
+            ),
             scroll_y,
             scrollbar_visible,
             panel_scroll: panel_scroll_state::PanelScrollOffsets::default(),

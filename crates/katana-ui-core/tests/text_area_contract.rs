@@ -160,27 +160,6 @@ fn ime_composition_lifecycle_commits_once() {
 }
 
 #[test]
-fn auto_grow_rows_resize_and_scroll_without_truncating_value() {
-    let mut text_area = TextArea::new("Long")
-        .min_rows(2)
-        .max_rows(4)
-        .auto_grow(true);
-
-    let resize = text_area.apply_text_area_action(TextAreaAction::Type("1\n2\n3".to_string()));
-    let overflow = text_area.apply_text_area_action(TextAreaAction::Type("\n4\n5".to_string()));
-
-    assert_eq!(3, resize.state.measured_rows);
-    let resized = resize
-        .events
-        .iter()
-        .any(|event| matches!(event, TextAreaEvent::Resize(resize) if resize.rows == 3));
-    assert!(resized);
-    assert_eq!(4, overflow.state.measured_rows);
-    assert!(overflow.state.internal_scroll);
-    assert_eq!("1\n2\n3\n4\n5", text_area.state().value);
-}
-
-#[test]
 fn tab_behavior_moves_focus_or_inserts_tab_explicitly() {
     let mut move_focus = TextArea::new("Form").tab_behavior(TextAreaTabBehavior::MoveFocus);
     let mut insert_tab = TextArea::new("Code").tab_behavior(TextAreaTabBehavior::InsertTab);

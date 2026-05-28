@@ -3,7 +3,7 @@ use super::visual_navigation_label_support::{
 };
 use super::visual_navigation_support::{
     navigation_label_sample_width, navigation_label_x, navigation_row_y_for_group,
-    navigation_row_y_for_section, pixel_at,
+    navigation_row_y_for_section, pixel_at, require_navigation_value,
 };
 use super::{StorybookVisual, layout_metrics, palette, preview_detail};
 use crate::catalog::story_map::StoryGroup;
@@ -52,19 +52,24 @@ fn tree_view_preview_renders_depth_guides_disclosure_and_markers() {
 }
 
 #[test]
-fn navigation_disclosure_and_labels_share_row_center() {
+fn navigation_disclosure_and_labels_share_row_center() -> Result<(), String> {
     let expansion = TreeExpansionState::default();
     let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
     let canvas = StorybookVisual.render_scenario("dark", "tree-view", false);
     let rows = [
         (
             0,
-            navigation_row_y_for_group(expansion, StoryGroup::Foundation)
-                .expect("group row should be visible"),
+            require_navigation_value(
+                navigation_row_y_for_group(expansion, StoryGroup::Foundation),
+                "group row should be visible",
+            )?,
         ),
         (
             1,
-            navigation_row_y_for_section(expansion).expect("section row should be visible"),
+            require_navigation_value(
+                navigation_row_y_for_section(expansion),
+                "section row should be visible",
+            )?,
         ),
     ];
 
@@ -79,7 +84,7 @@ fn navigation_disclosure_and_labels_share_row_center() {
             layout_metrics::NAV_ROW_HEIGHT,
             palette.code_background,
         )
-        .expect("navigation label should have visible ink");
+        .ok_or_else(|| "navigation label should have visible ink".to_string())?;
         let label_center_y = (bounds.top + bounds.bottom) as f32 / 2.0;
 
         assert!(
@@ -87,15 +92,18 @@ fn navigation_disclosure_and_labels_share_row_center() {
             "navigation depth {depth} label center {label_center_y} should align with disclosure center {disclosure_center_y}",
         );
     }
+    Ok(())
 }
 
 #[test]
-fn navigation_label_text_uses_antialiased_edges() {
+fn navigation_label_text_uses_antialiased_edges() -> Result<(), String> {
     let expansion = TreeExpansionState::default();
     let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
     let canvas = StorybookVisual.render_scenario("dark", "tree-view", false);
-    let group_row_y = navigation_row_y_for_group(expansion, StoryGroup::Foundation)
-        .expect("group row should be visible");
+    let group_row_y = require_navigation_value(
+        navigation_row_y_for_group(expansion, StoryGroup::Foundation),
+        "group row should be visible",
+    )?;
     let antialiased_pixels = count_text_antialias_pixels(
         &canvas,
         navigation_label_x(0),
@@ -110,6 +118,7 @@ fn navigation_label_text_uses_antialiased_edges() {
         antialiased_pixels > 0,
         "navigation label should contain blended edge pixels",
     );
+    Ok(())
 }
 
 #[test]

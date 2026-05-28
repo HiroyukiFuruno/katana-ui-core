@@ -11,10 +11,60 @@ impl Input {
     }
 
     #[must_use]
+    pub fn leading_slot_reserved(self, label: impl Into<String>) -> Self {
+        self.leading_slot(label)
+    }
+
+    #[must_use]
+    pub fn leading_icon_slot(mut self, label: impl Into<String>, icon: UiIconProps) -> Self {
+        self.state.text_entry.leading_slot =
+            Some(UiSlotSpec::icon(UiSlotPlacement::Leading, label, icon));
+        self
+    }
+
+    #[must_use]
+    pub fn leading_svg_icon_slot(
+        self,
+        label: impl Into<String>,
+        svg_source: impl Into<String>,
+    ) -> Self {
+        self.leading_icon_slot(label, text_entry_icon(svg_source, "leading"))
+    }
+
+    #[must_use]
     pub fn trailing_slot(mut self, label: impl Into<String>) -> Self {
         self.state.text_entry.trailing_slot =
             Some(UiSlotSpec::new(UiSlotPlacement::Trailing, label));
         self
+    }
+
+    #[must_use]
+    pub fn trailing_icon_button(
+        mut self,
+        label: impl Into<String>,
+        icon: UiIconProps,
+        callback: impl Into<String>,
+    ) -> Self {
+        let button = UiSlotSpec::icon_button(UiSlotPlacement::Trailing, label, icon, callback);
+        if self.state.text_entry.trailing_slot.is_none() {
+            self.state.text_entry.trailing_slot = Some(button.clone());
+        }
+        self.state.text_entry.trailing_icon_buttons.push(button);
+        self
+    }
+
+    #[must_use]
+    pub fn trailing_svg_icon_button(
+        self,
+        label: impl Into<String>,
+        svg_source: impl Into<String>,
+        callback: impl Into<String>,
+    ) -> Self {
+        self.trailing_icon_button(
+            label,
+            text_entry_icon(svg_source, "trailing-action"),
+            callback,
+        )
     }
 
     #[must_use]
@@ -40,6 +90,14 @@ impl Input {
         self.state.text_entry.emoji_enabled = value;
         self
     }
+}
+
+fn text_entry_icon(svg_source: impl Into<String>, role: impl Into<String>) -> UiIconProps {
+    UiIconProps::new(svg_source)
+        .role(role)
+        .color_token("text")
+        .theme_token("text")
+        .paint_policy(UiSvgPaintPolicy::CurrentColor)
 }
 
 impl Badge {

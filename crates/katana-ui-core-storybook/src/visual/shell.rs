@@ -43,11 +43,13 @@ pub(super) fn draw(canvas: &mut Canvas, context: ShellContext<'_>) {
         canvas,
         context.render.text,
         palette,
-        context.scenario.selected_page,
-        context.scenario.tree_expansion,
-        context.scenario.panel_scroll.navigation_y,
-        context.scenario.show_navigation_lines,
-        context.scenario.show_navigation_text_connectors,
+        navigation::NavigationRenderOptions {
+            selected_page: context.scenario.selected_page,
+            expansion: context.scenario.tree_expansion,
+            scroll_y: context.scenario.panel_scroll.navigation_y,
+            show_lines: context.scenario.show_navigation_lines,
+            show_text_connectors: context.scenario.show_navigation_text_connectors,
+        },
     );
     preview::draw(canvas, context.root, context.render, context.scenario);
     inspector::draw(

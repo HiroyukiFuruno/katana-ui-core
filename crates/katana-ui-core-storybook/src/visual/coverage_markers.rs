@@ -5,6 +5,7 @@ use super::{
     inspector_rows, layout_metrics, navigation_tree, palette, panel_scroll_state, panel_scrollbars,
     preview_contract_rows, preview_detail, render, scrollbar,
 };
+use crate::DEFAULT_STORYBOOK_PAGE;
 use crate::catalog::StoryExample;
 
 const MIN_NAV_COLLAPSE_DIFF: usize = 1_000;
@@ -164,7 +165,9 @@ fn selected_preview_visible() -> bool {
 }
 
 fn selected_preview_interaction_visible() -> bool {
-    visible_in_initial_viewport(preview_detail::component_action_hit_rect("button").bottom())
+    visible_in_initial_viewport(
+        preview_detail::component_action_hit_rect(DEFAULT_STORYBOOK_PAGE).bottom(),
+    )
 }
 
 fn visible_in_initial_viewport(content_y: usize) -> bool {
@@ -172,7 +175,7 @@ fn visible_in_initial_viewport(content_y: usize) -> bool {
 }
 
 fn detail_tables_hidden() -> bool {
-    let canvas = render::render_storybook_canvas_for("dark", "button", false);
+    let canvas = render::render_storybook_canvas_for("dark", DEFAULT_STORYBOOK_PAGE, false);
     let palette = palette::VisualPalette::from_theme(&katana_ui_core::theme::ThemeSnapshot::dark());
     let sample = pixel_at(
         &canvas,
@@ -193,6 +196,7 @@ fn tree_view_option_visible(tree_view: Option<&StoryExample>, expected: &str) ->
     let scenario = ScenarioContext {
         selected_page: "tree-view",
         preset_index: 0,
+        preset_tab_scroll_x: 0,
         tree_expansion: Default::default(),
         scrollbar_visible: true,
         panel_scroll: Default::default(),
@@ -208,13 +212,14 @@ fn tree_view_option_visible(tree_view: Option<&StoryExample>, expected: &str) ->
 }
 
 fn navigation_collapsed_pixels_changed() -> usize {
-    let open = render::render_storybook_canvas_for("dark", "button", false);
+    let open = render::render_storybook_canvas_for("dark", DEFAULT_STORYBOOK_PAGE, false);
     let mut collapsed = navigation_tree::TreeExpansionState::default();
     collapsed.toggle(crate::catalog::story_map::StoryGroup::Atoms);
     let closed = render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
         theme_id: "dark",
-        selected_page: "button",
+        selected_page: DEFAULT_STORYBOOK_PAGE,
         preset_index: 0,
+        preset_tab_scroll_x: 0,
         scroll_y: 0,
         scrollbar_visible: true,
         panel_scroll: panel_scroll_state::PanelScrollOffsets::default(),

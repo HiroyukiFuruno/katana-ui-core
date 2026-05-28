@@ -18,6 +18,7 @@ pub(super) struct RenderContext<'a> {
 pub(super) struct ScenarioContext<'a> {
     pub(super) selected_page: &'a str,
     pub(super) preset_index: usize,
+    pub(super) preset_tab_scroll_x: usize,
     pub(super) tree_expansion: TreeExpansionState,
     pub(super) scrollbar_visible: bool,
     pub(super) panel_scroll: PanelScrollOffsets,

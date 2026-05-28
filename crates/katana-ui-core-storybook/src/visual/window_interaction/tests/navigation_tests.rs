@@ -27,7 +27,10 @@ fn click_mapping_updates_theme_preset_and_story_selection() {
 
 #[test]
 fn preset_tab_selection_is_owned_by_component() {
-    let mut state = StorybookWindowState::default();
+    let mut state = StorybookWindowState {
+        selected_page: "button",
+        ..StorybookWindowState::default()
+    };
 
     click_preset(&mut state, 3);
     click_page(&mut state, "text-button");

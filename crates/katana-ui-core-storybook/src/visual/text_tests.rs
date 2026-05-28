@@ -21,6 +21,28 @@ fn draws_japanese_and_emoji_text() {
 }
 
 #[test]
+fn measured_width_matches_drawn_ink_right_edge() -> Result<(), String> {
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+    let samples = ["abcdefb", "typed 日本語", "emoji 🔷"];
+
+    for sample in samples {
+        let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
+        renderer.draw(&mut canvas, sample, TEXT_X, TEXT_Y, TEXT_SIZE, TEXT);
+        let measured_width = renderer.measure_width(sample, TEXT_SIZE);
+        let right =
+            ink_right_edge(&canvas).ok_or_else(|| "text should render pixels".to_string())?;
+
+        assert_eq!(
+            TEXT_X + measured_width - 1,
+            right,
+            "{sample} measured width should match ink edge"
+        );
+    }
+    Ok(())
+}
+
+#[test]
 fn resolves_default_and_code_font_roles_from_theme() {
     let facade = UiCoreFacade::default();
     let default_renderer = TextRenderer::load(&facade, facade.default_font_role());
@@ -52,6 +74,20 @@ fn mixed_japanese_english_and_emoji_are_vertically_centered() {
             "{sample} center delta was {center_delta}"
         );
     }
+}
+
+fn ink_right_edge(canvas: &Canvas) -> Option<usize> {
+    canvas
+        .pixels()
+        .iter()
+        .enumerate()
+        .filter_map(|(index, pixel)| {
+            if *pixel == BACKGROUND {
+                return None;
+            }
+            Some(index % canvas.width())
+        })
+        .max()
 }
 
 #[test]

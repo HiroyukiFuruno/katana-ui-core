@@ -1,5 +1,5 @@
 use super::snapshot_output::SnapshotOutput;
-use katana_ui_core_storybook::StorybookVisual;
+use katana_ui_core_storybook::{DEFAULT_STORYBOOK_PAGE, StorybookVisual};
 use std::path::Path;
 use std::process;
 
@@ -25,7 +25,7 @@ impl SnapshotCommand {
         let selected_page = args
             .get(SNAPSHOT_PAGE_ARG)
             .map(String::as_str)
-            .unwrap_or("button");
+            .unwrap_or(DEFAULT_STORYBOOK_PAGE);
         let theme_id = args
             .get(SNAPSHOT_THEME_ARG)
             .map(String::as_str)
@@ -107,12 +107,23 @@ impl SnapshotCommand {
 }
 
 fn snapshot_preset_index(value: &str) -> usize {
+    if let Some(index) = snapshot_numeric_preset_index(value) {
+        return index;
+    }
     match value {
         "classic" | "operation" | "interactive" | "preset-1" => INTERACTIVE_PRESET_INDEX,
         "basic" | "edge" | "preset-2" => EDGE_PRESET_INDEX,
         "dense" | "theme" | "preset-3" => THEME_PRESET_INDEX,
         _ => DEFAULT_PRESET_INDEX,
     }
+}
+
+fn snapshot_numeric_preset_index(value: &str) -> Option<usize> {
+    value
+        .strip_prefix("preset-")
+        .unwrap_or(value)
+        .parse::<usize>()
+        .ok()
 }
 
 fn snapshot_clicked(value: &str) -> bool {
@@ -137,5 +148,25 @@ fn snapshot_evidence_or_exit(path: &Path, failure: &str) -> String {
             eprintln!("{failure}: {error}");
             process::exit(2);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{EDGE_PRESET_INDEX, INTERACTIVE_PRESET_INDEX, snapshot_preset_index};
+
+    #[test]
+    fn snapshot_preset_index_keeps_named_aliases() {
+        assert_eq!(
+            INTERACTIVE_PRESET_INDEX,
+            snapshot_preset_index("interactive")
+        );
+        assert_eq!(EDGE_PRESET_INDEX, snapshot_preset_index("edge"));
+    }
+
+    #[test]
+    fn snapshot_preset_index_accepts_numeric_presets() {
+        assert_eq!(5, snapshot_preset_index("5"));
+        assert_eq!(6, snapshot_preset_index("preset-6"));
     }
 }

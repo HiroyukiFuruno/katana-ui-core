@@ -8,8 +8,10 @@ use super::screen_state_forms::{
     radio_state_label,
 };
 use super::screen_state_settings::{format_setting_action, format_setting_event};
-use super::search_box_screen_state::{SearchBoxScreenAction, SearchBoxScreenState};
-use super::selection_screen_state::{SelectionScreenAction, SelectionScreenState};
+use super::screen_state_tabs::TabsScreenState;
+use super::search_box_screen_state::SearchBoxScreenState;
+use super::selection_screen_state::SelectionScreenState;
+use super::text_input_screen_state::TextInputStateStore;
 use katana_ui_core::state::UiComponentState;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,14 +26,29 @@ pub(super) struct StorybookScreenState {
     pub(super) button_options: StorybookButtonOptions,
     pub(super) button_pressed: bool,
     pub(super) preview_hovered: bool,
+    pub(super) hovered_text_input_icon_button_index: Option<usize>,
     pub(super) hovered_summary_index: Option<usize>,
     pub(super) selection: SelectionScreenState,
     pub(super) search_box: SearchBoxScreenState,
+    pub(super) tabs: TabsScreenState,
     pub(super) panel: PanelScreenState,
     pub(super) checkbox_state: UiComponentState,
     pub(super) radio_state: UiComponentState,
-    pub(super) text_input_state: UiComponentState,
-    pub(super) text_input_uses_live_value: bool,
+    pub(super) text_inputs: TextInputStateStore,
+    pub(super) text_area_value: String,
+    pub(super) text_area_focused: bool,
+    pub(super) text_area_uses_live_value: bool,
+    pub(super) text_area_caret_visible: bool,
+    pub(super) text_area_wrap_enabled: bool,
+    pub(super) text_area_resize_enabled: bool,
+    pub(super) text_area_vertical_scroll_enabled: bool,
+    pub(super) text_area_horizontal_scroll_enabled: bool,
+    pub(super) text_area_vertical_scrollbar_visible: bool,
+    pub(super) text_area_horizontal_scrollbar_visible: bool,
+    pub(super) text_area_scroll_offset: usize,
+    pub(super) text_area_scroll_x_offset: usize,
+    pub(super) text_area_resize_width_delta: usize,
+    pub(super) text_area_resize_height_delta: usize,
 }
 
 impl StorybookScreenState {
@@ -63,6 +80,10 @@ impl StorybookScreenState {
             self.action_count += 1;
             let update = self.panel.apply_preview_action();
             self.apply_panel_update(update);
+            return;
+        }
+        if page == "tabs" {
+            self.register_tabs_preview_action();
             return;
         }
         self.action_count += 1;
@@ -132,6 +153,14 @@ impl StorybookScreenState {
             self.apply_panel_update(update);
             return;
         }
+        if page == "text-area" {
+            self.register_text_area_resize_toggle();
+            return;
+        }
+        if page == "tabs" {
+            self.register_tabs_setting_change();
+            return;
+        }
         self.settings_revision += 1;
         let spec = StorybookInteractionSpec::for_page(page);
         self.last_action = format_setting_action(spec.option);
@@ -173,49 +202,23 @@ impl StorybookScreenState {
         true
     }
 
+    pub(super) fn set_hovered_text_input_icon_button_index(
+        &mut self,
+        index: Option<usize>,
+    ) -> bool {
+        if self.hovered_text_input_icon_button_index == index {
+            return false;
+        }
+        self.hovered_text_input_icon_button_index = index;
+        true
+    }
+
     pub(super) fn set_hovered_summary_index(&mut self, index: Option<usize>) -> bool {
         if self.hovered_summary_index == index {
             return false;
         }
         self.hovered_summary_index = index;
         true
-    }
-
-    pub(super) fn register_context_menu(&mut self, page: &str) {
-        if page != "tree-view" && page != "context-menu" {
-            return;
-        }
-        self.action_count += 1;
-        if page == "tree-view" {
-            self.last_action = "tree_context_menu";
-            self.last_event = "tree_context_opened";
-            self.last_setting = "empty_area_context_menu";
-            self.last_setting_value = "visible";
-            self.state_label = "context_menu=open";
-            return;
-        }
-        let spec = StorybookInteractionSpec::for_page(page);
-        self.last_action = spec.action;
-        self.last_event = spec.event;
-        self.last_setting = spec.option;
-        self.last_setting_value = spec.after;
-        self.state_label = spec.state;
-    }
-
-    pub(super) fn register_selection_action(&mut self, action: SelectionScreenAction) {
-        self.action_count += 1;
-        let update = self.selection.apply(action);
-        self.last_action = update.action;
-        self.last_event = update.event;
-        self.state_label = update.state;
-    }
-
-    pub(super) fn register_search_box_action(&mut self, action: SearchBoxScreenAction) {
-        self.action_count += 1;
-        let update = self.search_box.apply(action);
-        self.last_action = update.action;
-        self.last_event = update.event;
-        self.state_label = update.state;
     }
 
     pub(super) fn has_widget_action(&self) -> bool {

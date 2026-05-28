@@ -141,7 +141,7 @@ fn split_pane_settings_line(example: &StoryExample, marker: &str) -> String {
 
 fn text_area_settings_line(marker: &str) -> String {
     format!(
-        "{marker} settings: submit/newline/tab/auto/wrap Enter,ShiftEnter,MoveFocus,true,Soft -> ModEnter,Enter,InsertTab,false,Hard"
+        "{marker} settings: submit/newline/tab/auto/wrap/resize/scroll/bars Enter,ShiftEnter,MoveFocus,true,Soft,false,false,false,false,false -> ModEnter,Enter,InsertTab,false,None,true,true,true,true,true"
     )
 }
 

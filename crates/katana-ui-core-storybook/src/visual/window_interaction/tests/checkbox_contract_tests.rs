@@ -118,12 +118,12 @@ fn checkbox_control_buttons_apply_expected_actions_and_state_changes() {
 }
 
 #[test]
-fn checkbox_visual_and_catalog_use_same_typed_action_names() {
+fn checkbox_visual_and_catalog_use_same_typed_action_names() -> Result<(), String> {
     let checkbox = StoryCatalog
         .examples()
         .into_iter()
         .find(|it| it.page == "checkbox")
-        .expect("checkbox story missing");
+        .ok_or_else(|| "checkbox story missing".to_string())?;
     let catalog_actions: BTreeSet<String> = checkbox
         .callback_logs
         .iter()
@@ -155,6 +155,7 @@ fn checkbox_visual_and_catalog_use_same_typed_action_names() {
     }
 
     assert_eq!(catalog_actions, visual_actions);
+    Ok(())
 }
 
 #[test]

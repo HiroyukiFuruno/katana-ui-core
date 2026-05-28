@@ -1,6 +1,7 @@
 //! Core-only Storybook model for KUC verification.
 
 mod catalog;
+mod katana_icons;
 mod panel;
 mod requirements;
 mod visual;
@@ -14,6 +15,9 @@ pub use panel::StorybookPanel;
 pub use visual::{
     Canvas, StorybookRuntimeReport, StorybookVisual, StorybookVisualError, StorybookWindowRun,
 };
+
+/// 起動直後に Storybook の操作性が見える代表ページを開く。
+pub const DEFAULT_STORYBOOK_PAGE: &str = "text-input";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StorybookRoute {
@@ -66,7 +70,7 @@ impl StorybookSummary {
 
 #[cfg(test)]
 mod tests {
-    use super::{StorybookRoutes, StorybookSummary};
+    use super::{DEFAULT_STORYBOOK_PAGE, StorybookRoutes, StorybookSummary};
 
     #[test]
     fn storybook_routes_use_core_crate() {
@@ -82,6 +86,11 @@ mod tests {
     fn storybook_routes_cover_core_and_legacy_targets() {
         let routes = StorybookRoutes.default_routes();
         assert_eq!(77, routes.len());
+        assert!(
+            routes
+                .iter()
+                .any(|route| route.page == DEFAULT_STORYBOOK_PAGE)
+        );
         assert!(routes.iter().any(|route| route.page == "panel"));
         assert!(routes.iter().any(|route| route.page == "code-diff"));
         assert!(routes.iter().any(|route| route.page == "context-menu"));
@@ -99,6 +108,11 @@ mod tests {
                 .any(|route| route.page == "search-control-strip")
         );
         assert!(routes.iter().any(|route| route.page == "grid"));
+    }
+
+    #[test]
+    fn default_storybook_page_is_representative_input_playground() {
+        assert_eq!("text-input", DEFAULT_STORYBOOK_PAGE);
     }
 
     #[test]

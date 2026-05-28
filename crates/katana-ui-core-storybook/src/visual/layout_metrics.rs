@@ -25,6 +25,7 @@ pub(super) const PRESET_ACTIVE_HEIGHT: usize = 32;
 pub(super) const PRESET_INACTIVE_HEIGHT: usize = PRESET_ACTIVE_HEIGHT;
 pub(super) const PRESET_GAP: usize = 0;
 pub(super) const PRESET_TEXT_X_OFFSET: usize = 14;
+#[cfg(test)]
 pub(super) const PRESET_TAB_COUNT: usize = 7;
 #[cfg(test)]
 pub(super) const PRESET_INTERACTIVE_INDEX: usize = 1;
@@ -120,6 +121,7 @@ pub(super) fn navigation_menu_panel_rect() -> LayoutRect {
     )
 }
 
+#[cfg(test)]
 pub(super) fn preset_tab_rect(index: usize) -> LayoutRect {
     LayoutRect::new(
         PREVIEW_X + index * (PRESET_WIDTH + PRESET_GAP),
@@ -129,6 +131,7 @@ pub(super) fn preset_tab_rect(index: usize) -> LayoutRect {
     )
 }
 
+#[cfg(test)]
 pub(super) fn preset_tab_visual_rect(index: usize, active: bool) -> LayoutRect {
     let y = if active {
         PRESET_ACTIVE_Y

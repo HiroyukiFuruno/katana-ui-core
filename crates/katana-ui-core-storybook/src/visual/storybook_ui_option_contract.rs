@@ -1,4 +1,9 @@
-use super::storybook_ui_runtime_options::*;
+use super::storybook_ui_runtime_options::{
+    ACCORDION_OPTIONS, CODE_DIFF_OPTIONS, DRAG_AND_DROP_OPTIONS, RUNTIME_OPTIONS,
+    SHORTCUT_CHEATSHEET_OPTIONS, SHORTCUT_COMBO_OPTIONS, SKELETON_CLUSTER_OPTIONS,
+    STARTUP_STATE_OPTIONS, TEXT_AREA_OPTIONS, WINDOW_CONTROL_OPTIONS,
+};
+use super::storybook_ui_tabs_options::TABS_OPTIONS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct StorybookUiOptionContract {
@@ -53,9 +58,8 @@ pub(super) fn options_for_page(page: &str) -> &'static [StorybookUiOptionContrac
         }
         "card" => &CARD_OPTIONS,
         "list" => &LIST_OPTIONS,
-        "menu" | "tabs" | "toolbar" | "form-field" | "breadcrumb" | "side-menu" => {
-            &COMPOSITE_OPTIONS
-        }
+        "menu" | "toolbar" | "form-field" | "breadcrumb" | "side-menu" => &COMPOSITE_OPTIONS,
+        "tabs" => &TABS_OPTIONS,
         "accordion" => &ACCORDION_OPTIONS,
         "settings-list" => &SETTINGS_LIST_OPTIONS,
         "collapsible-panel" => &COLLAPSIBLE_PANEL_OPTIONS,
@@ -117,19 +121,16 @@ const BUTTON_OPTIONS: [StorybookUiOptionContract; 6] = [
     StorybookUiOptionContract::new("height", "auto", "fixed"),
     StorybookUiOptionContract::new("label", "default", "custom"),
 ];
-const INPUT_OPTIONS: [StorybookUiOptionContract; 5] = [
+const INPUT_OPTIONS: [StorybookUiOptionContract; 9] = [
     StorybookUiOptionContract::new("interaction.value", "typed", "typed 日本語"),
+    StorybookUiOptionContract::new("readonly", "false", "true"),
     StorybookUiOptionContract::new("placeholder", "visible", "hidden"),
+    StorybookUiOptionContract::new("text_entry.leading_slot_reserved", "false", "true"),
+    StorybookUiOptionContract::new("text_entry.leading_slot.icon", "none", "search-svg"),
+    StorybookUiOptionContract::new("text_entry.trailing_icon_buttons", "none", "callbacks"),
     StorybookUiOptionContract::new("validation", "valid", "invalid"),
     StorybookUiOptionContract::new("ime", "idle", "composition"),
     StorybookUiOptionContract::new("theme.input_bg", "surface", "light"),
-];
-const TEXT_AREA_OPTIONS: [StorybookUiOptionContract; 5] = [
-    StorybookUiOptionContract::new("text_area.submit_key", "Enter", "ModEnter"),
-    StorybookUiOptionContract::new("text_area.newline_key", "ShiftEnter", "Enter"),
-    StorybookUiOptionContract::new("text_area.tab_behavior", "MoveFocus", "InsertTab"),
-    StorybookUiOptionContract::new("text_area.auto_grow", "true", "false"),
-    StorybookUiOptionContract::new("text_area.wrap_policy", "Soft", "Hard"),
 ];
 const SEARCH_BOX_OPTIONS: [StorybookUiOptionContract; 4] = [
     StorybookUiOptionContract::new("text_entry.value", "query", "typed query"),

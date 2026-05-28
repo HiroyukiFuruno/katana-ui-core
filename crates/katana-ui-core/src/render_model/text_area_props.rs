@@ -44,6 +44,11 @@ pub struct UiTextAreaProps {
     pub newline_key: UiTextAreaNewlineKey,
     pub tab_behavior: UiTextAreaTabBehavior,
     pub ime_enabled: bool,
+    pub resize_enabled: bool,
+    pub vertical_scroll_enabled: bool,
+    pub horizontal_scroll_enabled: bool,
+    pub vertical_scrollbar_visible: bool,
+    pub horizontal_scrollbar_visible: bool,
     pub measured_rows: u16,
     pub internal_scroll: bool,
 }
@@ -59,6 +64,11 @@ impl Default for UiTextAreaProps {
             newline_key: UiTextAreaNewlineKey::ShiftEnter,
             tab_behavior: UiTextAreaTabBehavior::MoveFocus,
             ime_enabled: true,
+            resize_enabled: false,
+            vertical_scroll_enabled: false,
+            horizontal_scroll_enabled: false,
+            vertical_scrollbar_visible: false,
+            horizontal_scrollbar_visible: false,
             measured_rows: DEFAULT_TEXT_AREA_MIN_ROWS,
             internal_scroll: false,
         }

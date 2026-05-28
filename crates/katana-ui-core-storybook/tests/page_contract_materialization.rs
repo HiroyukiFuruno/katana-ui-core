@@ -137,7 +137,13 @@ fn expected_preset_count(page: &str) -> usize {
     ) {
         return 5;
     }
-    if page == "popover" || page == "text-area" {
+    if page == "text-area" {
+        return 9;
+    }
+    if page == "text-input" {
+        return 9;
+    }
+    if page == "popover" {
         return 7;
     }
     if page == "accordion" {
@@ -165,6 +171,9 @@ fn expected_preset_count(page: &str) -> usize {
         return 5;
     }
     if page == "closeable-tab-strip" {
+        return 6;
+    }
+    if page == "tabs" {
         return 6;
     }
     if page == "skeleton" || page == "skeleton-cluster" {

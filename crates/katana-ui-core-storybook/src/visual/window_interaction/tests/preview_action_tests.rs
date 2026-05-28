@@ -25,7 +25,7 @@ const REPRESENTATIVE_PREVIEW_PAGES: &[&str] = &[
 
 #[test]
 fn clicking_preview_button_emits_action_event_and_changes_rendering() {
-    let mut state = StorybookWindowState::default();
+    let mut state = button_state();
     let before = render::render_storybook_canvas_with_screen_state(
         state.theme_id,
         state.selected_page,
@@ -50,7 +50,7 @@ fn clicking_preview_button_emits_action_event_and_changes_rendering() {
 
 #[test]
 fn clicking_button_setting_updates_props_and_rendering() {
-    let mut state = StorybookWindowState::default();
+    let mut state = button_state();
     let before = render::render_storybook_canvas_with_screen_state(
         state.theme_id,
         state.selected_page,
@@ -216,4 +216,11 @@ fn pixel_diff(before: &crate::visual::Canvas, after: &crate::visual::Canvas) -> 
         .zip(after.pixels().iter())
         .filter(|(left, right)| left != right)
         .count()
+}
+
+fn button_state() -> StorybookWindowState {
+    StorybookWindowState {
+        selected_page: "button",
+        ..StorybookWindowState::default()
+    }
 }

@@ -7,6 +7,19 @@ pub(super) const RUNTIME_OPTIONS: [StorybookUiOptionContract; 4] = [
     StorybookUiOptionContract::new("presentation", "default", "changed"),
 ];
 
+pub(super) const TEXT_AREA_OPTIONS: [StorybookUiOptionContract; 10] = [
+    StorybookUiOptionContract::new("text_area.submit_key", "Enter", "ModEnter"),
+    StorybookUiOptionContract::new("text_area.newline_key", "ShiftEnter", "Enter"),
+    StorybookUiOptionContract::new("text_area.tab_behavior", "MoveFocus", "InsertTab"),
+    StorybookUiOptionContract::new("text_area.auto_grow", "true", "false"),
+    StorybookUiOptionContract::new("text_area.wrap_policy", "Soft", "None"),
+    StorybookUiOptionContract::new("text_area.resize_enabled", "false", "true"),
+    StorybookUiOptionContract::new("text_area.vertical_scroll_enabled", "false", "true"),
+    StorybookUiOptionContract::new("text_area.horizontal_scroll_enabled", "false", "true"),
+    StorybookUiOptionContract::new("text_area.vertical_scrollbar_visible", "false", "true"),
+    StorybookUiOptionContract::new("text_area.horizontal_scrollbar_visible", "false", "true"),
+];
+
 pub(super) const SHORTCUT_COMBO_OPTIONS: [StorybookUiOptionContract; 4] = [
     StorybookUiOptionContract::new("shortcut_combo.platform_display", "Auto", "MacOS"),
     StorybookUiOptionContract::new("shortcut_combo.separator", "Plus", "None"),

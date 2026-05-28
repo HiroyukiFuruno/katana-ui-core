@@ -93,6 +93,7 @@ fn render_with_offsets(offsets: panel_scroll_state::PanelScrollOffsets) -> Canva
         theme_id: DARK_THEME,
         selected_page: BUTTON_PAGE,
         preset_index: DEFAULT_PRESET,
+        preset_tab_scroll_x: 0,
         scroll_y: 0,
         scrollbar_visible: true,
         panel_scroll: offsets,

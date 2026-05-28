@@ -24,6 +24,8 @@ mod typed_scroll_area;
 mod typed_search;
 #[path = "typed_split_pane.rs"]
 mod typed_split_pane;
+#[path = "typed_text_entry.rs"]
+mod typed_text_entry;
 pub use typed_color_picker::{UiColorBlendingMode, UiColorPickerProps, UiColorPickerTriggerKind};
 pub use typed_command::UiCommandResultProps;
 pub use typed_disclosure::{
@@ -41,6 +43,9 @@ pub use typed_scroll_area::{UiScrollAreaAxis, UiScrollAreaProps};
 pub use typed_search::{UiSearchControlProps, UiSearchReplaceMode};
 pub use typed_split_pane::{
     UiSplitPaneAxis, UiSplitPaneHandleProps, UiSplitPaneProps, UiSplitPaneResizeMode,
+};
+pub use typed_text_entry::{
+    UiClearActionSpec, UiSlotActionSpec, UiSlotPlacement, UiSlotSpec, UiTextEntryProps,
 };
 
 const DEFAULT_LOADING_SPEED_MS: u16 = 900;
@@ -79,52 +84,6 @@ pub struct UiColorSwatchProps {
 pub struct UiShortcutProps {
     pub platform: String,
     pub combo: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum UiSlotPlacement {
-    Leading,
-    Trailing,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiSlotSpec {
-    pub placement: UiSlotPlacement,
-    pub label: String,
-}
-
-impl UiSlotSpec {
-    #[must_use]
-    pub fn new(placement: UiSlotPlacement, label: impl Into<String>) -> Self {
-        Self {
-            placement,
-            label: label.into(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiClearActionSpec {
-    pub label: String,
-}
-
-impl UiClearActionSpec {
-    #[must_use]
-    pub fn new(label: impl Into<String>) -> Self {
-        Self {
-            label: label.into(),
-        }
-    }
-}
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiTextEntryProps {
-    pub leading_slot: Option<UiSlotSpec>,
-    pub trailing_slot: Option<UiSlotSpec>,
-    pub clear_action: Option<UiClearActionSpec>,
-    pub submit_on_enter: bool,
-    pub ime_enabled: bool,
-    pub emoji_enabled: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

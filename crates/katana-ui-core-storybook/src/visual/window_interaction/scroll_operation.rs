@@ -1,6 +1,8 @@
+use crate::visual::dedicated_dod_form_input_live as input_live;
 use crate::visual::layout_metrics::MAX_SCROLL_Y;
 use crate::visual::panel_scroll_state::{self, PanelScrollRegion};
 use crate::visual::panel_scrollbars;
+use crate::visual::preset_tab_scroll;
 use crate::visual::preview_detail;
 
 use super::StorybookWindowState;
@@ -19,9 +21,40 @@ pub(super) fn apply_scroll_delta_at(
     if delta_y == 0.0 {
         return false;
     }
+    if preset_tab_at(state, x, y) {
+        return state.scroll_preset_tabs(delta_y);
+    }
     let region =
         panel_scroll_state::PanelScrollRegionModel::region_at(x, y + state.panel_scroll.root_y);
     let mut changed = clamp_vertical_offset(state, region);
+    if text_area_at(state, region, x, y) {
+        let vertical_enabled = input_live::text_area_vertical_scroll_enabled_for(
+            state.preset_index,
+            &state.screen_state,
+        );
+        let max_y = input_live::text_area_vertical_scroll_max_offset_for(
+            state.preset_index,
+            &state.screen_state,
+        );
+        let vertical_changed =
+            state
+                .screen_state
+                .scroll_text_area_vertical(delta_y, vertical_enabled, max_y);
+        if vertical_changed || changed {
+            return true;
+        }
+        let horizontal_enabled = input_live::text_area_horizontal_scroll_enabled_for(
+            state.preset_index,
+            &state.screen_state,
+        );
+        let max_x = input_live::text_area_horizontal_scroll_max_offset_for(
+            state.preset_index,
+            &state.screen_state,
+        );
+        return state
+            .screen_state
+            .scroll_text_area_horizontal(delta_y, horizontal_enabled, max_x);
+    }
     if let Some(panel) = panel_child_at(state, region, x, y) {
         return state.screen_state.scroll_panel_vertical(panel, delta_y) || changed;
     }
@@ -51,9 +84,26 @@ pub(super) fn apply_scroll_delta_x_at(
     if delta_x == 0.0 {
         return false;
     }
+    if preset_tab_at(state, x, y) {
+        return state.scroll_preset_tabs(delta_x);
+    }
     let region =
         panel_scroll_state::PanelScrollRegionModel::region_at(x, y + state.panel_scroll.root_y);
     let mut changed = clamp_horizontal_offset(state, region);
+    if text_area_at(state, region, x, y) {
+        let enabled = input_live::text_area_horizontal_scroll_enabled_for(
+            state.preset_index,
+            &state.screen_state,
+        );
+        let max_x = input_live::text_area_horizontal_scroll_max_offset_for(
+            state.preset_index,
+            &state.screen_state,
+        );
+        return state
+            .screen_state
+            .scroll_text_area_horizontal(delta_x, enabled, max_x)
+            || changed;
+    }
     if let Some(panel) = panel_child_at(state, region, x, y) {
         return state.screen_state.scroll_panel_horizontal(panel, delta_x) || changed;
     }
@@ -136,6 +186,10 @@ fn max_scroll_x(state: &StorybookWindowState, region: PanelScrollRegion) -> usiz
     )
 }
 
+fn preset_tab_at(state: &StorybookWindowState, x: usize, y: usize) -> bool {
+    preset_tab_scroll::viewport_rect().contains(x, y + state.panel_scroll.root_y)
+}
+
 fn panel_child_at(
     state: &StorybookWindowState,
     region: PanelScrollRegion,
@@ -147,6 +201,20 @@ fn panel_child_at(
     }
     let origin = preview_detail::component_action_hit_rect("panel");
     crate::visual::dedicated_foundation_panel::panel_at(origin.x, origin.y, x, y)
+}
+
+fn text_area_at(
+    state: &StorybookWindowState,
+    region: PanelScrollRegion,
+    x: usize,
+    y: usize,
+) -> bool {
+    if state.selected_page != "text-area" || region != PanelScrollRegion::Preview {
+        return false;
+    }
+    let origin = preview_detail::component_action_hit_rect("text-area");
+    input_live::text_area_rect_for_screen_state(origin.x, origin.y, &state.screen_state)
+        .contains(x, y)
 }
 
 pub(super) fn apply_scrollbar_drag_target(

@@ -59,11 +59,11 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "open=false",
         )),
         "tabs" => Some(spec(
-            "tab_select",
-            "tab_changed",
-            "interaction.selected_index",
-            "1",
-            "tab=1",
+            "add_tab",
+            "closeable_tab_added",
+            "tabs.add",
+            "notes.md",
+            "tabs=6 active=notes.md",
         )),
         "toolbar" => Some(spec(
             "tool_toggle",

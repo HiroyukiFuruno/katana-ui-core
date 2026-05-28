@@ -1,5 +1,6 @@
 mod atom_interactions;
 mod atom_motion_interactions;
+mod atom_text_area_story;
 use super::{StoryCatalog, StoryExample};
 use katana_ui_core::atom;
 use katana_ui_core::render_model::{UiSize, UiVisualRole};
@@ -14,7 +15,7 @@ pub(super) fn examples() -> Vec<StoryExample> {
         atom_interactions::svg_button(),
         atom_interactions::icon_text_button(),
         atom_interactions::input(),
-        atom_interactions::text_area(),
+        atom_text_area_story::text_area(),
         atom_interactions::checkbox(),
         atom_interactions::radio(),
         atom_interactions::badge(),

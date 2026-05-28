@@ -1,4 +1,5 @@
 use super::{StoryExample, StorybookOperationSequences};
+use crate::DEFAULT_STORYBOOK_PAGE;
 use crate::panel::StorybookPanel;
 use katana_ui_core::interaction::UiCallbackLog;
 use katana_ui_core::render_model::{UiNode, UiNodeKind};
@@ -17,7 +18,6 @@ pub use legacy_detail::StoryDetailContent;
 pub(crate) use legacy_dod::LegacyDodReports;
 pub use legacy_dod::{LegacyUiMarkerReport, PresetDifferenceReport, SettingsMutationReport};
 
-const SELECTED_PAGE: &str = "button";
 const NAVIGATION_LABEL: &str = "Navigation";
 const PREVIEW_LABEL: &str = "Preview";
 
@@ -78,12 +78,13 @@ impl StorybookPanelInteractionReport {
     pub fn build(examples: &[StoryExample]) -> Self {
         let before_theme = ThemeSnapshot::light();
         let after_theme = ThemeSnapshot::dark();
-        let tree = StorybookPanel::new(after_theme.clone()).build_selected(examples, SELECTED_PAGE);
+        let tree = StorybookPanel::new(after_theme.clone())
+            .build_selected(examples, DEFAULT_STORYBOOK_PAGE);
         let root = tree.root();
         let preview = panel_child(root, PREVIEW_LABEL);
         let selected_story = examples
             .iter()
-            .find(|it| it.page == SELECTED_PAGE)
+            .find(|it| it.page == DEFAULT_STORYBOOK_PAGE)
             .or_else(|| examples.first());
         let selected_label = selected_story.map(|it| it.tree.root().props().label.as_str());
         let callback_log = selected_story
@@ -92,7 +93,7 @@ impl StorybookPanelInteractionReport {
 
         Self {
             story_selection: StorySelectionReport {
-                selected_page: SELECTED_PAGE.to_string(),
+                selected_page: DEFAULT_STORYBOOK_PAGE.to_string(),
                 preview_page: preview_page(preview, selected_label).unwrap_or_default(),
                 navigation_items: examples.len(),
             },

@@ -21,7 +21,14 @@ pub(super) fn for_page(page: &str) -> Option<&'static [&'static str]> {
             "queue 上限超過",
             "action 付き toast",
         ],
-        "tabs" => &["browser tab", "switch", "overflow", "theme line"],
+        "tabs" => &[
+            "workspace tabs",
+            "add close",
+            "pin lock",
+            "move reorder",
+            "grouped tabs",
+            "overflow menu",
+        ],
         "toolbar" => &[
             "overflow menu",
             "split action",

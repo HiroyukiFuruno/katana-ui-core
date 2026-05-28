@@ -1,19 +1,21 @@
 use super::StorybookWindowState;
-use crate::catalog::StoryPresetLabels;
 use crate::visual::button_options::{StorybookButtonOptionControl, control_at, is_button_page};
 use crate::visual::dedicated_dod_form_binary_choice_live as binary_choice_live;
 use crate::visual::dedicated_dod_form_input_live as input_live;
-use crate::visual::layout_metrics::{
-    button_setting_hit_rect, dark_theme_rect, light_theme_rect, preset_tab_rect,
-};
+use crate::visual::dedicated_tabs;
+use crate::visual::layout_metrics::{button_setting_hit_rect, dark_theme_rect, light_theme_rect};
 use crate::visual::panel_options;
 use crate::visual::panel_screen_state::{PanelChildKey, PanelOptionControl};
+use crate::visual::preset_tab_scroll;
+use crate::visual::screen_state_tabs::TabsScreenAction;
 use crate::visual::search_box_screen_state::SearchBoxScreenAction;
 use crate::visual::selection_screen_state::SelectionScreenAction;
 use crate::visual::{preview, preview_detail};
 
 #[path = "button_operation/selection_operation.rs"]
 mod selection_operation;
+#[path = "button_operation/text_input_operation.rs"]
+mod text_input_operation;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum StorybookButtonOperation {
@@ -43,7 +45,13 @@ pub(super) enum StorybookButtonOperation {
     SearchClear,
     SearchCaseToggle,
     SearchRegexToggle,
-    TextInputFocus,
+    TabsControl(TabsScreenAction),
+    TextInputFocus {
+        initial_value: &'static str,
+        readonly: bool,
+    },
+    TextInputIconButton,
+    TextAreaFocus,
 }
 
 impl StorybookButtonOperation {
@@ -101,7 +109,15 @@ impl StorybookButtonOperation {
             Self::SearchRegexToggle => state
                 .screen_state
                 .register_search_box_action(SearchBoxScreenAction::ToggleRegex),
-            Self::TextInputFocus => state.screen_state.register_text_input_focus(),
+            Self::TabsControl(action) => state.screen_state.register_tabs_action(action),
+            Self::TextInputFocus {
+                initial_value,
+                readonly,
+            } => state
+                .screen_state
+                .register_text_input_focus(initial_value, readonly),
+            Self::TextInputIconButton => state.screen_state.register_text_input_icon_button(),
+            Self::TextAreaFocus => state.screen_state.register_text_area_focus(),
         }
         true
     }
@@ -113,12 +129,14 @@ pub(super) fn button_operation_at(
     y: usize,
 ) -> Option<StorybookButtonOperation> {
     theme_operation_at(x, y)
-        .or_else(|| preset_operation_at(state.selected_page, x, y))
+        .or_else(|| preset_operation_at(state, x, y))
         .or_else(|| selection_operation::SelectionOperation::operation_at(state, x, y))
         .or_else(|| checkbox_operation_at(state.selected_page, x, y))
         .or_else(|| radio_operation_at(state.selected_page, x, y))
         .or_else(|| panel_operation_at(state.selected_page, x, y))
-        .or_else(|| text_input_operation_at(state.selected_page, x, y))
+        .or_else(|| text_input_operation::operation_at(state, x, y))
+        .or_else(|| text_area_operation_at(state, x, y))
+        .or_else(|| tabs_operation_at(state, x, y))
         .or_else(|| preview_operation_at(state.selected_page, x, y))
         .or_else(|| settings_operation_at(state.selected_page, x, y))
 }
@@ -128,11 +146,18 @@ pub(in crate::visual) fn apply_hover_at(
     x: usize,
     y: usize,
 ) -> bool {
+    let icon_button_changed = state.screen_state.set_hovered_text_input_icon_button_index(
+        text_input_operation::hovered_icon_button_index_at(state, x, y),
+    );
     let summary_changed = state
         .screen_state
         .set_hovered_summary_index(preview::summary_control_index_at(x, y));
     let hovered = preview_detail::component_action_hit_rect(state.selected_page).contains(x, y);
-    state.screen_state.set_preview_hovered(hovered) || summary_changed
+    state.screen_state.set_preview_hovered(hovered) || summary_changed || icon_button_changed
+}
+
+pub(super) fn is_button_preview_page(page: &str) -> bool {
+    is_button_page(page)
 }
 
 fn theme_operation_at(x: usize, y: usize) -> Option<StorybookButtonOperation> {
@@ -145,12 +170,12 @@ fn theme_operation_at(x: usize, y: usize) -> Option<StorybookButtonOperation> {
     None
 }
 
-fn preset_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
-    let visible_count = StoryPresetLabels::for_page(page)
-        .len()
-        .min(crate::visual::layout_metrics::PRESET_TAB_COUNT);
-    (0..visible_count)
-        .find(|index| preset_tab_rect(*index).contains(x, y))
+fn preset_operation_at(
+    state: &StorybookWindowState,
+    x: usize,
+    y: usize,
+) -> Option<StorybookButtonOperation> {
+    preset_tab_scroll::hit_index_at(state.selected_page, x, y, state.preset_tab_scroll_x)
         .map(StorybookButtonOperation::Preset)
 }
 
@@ -176,15 +201,33 @@ fn panel_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonO
         .map(StorybookButtonOperation::PanelChild)
 }
 
-fn text_input_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
-    if page != "text-input" {
+fn text_area_operation_at(
+    state: &StorybookWindowState,
+    x: usize,
+    y: usize,
+) -> Option<StorybookButtonOperation> {
+    if state.selected_page != "text-area" {
         return None;
     }
-    let origin = preview_detail::component_action_hit_rect(page);
-    if input_live::search_field_rect(origin.x, origin.y).contains(x, y) {
-        return Some(StorybookButtonOperation::TextInputFocus);
+    let origin = preview_detail::component_action_hit_rect(state.selected_page);
+    if input_live::text_area_rect_for_screen_state(origin.x, origin.y, &state.screen_state)
+        .contains(x, y)
+    {
+        return Some(StorybookButtonOperation::TextAreaFocus);
     }
     None
+}
+
+fn tabs_operation_at(
+    state: &StorybookWindowState,
+    x: usize,
+    y: usize,
+) -> Option<StorybookButtonOperation> {
+    if state.selected_page != "tabs" {
+        return None;
+    }
+    let origin = preview_detail::component_action_hit_rect(state.selected_page);
+    dedicated_tabs::control_at(origin.x, origin.y, x, y).map(StorybookButtonOperation::TabsControl)
 }
 
 fn settings_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {

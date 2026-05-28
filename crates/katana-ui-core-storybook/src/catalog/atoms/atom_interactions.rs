@@ -1,17 +1,13 @@
 use super::{StoryCatalog, StoryExample};
 use katana_ui_core::atom;
-use katana_ui_core::atom::{
-    ChipAction, ChipKeyboardInput, ChipTone, ChipVariant, TextAreaAction, TextAreaCompositionPhase,
-    TextAreaNewlineKey, TextAreaSubmitKey, TextAreaTabBehavior, TextAreaWrapPolicy,
-};
+use katana_ui_core::atom::{ChipAction, ChipKeyboardInput, ChipTone, ChipVariant};
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::interaction::UiCallbackLog;
 use katana_ui_core::layout;
 use katana_ui_core::render_model::{UiSize, UiTone, UiVariant, UiVisualRole};
 
-const TEXT_AREA_MIN_ROWS: u16 = 2;
-const TEXT_AREA_MAX_ROWS: u16 = 4;
+use crate::katana_icons;
 
 macro_rules! click_story {
     ($name:ident, $page:literal, $component:expr) => {
@@ -121,55 +117,12 @@ pub(super) fn input() -> StoryExample {
     let mut input = atom::Input::new("Text input")
         .focusable(true)
         .placeholder("日本語 input")
+        .leading_svg_icon_slot("Search icon", katana_icons::SEARCH_SVG)
         .visual_role(UiVisualRole::Input)
         .value("typed");
     let target = input.state_id().clone();
     let result = input.apply_action(&UiAction::input_value(target, "typed 日本語 🔷"));
     StoryCatalog::interactive_story("text-input", input, result.callback_log)
-}
-
-pub(super) fn text_area() -> StoryExample {
-    let mut text_area = atom::TextArea::new("Text area")
-        .value("English\n日本語 🔷")
-        .placeholder("message")
-        .min_rows(TEXT_AREA_MIN_ROWS)
-        .max_rows(TEXT_AREA_MAX_ROWS)
-        .auto_grow(true)
-        .wrap_policy(TextAreaWrapPolicy::Soft)
-        .submit_key(TextAreaSubmitKey::Enter)
-        .newline_key(TextAreaNewlineKey::ShiftEnter)
-        .tab_behavior(TextAreaTabBehavior::MoveFocus);
-    let target = text_area.state_id().clone();
-    let typed = text_area.apply_text_area_action(TextAreaAction::Type("\nemoji 👩‍💻".to_string()));
-    let ime = text_area.apply_text_area_action(TextAreaAction::composition(
-        TextAreaCompositionPhase::Update,
-        "かな",
-        "かな".len(),
-    ));
-    let submit = text_area.apply_text_area_action(TextAreaAction::Submit);
-    let newline = text_area.handle_key(katana_ui_core::atom::TextAreaKeyChord::shift_enter());
-    let log = UiCallbackLog::new(
-        target.clone(),
-        "text_area_type",
-        "rows=2 ime=none",
-        format!("typed={} ime={}", typed.events.len(), ime.events.len()),
-    );
-    let submit_log = UiCallbackLog::new(
-        target.clone(),
-        "text_area_submit",
-        "submit_key=Enter",
-        format!("events={}", submit.events.len()),
-    );
-    let newline_log = UiCallbackLog::new(
-        target,
-        "text_area_newline",
-        "newline_key=ShiftEnter",
-        format!(
-            "events={}",
-            newline.as_ref().map_or(0, |outcome| outcome.events.len())
-        ),
-    );
-    StoryCatalog::interactive_story("text-area", text_area, vec![log, submit_log, newline_log])
 }
 
 pub(super) fn checkbox() -> StoryExample {

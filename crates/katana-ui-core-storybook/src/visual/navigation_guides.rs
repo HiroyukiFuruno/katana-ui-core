@@ -30,36 +30,43 @@ pub(super) enum PageDepth {
 pub(super) fn draw_row_guides(
     canvas: &mut Canvas,
     palette: &VisualPalette,
-    row_depth: NavigationDepth,
-    show_text_connector: bool,
-    draw_horizontal_connector: bool,
-    rows: &[NavigationRow],
-    row_index: usize,
-    row_y: usize,
+    context: NavigationGuideContext<'_>,
 ) {
+    let row_depth = context.row_depth;
     let current_depth = navigation_depth(row_depth);
-    let previous_depth = row_index
+    let previous_depth = context
+        .row_index
         .checked_sub(1)
-        .and_then(|index| rows.get(index).map(depth_from_row));
-    let next_depth = rows.get(row_index + 1).map(depth_from_row);
-    let row_center_y = row_y + NAV_ROW_HEIGHT / 2;
+        .and_then(|index| context.rows.get(index).map(depth_from_row));
+    let next_depth = context.rows.get(context.row_index + 1).map(depth_from_row);
+    let row_center_y = context.row_y + NAV_ROW_HEIGHT / 2;
     draw_vertical_guides(
         canvas,
         palette,
         current_depth,
         previous_depth,
         next_depth,
-        row_y,
+        context.row_y,
     );
     draw_horizontal_guide(
         canvas,
         palette,
         row_depth,
-        show_text_connector,
-        draw_horizontal_connector,
+        context.show_text_connector,
+        context.draw_horizontal_connector,
         current_depth,
         row_center_y,
     );
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct NavigationGuideContext<'a> {
+    pub(super) row_depth: NavigationDepth,
+    pub(super) show_text_connector: bool,
+    pub(super) draw_horizontal_connector: bool,
+    pub(super) rows: &'a [NavigationRow],
+    pub(super) row_index: usize,
+    pub(super) row_y: usize,
 }
 
 pub(super) fn disclosure_x(depth: NavigationDepth) -> usize {
@@ -98,38 +105,41 @@ fn draw_vertical_guides(
         draw_vertical_guide(
             canvas,
             palette,
-            level,
-            current_depth,
-            start_y,
-            end_y,
-            row_center_y,
-            has_up || has_down,
+            VerticalGuideSpec {
+                level,
+                current_depth,
+                start_y,
+                end_y,
+                row_center_y,
+                connected: has_up || has_down,
+            },
         );
     }
 }
 
-fn draw_vertical_guide(
-    canvas: &mut Canvas,
-    palette: &VisualPalette,
+#[derive(Clone, Copy)]
+struct VerticalGuideSpec {
     level: usize,
     current_depth: usize,
     start_y: usize,
     end_y: usize,
     row_center_y: usize,
     connected: bool,
-) {
-    if connected {
+}
+
+fn draw_vertical_guide(canvas: &mut Canvas, palette: &VisualPalette, spec: VerticalGuideSpec) {
+    if spec.connected {
         canvas.fill_rect(
-            guide_x(level),
-            start_y,
+            guide_x(spec.level),
+            spec.start_y,
             TREE_LINE_WIDTH,
-            end_y.saturating_sub(start_y),
+            spec.end_y.saturating_sub(spec.start_y),
             palette.border,
         );
-    } else if level == current_depth {
+    } else if spec.level == spec.current_depth {
         canvas.fill_rect(
-            guide_x(level),
-            row_center_y,
+            guide_x(spec.level),
+            spec.row_center_y,
             TREE_LINE_WIDTH,
             TREE_LINE_WIDTH,
             palette.border,

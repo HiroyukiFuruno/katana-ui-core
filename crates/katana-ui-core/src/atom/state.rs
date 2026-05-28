@@ -1,7 +1,7 @@
 use super::defaults;
 use crate::facade::DEFAULT_FONT_ROLE;
 use crate::render_model::{
-    UiButtonProps, UiColorSwatchProps, UiCommonProps, UiIconProps, UiInteractionState,
+    UiButtonProps, UiColorSwatchProps, UiCommonProps, UiCursor, UiIconProps, UiInteractionState,
     UiLoadingProps, UiNode, UiNodeKind, UiShortcutProps, UiSize, UiStateId, UiStatusProps,
     UiTextEntryProps, UiTextProps, UiTone, UiVariant, UiVisualRole,
 };
@@ -43,7 +43,7 @@ impl AtomState {
     pub(super) fn enabled(kind: UiNodeKind) -> Self {
         Self {
             state_id: UiStateId::next_for(kind),
-            common: UiCommonProps::default(),
+            common: default_common_props(kind),
             disabled: false,
             focusable: false,
             accessibility_label: String::new(),
@@ -128,4 +128,21 @@ impl AtomState {
         self.common.disabled = self.disabled;
         self.common.focusable = self.focusable;
     }
+}
+
+fn default_common_props(kind: UiNodeKind) -> UiCommonProps {
+    if is_button_kind(kind) {
+        return UiCommonProps::default().cursor(UiCursor::Pointer);
+    }
+    UiCommonProps::default()
+}
+
+const fn is_button_kind(kind: UiNodeKind) -> bool {
+    matches!(
+        kind,
+        UiNodeKind::Button
+            | UiNodeKind::SvgButton
+            | UiNodeKind::TextButton
+            | UiNodeKind::IconTextButton
+    )
 }

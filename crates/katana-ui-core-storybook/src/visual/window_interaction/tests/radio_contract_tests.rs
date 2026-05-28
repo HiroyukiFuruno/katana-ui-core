@@ -114,12 +114,12 @@ fn radio_control_buttons_apply_expected_actions_and_state_changes() {
 }
 
 #[test]
-fn radio_visual_and_catalog_use_same_typed_action_names() {
+fn radio_visual_and_catalog_use_same_typed_action_names() -> Result<(), String> {
     let radio = StoryCatalog
         .examples()
         .into_iter()
         .find(|it| it.page == "radio")
-        .expect("radio story missing");
+        .ok_or_else(|| "radio story missing".to_string())?;
     let catalog_actions: BTreeSet<String> = radio
         .callback_logs
         .iter()
@@ -150,6 +150,7 @@ fn radio_visual_and_catalog_use_same_typed_action_names() {
     }
 
     assert_eq!(catalog_actions, visual_actions);
+    Ok(())
 }
 
 #[test]

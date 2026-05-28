@@ -1,7 +1,9 @@
 mod snapshot_command;
 mod snapshot_output;
 
-use katana_ui_core_storybook::{StoryCatalog, StorybookPanel, StorybookSummary, StorybookVisual};
+use katana_ui_core_storybook::{
+    DEFAULT_STORYBOOK_PAGE, StoryCatalog, StorybookPanel, StorybookSummary, StorybookVisual,
+};
 use snapshot_command::SnapshotCommand;
 use std::path::Path;
 use std::{env, fs, process};
@@ -79,12 +81,22 @@ fn run_headless_scenario() {
         &visual_report,
         "failed to write visual coverage report",
     );
-    save_scenario_png("target/storybook-panel-light.png", "light", "button", false);
-    save_scenario_png("target/storybook-panel-dark.png", "dark", "button", false);
+    save_scenario_png(
+        "target/storybook-panel-light.png",
+        "light",
+        DEFAULT_STORYBOOK_PAGE,
+        false,
+    );
+    save_scenario_png(
+        "target/storybook-panel-dark.png",
+        "dark",
+        DEFAULT_STORYBOOK_PAGE,
+        false,
+    );
     save_scenario_png(
         "target/storybook-panel-after-operation.png",
         "dark",
-        "button",
+        DEFAULT_STORYBOOK_PAGE,
         true,
     );
     save_modal_png("target/storybook-panel-modal-window.png");

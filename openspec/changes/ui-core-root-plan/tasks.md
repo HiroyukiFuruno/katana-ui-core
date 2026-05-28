@@ -208,3 +208,8 @@
 - [/] 9.17 ユーザーFB: Panel は全 UI を描画する根本基盤として扱い、Storybook の中央 playground は小さな見せかけ wireframe ではなく、root viewport / child panel composition / clipping / independent scroll / Inspector targeted state を実操作で確認できる表現にする。
 - [/] 9.18 ユーザーFB: Storybook UI ごとの構築ルールを skill 化し、theme / preset / Inspector option / state-event-action / 実操作確認を必須構成として固定する。
 - [/] 9.19 ユーザーFB: Storybook の option 網羅と見せかけ preset を人間の注意に頼らず検出するため、internal ast-lint に UI option contract / preset count / Inspector route の構造制約を追加する。
+- [/] 9.20 ユーザーFB: Storybook 起動時に `button` 固定で始めず、状態・preset・Inspector が見える代表ページとして `text-input` を初期表示にする。
+- [/] 9.21 ユーザーFB: text-input は `readonly` / `placeholder` / 左 icon slot 予約 / SVG icon / 内部 SVG icon button callback を Storybook preset と core render model 契約の両方で扱う。
+- [x] 9.22 ユーザーFB: button / text-button / svg-button / icon-text-button は hover 時に visible border を描き、Storybook native window では clickable hit area 上で hand cursor に切り替える。button atom の共通 default cursor も `UiCursor::Pointer` にする。
+- [x] 9.23 ユーザーFB: Storybook preset tab は表示幅を超える場合に横スクロールし、外部 / 内部の preset 選択時に active tab が見える位置へ自動追従することを layout / interaction test で固定する。
+- [x] 9.24 ユーザーFB: Storybook `tabs` は Katana workspace tab と同等に、追加 / close / move / group / pin / unpin / overflow を live control、preset、state/action/event、自動テストで固定する。

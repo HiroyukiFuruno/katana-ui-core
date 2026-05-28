@@ -1,5 +1,5 @@
 use super::visual_interaction_test_support::{
-    assert_settings_page_changes_body, component_body_pixel_diff, pixel_at,
+    assert_settings_page_changes_body, component_body_pixel_diff, pixel_at, require_some,
 };
 use super::{StorybookVisual, panel_scroll_state, preview_detail, render};
 
@@ -100,38 +100,38 @@ fn settings_change_updates_split_pane_layout_preview_body() {
 }
 
 #[test]
-fn row_light_theme_uses_light_surface_token() {
-    assert_light_theme_uses_light_surface_token(ROW_PAGE);
+fn row_light_theme_uses_light_surface_token() -> Result<(), String> {
+    assert_light_theme_uses_light_surface_token(ROW_PAGE)
 }
 
 #[test]
-fn column_light_theme_uses_light_surface_token() {
-    assert_light_theme_uses_light_surface_token(COLUMN_PAGE);
+fn column_light_theme_uses_light_surface_token() -> Result<(), String> {
+    assert_light_theme_uses_light_surface_token(COLUMN_PAGE)
 }
 
 #[test]
-fn stack_light_theme_uses_light_surface_token() {
-    assert_light_theme_uses_light_surface_token(STACK_PAGE);
+fn stack_light_theme_uses_light_surface_token() -> Result<(), String> {
+    assert_light_theme_uses_light_surface_token(STACK_PAGE)
 }
 
 #[test]
-fn grid_light_theme_uses_light_surface_token() {
-    assert_light_theme_uses_light_surface_token(GRID_PAGE);
+fn grid_light_theme_uses_light_surface_token() -> Result<(), String> {
+    assert_light_theme_uses_light_surface_token(GRID_PAGE)
 }
 
 #[test]
-fn align_center_light_theme_uses_light_surface_token() {
-    assert_light_theme_uses_light_surface_token(ALIGN_CENTER_PAGE);
+fn align_center_light_theme_uses_light_surface_token() -> Result<(), String> {
+    assert_light_theme_uses_light_surface_token(ALIGN_CENTER_PAGE)
 }
 
 #[test]
-fn scroll_area_light_theme_uses_light_surface_token() {
-    assert_light_theme_uses_light_surface_token(SCROLL_AREA_PAGE);
+fn scroll_area_light_theme_uses_light_surface_token() -> Result<(), String> {
+    assert_light_theme_uses_light_surface_token(SCROLL_AREA_PAGE)
 }
 
 #[test]
-fn split_pane_light_theme_uses_light_surface_token() {
-    assert_light_theme_uses_light_surface_token(SPLIT_PANE_PAGE);
+fn split_pane_light_theme_uses_light_surface_token() -> Result<(), String> {
+    assert_light_theme_uses_light_surface_token(SPLIT_PANE_PAGE)
 }
 
 #[test]
@@ -153,17 +153,20 @@ fn assert_layout_presets_render_distinct_bodies(page: &str) {
     assert!(component_body_pixel_diff(page, &third, &fourth) > ROW_DIFF_THRESHOLD);
 }
 
-fn assert_light_theme_uses_light_surface_token(page: &str) {
+fn assert_light_theme_uses_light_surface_token(page: &str) -> Result<(), String> {
     let canvas = StorybookVisual.render_preset(LIGHT_THEME, page, DEFAULT_PRESET, 0);
     let rect = preview_detail::component_action_hit_rect(page);
-    let sample = pixel_at(
-        &canvas,
-        rect.x + ROW_SURFACE_SAMPLE_X_OFFSET,
-        rect.y + ROW_SURFACE_SAMPLE_Y_OFFSET,
-    )
-    .expect("row surface sample pixel");
+    let sample = require_some(
+        pixel_at(
+            &canvas,
+            rect.x + ROW_SURFACE_SAMPLE_X_OFFSET,
+            rect.y + ROW_SURFACE_SAMPLE_Y_OFFSET,
+        ),
+        "row surface sample pixel",
+    )?;
 
     assert!(luminance(sample) > LIGHT_LUMINANCE_THRESHOLD);
+    Ok(())
 }
 
 fn luminance(color: u32) -> u32 {
@@ -179,6 +182,7 @@ fn render_scroll_area_with_preview_offset(preview_y: usize) -> super::Canvas {
         theme_id: DARK_THEME,
         selected_page: SCROLL_AREA_PAGE,
         preset_index: DEFAULT_PRESET,
+        preset_tab_scroll_x: 0,
         scroll_y: 0,
         scrollbar_visible: true,
         panel_scroll: panel_scroll_state::PanelScrollOffsets {

@@ -201,6 +201,11 @@ pub(super) fn assert_text_area_settings_are_switchable(settings: &[SettingsMutat
         "text_area.tab_behavior",
         "text_area.auto_grow",
         "text_area.wrap_policy",
+        "text_area.resize_enabled",
+        "text_area.vertical_scroll_enabled",
+        "text_area.horizontal_scroll_enabled",
+        "text_area.vertical_scrollbar_visible",
+        "text_area.horizontal_scrollbar_visible",
     ] {
         assert!(
             settings.iter().any(|it| {

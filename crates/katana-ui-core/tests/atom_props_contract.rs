@@ -9,6 +9,9 @@ use katana_ui_core::render_model::{
     UiVisualRole, UiZIndex,
 };
 
+const SEARCH_ICON_SVG: &str = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"7\" cy=\"7\" r=\"4\"/><line x1=\"10\" y1=\"10\" x2=\"14\" y2=\"14\"/></svg>";
+const CLEAR_ICON_SVG: &str = "<svg viewBox=\"0 0 16 16\"><path d=\"M4 4l8 8M12 4l-8 8\"/></svg>";
+
 #[test]
 fn text_icon_and_keycap_carry_accessibility_and_visual_roles() {
     let text = UiNode::from(Text::new("Title").visual_role(UiVisualRole::Content));
@@ -41,6 +44,7 @@ fn button_props_are_typed_and_action_ready() {
     assert_eq!(UiSize::Large, node.props().size);
     assert!(node.props().loading);
     assert!(node.props().focusable);
+    assert_eq!(UiCursor::Pointer, node.props().common.cursor);
 }
 
 #[test]
@@ -92,8 +96,10 @@ fn input_props_are_typed() {
             .readonly(true)
             .invalid(true)
             .value("query")
-            .leading_slot("Search icon")
-            .trailing_slot("Shortcut")
+            .leading_svg_icon_slot("Search icon", SEARCH_ICON_SVG)
+            .trailing_svg_icon_button("Clear", CLEAR_ICON_SVG, "input.clear")
+            .trailing_svg_icon_button("Match word", CLEAR_ICON_SVG, "input.match_word")
+            .trailing_svg_icon_button("Match case", CLEAR_ICON_SVG, "input.match_case")
             .clear_action("Clear search")
             .visual_role(UiVisualRole::Input),
     );
@@ -112,12 +118,48 @@ fn input_props_are_typed() {
             .map(|slot| slot.placement)
     );
     assert_eq!(
-        Some("Shortcut"),
+        Some(true),
+        node.props()
+            .text_entry
+            .leading_slot
+            .as_ref()
+            .map(|slot| slot.reserve_space)
+    );
+    assert_eq!(
+        Some(SEARCH_ICON_SVG),
+        node.props()
+            .text_entry
+            .leading_slot
+            .as_ref()
+            .and_then(|slot| slot.icon.as_ref())
+            .map(|icon| icon.svg_source.as_str())
+    );
+    assert_eq!(
+        Some("Clear"),
         node.props()
             .text_entry
             .trailing_slot
             .as_ref()
             .map(|slot| slot.label.as_str())
+    );
+    assert_eq!(3, node.props().text_entry.trailing_icon_buttons.len());
+    assert_eq!(
+        Some("input.clear"),
+        node.props()
+            .text_entry
+            .trailing_icon_buttons
+            .first()
+            .and_then(|slot| slot.action.as_ref())
+            .map(|action| action.callback.as_str())
+    );
+    assert_eq!(
+        Some("input.match_case"),
+        node.props()
+            .text_entry
+            .trailing_icon_buttons
+            .get(2)
+            .and_then(|slot| slot.action.as_ref())
+            .map(|action| action.callback.as_str())
     );
     assert_eq!(
         Some("Clear search"),
@@ -127,6 +169,15 @@ fn input_props_are_typed() {
             .as_ref()
             .map(|action| action.label.as_str())
     );
+}
+
+#[test]
+fn input_text_entry_defaults_do_not_reserve_icon_space() {
+    let node = UiNode::from(Input::new("Plain").value("query"));
+
+    assert!(node.props().text_entry.leading_slot.is_none());
+    assert!(node.props().text_entry.trailing_slot.is_none());
+    assert!(node.props().text_entry.trailing_icon_buttons.is_empty());
 }
 
 #[test]

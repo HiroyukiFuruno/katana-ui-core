@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(super) struct SearchBoxScreenState {
     pub(super) typed: bool,
     pub(super) cleared: bool,
@@ -22,18 +22,6 @@ pub(super) struct SearchBoxScreenUpdate {
     pub(super) action: &'static str,
     pub(super) event: &'static str,
     pub(super) state: &'static str,
-}
-
-impl Default for SearchBoxScreenState {
-    fn default() -> Self {
-        Self {
-            typed: false,
-            cleared: false,
-            submitted: false,
-            case_sensitive: false,
-            regex: false,
-        }
-    }
 }
 
 impl SearchBoxScreenState {

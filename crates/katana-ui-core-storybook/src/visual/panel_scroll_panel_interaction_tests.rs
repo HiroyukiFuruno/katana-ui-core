@@ -86,6 +86,7 @@ fn render_panel_with_offsets(offsets: panel_scroll_state::PanelScrollOffsets) ->
         theme_id: DARK_THEME,
         selected_page: PANEL_PAGE,
         preset_index: DEFAULT_PRESET,
+        preset_tab_scroll_x: 0,
         scroll_y: 0,
         scrollbar_visible: true,
         panel_scroll: offsets,

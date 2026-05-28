@@ -16,6 +16,8 @@ pub enum TextAreaValidationError {
     ConflictingKeyBindings,
     MinRowsMustBePositive,
     MaxRowsBelowMinRows,
+    VerticalScrollbarRequiresVerticalScroll,
+    HorizontalScrollbarRequiresHorizontalScroll,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,6 +36,11 @@ pub struct TextAreaOptions {
     pub newline_key: TextAreaNewlineKey,
     pub tab_behavior: TextAreaTabBehavior,
     pub ime_enabled: bool,
+    pub resize_enabled: bool,
+    pub vertical_scroll_enabled: bool,
+    pub horizontal_scroll_enabled: bool,
+    pub vertical_scrollbar_visible: bool,
+    pub horizontal_scrollbar_visible: bool,
     pub leading_slot: Option<UiSlotSpec>,
     pub trailing_slot: Option<UiSlotSpec>,
 }
@@ -55,6 +62,11 @@ impl Default for TextAreaOptions {
             newline_key: TextAreaNewlineKey::ShiftEnter,
             tab_behavior: TextAreaTabBehavior::MoveFocus,
             ime_enabled: true,
+            resize_enabled: false,
+            vertical_scroll_enabled: false,
+            horizontal_scroll_enabled: false,
+            vertical_scrollbar_visible: false,
+            horizontal_scrollbar_visible: false,
             leading_slot: None,
             trailing_slot: None,
         }
@@ -68,6 +80,12 @@ impl TextAreaOptions {
         }
         if self.max_rows < self.min_rows {
             return Err(TextAreaValidationError::MaxRowsBelowMinRows);
+        }
+        if self.vertical_scrollbar_visible && !self.vertical_scroll_enabled {
+            return Err(TextAreaValidationError::VerticalScrollbarRequiresVerticalScroll);
+        }
+        if self.horizontal_scrollbar_visible && !self.horizontal_scroll_enabled {
+            return Err(TextAreaValidationError::HorizontalScrollbarRequiresHorizontalScroll);
         }
         if submit_chord(self.submit_key).is_some_and(|submit| {
             newline_chord(self.newline_key).is_some_and(|newline| submit == newline)
@@ -87,6 +105,11 @@ impl TextAreaOptions {
             newline_key: self.newline_key,
             tab_behavior: self.tab_behavior,
             ime_enabled: self.ime_enabled,
+            resize_enabled: self.resize_enabled,
+            vertical_scroll_enabled: self.vertical_scroll_enabled,
+            horizontal_scroll_enabled: self.horizontal_scroll_enabled,
+            vertical_scrollbar_visible: self.vertical_scrollbar_visible,
+            horizontal_scrollbar_visible: self.horizontal_scrollbar_visible,
             measured_rows: rows,
             internal_scroll,
         }

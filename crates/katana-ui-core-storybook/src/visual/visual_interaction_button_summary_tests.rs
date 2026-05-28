@@ -2,6 +2,7 @@ use super::preview;
 use super::render;
 use super::screen_state::StorybookScreenState;
 use super::window_interaction::StorybookWindowState;
+use crate::DEFAULT_STORYBOOK_PAGE;
 
 const DARK_THEME: &str = "dark";
 const BUTTON_PAGE: &str = "button";
@@ -52,6 +53,7 @@ fn button_summary_scenario_with_state(
     super::render_context::ScenarioContext {
         selected_page: BUTTON_PAGE,
         preset_index: DEFAULT_PRESET,
+        preset_tab_scroll_x: 0,
         tree_expansion: Default::default(),
         scrollbar_visible: true,
         panel_scroll: Default::default(),
@@ -79,8 +81,8 @@ fn summary_tooltip_pixel_diff(before: &super::Canvas, after: &super::Canvas) -> 
 }
 
 #[test]
-fn default_window_state_keeps_button_page_as_summary_context() {
+fn default_window_state_uses_representative_input_page() {
     let state = StorybookWindowState::default();
 
-    assert_eq!(BUTTON_PAGE, state.selected_page);
+    assert_eq!(DEFAULT_STORYBOOK_PAGE, state.selected_page);
 }

@@ -136,6 +136,48 @@ class StorybookUiHarnessTest(unittest.TestCase):
                 failures,
             )
 
+    def test_rejects_text_input_singleton_runtime_state(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_minimal_repo(root, option_arm='"button" => &BUTTON_OPTIONS,')
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/visual/screen_state.rs",
+                "struct StorybookScreenState { text_input_state: UiComponentState }\n",
+            )
+            write_text(
+                root
+                / "crates/katana-ui-core-storybook/src/visual/text_input_screen_state.rs",
+                "struct TextInputStateStore { instances: BTreeMap<&'static str, TextInputRuntimeState> }\n",
+            )
+            write_text(
+                root
+                / "crates/katana-ui-core-storybook/src/visual/screen_state_text_input.rs",
+                "fn register_text_input_readonly_block() {}\n",
+            )
+
+            failures = StorybookUiHarness(root).failures()
+
+            self.assertIn(
+                "text-input Storybook state must be instance-scoped, not `text_input_state:`",
+                failures,
+            )
+
+    def test_rejects_preset_tab_labels_without_measured_clip(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_minimal_repo(root, option_arm='"button" => &BUTTON_OPTIONS,')
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/visual/preset_tabs.rs",
+                "fn draw_tab_label() {}\n",
+            )
+
+            failures = StorybookUiHarness(root).failures()
+
+            self.assertIn(
+                "preset tab labels must be measured and clipped inside each tab: missing measure_width",
+                failures,
+            )
+
 
 def write_minimal_repo(root: Path, option_arm: str) -> None:
     write_text(

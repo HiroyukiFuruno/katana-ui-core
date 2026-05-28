@@ -18,10 +18,13 @@ pub(super) fn present_frame(source: &Canvas, width: usize, height: usize, fill: 
         return Canvas::new(width, height, fill);
     }
     let rect = PresentationRect::fit(source.width(), source.height(), width, height);
-    if rect.x == 0 && rect.y == 0 && rect.width == width && rect.height == height {
-        if exact_integer_scale(source.width(), source.height(), width, height).is_some() {
-            return scale_nearest(source, width, height);
-        }
+    if rect.x == 0
+        && rect.y == 0
+        && rect.width == width
+        && rect.height == height
+        && exact_integer_scale(source.width(), source.height(), width, height).is_some()
+    {
+        return scale_nearest(source, width, height);
     }
     let mut target = Canvas::new(width, height, fill);
     for y in rect.y..rect.bottom().min(height) {
@@ -43,14 +46,22 @@ fn exact_integer_scale(
         return None;
     }
     let width_scale = if source_width >= target_width {
-        (source_width % target_width == 0).then_some(source_width / target_width)?
+        source_width
+            .is_multiple_of(target_width)
+            .then_some(source_width / target_width)?
     } else {
-        (target_width % source_width == 0).then_some(target_width / source_width)?
+        target_width
+            .is_multiple_of(source_width)
+            .then_some(target_width / source_width)?
     };
     let height_scale = if source_height >= target_height {
-        (source_height % target_height == 0).then_some(source_height / target_height)?
+        source_height
+            .is_multiple_of(target_height)
+            .then_some(source_height / target_height)?
     } else {
-        (target_height % source_height == 0).then_some(target_height / source_height)?
+        target_height
+            .is_multiple_of(source_height)
+            .then_some(target_height / source_height)?
     };
     (width_scale == height_scale).then_some(width_scale)
 }

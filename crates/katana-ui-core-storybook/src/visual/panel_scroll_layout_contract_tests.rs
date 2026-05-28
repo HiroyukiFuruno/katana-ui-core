@@ -97,6 +97,7 @@ fn rendered_panel_content_does_not_paint_reserved_scrollbar_gutter() {
         theme_id: DARK_THEME,
         selected_page: BUTTON_PAGE,
         preset_index: DEFAULT_PRESET,
+        preset_tab_scroll_x: 0,
         scroll_y: 0,
         scrollbar_visible: true,
         panel_scroll: Default::default(),

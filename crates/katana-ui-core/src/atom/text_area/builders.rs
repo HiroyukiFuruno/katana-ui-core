@@ -97,6 +97,36 @@ impl TextArea {
     }
 
     #[must_use]
+    pub fn resize_enabled(mut self, value: bool) -> Self {
+        self.options.resize_enabled = value;
+        self
+    }
+
+    #[must_use]
+    pub fn vertical_scroll_enabled(mut self, value: bool) -> Self {
+        self.options.vertical_scroll_enabled = value;
+        self
+    }
+
+    #[must_use]
+    pub fn horizontal_scroll_enabled(mut self, value: bool) -> Self {
+        self.options.horizontal_scroll_enabled = value;
+        self
+    }
+
+    #[must_use]
+    pub fn vertical_scrollbar_visible(mut self, value: bool) -> Self {
+        self.options.vertical_scrollbar_visible = value;
+        self
+    }
+
+    #[must_use]
+    pub fn horizontal_scrollbar_visible(mut self, value: bool) -> Self {
+        self.options.horizontal_scrollbar_visible = value;
+        self
+    }
+
+    #[must_use]
     pub fn leading_slot(mut self, label: impl Into<String>) -> Self {
         self.options.leading_slot = Some(UiSlotSpec::new(UiSlotPlacement::Leading, label));
         self

@@ -4,11 +4,15 @@ use super::layout_metrics::{
     navigation_menu_panel_rect,
 };
 use super::navigation_guides::{
-    GROUP_TEXT_X, NavigationDepth, PageDepth, SECTION_TEXT_X, disclosure_x, draw_row_guides,
-    page_text_x,
+    GROUP_TEXT_X, NavigationDepth, NavigationGuideContext, PageDepth, SECTION_TEXT_X, disclosure_x,
+    draw_row_guides, page_text_x,
 };
 use super::navigation_icons::draw_disclosure;
-use super::navigation_tree::{NavigationRow, TreeExpansionState, visible_rows};
+pub(super) use super::navigation_render_types::NavigationRenderOptions;
+use super::navigation_render_types::{
+    NavigationBranchContext, NavigationGuideOptions, NavigationPageContext, NavigationRowContext,
+};
+use super::navigation_tree::{NavigationRow, visible_rows};
 use super::palette::VisualPalette;
 use super::panel_layout;
 use super::panel_scroll_state::PanelScrollRegion;
@@ -23,13 +27,13 @@ pub(super) fn draw(
     canvas: &mut Canvas,
     text: &TextRenderer,
     palette: &VisualPalette,
-    selected_page: &str,
-    expansion: TreeExpansionState,
-    scroll_y: usize,
-    show_navigation_lines: bool,
-    show_navigation_text_connectors: bool,
+    options: NavigationRenderOptions<'_>,
 ) {
-    let rows = visible_rows(expansion);
+    let guides = NavigationGuideOptions {
+        show_lines: options.show_lines,
+        show_text_connectors: options.show_text_connectors,
+    };
+    let rows = visible_rows(options.expansion);
     draw_navigation_panel(canvas, palette);
     let viewport = panel_layout::region_layout(PanelScrollRegion::Navigation).content_viewport;
     canvas.with_clip(
@@ -38,10 +42,15 @@ pub(super) fn draw(
         viewport.width,
         viewport.height,
         |canvas| {
-            let first_index = scroll_y / NAV_ROW_STEP;
-            let row_offset = scroll_y % NAV_ROW_STEP;
+            let first_index = options.scroll_y / NAV_ROW_STEP;
+            let row_offset = options.scroll_y % NAV_ROW_STEP;
             let mut row_y = NAV_FIRST_ROW_Y.saturating_sub(row_offset);
             for (row_index, row) in rows.iter().enumerate().skip(first_index) {
+                let row_context = NavigationRowContext {
+                    rows: &rows,
+                    row_index,
+                    y: row_y,
+                };
                 match row {
                     NavigationRow::Group(group) => {
                         draw_group(
@@ -49,12 +58,11 @@ pub(super) fn draw(
                             text,
                             palette,
                             *group,
-                            expansion.is_open(*group),
-                            show_navigation_lines,
-                            show_navigation_text_connectors,
-                            &rows,
-                            row_index,
-                            row_y,
+                            NavigationBranchContext {
+                                open: options.expansion.is_open(*group),
+                                row: row_context,
+                                guides,
+                            },
                         );
                     }
                     NavigationRow::Section { group, section } => {
@@ -63,12 +71,11 @@ pub(super) fn draw(
                             text,
                             palette,
                             *section,
-                            expansion.is_section_open(*group, *section),
-                            show_navigation_lines,
-                            show_navigation_text_connectors,
-                            &rows,
-                            row_index,
-                            row_y,
+                            NavigationBranchContext {
+                                open: options.expansion.is_section_open(*group, *section),
+                                row: row_context,
+                                guides,
+                            },
                         );
                     }
                     NavigationRow::Page { page, .. } => {
@@ -77,13 +84,12 @@ pub(super) fn draw(
                             text,
                             palette,
                             page,
-                            *page == selected_page,
-                            show_navigation_lines,
-                            show_navigation_text_connectors,
-                            &rows,
-                            row_index,
-                            row_y,
-                            PageDepth::Section,
+                            NavigationPageContext {
+                                selected: *page == options.selected_page,
+                                depth: PageDepth::Section,
+                                row: row_context,
+                                guides,
+                            },
                         );
                     }
                     NavigationRow::PageWithoutSection { page, .. } => {
@@ -92,13 +98,12 @@ pub(super) fn draw(
                             text,
                             palette,
                             page,
-                            *page == selected_page,
-                            show_navigation_lines,
-                            show_navigation_text_connectors,
-                            &rows,
-                            row_index,
-                            row_y,
-                            PageDepth::Sectionless,
+                            NavigationPageContext {
+                                selected: *page == options.selected_page,
+                                depth: PageDepth::Sectionless,
+                                row: row_context,
+                                guides,
+                            },
                         );
                     }
                 }
@@ -119,16 +124,11 @@ fn draw_group(
     text: &TextRenderer,
     palette: &VisualPalette,
     group: StoryGroup,
-    open: bool,
-    show_lines: bool,
-    show_text_connectors: bool,
-    rows: &[NavigationRow],
-    row_index: usize,
-    y: usize,
+    context: NavigationBranchContext<'_>,
 ) {
     canvas.fill_rect(
         NAV_ROW_X,
-        y,
+        context.row.y,
         NAV_ROW_WIDTH,
         NAV_ROW_HEIGHT,
         palette.code_background,
@@ -137,26 +137,28 @@ fn draw_group(
         canvas,
         palette,
         disclosure_x(NavigationDepth::Group),
-        open,
-        y,
+        context.open,
+        context.row.y,
     );
-    if show_lines {
+    if context.guides.show_lines {
         draw_row_guides(
             canvas,
             palette,
-            NavigationDepth::Group,
-            show_text_connectors,
-            true,
-            rows,
-            row_index,
-            y,
+            NavigationGuideContext {
+                row_depth: NavigationDepth::Group,
+                show_text_connector: context.guides.show_text_connectors,
+                draw_horizontal_connector: true,
+                rows: context.row.rows,
+                row_index: context.row.row_index,
+                row_y: context.row.y,
+            },
         );
     }
     text.draw_centered(
         canvas,
         group.label(),
         GROUP_TEXT_X,
-        TextVerticalBox::new(y, NAV_ROW_HEIGHT as f32),
+        TextVerticalBox::new(context.row.y, NAV_ROW_HEIGHT as f32),
         NAV_GROUP_TEXT_SIZE,
         palette.muted,
     );
@@ -167,16 +169,11 @@ fn draw_section(
     text: &TextRenderer,
     palette: &VisualPalette,
     section: StorySection,
-    open: bool,
-    show_lines: bool,
-    show_text_connectors: bool,
-    rows: &[NavigationRow],
-    row_index: usize,
-    y: usize,
+    context: NavigationBranchContext<'_>,
 ) {
     canvas.fill_rect(
         NAV_ROW_X,
-        y,
+        context.row.y,
         NAV_ROW_WIDTH,
         NAV_ROW_HEIGHT,
         palette.code_background,
@@ -185,26 +182,28 @@ fn draw_section(
         canvas,
         palette,
         disclosure_x(NavigationDepth::Section),
-        open,
-        y,
+        context.open,
+        context.row.y,
     );
-    if show_lines {
+    if context.guides.show_lines {
         draw_row_guides(
             canvas,
             palette,
-            NavigationDepth::Section,
-            show_text_connectors,
-            true,
-            rows,
-            row_index,
-            y,
+            NavigationGuideContext {
+                row_depth: NavigationDepth::Section,
+                show_text_connector: context.guides.show_text_connectors,
+                draw_horizontal_connector: true,
+                rows: context.row.rows,
+                row_index: context.row.row_index,
+                row_y: context.row.y,
+            },
         );
     }
     text.draw_centered(
         canvas,
         section.label(),
         SECTION_TEXT_X,
-        TextVerticalBox::new(y, NAV_ROW_HEIGHT as f32),
+        TextVerticalBox::new(context.row.y, NAV_ROW_HEIGHT as f32),
         NAV_GROUP_TEXT_SIZE,
         palette.muted,
     );
@@ -215,55 +214,57 @@ fn draw_page(
     text: &TextRenderer,
     palette: &VisualPalette,
     page: &str,
-    selected: bool,
-    show_lines: bool,
-    show_text_connectors: bool,
-    rows: &[NavigationRow],
-    row_index: usize,
-    y: usize,
-    page_depth: PageDepth,
+    context: NavigationPageContext<'_>,
 ) {
-    let fill = if selected {
+    let fill = if context.selected {
         palette.selection
     } else {
         palette.surface
     };
-    let text_color = if selected {
+    let text_color = if context.selected {
         palette.text
     } else {
         palette.muted
     };
-    canvas.fill_rect(NAV_ROW_X, y, NAV_ROW_WIDTH, NAV_ROW_HEIGHT, fill);
-    if selected {
+    canvas.fill_rect(
+        NAV_ROW_X,
+        context.row.y,
+        NAV_ROW_WIDTH,
+        NAV_ROW_HEIGHT,
+        fill,
+    );
+    if context.selected {
         canvas.fill_rect(
             NAV_ROW_X,
-            y,
+            context.row.y,
             SELECTED_ACCENT_WIDTH,
             NAV_ROW_HEIGHT,
             palette.accent,
         );
     }
-    if show_lines {
-        let depth = match page_depth {
+    if context.guides.show_lines {
+        let depth = match context.depth {
             PageDepth::Sectionless => NavigationDepth::Section,
             PageDepth::Section => NavigationDepth::Page,
         };
         draw_row_guides(
             canvas,
             palette,
-            depth,
-            show_text_connectors,
-            false,
-            rows,
-            row_index,
-            y,
+            NavigationGuideContext {
+                row_depth: depth,
+                show_text_connector: context.guides.show_text_connectors,
+                draw_horizontal_connector: false,
+                rows: context.row.rows,
+                row_index: context.row.row_index,
+                row_y: context.row.y,
+            },
         );
     }
     text.draw_centered(
         canvas,
         page,
-        page_text_x(page_depth),
-        TextVerticalBox::new(y, NAV_ROW_HEIGHT as f32),
+        page_text_x(context.depth),
+        TextVerticalBox::new(context.row.y, NAV_ROW_HEIGHT as f32),
         NAV_TEXT_SIZE,
         text_color,
     );

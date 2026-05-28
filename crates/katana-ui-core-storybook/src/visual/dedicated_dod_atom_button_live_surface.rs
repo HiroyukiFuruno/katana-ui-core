@@ -62,6 +62,7 @@ pub(super) fn draw_button_surface(
     let fill = button_fill(palette, scenario, kind);
     draw_material_surface(canvas, palette, scenario, rect, kind, fill);
     draw_text_button_underline(canvas, palette, scenario, rect, kind);
+    common_props::draw_hover_border(canvas, palette, scenario, rect);
     common_props::draw_setting_outline(canvas, palette, scenario, rect);
 }
 

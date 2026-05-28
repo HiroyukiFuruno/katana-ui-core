@@ -28,6 +28,9 @@ KUC の Storybook は静的な部品一覧ではなく、利用側へ組み込�
 5. light / dark theme の両方で背景、枠線、文字色、入力面が theme token から描かれることを確認する。
 6. 操作可能な UI は `window_interaction` 経由の click / wheel / drag テストを持つ。
 7. text-input / text-area / search-box などの入力 UI は、見た目や click action だけで完了にしない。入力欄 focus 後の keyboard input、Backspace、Enter commit が live window の state/action/event/preview へ反映される自動テストを持つ。
+8. 入力 atom の runtime state は atom instance ごとに Storybook 内部へ閉じる。page や atom 種別ごとの単一 state で複数 instance、preset、tab の値・focus・caret が同期する状態を禁止する。
+9. readonly 入力は focus 可否と値 mutation を分けて扱い、keyboard input、Backspace、Clear などの書き込み経路が block されることを state/action/event の自動テストで固定する。
+10. preset/tab label は描画前に文字幅を測り、縮小または clip して隣接 tab へ描画が漏れない数値化テストを持つ。
 
 ## 禁止
 
@@ -37,6 +40,9 @@ KUC の Storybook は静的な部品一覧ではなく、利用側へ組み込�
 - Storybook 外側の scroll や global toggle で、部品自身の scroll / visibility を確認したことにすること。
 - light theme で入力面や panel surface が dark 固定色のままになること。
 - text-input を `input_commit` の固定表示や preset 差分だけで完了扱いし、実際のキーボード入力経路を持たない状態。
+- 入力 atom の runtime state を単一フィールドで持ち、tab 切り替えや複数 instance で値・focus・caret を共有してしまう状態。
+- readonly preset を表示だけ readonly にし、Storybook の keyboard 経路から値を書き換えられる状態。
+- 長い preset/tab label を隣の tab へ描画して、文字がめり込む状態。
 
 ## 検証
 

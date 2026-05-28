@@ -346,12 +346,12 @@ fn search_box_hit_target_includes_field_clear_and_control_buttons() {
 }
 
 #[test]
-fn search_box_visual_and_catalog_use_same_typed_action_names() {
+fn search_box_visual_and_catalog_use_same_typed_action_names() -> Result<(), String> {
     let search = StoryCatalog
         .examples()
         .into_iter()
         .find(|it| it.page == SEARCH_BOX_PAGE)
-        .expect("search-box story missing");
+        .ok_or_else(|| "search-box story missing".to_string())?;
     let catalog_actions: BTreeSet<String> = search
         .callback_logs
         .iter()
@@ -389,6 +389,7 @@ fn search_box_visual_and_catalog_use_same_typed_action_names() {
     }
 
     assert_eq!(catalog_actions, visual_actions);
+    Ok(())
 }
 
 #[test]
@@ -596,12 +597,12 @@ fn select_box_hit_target_includes_trigger_option_and_control_buttons() {
 }
 
 #[test]
-fn select_box_visual_and_catalog_use_same_typed_action_names() {
+fn select_box_visual_and_catalog_use_same_typed_action_names() -> Result<(), String> {
     let select = StoryCatalog
         .examples()
         .into_iter()
         .find(|it| it.page == "select-box")
-        .expect("select-box story missing");
+        .ok_or_else(|| "select-box story missing".to_string())?;
     let catalog_actions: BTreeSet<String> = select
         .callback_logs
         .iter()
@@ -641,6 +642,7 @@ fn select_box_visual_and_catalog_use_same_typed_action_names() {
     }
 
     assert_eq!(catalog_actions, visual_actions);
+    Ok(())
 }
 
 #[test]
@@ -795,12 +797,12 @@ fn combo_box_hit_target_includes_trigger_option_and_control_buttons() {
 }
 
 #[test]
-fn combo_box_visual_and_catalog_use_same_typed_action_names() {
+fn combo_box_visual_and_catalog_use_same_typed_action_names() -> Result<(), String> {
     let combo = StoryCatalog
         .examples()
         .into_iter()
         .find(|it| it.page == "combo-box")
-        .expect("combo-box story missing");
+        .ok_or_else(|| "combo-box story missing".to_string())?;
     let catalog_actions: BTreeSet<String> = combo
         .callback_logs
         .iter()
@@ -831,6 +833,7 @@ fn combo_box_visual_and_catalog_use_same_typed_action_names() {
     }
 
     assert_eq!(catalog_actions, visual_actions);
+    Ok(())
 }
 
 #[test]
@@ -1012,12 +1015,12 @@ fn selection_list_control_buttons_apply_expected_actions_and_state_changes() {
 }
 
 #[test]
-fn selection_list_visual_and_catalog_use_same_typed_action_names() {
+fn selection_list_visual_and_catalog_use_same_typed_action_names() -> Result<(), String> {
     let list = StoryCatalog
         .examples()
         .into_iter()
         .find(|it| it.page == SELECTION_LIST_PAGE)
-        .expect("selection-list story missing");
+        .ok_or_else(|| "selection-list story missing".to_string())?;
     let catalog_actions: BTreeSet<String> = list
         .callback_logs
         .iter()
@@ -1060,6 +1063,7 @@ fn selection_list_visual_and_catalog_use_same_typed_action_names() {
         visual_actions.insert(state.screen_state.last_action.to_string());
     }
     assert_eq!(catalog_actions, visual_actions);
+    Ok(())
 }
 
 #[test]

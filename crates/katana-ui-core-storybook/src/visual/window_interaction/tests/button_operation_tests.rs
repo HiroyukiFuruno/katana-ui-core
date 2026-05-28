@@ -1,7 +1,8 @@
 use super::super::button_operation::{StorybookButtonOperation, button_operation_at};
-use super::super::{StorybookWindowState, apply_click};
+use super::super::{StorybookWindowState, apply_click, cursor_style_at_for_test};
 use crate::visual::button_options::{StorybookButtonOptionControl, control_rect};
 use crate::visual::navigation_tree::{NavigationRow, row_from_click};
+use crate::visual::window_interaction::StorybookCursorStyle;
 use crate::visual::{layout_metrics, preview_detail, render};
 
 const UI_INTERACTION_DIFF_THRESHOLD: usize = 500;
@@ -20,7 +21,7 @@ const BUTTON_VARIANT_PAGES: &[(&str, &str, &str)] = &[
 
 #[test]
 fn click_button_operation_updates_action_event_state_for_button_preview() {
-    let mut state = StorybookWindowState::default();
+    let mut state = button_state();
     let button = preview_detail::button_action_hit_rect("button");
 
     assert_eq!(
@@ -65,8 +66,29 @@ fn each_button_variant_hit_rect_emits_its_own_action_and_event() {
 }
 
 #[test]
+fn button_variant_hover_uses_pointer_cursor() {
+    for &(page, _, _) in BUTTON_VARIANT_PAGES {
+        let state = StorybookWindowState {
+            selected_page: page,
+            ..StorybookWindowState::default()
+        };
+        let target = preview_detail::button_action_hit_rect(page);
+
+        assert_eq!(
+            StorybookCursorStyle::PointingHand,
+            cursor_style_at_for_test(
+                &state,
+                target.x + target.width / 2,
+                target.y + target.height / 2
+            ),
+            "{page} hover cursor"
+        );
+    }
+}
+
+#[test]
 fn repeated_button_click_returns_to_released_state_then_presses_again() {
-    let mut state = StorybookWindowState::default();
+    let mut state = button_state();
     let button = preview_detail::button_action_hit_rect("button");
 
     assert!(apply_click(&mut state, button.x + 1, button.y + 1));
@@ -83,7 +105,7 @@ fn repeated_button_click_returns_to_released_state_then_presses_again() {
 
 #[test]
 fn preset_tabs_do_not_share_button_press_state() {
-    let mut state = StorybookWindowState::default();
+    let mut state = button_state();
     let button = preview_detail::button_action_hit_rect("button");
     let classic = layout_metrics::preset_tab_rect(layout_metrics::PRESET_INTERACTIVE_INDEX);
 
@@ -105,7 +127,7 @@ fn preset_tabs_do_not_share_button_press_state() {
 
 #[test]
 fn button_and_text_button_do_not_share_button_press_state() {
-    let mut state = StorybookWindowState::default();
+    let mut state = button_state();
     let button = preview_detail::button_action_hit_rect("button");
 
     assert!(apply_click(&mut state, button.x + 1, button.y + 1));
@@ -135,7 +157,7 @@ fn button_and_text_button_do_not_share_button_press_state() {
 
 #[test]
 fn click_button_option_operation_updates_action_event_state_option_and_rendering() {
-    let mut state = StorybookWindowState::default();
+    let mut state = button_state();
     let before = render::render_storybook_canvas_with_screen_state(
         state.theme_id,
         state.selected_page,
@@ -177,7 +199,7 @@ fn click_button_option_control_updates_action_event_state_option_and_rendering()
 fn assert_button_option_control_updates_action_event_state_option_and_rendering(
     control: StorybookButtonOptionControl,
 ) {
-    let mut state = StorybookWindowState::default();
+    let mut state = button_state();
     let before = render::render_storybook_canvas_with_screen_state(
         state.theme_id,
         state.selected_page,
@@ -216,7 +238,7 @@ fn assert_button_option_control_updates_action_event_state_option_and_rendering(
 
 #[test]
 fn click_button_option_disabled_state_blocks_action_event_for_button_preview() {
-    let mut state = StorybookWindowState::default();
+    let mut state = button_state();
     let control = control_rect(StorybookButtonOptionControl::Disabled);
     let button = preview_detail::button_action_hit_rect("button");
 
@@ -260,6 +282,13 @@ fn click_page(state: &mut StorybookWindowState, page: &'static str) {
     assert!(target.is_some());
     if let Some((x, y)) = target {
         assert!(apply_click(state, x, y));
+    }
+}
+
+fn button_state() -> StorybookWindowState {
+    StorybookWindowState {
+        selected_page: "button",
+        ..StorybookWindowState::default()
     }
 }
 

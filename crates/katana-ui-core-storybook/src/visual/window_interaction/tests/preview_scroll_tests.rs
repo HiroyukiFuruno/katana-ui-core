@@ -6,6 +6,7 @@ use crate::visual::{layout_metrics, preview_detail};
 #[test]
 fn viewport_click_mapping_keeps_preview_actions_aligned_after_nested_scroll() {
     let mut state = StorybookWindowState {
+        selected_page: "button",
         panel_scroll: PanelScrollOffsets {
             root_y: layout_metrics::SCROLL_STEP,
             preview_y: layout_metrics::SCROLL_STEP,

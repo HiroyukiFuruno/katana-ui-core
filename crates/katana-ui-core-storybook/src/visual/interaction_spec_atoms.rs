@@ -89,9 +89,9 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
         "text-area" => Some(spec(
             "text_area_type",
             "text_area_changed",
-            "text_area.submit_key",
+            "text_area.resize_enabled",
             "true",
-            "rows=4 scroll=true",
+            "resize=true",
         )),
         "checkbox" => Some(spec(
             "checkbox_toggle",

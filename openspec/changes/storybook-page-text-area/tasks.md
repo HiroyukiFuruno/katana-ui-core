@@ -15,3 +15,10 @@
 - [x] 2.2 `rtk just storybook-check` を通す。
 - [x] 2.3 `rtk cargo test -p katana-ui-core-storybook --locked` を通す。
 - [x] 2.4 `rtk ./scripts/openspec validate storybook-page-text-area --strict` を通す。
+
+## User Review Phase
+
+- [x] text-area は実画面の入力欄をクリックして focus した後、キーボード入力、Backspace、Enter commit を受け取り、preview / state / action / event に反映する。
+- [x] text-area は KUC 契約として、テキスト折り返しを default true かつ option 変更可能、resize を default false かつ option 変更可能、縦横 scroll 有効化を default false かつ option 変更可能、縦横 scrollbar 表示を default false かつ対応軸の scroll 有効時だけ option 設定可能にする。
+- [x] ユーザーFB: Storybook 上の text-area resize handle は表示だけでなく drag で幅・高さ state を変え、preview / state / action / event に反映する。
+- [x] ユーザーFB: Storybook 上の text-area vertical / horizontal scroll は静的表示ではなく wheel 入力で offset を変え、preview / state / action / event に反映する。

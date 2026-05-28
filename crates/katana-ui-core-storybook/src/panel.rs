@@ -143,8 +143,8 @@ mod tests {
         let examples = StoryCatalog.examples();
         let report = StorybookPanel::interaction_report(&examples);
 
-        assert_eq!("button", report.story_selection.selected_page);
-        assert_eq!("Button", report.story_selection.preview_page);
+        assert_eq!("text-input", report.story_selection.selected_page);
+        assert_eq!("Text input", report.story_selection.preview_page);
         assert_eq!("light", report.theme_switch.before_theme_id);
         assert_eq!("dark", report.theme_switch.after_theme_id);
         assert!(report.theme_switch.theme_control);

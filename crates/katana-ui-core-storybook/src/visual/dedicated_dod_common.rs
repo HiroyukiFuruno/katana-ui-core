@@ -1,6 +1,6 @@
 use super::canvas::Canvas;
 use super::palette::VisualPalette;
-use super::text::TextRenderer;
+use super::text::{TextRenderer, TextVerticalBox};
 
 pub(super) const AREA_WIDTH: usize = 520;
 pub(super) const AREA_HEIGHT: usize = 132;
@@ -10,7 +10,6 @@ const ACCENT_WIDTH: usize = 4;
 const TITLE_X_OFFSET: usize = 12;
 const TITLE_Y_OFFSET: usize = 10;
 const CHIP_TEXT_X_OFFSET: usize = 8;
-const CHIP_TEXT_Y_OFFSET: usize = 6;
 const MIN_CROSS_ICON_SIZE: usize = 6;
 const CROSS_ICON_ARM_DIVISOR: usize = 3;
 pub(super) const TOKEN: u32 = 0x4ec9b0;
@@ -50,11 +49,11 @@ pub(super) fn chip(
 ) {
     canvas.fill_rect(rect.x, rect.y, rect.width, rect.height, fill);
     canvas.stroke_rect(rect.x, rect.y, rect.width, rect.height, palette.border);
-    text.draw(
+    text.draw_centered(
         canvas,
         value,
         rect.x + CHIP_TEXT_X_OFFSET,
-        rect.y + CHIP_TEXT_Y_OFFSET,
+        TextVerticalBox::new(rect.y, rect.height as f32),
         BODY_SIZE,
         palette.background,
     );

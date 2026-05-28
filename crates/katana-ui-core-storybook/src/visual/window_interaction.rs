@@ -2,9 +2,13 @@ use minifb::{MouseButton, MouseMode, Window};
 
 mod button_operation;
 mod content_position;
+mod cursor_operation;
 mod panel_scroll_drag;
+mod preset_selection;
 mod scroll_operation;
 mod state_store;
+mod text_area_keyboard;
+mod text_area_resize;
 mod text_input_keyboard;
 
 use super::navigation_tree::{NavigationRow, TreeExpansionState, row_from_click};
@@ -15,10 +19,11 @@ use super::screen_state::StorybookScreenState;
 use super::window_coordinates::{
     CanvasPoint, SurfaceSize, WindowPoint, window_point_to_canvas_point,
 };
-use crate::catalog::StoryPresetLabels;
+use crate::DEFAULT_STORYBOOK_PAGE;
 pub(super) use button_operation::apply_hover_at;
 use button_operation::button_operation_at;
 pub(super) use content_position::click_content_y;
+pub(super) use cursor_operation::{StorybookCursorStyle, cursor_style_at};
 use panel_scroll_drag::PanelScrollDragTarget;
 use scroll_operation::{
     apply_horizontal_scrollbar_drag, apply_scroll_delta, apply_scroll_delta_at,
@@ -26,9 +31,9 @@ use scroll_operation::{
 };
 use state_store::StorybookScreenStateStore;
 use std::collections::BTreeMap;
+pub(super) use text_area_keyboard::{TextAreaKey, apply_text_area_key};
 pub(super) use text_input_keyboard::{TextInputKey, apply_text_input_key};
 
-const DEFAULT_SELECTED_PAGE: &str = "button";
 const DEFAULT_THEME_ID: &str = "dark";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -36,6 +41,7 @@ pub(super) struct StorybookWindowState {
     pub(super) selected_page: &'static str,
     pub(super) theme_id: &'static str,
     pub(super) preset_index: usize,
+    pub(super) preset_tab_scroll_x: usize,
     pub(super) selected_component_presets: BTreeMap<&'static str, usize>,
     pub(super) scroll_y: usize,
     pub(super) panel_scroll: PanelScrollOffsets,
@@ -46,14 +52,16 @@ pub(super) struct StorybookWindowState {
     pub(super) screen_state: StorybookScreenState,
     pub(super) screen_states: StorybookScreenStateStore,
     pub(super) drag_scroll_target: Option<PanelScrollDragTarget>,
+    pub(super) text_area_resize_dragging: bool,
 }
 
 impl Default for StorybookWindowState {
     fn default() -> Self {
         Self {
-            selected_page: DEFAULT_SELECTED_PAGE,
+            selected_page: DEFAULT_STORYBOOK_PAGE,
             theme_id: DEFAULT_THEME_ID,
             preset_index: 0,
+            preset_tab_scroll_x: 0,
             selected_component_presets: BTreeMap::new(),
             scroll_y: 0,
             panel_scroll: PanelScrollOffsets::default(),
@@ -64,39 +72,8 @@ impl Default for StorybookWindowState {
             screen_state: StorybookScreenState::default(),
             screen_states: StorybookScreenStateStore::default(),
             drag_scroll_target: None,
+            text_area_resize_dragging: false,
         }
-    }
-}
-
-impl StorybookWindowState {
-    pub(super) fn select_page(&mut self, page: &'static str) {
-        let preset_index = self
-            .selected_component_presets
-            .get(page)
-            .copied()
-            .unwrap_or_default();
-        self.switch_screen_state(page, normalized_preset_index(page, preset_index));
-    }
-
-    pub(super) fn select_preset(&mut self, preset_index: usize) {
-        self.switch_screen_state(
-            self.selected_page,
-            normalized_preset_index(self.selected_page, preset_index),
-        );
-    }
-
-    fn switch_screen_state(&mut self, page: &'static str, preset_index: usize) {
-        self.screen_states.save(
-            self.selected_page,
-            self.preset_index,
-            self.screen_state.clone(),
-        );
-        self.selected_component_presets
-            .insert(self.selected_page, self.preset_index);
-        self.selected_page = page;
-        self.preset_index = preset_index;
-        self.selected_component_presets.insert(page, preset_index);
-        self.screen_state = self.screen_states.restore(page, preset_index);
     }
 }
 
@@ -128,6 +105,7 @@ pub(super) fn apply_mouse_click(
     let right_started = click_started(window, MouseButton::Right, right_mouse_was_down);
     if !window.get_mouse_down(MouseButton::Left) {
         state.drag_scroll_target = None;
+        state.text_area_resize_dragging = false;
         if state.screen_state.release_button_press() {
             return true;
         }
@@ -144,6 +122,10 @@ pub(super) fn apply_mouse_click(
         && let Some(target) = state.drag_scroll_target
     {
         return apply_scrollbar_drag_target(state, target, x, raw_y);
+    }
+    let y = click_content_y(state, x, raw_y);
+    if window.get_mouse_down(MouseButton::Left) && state.text_area_resize_dragging {
+        return text_area_resize::apply_drag_at(state, x, y);
     }
     if !left_started && !right_started {
         return false;
@@ -174,7 +156,10 @@ pub(super) fn apply_mouse_click(
         state.drag_scroll_target = Some(PanelScrollDragTarget::Horizontal(region));
         return apply_horizontal_scrollbar_drag(state, region, x);
     }
-    let y = click_content_y(state, x, raw_y);
+    if left_started && text_area_resize::handle_at(state, x, y) {
+        state.text_area_resize_dragging = true;
+        return text_area_resize::apply_drag_at(state, x, y);
+    }
     if right_started {
         return apply_context_click(state, x, y);
     }
@@ -235,10 +220,6 @@ fn normalize_mouse_point(window: &Window, x: f32, y: f32) -> Option<CanvasPoint>
     )
 }
 
-fn normalized_preset_index(page: &str, preset_index: usize) -> usize {
-    preset_index.min(StoryPresetLabels::for_page(page).len().saturating_sub(1))
-}
-
 #[cfg(test)]
 pub(super) fn apply_scroll_delta_at_for_test(
     state: &mut StorybookWindowState,
@@ -247,6 +228,34 @@ pub(super) fn apply_scroll_delta_at_for_test(
     delta_y: f32,
 ) -> bool {
     scroll_operation::apply_scroll_delta_at(state, x, y, delta_y)
+}
+
+#[cfg(test)]
+pub(super) fn apply_scroll_delta_x_at_for_test(
+    state: &mut StorybookWindowState,
+    x: usize,
+    y: usize,
+    delta_x: f32,
+) -> bool {
+    scroll_operation::apply_scroll_delta_x_at(state, x, y, delta_x)
+}
+
+#[cfg(test)]
+pub(super) fn apply_text_area_resize_drag_at_for_test(
+    state: &mut StorybookWindowState,
+    x: usize,
+    y: usize,
+) -> bool {
+    text_area_resize::apply_drag_at(state, x, y)
+}
+
+#[cfg(test)]
+pub(super) fn cursor_style_at_for_test(
+    state: &StorybookWindowState,
+    x: usize,
+    y: usize,
+) -> StorybookCursorStyle {
+    cursor_operation::cursor_style_at(state, x, y)
 }
 
 #[cfg(test)]

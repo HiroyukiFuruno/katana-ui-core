@@ -25,7 +25,8 @@ const TOGGLE_REL_Y: usize = 36;
 const TOGGLE_ROW_WIDTH: usize = 294;
 const TOGGLE_ROW_HEIGHT: usize = 34;
 const GENERIC_ACTION_WIDTH: usize = 344;
-const GENERIC_ACTION_HEIGHT: usize = 108;
+const GENERIC_ACTION_HEIGHT: usize = 132;
+const TABS_ACTION_WIDTH: usize = 520;
 const ACTION_MARKER_HEIGHT: usize = 4;
 const ACTION_LABEL_X_OFFSET: usize = 18;
 const ACTION_LABEL_Y_OFFSET: usize = 18;
@@ -106,6 +107,9 @@ pub(super) fn draw_runtime_state(
         ACTION_MARKER_HEIGHT,
         render.palette.accent,
     );
+    if !should_draw_runtime_label(scenario.selected_page) {
+        return;
+    }
     render.code_text.draw(
         canvas,
         &format!("clicked {}", scenario.screen_state.action_count),
@@ -114,6 +118,10 @@ pub(super) fn draw_runtime_state(
         ACTION_TEXT_SIZE,
         render.palette.text,
     );
+}
+
+fn should_draw_runtime_label(page: &str) -> bool {
+    !matches!(page, "text-input" | "text-area")
 }
 
 fn is_button_page(page: &str) -> bool {
@@ -172,6 +180,14 @@ pub(super) fn component_action_hit_rect(page: &str) -> LayoutRect {
             HERO_PREVIEW_Y + TOGGLE_REL_Y,
             TOGGLE_ROW_WIDTH,
             TOGGLE_ROW_HEIGHT,
+        );
+    }
+    if page == "tabs" {
+        return LayoutRect::new(
+            HERO_PREVIEW_X,
+            HERO_PREVIEW_Y,
+            TABS_ACTION_WIDTH,
+            GENERIC_ACTION_HEIGHT,
         );
     }
     LayoutRect::new(

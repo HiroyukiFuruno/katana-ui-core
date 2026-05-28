@@ -70,7 +70,7 @@ fn text_on_hidpi_canvas_has_more_anti_aliased_pixels_than_nearest_scaled_1x_canv
         .filter(|(lhs, rhs)| lhs != rhs)
         .count();
 
-    assert_eq!(false, scaled.pixels() == scaled_from_logical.pixels());
+    assert!(scaled.pixels() != scaled_from_logical.pixels());
     assert!(
         antialias_hidpi > 0 && antialias_nearest > 0,
         "both render paths should produce anti-aliased pixels"

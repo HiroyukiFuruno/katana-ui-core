@@ -1,6 +1,9 @@
 use super::{
-    Canvas, StorybookVisual, layout_metrics, palette, preview, preview_contract, preview_detail,
+    Canvas, StorybookVisual, layout_metrics, palette, preset_tabs, preview, preview_contract,
+    preview_detail,
 };
+use crate::catalog::StoryPresetLabels;
+use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::theme::ThemeSnapshot;
 use std::collections::BTreeMap;
 
@@ -127,6 +130,22 @@ fn katana_storybook_typography_and_spacing_samples_fit_preview_lane() {
     assert_eq!(0, layout_metrics::PRESET_GAP);
     assert_eq!(24, layout_metrics::NAV_ROW_HEIGHT);
     assert_eq!(28, layout_metrics::NAV_ROW_STEP);
+}
+
+#[test]
+fn preset_tab_labels_are_measured_inside_each_tab() {
+    let facade = UiCoreFacade::default();
+    let text = super::text::TextRenderer::load(&facade, "body");
+
+    for label in StoryPresetLabels::for_page("text-input") {
+        let rect = layout_metrics::preset_tab_rect(0);
+        let (label_width, clip_width) = preset_tabs::tab_label_widths_for_test(&text, rect, label);
+
+        assert!(
+            label_width <= clip_width,
+            "preset tab label must fit: {label} width={label_width} clip={clip_width}",
+        );
+    }
 }
 
 #[test]

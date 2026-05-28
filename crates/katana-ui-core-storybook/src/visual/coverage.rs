@@ -1,3 +1,4 @@
+use crate::DEFAULT_STORYBOOK_PAGE;
 use crate::catalog::StoryExample;
 use crate::requirements::StoryRequirements;
 use katana_ui_core::render_model::UiNodeKind;
@@ -85,9 +86,9 @@ pub(super) fn visual_coverage_report(examples: &[StoryExample]) -> StorybookVisu
         }
     }
 
-    let dark = render::render_storybook_canvas_for("dark", "button", false);
-    let light = render::render_storybook_canvas_for("light", "button", false);
-    let operation_after = render::render_storybook_canvas_for("dark", "button", true);
+    let dark = render::render_storybook_canvas_for("dark", DEFAULT_STORYBOOK_PAGE, false);
+    let light = render::render_storybook_canvas_for("light", DEFAULT_STORYBOOK_PAGE, false);
+    let operation_after = render::render_storybook_canvas_for("dark", DEFAULT_STORYBOOK_PAGE, true);
     let markers = coverage_markers::build(examples);
 
     StorybookVisualCoverageReport {

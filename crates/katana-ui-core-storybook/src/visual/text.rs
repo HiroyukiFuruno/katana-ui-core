@@ -7,6 +7,7 @@ use std::cell::RefCell;
 #[cfg(test)]
 pub(crate) use super::text_raster::TextCacheStats;
 use super::text_raster::{TextRasterCache, TextStyle};
+use super::text_raster_request::TextRasterDrawRequest;
 
 const LINE_HEIGHT_RATIO: f32 = 1.45;
 const REGULAR_WEIGHT: u16 = 400;
@@ -71,6 +72,46 @@ impl TextRenderer {
         );
     }
 
+    pub(crate) fn draw_in_box(
+        &self,
+        canvas: &mut Canvas,
+        text: &str,
+        text_box: TextBox,
+        size: f32,
+        color: u32,
+    ) {
+        let origin = self.origin_in_box(text, text_box, size);
+        self.draw_layout(
+            canvas,
+            text,
+            origin.x,
+            origin.y,
+            TextStyle::new(size, text_box.line_height(), color),
+            canvas.scale_factor(),
+        );
+    }
+
+    pub(crate) fn measure_width(&self, text: &str, size: f32) -> usize {
+        self.raster_cache.borrow_mut().measure_width(
+            text,
+            TextStyle::new(size, size * LINE_HEIGHT_RATIO, 0),
+            &self.font,
+            &mut self.font_system.borrow_mut(),
+            &mut self.swash_cache.borrow_mut(),
+            1.0,
+        )
+    }
+
+    #[cfg(test)]
+    pub(crate) fn origin_in_box_for_test(
+        &self,
+        text: &str,
+        text_box: TextBox,
+        size: f32,
+    ) -> TextOrigin {
+        self.origin_in_box(text, text_box, size)
+    }
+
     #[cfg(test)]
     #[must_use]
     pub(crate) fn font_family(&self) -> FontFamily {
@@ -99,16 +140,95 @@ impl TextRenderer {
         };
         self.raster_cache.borrow_mut().draw(
             canvas,
-            text,
-            style,
-            &self.font,
+            TextRasterDrawRequest {
+                text,
+                style,
+                font: &self.font,
+                origin_x: (x as f64 * f64::from(normalized_scale_factor)).round() as usize,
+                origin_y: (y as f64 * f64::from(normalized_scale_factor)).round() as usize,
+                scale_factor: normalized_scale_factor,
+            },
             &mut self.font_system.borrow_mut(),
             &mut self.swash_cache.borrow_mut(),
-            (x as f64 * f64::from(normalized_scale_factor)).round() as usize,
-            (y as f64 * f64::from(normalized_scale_factor)).round() as usize,
-            normalized_scale_factor,
         );
     }
+
+    fn origin_in_box(&self, text: &str, text_box: TextBox, size: f32) -> TextOrigin {
+        let width = self.measure_width(text, size);
+        let x = match text_box.horizontal_align {
+            TextHorizontalAlign::Start => text_box.x,
+            TextHorizontalAlign::Center => text_box.x + text_box.width.saturating_sub(width) / 2,
+        };
+        let y = match text_box.vertical_align {
+            TextVerticalAlign::Top => text_box.y,
+            TextVerticalAlign::Center => text_box.y,
+        };
+        TextOrigin { x, y }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct TextOrigin {
+    pub(crate) x: usize,
+    pub(crate) y: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct TextBox {
+    x: usize,
+    y: usize,
+    width: usize,
+    height: usize,
+    horizontal_align: TextHorizontalAlign,
+    vertical_align: TextVerticalAlign,
+}
+
+impl TextBox {
+    pub(crate) const fn new(x: usize, y: usize, width: usize, height: usize) -> Self {
+        Self {
+            x,
+            y,
+            width,
+            height,
+            horizontal_align: TextHorizontalAlign::Start,
+            vertical_align: TextVerticalAlign::Top,
+        }
+    }
+
+    pub(crate) const fn centered(x: usize, y: usize, width: usize, height: usize) -> Self {
+        Self::new(x, y, width, height)
+            .justify_content(TextHorizontalAlign::Center)
+            .align_items(TextVerticalAlign::Center)
+    }
+
+    pub(crate) const fn justify_content(mut self, align: TextHorizontalAlign) -> Self {
+        self.horizontal_align = align;
+        self
+    }
+
+    pub(crate) const fn align_items(mut self, align: TextVerticalAlign) -> Self {
+        self.vertical_align = align;
+        self
+    }
+
+    const fn line_height(self) -> f32 {
+        match self.vertical_align {
+            TextVerticalAlign::Top => self.height as f32,
+            TextVerticalAlign::Center => self.height as f32,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TextHorizontalAlign {
+    Start,
+    Center,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TextVerticalAlign {
+    Top,
+    Center,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

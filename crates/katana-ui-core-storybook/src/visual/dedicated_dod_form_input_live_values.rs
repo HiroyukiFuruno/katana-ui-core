@@ -1,8 +1,13 @@
 use super::render_context::ScenarioContext;
 
 const INPUT_IME_PRESET_INDEX: usize = 1;
-const INPUT_INVALID_PRESET_INDEX: usize = 2;
-const INPUT_THEME_PRESET_INDEX: usize = 3;
+const INPUT_READONLY_PRESET_INDEX: usize = 2;
+const INPUT_PLACEHOLDER_PRESET_INDEX: usize = 3;
+const INPUT_RESERVED_SLOT_PRESET_INDEX: usize = 4;
+const INPUT_LEADING_ICON_PRESET_INDEX: usize = 5;
+const INPUT_ICON_BUTTONS_PRESET_INDEX: usize = 6;
+const INPUT_INVALID_PRESET_INDEX: usize = 7;
+const INPUT_THEME_PRESET_INDEX: usize = 8;
 const SEARCH_SUBMIT_PRESET_INDEX: usize = 1;
 const SEARCH_REGEX_PRESET_INDEX: usize = 2;
 const SEARCH_THEME_PRESET_INDEX: usize = 3;
@@ -14,8 +19,17 @@ pub(super) fn input_value(scenario: ScenarioContext<'_>) -> &str {
     if scenario.screen_state.has_widget_action() {
         return "typed 日本語 🔷";
     }
-    match scenario.preset_index {
+    input_static_value_for_preset(scenario.preset_index)
+}
+
+pub(super) fn input_static_value_for_preset(preset_index: usize) -> &'static str {
+    match preset_index {
         INPUT_IME_PRESET_INDEX => "composing にほんご",
+        INPUT_READONLY_PRESET_INDEX => "readonly value",
+        INPUT_PLACEHOLDER_PRESET_INDEX => "",
+        INPUT_RESERVED_SLOT_PRESET_INDEX => "reserved slot",
+        INPUT_LEADING_ICON_PRESET_INDEX => "search term",
+        INPUT_ICON_BUTTONS_PRESET_INDEX => "file.rs",
         INPUT_INVALID_PRESET_INDEX => "invalid@example",
         INPUT_THEME_PRESET_INDEX => "theme input bg",
         _ => "日本語 value 🔷",

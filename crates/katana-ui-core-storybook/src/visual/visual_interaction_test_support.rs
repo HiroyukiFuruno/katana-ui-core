@@ -10,6 +10,10 @@ pub(super) fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {
     canvas.pixels().get(y * canvas.width() + x).copied()
 }
 
+pub(super) fn require_some<T>(value: Option<T>, message: &str) -> Result<T, String> {
+    value.ok_or_else(|| message.to_string())
+}
+
 pub(super) fn rect_pixel_diff(rect: LayoutRect, before: &Canvas, after: &Canvas) -> usize {
     let mut diff = 0;
     for current_y in rect.y..rect.bottom() {

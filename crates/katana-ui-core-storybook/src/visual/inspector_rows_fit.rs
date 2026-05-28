@@ -2,13 +2,15 @@ use super::{
     ROW_MAX_CHARS, ScenarioContext, StoryExample, history_rows, quality_rows, settings_rows,
     state_rows,
 };
+use crate::DEFAULT_STORYBOOK_PAGE;
 use crate::visual::screen_state::StorybookScreenState;
 
 pub(super) fn rows_fit(examples: &[StoryExample]) -> bool {
     let screen_state = StorybookScreenState::default();
     let scenario = ScenarioContext {
-        selected_page: "button",
+        selected_page: DEFAULT_STORYBOOK_PAGE,
         preset_index: 0,
+        preset_tab_scroll_x: 0,
         tree_expansion: Default::default(),
         scrollbar_visible: true,
         panel_scroll: Default::default(),

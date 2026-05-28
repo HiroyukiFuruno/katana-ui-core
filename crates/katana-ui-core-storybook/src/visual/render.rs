@@ -2,10 +2,12 @@ use super::canvas::Canvas;
 use super::navigation_tree::TreeExpansionState;
 use super::palette::VisualPalette;
 use super::panel_scroll_state::PanelScrollOffsets;
+use super::preset_tab_scroll;
 use super::render_context::{RenderContext, ScenarioContext, ShellContext};
 use super::screen_state::StorybookScreenState;
 use super::shell;
 use super::text::TextRenderer;
+use crate::DEFAULT_STORYBOOK_PAGE;
 use crate::catalog::StoryCatalog;
 use crate::catalog::StoryExample;
 use crate::panel::StorybookPanel;
@@ -24,6 +26,7 @@ pub(super) struct StorybookRenderOptions<'a> {
     pub(super) theme_id: &'a str,
     pub(super) selected_page: &'a str,
     pub(super) preset_index: usize,
+    pub(super) preset_tab_scroll_x: usize,
     pub(super) scroll_y: usize,
     pub(super) scrollbar_visible: bool,
     pub(super) panel_scroll: PanelScrollOffsets,
@@ -34,7 +37,7 @@ pub(super) struct StorybookRenderOptions<'a> {
 }
 
 pub(super) fn render_storybook_canvas() -> Canvas {
-    render_storybook_canvas_for("dark", "button", false)
+    render_storybook_canvas_for("dark", DEFAULT_STORYBOOK_PAGE, false)
 }
 
 pub(super) fn render_storybook_canvas_for(
@@ -64,6 +67,7 @@ pub(super) fn render_storybook_canvas_for_preset(
         theme_id,
         selected_page,
         preset_index,
+        preset_tab_scroll_x: preset_tab_scroll::active_index_scroll_x(selected_page, preset_index),
         scroll_y,
         scrollbar_visible: true,
         panel_scroll: PanelScrollOffsets::default(),
@@ -111,32 +115,28 @@ impl StorybookFrameRenderer {
         scale_factor: f32,
     ) -> Canvas {
         let key = ContentFrameKey::from_options_scaled(&options, scale_factor);
-        if self
-            .content_cache
-            .as_ref()
-            .is_some_and(|cache| cache.key == key)
-        {
+        if let Some(cache) = self.content_cache.as_ref().filter(|cache| cache.key == key) {
             self.content_cache_hits += 1;
-        } else {
-            let mut content_options = options.clone();
-            content_options.scroll_y = 0;
-            content_options.panel_scroll.root_x = 0;
-            content_options.panel_scroll.root_y = 0;
-            let canvas = self.theme_cache(options.theme_id).render_content(
-                &self.examples,
-                &content_options,
-                scale_factor,
-            );
-            self.content_renders += 1;
-            self.content_cache = Some(ContentFrameCache { key, canvas });
+            let background = self.theme_cache(options.theme_id).background();
+            return cache
+                .canvas
+                .viewport_y(options.scroll_y, VIEWPORT_HEIGHT, background);
         }
-        let theme = self.theme_cache(options.theme_id);
-        let content = &self
-            .content_cache
-            .as_ref()
-            .expect("content cache should be present after render")
-            .canvas;
-        let viewport = content.viewport_y(options.scroll_y, VIEWPORT_HEIGHT, theme.background());
+
+        let mut content_options = options.clone();
+        content_options.scroll_y = 0;
+        content_options.panel_scroll.root_x = 0;
+        content_options.panel_scroll.root_y = 0;
+        let (canvas, background) = {
+            let theme = self.theme_cache(options.theme_id);
+            (
+                theme.render_content(&self.examples, &content_options, scale_factor),
+                theme.background(),
+            )
+        };
+        let viewport = canvas.viewport_y(options.scroll_y, VIEWPORT_HEIGHT, background);
+        self.content_renders += 1;
+        self.content_cache = Some(ContentFrameCache { key, canvas });
         viewport
     }
 
@@ -196,6 +196,7 @@ impl ThemeFrameCache {
         let scenario = ScenarioContext {
             selected_page: options.selected_page,
             preset_index: options.preset_index,
+            preset_tab_scroll_x: options.preset_tab_scroll_x,
             tree_expansion: options.tree_expansion,
             scrollbar_visible: options.scrollbar_visible,
             panel_scroll: options.panel_scroll,
@@ -224,6 +225,7 @@ struct ContentFrameKey {
     theme_id: &'static str,
     selected_page: String,
     preset_index: usize,
+    preset_tab_scroll_x: usize,
     scale_bits: u32,
     scrollbar_visible: bool,
     panel_scroll: PanelScrollOffsets,
@@ -242,6 +244,7 @@ impl ContentFrameKey {
             theme_id: theme_key(options.theme_id),
             selected_page: options.selected_page.to_string(),
             preset_index: options.preset_index,
+            preset_tab_scroll_x: options.preset_tab_scroll_x,
             scale_bits: scale_factor.to_bits(),
             scrollbar_visible: options.scrollbar_visible,
             panel_scroll,
@@ -274,8 +277,31 @@ fn theme_key(theme_id: &str) -> &'static str {
 }
 
 #[cfg(test)]
+pub(super) fn render_storybook_canvas_with_screen_state(
+    theme_id: &str,
+    selected_page: &str,
+    preset_index: usize,
+    screen_state: StorybookScreenState,
+) -> Canvas {
+    render_storybook_canvas_with_options(StorybookRenderOptions {
+        theme_id,
+        selected_page,
+        preset_index,
+        preset_tab_scroll_x: preset_tab_scroll::active_index_scroll_x(selected_page, preset_index),
+        scroll_y: 0,
+        scrollbar_visible: true,
+        panel_scroll: PanelScrollOffsets::default(),
+        tree_expansion: TreeExpansionState::default(),
+        show_navigation_lines: true,
+        show_navigation_text_connectors: false,
+        screen_state,
+    })
+}
+
+#[cfg(test)]
 mod tests {
     use super::{HEIGHT, StorybookFrameRenderer, StorybookRenderOptions, WIDTH};
+    use crate::DEFAULT_STORYBOOK_PAGE;
     use crate::visual::layout_metrics::SCROLL_STEP;
     use crate::visual::navigation_tree::TreeExpansionState;
     use crate::visual::panel_scroll_state::PanelScrollOffsets;
@@ -291,8 +317,10 @@ mod tests {
             screen_state.clone(),
         ));
 
-        let mut panel_scroll = PanelScrollOffsets::default();
-        panel_scroll.root_y = SCROLL_STEP;
+        let panel_scroll = PanelScrollOffsets {
+            root_y: SCROLL_STEP,
+            ..PanelScrollOffsets::default()
+        };
         renderer.render(options(SCROLL_STEP, panel_scroll, screen_state));
 
         let stats = renderer.stats();
@@ -325,8 +353,9 @@ mod tests {
     ) -> StorybookRenderOptions<'static> {
         StorybookRenderOptions {
             theme_id: "dark",
-            selected_page: "button",
+            selected_page: DEFAULT_STORYBOOK_PAGE,
             preset_index: 0,
+            preset_tab_scroll_x: 0,
             scroll_y,
             scrollbar_visible: true,
             panel_scroll,
@@ -352,25 +381,4 @@ mod tests {
         assert_eq!(3, stats.content_renders);
         assert_eq!(1, stats.content_cache_hits);
     }
-}
-
-#[cfg(test)]
-pub(super) fn render_storybook_canvas_with_screen_state(
-    theme_id: &str,
-    selected_page: &str,
-    preset_index: usize,
-    screen_state: StorybookScreenState,
-) -> Canvas {
-    render_storybook_canvas_with_options(StorybookRenderOptions {
-        theme_id,
-        selected_page,
-        preset_index,
-        scroll_y: 0,
-        scrollbar_visible: true,
-        panel_scroll: PanelScrollOffsets::default(),
-        tree_expansion: TreeExpansionState::default(),
-        show_navigation_lines: true,
-        show_navigation_text_connectors: false,
-        screen_state,
-    })
 }

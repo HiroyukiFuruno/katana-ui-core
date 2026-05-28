@@ -24,38 +24,30 @@ const NAV_DISCLOSURE_SIZE: usize = 7;
 
 pub(super) fn navigation_sample_rows(
     expansion: TreeExpansionState,
-) -> [(usize, usize); NAV_SAMPLE_ROW_COUNT] {
-    [
+) -> Option<[(usize, usize); NAV_SAMPLE_ROW_COUNT]> {
+    Some([
         (
             NAV_DEPTH_GROUP,
-            navigation_row_y_for_group(expansion, StoryGroup::Foundation)
-                .expect("group row should be visible"),
+            navigation_row_y_for_group(expansion, StoryGroup::Foundation)?,
         ),
-        (
-            NAV_DEPTH_SECTION,
-            navigation_row_y_for_section(expansion).expect("section row should be visible"),
-        ),
+        (NAV_DEPTH_SECTION, navigation_row_y_for_section(expansion)?),
         (
             NAV_DEPTH_PAGE,
-            navigation_row_y_for_section_page(expansion).expect("page row should be visible"),
+            navigation_row_y_for_section_page(expansion)?,
         ),
-    ]
+    ])
 }
 
 pub(super) fn navigation_expandable_sample_rows(
     expansion: TreeExpansionState,
-) -> [(usize, usize); NAV_EXPANDABLE_SAMPLE_ROW_COUNT] {
-    [
+) -> Option<[(usize, usize); NAV_EXPANDABLE_SAMPLE_ROW_COUNT]> {
+    Some([
         (
             NAV_DEPTH_GROUP,
-            navigation_row_y_for_group(expansion, StoryGroup::Foundation)
-                .expect("group row should be visible"),
+            navigation_row_y_for_group(expansion, StoryGroup::Foundation)?,
         ),
-        (
-            NAV_DEPTH_SECTION,
-            navigation_row_y_for_section(expansion).expect("section row should be visible"),
-        ),
-    ]
+        (NAV_DEPTH_SECTION, navigation_row_y_for_section(expansion)?),
+    ])
 }
 
 pub(super) fn navigation_line_x(depth: usize) -> usize {
@@ -65,6 +57,10 @@ pub(super) fn navigation_line_x(depth: usize) -> usize {
         NAV_DEPTH_PAGE => NAV_PAGE_LINE_X,
         _ => NAV_PAGE_LINE_X,
     }
+}
+
+pub(super) fn require_navigation_value<T>(value: Option<T>, message: &str) -> Result<T, String> {
+    value.ok_or_else(|| message.to_string())
 }
 
 pub(super) fn row_y_and_depth_in_navigation(
@@ -225,6 +221,7 @@ pub(super) fn render_navigation_canvas(
         theme_id: "dark",
         selected_page,
         preset_index: 0,
+        preset_tab_scroll_x: 0,
         scroll_y: 0,
         scrollbar_visible: true,
         panel_scroll: crate::visual::panel_scroll_state::PanelScrollOffsets::default(),

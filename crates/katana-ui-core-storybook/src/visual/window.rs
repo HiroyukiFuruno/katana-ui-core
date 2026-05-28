@@ -96,6 +96,7 @@ fn run_single_window(
     let mut state = StorybookWindowState::default();
     let mut left_mouse_was_down = false;
     let mut right_mouse_was_down = false;
+    let mut text_caret_epoch_frame = 0;
     let mut presented = present_for_window(window, &frame);
     let mut presented_window_size = window.get_size();
     while frames == 0 || frame_index < frames {
@@ -111,7 +112,13 @@ fn run_single_window(
             &mut right_mouse_was_down,
         );
         let keyed = apply_keyboard(window, &mut state);
-        let frame_changed = scrolled || hovered || clicked || keyed;
+        if clicked || keyed {
+            text_caret_epoch_frame = frame_index;
+            show_active_text_caret(&mut state);
+        }
+        let caret_changed =
+            update_active_text_caret(&mut state, frame_index, text_caret_epoch_frame);
+        let frame_changed = scrolled || hovered || clicked || keyed || caret_changed;
         if frame_changed {
             frame = render_frame_for_window_scale(renderer, &state, window);
         }
@@ -125,6 +132,31 @@ fn run_single_window(
         frame_index += 1;
     }
     Ok(())
+}
+
+fn show_active_text_caret(state: &mut StorybookWindowState) -> bool {
+    match state.selected_page {
+        "text-input" => state.screen_state.show_text_input_caret(),
+        "text-area" => state.screen_state.show_text_area_caret(),
+        _ => false,
+    }
+}
+
+fn update_active_text_caret(
+    state: &mut StorybookWindowState,
+    frame_index: usize,
+    text_caret_epoch_frame: usize,
+) -> bool {
+    let elapsed_frames = frame_index.saturating_sub(text_caret_epoch_frame);
+    match state.selected_page {
+        "text-input" => state
+            .screen_state
+            .update_text_input_caret_visibility(elapsed_frames),
+        "text-area" => state
+            .screen_state
+            .update_text_area_caret_visibility(elapsed_frames),
+        _ => false,
+    }
 }
 
 fn present_for_window(window: &Window, frame: &Canvas) -> Canvas {
@@ -143,9 +175,9 @@ fn should_present_physical_frame_directly(frame: &Canvas, window_size: (usize, u
         && frame.logical_height() == window_size.1
 }
 
-fn apply_hover(window: &Window, state: &mut StorybookWindowState) -> bool {
+fn apply_hover(window: &mut Window, state: &mut StorybookWindowState) -> bool {
     let Some((x, y)) = window.get_unscaled_mouse_pos(minifb::MouseMode::Discard) else {
-        return state.screen_state.set_preview_hovered(false);
+        return clear_hover(state);
     };
     let (width, height) = window.get_size();
     let Some(point) = super::window_coordinates::window_point_to_canvas_point(
@@ -153,9 +185,21 @@ fn apply_hover(window: &Window, state: &mut StorybookWindowState) -> bool {
         super::window_coordinates::SurfaceSize::new(width, height),
         super::window_coordinates::SurfaceSize::new(render::WIDTH, render::HEIGHT),
     ) else {
-        return state.screen_state.set_preview_hovered(false);
+        return clear_hover(state);
     };
+    super::window_cursor::apply_cursor_style(
+        window,
+        super::window_interaction::cursor_style_at(state, point.x, point.y),
+    );
     super::window_interaction::apply_hover_at(state, point.x, point.y)
+}
+
+fn clear_hover(state: &mut StorybookWindowState) -> bool {
+    let preview_changed = state.screen_state.set_preview_hovered(false);
+    let icon_button_changed = state
+        .screen_state
+        .set_hovered_text_input_icon_button_index(None);
+    preview_changed || icon_button_changed
 }
 
 fn render_frame_for_window_scale(
@@ -176,6 +220,7 @@ fn render_frame_for_scale(
             theme_id: state.theme_id,
             selected_page: state.selected_page,
             preset_index: state.preset_index,
+            preset_tab_scroll_x: state.preset_tab_scroll_x,
             scroll_y: state.scroll_y,
             scrollbar_visible: state.scrollbar_visible,
             panel_scroll: state.panel_scroll,

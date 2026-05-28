@@ -24,6 +24,24 @@ pub(super) fn draw_setting_outline(
     }
 }
 
+pub(super) fn draw_hover_border(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    rect: Rect,
+) {
+    if !scenario.screen_state.preview_hovered || scenario.screen_state.button_options.disabled {
+        return;
+    }
+    canvas.stroke_rect(
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
+        palette.hover_border,
+    );
+}
+
 pub(super) fn draw_invisible_placeholder(canvas: &mut Canvas, palette: &VisualPalette, rect: Rect) {
     canvas.stroke_rect(rect.x, rect.y, rect.width, rect.height, palette.muted);
 }

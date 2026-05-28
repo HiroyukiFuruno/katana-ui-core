@@ -1,4 +1,5 @@
 use crate::visual::canvas::Canvas;
+use crate::visual::text_raster_request::TextRasterDrawRequest;
 use cosmic_text::{
     Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, SwashCache, Weight, Wrap,
 };
@@ -47,20 +48,38 @@ impl TextRasterCache {
     pub(super) fn draw(
         &mut self,
         canvas: &mut Canvas,
+        request: TextRasterDrawRequest<'_>,
+        font_system: &mut FontSystem,
+        swash_cache: &mut SwashCache,
+    ) {
+        let raster_index = self.index_or_insert(
+            request.text,
+            request.style,
+            request.font,
+            font_system,
+            swash_cache,
+            request.scale_factor,
+        );
+        self.entries[raster_index].raster.draw(
+            canvas,
+            request.origin_x,
+            request.origin_y,
+            request.style.color,
+        );
+    }
+
+    pub(super) fn measure_width(
+        &mut self,
         text: &str,
         style: TextStyle,
         font: &FontToken,
         font_system: &mut FontSystem,
         swash_cache: &mut SwashCache,
-        origin_x: usize,
-        origin_y: usize,
         scale_factor: f32,
-    ) {
+    ) -> usize {
         let raster_index =
             self.index_or_insert(text, style, font, font_system, swash_cache, scale_factor);
-        self.entries[raster_index]
-            .raster
-            .draw(canvas, origin_x, origin_y, style.color);
+        self.entries[raster_index].raster.width()
     }
 
     #[cfg(test)]
@@ -139,6 +158,14 @@ impl CachedTextRaster {
             }
             canvas.blend_physical(x as usize, y as usize, color, pixel.alpha);
         }
+    }
+
+    fn width(&self) -> usize {
+        self.pixels
+            .iter()
+            .filter_map(|pixel| usize::try_from(pixel.x + 1).ok())
+            .max()
+            .unwrap_or(0)
     }
 }
 

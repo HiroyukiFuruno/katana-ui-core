@@ -134,6 +134,7 @@ class StorybookUiHarnessSources:
         paths = [
             "crates/katana-ui-core-storybook/src/visual/storybook_ui_option_contract.rs",
             "crates/katana-ui-core-storybook/src/visual/storybook_ui_runtime_options.rs",
+            "crates/katana-ui-core-storybook/src/visual/storybook_ui_tabs_options.rs",
         ]
         return [self.read(relative) for relative in paths if (self.root / relative).exists()]
 
