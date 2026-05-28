@@ -62,7 +62,7 @@ KUC が持つ対象は、最小部品（atoms）と複合部品（molecules）�
 | 対象 | 画面上でどう見えるか | 何を操作するものか | KUC の扱い |
 | --- | --- | --- | --- |
 | 本文エディター | 行番号、カーソル、選択範囲、診断マーカー付きの大きな編集面 | 文書本文を編集する | KLE が実装する。KUC は周辺の `TextArea`、`ContextMenu`、`Toolbar`、`HoverCard`、`DiagnosticsList` を提供する |
-| 本文プレビュー | Markdown / 図表 / 画像 / 表を表示するスクロール面 | 文書の閲覧、選択、スクロール、リンク操作 | KDV が実装する。KUC は `TreeView`、`Toolbar`、`Popover`、`StatusBar`、`EmptyState` などを提供する |
+| 本文プレビュー | Markdown / 図表 / 画像 / 表を表示するスクロール面 | 文書の閲覧、選択、スクロール、リンク操作 | KDV が実装する。KUC は `ImageSurface`、`TreeView`、`Toolbar`、`Popover`、`StatusBar`、`EmptyState` などを提供する |
 | チャット画面全体 | header + message list + composer の縦積み画面 | AI への入力、履歴閲覧、提供元切替 | katana-chat-ui が実装する。KUC は入力、チップ、メニュー、カード、進捗表示などを提供する |
 | アプリの shell | title bar、sidebar、main、status bar を含む画面全体 | アプリ全体のナビゲーション | katana / KDV / KLE / chat 側が組む。KUC は小部品のみ |
 | splash 画面テンプレート | 起動ロゴ、version、loading、retry を画面中央に出す | 起動状態を示す | template としては KUC 対象外。KUC は `Progress`、`Banner`、`EmptyState`、`Skeleton` を提供する |
@@ -95,6 +95,7 @@ KUC が持つ対象は、最小部品（atoms）と複合部品（molecules）�
 | 20 | startup state composition | loading / error / retry を持つ小さな状態面 | 起動・初期化状態を表示する | app splash、session loading | splash template は対象外。KUC は state panel か既存 molecule の組合せを提供 |
 | 21 | command launcher / search results | 上部入力欄と、icon / label / shortcut 付き結果一覧 | command 検索、slash command、履歴検索 | katana command palette、chat slash launcher | result row、provider group、keyboard selection、shortcut badge、disabled guard、virtualized highlight は KUC contract へ移管済み。domain command registry は consumer 側 |
 | 22 | search control strip | 検索欄の横に match case / whole word / regex / 前後移動 / 件数が並ぶ | 検索条件、前後移動、replace request を consumer へ通知する | katana search modal、KLE find/replace、KDV viewer search、chat history search | `SearchBox` はあるが検索 option、件数、replace、navigation event が不足 |
+| 23 | preview surface image | HTML / PDF / PNG / JPG と同等の preview surface が viewer 本文として表示される | consumer が描画済みの RGBA surface、fit、scale、検索 highlight rect を adapter へ渡す | KDV viewer、export preview | `UiTree` / `PaintRequest` に RGBA surface を載せる `ImageSurface` 契約が不足 |
 
 ## 既存 UI では option で補えない差分
 
@@ -113,12 +114,13 @@ KUC が持つ対象は、最小部品（atoms）と複合部品（molecules）�
 | `KeyCap` | modifier + key の platform 表示、検索可能 cheatsheet が不足 | `13-add-shortcut-combo-display` |
 | `CommandPalette` | result row / provider group / keyboard selection / shortcut badge / virtualized highlight は `21-add-command-launcher-results` で対応済み。provider dispatch と app command registry は domain 側に残す | `21-add-command-launcher-results` |
 | `SearchBox` | match case / whole word / regex、前後移動、件数、replace controls は `SearchControlStrip` の typed state / action / event / Storybook settings へ移管済み | `22-add-search-control-strip` |
+| なし | KDV が描画済みの RGBA preview surface、content scale、fit、accessibility label、検索 highlight rect を `UiTree` / adapter plan に載せる契約がない | `23-add-preview-surface-image-contract` |
 
 ## 利用側が組む organisms / templates
 
 | 利用側 | KUC 部品を使って組むもの |
 | --- | --- |
-| KDV | viewer surface、TOC panel、image / diagram overlay controls、export side panel |
+| KDV | viewer surface、TOC panel、image / diagram overlay controls、export side panel。ただし viewer surface の描画済み RGBA payload は KUC `ImageSurface` node に載せられる |
 | KLE | editor surface、gutter、selection、diagnostic decoration、find bar |
 | katana-chat-ui | chat root、message thread、composer、vendor controls、history panel |
 | katana | app frame、workspace shell、title area、dashboard、splash screen |

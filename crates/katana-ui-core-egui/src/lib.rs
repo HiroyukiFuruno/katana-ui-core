@@ -6,7 +6,7 @@ use katana_ui_core::adapter_contract::{
 use katana_ui_core::event::UiEvent;
 use katana_ui_core::interaction::drag_and_drop::{DragData, DropEffect};
 use katana_ui_core::render_model::UiNodeId;
-use katana_ui_core::render_model::{RenderContext, UiNodeKind, UiTree};
+use katana_ui_core::render_model::{RenderContext, UiImageSurfaceRenderPlan, UiNodeKind, UiTree};
 use katana_ui_core::runtime::{AppConfig, AppHandle, AppLifecycle, RuntimeAdapter};
 use katana_ui_core::surface::PaintRequest;
 use katana_ui_core::window::{WindowCommand, WindowConfig};
@@ -21,6 +21,7 @@ impl WidgetAdapter for EguiCompatAdapter {
         EguiRenderPlan {
             root_kind: tree.root().kind(),
             child_count: tree.root().children().len(),
+            image_surfaces: UiImageSurfaceRenderPlan::collect_from_tree(tree),
         }
     }
 }
@@ -29,6 +30,7 @@ impl WidgetAdapter for EguiCompatAdapter {
 pub struct EguiRenderPlan {
     pub root_kind: UiNodeKind,
     pub child_count: usize,
+    pub image_surfaces: Vec<UiImageSurfaceRenderPlan>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -75,6 +77,7 @@ impl EguiSurfaceBridge {
         EguiRenderPlan {
             root_kind: request.tree().root().kind(),
             child_count: request.tree().root().children().len(),
+            image_surfaces: UiImageSurfaceRenderPlan::collect_from_tree(request.tree()),
         }
     }
 }
@@ -106,7 +109,7 @@ mod tests {
         EguiWindowAction, EguiWindowBridge,
     };
     use katana_ui_core::adapter_contract::{WidgetAdapter, WindowControlDispatchRequest};
-    use katana_ui_core::atom::{Button, Text};
+    use katana_ui_core::atom::{Button, ImageSurface, Text};
     use katana_ui_core::event::{DragEvent, UiEvent};
     use katana_ui_core::interaction::drag_and_drop::{DragData, DropEffect, OS_URL_TAG};
     use katana_ui_core::layout::{Column, Row};
@@ -115,6 +118,9 @@ mod tests {
     };
     use katana_ui_core::render_model::UiNodeId;
     use katana_ui_core::render_model::{RenderContext, UiNodeKind, UiTree};
+    use katana_ui_core::render_model::{
+        UiImageSurfaceHighlight, UiImageSurfaceValidationError, UiRect,
+    };
     use katana_ui_core::runtime::{AppConfig, RuntimeAdapter};
     use katana_ui_core::surface::{PaintRequest, SurfaceMetrics};
     use katana_ui_core::theme::ThemeId;
@@ -151,6 +157,33 @@ mod tests {
             UiNodeKind::Text,
             EguiSurfaceBridge.paint(&request).root_kind
         );
+    }
+
+    #[test]
+    fn surface_bridge_preserves_image_surface_contract() -> Result<(), UiImageSurfaceValidationError>
+    {
+        let request = PaintRequest::new(
+            WindowId::new("main"),
+            SurfaceMetrics::new(320.0, 240.0, 1.0, 96.0),
+        )
+        .with_tree(UiTree::new(
+            ImageSurface::from_rgba("Preview", "surface-sha", 1, 1, vec![12, 24, 36, 255])?
+                .highlight_rect(UiImageSurfaceHighlight::search_hit(
+                    UiRect::new(1, 2, 3, 4),
+                    "search hit",
+                )),
+        ));
+        let plan = EguiSurfaceBridge.paint(&request);
+
+        assert_eq!(UiNodeKind::ImageSurface, plan.root_kind);
+        assert_eq!(1, plan.image_surfaces.len());
+        assert_eq!("surface-sha", plan.image_surfaces[0].fingerprint);
+        assert_eq!(4, plan.image_surfaces[0].rgba_byte_len);
+        assert_eq!(
+            UiRect::new(1, 2, 3, 4),
+            plan.image_surfaces[0].highlight_rects[0].rect
+        );
+        Ok(())
     }
 
     #[test]

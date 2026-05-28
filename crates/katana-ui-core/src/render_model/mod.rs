@@ -6,6 +6,7 @@ mod common_types;
 mod context_menu_item;
 mod context_menu_props;
 mod identity;
+mod image_surface_props;
 mod kind;
 mod props;
 mod text_area_props;
@@ -29,6 +30,10 @@ pub use context_menu_props::{
     UiContextMenuAnchor, UiContextMenuPlacement, UiContextMenuProps, UiContextMenuRect,
 };
 pub use identity::{UiNodeId, UiStateId};
+pub use image_surface_props::{
+    UiImageSurfaceFit, UiImageSurfaceHighlight, UiImageSurfaceProps, UiImageSurfaceRenderPlan,
+    UiImageSurfaceValidationError,
+};
 pub use kind::UiNodeKind;
 pub use props::{UiInteractionState, UiProps, UiSize, UiTone, UiVariant, UiVisualRole};
 pub use text_area_props::{
@@ -49,9 +54,9 @@ pub use typed::{
     UiPopoverFocusManagement, UiPopoverPlacement, UiPopoverProps, UiProgressMode, UiRect,
     UiScrollAreaAxis, UiScrollAreaProps, UiScrollbarDragState, UiScrollbarModel,
     UiScrollbarPlacement, UiScrollbarVisibility, UiSearchControlProps, UiSearchReplaceMode,
-    UiShortcutProps, UiSkeletonAnimation, UiSkeletonProps, UiSkeletonShape, UiSlotPlacement,
-    UiSlotSpec, UiSplitPaneAxis, UiSplitPaneHandleProps, UiSplitPaneProps, UiSplitPaneResizeMode,
-    UiStatusProps, UiSvgPaintPolicy, UiTextEntryProps, UiTextProps,
+    UiShortcutProps, UiSkeletonAnimation, UiSkeletonProps, UiSkeletonShape, UiSlotActionSpec,
+    UiSlotPlacement, UiSlotSpec, UiSplitPaneAxis, UiSplitPaneHandleProps, UiSplitPaneProps,
+    UiSplitPaneResizeMode, UiStatusProps, UiSvgPaintPolicy, UiTextEntryProps, UiTextProps,
 };
 
 #[cfg(test)]

@@ -4,11 +4,12 @@
 
 ## 結論
 
-KDV の `v0.2.0` Markdown viewer UI は、現行の KUC OpenSpec 計画で構築できる。
-そのため、KDV 向けの新規 OpenSpec change は追加しない。
+KDV の `v0.2.0` Markdown viewer UI の周辺 UI は、現行の KUC OpenSpec 計画で構築できる。
+追加で、KDV が生成した HTML / PDF / PNG / JPG 相当の RGBA preview surface を KUC `UiTree` に載せる契約は `23-add-preview-surface-image-contract` で扱う。
 
 KUC が提供するのは atoms / molecules / layout / panel / event / state / theme / font の契約までとする。
-Markdown 本文 viewer、TOC panel、hit-test metadata、画像・図形操作の意味、scroll sync、PDF page viewer は KDV 側が KUC 部品を組み合わせて実装する。
+Markdown 本文 viewer、TOC panel、hit-test metadata、画像・図形操作の意味、scroll sync、PDF page viewer は KDV 側が実装する。
+KUC は KDV owned surface を opaque な `ImageSurface` として adapter へ渡す。
 
 ## 読み取り元
 
@@ -26,7 +27,8 @@ Markdown 本文 viewer、TOC panel、hit-test metadata、画像・図形操作�
 
 | KDV 側で画面上に必要なもの | KUC が提供する必要があるもの | 既存 KUC 計画 | 判定 |
 | --- | --- | --- | --- |
-| Markdown 本文を表示する大きな viewer 面 | `Panel`、`ScrollArea`、`Text`、theme / font、pointer / keyboard event、`UiTree` / `UiNode` | `ui-core-root-plan`、`establish-kuc-atoms-molecules-catalog`、`00-add-scroll-area-contract`、`storybook-page-panel`、`storybook-page-scroll-area`、`storybook-page-text` | 既存計画で足りる。本文描画そのものは KDV が持つ |
+| Markdown 本文を表示する大きな viewer 面 | `Panel`、`ScrollArea`、theme / font、pointer / keyboard event、`UiTree` / `UiNode`、`ImageSurface` | `ui-core-root-plan`、`establish-kuc-atoms-molecules-catalog`、`00-add-scroll-area-contract`、`23-add-preview-surface-image-contract`、`storybook-page-panel`、`storybook-page-scroll-area` | 周辺 UI は既存計画で足りる。本文描画そのものは KDV が持ち、結果だけ `ImageSurface` に載せる |
+| HTML / PDF / PNG / JPG と同等の preview surface image | `UiNodeKind::ImageSurface`、`UiImageSurfaceProps`、RGBA payload、content scale、fit、accessibility label、highlight rect overlay、adapter render plan descriptor | `23-add-preview-surface-image-contract` | 新規契約が必要。KMM label fallback は不可 |
 | TOC と本文の 2 ペイン構成 | `SplitPane`、`CollapsiblePanel`、`TreeView` または `List`、`ScrollArea`、virtualization | `00-add-split-pane-contract`、`15-add-collapsible-sidebar-shell`、`16-add-virtualized-list-and-tree`、`storybook-page-tree-view`、`storybook-page-list` | 既存計画で足りる。TOC item の正本は KDV/KMM が持つ |
 | TOC click で viewer command を返す | selection / navigation event、state id、keyboard selection、scroll command | `00-add-scroll-area-contract`、`16-add-virtualized-list-and-tree`、`establish-kuc-atoms-molecules-catalog/specs/kuc-widget-layer` | 既存計画で足りる。editor scroll の副作用は KatanA / KDV host 側 |
 | rendered node の hover highlight と選択 | pointer / focus event、theme token、`HoverCard`、`Popover`、placement engine | `04-add-rich-popover-and-hover-card`、`01-add-context-menu`、`establish-kuc-atoms-molecules-catalog/core-foundation-contract.md` | 既存計画で足りる。node id / source range / rect mapping は KDV 側 |
@@ -36,17 +38,18 @@ Markdown 本文 viewer、TOC panel、hit-test metadata、画像・図形操作�
 | export / PDF 事前確認 viewer の周辺 UI | `Toolbar`、`StatusBar`、`ProgressBar`、`ScrollArea`、`SearchControlStrip` | `05-add-toolbar-overflow`、`12-add-multi-segment-status-bar`、`00-add-scroll-area-contract`、`22-add-search-control-strip` | 既存計画で足りる。PDF page model と export pipeline は KDV 側 |
 | viewer 設定と interaction config | `SettingsList`、`FormField`、`Toggle`、`Checkbox`、`Radio`、typed action / event / state | `14-add-sectioned-settings-form`、`storybook-page-form-field`、`storybook-page-toggle`、`storybook-page-checkbox`、`storybook-page-radio` | 既存計画で足りる。`ViewerInteractionConfig` は KDV が定義する |
 
-## 新規 change を追加しない理由
+## KDV viewer 本文を KUC に入れない理由
 
 - `MarkdownViewer`、`DocumentPreview`、`TocPanel`、`ImageDiagramControls`、`PdfPageViewer` は KDV の利用側 organism / page であり、KUC public API に入れない方針と一致しない。
 - KDV が不足として挙げている `ScrollArea`、`SplitPane`、`SearchControlStrip` は既に KUC change として存在する。
 - hover / media 操作 / diagnostics / settings は、既存の `HoverCard`、`Popover`、`Toolbar`、`DiagnosticsList`、`Banner`、`SettingsList` を組み合わせれば domain-free に表現できる。
 - KDV の hit-test metadata、KMM node id、source range、artifact、diagnostics、viewer command は KUC ではなく KDV の責務である。
+- `23-add-preview-surface-image-contract` は本文 viewer を KUC に移す change ではなく、KDV が描画済みの opaque surface と highlight rect を adapter に渡すための契約である。
 
 ## KDV UI 実装時の順序
 
 1. `katana-document-viewer-kuc` で KUC の `ThemeSnapshot`、font role、`UiTree` / `UiNode`、event / state を受ける境界を作る。
-2. 本文 viewer を KDV owned surface として描画し、外側の panel / scroll / theme / font を KUC に接続する。
+2. 本文 viewer を KDV owned RGBA surface として描画し、`ImageSurface` node で KUC `UiTree` に載せる。
 3. TOC は KMM AST 由来の heading list から作り、KUC `TreeView` または `List` を使って `SplitPane` / `CollapsiblePanel` に載せる。
 4. hover / selection / media controls は KDV の hit-test 結果を入力にして、KUC `HoverCard` / `Popover` / `Toolbar` / `ContextMenu` で表示する。
 5. unresolved metadata は KDV diagnostics を KUC `Banner` / `DiagnosticsList` / `Popover` へ渡す。
@@ -55,6 +58,7 @@ Markdown 本文 viewer、TOC panel、hit-test metadata、画像・図形操作�
 ## KDV 着手前に確認する KUC 側 gate
 
 - `ui-core-root-plan` と `establish-kuc-atoms-molecules-catalog` の OpenSpec validation が通る。
+- `23-add-preview-surface-image-contract` の OpenSpec validation と image surface contract tests が通る。
 - `storybook-page-*` leaf change の harness DoD が current tasks と矛盾していない。
 - `establish-kuc-atoms-molecules-catalog` の未完了項目 6.8 は、KDV 向け新機能ではなく Storybook harness guard の残作業として扱う。
 - KUC core が `katana-document-viewer` など domain crate へ依存しないことを guard で確認する。

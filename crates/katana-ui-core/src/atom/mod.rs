@@ -3,6 +3,7 @@ pub mod chip;
 mod defaults;
 mod drag_handle;
 mod drop_indicator;
+mod image_surface;
 mod input_boundary;
 mod options;
 pub mod shortcut_combo;
@@ -23,6 +24,7 @@ use crate::state::{UiComponentState, UiStateHandle};
 pub use chip::{Chip, ChipAction, ChipEvent, ChipKeyboardInput, ChipSize, ChipTone, ChipVariant};
 pub use drag_handle::DragHandle;
 pub use drop_indicator::DropIndicator;
+pub use image_surface::ImageSurface;
 pub use input_boundary::InputValidationError;
 use serde::{Deserialize, Serialize};
 pub use shortcut_combo::{

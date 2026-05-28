@@ -2,9 +2,10 @@ use super::UiStateId;
 use super::{
     UiButtonProps, UiColorPickerProps, UiColorSwatchProps, UiCommandResultProps, UiCommonProps,
     UiContextMenuProps, UiDisclosureProps, UiDragHandleProps, UiDragPreviewProps,
-    UiDropIndicatorProps, UiIconProps, UiLoadingProps, UiModalProps, UiPanelProps, UiPopoverProps,
-    UiScrollAreaProps, UiSearchControlProps, UiShortcutProps, UiSkeletonProps, UiSplitPaneProps,
-    UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTreeProps,
+    UiDropIndicatorProps, UiIconProps, UiImageSurfaceProps, UiLoadingProps, UiModalProps,
+    UiPanelProps, UiPopoverProps, UiScrollAreaProps, UiSearchControlProps, UiShortcutProps,
+    UiSkeletonProps, UiSplitPaneProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps,
+    UiTextProps, UiTreeProps,
 };
 use crate::facade::DEFAULT_FONT_ROLE;
 use serde::{Deserialize, Serialize};
@@ -123,6 +124,7 @@ pub struct UiProps {
     pub color_picker: UiColorPickerProps,
     pub command_result: UiCommandResultProps,
     pub shortcut: UiShortcutProps,
+    pub image_surface: UiImageSurfaceProps,
     pub search_control: UiSearchControlProps,
     pub text_entry: UiTextEntryProps,
     pub text_area: UiTextAreaProps,
@@ -175,6 +177,7 @@ impl UiProps {
             color_picker: UiColorPickerProps::default(),
             command_result: UiCommandResultProps::default(),
             shortcut: UiShortcutProps::default(),
+            image_surface: UiImageSurfaceProps::default(),
             search_control: UiSearchControlProps::default(),
             text_entry: UiTextEntryProps::default(),
             text_area: UiTextAreaProps::default(),

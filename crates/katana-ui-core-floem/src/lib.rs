@@ -12,7 +12,9 @@ use katana_ui_core::adapter_contract::{
 use katana_ui_core::event::UiEvent;
 use katana_ui_core::interaction::drag_and_drop::{DragData, DropEffect};
 use katana_ui_core::render_model::UiNodeId;
-use katana_ui_core::render_model::{RenderContext, UiNode, UiNodeKind, UiTree};
+use katana_ui_core::render_model::{
+    RenderContext, UiImageSurfaceRenderPlan, UiNode, UiNodeKind, UiTree,
+};
 use katana_ui_core::window::WindowCommand;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -25,6 +27,7 @@ impl WidgetAdapter for FloemAdapter {
         FloemRenderPlan {
             theme_id: context.theme_id.as_str().to_string(),
             root: FloemNodePlan::from_node(tree.root()),
+            image_surfaces: UiImageSurfaceRenderPlan::collect_from_tree(tree),
         }
     }
 }
@@ -33,6 +36,7 @@ impl WidgetAdapter for FloemAdapter {
 pub struct FloemRenderPlan {
     pub theme_id: String,
     pub root: FloemNodePlan,
+    pub image_surfaces: Vec<UiImageSurfaceRenderPlan>,
 }
 
 impl FloemRenderPlan {

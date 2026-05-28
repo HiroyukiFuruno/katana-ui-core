@@ -78,9 +78,11 @@ impl FloemSurfaceBridge {
 #[cfg(test)]
 mod tests {
     use super::{FloemRuntimeAdapter, FloemSurfaceBridge, FloemWindowAction, FloemWindowBridge};
-    use katana_ui_core::atom::Text;
+    use katana_ui_core::atom::{ImageSurface, Text};
     use katana_ui_core::layout::Row;
-    use katana_ui_core::render_model::UiTree;
+    use katana_ui_core::render_model::{
+        UiImageSurfaceHighlight, UiImageSurfaceValidationError, UiRect, UiTree,
+    };
     use katana_ui_core::runtime::{AppConfig, Application, RuntimeAdapter};
     use katana_ui_core::surface::{PaintRequest, SurfaceMetrics};
     use katana_ui_core::theme::ThemeId;
@@ -124,5 +126,31 @@ mod tests {
         let plan = FloemSurfaceBridge.paint(&request, ThemeId::new("light"));
 
         assert_eq!(2, plan.node_count());
+    }
+
+    #[test]
+    fn surface_bridge_preserves_image_surface_contract() -> Result<(), UiImageSurfaceValidationError>
+    {
+        let request = PaintRequest::new(
+            WindowId::new("main"),
+            SurfaceMetrics::new(800.0, 600.0, 1.0, 96.0),
+        )
+        .with_tree(UiTree::new(
+            ImageSurface::from_rgba("Preview", "surface-sha", 1, 1, vec![12, 24, 36, 255])?
+                .highlight_rect(UiImageSurfaceHighlight::search_hit(
+                    UiRect::new(1, 2, 3, 4),
+                    "search hit",
+                )),
+        ));
+        let plan = FloemSurfaceBridge.paint(&request, ThemeId::new("light"));
+
+        assert_eq!(1, plan.image_surfaces.len());
+        assert_eq!("surface-sha", plan.image_surfaces[0].fingerprint);
+        assert_eq!(4, plan.image_surfaces[0].rgba_byte_len);
+        assert_eq!(
+            UiRect::new(1, 2, 3, 4),
+            plan.image_surfaces[0].highlight_rects[0].rect
+        );
+        Ok(())
     }
 }

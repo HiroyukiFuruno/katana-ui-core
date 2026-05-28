@@ -1,9 +1,10 @@
 use super::{
     UiButtonProps, UiColorPickerProps, UiColorSwatchProps, UiCommandResultProps,
-    UiContextMenuProps, UiDisclosureProps, UiIconProps, UiInteractionState, UiLoadingProps,
-    UiModalProps, UiNode, UiPanelProps, UiPopoverProps, UiScrollAreaProps, UiSearchControlProps,
-    UiShortcutProps, UiSize, UiSkeletonProps, UiSplitPaneProps, UiStatusProps, UiTextAreaProps,
-    UiTextEntryProps, UiTextProps, UiTone, UiTreeProps, UiVariant, UiVisualRole,
+    UiContextMenuProps, UiDisclosureProps, UiIconProps, UiImageSurfaceProps, UiInteractionState,
+    UiLoadingProps, UiModalProps, UiNode, UiPanelProps, UiPopoverProps, UiScrollAreaProps,
+    UiSearchControlProps, UiShortcutProps, UiSize, UiSkeletonProps, UiSplitPaneProps,
+    UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTone, UiTreeProps, UiVariant,
+    UiVisualRole,
 };
 use crate::theme::ThemeSnapshot;
 
@@ -132,6 +133,12 @@ impl UiNode {
     #[must_use]
     pub fn shortcut(mut self, value: UiShortcutProps) -> Self {
         self.props.shortcut = value;
+        self
+    }
+
+    #[must_use]
+    pub fn image_surface(mut self, value: UiImageSurfaceProps) -> Self {
+        self.props.image_surface = value;
         self
     }
 

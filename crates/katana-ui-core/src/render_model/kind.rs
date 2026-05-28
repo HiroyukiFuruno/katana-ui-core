@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub enum UiNodeKind {
     Text,
     Icon,
+    ImageSurface,
     Chip,
     Button,
     Input,

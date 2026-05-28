@@ -16,6 +16,7 @@ atoms / molecules と Storybook の実装正本は [`openspec/changes/establish-
 
 `ScrollArea` は KUC の layout foundation として、axis、offset、viewport/content extent、scrollbar visibility / placement、scroll command、edge event、nested state identity を typed contract で持つ。
 KDV / KLE の本文 viewer / editor scroll policy や editor-preview 同期は KUC に入れず、利用側がこの scroll container を組み合わせて実装する。
+KDV が描画済みの HTML / PDF / PNG / JPG 相当 preview surface は `ImageSurface` node として `UiTree` に載せるが、Markdown display-list、KMM node id、検索 engine、PDF page model は KUC に入れない。
 
 ## Repository の役割
 
