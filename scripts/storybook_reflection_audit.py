@@ -49,9 +49,16 @@ class StorybookReflectionAudit:
         return self.pages_from_match_arms(match_block)
 
     def page_specific_presets(self) -> set[str]:
-        source = self.read("crates/katana-ui-core-storybook/src/catalog/preset_labels.rs")
-        match_block = self.first_match_block(source)
-        return self.pages_from_match_arms(match_block)
+        presets: set[str] = set()
+        for path in self.preset_label_paths():
+            source = path.read_text(encoding="utf-8")
+            match_block = self.first_match_block(source)
+            presets.update(self.pages_from_match_arms(match_block))
+        return presets
+
+    def preset_label_paths(self) -> tuple[Path, ...]:
+        base = self.root / "crates/katana-ui-core-storybook/src/catalog"
+        return tuple(sorted(base.glob("preset_label*.rs")))
 
     def explicit_interaction_specs(self) -> set[str]:
         specs: set[str] = set()

@@ -35,8 +35,27 @@ class StorybookReflectionAuditTest(unittest.TestCase):
 
             self.assertEqual([], findings)
 
+    def test_accepts_presets_split_into_extra_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_minimal_repo(
+                root,
+                dedicated='"button" => draw_button(),\n"tabs" => draw_tabs(),',
+                primary_presets='"button" => &["default"],',
+                extra_presets='"tabs" => &["workspace tabs"],',
+            )
 
-def write_minimal_repo(root: Path, dedicated: str) -> None:
+            findings = StorybookReflectionAudit(root).findings()
+
+            self.assertEqual([], findings)
+
+
+def write_minimal_repo(
+    root: Path,
+    dedicated: str,
+    primary_presets: str = '"button" => &["default"], "tabs" => &["default"],',
+    extra_presets: str = "",
+) -> None:
     write_text(
         root / "crates/katana-ui-core-storybook/src/requirements.rs",
         'const REQUIRED_PAGES: &[&str] = &["button", "tabs"];\n'
@@ -48,7 +67,11 @@ def write_minimal_repo(root: Path, dedicated: str) -> None:
     )
     write_text(
         root / "crates/katana-ui-core-storybook/src/catalog/preset_labels.rs",
-        'fn for_page(page: &str) { match page { "button" => &["default"], "tabs" => &["default"], _ => &[] } }\n',
+        f"fn for_page(page: &str) {{ match page {{ {primary_presets} _ => &[] }} }}\n",
+    )
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/catalog/preset_label_extra.rs",
+        f"fn for_page(page: &str) {{ match page {{ {extra_presets} _ => None }} }}\n",
     )
     write_text(
         root / "crates/katana-ui-core-storybook/src/visual/interaction_spec_atoms.rs",
