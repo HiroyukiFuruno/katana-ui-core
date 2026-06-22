@@ -1,40 +1,20 @@
 use super::canvas::Canvas;
-use super::dedicated_closeable_tab_strip_style::{
-    active_index, dirty_fill, overflow_fill, state_label, strip_fill, tab_fill, tab_text,
-    theme_line_fill,
-};
-use super::dedicated_dod_common::{self as common, Block, Rect, TextSpec};
-use super::dedicated_dod_metrics as m;
+use super::dedicated_dod_common as common;
+use super::dedicated_tabs_context_menu;
+use super::dedicated_tabs_controls;
+use super::dedicated_tabs_layout;
+use super::dedicated_tabs_metrics::control_rects;
+use super::dedicated_tabs_strip;
+use super::layout_metrics::LayoutRect;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
+use super::screen_state_tabs::{TabsScreenAction, TabsScreenState};
 use super::text::TextRenderer;
 
-pub(super) const STRIP_X: usize = 30;
-pub(super) const STRIP_Y: usize = 42;
-pub(super) const STRIP_WIDTH: usize = 450;
-const STRIP_HEIGHT: usize = 36;
-const TAB_Y: usize = 48;
-const TAB_WIDTH: usize = 78;
-const TAB_HEIGHT: usize = 24;
-const TAB_GAP: usize = 4;
-const FIRST_TAB_X: usize = 42;
-const SECOND_TAB_X: usize = FIRST_TAB_X + TAB_WIDTH + TAB_GAP;
-const THIRD_TAB_X: usize = SECOND_TAB_X + TAB_WIDTH + TAB_GAP;
-const FOURTH_TAB_X: usize = THIRD_TAB_X + TAB_WIDTH + TAB_GAP;
-const FIFTH_TAB_X: usize = FOURTH_TAB_X + TAB_WIDTH + TAB_GAP;
-const OVERFLOW_X: usize = FIFTH_TAB_X + TAB_WIDTH + 10;
-const OVERFLOW_WIDTH: usize = 36;
-const DIRTY_SIZE: usize = 7;
-const STATUS_X: usize = 42;
-const STATUS_Y: usize = 94;
-const STATUS_WIDTH: usize = 178;
-const STATUS_HEIGHT: usize = 20;
-const LABEL_X_OFFSET: usize = 8;
-const LABEL_Y_OFFSET: usize = 7;
-const STATUS_TEXT_Y_OFFSET: usize = 6;
-const LINE_HEIGHT: usize = 3;
-const BLOCK_COUNT: usize = 10;
-const LABEL_COUNT: usize = 7;
+pub(super) const STRIP_X: usize = super::dedicated_tabs_metrics::STRIP_X;
+pub(super) const STRIP_Y: usize = super::dedicated_tabs_metrics::STRIP_Y;
+pub(super) const STRIP_WIDTH: usize = super::dedicated_tabs_metrics::STRIP_WIDTH;
+const STRIP_HEIGHT: usize = super::dedicated_tabs_metrics::STRIP_HEIGHT;
 
 pub(super) fn closeable_tab_strip(
     canvas: &mut Canvas,
@@ -44,110 +24,129 @@ pub(super) fn closeable_tab_strip(
     x: usize,
     y: usize,
 ) {
-    common::preview(
+    let render_state = render_state(scenario);
+    common::frame(canvas, text, palette, x, y, "Closeable tab strip");
+    dedicated_tabs_strip::draw_strip(
         canvas,
         text,
         palette,
-        Rect::new(x, y, m::PX_0, m::PX_0),
-        "Closeable tab strip",
-        &blocks(palette, scenario),
-        &labels(palette, scenario),
-    );
-}
-
-fn blocks(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [Block; BLOCK_COUNT] {
-    let active = active_index(scenario);
-    [
-        Block::outlined(
-            STRIP_X,
-            STRIP_Y,
-            STRIP_WIDTH,
-            STRIP_HEIGHT,
-            strip_fill(palette, scenario),
-        ),
-        tab_block(palette, active, m::PX_0, FIRST_TAB_X),
-        tab_block(palette, active, m::PX_1, SECOND_TAB_X),
-        tab_block(palette, active, m::PX_2, THIRD_TAB_X),
-        tab_block(palette, active, m::PX_3, FOURTH_TAB_X),
-        tab_block(palette, active, m::PX_4, FIFTH_TAB_X),
-        Block::outlined(
-            OVERFLOW_X,
-            TAB_Y,
-            OVERFLOW_WIDTH,
-            TAB_HEIGHT,
-            overflow_fill(palette, scenario),
-        ),
-        Block::new(
-            FOURTH_TAB_X + TAB_WIDTH - DIRTY_SIZE - m::PX_6,
-            TAB_Y + m::PX_6,
-            DIRTY_SIZE,
-            DIRTY_SIZE,
-            dirty_fill(scenario),
-        ),
-        Block::outlined(
-            STATUS_X,
-            STATUS_Y,
-            STATUS_WIDTH,
-            STATUS_HEIGHT,
-            palette.panel,
-        ),
-        Block::new(
-            STRIP_X,
-            STRIP_Y,
-            STRIP_WIDTH,
-            LINE_HEIGHT,
-            theme_line_fill(palette, scenario),
-        ),
-    ]
-}
-
-fn labels(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [TextSpec; LABEL_COUNT] {
-    let active = active_index(scenario);
-    [
-        tab_label(palette, active, m::PX_0, FIRST_TAB_X, "default"),
-        tab_label(palette, active, m::PX_1, SECOND_TAB_X, "pinned"),
-        tab_label(palette, active, m::PX_2, THIRD_TAB_X, "groups"),
-        tab_label(palette, active, m::PX_3, FOURTH_TAB_X, "dirty"),
-        tab_label(palette, active, m::PX_4, FIFTH_TAB_X, "dragging"),
-        TextSpec::new(
-            OVERFLOW_X + LABEL_X_OFFSET,
-            TAB_Y + LABEL_Y_OFFSET,
-            m::FONT_7,
-            palette.muted,
-            "...",
-        ),
-        TextSpec::new(
-            STATUS_X + LABEL_X_OFFSET,
-            STATUS_Y + STATUS_TEXT_Y_OFFSET,
-            m::FONT_7,
-            palette.muted,
-            state_label(scenario),
-        ),
-    ]
-}
-
-fn tab_block(palette: &VisualPalette, active: usize, index: usize, x: usize) -> Block {
-    Block::outlined(
+        &render_state,
+        scenario.screen_state.preview_hovered,
         x,
-        TAB_Y,
-        TAB_WIDTH,
-        TAB_HEIGHT,
-        tab_fill(palette, active, index),
-    )
+        y,
+    );
+    dedicated_tabs_controls::draw_controls(canvas, text, palette, scenario, x, y);
+    dedicated_tabs_controls::draw_overflow_button(canvas, text, palette, &render_state, x, y);
+    dedicated_tabs_controls::draw_status(canvas, text, palette, scenario, &render_state, x, y);
+    if render_state.overflow_open {
+        dedicated_tabs_controls::draw_overflow_menu(canvas, text, palette, x, y);
+    }
+    dedicated_tabs_context_menu::draw_context_menu(canvas, text, palette, &render_state, x, y);
 }
 
-fn tab_label(
-    palette: &VisualPalette,
-    active: usize,
-    index: usize,
+pub(super) fn tab_hit_at(
+    origin_x: usize,
+    origin_y: usize,
     x: usize,
-    value: &'static str,
-) -> TextSpec {
-    TextSpec::new(
-        x + LABEL_X_OFFSET,
-        TAB_Y + LABEL_Y_OFFSET,
-        m::FONT_7,
-        tab_text(palette, active, index),
-        value,
+    y: usize,
+    state: &TabsScreenState,
+) -> Option<(String, LayoutRect)> {
+    dedicated_tabs_layout::tab_hit_at(origin_x, origin_y, x, y, state)
+}
+
+pub(super) fn group_hit_at(
+    origin_x: usize,
+    origin_y: usize,
+    x: usize,
+    y: usize,
+    state: &TabsScreenState,
+) -> Option<(String, LayoutRect)> {
+    dedicated_tabs_layout::group_hit_at(origin_x, origin_y, x, y, state)
+}
+
+pub(super) fn context_menu_command_at(
+    origin_x: usize,
+    origin_y: usize,
+    x: usize,
+    y: usize,
+    state: &TabsScreenState,
+) -> Option<super::screen_state_tabs::TabsContextMenuCommand> {
+    dedicated_tabs_context_menu::command_at(origin_x, origin_y, x, y, state)
+}
+
+pub(super) fn strip_hit_at(origin_x: usize, origin_y: usize, x: usize, y: usize) -> bool {
+    LayoutRect::new(
+        origin_x + STRIP_X,
+        origin_y + STRIP_Y,
+        STRIP_WIDTH,
+        STRIP_HEIGHT,
     )
+    .contains(x, y)
+}
+
+pub(super) fn control_at(
+    origin_x: usize,
+    origin_y: usize,
+    x: usize,
+    y: usize,
+) -> Option<TabsScreenAction> {
+    for (action, rect) in control_rects(origin_x, origin_y) {
+        if rect.contains(x, y) {
+            return Some(action);
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+pub(super) fn tab_rect_for_test(state: &TabsScreenState, tab_id: &str) -> Option<LayoutRect> {
+    dedicated_tabs_layout::tab_rect_for_id(0, 0, state, tab_id)
+}
+
+#[cfg(test)]
+pub(super) fn context_menu_rect_for_test(state: &TabsScreenState) -> Option<LayoutRect> {
+    state
+        .context_menu
+        .as_ref()
+        .map(|_| dedicated_tabs_context_menu::menu_rect(0, 0, state))
+}
+
+#[cfg(test)]
+pub(super) fn context_menu_labels_for_test(state: &TabsScreenState) -> Vec<&str> {
+    dedicated_tabs_context_menu::menu_labels_for_test(state)
+}
+
+#[cfg(test)]
+pub(super) fn group_rect_for_test(state: &TabsScreenState, group_id: &str) -> Option<LayoutRect> {
+    dedicated_tabs_layout::group_rect_for_id(0, 0, state, group_id)
+}
+
+#[cfg(test)]
+pub(super) fn scroll_x_for_test(state: &TabsScreenState) -> usize {
+    super::dedicated_tabs_scroll::scroll_x(state)
+}
+
+#[cfg(test)]
+pub(super) fn strip_rect_for_test() -> super::dedicated_dod_common::Rect {
+    super::dedicated_tabs_metrics::rect_to_common(super::layout_metrics::LayoutRect::new(
+        super::dedicated_tabs_metrics::STRIP_X,
+        super::dedicated_tabs_metrics::STRIP_Y,
+        super::dedicated_tabs_metrics::STRIP_WIDTH,
+        super::dedicated_tabs_metrics::STRIP_HEIGHT,
+    ))
+}
+
+#[cfg(test)]
+pub(super) fn control_rect_for_test(action: TabsScreenAction) -> Option<LayoutRect> {
+    control_rects(0, 0)
+        .into_iter()
+        .find(|(candidate, _)| *candidate == action)
+        .map(|(_, rect)| rect)
+}
+
+fn render_state(scenario: ScenarioContext<'_>) -> TabsScreenState {
+    if scenario.screen_state.has_widget_action() || scenario.screen_state.has_settings_override() {
+        return scenario.screen_state.tabs.clone();
+    }
+    TabsScreenState::for_preset(scenario.preset_index)
 }

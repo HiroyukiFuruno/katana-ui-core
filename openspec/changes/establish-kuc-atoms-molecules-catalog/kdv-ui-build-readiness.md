@@ -60,5 +60,5 @@ KUC は KDV owned surface を opaque な `ImageSurface` として adapter へ渡
 - `ui-core-root-plan` と `establish-kuc-atoms-molecules-catalog` の OpenSpec validation が通る。
 - `23-add-preview-surface-image-contract` の OpenSpec validation と image surface contract tests が通る。
 - `storybook-page-*` leaf change の harness DoD が current tasks と矛盾していない。
-- `establish-kuc-atoms-molecules-catalog` の未完了項目 6.8 は、KDV 向け新機能ではなく Storybook harness guard の残作業として扱う。
+- `establish-kuc-atoms-molecules-catalog` の 6.8 は、KDV 向け新機能ではなく Storybook harness guard の拡張であり、`window_interaction` の required page 接続検査まで完了済みである。
 - KUC core が `katana-document-viewer` など domain crate へ依存しないことを guard で確認する。

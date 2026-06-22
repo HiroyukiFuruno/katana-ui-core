@@ -69,7 +69,7 @@ DragData {
 | --- | --- |
 | すべての DnD を consumer 側に丸投げ | explorer / tab bar / attachment で挙動差が積み上がる。入力回帰 / 画像回帰の対象から漏れる。 |
 | Drag を `PointerEvent` の長押し + delta で表現する | pointer / drag の責務が混在し、drop target / indicator / autoscroll を後付けで足す必要があり API が散らかる。 |
-| HTML5 DataTransfer 風 API をそのまま core に持つ | adapter / 環境（floem / egui / gpui）に依存する型が漏れ、framework-neutrality を破る。 |
+| HTML5 DataTransfer 風 API をそのまま core に持つ | environment-specific 型が漏れ、framework-neutrality を破る。 |
 
 ## Out of scope
 
@@ -80,5 +80,5 @@ DragData {
 ## 影響範囲
 
 - `event` / `interaction` / `atom` / `molecule` モジュールを跨ぐため、event bubbling / capture policy も更新する。
-- adapter（floem / egui / gpui）に compile-gate 用 stub を追加する。
+- external runtime boundary に neutral contract を追加する。
 - Storybook playground の追加（reorder / file drop / tab reorder / attachment drop）。

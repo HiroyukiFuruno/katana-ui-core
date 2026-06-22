@@ -4,6 +4,7 @@ use super::dedicated_breadcrumb_style::{
 };
 use super::dedicated_dod_common::{self as common, Block, Rect, TextSpec};
 use super::dedicated_dod_metrics as m;
+use super::layout_metrics::LayoutRect;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::text::TextRenderer;
@@ -12,6 +13,9 @@ pub(super) const BAR_X: usize = 38;
 pub(super) const BAR_Y: usize = 46;
 pub(super) const BAR_WIDTH: usize = 404;
 const BAR_HEIGHT: usize = 34;
+const ROOT_CRUMB_INDEX: usize = 0;
+const SRC_CRUMB_INDEX: usize = 1;
+const FILE_CRUMB_INDEX: usize = 2;
 const ROOT_X: usize = 54;
 const SRC_X: usize = 150;
 const FILE_X: usize = 246;
@@ -166,4 +170,26 @@ fn labels(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [TextSpec; 
 
 fn active_line_x(active: usize) -> usize {
     ROOT_X + (CRUMB_WIDTH + m::PX_18) * active
+}
+
+pub(super) fn root_crumb_rect(origin_x: usize, origin_y: usize) -> LayoutRect {
+    crumb_rect_from_origin(origin_x, origin_y, ROOT_CRUMB_INDEX)
+}
+
+pub(super) fn src_crumb_rect(origin_x: usize, origin_y: usize) -> LayoutRect {
+    crumb_rect_from_origin(origin_x, origin_y, SRC_CRUMB_INDEX)
+}
+
+pub(super) fn file_crumb_rect(origin_x: usize, origin_y: usize) -> LayoutRect {
+    crumb_rect_from_origin(origin_x, origin_y, FILE_CRUMB_INDEX)
+}
+
+pub(super) fn crumb_rect_from_origin(origin_x: usize, origin_y: usize, index: usize) -> LayoutRect {
+    let x = match index {
+        ROOT_CRUMB_INDEX => ROOT_X,
+        SRC_CRUMB_INDEX => SRC_X,
+        FILE_CRUMB_INDEX => FILE_X,
+        _ => FILE_X,
+    };
+    LayoutRect::new(origin_x + x, origin_y + CRUMB_Y, CRUMB_WIDTH, CRUMB_HEIGHT)
 }

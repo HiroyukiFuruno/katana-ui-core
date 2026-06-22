@@ -103,6 +103,7 @@ mod tests {
         let dark = ThemeSnapshot::dark();
 
         assert_eq!(Some([86, 156, 214, 255]), dark.color("accent"));
+        assert_eq!(Some([248, 250, 252, 255]), dark.color("accent-foreground"));
         assert_eq!(Some([37, 37, 38, 255]), dark.color("panel"));
         assert_eq!(
             Some(FontFamily::Proportional),

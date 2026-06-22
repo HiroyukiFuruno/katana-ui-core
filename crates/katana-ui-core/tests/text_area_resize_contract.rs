@@ -35,6 +35,8 @@ fn text_area_kuc_behavior_options_can_be_enabled_explicitly() {
     assert!(text_area.horizontal_scroll_enabled);
     assert!(text_area.vertical_scrollbar_visible);
     assert!(text_area.horizontal_scrollbar_visible);
+    assert_eq!(0, text_area.resize_width_delta);
+    assert_eq!(0, text_area.resize_height_delta);
 }
 
 #[test]
@@ -80,4 +82,28 @@ fn auto_grow_rows_resize_and_scroll_without_truncating_value() {
     assert_eq!(4, overflow.state.measured_rows);
     assert!(overflow.state.internal_scroll);
     assert_eq!("1\n2\n3\n4\n5", text_area.state().value);
+}
+
+#[test]
+fn resize_action_requires_option_and_updates_state_event_and_props() {
+    let mut disabled = TextArea::new("Disabled resize");
+    let ignored = disabled.apply_text_area_action(TextAreaAction::resize(24, 6));
+    let mut enabled = TextArea::new("Resizable").resize_enabled(true);
+
+    let resized = enabled.apply_text_area_action(TextAreaAction::resize(24, 6));
+    let node = UiNode::from(enabled);
+
+    assert!(!ignored.handled);
+    assert!(resized.handled);
+    assert_eq!(24, resized.state.resize_width_delta);
+    assert_eq!(6, resized.state.resize_height_delta);
+    assert!(resized.events.iter().any(|event| {
+        matches!(
+            event,
+            TextAreaEvent::Resize(resize)
+                if resize.width_delta == 24 && resize.height_delta == 6
+        )
+    }));
+    assert_eq!(24, node.props().text_area.resize_width_delta);
+    assert_eq!(6, node.props().text_area.resize_height_delta);
 }

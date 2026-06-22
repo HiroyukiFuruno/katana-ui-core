@@ -74,7 +74,7 @@ fn settings_change_updates_passive_atom_preview_bodies() {
 }
 
 #[test]
-fn clicked_toggle_updates_visible_switch_body() {
+fn clicked_toggle_updates_visible_row_and_switch_body() {
     let before = StorybookVisual.render_preset(DARK_THEME, TOGGLE_PAGE, DEFAULT_PRESET, 0);
     let after = StorybookVisual.render_clicked_preset_with_scrollbar(
         DARK_THEME,
@@ -84,9 +84,10 @@ fn clicked_toggle_updates_visible_switch_body() {
         true,
     );
     let rect = preview_detail::component_action_hit_rect(TOGGLE_PAGE);
+    let row_rect = super::dedicated_dod_atom_buttons::toggle_row_rect_for_test();
     let switch_rect = super::dedicated_dod_atom_buttons::toggle_switch_rect_for_test();
 
-    assert!(rect.width >= super::dedicated_dod_atom_buttons::TOGGLE_ROW_WIDTH);
+    assert_eq!(row_rect, rect);
     assert!(
         left_bright_pixel_count(switch_rect, &before)
             > right_bright_pixel_count(switch_rect, &before)

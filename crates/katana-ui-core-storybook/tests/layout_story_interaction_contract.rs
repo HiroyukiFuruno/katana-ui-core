@@ -12,12 +12,16 @@ fn split_pane_story_exposes_preset_specific_action_history() {
 
     let labels = descendant_labels(split.tree.root());
     for preset in [
-        "horizontal",
-        "vertical",
-        "min clamp",
-        "reset",
-        "keyboard resize",
-        "nested",
+        "axis vertical",
+        "wide gap",
+        "center alignment",
+        "overflow scroll",
+        "ratio percent",
+        "min percent clamp",
+        "max percent clamp",
+        "reset percent",
+        "wide handle",
+        "keyboard resize mode",
     ] {
         assert!(
             labels.iter().any(|it| it.contains(preset)),

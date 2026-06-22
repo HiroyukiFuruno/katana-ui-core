@@ -31,5 +31,5 @@
 ## Impact
 
 - `crates/katana-ui-core/src/molecule/selection/window_control_button_group.rs` 新設。
-- adapter（floem / egui / gpui）には window command intent の変換だけを求める。
+- external runtime には window command intent の変換だけを求める。
 - consumer (`katana` title area、`katana-chat-ui` header) は KUC molecule と自前 layout を組み合わせる。

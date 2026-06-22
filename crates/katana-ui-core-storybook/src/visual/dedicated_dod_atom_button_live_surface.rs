@@ -12,7 +12,9 @@ use super::dedicated_dod_common::{self as common, Rect};
 use super::dedicated_dod_metrics as m;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
-pub(super) use label::draw_button_label;
+#[cfg(test)]
+pub(in crate::visual) use label::centered_label_x_for_test;
+pub(super) use label::{draw_button_label, measure_button_label_width};
 pub(in crate::visual) use layout::button_layout;
 use material::draw_material_surface;
 
@@ -25,7 +27,6 @@ const CUSTOM_WIDTH: usize = 220;
 const PERCENT_WIDTH: usize = 248;
 const FILL_WIDTH: usize = 304;
 const BUTTON_LABEL_SIZE: f32 = 11.5;
-const BUTTON_LABEL_AVG_WIDTH: usize = 6;
 const BUTTON_LABEL_ICON_OFFSET: usize = 20;
 const BUTTON_PADDING_X: usize = 34;
 const BUTTON_ICON_GAP: usize = 18;
@@ -62,7 +63,14 @@ pub(super) fn draw_button_surface(
     let fill = button_fill(palette, scenario, kind);
     draw_material_surface(canvas, palette, scenario, rect, kind, fill);
     draw_text_button_underline(canvas, palette, scenario, rect, kind);
+    common_props::draw_command_marker(canvas, palette, scenario, rect);
+    common_props::draw_focusability_marker(canvas, palette, scenario, rect);
+    common_props::draw_keyboard_activation_marker(canvas, palette, scenario, rect);
+    common_props::draw_icon_position_marker(canvas, palette, scenario, rect);
+    common_props::draw_tab_index_marker(canvas, palette, scenario, rect);
+    common_props::draw_z_index_marker(canvas, palette, scenario, rect);
     common_props::draw_hover_border(canvas, palette, scenario, rect);
+    common_props::draw_focus_ring(canvas, palette, scenario, rect);
     common_props::draw_setting_outline(canvas, palette, scenario, rect);
 }
 

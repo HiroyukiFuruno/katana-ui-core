@@ -29,13 +29,13 @@ KUC MUST treat those rects as overlay descriptors and MUST NOT calculate viewer 
 
 ### Requirement: adapters receive the same image surface descriptor
 
-egui, floem, and gpui adapter plans MUST receive the same image surface descriptor from `PaintRequest` / `UiTree`.
+adapter, adapter, and integration plans MUST receive the same image surface descriptor from `PaintRequest` / `UiTree`.
 Adapter plans MUST preserve fingerprint, extent, RGBA byte length, fit, accessibility label, and highlight rects.
 
 #### Scenario: PaintRequest contains an ImageSurface
 
 - **WHEN** a `PaintRequest` contains an `ImageSurface` root
-- **THEN** each adapter plan exposes one image surface descriptor
+- **THEN** each integration plan exposes one image surface descriptor
 - **AND** the descriptor includes the surface fingerprint and highlight rects
 
 ### Requirement: KDV viewer body remains consumer-owned

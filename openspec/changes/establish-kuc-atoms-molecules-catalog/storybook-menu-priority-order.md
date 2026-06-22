@@ -38,7 +38,7 @@ Storybook menu page には優先順位番号を付ける。
 | SB-007 | `align-center` | `storybook-page-align-center` | page別描画あり | 完了 | 完了 | preview bounds の基礎検査 |
 | SB-008 | `scroll-area` | `storybook-page-scroll-area` | page別描画あり | 完了 | 完了 | panel / list / tree / command の scroll 基盤 |
 | SB-009 | `split-pane` | `storybook-page-split-pane` | page別描画あり | 完了 | 完了 | Storybook shell と app layout の基盤 |
-| SB-010 | `text` | `storybook-page-text` | page別描画あり | 完了 | 完了 | 文字描画と font fallback の基盤 |
+| SB-010 | `text` | `storybook-page-text` | page別描画あり | ユーザー確認待ち | Storybook ユーザー確認待ち | 文字描画と font fallback の基盤 |
 | SB-011 | `icon` | `storybook-page-icon` | page別描画あり | 完了 | 完了 | icon / button / menu の基盤 |
 | SB-012 | `divider` | `storybook-page-divider` | page別描画あり | 完了 | 完了 | section / menu / settings の基礎部品 |
 | SB-013 | `spacer` | `storybook-page-spacer` | page別描画あり | 完了 | 完了 | layout spacing の基礎部品 |
@@ -48,7 +48,7 @@ Storybook menu page には優先順位番号を付ける。
 | SB-017 | `icon-text-button` | `storybook-page-icon-text-button` | page別描画あり | 完了 | 完了 | button family |
 | SB-018 | `badge` | `storybook-page-badge` | page別描画あり | 完了 | 完了 | 状態表示の基礎 |
 | SB-019 | `key-cap` | `storybook-page-key-cap` | page別描画あり | 完了 | 完了 | shortcut 表示の基礎 |
-| SB-020 | `progress-bar` | `storybook-page-progress-bar` | page別描画あり | 完了 | 完了 | loading / status の基礎 |
+| SB-020 | `progress-bar` | `storybook-page-progress-bar` | page別描画あり | ユーザー確認待ち | Storybook ユーザー確認待ち | loading / status の基礎 |
 | SB-021 | `loading-dots` | `storybook-page-loading-dots` | page別描画あり | 完了 | 完了 | loading atom |
 | SB-022 | `spinner` | `storybook-page-spinner` | page別描画あり | 完了 | 完了 | loading atom |
 | SB-023 | `skeleton` | `storybook-page-skeleton` | page別描画あり | 完了 | 完了 | loading placeholder |
@@ -56,7 +56,7 @@ Storybook menu page には優先順位番号を付ける。
 | SB-025 | `form-field` | `storybook-page-form-field` | page別描画あり | 完了 | 完了 | input / settings の wrapper |
 | SB-026 | `text-input` | `storybook-page-text-input` | page別描画あり | 完了 | 完了 | 入力 UI の基礎 |
 | SB-027 | `text-area` | `storybook-page-text-area` | page別描画あり | 完了 | 完了 | 複数行入力 |
-| SB-028 | `checkbox` | `storybook-page-checkbox` | page別描画あり | 完了 | 完了 | 選択 UI の基礎 |
+| SB-028 | `checkbox` | `storybook-page-checkbox` | page別描画あり | ユーザー確認待ち | Storybook ユーザー確認待ち | 選択 UI の基礎 |
 | SB-029 | `radio` | `storybook-page-radio` | page別描画あり | 完了 | 完了 | 選択 UI の基礎 |
 | SB-030 | `toggle` | `storybook-page-toggle` | page別描画あり | 完了 | 完了 | binary setting |
 | SB-031 | `segmented-toggle` | `storybook-page-segmented-toggle` | page別描画あり | 完了 | 完了 | segmented setting |
@@ -69,10 +69,10 @@ Storybook menu page には優先順位番号を付ける。
 | SB-038 | `menu` | `storybook-page-menu` | page別描画あり | 完了 | 完了 | menu foundation |
 | SB-039 | `context-menu` | `storybook-page-context-menu` | page別描画あり | 完了 | 完了 | placement / keyboard / submenu |
 | SB-040 | `menu-button` | `storybook-page-menu-button` | page別描画あり | 完了 | 完了 | trigger + menu |
-| SB-041 | `tooltip` | `storybook-page-tooltip` | page別描画あり | 完了 | 完了 | lightweight overlay |
+| SB-041 | `tooltip` | `storybook-page-tooltip` | page別描画あり | ユーザー確認待ち | Storybook ユーザー確認待ち | lightweight overlay |
 | SB-042 | `popover` | `storybook-page-popover` | page別描画あり | 完了 | 完了 | anchored overlay |
 | SB-043 | `hover-card` | `storybook-page-hover-card` | page別描画あり | 完了 | 完了 | rich hover overlay |
-| SB-044 | `modal` | `storybook-page-modal` | page別描画あり | 完了 | 完了 | native/modal flow |
+| SB-044 | `modal` | `storybook-page-modal` | page別描画あり | ユーザー確認待ち | Storybook ユーザー確認待ち | native/modal flow |
 | SB-045 | `modal-overlay` | `storybook-page-modal-overlay` | page別描画あり | 完了 | 完了 | overlay modal flow |
 | SB-046 | `notification-toast` | `storybook-page-notification-toast` | page別描画あり | 完了 | 完了 | transient feedback |
 | SB-047 | `toast-stack-manager` | `storybook-page-toast-stack-manager` | page別描画あり | 完了 | 完了 | multi toast feedback |
@@ -85,7 +85,7 @@ Storybook menu page には優先順位番号を付ける。
 | SB-054 | `collapsible-panel` | `storybook-page-collapsible-panel` | page別描画あり | 完了 | 完了 | side panel / shell composition |
 | SB-055 | `card` | `storybook-page-card` | page別描画あり | 完了 | 完了 | surface container |
 | SB-056 | `list` | `storybook-page-list` | page別描画あり | 完了 | 完了 | collection foundation |
-| SB-057 | `tree-view` | `storybook-page-tree-view` | page別描画あり | 完了 | 完了 | Storybook navigation と structured data |
+| SB-057 | `tree-view` | `storybook-page-tree-view` | page別描画あり | ユーザー確認待ち | Storybook ユーザー確認待ち | Storybook navigation と structured data |
 | SB-058 | `virtualization` | `storybook-page-virtualization` | page別描画あり | 完了 | 完了 | list / tree / command scaling |
 | SB-059 | `chip` | `storybook-page-chip` | page別描画あり | 完了 | 完了 | tag / filter atom |
 | SB-060 | `attachment-chip` | `storybook-page-attachment-chip` | page別描画あり | 完了 | 完了 | attachment surface |

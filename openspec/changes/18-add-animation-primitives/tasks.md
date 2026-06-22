@@ -42,7 +42,7 @@
 ## 7. ドキュメント
 
 - [x] 7.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に Motion 行を追加する。
-- [x] 7.2 `docs/compat-adapters.md` に reduced-motion query 責務を追記する。
+- [x] 7.2 reduced-motion query は KUC core contract として保持し、repo 外 runtime 側の責務文書は KUC active tree から除外する。
 
 ## 8. 品質ゲート / DoD
 

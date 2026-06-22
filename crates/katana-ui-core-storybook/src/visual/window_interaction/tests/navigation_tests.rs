@@ -1,7 +1,9 @@
 use super::super::{StorybookWindowState, apply_click, click_content_y};
 use crate::catalog::story_map::{StoryGroup, StorySection};
 use crate::visual::navigation_tree::{NavigationRow, row_from_click};
-use crate::visual::panel_scroll_state::PanelScrollOffsets;
+use crate::visual::panel_scroll_state::{
+    PanelScrollOffsets, PanelScrollOverflowModel, PanelScrollRegion,
+};
 use crate::visual::{layout_metrics, render};
 
 const DIFF_THRESHOLD: usize = 8_000;
@@ -154,7 +156,7 @@ fn viewport_click_mapping_keeps_navigation_rows_aligned_after_root_scroll() {
         },
         ..StorybookWindowState::default()
     };
-    let target = visible_navigation_target(&state);
+    let target = visible_navigation_target_in_viewport(&state);
 
     assert!(target.is_some());
     if let Some((x, logical_y, target_page)) = target {
@@ -188,6 +190,76 @@ fn click_mapping_can_select_nested_story_with_navigation_scroll() {
         assert!(apply_click(&mut state, x, content_y));
         assert_eq!("select-box", state.selected_page);
     }
+}
+
+#[test]
+fn navigation_scroll_is_retained_when_selecting_visible_row_after_deep_scroll() {
+    let mut state = StorybookWindowState::default();
+    let deep_scroll = PanelScrollOverflowModel::max_scroll_y_for(
+        PanelScrollRegion::Navigation,
+        state.selected_page,
+        state.tree_expansion,
+    );
+    state.panel_scroll.navigation_y = deep_scroll;
+    let before_scroll = state.panel_scroll.navigation_y;
+    let target = visible_navigation_target_in_viewport(&state);
+
+    assert!(before_scroll > 0);
+    assert!(target.is_some());
+    if let Some((x, logical_y, target_page)) = target {
+        let visible_y =
+            logical_y.saturating_sub(state.panel_scroll.navigation_y + state.panel_scroll.root_y);
+        let content_y = click_content_y(&state, x, visible_y);
+
+        assert!(apply_click(&mut state, x, content_y));
+        assert_eq!(target_page, state.selected_page);
+        assert_eq!(
+            before_scroll, state.panel_scroll.navigation_y,
+            "selecting a deep navigation row must not reset the navigation scroll position"
+        );
+        let visible_after =
+            logical_y.saturating_sub(state.panel_scroll.navigation_y + state.panel_scroll.root_y);
+        let panel = layout_metrics::navigation_menu_panel_rect();
+        assert!(panel.contains(x, visible_after));
+    }
+}
+
+#[test]
+fn navigation_scroll_retained_when_selecting_tree_view_after_deep_scroll() {
+    let mut state = StorybookWindowState::default();
+    let Some((x, logical_y)) = logical_target_for_page("tree-view", &state) else {
+        assert!(
+            logical_target_for_page("tree-view", &state).is_some(),
+            "tree-view row must exist in navigation tree"
+        );
+        return;
+    };
+    let panel = layout_metrics::navigation_menu_panel_rect();
+    let max_scroll = PanelScrollOverflowModel::max_scroll_y_for(
+        PanelScrollRegion::Navigation,
+        state.selected_page,
+        state.tree_expansion,
+    );
+    state.panel_scroll.navigation_y = logical_y
+        .saturating_sub(panel.bottom().saturating_sub(layout_metrics::NAV_ROW_STEP))
+        .min(max_scroll);
+    let before_scroll = state.panel_scroll.navigation_y;
+    let visible_y =
+        logical_y.saturating_sub(state.panel_scroll.navigation_y + state.panel_scroll.root_y);
+    let content_y = click_content_y(&state, x, visible_y);
+
+    assert!(before_scroll > 0);
+    assert!(panel.contains(x, visible_y));
+    assert!(apply_click(&mut state, x, content_y));
+
+    assert_eq!("tree-view", state.selected_page);
+    assert_eq!(
+        before_scroll, state.panel_scroll.navigation_y,
+        "selecting tree-view after deep navigation scroll must not jump back to the top"
+    );
+    let visible_after =
+        logical_y.saturating_sub(state.panel_scroll.navigation_y + state.panel_scroll.root_y);
+    assert!(panel.contains(x, visible_after));
 }
 
 #[test]
@@ -247,21 +319,41 @@ fn click_target_for_page_in_state(
     None
 }
 
-fn visible_navigation_target(state: &StorybookWindowState) -> Option<(usize, usize, &'static str)> {
+fn logical_target_for_page(page: &str, state: &StorybookWindowState) -> Option<(usize, usize)> {
+    let x = layout_metrics::NAV_ROW_X + 1;
+    let max_y = PanelScrollOverflowModel::max_scroll_y_for(
+        PanelScrollRegion::Navigation,
+        state.selected_page,
+        state.tree_expansion,
+    ) + layout_metrics::CONTENT_HEIGHT;
+    for logical_y in 0..max_y {
+        if let Some(row) = row_from_click(x, logical_y, state.tree_expansion) {
+            let is_target = matches!(
+                row,
+                NavigationRow::Page { page: found, .. }
+                | NavigationRow::PageWithoutSection { page: found, .. }
+                    if found == page
+            );
+            if is_target {
+                return Some((x, logical_y));
+            }
+        }
+    }
+    None
+}
+
+fn visible_navigation_target_in_viewport(
+    state: &StorybookWindowState,
+) -> Option<(usize, usize, &'static str)> {
     let panel = layout_metrics::navigation_menu_panel_rect();
-    let max_visible = panel
-        .bottom()
-        .saturating_sub(state.panel_scroll.root_y + state.panel_scroll.navigation_y);
-    for visible_y in 0..max_visible {
+    let x = layout_metrics::NAV_ROW_X + 1;
+    for visible_y in panel.y..panel.bottom() {
         let logical_y = visible_y + state.panel_scroll.root_y + state.panel_scroll.navigation_y;
         if let Some(
             NavigationRow::Page { page, .. } | NavigationRow::PageWithoutSection { page, .. },
-        ) = row_from_click(
-            layout_metrics::NAV_ROW_X + 1,
-            logical_y,
-            state.tree_expansion,
-        ) {
-            return Some((layout_metrics::NAV_ROW_X + 1, logical_y, page));
+        ) = row_from_click(x, logical_y, state.tree_expansion)
+        {
+            return Some((x, logical_y, page));
         }
     }
     None

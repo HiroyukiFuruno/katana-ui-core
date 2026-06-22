@@ -34,6 +34,9 @@ const LABEL_COUNT: usize = 3;
 const PLACEMENT_PRESET_INDEX: usize = 1;
 const AUTO_FLIP_PRESET_INDEX: usize = 2;
 const OFFSET_WIDTH_PRESET_INDEX: usize = 3;
+const OUTSIDE_ESCAPE_PRESET_INDEX: usize = 4;
+const FOCUS_HANDLING_PRESET_INDEX: usize = 5;
+const SLOT_CONTENT_PRESET_INDEX: usize = 6;
 
 pub(super) fn popover(
     canvas: &mut Canvas,
@@ -123,7 +126,10 @@ fn panel_y(scenario: ScenarioContext<'_>) -> usize {
 }
 
 fn panel_width(scenario: ScenarioContext<'_>) -> usize {
-    if scenario.preset_index == OFFSET_WIDTH_PRESET_INDEX {
+    if matches!(
+        scenario.preset_index,
+        OFFSET_WIDTH_PRESET_INDEX | SLOT_CONTENT_PRESET_INDEX
+    ) {
         return WIDE_PANEL_WIDTH;
     }
     PANEL_WIDTH
@@ -136,6 +142,12 @@ fn panel_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
     if scenario.screen_state.has_widget_action() {
         return palette.accent;
     }
+    if scenario.preset_index == OUTSIDE_ESCAPE_PRESET_INDEX {
+        return common::DANGER;
+    }
+    if scenario.preset_index == SLOT_CONTENT_PRESET_INDEX {
+        return common::SUCCESS;
+    }
     if scenario.preset_index == AUTO_FLIP_PRESET_INDEX {
         return palette.panel;
     }
@@ -143,7 +155,10 @@ fn panel_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
 }
 
 fn pointer_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.preset_index == PLACEMENT_PRESET_INDEX {
+    if matches!(
+        scenario.preset_index,
+        PLACEMENT_PRESET_INDEX | FOCUS_HANDLING_PRESET_INDEX
+    ) {
         return common::TOKEN;
     }
     panel_fill(palette, scenario)
@@ -164,6 +179,9 @@ fn placement_label(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 fn close_label(scenario: ScenarioContext<'_>) -> &'static str {
+    if scenario.preset_index == OUTSIDE_ESCAPE_PRESET_INDEX {
+        return "outside + Esc -> close";
+    }
     if scenario.preset_index == AUTO_FLIP_PRESET_INDEX {
         return "auto flip -> top-start";
     }
@@ -171,6 +189,12 @@ fn close_label(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 fn slot_label(scenario: ScenarioContext<'_>) -> &'static str {
+    if scenario.preset_index == FOCUS_HANDLING_PRESET_INDEX {
+        return "focus return to anchor";
+    }
+    if scenario.preset_index == SLOT_CONTENT_PRESET_INDEX {
+        return "slot content + actions";
+    }
     if scenario.preset_index == OFFSET_WIDTH_PRESET_INDEX {
         return "width 320px + slot action";
     }

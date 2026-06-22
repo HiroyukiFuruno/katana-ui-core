@@ -86,6 +86,24 @@ fn draw_track(
         KNOB_SIZE,
         palette.border,
     );
+    if scenario.screen_state.preview_hovered {
+        canvas.stroke_rect(
+            x + TRACK_X,
+            y + TRACK_Y.saturating_sub(m::PX_2),
+            TRACK_WIDTH,
+            TRACK_HEIGHT + m::PX_4,
+            common::WARN,
+        );
+    }
+    if scenario.screen_state.is_button_focused() {
+        canvas.stroke_rect(
+            knob_x.saturating_sub(m::PX_2),
+            y + TRACK_Y - KNOB_Y_OFFSET - m::PX_2,
+            KNOB_SIZE + m::PX_4,
+            KNOB_SIZE + m::PX_4,
+            palette.accent,
+        );
+    }
 }
 
 fn draw_steps(
@@ -142,7 +160,10 @@ fn draw_status(
 }
 
 fn value_for(scenario: ScenarioContext<'_>) -> usize {
-    if scenario.screen_state.has_widget_action() || scenario.screen_state.has_settings_override() {
+    if scenario.screen_state.has_settings_override()
+        || scenario.screen_state.last_action == "slide_drag"
+        || scenario.screen_state.last_action == "slide_keyboard_increment"
+    {
         return DRAG_VALUE;
     }
     match scenario.preset_index {

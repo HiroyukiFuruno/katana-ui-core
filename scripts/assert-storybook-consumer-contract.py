@@ -254,9 +254,12 @@ def leaf_readiness_audit_source_failures(
             f"{relative(READINESS_AUDIT_DOC)}: required count mismatch doc={documented_count} actual={len(required)}"
         )
 
-    if "leaf change DoD 完了" not in source:
+    if (
+        "leaf change harness coverage gate 通過" not in source
+        or "完了根拠ではない" not in source
+    ):
         failures.append(
-            f"{relative(READINESS_AUDIT_DOC)}: leaf change DoD summary is missing"
+            f"{relative(READINESS_AUDIT_DOC)}: leaf change harness coverage summary is missing"
         )
 
     rows = parse_leaf_change_rows(source)
@@ -619,6 +622,26 @@ def self_test() -> int:
         row_count_mismatch_source, required_fixture_pages
     )
     if not any("table row count mismatch" in failure for failure in row_count_mismatch):
+        print("storybook consumer contract self-test failed", file=sys.stderr)
+        return 1
+    leaf_source = """# Storybook Consumer Contract Readiness Audit
+対象: `requirements.rs` と Storybook menu に存在する 2 page
+
+## 集計
+- leaf change harness coverage gate 通過: 2（完了根拠ではない）
+
+| group | page | leaf change | 入力元 | page別描画 | 残作業 |
+| --- | --- | --- | --- | --- | --- |
+| Atoms | `text` | `storybook-page-text` | test | page別描画あり | harness coverage gate 通過 |
+| Atoms | `button` | `storybook-page-button` | test | page別描画あり | harness coverage gate 通過 |
+"""
+    leaf_failures = readiness_audit_source_failures(leaf_source, ("text", "button"))
+    if leaf_failures:
+        print("storybook consumer contract self-test failed", file=sys.stderr)
+        return 1
+    stale_leaf_source = leaf_source.replace("（完了根拠ではない）", "")
+    stale_leaf_failures = readiness_audit_source_failures(stale_leaf_source, ("text", "button"))
+    if not any("leaf change harness coverage summary" in failure for failure in stale_leaf_failures):
         print("storybook consumer contract self-test failed", file=sys.stderr)
         return 1
     legacy_doc_fixture = """# Legacy 01〜24 Consumer Harness 再評価（2026-05-23）

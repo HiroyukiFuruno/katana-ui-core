@@ -7,7 +7,7 @@ use crate::visual::render_context::ScenarioContext;
 use crate::visual::text::TextRenderer;
 
 use super::super::super::model::{
-    HORIZONTAL_PRESET_INDEX, NESTED_PRESET_INDEX, SCROLLBAR_PRESET_INDEX,
+    HORIZONTAL_PRESET_INDEX, NESTED_PRESET_INDEX, SCROLLBAR_PRESET_INDEX, VERTICAL_PRESET_INDEX,
 };
 
 const VERTICAL_ROW_COUNT: usize = 8;
@@ -38,6 +38,7 @@ pub(super) fn draw(
 ) {
     canvas.fill_rect(clip.x, clip.y, clip.width, clip.height, palette.surface);
     match scenario.preset_index {
+        VERTICAL_PRESET_INDEX => draw_vertical(canvas, text, palette, scenario, clip),
         HORIZONTAL_PRESET_INDEX => draw_horizontal(canvas, text, palette, scenario, clip),
         SCROLLBAR_PRESET_INDEX => draw_toggle(canvas, text, palette, scenario, clip),
         NESTED_PRESET_INDEX => draw_nested(canvas, text, palette, scenario, clip),

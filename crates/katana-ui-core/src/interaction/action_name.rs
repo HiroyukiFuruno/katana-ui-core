@@ -20,6 +20,7 @@ pub(super) fn value_name(
         UiActionSource::ColorPickerBlending => "color_blending_changed",
         UiActionSource::CodeDiffMode => "code_diff_mode_changed",
         UiActionSource::CodeDiffDirection => "code_diff_direction_changed",
+        UiActionSource::CodeDiffLanguage => "code_diff_language_changed",
         _ => "set_value",
     }
 }

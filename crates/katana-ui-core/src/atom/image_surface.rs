@@ -1,6 +1,7 @@
 use crate::render_model::{
     UiCommonProps, UiImageSurfaceFit, UiImageSurfaceHighlight, UiImageSurfaceProps,
-    UiImageSurfaceValidationError, UiNode, UiNodeKind, UiStateId, UiVisualRole,
+    UiImageSurfaceTransform, UiImageSurfaceValidationError, UiNode, UiNodeKind, UiStateId,
+    UiVisualRole,
 };
 use serde::{Deserialize, Serialize};
 
@@ -43,6 +44,18 @@ impl ImageSurface {
     }
 
     #[must_use]
+    pub fn display_size(mut self, width: u32, height: u32) -> Self {
+        self.props = self.props.display_size(width, height);
+        self
+    }
+
+    #[must_use]
+    pub fn display_size_exact(mut self, width: f32, height: f32) -> Self {
+        self.props = self.props.display_size_exact(width, height);
+        self
+    }
+
+    #[must_use]
     pub fn fit(mut self, value: UiImageSurfaceFit) -> Self {
         self.props = self.props.fit(value);
         self
@@ -55,8 +68,21 @@ impl ImageSurface {
     }
 
     #[must_use]
+    pub fn selection_text(mut self, value: impl Into<String>) -> Self {
+        self.props = self.props.selection_text(value);
+        self.common = self.common.selectable(true);
+        self
+    }
+
+    #[must_use]
     pub fn highlight_rect(mut self, value: UiImageSurfaceHighlight) -> Self {
         self.props = self.props.highlight_rect(value);
+        self
+    }
+
+    #[must_use]
+    pub fn transform(mut self, value: UiImageSurfaceTransform) -> Self {
+        self.props = self.props.transform(value);
         self
     }
 

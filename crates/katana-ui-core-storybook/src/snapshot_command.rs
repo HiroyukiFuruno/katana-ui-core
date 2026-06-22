@@ -6,8 +6,8 @@ use std::process;
 const SNAPSHOT_PAGE_ARG: usize = 3;
 const SNAPSHOT_THEME_ARG: usize = 4;
 const SNAPSHOT_OPERATION_ARG: usize = 5;
-const SNAPSHOT_SCROLL_ARG: usize = 6;
-const SNAPSHOT_SCROLLBAR_ARG: usize = 7;
+const SNAPSHOT_ACTION_ARG: usize = 6;
+const SNAPSHOT_SCROLL_ARG: usize = 7;
 const DEFAULT_PRESET_INDEX: usize = 0;
 const DEFAULT_SCROLL_Y: usize = 0;
 const INTERACTIVE_PRESET_INDEX: usize = 1;
@@ -30,33 +30,15 @@ impl SnapshotCommand {
             .get(SNAPSHOT_THEME_ARG)
             .map(String::as_str)
             .unwrap_or("dark");
-        let preset_index = args
-            .get(SNAPSHOT_OPERATION_ARG)
-            .map(String::as_str)
-            .map(snapshot_preset_index)
-            .unwrap_or(DEFAULT_PRESET_INDEX);
-        let clicked = args
-            .get(SNAPSHOT_OPERATION_ARG)
-            .map(String::as_str)
-            .is_some_and(snapshot_clicked);
-        let scroll_y = args
-            .get(SNAPSHOT_SCROLL_ARG)
-            .map(String::as_str)
-            .map(snapshot_scroll_y)
-            .unwrap_or(DEFAULT_SCROLL_Y);
-        let scrollbar_visible = args
-            .get(SNAPSHOT_SCROLLBAR_ARG)
-            .map(String::as_str)
-            .map(snapshot_scrollbar_visible)
-            .unwrap_or(true);
+        let request = snapshot_request(args);
         Self::write_snapshot(
             output,
             theme_id,
             selected_page,
-            preset_index,
-            scroll_y,
-            scrollbar_visible,
-            clicked,
+            request.preset_index,
+            request.scroll_y,
+            request.scrollbar_visible,
+            request.clicked,
         );
     }
 
@@ -103,6 +85,47 @@ impl SnapshotCommand {
         }
         let evidence = snapshot_evidence_or_exit(output_path, "failed to inspect visual snapshot");
         println!("katana-ui-core-storybook-snapshot: {output} {evidence}");
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct SnapshotRequest {
+    preset_index: usize,
+    clicked: bool,
+    scroll_y: usize,
+    scrollbar_visible: bool,
+}
+
+fn snapshot_request(args: &[String]) -> SnapshotRequest {
+    let operation = args.get(SNAPSHOT_OPERATION_ARG).map(String::as_str);
+    let action = args.get(SNAPSHOT_ACTION_ARG).map(String::as_str);
+    let clicked = operation.is_some_and(snapshot_clicked) || action.is_some_and(snapshot_clicked);
+    let preset_index = operation
+        .filter(|value| !snapshot_clicked(value))
+        .map(snapshot_preset_index)
+        .unwrap_or(DEFAULT_PRESET_INDEX);
+    let scroll_arg = if action.is_some_and(snapshot_clicked) {
+        SNAPSHOT_SCROLL_ARG
+    } else {
+        SNAPSHOT_ACTION_ARG
+    };
+    let scrollbar_arg = scroll_arg + 1;
+    let scroll_y = args
+        .get(scroll_arg)
+        .map(String::as_str)
+        .filter(|value| !snapshot_clicked(value))
+        .map(snapshot_scroll_y)
+        .unwrap_or(DEFAULT_SCROLL_Y);
+    let scrollbar_visible = args
+        .get(scrollbar_arg)
+        .map(String::as_str)
+        .map(snapshot_scrollbar_visible)
+        .unwrap_or(true);
+    SnapshotRequest {
+        preset_index,
+        clicked,
+        scroll_y,
+        scrollbar_visible,
     }
 }
 
@@ -153,7 +176,10 @@ fn snapshot_evidence_or_exit(path: &Path, failure: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{EDGE_PRESET_INDEX, INTERACTIVE_PRESET_INDEX, snapshot_preset_index};
+    use super::{
+        DEFAULT_PRESET_INDEX, EDGE_PRESET_INDEX, INTERACTIVE_PRESET_INDEX, SnapshotRequest,
+        snapshot_preset_index, snapshot_request,
+    };
 
     #[test]
     fn snapshot_preset_index_keeps_named_aliases() {
@@ -168,5 +194,54 @@ mod tests {
     fn snapshot_preset_index_accepts_numeric_presets() {
         assert_eq!(5, snapshot_preset_index("5"));
         assert_eq!(6, snapshot_preset_index("preset-6"));
+    }
+
+    #[test]
+    fn snapshot_request_keeps_clicked_action_separate_from_preset() {
+        let args = args(&[
+            "storybook",
+            "--visual-snapshot",
+            "target/checkbox.png",
+            "checkbox",
+            "dark",
+            "preset-1",
+            "clicked",
+        ]);
+
+        assert_eq!(
+            SnapshotRequest {
+                preset_index: INTERACTIVE_PRESET_INDEX,
+                clicked: true,
+                scroll_y: 0,
+                scrollbar_visible: true,
+            },
+            snapshot_request(&args)
+        );
+    }
+
+    #[test]
+    fn snapshot_request_keeps_legacy_clicked_operation() {
+        let args = args(&[
+            "storybook",
+            "--visual-snapshot",
+            "target/checkbox.png",
+            "checkbox",
+            "dark",
+            "clicked",
+        ]);
+
+        assert_eq!(
+            SnapshotRequest {
+                preset_index: DEFAULT_PRESET_INDEX,
+                clicked: true,
+                scroll_y: 0,
+                scrollbar_visible: true,
+            },
+            snapshot_request(&args)
+        );
+    }
+
+    fn args(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| (*value).to_string()).collect()
     }
 }

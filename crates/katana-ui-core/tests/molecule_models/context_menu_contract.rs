@@ -71,6 +71,26 @@ fn context_menu_open_highlight_activate_and_close_emit_events() {
 }
 
 #[test]
+fn context_menu_disabled_activation_is_blocked_without_closing() {
+    let mut menu = ContextMenu::new("Explorer menu")
+        .item(ContextMenuItem::action("rename", "Rename").disabled(true))
+        .item(ContextMenuItem::action("delete", "Delete"));
+
+    menu.apply_context_action(&ContextMenuAction::Open {
+        anchor: ContextMenuAnchor::VirtualRect(ContextMenuRect::new(8, 16, 24, 24)),
+    });
+    let blocked = menu.apply_context_action(&ContextMenuAction::Activate { path: vec![0] });
+    let node = UiTree::new(menu).root().clone();
+
+    assert_eq!(
+        ContextMenuEvent::ItemActivationBlocked { path: vec![0] },
+        blocked
+    );
+    assert!(node.props().interaction.open);
+    assert_eq!(vec![0], node.props().context_menu.highlighted_path);
+}
+
+#[test]
 fn context_menu_submenus_get_unique_state_ids() {
     let menu = ContextMenu::new("Nested menu")
         .item(
@@ -102,6 +122,30 @@ fn context_menu_supports_generic_ui_actions() {
     let open = menu.apply_action(&UiAction::SetOpen { target, open: true });
     assert!(open.handled);
     assert!(open.after.open);
+}
+
+#[test]
+fn context_menu_invokes_callback_as_item_activation() {
+    let mut menu = ContextMenu::new("Tab menu")
+        .item(ContextMenuItem::action("close", "Close").disabled(true))
+        .item(
+            ContextMenuItem::new("insert", "Insert", ContextMenuItemKind::Submenu)
+                .child(ContextMenuItem::action("table", "Table")),
+        );
+    let target = UiTree::new(menu.clone()).root().props().state_id.clone();
+
+    let disabled = menu.apply_action(&UiAction::invoke_callback(target.clone(), "close"));
+    let activated = menu.apply_action(&UiAction::invoke_callback(target, "table"));
+
+    assert!(!disabled.handled);
+    assert!(activated.handled);
+    assert_eq!("table", activated.callback_log[0].action);
+    assert!(!activated.after.open);
+    assert!(matches!(
+        menu.callback_log().first(),
+        Some(ContextMenuEvent::ItemSelected { path, command })
+            if path == &vec![1, 0] && command == "table"
+    ));
 }
 
 #[test]

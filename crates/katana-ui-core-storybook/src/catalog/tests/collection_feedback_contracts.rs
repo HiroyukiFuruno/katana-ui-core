@@ -20,7 +20,20 @@ fn chip_attachment_stories_expose_settings_presets_and_logs() -> Result<(), &'st
     let group_details = StoryDetailContent::from_example(group);
 
     assert_eq!(
-        &["filter tag", "dismiss", "selected", "tone matrix"],
+        &[
+            "filter label",
+            "leading filter icon",
+            "trailing dismiss icon",
+            "filled chip variant",
+            "danger chip tone",
+            "large chip size",
+            "interactive chip",
+            "selected chip",
+            "disabled chip",
+            "dismissible chip",
+            "accessible chip label",
+            "chip focus ring",
+        ],
         StoryPresetLabels::for_page("chip")
     );
     assert_eq!(
@@ -29,30 +42,76 @@ fn chip_attachment_stories_expose_settings_presets_and_logs() -> Result<(), &'st
             "image attachment",
             "url attachment",
             "uploading",
-            "error retry"
+            "error retry",
+            "name",
+            "meta",
+            "thumbnail"
         ],
         StoryPresetLabels::for_page("attachment-chip")
     );
     assert_eq!(
-        &["wrap", "overflow menu", "horizontal scroll", "reorder"],
+        &[
+            "wrap",
+            "overflow menu",
+            "horizontal scroll",
+            "reorder",
+            "label",
+            "chip count",
+            "gap",
+            "available width",
+            "trigger width"
+        ],
         StoryPresetLabels::for_page("chip-group")
     );
-    for setting in ["variant", "tone", "size"] {
+    for setting in [
+        "chip.label",
+        "chip.leading_icon",
+        "chip.trailing_icon",
+        "chip.variant",
+        "chip.tone",
+        "chip.size",
+        "chip.interactive",
+        "chip.selected",
+        "chip.disabled",
+        "chip.dismissible",
+        "chip.a11y_label",
+        "chip.focused",
+    ] {
         assert!(
             chip_details.settings.contains(setting),
             "chip settings inspector lacks {setting}"
         );
     }
-    for setting in ["status", "progress"] {
+    for setting in [
+        "attachment.kind",
+        "attachment.name",
+        "attachment.meta",
+        "attachment.thumbnail",
+        "attachment.status",
+        "attachment.progress",
+        "attachment.retry",
+    ] {
         assert!(
             attachment_details.settings.contains(setting),
             "attachment-chip settings inspector lacks {setting}"
         );
     }
-    assert!(
-        group_details.settings.contains("overflow"),
-        "chip-group settings inspector lacks overflow"
-    );
+    for setting in [
+        "chip_group.label",
+        "chip_group.chip_count",
+        "chip_group.wrap",
+        "chip_group.overflow",
+        "chip_group.reorder",
+        "chip_group.gap",
+        "chip_group.available_width",
+        "chip_group.overflow_trigger_width",
+        "chip_group.hidden_count",
+    ] {
+        assert!(
+            group_details.settings.contains(setting),
+            "chip-group settings inspector lacks {setting}"
+        );
+    }
     assert!(
         chip.callback_logs
             .iter()
@@ -121,6 +180,43 @@ fn diagnostics_list_story_exposes_settings_presets_and_logs() -> Result<(), &'st
         assert!(
             story.callback_logs.iter().any(|it| it.action == action),
             "diagnostics-list callback log lacks action {action}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn dynamic_array_editor_story_exposes_real_actions_and_logs() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "dynamic-array-editor")
+        .ok_or("dynamic-array-editor page missing")?;
+    let root = story.tree.root();
+
+    assert_eq!(3, root.props().interaction.item_count);
+    assert!(
+        root.children()
+            .iter()
+            .any(|it| it.props().label == "Add row")
+    );
+    assert!(
+        root.children()
+            .iter()
+            .any(|it| it.props().label == "Remove row")
+    );
+    assert!(
+        root.children()
+            .iter()
+            .any(|it| it.props().label == "Move row")
+    );
+    for action in ["array_add", "array_remove", "array_reorder"] {
+        assert!(
+            story
+                .callback_logs
+                .iter()
+                .any(|it| it.action == action && it.after.contains("event=array_changed")),
+            "dynamic-array-editor callback log lacks action {action}"
         );
     }
     Ok(())
@@ -226,7 +322,11 @@ fn empty_state_story_exposes_settings_presets_and_logs() -> Result<(), &'static 
             "search no result",
             "diagnostics clean",
             "history empty",
-            "error fallback"
+            "error fallback",
+            "heading",
+            "body",
+            "icon",
+            "illustration"
         ],
         StoryPresetLabels::for_page("empty-state")
     );
@@ -236,7 +336,16 @@ fn empty_state_story_exposes_settings_presets_and_logs() -> Result<(), &'static 
             "empty-state detail preset lacks {preset}"
         );
     }
-    for setting in ["tone", "size", "alignment", "actions"] {
+    for setting in [
+        "heading",
+        "body",
+        "icon",
+        "illustration",
+        "tone",
+        "size",
+        "alignment",
+        "actions",
+    ] {
         assert!(
             details.settings.contains(setting),
             "empty-state settings inspector lacks {setting}"

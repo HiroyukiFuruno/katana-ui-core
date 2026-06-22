@@ -1,23 +1,25 @@
 use super::canvas::Canvas;
 use super::dedicated_dod_common::{self as common};
+pub(super) use super::dedicated_dod_form_select_live_layout::{
+    select_close_button_rect, select_open_button_rect, select_reset_button_rect,
+    select_state_read_button_rect,
+};
 use super::dedicated_dod_metrics as m;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::selection_control_metrics as sm;
 use super::text::{TextRenderer, TextVerticalBox};
 
-const CONTROL_BUTTON_X: usize = sm::STATUS_X;
-const CONTROL_BUTTON_Y: usize = 116;
-const CONTROL_BUTTON_WIDTH: usize = 56;
-const CONTROL_BUTTON_HEIGHT: usize = 20;
 const CONTROL_BUTTON_GAP: usize = 8;
 const CONTROL_TEXT_Y: usize = 6;
 const LIGHT_OPTION_INDEX: usize = 1;
 const DARK_OPTION_INDEX: usize = 2;
 const SYSTEM_OPTION_INDEX: usize = 3;
-const SELECT_ACTION_PRESET_INDEX: usize = 1;
-const LONG_LIST_PRESET_INDEX: usize = 2;
-const THEME_PRESET_INDEX: usize = 3;
+const ITEMS_PRESET_INDEX: usize = 0;
+const OPEN_PRESET_INDEX: usize = 1;
+const SELECTED_PRESET_INDEX: usize = 2;
+const PLACEHOLDER_PRESET_INDEX: usize = 3;
+const DISABLED_PRESET_INDEX: usize = 4;
 
 pub(super) fn select_box(
     canvas: &mut Canvas,
@@ -42,12 +44,12 @@ fn draw_trigger(
     x: usize,
     y: usize,
 ) {
-    let fill = if scenario.preset_index == THEME_PRESET_INDEX {
-        palette.background
+    let fill = if scenario.preset_index == DISABLED_PRESET_INDEX {
+        palette.panel
     } else {
         palette.surface
     };
-    let border = if scenario.preset_index == THEME_PRESET_INDEX {
+    let border = if scenario.preset_index == PLACEHOLDER_PRESET_INDEX {
         palette.accent
     } else {
         palette.border
@@ -72,7 +74,7 @@ fn draw_trigger(
         x + sm::TRIGGER_X + sm::TEXT_X,
         TextVerticalBox::new(y + sm::TRIGGER_Y, sm::TRIGGER_HEIGHT as f32),
         m::FONT_9,
-        palette.text,
+        trigger_text(palette, scenario),
     );
 }
 
@@ -186,6 +188,15 @@ fn draw_controls(
 }
 
 fn select_value(scenario: ScenarioContext<'_>) -> &'static str {
+    if scenario.preset_index == ITEMS_PRESET_INDEX {
+        return "6 items";
+    }
+    if scenario.preset_index == PLACEHOLDER_PRESET_INDEX {
+        return "Choose theme...";
+    }
+    if scenario.preset_index == DISABLED_PRESET_INDEX {
+        return "Disabled";
+    }
     match selected_index(scenario) {
         Some(LIGHT_OPTION_INDEX) => "Light",
         Some(DARK_OPTION_INDEX) => "Dark",
@@ -196,8 +207,8 @@ fn select_value(scenario: ScenarioContext<'_>) -> &'static str {
 
 fn select_open(scenario: ScenarioContext<'_>) -> bool {
     scenario.screen_state.selection.select_open
-        || scenario.preset_index == SELECT_ACTION_PRESET_INDEX
-        || scenario.preset_index == LONG_LIST_PRESET_INDEX
+        || scenario.preset_index == OPEN_PRESET_INDEX
+        || scenario.preset_index == ITEMS_PRESET_INDEX
 }
 
 fn selected_index(scenario: ScenarioContext<'_>) -> Option<usize> {
@@ -210,10 +221,19 @@ fn selected_index(scenario: ScenarioContext<'_>) -> Option<usize> {
         return scenario.screen_state.selection.select_selected_index;
     }
     match scenario.preset_index {
-        SELECT_ACTION_PRESET_INDEX => Some(LIGHT_OPTION_INDEX),
-        LONG_LIST_PRESET_INDEX => Some(DARK_OPTION_INDEX),
+        SELECTED_PRESET_INDEX => Some(LIGHT_OPTION_INDEX),
         _ => None,
     }
+}
+
+fn trigger_text(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if matches!(
+        scenario.preset_index,
+        PLACEHOLDER_PRESET_INDEX | DISABLED_PRESET_INDEX
+    ) {
+        return palette.muted;
+    }
+    palette.text
 }
 
 fn status_action(scenario: ScenarioContext<'_>) -> &'static str {
@@ -231,50 +251,17 @@ fn status_event(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 fn status_state(scenario: ScenarioContext<'_>) -> &'static str {
+    if scenario.preset_index == ITEMS_PRESET_INDEX {
+        return "items=6";
+    }
+    if scenario.preset_index == PLACEHOLDER_PRESET_INDEX {
+        return "placeholder=true";
+    }
+    if scenario.preset_index == DISABLED_PRESET_INDEX {
+        return "disabled=true";
+    }
     if scenario.screen_state.state_label == "idle" {
         return "selected=none";
     }
     scenario.screen_state.state_label
-}
-
-pub(super) fn select_state_read_button_rect(
-    x: usize,
-    y: usize,
-) -> super::layout_metrics::LayoutRect {
-    super::layout_metrics::LayoutRect::new(
-        x + CONTROL_BUTTON_X,
-        y + CONTROL_BUTTON_Y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
-}
-
-pub(super) fn select_open_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    let read = select_state_read_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        read.right() + CONTROL_BUTTON_GAP,
-        read.y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
-}
-
-pub(super) fn select_close_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    let read = select_state_read_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        read.x,
-        read.bottom() + CONTROL_BUTTON_GAP,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
-}
-
-pub(super) fn select_reset_button_rect(x: usize, y: usize) -> super::layout_metrics::LayoutRect {
-    let close = select_close_button_rect(x, y);
-    super::layout_metrics::LayoutRect::new(
-        close.right() + CONTROL_BUTTON_GAP,
-        close.y,
-        CONTROL_BUTTON_WIDTH,
-        CONTROL_BUTTON_HEIGHT,
-    )
 }

@@ -1,19 +1,16 @@
 use crate::visual::canvas::Canvas;
-use crate::visual::text_raster_request::TextRasterDrawRequest;
-use cosmic_text::{
-    Attrs, Buffer, Color, Family, FontSystem, Metrics, Shaping, SwashCache, Weight, Wrap,
+use crate::visual::text_raster_cache_entry::{
+    RichTextRasterCacheEntry, RichTextRasterCacheKey, TextRasterCacheEntry, TextRasterCacheKey,
 };
-use katana_ui_core::theme::{FontFamily, FontToken};
+use crate::visual::text_raster_rasterize::{rasterize_rich_line, rasterize_text};
+use crate::visual::text_raster_request::TextRasterDrawRequest;
+use cosmic_text::{FontSystem, SwashCache};
+use katana_ui_core::theme::FontToken;
+use std::collections::HashMap;
 
-const TEXT_BUFFER_WIDTH: f32 = 4096.0;
-const TEXT_SUPERSAMPLE_SCALE: f32 = 2.0;
-const TEXT_SUPERSAMPLE_SAMPLES: u32 = 4;
-const REGULAR_WEIGHT: u16 = 400;
-const RED_SHIFT: u32 = 16;
-const GREEN_SHIFT: u32 = 8;
-const CHANNEL_MASK: u32 = 0xff;
-const OPAQUE_ALPHA: u8 = 0xff;
-
+pub(super) const TEXT_BUFFER_WIDTH: f32 = 4096.0;
+pub(super) const TEXT_SUPERSAMPLE_SCALE: f32 = 2.0;
+pub(super) const TEXT_RASTER_VERTICAL_GUARD_RATIO: f32 = 0.35;
 #[cfg(test)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct TextCacheStats {
@@ -21,11 +18,20 @@ pub(crate) struct TextCacheStats {
     pub(crate) raster_misses: usize,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub(super) struct TextStyle {
-    size: f32,
-    line_height: f32,
-    color: u32,
+    pub(super) size: f32,
+    pub(super) line_height: f32,
+    pub(super) color: u32,
+    pub(super) italic: bool,
+    pub(super) raster_vertical_scale: f32,
+}
+
+pub(super) struct RichTextRasterSpan<'a> {
+    pub(super) text: &'a str,
+    pub(super) style: TextStyle,
+    pub(super) font: &'a FontToken,
+    pub(super) emoji: bool,
 }
 
 impl TextStyle {
@@ -34,13 +40,36 @@ impl TextStyle {
             size,
             line_height,
             color,
+            italic: false,
+            raster_vertical_scale: 1.0,
         }
+    }
+
+    pub(super) const fn italic(mut self, value: bool) -> Self {
+        self.italic = value;
+        self
+    }
+
+    pub(super) const fn raster_vertical_scale(mut self, value: f32) -> Self {
+        self.raster_vertical_scale = value;
+        self
+    }
+
+    pub(super) const fn color(&self) -> u32 {
+        self.color
+    }
+
+    pub(super) const fn is_italic(&self) -> bool {
+        self.italic
     }
 }
 
 #[derive(Default)]
 pub(super) struct TextRasterCache {
     entries: Vec<TextRasterCacheEntry>,
+    entry_index: HashMap<TextRasterCacheKey, usize>,
+    rich_entries: Vec<RichTextRasterCacheEntry>,
+    rich_entry_index: HashMap<RichTextRasterCacheKey, usize>,
     raster_misses: usize,
 }
 
@@ -56,6 +85,7 @@ impl TextRasterCache {
             request.text,
             request.style,
             request.font,
+            request.emoji,
             font_system,
             swash_cache,
             request.scale_factor,
@@ -65,6 +95,7 @@ impl TextRasterCache {
             request.origin_x,
             request.origin_y,
             request.style.color,
+            request.style.raster_vertical_scale,
         );
     }
 
@@ -73,19 +104,76 @@ impl TextRasterCache {
         text: &str,
         style: TextStyle,
         font: &FontToken,
+        emoji: bool,
         font_system: &mut FontSystem,
         swash_cache: &mut SwashCache,
         scale_factor: f32,
     ) -> usize {
-        let raster_index =
-            self.index_or_insert(text, style, font, font_system, swash_cache, scale_factor);
+        let raster_index = self.index_or_insert(
+            text,
+            style,
+            font,
+            emoji,
+            font_system,
+            swash_cache,
+            scale_factor,
+        );
         self.entries[raster_index].raster.width()
+    }
+
+    pub(super) fn measure_width_uncached(
+        text: &str,
+        style: TextStyle,
+        font: &FontToken,
+        emoji: bool,
+        font_system: &mut FontSystem,
+        swash_cache: &mut SwashCache,
+        scale_factor: f32,
+    ) -> usize {
+        rasterize_text(
+            text,
+            style,
+            font,
+            emoji,
+            font_system,
+            swash_cache,
+            scale_factor,
+        )
+        .width()
+    }
+
+    pub(super) fn draw_rich_line(
+        &mut self,
+        canvas: &mut Canvas,
+        spans: &[RichTextRasterSpan<'_>],
+        origin_x: i32,
+        origin_y: i32,
+        scale_factor: f32,
+        font_system: &mut FontSystem,
+        swash_cache: &mut SwashCache,
+    ) {
+        let Some(default_color) = spans.first().map(|span| span.style.color) else {
+            return;
+        };
+        let raster_vertical_scale = spans
+            .iter()
+            .map(|span| span.style.raster_vertical_scale)
+            .filter(|scale| scale.is_finite() && *scale > 1.0)
+            .fold(1.0, f32::max);
+        let raster_index = self.rich_index_or_insert(spans, font_system, swash_cache, scale_factor);
+        self.rich_entries[raster_index].raster.draw(
+            canvas,
+            origin_x,
+            origin_y,
+            default_color,
+            raster_vertical_scale,
+        );
     }
 
     #[cfg(test)]
     pub(super) fn stats(&self) -> TextCacheStats {
         TextCacheStats {
-            entries: self.entries.len(),
+            entries: self.entries.len() + self.rich_entries.len(),
             raster_misses: self.raster_misses,
         }
     }
@@ -95,201 +183,48 @@ impl TextRasterCache {
         text: &str,
         style: TextStyle,
         font: &FontToken,
+        emoji: bool,
         font_system: &mut FontSystem,
         swash_cache: &mut SwashCache,
         scale_factor: f32,
     ) -> usize {
-        if let Some(index) = self
-            .entries
-            .iter()
-            .position(|entry| entry.matches(text, style, font, scale_factor))
-        {
+        let key = TextRasterCacheKey::new(text, style, font, emoji, scale_factor);
+        if let Some(index) = self.entry_index.get(&key).copied() {
             return index;
         }
         self.raster_misses += 1;
-        let raster = rasterize_text(text, style, font, font_system, swash_cache, scale_factor);
-        self.entries.push(TextRasterCacheEntry {
-            text: text.to_string(),
-            size_bits: style.size.to_bits(),
-            line_height_bits: style.line_height.to_bits(),
-            scale_bits: scale_factor.to_bits(),
-            family: font.family,
-            weight: font.weight,
-            raster,
-        });
-        self.entries.len() - 1
+        let raster = rasterize_text(
+            text,
+            style,
+            font,
+            emoji,
+            font_system,
+            swash_cache,
+            scale_factor,
+        );
+        let index = self.entries.len();
+        self.entries.push(TextRasterCacheEntry { raster });
+        self.entry_index.insert(key, index);
+        index
     }
-}
 
-struct TextRasterCacheEntry {
-    text: String,
-    size_bits: u32,
-    line_height_bits: u32,
-    scale_bits: u32,
-    family: FontFamily,
-    weight: u16,
-    raster: CachedTextRaster,
-}
-
-impl TextRasterCacheEntry {
-    fn matches(&self, text: &str, style: TextStyle, font: &FontToken, scale_factor: f32) -> bool {
-        self.text == text
-            && self.size_bits == style.size.to_bits()
-            && self.line_height_bits == style.line_height.to_bits()
-            && self.scale_bits == scale_factor.to_bits()
-            && self.family == font.family
-            && self.weight == font.weight
-    }
-}
-
-struct CachedTextRaster {
-    pixels: Vec<CachedTextPixel>,
-}
-
-impl CachedTextRaster {
-    fn draw(&self, canvas: &mut Canvas, origin_x: usize, origin_y: usize, color: u32) {
-        let origin_x = origin_x as i32;
-        let origin_y = origin_y as i32;
-        for pixel in &self.pixels {
-            let x = origin_x + pixel.x;
-            let y = origin_y + pixel.y;
-            if x < 0 || y < 0 {
-                continue;
-            }
-            canvas.blend_physical(x as usize, y as usize, color, pixel.alpha);
+    fn rich_index_or_insert(
+        &mut self,
+        spans: &[RichTextRasterSpan<'_>],
+        font_system: &mut FontSystem,
+        swash_cache: &mut SwashCache,
+        scale_factor: f32,
+    ) -> usize {
+        let key = RichTextRasterCacheKey::new(spans, scale_factor);
+        if let Some(index) = self.rich_entry_index.get(&key).copied() {
+            return index;
         }
+        self.raster_misses += 1;
+        let raster = rasterize_rich_line(spans, font_system, swash_cache, scale_factor);
+        let index = self.rich_entries.len();
+        self.rich_entries
+            .push(RichTextRasterCacheEntry::new(raster));
+        self.rich_entry_index.insert(key, index);
+        index
     }
-
-    fn width(&self) -> usize {
-        self.pixels
-            .iter()
-            .filter_map(|pixel| usize::try_from(pixel.x + 1).ok())
-            .max()
-            .unwrap_or(0)
-    }
-}
-
-struct CachedTextPixel {
-    x: i32,
-    y: i32,
-    alpha: u8,
-}
-
-#[derive(Clone, Copy)]
-struct SuperSample {
-    x: i32,
-    y: i32,
-    alpha: u8,
-}
-
-fn rasterize_text(
-    text: &str,
-    style: TextStyle,
-    font: &FontToken,
-    font_system: &mut FontSystem,
-    swash_cache: &mut SwashCache,
-    scale_factor: f32,
-) -> CachedTextRaster {
-    let scale_factor = normalized_scale(scale_factor);
-    let supersample_scale = TEXT_SUPERSAMPLE_SCALE * scale_factor;
-    let metrics = Metrics::new(
-        style.size * supersample_scale,
-        style.line_height * supersample_scale,
-    );
-    let mut buffer = Buffer::new(font_system, metrics);
-    let mut buffer = buffer.borrow_with(font_system);
-    buffer.set_wrap(Wrap::None);
-    buffer.set_size(
-        Some(TEXT_BUFFER_WIDTH * supersample_scale),
-        Some(metrics.line_height),
-    );
-    buffer.set_text(text, &attrs_for_text(font, text), Shaping::Advanced, None);
-    buffer.shape_until_scroll(false);
-    CachedTextRaster {
-        pixels: raster_pixels(&mut buffer, swash_cache, style.color),
-    }
-}
-
-fn raster_pixels(
-    buffer: &mut cosmic_text::BorrowedWithFontSystem<'_, Buffer>,
-    swash_cache: &mut SwashCache,
-    color: u32,
-) -> Vec<CachedTextPixel> {
-    let mut samples = Vec::new();
-    buffer.draw(swash_cache, text_color(color), |left, top, _, _, color| {
-        if color.a() == 0 {
-            return;
-        }
-        samples.push(SuperSample {
-            x: (left as f32 / TEXT_SUPERSAMPLE_SCALE).floor() as i32,
-            y: (top as f32 / TEXT_SUPERSAMPLE_SCALE).floor() as i32,
-            alpha: color.a(),
-        });
-    });
-    samples.sort_unstable_by_key(|sample| (sample.y, sample.x));
-    combine_samples(&samples)
-}
-
-fn combine_samples(samples: &[SuperSample]) -> Vec<CachedTextPixel> {
-    let mut pixels = Vec::with_capacity(samples.len());
-    let mut index = 0;
-    while index < samples.len() {
-        let current = samples[index];
-        let mut alpha_sum = 0u32;
-        while index < samples.len()
-            && samples[index].x == current.x
-            && samples[index].y == current.y
-        {
-            alpha_sum += u32::from(samples[index].alpha);
-            index += 1;
-        }
-        let alpha = ((alpha_sum as f32 / TEXT_SUPERSAMPLE_SAMPLES as f32).round() as u32)
-            .min(u32::from(OPAQUE_ALPHA));
-        if alpha != 0 {
-            pixels.push(CachedTextPixel {
-                x: current.x,
-                y: current.y,
-                alpha: alpha as u8,
-            });
-        }
-    }
-    pixels
-}
-
-fn normalized_scale(scale_factor: f32) -> f32 {
-    if scale_factor.is_finite() && scale_factor >= 1.0 {
-        scale_factor
-    } else {
-        1.0
-    }
-}
-
-fn attrs_for_text<'a>(font: &'a FontToken, text: &str) -> Attrs<'a> {
-    Attrs::new()
-        .family(family_for_text(font.family, text))
-        .weight(Weight(font.weight.max(REGULAR_WEIGHT)))
-}
-
-fn family_for_text(family: FontFamily, text: &str) -> Family<'static> {
-    match family {
-        FontFamily::Proportional => Family::SansSerif,
-        FontFamily::Monospace if text.is_ascii() => Family::Monospace,
-        FontFamily::Monospace => Family::SansSerif,
-    }
-}
-
-fn text_color(color: u32) -> Color {
-    Color::rgba(red(color), green(color), blue(color), OPAQUE_ALPHA)
-}
-
-fn red(color: u32) -> u8 {
-    ((color >> RED_SHIFT) & CHANNEL_MASK) as u8
-}
-
-fn green(color: u32) -> u8 {
-    ((color >> GREEN_SHIFT) & CHANNEL_MASK) as u8
-}
-
-fn blue(color: u32) -> u8 {
-    (color & CHANNEL_MASK) as u8
 }

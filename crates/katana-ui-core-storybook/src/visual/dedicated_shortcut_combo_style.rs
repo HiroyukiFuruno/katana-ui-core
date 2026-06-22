@@ -8,6 +8,25 @@ const SEPARATOR_PRESET_INDEX: usize = 3;
 const A11Y_PRESET_INDEX: usize = 4;
 
 pub(super) fn key_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.screen_state.last_action == "shortcut_platform_preview" {
+        return common::WARN;
+    }
+    if scenario
+        .screen_state
+        .runtime_structured
+        .shortcut_combo
+        .hovered
+    {
+        return common::TOKEN;
+    }
+    if scenario
+        .screen_state
+        .runtime_structured
+        .shortcut_combo
+        .focused
+    {
+        return common::SUCCESS;
+    }
     if scenario.screen_state.has_widget_action()
         || scenario.screen_state.has_settings_override()
         || scenario.preset_index == A11Y_PRESET_INDEX

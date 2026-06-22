@@ -4,10 +4,9 @@ use katana_ui_core::atom::{ChipAction, ChipKeyboardInput, ChipTone, ChipVariant}
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::interaction::UiCallbackLog;
-use katana_ui_core::layout;
 use katana_ui_core::render_model::{UiSize, UiTone, UiVariant, UiVisualRole};
 
-use crate::katana_icons;
+use crate::storybook_svg_fixtures;
 
 macro_rules! click_story {
     ($name:ident, $page:literal, $component:expr) => {
@@ -117,7 +116,8 @@ pub(super) fn input() -> StoryExample {
     let mut input = atom::Input::new("Text input")
         .focusable(true)
         .placeholder("日本語 input")
-        .leading_svg_icon_slot("Search icon", katana_icons::SEARCH_SVG)
+        .leading_svg_icon_slot("Search icon", storybook_svg_fixtures::SEARCH_SVG)
+        .input_background_token("input.background")
         .visual_role(UiVisualRole::Input)
         .value("typed");
     let target = input.state_id().clone();
@@ -165,21 +165,7 @@ pub(super) fn checkbox() -> StoryExample {
         "checked=false",
         "checked=false",
     ));
-    let state = checkbox.state_snapshot();
-    let harness = layout::Column::new()
-        .child(checkbox)
-        .child(
-            layout::Row::new()
-                .child(atom::Button::new("state read"))
-                .child(atom::Button::new("toggle"))
-                .child(atom::Button::new("reset")),
-        )
-        .child(atom::Text::new(format!(
-            "typed state: state_id={} checked={}",
-            state.state_id.as_str(),
-            state.checked
-        )));
-    StoryCatalog::interactive_story("checkbox", harness, logs)
+    StoryCatalog::interactive_story("checkbox", checkbox, logs)
 }
 
 pub(super) fn radio() -> StoryExample {
@@ -225,21 +211,7 @@ pub(super) fn radio() -> StoryExample {
         "selected=false",
         "selected=false",
     ));
-    let state = reset.state_snapshot();
-    let harness = layout::Column::new()
-        .child(reset)
-        .child(
-            layout::Row::new()
-                .child(atom::Button::new("state read"))
-                .child(atom::Button::new("select"))
-                .child(atom::Button::new("reset")),
-        )
-        .child(atom::Text::new(format!(
-            "typed state: state_id={} checked={}",
-            state.state_id.as_str(),
-            state.checked
-        )));
-    StoryCatalog::interactive_story("radio", harness, logs)
+    StoryCatalog::interactive_story("radio", reset, logs)
 }
 
 pub(super) fn badge() -> StoryExample {

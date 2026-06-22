@@ -2,6 +2,7 @@ use crate::interaction::{UiAction, UiActionResult};
 use crate::render_model::{
     UiCommonProps, UiInteractionState, UiNode, UiNodeKind, UiStateId, UiStatusProps,
 };
+use crate::text_selection::{UiTextSelectionModel, UiTextSelectionRange};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -16,6 +17,7 @@ pub(crate) struct MoleculeState {
     pub(crate) placeholder: String,
     pub(crate) disabled: bool,
     pub(crate) readonly: bool,
+    pub(crate) invalid: bool,
     pub(crate) status: UiStatusProps,
     pub(crate) transient: UiInteractionState,
 }
@@ -33,6 +35,7 @@ impl MoleculeState {
             placeholder: String::new(),
             disabled: false,
             readonly: false,
+            invalid: false,
             status: UiStatusProps::default(),
             transient: UiInteractionState::default(),
         }
@@ -55,6 +58,7 @@ impl MoleculeState {
             .placeholder(self.placeholder.clone())
             .disabled(self.disabled)
             .readonly(self.readonly)
+            .invalid(self.invalid)
             .status(self.status.clone())
     }
 
@@ -75,7 +79,9 @@ impl MoleculeState {
         self.readonly
             && matches!(
                 action,
-                UiAction::SetValue { .. } | UiAction::ClearValue { .. }
+                UiAction::SetValue { .. }
+                    | UiAction::ClearValue { .. }
+                    | UiAction::PasteText { .. }
             )
     }
 
@@ -108,8 +114,11 @@ impl MoleculeState {
             }
             UiAction::SetValue { value, .. } => self.value = value.clone(),
             UiAction::ClearValue { .. } => self.value.clear(),
+            UiAction::CopySelection { .. } => {}
+            UiAction::PasteText { text, .. } => self.paste_text(text),
             UiAction::Dismiss { .. } => self.open = false,
-            UiAction::ScrollTo { .. }
+            UiAction::InvokeCallback { .. }
+            | UiAction::ScrollTo { .. }
             | UiAction::ScrollBy { .. }
             | UiAction::ScrollIntoView { .. }
             | UiAction::SetScrollbarVisibility { .. }
@@ -117,7 +126,25 @@ impl MoleculeState {
             | UiAction::SplitPaneResizeBy { .. }
             | UiAction::SplitPaneResetRatio { .. }
             | UiAction::SplitPaneStartResize { .. }
-            | UiAction::SplitPaneEndResize { .. } => {}
+            | UiAction::SplitPaneEndResize { .. }
+            | UiAction::TabSelect { .. }
+            | UiAction::TabAdd { .. }
+            | UiAction::TabClose { .. }
+            | UiAction::TabCloseOthers { .. }
+            | UiAction::TabCloseToRight { .. }
+            | UiAction::TabCloseToLeft { .. }
+            | UiAction::TabCloseAll { .. }
+            | UiAction::TabRestoreClosed { .. }
+            | UiAction::TabPin { .. }
+            | UiAction::TabMove { .. }
+            | UiAction::TabMoveToGroup { .. }
+            | UiAction::TabMoveToNewGroup { .. }
+            | UiAction::TabMoveGroup { .. }
+            | UiAction::TabRenameGroup { .. }
+            | UiAction::TabSetGroupColor { .. }
+            | UiAction::TabUngroup { .. }
+            | UiAction::TabCloseGroup { .. }
+            | UiAction::TabToggleGroupCollapse { .. } => {}
         }
     }
 
@@ -149,5 +176,15 @@ impl MoleculeState {
         self.transient.cursor = cursor;
         self.transient.selection_start = selection_start;
         self.transient.selection_end = selection_end;
+    }
+
+    fn paste_text(&mut self, text: &str) {
+        let selection =
+            UiTextSelectionRange::new(self.transient.selection_start, self.transient.selection_end);
+        let result = UiTextSelectionModel::replace_grapheme_range(&self.value, selection, text);
+        self.value = result.text;
+        self.transient.cursor = result.selection.caret_position();
+        self.transient.selection_start = self.transient.cursor;
+        self.transient.selection_end = self.transient.cursor;
     }
 }

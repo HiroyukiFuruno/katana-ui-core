@@ -3,6 +3,10 @@ use super::visual_interaction_test_support::{
     assert_clicked_page_changes_body, assert_settings_page_changes_body, component_body_pixel_diff,
     pixel_at,
 };
+use super::window_interaction::{
+    StorybookWindowState, apply_clickable_keyboard_activation_for_audit, apply_hover_at,
+    apply_slide_drag_for_audit, focus_clickable_at_for_audit,
+};
 use super::{StorybookVisual, palette, preview_detail, storybook_ui_option_contract};
 use crate::catalog::StoryPresetLabels;
 use katana_ui_core::theme::ThemeSnapshot;
@@ -62,9 +66,74 @@ fn slide_control_preview_action_updates_slider_state() {
 }
 
 #[test]
+fn slide_control_hover_focus_keyboard_and_drag_update_body_and_state() {
+    let mut hover = page_state();
+    let target = preview_detail::component_action_hit_rect(PAGE);
+    let before_hover = render_state(&hover);
+
+    assert!(apply_hover_at(&mut hover, target.x + 1, target.y + 1));
+    let after_hover = render_state(&hover);
+    assert!(hover.screen_state.preview_hovered);
+    assert!(component_body_pixel_diff(PAGE, &before_hover, &after_hover) > 0);
+
+    let mut keyboard = page_state();
+    let before_focus = render_state(&keyboard);
+    assert!(focus_clickable_at_for_audit(
+        &mut keyboard,
+        target.x + 1,
+        target.y + 1
+    ));
+    let after_focus = render_state(&keyboard);
+    assert_eq!("slide_focus", keyboard.screen_state.last_action);
+    assert_eq!("slide_focused", keyboard.screen_state.last_event);
+    assert_eq!("focused=true", keyboard.screen_state.state_label);
+    assert!(component_body_pixel_diff(PAGE, &before_focus, &after_focus) > 0);
+
+    let before_keyboard = render_state(&keyboard);
+    assert!(apply_clickable_keyboard_activation_for_audit(&mut keyboard));
+    let after_keyboard = render_state(&keyboard);
+    assert_eq!(
+        "slide_keyboard_increment",
+        keyboard.screen_state.last_action
+    );
+    assert_eq!("slide_changed", keyboard.screen_state.last_event);
+    assert_eq!("value=64", keyboard.screen_state.state_label);
+    assert!(component_body_pixel_diff(PAGE, &before_keyboard, &after_keyboard) > 0);
+
+    let mut drag = page_state();
+    let before_drag = render_state(&drag);
+    assert!(apply_slide_drag_for_audit(
+        &mut drag,
+        target.x + 1,
+        target.y + 1
+    ));
+    let after_drag = render_state(&drag);
+    assert_eq!("slide_drag", drag.screen_state.last_action);
+    assert_eq!("slide_changed", drag.screen_state.last_event);
+    assert_eq!("value=64", drag.screen_state.state_label);
+    assert!(component_body_pixel_diff(PAGE, &before_drag, &after_drag) > 0);
+}
+
+#[test]
 fn slide_control_light_and_dark_track_uses_theme_tokens() {
     assert_track_tokens(DARK_THEME, ThemeSnapshot::dark());
     assert_track_tokens(LIGHT_THEME, ThemeSnapshot::light());
+}
+
+fn page_state() -> StorybookWindowState {
+    StorybookWindowState {
+        selected_page: PAGE,
+        ..StorybookWindowState::default()
+    }
+}
+
+fn render_state(state: &StorybookWindowState) -> super::Canvas {
+    super::render::render_storybook_canvas_with_screen_state(
+        DARK_THEME,
+        PAGE,
+        state.preset_index,
+        state.screen_state.clone(),
+    )
 }
 
 fn assert_track_tokens(theme_id: &str, theme: ThemeSnapshot) {

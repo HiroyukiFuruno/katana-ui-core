@@ -29,6 +29,23 @@ impl UiNode {
     }
 
     #[must_use]
+    pub fn stable_node_id(mut self, value: impl Into<UiNodeId>) -> Self {
+        self.id = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn stable_state_id(mut self, value: impl Into<UiStateId>) -> Self {
+        self.props.state_id = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn state_id(self, value: impl Into<UiStateId>) -> Self {
+        self.stable_state_id(value)
+    }
+
+    #[must_use]
     pub fn kind(&self) -> UiNodeKind {
         self.kind
     }

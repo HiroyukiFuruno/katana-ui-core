@@ -65,8 +65,26 @@ impl ScrollArea {
     }
 
     #[must_use]
+    pub fn gap(mut self, value: crate::layout::Length) -> Self {
+        self.gap = value;
+        self
+    }
+
+    #[must_use]
+    pub fn align(mut self, value: crate::layout::Alignment) -> Self {
+        self.alignment = value;
+        self
+    }
+
+    #[must_use]
     pub fn state_id(&self) -> &UiStateId {
         &self.state_id
+    }
+
+    #[must_use]
+    pub fn stable_state_id(mut self, value: impl Into<UiStateId>) -> Self {
+        self.state_id = value.into();
+        self
     }
 
     #[must_use]

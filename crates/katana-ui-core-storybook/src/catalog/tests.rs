@@ -1,5 +1,5 @@
 use super::StoryPageContract;
-use super::{StoryCatalog, StoryDetailContent, StoryPresetLabels};
+use super::{StoryCatalog, StoryDetailContent, StoryExample, StoryPresetLabels};
 use katana_ui_core::render_model::{
     UiNode, UiNodeKind, UiPopoverFocusManagement, UiPopoverPlacement, UiVisualRole,
 };
@@ -7,9 +7,13 @@ use katana_ui_core::{atom, render_model::UiTree};
 
 mod app_primitive_contracts;
 mod atom_and_basic_contracts;
+mod binary_atom_contracts;
+mod choice_story_contracts;
 mod collection_feedback_contracts;
 mod interaction_surface_contracts;
+mod layout_contracts;
 mod modal_and_runtime_contracts;
+mod navigation_contracts;
 mod popover_and_accordion_contracts;
 mod settings_and_panel_contracts;
 mod window_and_hover_contracts;

@@ -1,16 +1,19 @@
+use super::screen_state_tabs_core::core_event_name;
+use super::screen_state_tabs_types::tabs_update;
 pub(super) use super::screen_state_tabs_types::{
-    TabsScreenAction, TabsScreenState, TabsScreenTab, TabsScreenUpdate,
+    TabsContextMenuCommand, TabsScreenAction, TabsScreenGroup, TabsScreenState, TabsScreenTab,
+    TabsScreenUpdate,
 };
-use super::screen_state_tabs_types::{TabsScreenGroup, tabs_update};
+use katana_ui_core::widget::molecules::{
+    CloseableTab, CloseableTabGroupTarget, CloseableTabId, CloseableTabStripAction,
+};
 
-const ADD_CLOSE_PRESET_INDEX: usize = 1;
-const PIN_PRESET_INDEX: usize = 2;
-const MOVE_PRESET_INDEX: usize = 3;
-const GROUP_PRESET_INDEX: usize = 4;
-const OVERFLOW_PRESET_INDEX: usize = 5;
+const VISIBLE_TAB_COUNT_BEFORE_OVERFLOW: usize = 4;
+const TAB_SCROLL_STEP_PX: usize = 64;
 
 impl TabsScreenState {
-    pub(super) fn apply(&mut self, action: TabsScreenAction) -> TabsScreenUpdate {
+    pub(in crate::visual) fn apply(&mut self, action: TabsScreenAction) -> TabsScreenUpdate {
+        self.context_menu = None;
         match action {
             TabsScreenAction::AddTab => self.add_tab(),
             TabsScreenAction::CloseActive => self.close_active(),
@@ -21,66 +24,81 @@ impl TabsScreenState {
         }
     }
 
-    pub(super) fn for_preset(preset_index: usize) -> Self {
-        let mut state = Self::default();
-        match preset_index {
-            ADD_CLOSE_PRESET_INDEX => {
-                let _ = state.apply(TabsScreenAction::AddTab);
-            }
-            PIN_PRESET_INDEX => state.active_tab_id = "readme.md".to_string(),
-            MOVE_PRESET_INDEX => {
-                let _ = state.apply(TabsScreenAction::MoveActiveRight);
-            }
-            GROUP_PRESET_INDEX => {
-                let _ = state.apply(TabsScreenAction::GroupActive);
-            }
-            OVERFLOW_PRESET_INDEX => {
-                state.add_many_for_overflow();
-                state.overflow_open = true;
-            }
-            _ => {}
+    pub(in crate::visual) fn state_label(&self) -> &'static str {
+        if self.context_menu.is_some() {
+            return "tabs.context=tab-menu";
         }
-        state
-    }
-
-    pub(super) fn state_label(&self) -> &'static str {
         if self.overflow_open {
-            return "overflow=menu";
+            return "tabs.overflow=menu";
         }
         if self.active_tab().is_some_and(|tab| tab.pinned) {
-            return "pinned=true";
+            return "tabs.pinned=true";
         }
         if self
             .active_tab()
             .and_then(|tab| tab.group_id.as_ref())
             .is_some()
         {
-            return "group=Docs";
+            return "tabs.group=Docs";
         }
         if self.tabs.iter().any(|tab| tab.id == "notes.md") {
-            return "tabs=6 active=notes.md";
+            return "tabs.count=6 active=notes.md";
         }
         if self.is_scratch_after_terminal() {
-            return "order=changed";
+            return "tabs.order=changed";
         }
-        "active=scratch.md tabs=5"
+        if self.active_tab_id == "theme.rs" {
+            return "tabs.active=theme.rs follow";
+        }
+        "tabs.active=scratch.md count=5"
     }
 
-    pub(super) fn active_tab(&self) -> Option<&TabsScreenTab> {
+    pub(in crate::visual) fn active_tab(&self) -> Option<&TabsScreenTab> {
         self.tabs.iter().find(|tab| tab.id == self.active_tab_id)
     }
 
-    fn add_tab(&mut self) -> TabsScreenUpdate {
-        if !self.tabs.iter().any(|tab| tab.id == "notes.md") {
-            self.tabs.push(TabsScreenTab::new("notes.md", "notes"));
+    pub(in crate::visual) fn unpin_tab_by_icon(&mut self, tab_id: &str) -> TabsScreenUpdate {
+        let Some(tab) = self.tabs.iter().find(|tab| tab.id == tab_id) else {
+            return tabs_update(
+                "tab_pin_icon_unpin",
+                "closeable_tab_pin_missing",
+                "tabs.pin",
+                "none",
+                "tabs.tab=missing",
+            );
+        };
+        if !tab.pinned {
+            return tabs_update(
+                "tab_pin_icon_unpin",
+                "closeable_tab_pin_missing",
+                "tabs.pin",
+                "none",
+                "tabs.pinned=false",
+            );
         }
-        self.active_tab_id = "notes.md".to_string();
+        let events = self.apply_core_tab_action(CloseableTabStripAction::UnpinTab {
+            tab_id: CloseableTabId::new(tab_id),
+        });
+        tabs_update(
+            "tab_pin_icon_unpin",
+            core_event_name(&events, "closeable_tab_pin_missing"),
+            "tabs.pin",
+            "direct-icon",
+            "tabs.pinned=false closeable=true",
+        )
+    }
+
+    fn add_tab(&mut self) -> TabsScreenUpdate {
+        let events = self.apply_core_tab_action(CloseableTabStripAction::AddTab {
+            tab: CloseableTab::new("notes.md", "notes"),
+            activate: true,
+        });
         tabs_update(
             "add_tab",
-            "closeable_tab_added",
+            core_event_name(&events, "closeable_tab_add_skipped"),
             "tabs.add",
             "notes.md",
-            "tabs=6 active=notes.md",
+            "tabs.count=6 active=notes.md",
         )
     }
 
@@ -91,46 +109,56 @@ impl TabsScreenState {
                 "closeable_tab_close_blocked",
                 "tabs.close",
                 "blocked",
-                "pinned=true close=blocked",
+                "tabs.pinned=true close=blocked",
             );
         }
-        let closing = self.active_tab_id.clone();
-        self.tabs.retain(|tab| tab.id != closing);
-        self.remove_empty_groups();
-        self.active_tab_id = self.next_active_after_close();
+        let events =
+            self.apply_core_tab_action_confirming_dirty(CloseableTabStripAction::CloseTab {
+                tab_id: CloseableTabId::new(self.active_tab_id.clone()),
+            });
+        if self.tabs.iter().any(|tab| tab.id == "scratch.md") {
+            let _ = self.apply_core_tab_action(CloseableTabStripAction::SelectTab {
+                tab_id: CloseableTabId::new("scratch.md"),
+            });
+        }
         tabs_update(
             "close_tab",
-            "closeable_tab_closed",
+            core_event_name(&events, "closeable_tab_close_missing"),
             "tabs.close",
             "removed",
-            "tabs=5 active=scratch.md",
+            "tabs.count=5 active=scratch.md",
         )
     }
 
     fn toggle_pin_active(&mut self) -> TabsScreenUpdate {
-        let Some(tab) = self
-            .tabs
-            .iter_mut()
-            .find(|tab| tab.id == self.active_tab_id)
-        else {
+        let Some(tab) = self.active_tab() else {
             return tabs_update(
                 "pin_tab",
                 "closeable_tab_pin_missing",
                 "tabs.pin",
                 "none",
-                "tab=missing",
+                "tabs.tab=missing",
             );
         };
-        tab.pinned = !tab.pinned;
-        let state = if tab.pinned {
-            tab.group_id = None;
-            "pinned=true left-fixed"
+        let pinned = !tab.pinned;
+        let action = if pinned {
+            CloseableTabStripAction::PinTab {
+                tab_id: CloseableTabId::new(self.active_tab_id.clone()),
+            }
         } else {
-            "pinned=false closeable=true"
+            CloseableTabStripAction::UnpinTab {
+                tab_id: CloseableTabId::new(self.active_tab_id.clone()),
+            }
+        };
+        let events = self.apply_core_tab_action(action);
+        let state = if pinned {
+            "tabs.pinned=true left-fixed"
+        } else {
+            "tabs.pinned=false closeable=true"
         };
         tabs_update(
             "toggle_pin_tab",
-            "closeable_tab_pin_changed",
+            core_event_name(&events, "closeable_tab_pin_missing"),
             "tabs.pin",
             "toggle",
             state,
@@ -138,98 +166,127 @@ impl TabsScreenState {
     }
 
     fn move_active_right(&mut self) -> TabsScreenUpdate {
-        let Some(from) = self
-            .tabs
+        let visual_ids = self.core_visual_tab_ids();
+        let Some(from) = visual_ids
             .iter()
-            .position(|tab| tab.id == self.active_tab_id)
+            .position(|tab_id| tab_id == &self.active_tab_id)
         else {
             return tabs_update(
                 "move_tab",
                 "closeable_tab_move_missing",
                 "tabs.move",
                 "none",
-                "tab=missing",
+                "tabs.tab=missing",
             );
         };
-        if self.tabs[from].pinned || from + 1 >= self.tabs.len() {
+        if from + 1 >= visual_ids.len() {
             return tabs_update(
                 "move_tab",
                 "closeable_tab_move_blocked",
                 "tabs.move",
                 "blocked",
-                "move=blocked",
+                "tabs.move=blocked",
             );
         }
-        self.tabs.swap(from, from + 1);
+        let events = self.apply_core_tab_action(CloseableTabStripAction::MoveTab {
+            tab_id: CloseableTabId::new(self.active_tab_id.clone()),
+            to_visual_index: from + 1,
+        });
         tabs_update(
             "move_tab",
-            "closeable_tab_reordered",
+            core_event_name(&events, "closeable_tab_move_blocked"),
             "tabs.move",
             "right",
-            "order=changed",
+            "tabs.order=changed",
         )
     }
 
     fn group_active(&mut self) -> TabsScreenUpdate {
         self.ensure_docs_group();
-        if let Some(tab) = self
-            .tabs
-            .iter_mut()
-            .find(|tab| tab.id == self.active_tab_id)
-        {
-            tab.pinned = false;
-            tab.group_id = Some("docs".to_string());
-        }
+        let events = self.apply_core_tab_action(CloseableTabStripAction::MoveToGroup {
+            tab_id: CloseableTabId::new(self.active_tab_id.clone()),
+            target: CloseableTabGroupTarget::Existing("docs".into()),
+        });
         tabs_update(
             "move_to_group",
-            "closeable_tab_grouped",
+            core_event_name(&events, "closeable_tab_group_missing"),
             "tabs.group",
             "Docs",
-            "group=Docs",
+            "tabs.group=Docs",
         )
     }
 
     fn toggle_overflow(&mut self) -> TabsScreenUpdate {
         self.add_many_for_overflow();
-        self.overflow_open = !self.overflow_open;
+        let next_open = !self.overflow_open;
+        let hidden_tab_ids = self
+            .tabs
+            .iter()
+            .skip(VISIBLE_TAB_COUNT_BEFORE_OVERFLOW)
+            .map(|tab| CloseableTabId::new(tab.id.clone()))
+            .collect();
+        let events =
+            self.apply_core_tab_action(CloseableTabStripAction::OpenOverflow { hidden_tab_ids });
+        self.overflow_open = next_open;
         tabs_update(
             "open_overflow",
-            "closeable_tab_overflow_opened",
+            core_event_name(&events, "closeable_tab_overflow_missing"),
             "tabs.overflow",
             "menu",
-            "overflow=menu",
+            "tabs.overflow=menu",
         )
     }
 
-    fn ensure_docs_group(&mut self) {
+    pub(in crate::visual) fn scroll_horizontal(&mut self, delta_x: f32) -> TabsScreenUpdate {
+        self.add_many_for_overflow();
+        self.context_menu = None;
+        if delta_x > 0.0 {
+            self.scroll_x = self.scroll_x.saturating_add(TAB_SCROLL_STEP_PX);
+        } else {
+            self.scroll_x = self.scroll_x.saturating_sub(TAB_SCROLL_STEP_PX);
+        }
+        tabs_update(
+            "tab_strip_scroll",
+            "closeable_tab_overflow_scrolled",
+            "tabs.overflow",
+            "scroll_x",
+            "tabs.overflow=scroll",
+        )
+    }
+
+    pub(in crate::visual) fn focus_tab(&mut self, tab_id: &str) -> TabsScreenUpdate {
+        self.context_menu = None;
+        if !self.tabs.iter().any(|tab| tab.id == tab_id) {
+            return tabs_update(
+                "tab_focus",
+                "closeable_tab_focus_missing",
+                "tabs.focus",
+                "missing",
+                "tabs.focus=missing",
+            );
+        }
+        self.focused_tab_id = Some(tab_id.to_string());
+        tabs_update(
+            "tab_focus",
+            "closeable_tab_focused",
+            "tabs.focus",
+            "tab",
+            "tabs.focus=tab",
+        )
+    }
+
+    pub(in crate::visual) fn ensure_docs_group(&mut self) {
         if !self.groups.iter().any(|group| group.id == "docs") {
             self.groups.push(TabsScreenGroup::docs());
         }
     }
 
-    fn add_many_for_overflow(&mut self) {
+    pub(in crate::visual) fn add_many_for_overflow(&mut self) {
         for (id, title) in [("lint.md", "lint"), ("theme.rs", "theme")] {
             if !self.tabs.iter().any(|tab| tab.id == id) {
                 self.tabs.push(TabsScreenTab::new(id, title));
             }
         }
-    }
-
-    fn remove_empty_groups(&mut self) {
-        self.groups.retain(|group| {
-            self.tabs
-                .iter()
-                .any(|tab| tab.group_id.as_deref() == Some(group.id.as_str()))
-        });
-    }
-
-    fn next_active_after_close(&self) -> String {
-        if self.tabs.iter().any(|tab| tab.id == "scratch.md") {
-            return "scratch.md".to_string();
-        }
-        self.tabs
-            .first()
-            .map_or_else(String::new, |tab| tab.id.clone())
     }
 
     fn is_scratch_after_terminal(&self) -> bool {

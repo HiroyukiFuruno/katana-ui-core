@@ -6,7 +6,7 @@ mod popover_story;
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::placement::Placement;
 use katana_ui_core::interaction::{UiAction, UiCallbackLog};
-use katana_ui_core::render_model::{UiNodeId, UiStateId};
+use katana_ui_core::render_model::{UiDismissAction, UiNodeId, UiStateId, UiTone};
 use katana_ui_core::{atom, layout, molecule};
 
 const TOOLTIP_DELAY_MS: u16 = 240;
@@ -21,12 +21,7 @@ const POPOVER_OFFSET_Y: i16 = 8;
 
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
-        StoryCatalog::story(
-            "menu",
-            molecule::Menu::new("Menu")
-                .child(atom::Button::new("Open"))
-                .child(atom::Button::new("Close")),
-        ),
+        menu_story(),
         tooltip_story(),
         modal_story::modal_story(),
         accordion_story::accordion_story(),
@@ -39,6 +34,32 @@ pub(super) fn examples() -> Vec<StoryExample> {
         segmented_toggle_story(),
         select_box_story(),
     ]
+}
+
+fn menu_story() -> StoryExample {
+    let menu = molecule::Menu::new("Menu")
+        .child(atom::Button::new("Open"))
+        .child(atom::Button::new("Close"))
+        .child(atom::Button::new("Disabled").disabled(true));
+    let node: katana_ui_core::render_model::UiNode = menu.clone().into();
+    let target = node.props().state_id.clone();
+    let logs = vec![
+        UiCallbackLog::new(target.clone(), "menu_open", "open=false", "open=true"),
+        UiCallbackLog::new(target.clone(), "menu_close", "open=true", "open=false"),
+        UiCallbackLog::new(
+            target.clone(),
+            "menu_select",
+            "selected=none",
+            "selected=open",
+        ),
+        UiCallbackLog::new(
+            target,
+            "menu_shortcut_activate",
+            "shortcut=Cmd+O",
+            "selected=open",
+        ),
+    ];
+    StoryCatalog::interactive_story("menu", menu, logs)
 }
 
 fn tooltip_story() -> StoryExample {
@@ -123,8 +144,12 @@ fn menu_button_story() -> StoryExample {
 fn notification_toast_story() -> StoryExample {
     let mut toast = molecule::NotificationToast::new("Notification")
         .open(true)
+        .severity(UiTone::Warning)
+        .timer_summary("duration=5000ms")
+        .dismiss_action(UiDismissAction::Available)
         .child(atom::Badge::new("Info"))
-        .child(atom::Text::new("Message"));
+        .child(atom::Text::new("Message"))
+        .child(atom::Button::new("Undo"));
     let target = toast.state_id().clone();
     let result = toast.apply_action(&UiAction::dismiss(target));
     StoryCatalog::interactive_story("notification-toast", toast, result.callback_log)

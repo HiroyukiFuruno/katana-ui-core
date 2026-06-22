@@ -24,8 +24,8 @@
 ## 4. adapter contract
 
 - [x] 4.1 adapter contract に multi-line IME / preedit string / caret 位置の責務を明記する。
-- [x] 4.2 floem adapter に multi-line + IME の compile-gate stub を追加する。
-- [x] 4.3 egui / gpui adapter に同 stub を追加する（差異を README に記載）。
+- [x] 4.2 adapter に multi-line + IME の compile-gate stub を追加する。
+- [x] 4.3 external runtime boundary の neutral contract に同要件を追加する。
 
 ## 5. 自動テスト
 

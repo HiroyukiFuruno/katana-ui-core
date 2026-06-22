@@ -14,6 +14,7 @@ pub struct CodeDiff {
     pub(super) source: Option<CodeDiffSource>,
     pub(super) mode: CodeDiffMode,
     pub(super) direction: CodeDiffDirection,
+    pub(super) language: String,
     pub(super) lines: Vec<CodeDiffLine>,
     pub(super) highlights: Vec<HighlightRange>,
     pub(super) local_highlights: Vec<CodeDiffLineHighlight>,
@@ -36,6 +37,7 @@ impl CodeDiff {
             source: None,
             mode: CodeDiffMode::Split,
             direction: CodeDiffDirection::Horizontal,
+            language: String::new(),
             lines: Vec::new(),
             highlights: Vec::new(),
             local_highlights: Vec::new(),
@@ -109,6 +111,12 @@ impl CodeDiff {
     #[must_use]
     pub fn direction(mut self, value: CodeDiffDirection) -> Self {
         self.direction = value;
+        self
+    }
+
+    #[must_use]
+    pub fn language(mut self, value: impl Into<String>) -> Self {
+        self.language = value.into();
         self
     }
 

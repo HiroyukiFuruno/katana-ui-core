@@ -1,4 +1,6 @@
 use super::screen_state::StorybookScreenState;
+use super::storybook_ui_option_contract::StorybookUiOptionContract;
+use katana_ui_core::widget::atoms::TextAreaAction;
 
 const TEXT_AREA_CARET_BLINK_FRAMES: usize = 30;
 
@@ -10,129 +12,105 @@ pub(super) enum TextAreaInputKey {
 }
 
 impl StorybookScreenState {
-    pub(super) fn register_text_area_focus(&mut self) {
+    pub(in crate::visual) fn register_text_area_focus_for(
+        &mut self,
+        instance: &'static str,
+        readonly: bool,
+        disabled: bool,
+    ) {
         self.action_count += 1;
-        self.text_area_focused = true;
-        self.text_area_uses_live_value = true;
-        self.text_area_caret_visible = true;
+        {
+            let runtime = self.text_area_runtime_mut_for(instance);
+            runtime.focused = true;
+            runtime.uses_live_value = true;
+            runtime.caret_visible = true;
+            runtime.readonly = readonly;
+            runtime.disabled = disabled;
+        }
         self.last_action = "text_area_focus";
         self.last_event = "text_area_focused";
         self.last_setting = "text_area.value";
         self.last_setting_value = "focus";
-        self.state_label = "focused=true";
+        self.state_label = if disabled {
+            "focused=true disabled=true"
+        } else if readonly {
+            "focused=true readonly=true"
+        } else {
+            "focused=true"
+        };
     }
 
-    pub(super) fn register_text_area_key(&mut self, key: TextAreaInputKey) -> bool {
-        if !self.text_area_focused {
+    pub(in crate::visual) fn register_text_area_key_for(
+        &mut self,
+        instance: &'static str,
+        key: TextAreaInputKey,
+    ) -> bool {
+        if !self.text_area_focused_for(instance) {
             return false;
         }
-        match key {
-            TextAreaInputKey::Character(value) => self.register_text_area_character(value),
-            TextAreaInputKey::Backspace => self.register_text_area_backspace(),
-            TextAreaInputKey::Newline => self.register_text_area_newline(),
-            TextAreaInputKey::Submit => self.register_text_area_submit(),
+        let handled = match key {
+            TextAreaInputKey::Character(value) => {
+                self.register_text_area_character_for(instance, value)
+            }
+            TextAreaInputKey::Backspace => self.register_text_area_backspace_for(instance),
+            TextAreaInputKey::Newline => self.register_text_area_newline_for(instance),
+            TextAreaInputKey::Submit => self.register_text_area_submit_for(instance),
+        };
+        if handled {
+            return true;
         }
+        if self.text_area_readonly_for(instance) || self.text_area_disabled_for(instance) {
+            self.register_text_area_mutation_block_for(instance);
+            return true;
+        }
+        false
     }
 
-    pub(super) fn text_area_value(&self) -> &str {
-        self.text_area_value.as_str()
+    pub(in crate::visual) fn show_text_area_caret_for(&mut self, instance: &'static str) -> bool {
+        self.set_text_area_caret_visibility_for(instance, true)
     }
 
-    pub(super) const fn text_area_focused(&self) -> bool {
-        self.text_area_focused
+    #[cfg(test)]
+    pub(in crate::visual) fn update_text_area_caret_visibility(
+        &mut self,
+        elapsed_frames: usize,
+    ) -> bool {
+        self.update_text_area_caret_visibility_for(
+            super::text_area_screen_state::DEFAULT_TEXT_AREA_INSTANCE,
+            elapsed_frames,
+        )
     }
 
-    pub(super) const fn text_area_uses_live_value(&self) -> bool {
-        self.text_area_uses_live_value
-    }
-
-    pub(super) const fn text_area_caret_visible(&self) -> bool {
-        self.text_area_caret_visible
-    }
-
-    pub(super) const fn text_area_wrap_enabled(&self) -> bool {
-        self.text_area_wrap_enabled
-    }
-
-    pub(super) const fn text_area_resize_enabled(&self) -> bool {
-        self.text_area_resize_enabled
-    }
-
-    pub(super) const fn text_area_vertical_scroll_enabled(&self) -> bool {
-        self.text_area_vertical_scroll_enabled
-    }
-
-    pub(super) const fn text_area_horizontal_scroll_enabled(&self) -> bool {
-        self.text_area_horizontal_scroll_enabled
-    }
-
-    pub(super) const fn text_area_vertical_scrollbar_visible(&self) -> bool {
-        self.text_area_vertical_scrollbar_visible
-    }
-
-    pub(super) const fn text_area_horizontal_scrollbar_visible(&self) -> bool {
-        self.text_area_horizontal_scrollbar_visible
-    }
-
-    pub(super) const fn text_area_scroll_offset(&self) -> usize {
-        self.text_area_scroll_offset
-    }
-
-    pub(super) const fn text_area_scroll_x_offset(&self) -> usize {
-        self.text_area_scroll_x_offset
-    }
-
-    pub(super) const fn text_area_resize_width_delta(&self) -> usize {
-        self.text_area_resize_width_delta
-    }
-
-    pub(super) const fn text_area_resize_height_delta(&self) -> usize {
-        self.text_area_resize_height_delta
-    }
-
-    pub(super) fn show_text_area_caret(&mut self) -> bool {
-        self.set_text_area_caret_visibility(true)
-    }
-
-    pub(super) fn update_text_area_caret_visibility(&mut self, elapsed_frames: usize) -> bool {
-        if !self.text_area_focused {
-            return self.set_text_area_caret_visibility(false);
+    pub(in crate::visual) fn update_text_area_caret_visibility_for(
+        &mut self,
+        instance: &'static str,
+        elapsed_frames: usize,
+    ) -> bool {
+        if !self.text_area_focused_for(instance) {
+            return self.set_text_area_caret_visibility_for(instance, false);
         }
         let blink_index = elapsed_frames / TEXT_AREA_CARET_BLINK_FRAMES;
-        self.set_text_area_caret_visibility(blink_index.is_multiple_of(2))
+        self.set_text_area_caret_visibility_for(instance, blink_index.is_multiple_of(2))
     }
 
-    pub(super) fn register_text_area_resize_toggle(&mut self) {
-        self.settings_revision += 1;
-        self.text_area_resize_enabled = !self.text_area_resize_enabled;
-        self.last_action = "set_text_area.resize_enabled";
-        self.last_event = "text_area_settings_changed";
-        self.last_setting = "text_area.resize_enabled";
-        self.last_setting_value = if self.text_area_resize_enabled {
-            "true"
-        } else {
-            "false"
-        };
-        self.state_label = if self.text_area_resize_enabled {
-            "resize=true"
-        } else {
-            "resize=false"
-        };
-    }
-
-    pub(super) fn register_text_area_resize_drag(
+    pub(in crate::visual) fn register_text_area_resize_drag_for(
         &mut self,
+        instance: &'static str,
         width_delta: usize,
         height_delta: usize,
     ) -> bool {
-        if self.text_area_resize_width_delta == width_delta
-            && self.text_area_resize_height_delta == height_delta
+        let runtime = self.text_area_runtime_for(instance);
+        if runtime.resize_width_delta() == width_delta
+            && runtime.resize_height_delta() == height_delta
         {
             return false;
         }
         self.action_count += 1;
-        self.text_area_resize_width_delta = width_delta;
-        self.text_area_resize_height_delta = height_delta;
+        let outcome = self.apply_core_text_area_resize_action_for(
+            instance,
+            TextAreaAction::resize(width_delta as u16, height_delta as u16),
+        );
+        self.sync_text_area_runtime_for(instance, outcome);
         self.last_action = "text_area_resize_drag";
         self.last_event = "text_area_resized";
         self.last_setting = "text_area.resize_enabled";
@@ -141,17 +119,40 @@ impl StorybookScreenState {
         true
     }
 
-    fn register_text_area_character(&mut self, value: char) -> bool {
-        self.text_area_value.push(value);
-        self.apply_text_area_value("text_area_type", "text_area_changed", "value=typing");
+    pub(in crate::visual) fn register_text_area_icon_button(&mut self) {
+        self.action_count += 1;
+        self.last_action = "text_area_icon_button";
+        self.last_event = "text_area_icon_button_clicked";
+        self.last_setting = "text_area.trailing_icon_buttons.action";
+        self.last_setting_value = "text_area.trailing_icon";
+        self.state_label = "icon_button=clicked";
+    }
+
+    fn register_text_area_character_for(&mut self, instance: &'static str, value: char) -> bool {
+        let outcome =
+            self.apply_core_text_area_action_for(instance, TextAreaAction::Type(value.to_string()));
+        if !outcome.handled {
+            return false;
+        }
+        self.sync_text_area_runtime_for(instance, outcome);
+        self.apply_text_area_value_for(
+            instance,
+            "text_area_type",
+            "text_area_changed",
+            "value=typing",
+        );
         true
     }
 
-    fn register_text_area_backspace(&mut self) -> bool {
-        if self.text_area_value.pop().is_none() {
+    fn register_text_area_backspace_for(&mut self, instance: &'static str) -> bool {
+        let outcome =
+            self.apply_core_text_area_action_for(instance, TextAreaAction::DeleteBackward);
+        if !outcome.handled {
             return false;
         }
-        self.apply_text_area_value(
+        self.sync_text_area_runtime_for(instance, outcome);
+        self.apply_text_area_value_for(
+            instance,
             "text_area_delete_backward",
             "text_area_changed",
             "value=typing",
@@ -159,31 +160,58 @@ impl StorybookScreenState {
         true
     }
 
-    fn register_text_area_newline(&mut self) -> bool {
-        self.text_area_value.push('\n');
-        self.apply_text_area_value("text_area_newline", "text_area_changed", "newline=inserted");
+    fn register_text_area_newline_for(&mut self, instance: &'static str) -> bool {
+        let outcome = self.apply_core_text_area_action_for(instance, TextAreaAction::InsertNewline);
+        if !outcome.handled {
+            return false;
+        }
+        self.sync_text_area_runtime_for(instance, outcome);
+        self.apply_text_area_value_for(
+            instance,
+            "text_area_newline",
+            "text_area_changed",
+            "newline=inserted",
+        );
         true
     }
 
-    fn register_text_area_submit(&mut self) -> bool {
-        self.apply_text_area_value("text_area_submit", "text_area_submitted", "value=typed");
+    fn register_text_area_submit_for(&mut self, instance: &'static str) -> bool {
+        let outcome = self.apply_core_text_area_action_for(instance, TextAreaAction::Submit);
+        if !outcome.handled {
+            return false;
+        }
+        self.sync_text_area_runtime_for(instance, outcome);
+        self.apply_text_area_value_for(
+            instance,
+            "text_area_submit",
+            "text_area_submitted",
+            "value=typed",
+        );
         true
     }
 
-    fn apply_text_area_value(
+    fn apply_text_area_value_for(
         &mut self,
+        instance: &'static str,
         action: &'static str,
         event: &'static str,
         state: &'static str,
     ) {
         self.action_count += 1;
-        self.text_area_uses_live_value = true;
-        self.text_area_caret_visible = true;
-        self.text_area_scroll_offset = if self.text_area_vertical_scroll_enabled {
-            self.text_area_max_scroll_offset()
+        let scroll_offset = if self
+            .text_area_runtime_for(instance)
+            .vertical_scroll_enabled()
+        {
+            self.text_area_max_scroll_offset_for(instance)
         } else {
             0
         };
+        {
+            let runtime = self.text_area_runtime_mut_for(instance);
+            runtime.uses_live_value = true;
+            runtime.caret_visible = true;
+            runtime.scroll_offset = scroll_offset;
+        }
         self.last_action = action;
         self.last_event = event;
         self.last_setting = "text_area.value";
@@ -191,11 +219,71 @@ impl StorybookScreenState {
         self.state_label = state;
     }
 
-    fn set_text_area_caret_visibility(&mut self, visible: bool) -> bool {
-        if self.text_area_caret_visible == visible {
+    fn set_text_area_caret_visibility_for(
+        &mut self,
+        instance: &'static str,
+        visible: bool,
+    ) -> bool {
+        let runtime = self.text_area_runtime_mut_for(instance);
+        if runtime.caret_visible == visible {
             return false;
         }
-        self.text_area_caret_visible = visible;
+        runtime.caret_visible = visible;
         true
+    }
+
+    pub(in crate::visual) fn apply_text_area_contract_option_for(
+        &mut self,
+        instance: &'static str,
+        option: StorybookUiOptionContract,
+    ) {
+        let runtime = self.text_area_runtime_mut_for(instance);
+        match option.setting {
+            "text_area.wrap_policy" => runtime.wrap_enabled = option.after != "None",
+            "text_area.resize_enabled" => runtime.resize_enabled = option.after == "true",
+            "text_area.disabled" => runtime.disabled = option.after == "true",
+            "text_area.readonly" => runtime.readonly = option.after == "true",
+            "text_area.value" => {
+                runtime.value = option.after.to_string();
+                runtime.uses_live_value = true;
+            }
+            "text_area.vertical_scroll_enabled" => {
+                runtime.vertical_scroll_enabled = option.after == "true";
+            }
+            "text_area.horizontal_scroll_enabled" => {
+                runtime.horizontal_scroll_enabled = option.after == "true";
+                runtime.wrap_enabled = false;
+            }
+            "text_area.vertical_scrollbar_visible" => {
+                runtime.vertical_scrollbar_visible =
+                    option.after == "true" && runtime.vertical_scroll_enabled;
+            }
+            "text_area.horizontal_scrollbar_visible" => {
+                runtime.horizontal_scrollbar_visible =
+                    option.after == "true" && runtime.horizontal_scroll_enabled;
+                runtime.wrap_enabled = false;
+            }
+            _ => {}
+        }
+    }
+
+    pub(in crate::visual) fn register_text_area_mutation_block_for(
+        &mut self,
+        instance: &'static str,
+    ) {
+        self.action_count += 1;
+        if self.text_area_disabled_for(instance) {
+            self.last_action = "text_area_disabled_blocked";
+            self.last_event = "text_area_disabled_ignored";
+            self.last_setting = "text_area.disabled";
+            self.last_setting_value = "true";
+            self.state_label = "disabled=true";
+            return;
+        }
+        self.last_action = "text_area_readonly_blocked";
+        self.last_event = "text_area_readonly_ignored";
+        self.last_setting = "text_area.readonly";
+        self.last_setting_value = "true";
+        self.state_label = "readonly=true";
     }
 }

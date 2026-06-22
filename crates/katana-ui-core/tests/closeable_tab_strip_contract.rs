@@ -28,12 +28,19 @@ fn closeable_tab_strip_public_api_is_domain_free() {
         request
     );
 
-    strip.apply_action(CloseableTabStripAction::MoveToGroup {
+    let grouped = strip.apply_action(CloseableTabStripAction::MoveToGroup {
         tab_id: CloseableTabId::new("draft"),
         target: TabGroupTarget::Existing("docs".into()),
     });
     let node = UiNode::from(strip);
 
+    assert_eq!(
+        vec![CloseableTabStripEvent::TabGroupChanged {
+            tab_id: CloseableTabId::new("draft"),
+            group_id: Some("docs".into())
+        }],
+        grouped
+    );
     assert_eq!("tabs", node.props().label);
     assert!(
         node.children()

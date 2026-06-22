@@ -45,7 +45,7 @@ pub(super) fn labels(
 }
 
 fn helper_text_color(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.preset_index == INVALID_PRESET {
+    if form_field_invalid(scenario) {
         return palette.background;
     }
     palette.muted
@@ -55,29 +55,46 @@ fn label_text(scenario: ScenarioContext<'_>) -> &'static str {
     if scenario.preset_index == THEME_PRESET {
         return "Theme field";
     }
+    if scenario.screen_state.last_setting == "form_field.required" {
+        return "Repository name *";
+    }
     "Repository name"
 }
 
 fn value_text(scenario: ScenarioContext<'_>) -> &'static str {
-    if scenario.screen_state.has_widget_action() {
+    if form_field_invalid(scenario) {
         return "katana-ui-core";
     }
     "katana"
 }
 
 fn helper_text(scenario: ScenarioContext<'_>) -> &'static str {
-    if scenario.preset_index == INVALID_PRESET {
-        return "required";
+    if form_field_invalid(scenario) {
+        return "Repository name is required";
     }
-    if scenario.preset_index == HELPER_PRESET {
+    if scenario.preset_index == HELPER_PRESET
+        || scenario.screen_state.last_setting == "form_field.helper_text"
+    {
         return "Used for release notes and package metadata";
     }
     "Visible helper text"
 }
 
 fn state_text(scenario: ScenarioContext<'_>) -> &'static str {
-    if scenario.preset_index == INVALID_PRESET || scenario.screen_state.has_widget_action() {
+    if form_field_invalid(scenario) {
         return "invalid";
     }
+    if scenario.screen_state.last_action == "form_field_focus_link" {
+        return "focused";
+    }
+    if scenario.screen_state.last_setting == "form_field.required" {
+        return "required";
+    }
     "valid"
+}
+
+fn form_field_invalid(scenario: ScenarioContext<'_>) -> bool {
+    scenario.preset_index == INVALID_PRESET
+        || scenario.screen_state.last_action == "field_validate"
+        || scenario.screen_state.last_setting == "form_field.invalid"
 }

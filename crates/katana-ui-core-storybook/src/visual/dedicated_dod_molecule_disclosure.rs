@@ -19,6 +19,7 @@ const CONTROLLED_PRESET_INDEX: usize = 3;
 const MULTIPLE_PRESET_INDEX: usize = 4;
 const TREE_PRESET_INDEX: usize = 5;
 const REDUCED_MOTION_PRESET_INDEX: usize = 6;
+const TRIGGER_AREAS_PRESET_INDEX: usize = 7;
 pub(super) fn accordion(
     canvas: &mut Canvas,
     text: &TextRenderer,
@@ -86,7 +87,10 @@ fn header_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
         return common::WARN;
     }
     if scenario.preset_index == DISABLED_PRESET_INDEX {
-        return palette.panel;
+        return palette.border;
+    }
+    if scenario.preset_index == TRIGGER_AREAS_PRESET_INDEX {
+        return common::PURPLE;
     }
     palette.surface
 }

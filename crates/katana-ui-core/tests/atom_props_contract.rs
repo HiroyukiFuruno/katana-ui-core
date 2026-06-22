@@ -1,12 +1,12 @@
 use katana_ui_core::atom::{
     Badge, Button, Checkbox, ColorSwatch, Divider, Icon, Input, KeyCap, LoadingDots, ProgressBar,
-    Radio, SlideControl, Spinner, SvgButton, Text, Toggle,
+    Radio, SlideControl, Spacer, Spinner, SvgButton, Text, TextArea, Toggle,
 };
 use katana_ui_core::render_model::{
-    UiAlignItems, UiAnimationState, UiCommonProps, UiCursor, UiDimension, UiDismissAction,
-    UiDisplay, UiEdgeInsets, UiIconProps, UiJustifyContent, UiNode, UiNodeKind, UiPointerEvents,
-    UiPosition, UiProgressMode, UiSize, UiSlotPlacement, UiSvgPaintPolicy, UiTone, UiVariant,
-    UiVisualRole, UiZIndex,
+    UiAlignItems, UiAnimationState, UiBorder, UiCommonProps, UiCursor, UiDimension,
+    UiDismissAction, UiDisplay, UiEdgeInsets, UiIconProps, UiJustifyContent, UiNode, UiNodeKind,
+    UiPointerEvents, UiPosition, UiProgressMode, UiSize, UiSlotPlacement, UiSvgPaintPolicy, UiTone,
+    UiVariant, UiVisualRole, UiZIndex,
 };
 
 const SEARCH_ICON_SVG: &str = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"7\" cy=\"7\" r=\"4\"/><line x1=\"10\" y1=\"10\" x2=\"14\" y2=\"14\"/></svg>";
@@ -42,6 +42,7 @@ fn button_props_are_typed_and_action_ready() {
     assert_eq!(UiVariant::Filled, node.props().variant);
     assert_eq!(UiTone::Accent, node.props().tone);
     assert_eq!(UiSize::Large, node.props().size);
+    assert_eq!("Save", node.props().label);
     assert!(node.props().loading);
     assert!(node.props().focusable);
     assert_eq!(UiCursor::Pointer, node.props().common.cursor);
@@ -53,6 +54,7 @@ fn atoms_share_common_layout_and_interaction_props() {
         .visible(false)
         .width(UiDimension::percent(100))
         .height(UiDimension::px(40))
+        .border(UiBorder::solid(1, 4, "control.border"))
         .padding(UiEdgeInsets::axis(UiDimension::px(12), UiDimension::px(8)))
         .display(UiDisplay::Flex)
         .position(UiPosition::Relative)
@@ -77,6 +79,10 @@ fn atoms_share_common_layout_and_interaction_props() {
     assert!(node.props().common.selectable);
     assert_eq!(UiDimension::percent(100), node.props().common.width);
     assert_eq!(UiDimension::px(40), node.props().common.height);
+    assert_eq!(
+        UiBorder::solid(1, 4, "control.border"),
+        node.props().common.border
+    );
     assert_eq!(UiDisplay::Flex, node.props().common.display);
     assert_eq!(UiPosition::Relative, node.props().common.position);
     assert_eq!(Some(0), node.props().common.tab_index);
@@ -181,6 +187,52 @@ fn input_text_entry_defaults_do_not_reserve_icon_space() {
 }
 
 #[test]
+fn text_area_text_entry_slots_accept_external_svg_and_callbacks() {
+    let node = UiNode::from(
+        TextArea::new("Notes")
+            .value("line 1\nline 2")
+            .leading_svg_icon_slot("Search icon", SEARCH_ICON_SVG)
+            .trailing_svg_icon_button("Clear", CLEAR_ICON_SVG, "notes.clear")
+            .trailing_svg_icon_button("Format", CLEAR_ICON_SVG, "notes.format")
+            .clear_action("Clear notes"),
+    );
+    let text_entry = &node.props().text_entry;
+
+    assert_eq!(
+        Some(SEARCH_ICON_SVG),
+        text_entry
+            .leading_slot
+            .as_ref()
+            .and_then(|slot| slot.icon.as_ref())
+            .map(|icon| icon.svg_source.as_str())
+    );
+    assert_eq!(2, text_entry.trailing_icon_buttons.len());
+    assert_eq!(
+        Some("notes.clear"),
+        text_entry
+            .trailing_icon_buttons
+            .first()
+            .and_then(|slot| slot.action.as_ref())
+            .map(|action| action.callback.as_str())
+    );
+    assert_eq!(
+        Some("notes.format"),
+        text_entry
+            .trailing_icon_buttons
+            .get(1)
+            .and_then(|slot| slot.action.as_ref())
+            .map(|action| action.callback.as_str())
+    );
+    assert_eq!(
+        Some("Clear notes"),
+        text_entry
+            .clear_action
+            .as_ref()
+            .map(|action| action.label.as_str())
+    );
+}
+
+#[test]
 fn selection_and_status_props_are_typed() {
     let checkbox = UiNode::from(Checkbox::new("Enabled").checked(true));
     let radio = UiNode::from(Radio::new("Mode").selected(true));
@@ -194,8 +246,16 @@ fn selection_and_status_props_are_typed() {
 
     assert!(checkbox.props().checked);
     assert!(checkbox.props().interaction.has_selection);
+    assert_eq!(UiCursor::Pointer, checkbox.props().common.cursor);
+    assert!(checkbox.props().common.hover_border.visible);
     assert!(radio.props().checked);
+    assert_eq!(UiCursor::Pointer, radio.props().common.cursor);
+    assert!(radio.props().common.hover_border.visible);
     assert!(toggle.props().checked);
+    assert_eq!(UiCursor::Pointer, toggle.props().common.cursor);
+    assert!(toggle.props().common.hover_border.visible);
+    assert_eq!(UiCursor::Pointer, color.props().common.cursor);
+    assert!(color.props().common.hover_border.visible);
     assert_eq!(UiTone::Success, badge.props().severity);
     assert_eq!(UiTone::Success, badge.props().status.severity);
     assert_eq!(UiVariant::Outline, badge.props().status.variant);
@@ -238,14 +298,22 @@ fn progress_and_loading_props_are_typed() {
 
 #[test]
 fn structural_atom_props_do_not_need_style_classes() {
-    let divider = UiNode::from(Divider::new("Section"));
-    let slide = UiNode::from(SlideControl::new("Opacity").value("0.8"));
+    let divider = UiNode::from(Divider::new("Section").theme_slot("separator.emphasis"));
+    let slide = UiNode::from(
+        SlideControl::new("Opacity")
+            .value("0.8")
+            .theme_slot("control.track"),
+    );
+    let spacer = UiNode::from(Spacer::new("Gap").theme_slot("layout.gap"));
 
     assert_eq!(UiNodeKind::Divider, divider.kind());
     assert_eq!(UiVisualRole::Separator, divider.props().visual_role);
+    assert_eq!("separator.emphasis", divider.props().common.theme_slot);
     assert!(divider.props().style_classes.is_empty());
     assert_eq!(UiVisualRole::Control, slide.props().visual_role);
     assert_eq!("0.8", slide.props().interaction.value);
+    assert_eq!("control.track", slide.props().common.theme_slot);
+    assert_eq!("layout.gap", spacer.props().common.theme_slot);
 }
 
 #[test]

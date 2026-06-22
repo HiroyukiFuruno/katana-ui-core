@@ -29,5 +29,5 @@
 - `crates/katana-ui-core/src/interaction/` に `drag_source.rs` / `drop_target.rs` / `drag_data.rs` を追加する。
 - `crates/katana-ui-core/src/atom/` に `drag_handle.rs` / `drop_indicator.rs` を追加する。
 - `crates/katana-ui-core/src/molecule/` に `drag_preview.rs` を追加する。
-- adapter（Floem / egui / gpui）は native DnD を escape hatch に変換する責務を持つ（adapter compile gate で確認）。
+- external runtime は native DnD を escape hatch に変換する責務を持つ（core contract で確認）。
 - Storybook に DnD playground（reorder list / file drop / tab reorder / attachment drop）を追加する。

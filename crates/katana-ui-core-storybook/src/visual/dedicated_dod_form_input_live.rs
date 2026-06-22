@@ -22,10 +22,18 @@ mod dedicated_dod_form_input_live_chrome;
 mod dedicated_dod_form_input_live_text_area;
 #[path = "dedicated_dod_form_input_live_text_area_chrome.rs"]
 mod dedicated_dod_form_input_live_text_area_chrome;
+#[path = "dedicated_dod_form_input_live_text_area_content.rs"]
+mod dedicated_dod_form_input_live_text_area_content;
+#[path = "dedicated_dod_form_input_live_text_area_geometry.rs"]
+mod dedicated_dod_form_input_live_text_area_geometry;
+#[path = "dedicated_dod_form_input_live_text_area_slots.rs"]
+mod dedicated_dod_form_input_live_text_area_slots;
 #[path = "dedicated_dod_form_input_live_text_input.rs"]
 mod dedicated_dod_form_input_live_text_input;
 #[path = "dedicated_dod_form_input_live_text_input_chrome.rs"]
 mod dedicated_dod_form_input_live_text_input_chrome;
+#[path = "dedicated_dod_form_input_live_text_input_clear.rs"]
+mod dedicated_dod_form_input_live_text_input_clear;
 
 const LABEL_SIZE: f32 = 10.0;
 const CONTROL_TEXT_Y: usize = 6;
@@ -56,20 +64,26 @@ pub(super) use dedicated_dod_form_input_live_caret::text_input_caret_rect as tex
 #[cfg(test)]
 pub(super) use dedicated_dod_form_input_live_caret::text_input_caret_rect_with_layout as text_input_caret_rect_with_layout_for_test;
 pub(super) use dedicated_dod_form_input_live_text_area::{
-    horizontal_scroll_max_offset_for as text_area_horizontal_scroll_max_offset_for,
-    vertical_scroll_max_offset_for as text_area_vertical_scroll_max_offset_for,
-};
-pub(super) use dedicated_dod_form_input_live_text_area_chrome::{
-    horizontal_scroll_enabled_for as text_area_horizontal_scroll_enabled_for,
-    resize_enabled_for as text_area_resize_enabled_for,
-    text_area_rect_for_state as text_area_rect_for_screen_state,
-    text_area_resize_delta_for_pointer, text_area_resize_grip_rect_for,
-    vertical_scroll_enabled_for as text_area_vertical_scroll_enabled_for,
+    horizontal_scroll_max_offset_for_instance as text_area_horizontal_scroll_max_offset_for_instance,
+    vertical_scroll_max_offset_for_instance as text_area_vertical_scroll_max_offset_for_instance,
 };
 #[cfg(test)]
-pub(super) use dedicated_dod_form_input_live_text_input_chrome::katana_search_svg_for_test as text_input_katana_search_svg_for_test;
+pub(super) use dedicated_dod_form_input_live_text_area_chrome::text_area_rect_for_state as text_area_rect_for_screen_state;
+pub(super) use dedicated_dod_form_input_live_text_area_chrome::{
+    horizontal_scroll_enabled_for_instance as text_area_horizontal_scroll_enabled_for_instance,
+    resize_enabled_for_instance as text_area_resize_enabled_for_instance,
+    text_area_rect_for_instance as text_area_rect_for_screen_state_instance,
+    text_area_resize_delta_for_pointer, text_area_resize_grip_rect_for_instance,
+    vertical_scroll_enabled_for_instance as text_area_vertical_scroll_enabled_for_instance,
+};
+pub(super) use dedicated_dod_form_input_live_text_area_slots::{
+    TEXT_AREA_CLEAR_ACTION_PRESET_INDEX, TEXT_AREA_TRAILING_BUTTONS_PRESET_INDEX,
+    clear_action_rect as text_area_clear_action_rect, text_area_trailing_icon_button_rects,
+};
 #[cfg(test)]
 pub(super) use dedicated_dod_form_input_live_text_input_chrome::search_icon_visual_rect_for_test as text_input_search_icon_visual_rect_for_test;
+#[cfg(test)]
+pub(super) use dedicated_dod_form_input_live_text_input_chrome::search_svg_fixture_for_test as text_input_search_svg_fixture_for_test;
 
 pub(super) fn input(
     canvas: &mut Canvas,

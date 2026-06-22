@@ -1,4 +1,5 @@
 mod interaction_contract {
+    mod callback_action_contract;
     mod color_action_contract;
 
     #[path = "feedback_serialization_contract.rs"]

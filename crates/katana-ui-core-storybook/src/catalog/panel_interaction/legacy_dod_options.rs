@@ -4,6 +4,7 @@ mod legacy_dod_context_menu_options;
 use katana_ui_core::render_model::{UiAnimationState, UiProps, UiSize, UiTone, UiVariant};
 
 const INVALID_USIZE_SETTING: usize = 0;
+const INVALID_U32_SETTING: u32 = 0;
 const INVALID_U8_SETTING: u8 = 0;
 
 pub(super) fn option_value(option: &str, props: &UiProps) -> String {
@@ -33,6 +34,14 @@ pub(super) fn option_value(option: &str, props: &UiProps) -> String {
             legacy_dod_context_menu_options::anchor_value(&props.context_menu.anchor)
         }
         "context_menu.placement" => format!("{:?}", props.context_menu.placement_used),
+        "context_menu.placement_priority" => {
+            legacy_dod_context_menu_options::placement_priority_value(
+                &props.context_menu.placement_priority,
+            )
+        }
+        "context_menu.placement_used" => format!("{:?}", props.context_menu.placement_used),
+        "context_menu.min_width" => props.context_menu.min_width.to_string(),
+        "context_menu.max_height" => props.context_menu.max_height.to_string(),
         "context_menu.item_kind" => legacy_dod_context_menu_options::item_kind_value(props),
         _ => props.theme_id.clone(),
     }
@@ -109,6 +118,15 @@ pub(super) fn props_with_option(props: &UiProps, option: &str, value: &str) -> U
         "context_menu.placement" => {
             next.context_menu.placement_used = legacy_dod_context_menu_options::placement(value);
         }
+        "context_menu.placement_priority" => {
+            next.context_menu.placement_priority =
+                legacy_dod_context_menu_options::placement_priority(value);
+        }
+        "context_menu.placement_used" => {
+            next.context_menu.placement_used = legacy_dod_context_menu_options::placement(value);
+        }
+        "context_menu.min_width" => next.context_menu.min_width = parse_u32(value),
+        "context_menu.max_height" => next.context_menu.max_height = parse_u32(value),
         "context_menu.item_kind" => {
             legacy_dod_context_menu_options::set_item_kind(&mut next, value)
         }
@@ -143,6 +161,10 @@ fn changed_u8(before: &str) -> String {
 
 fn parse_usize(value: &str) -> usize {
     value.parse().map_or(INVALID_USIZE_SETTING, |it| it)
+}
+
+fn parse_u32(value: &str) -> u32 {
+    value.parse().map_or(INVALID_U32_SETTING, |it| it)
 }
 
 fn parse_u8(value: &str) -> u8 {

@@ -41,4 +41,4 @@ document editor（KLE）/ document preview（KDV）は対象外だが、「複�
 - `widget::atoms` の re-export に `TextArea` を追加する。
 - 既存 `TextInput` 型は `Input` の alias のまま維持（後方互換）。
 - consumer (`katana-chat-ui` composer) は KUC `TextArea` に置き換える前提で migration ガイドが必要になる。
-- adapter（floem / egui / gpui）に multi-line input + IME の adapter contract 拡張が必要。
+- external runtime に multi-line input + IME の neutral contract 拡張が必要。

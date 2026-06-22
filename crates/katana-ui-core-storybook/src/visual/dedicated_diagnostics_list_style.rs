@@ -19,6 +19,15 @@ pub(super) fn row_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>, r
     {
         return palette.panel;
     }
+    if scenario.screen_state.diagnostics_list.focused && row == ROW_ERROR_INDEX {
+        return palette.accent;
+    }
+    if scenario.screen_state.diagnostics_list.hovered && row == ROW_ERROR_INDEX {
+        return common::TOKEN;
+    }
+    if scenario.screen_state.diagnostics_list.selected_item() && row == ROW_ERROR_INDEX {
+        return common::SUCCESS;
+    }
     if scenario.screen_state.has_settings_override() && row == ROW_ERROR_INDEX {
         return common::DANGER;
     }
@@ -50,6 +59,9 @@ pub(super) fn preview_fill(palette: &VisualPalette, scenario: ScenarioContext<'_
 }
 
 pub(super) fn range_width(scenario: ScenarioContext<'_>) -> usize {
+    if scenario.screen_state.diagnostics_list.scroll_retained() {
+        return VIRTUAL_RANGE_WIDTH;
+    }
     if scenario.preset_index == VIRTUAL_PRESET_INDEX {
         return VIRTUAL_RANGE_WIDTH;
     }
@@ -57,6 +69,15 @@ pub(super) fn range_width(scenario: ScenarioContext<'_>) -> usize {
 }
 
 pub(super) fn header_label(scenario: ScenarioContext<'_>) -> &'static str {
+    if scenario.screen_state.diagnostics_list.keyboard_navigated() {
+        return "jump requested";
+    }
+    if scenario.screen_state.diagnostics_list.focused {
+        return "focus selected";
+    }
+    if scenario.screen_state.diagnostics_list.hovered {
+        return "hover row";
+    }
     if scenario.screen_state.has_settings_override() {
         return "group=source";
     }

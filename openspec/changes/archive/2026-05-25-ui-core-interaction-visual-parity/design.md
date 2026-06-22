@@ -18,8 +18,8 @@
 **Non-Goals:**
 
 - consumer repo の移行は扱わない。
-- Floem adapter を Storybook の主描画経路にしない。
-- 互換 adapter の本実装は扱わない。
+- adapter を Storybook の主描画経路にしない。
+- repo 外互換統合 の本実装は扱わない。
 
 ## Decisions
 

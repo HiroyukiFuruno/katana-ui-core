@@ -1,6 +1,6 @@
 ## Why
 
-`katana` editor の `diagnostics_hover` / `diagnostics_popup` / `code_block_menu` / explorer の `breadcrumb` ホバー、`katana-chat-ui` の vendor capability ホバー説明など、リッチな内容を anchor に紐付けて表示するホバー UI 需要は広範に存在する。既存 `Popover` molecule は open / close / outside click / Esc / placement 制御を持つが、次が不足している:
+`katana` editor の `diagnostics_hover` / `diagnostics_popup` / `code_block_menu` / explorer の `breadcrumb` ホバー、`katana-chat-ui` の adapter capability ホバー説明など、リッチな内容を anchor に紐付けて表示するホバー UI 需要は広範に存在する。既存 `Popover` molecule は open / close / outside click / Esc / placement 制御を持つが、次が不足している:
 
 - ホバー（pointer enter / focus）でのホバーカード起動（open delay / close delay / pointer follow）
 - リッチコンテンツ用の typed slot（heading / body / footer / actions）

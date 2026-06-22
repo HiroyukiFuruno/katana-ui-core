@@ -36,3 +36,18 @@ fn interactive_card_click_updates_owned_state_and_event_log() {
     assert!(result.after.has_selection);
     assert!(tree.root().props().interaction.has_selection);
 }
+
+#[test]
+fn non_interactive_card_ignores_click_without_selection_mutation() {
+    let mut card = Card::new("Summary");
+    let action = UiAction::click(card.state_id().clone());
+
+    let result = card.apply_action(&action);
+    let tree = UiTree::new(card);
+
+    assert!(!result.handled);
+    assert!(result.callback_log.is_empty());
+    assert!(!result.after.has_selection);
+    assert!(!tree.root().props().interaction.has_selection);
+    assert!(!tree.root().props().focusable);
+}

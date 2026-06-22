@@ -7,6 +7,9 @@ pub(super) fn assert_banner_settings_are_switchable(settings: &[SettingsMutation
         "banner.actions",
         "banner.details",
         "banner.dismissible",
+        "banner.title",
+        "banner.leading_icon",
+        "banner.placement",
     ] {
         assert!(
             settings.iter().any(|it| {
@@ -16,6 +19,20 @@ pub(super) fn assert_banner_settings_are_switchable(settings: &[SettingsMutation
                     && it.event == "banner_settings_changed"
             }),
             "missing banner setting mutation for {option}"
+        );
+    }
+}
+
+pub(super) fn assert_card_settings_are_switchable(settings: &[SettingsMutationReport]) {
+    for option in ["card.label", "card.header", "card.footer", "card.padding"] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "card"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "card_settings_changed"
+            }),
+            "missing card setting mutation for {option}"
         );
     }
 }
@@ -46,6 +63,10 @@ pub(super) fn assert_status_bar_settings_are_switchable(settings: &[SettingsMuta
         "status_bar.mode",
         "status_bar.segments",
         "status_bar.density",
+        "status_bar.message",
+        "status_bar.severity",
+        "status_bar.dismiss",
+        "status_bar.segment_a11y",
     ] {
         assert!(
             settings.iter().any(|it| {
@@ -65,6 +86,7 @@ pub(super) fn assert_shortcut_combo_settings_are_switchable(settings: &[Settings
         "shortcut_combo.separator",
         "shortcut_combo.size",
         "shortcut_combo.tone",
+        "shortcut_combo.a11y_label",
     ] {
         assert!(
             settings.iter().any(|it| {
@@ -78,8 +100,38 @@ pub(super) fn assert_shortcut_combo_settings_are_switchable(settings: &[Settings
     }
 }
 
+pub(super) fn assert_shortcut_cheatsheet_settings_are_switchable(
+    settings: &[SettingsMutationReport],
+) {
+    for option in [
+        "shortcut_cheatsheet.label",
+        "shortcut_cheatsheet.groups",
+        "shortcut_cheatsheet.group_title",
+        "shortcut_cheatsheet.items",
+        "shortcut_cheatsheet.item_combo",
+        "shortcut_cheatsheet.group_layout",
+        "shortcut_cheatsheet.query",
+        "shortcut_cheatsheet.selected",
+        "shortcut_cheatsheet.result_count",
+    ] {
+        assert!(
+            settings.iter().any(|it| {
+                it.page == "shortcut-cheatsheet"
+                    && it.option.name == option
+                    && it.action == format!("set_{option}")
+                    && it.event == "shortcut_cheatsheet_settings_changed"
+            }),
+            "missing shortcut cheatsheet setting mutation for {option}"
+        );
+    }
+}
+
 pub(super) fn assert_empty_state_settings_are_switchable(settings: &[SettingsMutationReport]) {
     for option in [
+        "empty_state.heading",
+        "empty_state.body",
+        "empty_state.icon",
+        "empty_state.illustration",
         "empty_state.tone",
         "empty_state.size",
         "empty_state.alignment",
@@ -99,13 +151,19 @@ pub(super) fn assert_empty_state_settings_are_switchable(settings: &[SettingsMut
 
 pub(super) fn assert_color_picker_settings_are_switchable(settings: &[SettingsMutationReport]) {
     for option in [
-        "color_picker.mode",
-        "color_picker.red",
-        "color_picker.green",
-        "color_picker.blue",
+        "color_picker.rgba",
+        "color_picker.value",
+        "color_picker.open",
+        "color_picker.hue",
         "color_picker.alpha",
         "color_picker.blending",
-        "color_picker.eyedropper",
+        "color_picker.color_area",
+        "color_picker.trigger_size",
+        "color_picker.title",
+        "color_picker.rgba_mode",
+        "color_picker.panel_scale_percent",
+        "color_picker.trigger_border",
+        "color_picker.eyedropper_callback",
         "color_picker.readonly",
         "color_picker.disabled",
     ] {
@@ -143,9 +201,33 @@ pub(super) fn assert_diagnostics_settings_are_switchable(settings: &[SettingsMut
 
 pub(super) fn assert_chip_settings_are_switchable(settings: &[SettingsMutationReport]) {
     for (page, option, event) in [
+        ("chip", "chip.label", "chip_settings_changed"),
+        ("chip", "chip.leading_icon", "chip_settings_changed"),
+        ("chip", "chip.trailing_icon", "chip_settings_changed"),
         ("chip", "chip.variant", "chip_settings_changed"),
         ("chip", "chip.tone", "chip_settings_changed"),
         ("chip", "chip.size", "chip_settings_changed"),
+        ("chip", "chip.interactive", "chip_settings_changed"),
+        ("chip", "chip.selected", "chip_settings_changed"),
+        ("chip", "chip.disabled", "chip_settings_changed"),
+        ("chip", "chip.dismissible", "chip_settings_changed"),
+        ("chip", "chip.a11y_label", "chip_settings_changed"),
+        ("chip", "chip.focused", "chip_settings_changed"),
+        (
+            "attachment-chip",
+            "attachment.name",
+            "attachment_chip_settings_changed",
+        ),
+        (
+            "attachment-chip",
+            "attachment.meta",
+            "attachment_chip_settings_changed",
+        ),
+        (
+            "attachment-chip",
+            "attachment.thumbnail",
+            "attachment_chip_settings_changed",
+        ),
         (
             "attachment-chip",
             "attachment.status",
@@ -158,7 +240,47 @@ pub(super) fn assert_chip_settings_are_switchable(settings: &[SettingsMutationRe
         ),
         (
             "chip-group",
+            "chip_group.label",
+            "chip_group_settings_changed",
+        ),
+        (
+            "chip-group",
+            "chip_group.chip_count",
+            "chip_group_settings_changed",
+        ),
+        (
+            "chip-group",
+            "chip_group.wrap",
+            "chip_group_settings_changed",
+        ),
+        (
+            "chip-group",
             "chip_group.overflow",
+            "chip_group_settings_changed",
+        ),
+        (
+            "chip-group",
+            "chip_group.reorder",
+            "chip_group_settings_changed",
+        ),
+        (
+            "chip-group",
+            "chip_group.gap",
+            "chip_group_settings_changed",
+        ),
+        (
+            "chip-group",
+            "chip_group.available_width",
+            "chip_group_settings_changed",
+        ),
+        (
+            "chip-group",
+            "chip_group.overflow_trigger_width",
+            "chip_group_settings_changed",
+        ),
+        (
+            "chip-group",
+            "chip_group.hidden_count",
             "chip_group_settings_changed",
         ),
     ] {
@@ -181,6 +303,18 @@ pub(super) fn assert_toolbar_settings_are_switchable(settings: &[SettingsMutatio
         "toolbar.overflow_strategy",
         "toolbar.display_mode",
         "toolbar.density",
+        "toolbar.action_priority",
+        "toolbar.action_accelerator",
+        "toolbar.action_split",
+        "toolbar.action_group",
+        "toolbar.action_tooltip",
+        "toolbar.action_a11y",
+        "toolbar.action_disabled",
+        "toolbar.group_label",
+        "toolbar.group_divider",
+        "toolbar.split_disabled",
+        "toolbar.split_tooltip",
+        "toolbar.split_a11y",
     ] {
         assert!(
             settings.iter().any(|it| {

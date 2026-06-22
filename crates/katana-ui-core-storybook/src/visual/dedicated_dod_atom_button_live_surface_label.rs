@@ -1,6 +1,6 @@
 use super::{
-    BASIC_PRESET_INDEX, BUTTON_LABEL_AVG_WIDTH, BUTTON_LABEL_ICON_OFFSET, BUTTON_LABEL_SIZE,
-    BUTTON_PADDING_X, CLASSIC_PRESET_INDEX, ICON_ONLY_SIZE, ICON_SIZE,
+    BASIC_PRESET_INDEX, BUTTON_LABEL_ICON_OFFSET, BUTTON_LABEL_SIZE, BUTTON_PADDING_X,
+    CLASSIC_PRESET_INDEX, ICON_ONLY_SIZE, ICON_SIZE,
 };
 use crate::visual::canvas::Canvas;
 use crate::visual::dedicated_dod_atom_button_live::ButtonLiveKind;
@@ -26,17 +26,27 @@ pub(in crate::visual) fn draw_button_label(
     let text_color = label_color(palette, scenario, kind);
     if !kind.has_visible_label() {
         draw_center_icon(canvas, rect, text_color);
+        draw_icon_only_label_marker(canvas, palette, scenario, rect);
+        draw_external_svg_marker(canvas, palette, scenario, rect);
+        draw_aria_label_marker(canvas, palette, scenario, rect);
         return;
     }
-    draw_optional_icon(canvas, rect, kind, text_color);
+    draw_optional_icon(canvas, rect, scenario, kind, text_color);
+    draw_external_svg_marker(canvas, palette, scenario, rect);
+    draw_aria_label_marker(canvas, palette, scenario, rect);
+    let label_width = measure_button_label_width(text, label);
     text.draw_centered(
         canvas,
         label,
-        centered_label_x(rect, label, kind.has_icon()),
+        centered_label_x(rect, label_width, scenario, kind.has_icon()),
         TextVerticalBox::new(rect.y, rect.height as f32),
         BUTTON_LABEL_SIZE,
         text_color,
     );
+}
+
+pub(in crate::visual) fn measure_button_label_width(text: &TextRenderer, label: &str) -> usize {
+    text.measure_width(label, BUTTON_LABEL_SIZE)
 }
 
 fn draw_invisible_label(
@@ -55,16 +65,31 @@ fn draw_invisible_label(
     );
 }
 
-fn draw_optional_icon(canvas: &mut Canvas, rect: Rect, kind: ButtonLiveKind, color: u32) {
-    if kind.has_icon() {
-        common::cross_icon(
-            canvas,
-            rect.x + BUTTON_LABEL_ICON_OFFSET,
-            rect.y + (rect.height - ICON_SIZE) / metrics::PX_2,
-            ICON_SIZE,
-            color,
-        );
+fn draw_optional_icon(
+    canvas: &mut Canvas,
+    rect: Rect,
+    scenario: ScenarioContext<'_>,
+    kind: ButtonLiveKind,
+    color: u32,
+) {
+    if !kind.has_icon() {
+        return;
     }
+    let icon_x = if scenario.screen_state.button_options.icon_trailing() {
+        rect.x
+            + rect
+                .width
+                .saturating_sub(BUTTON_LABEL_ICON_OFFSET + ICON_SIZE)
+    } else {
+        rect.x + BUTTON_LABEL_ICON_OFFSET
+    };
+    common::cross_icon(
+        canvas,
+        icon_x,
+        rect.y + (rect.height - ICON_SIZE) / metrics::PX_2,
+        ICON_SIZE,
+        color,
+    );
 }
 
 fn label_color(
@@ -110,12 +135,80 @@ fn draw_center_icon(canvas: &mut Canvas, rect: Rect, color: u32) {
     );
 }
 
-fn centered_label_x(rect: Rect, label: &str, icon: bool) -> usize {
-    let icon_offset = if icon {
+fn draw_icon_only_label_marker(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    rect: Rect,
+) {
+    if !scenario.screen_state.button_options.japanese_label {
+        return;
+    }
+    canvas.fill_rect(
+        rect.x + rect.width.saturating_sub(metrics::PX_14),
+        rect.y + rect.height.saturating_sub(metrics::PX_10),
+        metrics::PX_10,
+        metrics::PX_3,
+        palette.background,
+    );
+}
+
+fn draw_external_svg_marker(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    rect: Rect,
+) {
+    if !scenario.screen_state.button_options.external_svg_source {
+        return;
+    }
+    canvas.stroke_rect(
+        rect.x + metrics::PX_8,
+        rect.y + metrics::PX_8,
+        rect.width.saturating_sub(metrics::PX_16),
+        rect.height.saturating_sub(metrics::PX_16),
+        palette.background,
+    );
+}
+
+fn draw_aria_label_marker(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    rect: Rect,
+) {
+    if !scenario.screen_state.button_options.aria_label {
+        return;
+    }
+    canvas.fill_rect(
+        rect.x + metrics::PX_4,
+        rect.y + metrics::PX_4,
+        metrics::PX_6,
+        metrics::PX_3,
+        palette.selection,
+    );
+}
+
+fn centered_label_x(
+    rect: Rect,
+    label_width: usize,
+    scenario: ScenarioContext<'_>,
+    icon: bool,
+) -> usize {
+    let icon_offset = if icon && !scenario.screen_state.button_options.icon_trailing() {
         BUTTON_LABEL_ICON_OFFSET
     } else {
         metrics::PX_0
     };
-    let text_width = label.chars().count() * BUTTON_LABEL_AVG_WIDTH;
-    rect.x + icon_offset + (rect.width.saturating_sub(text_width + icon_offset)) / metrics::PX_2
+    rect.x + icon_offset + (rect.width.saturating_sub(label_width + icon_offset)) / metrics::PX_2
+}
+
+#[cfg(test)]
+pub(in crate::visual) fn centered_label_x_for_test(
+    rect: Rect,
+    label_width: usize,
+    scenario: ScenarioContext<'_>,
+    icon: bool,
+) -> usize {
+    centered_label_x(rect, label_width, scenario, icon)
 }

@@ -57,6 +57,12 @@ impl Panel {
     }
 
     #[must_use]
+    pub fn active_panel(mut self, value: PanelRegion) -> Self {
+        self.state.scroll = self.state.scroll.active_panel(panel_region_key(value));
+        self
+    }
+
+    #[must_use]
     pub fn vertical_scroll(
         mut self,
         scroll_y: u32,
@@ -97,6 +103,12 @@ impl Panel {
     }
 
     #[must_use]
+    pub fn stable_state_id(mut self, value: impl Into<UiStateId>) -> Self {
+        self.state.state_id = value.into();
+        self
+    }
+
+    #[must_use]
     pub fn scrollbar(mut self, value: UiScrollbarModel) -> Self {
         self.state.scroll = self.state.scroll.scrollbar(value);
         self
@@ -116,6 +128,15 @@ impl Panel {
     #[must_use]
     pub fn region(&self) -> PanelRegion {
         self.state.region
+    }
+}
+
+const fn panel_region_key(value: PanelRegion) -> &'static str {
+    match value {
+        PanelRegion::Root => "root",
+        PanelRegion::Navigation => "navigation",
+        PanelRegion::Preview => "preview",
+        PanelRegion::Details => "details",
     }
 }
 

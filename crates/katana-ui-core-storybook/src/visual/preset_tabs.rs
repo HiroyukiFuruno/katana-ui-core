@@ -1,14 +1,12 @@
 use super::canvas::Canvas;
 use super::layout_metrics::{LayoutRect, PRESET_ACTIVE_BOTTOM_BORDER_HEIGHT, PRESET_TEXT_X_OFFSET};
+use super::preset_tab_label;
 use super::preset_tab_scroll;
 use super::render_context::{RenderContext, ScenarioContext};
-use super::text::{TextRenderer, TextVerticalBox};
+use super::text::TextVerticalBox;
 use crate::catalog::StoryPresetLabels;
 
 const KATANA_TAB_BORDER_WIDTH: usize = 1;
-const PRESET_TEXT_SIZE: f32 = 12.0;
-const PRESET_TEXT_MIN_SIZE: f32 = 9.0;
-const PRESET_TEXT_RIGHT_PADDING: usize = 8;
 const TAB_CORNER_SIZE: usize = 2;
 const TAB_INACTIVE_OVERLAP_Y: usize = 1;
 
@@ -162,43 +160,15 @@ fn draw_tab_label(
         render.palette.muted
     };
     let text_x = rect.x + PRESET_TEXT_X_OFFSET;
-    let clip_width = tab_label_clip_width(rect);
-    let text_size = tab_label_size(render.text, rect, label);
-    canvas.with_clip(text_x, rect.y, clip_width, rect.height, |canvas| {
+    let label = preset_tab_label::fit(render.text, rect, label);
+    canvas.with_clip(text_x, rect.y, label.clip_width, rect.height, |canvas| {
         render.text.draw_centered(
             canvas,
-            label,
+            label.text.as_ref(),
             text_x,
             TextVerticalBox::new(rect.y, rect.height as f32),
-            text_size,
+            label.size,
             color,
         );
     });
-}
-
-fn tab_label_size(text: &TextRenderer, rect: LayoutRect, label: &str) -> f32 {
-    let mut text_size = PRESET_TEXT_SIZE;
-    let clip_width = tab_label_clip_width(rect);
-    while text_size > PRESET_TEXT_MIN_SIZE && text.measure_width(label, text_size) > clip_width {
-        text_size -= 1.0;
-    }
-    text_size
-}
-
-fn tab_label_clip_width(rect: LayoutRect) -> usize {
-    rect.width
-        .saturating_sub(PRESET_TEXT_X_OFFSET + PRESET_TEXT_RIGHT_PADDING)
-}
-
-#[cfg(test)]
-pub(super) fn tab_label_widths_for_test(
-    text: &TextRenderer,
-    rect: LayoutRect,
-    label: &str,
-) -> (usize, usize) {
-    let text_size = tab_label_size(text, rect, label);
-    (
-        text.measure_width(label, text_size),
-        tab_label_clip_width(rect),
-    )
 }

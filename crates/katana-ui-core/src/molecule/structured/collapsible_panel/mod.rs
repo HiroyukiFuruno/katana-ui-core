@@ -10,7 +10,7 @@ pub use actions::{CollapsiblePanelAction, CollapsiblePanelEvent};
 pub use state::CollapsiblePanelState;
 pub use types::{CollapsiblePanelOptions, PanelMode, PanelSide, ResizableWidth};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CollapsiblePanel {
     pub(super) label: String,
     pub(super) state_id: UiStateId,

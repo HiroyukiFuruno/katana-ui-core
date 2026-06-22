@@ -1,6 +1,6 @@
 use super::{
-    UiBorder, UiCommonProps, UiCursor, UiDimension, UiDisplay, UiJustifyContent, UiNode,
-    UiPointerEvents, UiPosition, UiZIndex,
+    UiBorder, UiCommonProps, UiCursor, UiDimension, UiDisplay, UiEdgeInsets, UiHostActionSpec,
+    UiJustifyContent, UiNode, UiPointerEvents, UiPosition, UiZIndex,
 };
 
 impl UiNode {
@@ -57,6 +57,18 @@ impl UiNode {
     }
 
     #[must_use]
+    pub fn hover_border(mut self, value: UiBorder) -> Self {
+        self.props.common.hover_border = value;
+        self
+    }
+
+    #[must_use]
+    pub fn margin(mut self, value: UiEdgeInsets) -> Self {
+        self.props.common.margin = value;
+        self
+    }
+
+    #[must_use]
     pub fn display(mut self, value: UiDisplay) -> Self {
         self.props.common.display = value;
         self
@@ -95,6 +107,12 @@ impl UiNode {
     #[must_use]
     pub fn pointer_events(mut self, value: UiPointerEvents) -> Self {
         self.props.common.pointer_events = value;
+        self
+    }
+
+    #[must_use]
+    pub fn host_action(mut self, value: UiHostActionSpec) -> Self {
+        self.props.common = self.props.common.host_action(value);
         self
     }
 

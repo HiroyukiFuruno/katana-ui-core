@@ -60,17 +60,23 @@ fn spacer_blocks(
     scenario: ScenarioContext<'_>,
     gap_color: u32,
 ) -> [Block; SPACER_BLOCK_COUNT] {
-    let gap = gap_width_for(scenario);
-    let right_x = ITEM_X + ITEM_WIDTH + gap;
+    let gap_rect = gap_rect_for(scenario);
+    let right_x = gap_rect.x + gap_rect.width;
     [
         Block::outlined(STAGE_X, STAGE_Y, STAGE_WIDTH, STAGE_HEIGHT, palette.surface),
         Block::new(ITEM_X, ITEM_Y, ITEM_WIDTH, ITEM_HEIGHT, palette.panel),
-        Block::outlined(ITEM_X + ITEM_WIDTH, ITEM_Y, gap, ITEM_HEIGHT, gap_color),
+        Block::outlined(
+            gap_rect.x,
+            gap_rect.y,
+            gap_rect.width,
+            gap_rect.height,
+            gap_color,
+        ),
         Block::new(right_x, ITEM_Y, ITEM_WIDTH, ITEM_HEIGHT, palette.panel),
         Block::new(
-            ITEM_X + ITEM_WIDTH,
+            gap_rect.x,
             ITEM_Y + m::PX_10,
-            gap,
+            gap_rect.width,
             m::PX_4,
             gap_color,
         ),
@@ -82,6 +88,20 @@ fn spacer_blocks(
             common::TOKEN,
         ),
     ]
+}
+
+fn gap_rect_for(scenario: ScenarioContext<'_>) -> Rect {
+    Rect::new(
+        ITEM_X + ITEM_WIDTH,
+        ITEM_Y,
+        gap_width_for(scenario),
+        ITEM_HEIGHT,
+    )
+}
+
+#[cfg(test)]
+pub(super) fn gap_rect_for_test(scenario: ScenarioContext<'_>) -> Rect {
+    gap_rect_for(scenario)
 }
 
 fn spacer_labels(

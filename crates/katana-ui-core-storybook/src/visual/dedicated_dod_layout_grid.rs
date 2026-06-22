@@ -8,6 +8,7 @@ use super::text::TextRenderer;
 const GRID_SPAN_PRESET_INDEX: usize = 1;
 const GRID_OVERFLOW_PRESET_INDEX: usize = 2;
 const GRID_THEME_PRESET_INDEX: usize = 3;
+const GRID_PAGE: &str = "grid";
 const STAGE_X: usize = m::PX_16;
 const STAGE_Y: usize = m::PX_36;
 const STAGE_WIDTH: usize = m::PX_252;
@@ -37,7 +38,9 @@ pub(super) fn grid(
     x: usize,
     y: usize,
 ) {
-    let accent = if scenario.screen_state.has_settings_override() {
+    let accent = if scenario.screen_state.layout.is_page(GRID_PAGE)
+        || scenario.screen_state.has_settings_override()
+    {
         common::SUCCESS
     } else {
         palette.accent
@@ -206,6 +209,13 @@ fn draw_status(
 }
 
 fn status_labels(scenario: ScenarioContext<'_>) -> [&'static str; STATUS_LABEL_COUNT] {
+    if scenario.screen_state.layout.is_page(GRID_PAGE) {
+        return [
+            scenario.screen_state.last_action,
+            scenario.screen_state.last_event,
+            scenario.screen_state.state_label,
+        ];
+    }
     if scenario.screen_state.has_settings_override() {
         return ["action grid", "event cell", "state override"];
     }

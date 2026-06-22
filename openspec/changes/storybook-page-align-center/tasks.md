@@ -8,6 +8,7 @@
 - [x] 1.4 `visual/storybook_ui_option_contract.rs` に `align-center` 用の 4 つ以上の option contract を定義し、Inspector に表示する。
 - [x] 1.5 代表 option の操作が state / action / event / preview 差分へ反映されることを `window_interaction` 経由で検査する。受動 UI の場合は受動契約と style 差し替えを自動テストで固定する。
 - [x] 1.6 light / dark theme の背景、枠線、文字色、入力面相当が theme token から描かれることを数値化された rendering contract で検査する。
+- [x] 1.7 `align-center` は Storybook 上の preview click が state / action / event / preview 差分へ反映されることを専用 `window_interaction` テストと harness guard で固定する。
 
 ## 2. 品質ゲート / DoD
 

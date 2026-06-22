@@ -1,13 +1,13 @@
 mod types;
 
-use super::{Alignment, Length, SplitPaneOptions};
+use super::{Alignment, Length, OverflowBehavior, SplitPaneOptions};
 use crate::layout::split_pane_ratio::{
     DEFAULT_HANDLE_WIDTH_PX, DEFAULT_MAX_PERCENT, DEFAULT_MIN_PERCENT, DEFAULT_RATIO_PERCENT,
     interaction_with_ratio, parse_ratio_percent,
 };
 use crate::render_model::{
-    UiNode, UiNodeKind, UiSplitPaneAxis, UiSplitPaneHandleProps, UiSplitPaneProps,
-    UiSplitPaneResizeMode, UiStateId,
+    UiCommonProps, UiDisplay, UiLayoutAxis, UiNode, UiNodeKind, UiSplitPaneAxis,
+    UiSplitPaneHandleProps, UiSplitPaneProps, UiSplitPaneResizeMode, UiStateId,
 };
 pub use types::{SplitPane, SplitPaneAxis, SplitPaneResizeMode};
 
@@ -22,6 +22,7 @@ impl SplitPane {
             children: Vec::new(),
             gap: Length::Px(0.0),
             alignment: Alignment::Start,
+            overflow: OverflowBehavior::Fit,
             interaction: interaction_with_ratio(DEFAULT_RATIO_PERCENT),
             axis: SplitPaneAxis::Horizontal,
             ratio_percent: DEFAULT_RATIO_PERCENT,
@@ -48,6 +49,12 @@ impl SplitPane {
     #[must_use]
     pub fn align(mut self, alignment: Alignment) -> Self {
         self.alignment = alignment;
+        self
+    }
+
+    #[must_use]
+    pub fn overflow(mut self, overflow: OverflowBehavior) -> Self {
+        self.overflow = overflow;
         self
     }
 
@@ -113,6 +120,7 @@ impl SplitPane {
         self.reset_percent = self.clamped(options.reset_percent);
         self.handle_width_px = options.handle_width_px;
         self.resize_mode = options.resize_mode;
+        self.overflow = options.overflow;
         self.set_ratio_percent(options.ratio_percent);
         self
     }
@@ -127,12 +135,19 @@ impl SplitPane {
             reset_percent: self.reset_percent,
             handle_width_px: self.handle_width_px,
             resize_mode: self.resize_mode,
+            overflow: self.overflow,
         }
     }
 
     #[must_use]
     pub fn state_id(&self) -> &UiStateId {
         &self.state_id
+    }
+
+    #[must_use]
+    pub fn stable_state_id(mut self, value: impl Into<UiStateId>) -> Self {
+        self.state_id = value.into();
+        self
     }
 
     #[must_use]
@@ -168,6 +183,11 @@ impl SplitPane {
     #[must_use]
     pub const fn resize_mode_value(&self) -> SplitPaneResizeMode {
         self.resize_mode
+    }
+
+    #[must_use]
+    pub const fn overflow_value(&self) -> OverflowBehavior {
+        self.overflow
     }
 
     #[must_use]
@@ -216,6 +236,12 @@ impl From<SplitPane> for UiNode {
             resize_mode: to_render_resize_mode(value.resize_mode),
         };
         let mut node = UiNode::from_state(UiNodeKind::SplitPane, "SplitPane", value.state_id)
+            .common(split_pane_common(
+                value.axis,
+                value.gap,
+                value.alignment,
+                value.overflow,
+            ))
             .interaction(interaction)
             .split_pane(split_pane);
         for child in value
@@ -242,5 +268,27 @@ const fn to_render_resize_mode(value: SplitPaneResizeMode) -> UiSplitPaneResizeM
         SplitPaneResizeMode::KeyboardOnly => UiSplitPaneResizeMode::KeyboardOnly,
         SplitPaneResizeMode::PointerAndKeyboard => UiSplitPaneResizeMode::PointerAndKeyboard,
         SplitPaneResizeMode::Disabled => UiSplitPaneResizeMode::Disabled,
+    }
+}
+
+fn split_pane_common(
+    axis: SplitPaneAxis,
+    gap: Length,
+    alignment: Alignment,
+    overflow: OverflowBehavior,
+) -> UiCommonProps {
+    UiCommonProps::default()
+        .display(UiDisplay::Flex)
+        .layout_axis(to_render_layout_axis(axis))
+        .gap(gap.into())
+        .overflow(overflow.into())
+        .align_items(alignment.into())
+        .justify_content(alignment.into())
+}
+
+const fn to_render_layout_axis(value: SplitPaneAxis) -> UiLayoutAxis {
+    match value {
+        SplitPaneAxis::Horizontal => UiLayoutAxis::Horizontal,
+        SplitPaneAxis::Vertical => UiLayoutAxis::Vertical,
     }
 }

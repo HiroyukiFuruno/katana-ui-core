@@ -1,23 +1,56 @@
 use super::StorybookWindowState;
-use crate::visual::button_options::{StorybookButtonOptionControl, control_at, is_button_page};
-use crate::visual::dedicated_dod_form_binary_choice_live as binary_choice_live;
-use crate::visual::dedicated_dod_form_input_live as input_live;
-use crate::visual::dedicated_tabs;
-use crate::visual::layout_metrics::{button_setting_hit_rect, dark_theme_rect, light_theme_rect};
-use crate::visual::panel_options;
+use crate::visual::button_options::{StorybookButtonOptionControl, is_button_page};
 use crate::visual::panel_screen_state::{PanelChildKey, PanelOptionControl};
-use crate::visual::preset_tab_scroll;
+use crate::visual::screen_state_search_control::SearchControlScreenAction;
+use crate::visual::screen_state_segmented_toggle::SegmentedToggleScreenAction;
+use crate::visual::screen_state_side_menu::SideMenuScreenAction;
 use crate::visual::screen_state_tabs::TabsScreenAction;
-use crate::visual::search_box_screen_state::SearchBoxScreenAction;
 use crate::visual::selection_screen_state::SelectionScreenAction;
-use crate::visual::{preview, preview_detail};
+use crate::visual::storybook_ui_option_contract::StorybookUiOptionContract;
+use crate::visual::window_interaction::collapsible_panel_state::CollapsiblePanelStoryAction;
+use crate::visual::window_interaction::color_picker_operation::{self, ColorPickerAction};
+use crate::visual::window_interaction::command_palette_state::CommandPaletteStoryAction;
+use crate::visual::window_interaction::diagnostics_list_operation::{
+    self, DiagnosticsListStoryAction,
+};
+use crate::visual::window_interaction::drag_and_drop_operation::{self, DragAndDropAction};
+use crate::visual::window_interaction::dynamic_array_editor_operation::{
+    self, DynamicArrayEditorAction,
+};
+use crate::visual::window_interaction::layout_operation::{self, LayoutStoryAction};
+use crate::visual::window_interaction::scroll_area_operation::{self, ScrollAreaStoryAction};
+use crate::visual::window_interaction::settings_list_operation::{self, SettingsListStoryAction};
+use crate::visual::window_interaction::split_pane_operation::{self, SplitPaneStoryAction};
+use crate::visual::window_interaction::theme_tokens_operation::{self, ThemeTokensStoryAction};
+use crate::visual::window_interaction::virtualization_state::VirtualizationStoryAction;
+use crate::visual::{dedicated_breadcrumb, preview, preview_detail};
 
+#[path = "button_operation/apply_operation.rs"]
+mod apply_operation;
+#[path = "button_operation/binary_choice_operation.rs"]
+mod binary_choice_operation;
+#[path = "button_operation/breadcrumb_operation.rs"]
+mod breadcrumb_operation;
+#[path = "button_operation/common_operation.rs"]
+mod common_operation;
+#[path = "button_operation/menu_operation.rs"]
+mod menu_operation;
 #[path = "button_operation/selection_operation.rs"]
 mod selection_operation;
+#[path = "button_operation/settings_operation.rs"]
+mod settings_operation;
+#[path = "button_operation/status_bar_operation.rs"]
+mod status_bar_operation;
+#[path = "button_operation/tabs_operation.rs"]
+mod tabs_operation;
+#[path = "button_operation/text_area_operation.rs"]
+mod text_area_operation;
 #[path = "button_operation/text_input_operation.rs"]
 mod text_input_operation;
+#[path = "button_operation/toolbar_operation.rs"]
+mod toolbar_operation;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(super) enum StorybookButtonOperation {
     LightTheme,
     DarkTheme,
@@ -27,13 +60,28 @@ pub(super) enum StorybookButtonOperation {
     ButtonOption(StorybookButtonOptionControl),
     PanelOption(PanelOptionControl),
     PanelChild(PanelChildKey),
-    SettingsOption,
+    ColorPicker(ColorPickerAction),
+    DiagnosticsList(DiagnosticsListStoryAction),
+    DragAndDrop(DragAndDropAction),
+    DynamicArrayEditor(DynamicArrayEditorAction),
+    Layout(LayoutStoryAction),
+    PanelResize,
+    ScrollArea(ScrollAreaStoryAction),
+    SettingsList(SettingsListStoryAction),
+    SplitPane(SplitPaneStoryAction),
+    ThemeTokens(ThemeTokensStoryAction),
+    SettingsOption {
+        option: StorybookUiOptionContract,
+        preset_index: Option<usize>,
+    },
     SelectionControl(SelectionScreenAction),
     CheckboxStateRead,
-    CheckboxToggle,
+    CheckboxToggle(usize),
+    CheckboxToggleFocused,
     CheckboxReset,
     RadioStateRead,
     RadioSelect,
+    RadioSelectIndex(usize),
     RadioReset,
     ComboStateRead,
     ComboFilter,
@@ -45,81 +93,52 @@ pub(super) enum StorybookButtonOperation {
     SearchClear,
     SearchCaseToggle,
     SearchRegexToggle,
+    MenuOpen,
+    MenuClose,
+    MenuSelect(usize),
+    MenuDisabledItem,
+    MenuShortcutActivation,
+    MenuButtonOpen,
+    MenuButtonClose,
+    MenuButtonSelect(usize),
+    MenuButtonDisabledTrigger,
+    StatusBarSegment(usize),
+    ToolbarActionButton(usize),
     TabsControl(TabsScreenAction),
+    TabsPinIcon {
+        tab_id: String,
+    },
+    CloseableTabStripSelect {
+        tab_id: String,
+    },
+    TreeViewPointer {
+        pointer_x: usize,
+        pointer_y: usize,
+    },
+    BreadcrumbSelection(usize),
     TextInputFocus {
         initial_value: &'static str,
         readonly: bool,
     },
+    TextInputClearAction {
+        initial_value: &'static str,
+        readonly: bool,
+    },
     TextInputIconButton,
-    TextAreaFocus,
+    TextAreaFocus {
+        readonly: bool,
+        disabled: bool,
+    },
+    TextAreaClearAction {
+        readonly: bool,
+        disabled: bool,
+    },
+    TextAreaIconButton,
 }
 
 impl StorybookButtonOperation {
     pub(super) fn apply(self, state: &mut StorybookWindowState) -> bool {
-        match self {
-            Self::LightTheme => state.theme_id = "light",
-            Self::DarkTheme => state.theme_id = "dark",
-            Self::Preset(index) => state.select_preset(index),
-            Self::PreviewButton => state
-                .screen_state
-                .register_button_click(state.selected_page),
-            Self::PreviewComponent => state
-                .screen_state
-                .register_preview_action(state.selected_page),
-            Self::ButtonOption(control) => state.screen_state.register_button_option(control),
-            Self::PanelOption(control) => state.screen_state.register_panel_option(control),
-            Self::PanelChild(panel) => state.screen_state.register_panel_active_child(panel),
-            Self::SettingsOption => state
-                .screen_state
-                .register_settings_change(state.selected_page),
-            Self::SelectionControl(action) => state.screen_state.register_selection_action(action),
-            Self::CheckboxStateRead => state.screen_state.register_checkbox_state_read(),
-            Self::CheckboxToggle => state.screen_state.register_checkbox_toggle(),
-            Self::CheckboxReset => state.screen_state.register_checkbox_reset(),
-            Self::RadioStateRead => state.screen_state.register_radio_state_read(),
-            Self::RadioSelect => state.screen_state.register_radio_select(),
-            Self::RadioReset => state.screen_state.register_radio_reset(),
-            Self::ComboStateRead => state
-                .screen_state
-                .register_selection_action(SelectionScreenAction::ComboStateRead),
-            Self::ComboFilter => state
-                .screen_state
-                .register_selection_action(SelectionScreenAction::ComboFilter),
-            Self::ComboSelect => state
-                .screen_state
-                .register_selection_action(SelectionScreenAction::ComboOption(1)),
-            Self::ComboReset => state
-                .screen_state
-                .register_selection_action(SelectionScreenAction::ComboReset),
-            Self::SearchStateRead => state
-                .screen_state
-                .register_search_box_action(SearchBoxScreenAction::StateRead),
-            Self::SearchTypeQuery => state
-                .screen_state
-                .register_search_box_action(SearchBoxScreenAction::TypeQuery),
-            Self::SearchSubmit => state
-                .screen_state
-                .register_search_box_action(SearchBoxScreenAction::Submit),
-            Self::SearchClear => state
-                .screen_state
-                .register_search_box_action(SearchBoxScreenAction::Clear),
-            Self::SearchCaseToggle => state
-                .screen_state
-                .register_search_box_action(SearchBoxScreenAction::ToggleCase),
-            Self::SearchRegexToggle => state
-                .screen_state
-                .register_search_box_action(SearchBoxScreenAction::ToggleRegex),
-            Self::TabsControl(action) => state.screen_state.register_tabs_action(action),
-            Self::TextInputFocus {
-                initial_value,
-                readonly,
-            } => state
-                .screen_state
-                .register_text_input_focus(initial_value, readonly),
-            Self::TextInputIconButton => state.screen_state.register_text_input_icon_button(),
-            Self::TextAreaFocus => state.screen_state.register_text_area_focus(),
-        }
-        true
+        apply_operation::apply(self, state)
     }
 }
 
@@ -128,151 +147,60 @@ pub(super) fn button_operation_at(
     x: usize,
     y: usize,
 ) -> Option<StorybookButtonOperation> {
-    theme_operation_at(x, y)
-        .or_else(|| preset_operation_at(state, x, y))
+    common_operation::theme_operation_at(x, y)
+        .or_else(|| common_operation::preset_operation_at(state, x, y))
         .or_else(|| selection_operation::SelectionOperation::operation_at(state, x, y))
-        .or_else(|| checkbox_operation_at(state.selected_page, x, y))
-        .or_else(|| radio_operation_at(state.selected_page, x, y))
-        .or_else(|| panel_operation_at(state.selected_page, x, y))
+        .or_else(|| menu_operation::operation_at(state, x, y))
+        .or_else(|| binary_choice_operation::operation_at(state.selected_page, x, y))
+        .or_else(|| common_operation::panel_operation_at(state.selected_page, x, y))
+        .or_else(|| {
+            color_picker_operation::operation_at(state, x, y)
+                .map(StorybookButtonOperation::ColorPicker)
+        })
+        .or_else(|| {
+            diagnostics_list_operation::operation_at(state, x, y)
+                .map(StorybookButtonOperation::DiagnosticsList)
+        })
+        .or_else(|| {
+            drag_and_drop_operation::operation_at(state, x, y)
+                .map(StorybookButtonOperation::DragAndDrop)
+        })
+        .or_else(|| {
+            dynamic_array_editor_operation::operation_at(state, x, y)
+                .map(StorybookButtonOperation::DynamicArrayEditor)
+        })
+        .or_else(|| {
+            layout_operation::operation_at(state, x, y).map(StorybookButtonOperation::Layout)
+        })
+        .or_else(|| {
+            scroll_area_operation::operation_at(state, x, y)
+                .map(StorybookButtonOperation::ScrollArea)
+        })
+        .or_else(|| {
+            settings_list_operation::operation_at(state, x, y)
+                .map(StorybookButtonOperation::SettingsList)
+        })
+        .or_else(|| {
+            split_pane_operation::operation_at(state, x, y).map(StorybookButtonOperation::SplitPane)
+        })
+        .or_else(|| {
+            theme_tokens_operation::operation_at(state, x, y)
+                .map(StorybookButtonOperation::ThemeTokens)
+        })
+        .or_else(|| breadcrumb_operation::operation_at(state, x, y))
         .or_else(|| text_input_operation::operation_at(state, x, y))
-        .or_else(|| text_area_operation_at(state, x, y))
-        .or_else(|| tabs_operation_at(state, x, y))
-        .or_else(|| preview_operation_at(state.selected_page, x, y))
-        .or_else(|| settings_operation_at(state.selected_page, x, y))
+        .or_else(|| text_area_operation::operation_at(state, x, y))
+        .or_else(|| tabs_operation::operation_at(state, x, y))
+        .or_else(|| status_bar_operation::operation_at(state.selected_page, x, y))
+        .or_else(|| toolbar_operation::operation_at(state, x, y))
+        .or_else(|| common_operation::preview_operation_at(state.selected_page, x, y))
+        .or_else(|| settings_operation::operation_at(state.selected_page, x, y))
 }
 
-pub(in crate::visual) fn apply_hover_at(
-    state: &mut StorybookWindowState,
-    x: usize,
-    y: usize,
-) -> bool {
-    let icon_button_changed = state.screen_state.set_hovered_text_input_icon_button_index(
-        text_input_operation::hovered_icon_button_index_at(state, x, y),
-    );
-    let summary_changed = state
-        .screen_state
-        .set_hovered_summary_index(preview::summary_control_index_at(x, y));
-    let hovered = preview_detail::component_action_hit_rect(state.selected_page).contains(x, y);
-    state.screen_state.set_preview_hovered(hovered) || summary_changed || icon_button_changed
-}
+#[path = "button_operation/hover_operation.rs"]
+mod hover_operation;
+pub(in crate::visual) use hover_operation::apply_hover_at;
 
-pub(super) fn is_button_preview_page(page: &str) -> bool {
-    is_button_page(page)
-}
-
-fn theme_operation_at(x: usize, y: usize) -> Option<StorybookButtonOperation> {
-    if light_theme_rect().contains(x, y) {
-        return Some(StorybookButtonOperation::LightTheme);
-    }
-    if dark_theme_rect().contains(x, y) {
-        return Some(StorybookButtonOperation::DarkTheme);
-    }
-    None
-}
-
-fn preset_operation_at(
-    state: &StorybookWindowState,
-    x: usize,
-    y: usize,
-) -> Option<StorybookButtonOperation> {
-    preset_tab_scroll::hit_index_at(state.selected_page, x, y, state.preset_tab_scroll_x)
-        .map(StorybookButtonOperation::Preset)
-}
-
-fn preview_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
-    if preview_detail::button_action_hit_rect(page).contains(x, y) {
-        return Some(StorybookButtonOperation::PreviewButton);
-    }
-    if preview_detail::component_action_hit_rect(page).contains(x, y) {
-        return Some(StorybookButtonOperation::PreviewComponent);
-    }
-    None
-}
-
-fn panel_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
-    if page != "panel" {
-        return None;
-    }
-    if let Some(control) = panel_options::control_at(x, y) {
-        return Some(StorybookButtonOperation::PanelOption(control));
-    }
-    let origin = preview_detail::component_action_hit_rect(page);
-    crate::visual::dedicated_foundation_panel::panel_at(origin.x, origin.y, x, y)
-        .map(StorybookButtonOperation::PanelChild)
-}
-
-fn text_area_operation_at(
-    state: &StorybookWindowState,
-    x: usize,
-    y: usize,
-) -> Option<StorybookButtonOperation> {
-    if state.selected_page != "text-area" {
-        return None;
-    }
-    let origin = preview_detail::component_action_hit_rect(state.selected_page);
-    if input_live::text_area_rect_for_screen_state(origin.x, origin.y, &state.screen_state)
-        .contains(x, y)
-    {
-        return Some(StorybookButtonOperation::TextAreaFocus);
-    }
-    None
-}
-
-fn tabs_operation_at(
-    state: &StorybookWindowState,
-    x: usize,
-    y: usize,
-) -> Option<StorybookButtonOperation> {
-    if state.selected_page != "tabs" {
-        return None;
-    }
-    let origin = preview_detail::component_action_hit_rect(state.selected_page);
-    dedicated_tabs::control_at(origin.x, origin.y, x, y).map(StorybookButtonOperation::TabsControl)
-}
-
-fn settings_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
-    if let Some(control) = control_at(page, x, y) {
-        return Some(StorybookButtonOperation::ButtonOption(control));
-    }
-    if is_button_page(page) {
-        return None;
-    }
-    if button_setting_hit_rect().contains(x, y) {
-        return Some(StorybookButtonOperation::SettingsOption);
-    }
-    None
-}
-
-fn checkbox_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
-    if page != "checkbox" {
-        return None;
-    }
-    let base = preview_detail::component_action_hit_rect(page);
-    if binary_choice_live::checkbox_state_read_button_rect(base.x, base.y).contains(x, y) {
-        return Some(StorybookButtonOperation::CheckboxStateRead);
-    }
-    if binary_choice_live::checkbox_toggle_button_rect(base.x, base.y).contains(x, y) {
-        return Some(StorybookButtonOperation::CheckboxToggle);
-    }
-    if binary_choice_live::checkbox_reset_button_rect(base.x, base.y).contains(x, y) {
-        return Some(StorybookButtonOperation::CheckboxReset);
-    }
-    None
-}
-
-fn radio_operation_at(page: &str, x: usize, y: usize) -> Option<StorybookButtonOperation> {
-    if page != "radio" {
-        return None;
-    }
-    let base = preview_detail::component_action_hit_rect(page);
-    if binary_choice_live::radio_state_read_button_rect(base.x, base.y).contains(x, y) {
-        return Some(StorybookButtonOperation::RadioStateRead);
-    }
-    if binary_choice_live::radio_select_button_rect(base.x, base.y).contains(x, y) {
-        return Some(StorybookButtonOperation::RadioSelect);
-    }
-    if binary_choice_live::radio_reset_button_rect(base.x, base.y).contains(x, y) {
-        return Some(StorybookButtonOperation::RadioReset);
-    }
-    None
+pub(super) fn uses_clickable_preview_cursor(page: &str) -> bool {
+    is_button_page(page) || page == "menu-button"
 }

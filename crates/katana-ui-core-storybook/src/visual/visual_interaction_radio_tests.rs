@@ -19,8 +19,8 @@ const REQUIRED_OPTION_COUNT: usize = 4;
 const BODY_DIFF_THRESHOLD: usize = 80;
 const ROW_FILL_SAMPLE_X_OFFSET: usize = 4;
 const ROW_FILL_SAMPLE_Y_OFFSET: usize = 2;
-const MARK_FILL_SAMPLE_X_OFFSET: usize = 6;
-const MARK_FILL_SAMPLE_Y_OFFSET: usize = 6;
+const MARK_FILL_SAMPLE_X_OFFSET: usize = 10;
+const MARK_FILL_SAMPLE_Y_OFFSET: usize = 10;
 
 #[test]
 fn radio_exposes_leaf_presets_options_and_selected_contract() {
@@ -67,6 +67,23 @@ fn radio_light_and_dark_rows_use_theme_tokens() {
     assert_row_tokens(LIGHT_THEME, ThemeSnapshot::light());
 }
 
+#[test]
+fn radio_rows_do_not_overlap_action_controls() {
+    let rect = preview_detail::component_action_hit_rect(PAGE);
+    let second_row =
+        super::dedicated_dod_form_binary_choice_live::radio_row_rect(1, rect.x, rect.y);
+    let read =
+        super::dedicated_dod_form_binary_choice_live::radio_state_read_button_rect(rect.x, rect.y);
+    let select =
+        super::dedicated_dod_form_binary_choice_live::radio_select_button_rect(rect.x, rect.y);
+    let reset =
+        super::dedicated_dod_form_binary_choice_live::radio_reset_button_rect(rect.x, rect.y);
+
+    assert!(!second_row.overlaps(read));
+    assert!(!second_row.overlaps(select));
+    assert!(!second_row.overlaps(reset));
+}
+
 fn assert_row_tokens(theme_id: &str, theme: ThemeSnapshot) {
     let unselected = StorybookVisual.render_preset(theme_id, PAGE, UNSELECTED_PRESET, 0);
     let selected = StorybookVisual.render_preset(theme_id, PAGE, SELECTED_PRESET, 0);
@@ -75,7 +92,10 @@ fn assert_row_tokens(theme_id: &str, theme: ThemeSnapshot) {
     let row = super::dedicated_dod_form_binary_choice_live::radio_row_rect(0, rect.x, rect.y);
     let mark = super::dedicated_dod_form_binary_choice_live::radio_mark_rect(0, rect.x, rect.y);
 
-    assert_eq!(Some(colors.border), pixel_at(&unselected, row.x, row.y));
+    assert_eq!(
+        Some(colors.border),
+        pixel_at(&unselected, row.x + row.width / 2, row.y)
+    );
     assert_eq!(
         Some(colors.surface),
         pixel_at(

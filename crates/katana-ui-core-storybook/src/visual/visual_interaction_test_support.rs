@@ -1,4 +1,6 @@
 use super::layout_metrics::LayoutRect;
+use super::screen_state_settings::{format_setting_action, format_setting_event};
+use super::storybook_ui_option_contract;
 use super::window_interaction::{StorybookWindowState, apply_click};
 use super::{Canvas, StorybookVisual, preview_detail, render};
 
@@ -50,6 +52,54 @@ pub(super) fn component_body_pixel_diff(page: &str, before: &Canvas, after: &Can
         before,
         after,
     )
+}
+
+pub(super) fn assert_inspector_option_state(
+    state: &StorybookWindowState,
+    page: &str,
+    setting: &str,
+    expected_value: &str,
+    expected_state: &str,
+) {
+    assert_inspector_option_state_with_event(
+        state,
+        setting,
+        expected_value,
+        expected_state,
+        format_setting_action(setting),
+        format_setting_event(page),
+    );
+}
+
+pub(super) fn assert_inspector_option_state_with_event(
+    state: &StorybookWindowState,
+    setting: &str,
+    expected_value: &str,
+    expected_state: &str,
+    expected_action: &str,
+    expected_event: &str,
+) {
+    assert_eq!(setting, state.screen_state.last_setting);
+    assert_eq!(expected_action, state.screen_state.last_action);
+    assert_eq!(expected_event, state.screen_state.last_event);
+    assert_eq!(expected_value, state.screen_state.last_setting_value);
+    assert_eq!(expected_state, state.screen_state.state_label);
+}
+
+pub(super) fn assert_inspector_option_contract_state(
+    state: &StorybookWindowState,
+    page: &str,
+    setting: &str,
+    expected_state: &str,
+) -> Result<(), String> {
+    let Some(option) = storybook_ui_option_contract::options_for_page(page)
+        .iter()
+        .find(|option| option.setting == setting)
+    else {
+        return Err(format!("missing {page} option `{setting}`"));
+    };
+    assert_inspector_option_state(state, page, setting, option.after, expected_state);
+    Ok(())
 }
 
 pub(super) fn assert_clicked_page_changes_body(page: &str) {

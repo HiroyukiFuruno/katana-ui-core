@@ -15,8 +15,12 @@ const CHAT_PRESET: usize = 1;
 const LINTER_PRESET: usize = 2;
 const PROGRESS_PRESET: usize = 3;
 const POPOVER_PRESET: usize = 4;
-const REQUIRED_PRESET_COUNT: usize = 4;
-const REQUIRED_OPTION_COUNT: usize = 4;
+const MESSAGE_PRESET: usize = 5;
+const SEVERITY_PRESET: usize = 6;
+const DISMISS_PRESET: usize = 7;
+const A11Y_PRESET: usize = 8;
+const REQUIRED_PRESET_COUNT: usize = 8;
+const REQUIRED_OPTION_COUNT: usize = 8;
 const BODY_DIFF_THRESHOLD: usize = 80;
 const SURFACE_TOKEN_X: usize = 338;
 const SURFACE_TOKEN_Y: usize = 34;
@@ -38,6 +42,18 @@ fn status_bar_exposes_leaf_presets_options_and_popover_contract() {
         rows.iter()
             .any(|row| row.starts_with("status_bar.progress_popover:"))
     );
+    assert!(
+        rows.iter()
+            .any(|row| row.starts_with("status_bar.message:"))
+    );
+    assert!(
+        rows.iter()
+            .any(|row| row.starts_with("status_bar.dismiss:"))
+    );
+    assert!(
+        rows.iter()
+            .any(|row| row.starts_with("status_bar.segment_a11y:"))
+    );
     assert_eq!("status_bar_segment_popover", spec.action);
     assert_eq!("status_bar_popover_opened", spec.event);
     assert_eq!("status_bar.open_popover", spec.option);
@@ -52,11 +68,19 @@ fn status_bar_presets_render_distinct_editor_chat_linter_progress_and_popover_st
     let linter = StorybookVisual.render_preset(DARK_THEME, PAGE, LINTER_PRESET, 0);
     let progress = StorybookVisual.render_preset(DARK_THEME, PAGE, PROGRESS_PRESET, 0);
     let popover = StorybookVisual.render_preset(DARK_THEME, PAGE, POPOVER_PRESET, 0);
+    let message = StorybookVisual.render_preset(DARK_THEME, PAGE, MESSAGE_PRESET, 0);
+    let severity = StorybookVisual.render_preset(DARK_THEME, PAGE, SEVERITY_PRESET, 0);
+    let dismiss = StorybookVisual.render_preset(DARK_THEME, PAGE, DISMISS_PRESET, 0);
+    let a11y = StorybookVisual.render_preset(DARK_THEME, PAGE, A11Y_PRESET, 0);
 
     assert!(component_body_pixel_diff(PAGE, &editor, &chat) > BODY_DIFF_THRESHOLD);
     assert!(component_body_pixel_diff(PAGE, &chat, &linter) > BODY_DIFF_THRESHOLD);
     assert!(component_body_pixel_diff(PAGE, &linter, &progress) > BODY_DIFF_THRESHOLD);
     assert!(component_body_pixel_diff(PAGE, &progress, &popover) > BODY_DIFF_THRESHOLD);
+    assert!(component_body_pixel_diff(PAGE, &popover, &message) > BODY_DIFF_THRESHOLD);
+    assert!(component_body_pixel_diff(PAGE, &message, &severity) > BODY_DIFF_THRESHOLD);
+    assert!(component_body_pixel_diff(PAGE, &severity, &dismiss) > BODY_DIFF_THRESHOLD);
+    assert!(component_body_pixel_diff(PAGE, &dismiss, &a11y) > BODY_DIFF_THRESHOLD);
 }
 
 #[test]

@@ -1,19 +1,33 @@
 //! Core-only Storybook model for KUC verification.
 
 mod catalog;
-mod katana_icons;
+mod document_viewer;
 mod panel;
 mod requirements;
+mod storybook_svg_fixtures;
+#[cfg(all(not(test), target_os = "macos"))]
+mod system;
+#[cfg(test)]
+mod test_assert;
 mod visual;
 
 pub use catalog::{
     StoryCatalog, StoryCatalogReport, StoryDetailContent, StoryExample,
     StorybookPanelInteractionReport, StorybookPanelReport, StorybookStyleSheet,
 };
+pub use document_viewer::media_control_icons::KucMediaControlIconSet;
+pub use document_viewer::{
+    DocumentViewerStorybookHost, KucDiagramControlResolver, KucViewerAdapter, KucViewerConfig,
+    KucViewerError, KucViewerPlan,
+};
 use katana_ui_core::theme::ThemeSnapshot;
 pub use panel::StorybookPanel;
 pub use visual::{
-    Canvas, StorybookRuntimeReport, StorybookVisual, StorybookVisualError, StorybookWindowRun,
+    Canvas, CanvasBlitRequest, RgbaBlitRequest, SelectableTextRun, StorybookPresentation,
+    StorybookRuntimeReport, StorybookVisual, StorybookVisualError, StorybookWindowRun,
+    TextRenderer, UiTreeCanvasRenderer, UiTreeHitRect, UiTreeHostActionHit,
+    UiTreeHostActionHitQuery, UiTreeInteractionSurface, UiTreeNodeHit, UiTreeRenderArea,
+    UiTreeStorybookHost, UiTreeSurfaceHost,
 };
 
 /// 起動直後に Storybook の操作性が見える代表ページを開く。
@@ -70,7 +84,9 @@ impl StorybookSummary {
 
 #[cfg(test)]
 mod tests {
-    use super::{DEFAULT_STORYBOOK_PAGE, StorybookRoutes, StorybookSummary};
+    use super::{
+        Canvas, DEFAULT_STORYBOOK_PAGE, StorybookPresentation, StorybookRoutes, StorybookSummary,
+    };
 
     #[test]
     fn storybook_routes_use_core_crate() {
@@ -123,5 +139,15 @@ mod tests {
         assert!(summary.contains("panel_scroll_configured=true"));
         assert!(summary.contains("independent_panel_scrolls=4"));
         assert!(summary.contains("styled_story_roots=1"));
+    }
+
+    #[test]
+    fn crate_root_exports_window_presentation_type() {
+        let canvas = Canvas::new(4, 4, 0xff_11_22_33);
+
+        let frame = StorybookPresentation::present_frame_for_window(&canvas, 8, 8, 0xff_ff_ff_ff);
+
+        assert_eq!(8, frame.width());
+        assert_eq!(8, frame.height());
     }
 }

@@ -23,9 +23,9 @@ pub(in crate::visual) fn cursor_style_at(
     };
     match operation {
         StorybookButtonOperation::TextInputFocus { .. }
-        | StorybookButtonOperation::TextAreaFocus => StorybookCursorStyle::Ibeam,
+        | StorybookButtonOperation::TextAreaFocus { .. } => StorybookCursorStyle::Ibeam,
         StorybookButtonOperation::PreviewComponent
-            if !button_operation::is_button_preview_page(state.selected_page) =>
+            if !button_operation::uses_clickable_preview_cursor(state.selected_page) =>
         {
             StorybookCursorStyle::Arrow
         }

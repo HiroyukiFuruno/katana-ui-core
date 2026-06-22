@@ -47,7 +47,7 @@ Consumers MUST be able to use preset + partial override and complete DTO overrid
 ### Requirement: Archived 01-24 requirements are reclassified
 
 KUC MUST reclassify legacy 01-24 UI requirements into current atoms, molecules, or Storybook-internal categories.
-Legacy Floem completion checkboxes MUST NOT be used as current KUC completion evidence.
+Legacy Adapter completion checkboxes MUST NOT be used as current KUC completion evidence.
 
 #### Scenario: legacy task is referenced
 

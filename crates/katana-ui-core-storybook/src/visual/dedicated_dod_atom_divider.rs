@@ -134,6 +134,11 @@ fn line_rect_for(scenario: ScenarioContext<'_>) -> Rect {
     Rect::new(LINE_X, LINE_Y, LINE_WIDTH, LINE_HEIGHT)
 }
 
+#[cfg(test)]
+pub(super) fn line_rect_for_test(scenario: ScenarioContext<'_>) -> Rect {
+    line_rect_for(scenario)
+}
+
 fn line_color_for(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
     if scenario.preset_index == THEME_PRESET_INDEX {
         return palette.accent;

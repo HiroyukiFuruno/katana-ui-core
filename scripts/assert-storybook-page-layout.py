@@ -218,10 +218,10 @@ def main() -> int:
     missing.extend(token for token in source_evidence_tokens if token not in source)
     missing.extend(token for token in evidence_tokens if token not in docs)
     forbidden = (
-        "katana-ui-core-floem",
-        "katana_ui_core_floem",
-        "floem",
-        "floem::",
+        "framework-native runtime",
+        "katana_ui_core_adapter",
+        "adapter",
+        "adapter::",
         "Application::new()",
         "All components",
         "draw_preview_stories",
@@ -239,7 +239,7 @@ def main() -> int:
             print(f"- missing token: {token}", file=sys.stderr)
         return 1
     if leaked:
-        print("storybook must not render through Floem", file=sys.stderr)
+        print("storybook must not render through Adapter", file=sys.stderr)
         for token in leaked:
             print(f"- forbidden token: {token}", file=sys.stderr)
         return 1

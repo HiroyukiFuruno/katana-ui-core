@@ -1,3 +1,4 @@
+use super::super::common_types::{UiAlignItems, UiDimension};
 use super::{UiRect, UiScrollbarPlacement, UiScrollbarVisibility};
 use serde::{Deserialize, Serialize};
 
@@ -9,7 +10,7 @@ pub enum UiScrollAreaAxis {
     Both,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiScrollAreaProps {
     pub axis: UiScrollAreaAxis,
     pub offset_x: u32,
@@ -21,6 +22,8 @@ pub struct UiScrollAreaProps {
     pub scrollbar_visibility: UiScrollbarVisibility,
     pub scrollbar_placement: UiScrollbarPlacement,
     pub edge_threshold: u32,
+    pub gap: UiDimension,
+    pub alignment: UiAlignItems,
     pub visible_rect: UiRect,
 }
 
@@ -37,6 +40,8 @@ impl Default for UiScrollAreaProps {
             scrollbar_visibility: UiScrollbarVisibility::Auto,
             scrollbar_placement: UiScrollbarPlacement::Reserved,
             edge_threshold: 0,
+            gap: UiDimension::Px(0),
+            alignment: UiAlignItems::Start,
             visible_rect: UiRect::default(),
         }
     }

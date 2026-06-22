@@ -4,6 +4,7 @@ use super::dedicated_dod_metrics as m;
 use super::dedicated_status_bar_style::{
     center_label, progress_fill, progress_width, segment_fill, status_label,
 };
+use super::layout_metrics::LayoutRect;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::text::TextRenderer;
@@ -29,6 +30,7 @@ const SURFACE_TOKEN_X: usize = 338;
 const SURFACE_TOKEN_Y: usize = 34;
 const SURFACE_TOKEN_WIDTH: usize = 140;
 const SURFACE_TOKEN_HEIGHT: usize = 18;
+const SEGMENT_COUNT: usize = 3;
 const TEXT_X_OFFSET: usize = 8;
 const TEXT_Y_OFFSET: usize = 6;
 const TOKEN_TEXT_Y_OFFSET: usize = 5;
@@ -158,5 +160,36 @@ fn segment_block(palette: &VisualPalette, scenario: ScenarioContext<'_>, index: 
         SEGMENT_WIDTH,
         SEGMENT_HEIGHT,
         segment_fill(palette, scenario, index),
+    )
+}
+
+pub(super) fn segment_index_at(
+    origin_x: usize,
+    origin_y: usize,
+    x: usize,
+    y: usize,
+) -> Option<usize> {
+    (0..SEGMENT_COUNT)
+        .find(|&index| segment_rect_from_origin(origin_x, origin_y, index).contains(x, y))
+}
+
+pub(super) fn segment_rect(index: usize) -> Option<LayoutRect> {
+    if index >= SEGMENT_COUNT {
+        return None;
+    }
+    Some(segment_rect_from_origin(0, 0, index))
+}
+
+#[cfg(test)]
+pub(super) fn segment_rect_for_test(index: usize) -> Option<LayoutRect> {
+    segment_rect(index)
+}
+
+fn segment_rect_from_origin(origin_x: usize, origin_y: usize, index: usize) -> LayoutRect {
+    LayoutRect::new(
+        origin_x + SEGMENT_X + (SEGMENT_GAP * index),
+        origin_y + SEGMENT_Y,
+        SEGMENT_WIDTH,
+        SEGMENT_HEIGHT,
     )
 }

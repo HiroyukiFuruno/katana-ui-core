@@ -16,6 +16,15 @@ pub(super) const MENU_ROW_ICON_Y_OFFSET: usize = 4;
 pub(super) const MENU_ROW_LABEL_X_OFFSET: usize = 24;
 pub(super) const MENU_ROW_SHORTCUT_X_OFFSET: usize = 116;
 pub(super) const ICON_SIZE: usize = 7;
+pub(super) const SUBMENU_X: usize = MENU_X + MENU_WIDTH - 6;
+pub(super) const SUBMENU_Y: usize = MENU_Y + MENU_ROW_TOP_OFFSET + ROW_INSERT * MENU_ROW_HEIGHT;
+pub(super) const SUBMENU_WIDTH: usize = 92;
+pub(super) const SUBMENU_HEIGHT: usize = 40;
+pub(super) const SUBMENU_ROW_TOP_OFFSET: usize = 4;
+pub(super) const SUBMENU_ROW_HEIGHT: usize = 16;
+pub(super) const SUBMENU_ROW_LABEL_X_OFFSET: usize = 16;
+pub(super) const SUBMENU_ROW_TABLE: usize = 0;
+pub(super) const SUBMENU_ROW_LINK: usize = 1;
 
 pub(super) const ROW_EDIT: usize = 0;
 pub(super) const ROW_COPY: usize = 1;

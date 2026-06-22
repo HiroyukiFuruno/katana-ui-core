@@ -14,11 +14,13 @@ const PLACEHOLDER_TEXT: &str = "ファイル名で検索...";
 const TRAILING_BUTTON_LABELS: [&str; FIELD_TRAILING_BUTTON_COUNT] = [".*", "ab", "Aa"];
 const SEARCH_ICON_LEFT_IN_FIELD: usize = 8;
 const SEARCH_ICON_VIEWBOX_SIZE: usize = 16;
-const SEARCH_ICON_CIRCLE_CENTER: isize = 7;
-const SEARCH_ICON_CIRCLE_RADIUS: isize = 4;
-const SEARCH_ICON_HANDLE_START: usize = 10;
-const SEARCH_ICON_HANDLE_END: usize = 14;
-const SEARCH_ICON_STROKE_WIDTH: usize = 2;
+const SEARCH_ICON_SOURCE_VIEWBOX_SIZE: f32 = 24.0;
+const SEARCH_ICON_CIRCLE_CENTER: f32 = 11.0;
+const SEARCH_ICON_CIRCLE_RADIUS: f32 = 8.0;
+const SEARCH_ICON_LINE_START: f32 = 16.65;
+const SEARCH_ICON_LINE_END: f32 = 21.0;
+const SEARCH_ICON_STROKE_WIDTH: f32 = 2.0;
+const SOURCE_PIXEL_CENTER_OFFSET: f32 = 0.5;
 const HOVER_INNER_BORDER_INSET: usize = 1;
 const HOVER_INNER_BORDER_SHRINK: usize = 2;
 
@@ -71,7 +73,7 @@ pub(super) fn draw_leading_slot(
     if mode != LeadingSlotMode::SearchIcon {
         return;
     }
-    draw_katana_search_svg_icon(canvas, palette, x, y);
+    draw_storybook_search_svg_icon(canvas, palette, x, y);
 }
 
 pub(super) fn draw_trailing_icon_buttons(
@@ -145,7 +147,12 @@ pub(super) const fn chrome_for_preset(index: usize) -> TextInputChrome {
     }
 }
 
-fn draw_katana_search_svg_icon(canvas: &mut Canvas, palette: &VisualPalette, x: usize, y: usize) {
+fn draw_storybook_search_svg_icon(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    x: usize,
+    y: usize,
+) {
     let icon = search_icon_visual_rect(x, y);
     draw_stroked_circle(
         canvas,
@@ -162,17 +169,18 @@ fn draw_stroked_circle(
     canvas: &mut Canvas,
     x: usize,
     y: usize,
-    center: isize,
-    radius: isize,
+    center: f32,
+    radius: f32,
     color: u32,
 ) {
     for current_y in 0..SEARCH_ICON_VIEWBOX_SIZE {
         for current_x in 0..SEARCH_ICON_VIEWBOX_SIZE {
-            let dx = current_x as isize - center;
-            let dy = current_y as isize - center;
-            let distance_squared = dx * dx + dy * dy;
-            let outer = radius * radius + radius;
-            let inner = radius * radius - radius;
+            let dx = source_coordinate(current_x) - center;
+            let dy = source_coordinate(current_y) - center;
+            let distance_squared = dx.mul_add(dx, dy * dy);
+            let half_stroke = SEARCH_ICON_STROKE_WIDTH / 2.0;
+            let outer = (radius + half_stroke) * (radius + half_stroke);
+            let inner = (radius - half_stroke) * (radius - half_stroke);
             if distance_squared >= inner && distance_squared <= outer {
                 canvas.set(x + current_x, y + current_y, color);
             }
@@ -181,15 +189,27 @@ fn draw_stroked_circle(
 }
 
 fn draw_diagonal_handle(canvas: &mut Canvas, x: usize, y: usize, color: u32) {
-    for offset in 0..=(SEARCH_ICON_HANDLE_END - SEARCH_ICON_HANDLE_START) {
+    let start = scaled_source_coordinate(SEARCH_ICON_LINE_START);
+    let end = scaled_source_coordinate(SEARCH_ICON_LINE_END);
+    let stroke = scaled_source_coordinate(SEARCH_ICON_STROKE_WIDTH).max(1);
+    for offset in 0..=(end - start) {
         canvas.fill_rect(
-            x + SEARCH_ICON_HANDLE_START + offset,
-            y + SEARCH_ICON_HANDLE_START + offset,
-            SEARCH_ICON_STROKE_WIDTH,
-            SEARCH_ICON_STROKE_WIDTH,
+            x + start + offset,
+            y + start + offset,
+            stroke,
+            stroke,
             color,
         );
     }
+}
+
+fn source_coordinate(target_pixel: usize) -> f32 {
+    (target_pixel as f32 + SOURCE_PIXEL_CENTER_OFFSET) * SEARCH_ICON_SOURCE_VIEWBOX_SIZE
+        / SEARCH_ICON_VIEWBOX_SIZE as f32
+}
+
+fn scaled_source_coordinate(source: f32) -> usize {
+    (source * SEARCH_ICON_VIEWBOX_SIZE as f32 / SEARCH_ICON_SOURCE_VIEWBOX_SIZE).round() as usize
 }
 
 fn search_icon_visual_rect(x: usize, y: usize) -> LayoutRect {
@@ -207,6 +227,6 @@ pub(in crate::visual) fn search_icon_visual_rect_for_test(x: usize, y: usize) ->
 }
 
 #[cfg(test)]
-pub(in crate::visual) fn katana_search_svg_for_test() -> &'static str {
-    crate::katana_icons::SEARCH_SVG
+pub(in crate::visual) fn search_svg_fixture_for_test() -> &'static str {
+    crate::storybook_svg_fixtures::SEARCH_SVG
 }

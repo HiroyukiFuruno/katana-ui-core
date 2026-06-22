@@ -12,10 +12,13 @@ fn banner_story_exposes_settings_presets_and_logs() -> Result<(), &'static str> 
     assert_eq!(
         &[
             "保存失敗",
-            "vendor 未接続",
+            "adapter 未接続",
             "添付サイズ超過",
             "成功通知",
-            "details 展開"
+            "details 展開",
+            "title 表示",
+            "leading icon",
+            "sticky placement"
         ],
         StoryPresetLabels::for_page("banner")
     );
@@ -25,7 +28,16 @@ fn banner_story_exposes_settings_presets_and_logs() -> Result<(), &'static str> 
             "banner detail preset lacks {preset}"
         );
     }
-    for setting in ["severity", "density", "actions", "details", "dismissible"] {
+    for setting in [
+        "severity",
+        "density",
+        "actions",
+        "details",
+        "dismissible",
+        "title",
+        "leading_icon",
+        "placement",
+    ] {
         assert!(
             details.settings.contains(setting),
             "banner settings inspector lacks {setting}"
@@ -118,7 +130,11 @@ fn status_bar_story_exposes_multi_segment_settings_presets_and_logs() -> Result<
             "chat usage bar",
             "linter summary",
             "progress segment",
-            "popover segment"
+            "popover segment",
+            "single message",
+            "severity tone",
+            "dismiss action",
+            "segment a11y"
         ],
         StoryPresetLabels::for_page("status-bar")
     );
@@ -128,7 +144,15 @@ fn status_bar_story_exposes_multi_segment_settings_presets_and_logs() -> Result<
             "status-bar detail preset lacks {preset}"
         );
     }
-    for setting in ["mode", "segments", "density"] {
+    for setting in [
+        "mode",
+        "segments",
+        "density",
+        "message",
+        "severity",
+        "dismiss",
+        "segment_a11y",
+    ] {
         assert!(
             details.settings.contains(setting),
             "status-bar settings inspector lacks {setting}"
@@ -178,17 +202,43 @@ fn shortcut_stories_expose_settings_presets_and_keycap_boundary() -> Result<(), 
             "カテゴリ filter",
             "two column",
             "one column",
-            "select combo"
+            "select combo",
+            "label",
+            "groups",
+            "group title",
+            "items",
+            "item combo"
         ],
         StoryPresetLabels::for_page("shortcut-cheatsheet")
     );
-    for setting in ["platform_display", "separator", "size", "tone"] {
+    for setting in [
+        "platform_display",
+        "separator",
+        "size",
+        "tone",
+        "a11y_label",
+    ] {
         assert!(
             combo_details.settings.contains(setting),
             "shortcut-combo settings inspector lacks {setting}"
         );
     }
-    assert!(cheatsheet_details.settings.contains("group_layout"));
+    for setting in [
+        "label",
+        "groups",
+        "group_title",
+        "items",
+        "item_combo",
+        "group_layout",
+        "query",
+        "selected",
+        "result_count",
+    ] {
+        assert!(
+            cheatsheet_details.settings.contains(setting),
+            "shortcut-cheatsheet settings inspector lacks {setting}"
+        );
+    }
     assert!(key_cap_details.settings.contains("ShortcutCombo"));
     Ok(())
 }

@@ -40,6 +40,30 @@ fn empty_state_report(option: EmptyStateSettingOption, state_id: &str) -> Settin
 fn empty_state_options() -> Vec<EmptyStateSettingOption> {
     vec![
         EmptyStateSettingOption {
+            name: "empty_state.heading",
+            value_type: "String",
+            before: "No diagnostics",
+            after: "Empty project",
+        },
+        EmptyStateSettingOption {
+            name: "empty_state.body",
+            value_type: "String",
+            before: "mixed text",
+            after: "create a file",
+        },
+        EmptyStateSettingOption {
+            name: "empty_state.icon",
+            value_type: "String",
+            before: "none",
+            after: "search",
+        },
+        EmptyStateSettingOption {
+            name: "empty_state.illustration",
+            value_type: "String",
+            before: "none",
+            after: "folder",
+        },
+        EmptyStateSettingOption {
             name: "empty_state.tone",
             value_type: "EmptyStateTone",
             before: "Accent",

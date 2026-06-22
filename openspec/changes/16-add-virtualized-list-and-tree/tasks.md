@@ -51,7 +51,7 @@
 ## 8. ドキュメント
 
 - [x] 8.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に Virtualization 行を追加する。
-- [x] 8.2 adapter 責務（row 測定）を `docs/compat-adapters.md` に追記する。
+- [x] 8.2 row 測定は KUC core contract として保持し、repo 外 runtime 側の責務文書は KUC active tree から除外する。
 
 ## 9. 品質ゲート / DoD
 

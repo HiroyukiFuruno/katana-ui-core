@@ -1,7 +1,9 @@
 use katana_ui_core::atom::{LoadingDots, Text};
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
-use katana_ui_core::render_model::{UiAnimationState, UiNode, UiVisualRole};
+use katana_ui_core::render_model::{
+    UiAnimationState, UiNode, UiTextSpan, UiTextSpanStyle, UiTextWrapMode, UiVisualRole,
+};
 
 const HEADING_LINE_HEIGHT: u16 = 24;
 const HEADING_BASELINE_OFFSET: i16 = 2;
@@ -17,6 +19,7 @@ fn text_atom_keeps_role_color_and_line_metrics() {
             .text_role("heading")
             .text_color_token("accent")
             .line_metrics(HEADING_LINE_HEIGHT, HEADING_BASELINE_OFFSET)
+            .wrap(UiTextWrapMode::Wrap)
             .vertical_centered(true),
     );
 
@@ -27,7 +30,38 @@ fn text_atom_keeps_role_color_and_line_metrics() {
         HEADING_BASELINE_OFFSET,
         node.props().text.baseline_offset_px
     );
+    assert_eq!(UiTextWrapMode::Wrap, node.props().text.wrap);
     assert!(node.props().text.vertical_centered);
+}
+
+#[test]
+fn text_atom_keeps_rich_inline_spans() {
+    let span = UiTextSpan {
+        text: "link".to_string(),
+        style: UiTextSpanStyle {
+            bold: true,
+            underline: true,
+            ..UiTextSpanStyle::default()
+        },
+        link_target: "https://example.com".to_string(),
+    };
+    let node = UiNode::from(Text::new("link").text_spans(vec![span]));
+
+    assert_eq!("link", node.props().text.spans[0].text);
+    assert!(node.props().text.spans[0].style.bold);
+    assert!(node.props().text.spans[0].style.underline);
+    assert_eq!(
+        "https://example.com",
+        node.props().text.spans[0].link_target
+    );
+}
+
+#[test]
+fn text_atom_exposes_selectable_text_contract_for_host_copy() {
+    let node = UiNode::from(Text::new("selectable body").selectable(true));
+
+    assert!(node.props().common.selectable);
+    assert_eq!("selectable body", node.props().label);
 }
 
 #[test]

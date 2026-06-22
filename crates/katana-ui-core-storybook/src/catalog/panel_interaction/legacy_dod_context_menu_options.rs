@@ -40,6 +40,18 @@ pub(super) fn placement(value: &str) -> UiContextMenuPlacement {
     }
 }
 
+pub(super) fn placement_priority(value: &str) -> Vec<UiContextMenuPlacement> {
+    value.split('>').map(placement).collect()
+}
+
+pub(super) fn placement_priority_value(priority: &[UiContextMenuPlacement]) -> String {
+    priority
+        .iter()
+        .map(|it| format!("{it:?}"))
+        .collect::<Vec<_>>()
+        .join(">")
+}
+
 pub(super) fn item_kind_value(props: &UiProps) -> String {
     props
         .context_menu

@@ -57,7 +57,7 @@ impl UiActionResult {
     ) -> Self {
         let callback_log = vec![UiCallbackLog::new(
             target.clone(),
-            action.name(),
+            action.callback_log_action(),
             before.summary(),
             after.summary(),
         )];

@@ -5,8 +5,8 @@ use super::super::render_context::ScenarioContext;
 use super::super::text::TextRenderer;
 use super::model::{
     HORIZONTAL_PRESET_INDEX, NESTED_PRESET_INDEX, PREVIEW_SLOT, SCROLLBAR_PRESET_INDEX, STATUS_GAP,
-    STATUS_HEIGHT, STATUS_TEXT_X, STATUS_TEXT_Y, STATUS_WIDTH, STATUS_X, STATUS_Y, child_panel,
-    component_scrollbars_visible, panel_props_for_slot,
+    STATUS_HEIGHT, STATUS_TEXT_X, STATUS_TEXT_Y, STATUS_WIDTH, STATUS_X, STATUS_Y,
+    VERTICAL_PRESET_INDEX, child_panel, component_scrollbars_visible, panel_props_for_slot,
 };
 use katana_ui_core::render_model::{UiNode, UiPanelProps};
 
@@ -83,9 +83,10 @@ fn scrollbar_label(visible: bool) -> &'static str {
 
 fn preset_label(index: usize) -> &'static str {
     match index {
+        VERTICAL_PRESET_INDEX => "vertical",
         HORIZONTAL_PRESET_INDEX => "horizontal",
         SCROLLBAR_PRESET_INDEX => "toggle",
         NESTED_PRESET_INDEX => "nested",
-        _ => "vertical",
+        _ => "active",
     }
 }

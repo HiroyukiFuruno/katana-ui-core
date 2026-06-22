@@ -8,6 +8,7 @@ use super::text::TextRenderer;
 const STACK_Z_PRESET_INDEX: usize = 1;
 const STACK_OVERLAY_PRESET_INDEX: usize = 2;
 const STACK_THEME_PRESET_INDEX: usize = 3;
+const STACK_PAGE: &str = "stack";
 const STAGE_X: usize = m::PX_16;
 const STAGE_Y: usize = m::PX_36;
 const STAGE_WIDTH: usize = m::PX_252;
@@ -37,7 +38,9 @@ pub(super) fn stack(
     x: usize,
     y: usize,
 ) {
-    let accent = if scenario.screen_state.has_settings_override() {
+    let accent = if scenario.screen_state.layout.is_page(STACK_PAGE)
+        || scenario.screen_state.has_settings_override()
+    {
         common::SUCCESS
     } else {
         palette.accent
@@ -194,6 +197,13 @@ fn draw_status(
 }
 
 fn status_labels(scenario: ScenarioContext<'_>) -> [&'static str; STATUS_LABEL_COUNT] {
+    if scenario.screen_state.layout.is_page(STACK_PAGE) {
+        return [
+            scenario.screen_state.last_action,
+            scenario.screen_state.last_event,
+            scenario.screen_state.state_label,
+        ];
+    }
     if scenario.screen_state.has_settings_override() {
         return ["action stack", "event z-order", "state override"];
     }

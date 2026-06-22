@@ -24,6 +24,15 @@ const SELECT_PRESET_INDEX: usize = 1;
 const DISABLED_PRESET_INDEX: usize = 2;
 const THEME_PRESET_INDEX: usize = 3;
 
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct ColorSwatchSnapshot {
+    pub(super) rect: common::Rect,
+    pub(super) fill: u32,
+    pub(super) selected: bool,
+    pub(super) ring: u32,
+}
+
 pub(super) fn draw(
     canvas: &mut Canvas,
     text: &TextRenderer,
@@ -128,6 +137,30 @@ fn colors(palette: &VisualPalette) -> [u32; SWATCH_COUNT] {
         common::DANGER,
         common::PURPLE,
     ]
+}
+
+#[cfg(test)]
+pub(super) fn swatches_for_test(
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+) -> [ColorSwatchSnapshot; SWATCH_COUNT] {
+    let selected_index = if selected_visible(scenario) {
+        SELECTED_INDEX
+    } else {
+        m::PX_0
+    };
+    let fills = colors(palette);
+    std::array::from_fn(|index| ColorSwatchSnapshot {
+        rect: common::Rect::new(
+            SWATCH_X + index * (SWATCH_SIZE + SWATCH_GAP),
+            SWATCH_Y,
+            SWATCH_SIZE,
+            SWATCH_SIZE,
+        ),
+        fill: fills[index],
+        selected: index == selected_index,
+        ring: ring_color(palette, scenario),
+    })
 }
 
 fn selected_visible(scenario: ScenarioContext<'_>) -> bool {

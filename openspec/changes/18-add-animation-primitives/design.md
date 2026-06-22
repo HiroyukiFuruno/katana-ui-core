@@ -68,7 +68,7 @@ reduced 時、すべての primitive は `Instant` 扱いになる。Shimmer は
 ### 6. adapter contract
 
 - adapter は OS の `prefers-reduced-motion` を読み取り、runtime に通知する責務
-- adapter compile-gate に reduced-motion query を追加
+- core contract gate に reduced-motion query を追加
 
 ### 7. test 用
 
@@ -92,5 +92,5 @@ reduced 時、すべての primitive は `Instant` 扱いになる。Shimmer は
 ## 影響範囲
 
 - すべての overlay / disclosure / loading molecule に motion option を追加（default は既存挙動を破壊しない transition のみ）
-- adapter（floem / egui / gpui）に reduced-motion query 追加
+- external runtime boundary に reduced-motion query を追加
 - 自動テストで Force=Reduced による安定回帰

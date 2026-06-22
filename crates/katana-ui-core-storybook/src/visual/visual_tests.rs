@@ -1,8 +1,9 @@
 use super::{
-    Canvas, StorybookVisual, layout_metrics, palette, preset_tabs, preview, preview_contract,
-    preview_detail,
+    Canvas, StorybookVisual, layout_metrics, navigation_tree, palette, panel_scroll_state,
+    preset_tab_scroll, preview, preview_contract, preview_detail, render, screen_state,
 };
 use crate::catalog::StoryPresetLabels;
+use crate::requirements::StoryRequirements;
 use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::theme::ThemeSnapshot;
 use std::collections::BTreeMap;
@@ -137,15 +138,23 @@ fn preset_tab_labels_are_measured_inside_each_tab() {
     let facade = UiCoreFacade::default();
     let text = super::text::TextRenderer::load(&facade, "body");
 
-    for label in StoryPresetLabels::for_page("text-input") {
-        let rect = layout_metrics::preset_tab_rect(0);
-        let (label_width, clip_width) = preset_tabs::tab_label_widths_for_test(&text, rect, label);
+    for page in StoryRequirements::required_pages() {
+        for label in StoryPresetLabels::for_page(page) {
+            let rect = layout_metrics::preset_tab_rect(0);
+            let (label_width, clip_width) =
+                super::preset_tab_label::measured_width_for_test(&text, rect, label);
 
-        assert!(
-            label_width <= clip_width,
-            "preset tab label must fit: {label} width={label_width} clip={clip_width}",
-        );
+            assert!(
+                label_width <= clip_width,
+                "preset tab label must fit: {page}/{label} width={label_width} clip={clip_width}",
+            );
+        }
     }
+}
+
+#[test]
+fn every_required_page_preset_tab_labels_fit_clip_width() {
+    preset_tab_labels_are_measured_inside_each_tab();
 }
 
 #[test]
@@ -212,9 +221,10 @@ fn panel_scrollbar_visibility_is_rendered_from_state() {
 
 #[test]
 fn legacy_01_24_pages_have_dedicated_preview_signatures() {
+    let mut renderer = render::StorybookFrameRenderer::new();
     let mut signatures = BTreeMap::new();
     for page in LEGACY_DOD_PREVIEW_PAGES {
-        let canvas = StorybookVisual.render_scenario("dark", page, false);
+        let canvas = render_legacy_preview(&mut renderer, page);
         let signature = hero_preview_signature(&canvas);
         let previous = signatures.insert(signature, *page);
         assert!(
@@ -224,6 +234,27 @@ fn legacy_01_24_pages_have_dedicated_preview_signatures() {
     }
 
     assert_eq!(LEGACY_DOD_PREVIEW_PAGES.len(), signatures.len());
+    assert_eq!(2, renderer.stats().theme_caches);
+}
+
+fn render_legacy_preview(
+    renderer: &mut render::StorybookFrameRenderer,
+    page: &'static str,
+) -> Canvas {
+    renderer.render(render::StorybookRenderOptions {
+        theme_id: "dark",
+        selected_page: page,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
+        preset_index: 0,
+        preset_tab_scroll_x: preset_tab_scroll::active_index_scroll_x(page, 0),
+        scroll_y: 0,
+        scrollbar_visible: true,
+        panel_scroll: panel_scroll_state::PanelScrollOffsets::default(),
+        tree_expansion: navigation_tree::TreeExpansionState::default(),
+        show_navigation_lines: true,
+        show_navigation_text_connectors: false,
+        screen_state: screen_state::StorybookScreenState::default(),
+    })
 }
 
 fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {

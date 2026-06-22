@@ -69,7 +69,7 @@
 | 0 | Composer | 実装しない |
 | 0 | Thread | 実装しない |
 | 0 | History | 実装しない |
-| 0 | VendorControls | 実装しない |
+| 0 | AdapterControls | 実装しない |
 | 0 | ProviderIconSelector | 実装しない |
 
 ### 1.3 分類結果（2026-05-11 横断調査）
@@ -102,7 +102,7 @@
 | `views/panels/dashboard/` | 0 | ドメイン固有のため実装しない |
 | `views/splash.rs` | 0 | ドメイン固有のため実装しない |
 
-**katana-chat-ui 由来（`katana-chat-ui-floem/src/widget/`）:**
+**katana-chat-ui 由来（`katana-chat-ui-adapter/src/widget/`）:**
 
 | ソース | 分類 | 備考 |
 |---|---|---|
@@ -112,8 +112,8 @@
 | `widget/composer.rs` | 0 | ドメイン固有（chat input）のため実装しない |
 | `widget/thread.rs` | 0 | ドメイン固有（message thread）のため実装しない |
 | `widget/history.rs` | 0 | ドメイン固有（session history）のため実装しない |
-| `widget/vendor_controls.rs` | 0 | ドメイン固有（AI vendor 制御）のため実装しない |
-| `widget/provider_icon_selector.rs` | 0 | ドメイン固有（vendor 選択）のため実装しない |
+| `widget/adapter_controls.rs` | 0 | ドメイン固有（AI adapter 制御）のため実装しない |
+| `widget/provider_icon_selector.rs` | 0 | ドメイン固有（adapter 選択）のため実装しない |
 | `widget/action_button.rs` | 既存 (05-07) | SVG/Text/IconText Button に含まれる |
 
 ## 2. ProgressBar
@@ -263,11 +263,11 @@
 
 ## 20. Runtime crash / layout feedback（2026-05-12）
 
-- [/] 20.1 Tooltip を開いたときに `floem::view_state` の `index out of bounds` で落ちないようにする。
+- [/] 20.1 Tooltip を開いたときに `adapter::view_state` の `index out of bounds` で落ちないようにする。
   - 2026-05-12: overlay 削除と focus 復帰を次 tick に遅延する共通 lifecycle を追加し、Tooltip の overlay close path に適用。`STORYBOOK_SMOKE_PAGES="tooltip" just storybook-smoke` と全ページ `just storybook-smoke` 通過。
-- [/] 20.2 Toolbar ページを開いたときに `floem::view_state` の `index out of bounds` で落ちないようにする。
+- [/] 20.2 Toolbar ページを開いたときに `adapter::view_state` の `index out of bounds` で落ちないようにする。
   - 2026-05-12: `STORYBOOK_SMOKE_PAGES="toolbar" just storybook-smoke` と全ページ `just storybook-smoke` 通過。
-- [/] 20.3 CommandPalette ページを開いたときに `floem::view_state` の `index out of bounds` で落ちないようにする。
+- [/] 20.3 CommandPalette ページを開いたときに `adapter::view_state` の `index out of bounds` で落ちないようにする。
   - 2026-05-12: `STORYBOOK_SMOKE_PAGES="command-palette" just storybook-smoke` と全ページ `just storybook-smoke` 通過。
 - [/] 20.4 Card / AlignCenter の Storybook ページで、右側コンテンツ領域の縦スクロールバーを画面右端に表示する。
   - 2026-05-12: Storybook root / content / Card / AlignCenter / Accordion の scroll container を `width_full` + `height_full` に揃え、右ペインが画面幅まで伸びるようにした。
@@ -281,7 +281,7 @@
   - 2026-05-12: crumb の children から hover TreeView overlay を開く実装を追加し、階層候補を再帰的に表示できるようにした。
 - [/] 20.9 Breadcrumb の Storybook はファイル階層、設定階層、長いパス省略、クリック結果を、見た目と操作が分かる状態で確認できるようにする。
   - 2026-05-12: `STORYBOOK_SMOKE_PAGES="breadcrumb" just storybook-smoke` と全ページ `just storybook-smoke` 通過。
-- [/] 20.10 PopBar（現行 Storybook 上は Popover 相当）を開いたときに `floem::view_state` の `index out of bounds` で落ちないようにする。
+- [/] 20.10 PopBar（現行 Storybook 上は Popover 相当）を開いたときに `adapter::view_state` の `index out of bounds` で落ちないようにする。
   - 2026-05-12: overlay 削除と focus 復帰を次 tick に遅延する共通 lifecycle を Popover / MenuButton / ComboBox / ColorPicker に適用。`STORYBOOK_SMOKE_PAGES="popover" just storybook-smoke` と全ページ `just storybook-smoke` 通過。
 - [/] 20.11 Storybook の全ページを `KATANA_UI_WIDGET_STORYBOOK_PAGE` で 1 ページずつ初期表示し、起動時クラッシュがないことを確認する回帰ゲートを作る。
   - 2026-05-12: `justfile` に `storybook-smoke` を追加し、全ページ `just storybook-smoke` 通過。
@@ -360,8 +360,8 @@
 - [/] 24.11 Toggle / SegmentedToggle / Spinner / ColorSwatch / TextInput / SearchBox / Tabs / DynamicArrayEditor / TreeView / Breadcrumb / CommandPalette / Toolbar を requirement scenario として固定し、marker 未実装なら失敗させる。
 - [/] 24.12 SearchBox / DynamicArrayEditor / TreeView / Breadcrumb / CommandPalette は商用コード側の契約テスト（contract tests）も追加し、Storybook 表示だけではなく公開 API の要件保持を検証する。
 - [/] 24.13 `storybook-regression` に `storybook-requirement-gate` を追加し、公開前ゲートで要件未充足を検知できるようにする。
-- [/] 24.14 pop 系 UI の `add_overlay` を `create_effect` 内で即時実行しない。overlay 追加・削除・focus 復帰は次 tick に寄せ、Floem の View ツリー更新中に overlay 状態を競合させない。
-- [/] 24.15 `app_state.rs` の `PoisonError` は二次被害として扱い、一次原因である `floem::view_state` の `index out of bounds` を pop 系 state / overlay lifecycle の回帰として検知する。
+- [/] 24.14 pop 系 UI の `add_overlay` を `create_effect` 内で即時実行しない。overlay 追加・削除・focus 復帰は次 tick に寄せ、Adapter の View ツリー更新中に overlay 状態を競合させない。
+- [/] 24.15 `app_state.rs` の `PoisonError` は二次被害として扱い、一次原因である `adapter::view_state` の `index out of bounds` を pop 系 state / overlay lifecycle の回帰として検知する。
 - [/] 24.16 `storybook-requirement-gate` は対応表だけでなく実 Storybook を起動し、操作再生後の marker と終了コードを確認する。marker 前後のクラッシュは失敗として扱う。
 - [/] 24.17 `add_overlay` / `remove_overlay` の直接利用を `OverlayLifecycle` に限定する静的ゲートを追加し、同じ不具合型を再導入したら `storybook-regression` と `check` で失敗させる。
 - [/] 24.18 SideMenu の pop 表示も runtime requirement gate に含め、初期 pop 表示で overlay lifecycle が壊れないことを検知する。
@@ -428,7 +428,7 @@
 ## 28. KUC 独自 UI parity reset（2026-05-17）
 
 - [x] 28.1 archive 済み 01〜24 を KUC 独自 UI task へ読み替える対応表を `docs/architecture/ui-separation/owned-ui-task-map.md` に作成する。
-- [x] 28.2 Storybook は `katana-ui-core::panel::Panel` で root、navigation、preview を表現し、Floem 経由では描画しない。
+- [x] 28.2 Storybook は `katana-ui-core::panel::Panel` で root、navigation、preview を表現し、Adapter 経由では描画しない。
 - [x] 28.3 表示枠（panel）は `ThemeSnapshot` を必ず受け取り、`storybook-requirement-gate` で `panel_theme_configured=true` を必須にする。
 - [x] 28.4 UI ごとの状態（state）を component 内部に閉じ、重複 UI の `UiStateId` 衝突を gate で検知する。
 - [x] 28.5 旧 01 `Theme / Panel theme`: theme token、`ThemeSnapshot`、panel theme id、light / dark 差分を KUC core model と Storybook panel 上で再確認する。
@@ -437,7 +437,7 @@
 - [x] 28.8 旧 08〜12 `Toggle` / `SegmentedToggle` / `SelectBox` / `ColorSwatch` / `TextInput`: 選択・入力 state を内部 state として持たせ、Storybook panel 上で反映先を確認する。
 - [x] 28.9 旧 13〜17 `SearchBox` / `Tooltip` / `Badge` / `KeyCap` / `Card`: 表示だけでなく、入力、hover、補助情報、配置構造を KUC core model で確認する。
 - [x] 28.10 旧 18〜21 `Accordion` / `SplitPane` / `Modal` / `Popover`: 開閉、分割、重ね表示、別窓相当の状態を KUC model と adapter 境界に分けて再定義する。
-- [x] 28.11 旧 22〜24 `ColorPicker` / `ColorPicker parity` / `CodeDiff`: 色選択と差分表示を KUC 独自 UI として再確認し、旧 Floem 実装の完了扱いを引き継がない。
+- [x] 28.11 旧 22〜24 `ColorPicker` / `ColorPicker parity` / `CodeDiff`: 色選択と差分表示を KUC 独自 UI として再確認し、旧 Adapter 実装の完了扱いを引き継がない。
 - [x] 28.12 追加 UI `Tabs` / `Breadcrumb` / `SideMenu` / `SelectionList` / `SlideControl` / `DynamicArrayEditor` / `TreeView` / `ComboBox` / `MenuButton` / `CommandPalette` / `StatusBar` / `Toolbar` / `LoadingDots` / `NotificationToast` を、KUC core model、内部 state、Storybook panel、theme gate の 4 条件で再判定する。
-- [x] 28.13 旧 Floem Storybook の目視完了記録は参考情報に限定し、KUC Storybook panel 上で確認できない UI は未完了として扱う。
+- [x] 28.13 旧 Adapter Storybook の目視完了記録は参考情報に限定し、KUC Storybook panel 上で確認できない UI は未完了として扱う。
 - [x] 28.14 `docs/architecture/ui-separation/ui-core-parity-gap.md` を UI ごとの未完了 / 完了証跡表として更新し、`just storybook-regression` の marker だけを品質根拠にしない。

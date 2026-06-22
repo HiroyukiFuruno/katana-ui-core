@@ -1,7 +1,7 @@
 use super::modal_types::ModalParentInteraction;
 use super::types::DisclosureTypedModel;
 use crate::render_model::{
-    UiModalParentInteraction, UiModalPresentation, UiModalProps, UiModalSize,
+    UiModalParentInteraction, UiModalPlacement, UiModalPresentation, UiModalProps, UiModalSize,
 };
 
 pub(super) fn native_modal_props(model: &DisclosureTypedModel) -> UiModalProps {
@@ -17,6 +17,7 @@ pub(super) fn native_modal_props(model: &DisclosureTypedModel) -> UiModalProps {
         dismiss_on_escape: model.escape_dismiss,
         dismiss_on_backdrop: model.outside_click_dismiss,
         parent_interaction: parent_interaction(model.parent_interaction),
+        placement: UiModalPlacement::Center,
     }
 }
 
@@ -27,6 +28,7 @@ pub(super) fn overlay_dialog_props(
     dismiss_policy: &str,
     dismiss_on_escape: bool,
     dismiss_on_backdrop: bool,
+    placement: UiModalPlacement,
 ) -> UiModalProps {
     UiModalProps {
         presentation: UiModalPresentation::OverlayDialog,
@@ -36,6 +38,7 @@ pub(super) fn overlay_dialog_props(
         dismiss_policy: dismiss_policy.to_string(),
         dismiss_on_escape,
         dismiss_on_backdrop,
+        placement,
         ..UiModalProps::default()
     }
 }

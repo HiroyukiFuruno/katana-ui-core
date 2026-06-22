@@ -129,10 +129,14 @@ pub(super) fn assert_scroll_area_settings_are_switchable(settings: &[SettingsMut
 pub(super) fn assert_split_pane_settings_are_switchable(settings: &[SettingsMutationReport]) {
     for option in [
         "split_pane.axis",
-        "split_pane.ratio",
-        "split_pane.min",
-        "split_pane.max",
-        "split_pane.reset",
+        "split_pane.gap",
+        "split_pane.alignment",
+        "split_pane.overflow",
+        "split_pane.ratio_percent",
+        "split_pane.min_percent",
+        "split_pane.max_percent",
+        "split_pane.reset_percent",
+        "split_pane.handle_width_px",
         "split_pane.resize_mode",
     ] {
         assert!(
@@ -149,6 +153,11 @@ pub(super) fn assert_split_pane_settings_are_switchable(settings: &[SettingsMuta
 
 pub(super) fn assert_settings_list_settings_are_switchable(settings: &[SettingsMutationReport]) {
     for (option, action, event) in [
+        (
+            "settings_list.label",
+            "set_settings_list.label",
+            "settings_list_settings_changed",
+        ),
         (
             "settings_list.density",
             "set_settings_list.density",
@@ -170,7 +179,67 @@ pub(super) fn assert_settings_list_settings_are_switchable(settings: &[SettingsM
             "settings_list_section_collapsed",
         ),
         (
+            "settings_list.section_label",
+            "set_settings_list.section_label",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.section_description",
+            "set_settings_list.section_description",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.section_icon",
+            "set_settings_list.section_icon",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.field_count",
+            "set_settings_list.field_count",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.section_footer",
+            "set_settings_list.section_footer",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.section_collapsible",
+            "set_settings_list.section_collapsible",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.default_collapsed",
+            "set_settings_list.default_collapsed",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.field_label",
+            "set_settings_list.field_label",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.field_description",
+            "set_settings_list.field_description",
+            "settings_list_settings_changed",
+        ),
+        (
             "settings_list.control_kind",
+            "settings_update_field",
+            "settings_list_field_changed",
+        ),
+        (
+            "settings_list.control_options",
+            "set_settings_list.control_options",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.custom_control",
+            "set_settings_list.custom_control",
+            "settings_list_settings_changed",
+        ),
+        (
+            "settings_list.set_value",
             "settings_update_field",
             "settings_list_field_changed",
         ),

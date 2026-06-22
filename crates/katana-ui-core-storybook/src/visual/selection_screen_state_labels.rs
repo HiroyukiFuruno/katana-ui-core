@@ -32,6 +32,15 @@ pub(super) fn select_read_state(is_open: bool, selected_index: Option<usize>) ->
     }
 }
 
+pub(super) fn select_scroll_state(offset: usize) -> &'static str {
+    match offset {
+        0 => "scroll=0",
+        1 => "scroll=1",
+        2 => "scroll=2",
+        _ => "scroll=3",
+    }
+}
+
 pub(super) fn combo_state(index: usize) -> &'static str {
     match index {
         COMBO_TWO_INDEX => "selected=two",
@@ -60,6 +69,7 @@ pub(super) fn selection_list_state(
 ) -> &'static str {
     match (single, multi_mask & SELECTION_LIST_MULTI_MASK, focus) {
         (None, 0, None) => "single=none multi=none focus=none",
+        (None, 0, Some(SELECTION_LIST_ZERO_INDEX)) => "single=none multi=none focus=0",
         (Some(SELECTION_LIST_ZERO_INDEX), 0, Some(SELECTION_LIST_ZERO_INDEX)) => {
             "single=0 multi=none focus=0"
         }

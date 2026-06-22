@@ -12,13 +12,13 @@ KUC は Markdown viewer 本文そのものを所有しないが、consumer が�
 - `UiImageSurfaceProps` を追加し、fingerprint、width、height、RGBA payload、content scale、fit、accessibility label を持たせる。
 - viewer 検索 hit highlight を surface 上の rect overlay として渡す `UiImageSurfaceHighlight` を追加する。
 - `UiNode` builder と `atom::ImageSurface` から image surface node を構築できるようにする。
-- egui / floem / gpui adapter plan が image surface descriptor と highlight rect を受け取る契約テストを追加する。
+- external renderer が image surface descriptor と highlight rect を受け取れる core render plan 契約テストを追加する。
 
 ## Capabilities
 
 ### New Capabilities
 
-- `kuc-preview-surface-image-contract`: KDV owned preview surface image を KUC の中立 render model と adapter plan に載せる。
+- `kuc-preview-surface-image-contract`: KDV owned preview surface image を KUC の中立 render model と integration plan に載せる。
 
 ### Modified Capabilities
 
@@ -28,5 +28,5 @@ KUC は Markdown viewer 本文そのものを所有しないが、consumer が�
 
 - `crates/katana-ui-core/src/render_model/` に image surface props と render plan descriptor を追加する。
 - `crates/katana-ui-core/src/atom/` に `ImageSurface` atom を追加する。
-- `katana-ui-core-egui`、`katana-ui-core-floem`、`katana-ui-core-gpui` の surface bridge / render plan に image surface descriptor を追加する。
+- KUC core の surface bridge / render plan に image surface descriptor を追加する。
 - KUC core は `katana-document-viewer`、KMM、Markdown AST、export pipeline には依存しない。

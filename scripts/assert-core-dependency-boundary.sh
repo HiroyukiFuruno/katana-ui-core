@@ -10,9 +10,6 @@ failures=()
 
 while IFS= read -r line; do
   case "$line" in
-    floem\ v*|floem_reactive\ v*|floem_renderer\ v*|egui\ v*|gpui\ v*)
-      failures+=("framework dependency leaked into core: $line")
-      ;;
     katana-*)
       case "$line" in
         katana-ui-core\ v*) ;;

@@ -174,7 +174,7 @@ katana の `views/top_bar/status_bar.rs` で実装。
 katana-chat-ui の `widget/toolbar.rs` で実装。
 
 **出典コード分析:**
-- 左: identity section (provider icon + vendor selector + title)。
+- 左: identity section (provider icon + adapter selector + title)。
 - 右: action section (new chat + history)。
 - `justify_between` で左右に分離。
 
@@ -232,7 +232,7 @@ Spark には依存が浅い順に渡す。
 
 ## KUC core 再編成（2026-05-17）
 
-この backlog は、旧 `katana-ui-widget` / Floem Storybook の完了記録をそのまま KUC 完了として扱わない。
+この backlog は、旧 `katana-ui-widget` / Adapter Storybook の完了記録をそのまま KUC 完了として扱わない。
 archive 済みの 01〜24 は参考資料であり、KUC では `katana-ui-core` の中立モデル（neutral model）として作り直す。
 
 新しい完了条件:
@@ -240,7 +240,7 @@ archive 済みの 01〜24 は参考資料であり、KUC では `katana-ui-core`
 - UI ごとの状態（state）は component 内部で管理し、同じ UI が複数あっても `UiStateId` が一意になる。
 - Storybook は `katana-ui-core::panel::Panel` で左ナビ表示枠と右プレビュー表示枠を構成する。
 - 表示枠（panel）は `ThemeSnapshot` を必ず受け取り、見た目テーマ（theme）未設定を成功扱いにしない。
-- Storybook は Floem / GPUI / egui の変換層（adapter）を経由しない。
+- Storybook は framework-specific UI の変換層（adapter）を経由しない。
 - gate は story 数だけでなく、必須 UI、最低構造、状態衝突、panel theme を検査する。
 - Modal の別ネイティブ画面（native window）は、親表示領域（display bounds）内の同一 display 配置と前面表示を KUC core model で計画し、未対応を fallback で隠さない。
 - Storybook の回帰条件は marker だけにせず、操作後 state 反映、重ね表示（overlay）描画、別 window 実描画まで含める。

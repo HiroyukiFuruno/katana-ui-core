@@ -6,8 +6,16 @@ const ADD_REMOVE_PRESET_INDEX: usize = 1;
 const REORDER_PRESET_INDEX: usize = 2;
 const THEME_PRESET_INDEX: usize = 3;
 const ACTIVE_ROW_INDEX: usize = 1;
+const DEFAULT_ITEM_COUNT: usize = 3;
 
 pub(super) fn row_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>, row: usize) -> u32 {
+    if scenario.screen_state.last_action == "array_keyboard_edit" {
+        return if row == ACTIVE_ROW_INDEX {
+            common::SUCCESS
+        } else {
+            palette.surface
+        };
+    }
     if scenario.screen_state.has_widget_action()
         || scenario.screen_state.has_settings_override()
         || scenario.preset_index == THEME_PRESET_INDEX && row == ACTIVE_ROW_INDEX
@@ -32,6 +40,9 @@ pub(super) fn reorder_fill(palette: &VisualPalette, scenario: ScenarioContext<'_
 }
 
 pub(super) fn row_label(scenario: ScenarioContext<'_>, row: usize) -> &'static str {
+    if scenario.screen_state.dynamic_array_editor.callback_event() != "callback=idle" {
+        return scenario.screen_state.dynamic_array_editor.row_label(row);
+    }
     if scenario.screen_state.has_settings_override() {
         return "array item updated";
     }
@@ -45,6 +56,12 @@ pub(super) fn row_label(scenario: ScenarioContext<'_>, row: usize) -> &'static s
 pub(super) fn status_label(scenario: ScenarioContext<'_>) -> &'static str {
     if scenario.screen_state.state_label != "idle" {
         return scenario.screen_state.state_label;
+    }
+    if scenario.screen_state.dynamic_array_editor.item_count() != DEFAULT_ITEM_COUNT {
+        return "rows=changed";
+    }
+    if scenario.screen_state.dynamic_array_editor.order_label() != "order=1,2,3" {
+        return scenario.screen_state.dynamic_array_editor.order_label();
     }
     match scenario.preset_index {
         ADD_REMOVE_PRESET_INDEX => "add/remove",

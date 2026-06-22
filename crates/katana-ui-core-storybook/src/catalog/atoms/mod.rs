@@ -1,9 +1,8 @@
 mod atom_interactions;
+mod atom_layout_story;
 mod atom_motion_interactions;
 mod atom_text_area_story;
 use super::{StoryCatalog, StoryExample};
-use katana_ui_core::atom;
-use katana_ui_core::render_model::{UiSize, UiVisualRole};
 
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
@@ -19,16 +18,8 @@ pub(super) fn examples() -> Vec<StoryExample> {
         atom_interactions::checkbox(),
         atom_interactions::radio(),
         atom_interactions::badge(),
-        StoryCatalog::story(
-            "divider",
-            atom::Divider::new("Divider").visual_role(UiVisualRole::Separator),
-        ),
-        StoryCatalog::story(
-            "spacer",
-            atom::Spacer::new("Spacer")
-                .visual_role(UiVisualRole::Separator)
-                .size(UiSize::Large),
-        ),
+        atom_layout_story::divider(),
+        atom_layout_story::spacer(),
         atom_interactions::key_cap(),
         atom_motion_interactions::skeleton(),
         atom_motion_interactions::loading_dots(),

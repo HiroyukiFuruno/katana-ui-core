@@ -14,7 +14,18 @@ pub(super) fn settings_mutations(examples: &[StoryExample]) -> Vec<SettingsMutat
     };
     [
         ("context_menu.anchor", "ContextMenuAnchor", "Pointer(0,0)"),
-        ("context_menu.placement", "ContextMenuPlacement", "AboveEnd"),
+        (
+            "context_menu.placement_priority",
+            "ContextMenuPlacementPriority",
+            "AboveEnd>BelowStart",
+        ),
+        (
+            "context_menu.placement_used",
+            "ContextMenuPlacement",
+            "AboveEnd",
+        ),
+        ("context_menu.min_width", "u32", "280"),
+        ("context_menu.max_height", "u32", "320"),
         ("context_menu.item_kind", "ContextMenuItemKind", "Toggle"),
     ]
     .into_iter()

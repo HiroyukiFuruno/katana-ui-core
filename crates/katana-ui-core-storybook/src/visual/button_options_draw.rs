@@ -5,7 +5,7 @@ use super::button_options::{
 };
 use super::canvas::Canvas;
 use super::dedicated_dod_atom_button_live::ButtonLiveKind;
-use super::dedicated_dod_atom_button_live_surface::button_layout;
+use super::dedicated_dod_atom_button_live_surface::{button_layout, measure_button_label_width};
 use super::layout_metrics::LayoutRect;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
@@ -93,14 +93,20 @@ fn draw_value(
         StorybookButtonOptionControl::Visible
         | StorybookButtonOptionControl::Disabled
         | StorybookButtonOptionControl::Focusable
-        | StorybookButtonOptionControl::Border => {
+        | StorybookButtonOptionControl::Border
+        | StorybookButtonOptionControl::KeyboardActivation => {
             draw_toggle(canvas, palette, options, row, control)
         }
         StorybookButtonOptionControl::Label
         | StorybookButtonOptionControl::Width
         | StorybookButtonOptionControl::Height
         | StorybookButtonOptionControl::TabIndex
-        | StorybookButtonOptionControl::ZIndex => {
+        | StorybookButtonOptionControl::ZIndex
+        | StorybookButtonOptionControl::Command
+        | StorybookButtonOptionControl::IconPosition
+        | StorybookButtonOptionControl::LayoutPreset
+        | StorybookButtonOptionControl::SvgSource
+        | StorybookButtonOptionControl::AriaLabel => {
             draw_value_button(canvas, text, palette, scenario, row, control);
         }
     }
@@ -118,11 +124,17 @@ fn draw_toggle(
         StorybookButtonOptionControl::Disabled => options.disabled,
         StorybookButtonOptionControl::Focusable => options.focusable,
         StorybookButtonOptionControl::Border => options.border,
+        StorybookButtonOptionControl::KeyboardActivation => options.keyboard_activation,
         StorybookButtonOptionControl::Label
         | StorybookButtonOptionControl::Width
         | StorybookButtonOptionControl::Height
         | StorybookButtonOptionControl::TabIndex
-        | StorybookButtonOptionControl::ZIndex => false,
+        | StorybookButtonOptionControl::ZIndex
+        | StorybookButtonOptionControl::Command
+        | StorybookButtonOptionControl::IconPosition
+        | StorybookButtonOptionControl::LayoutPreset
+        | StorybookButtonOptionControl::SvgSource
+        | StorybookButtonOptionControl::AriaLabel => false,
     };
     let x = row.x + TOGGLE_X_OFFSET;
     let y = row.y + TOGGLE_Y_OFFSET;
@@ -139,7 +151,7 @@ fn draw_value_button(
 ) {
     let x = row.x + CONTROL_X_OFFSET;
     let y = row.y + CONTROL_Y_OFFSET;
-    let value = effective_setting_value(scenario, control);
+    let value = effective_setting_value(text, scenario, control);
     canvas.fill_rect(x, y, CONTROL_WIDTH, CONTROL_HEIGHT, palette.surface);
     canvas.stroke_rect(x, y, CONTROL_WIDTH, CONTROL_HEIGHT, palette.accent);
     text.draw_centered(
@@ -153,6 +165,7 @@ fn draw_value_button(
 }
 
 fn effective_setting_value(
+    text: &TextRenderer,
     scenario: ScenarioContext<'_>,
     control: StorybookButtonOptionControl,
 ) -> String {
@@ -161,7 +174,10 @@ fn effective_setting_value(
         StorybookButtonOptionControl::Width
             if options.width_mode == StorybookButtonWidthMode::Auto =>
         {
-            format!("auto {}{WIDTH_VALUE_SUFFIX}", effective_width(scenario))
+            format!(
+                "auto {}{WIDTH_VALUE_SUFFIX}",
+                effective_width(text, scenario)
+            )
         }
         StorybookButtonOptionControl::Height
             if options.height_mode == StorybookButtonHeightMode::Auto =>
@@ -172,21 +188,40 @@ fn effective_setting_value(
     }
 }
 
-fn effective_width(scenario: ScenarioContext<'_>) -> usize {
-    effective_layout_dimension(scenario).0
+fn effective_width(text: &TextRenderer, scenario: ScenarioContext<'_>) -> usize {
+    effective_layout_dimension(text, scenario).0
 }
 
 fn effective_height(scenario: ScenarioContext<'_>) -> usize {
-    effective_layout_dimension(scenario).1
-}
-
-fn effective_layout_dimension(scenario: ScenarioContext<'_>) -> (usize, usize) {
     let kind = button_kind_for_page(scenario.selected_page);
     let layout = button_layout(
-        scenario.preset_index,
+        scenario
+            .screen_state
+            .button_options
+            .effective_preset_index(scenario.preset_index),
         scenario.screen_state.button_options.width_mode,
         scenario.screen_state.button_options.height_mode,
-        button_label_for_kind(kind),
+        0,
+        kind.has_icon(),
+        kind.has_visible_label(),
+    );
+    layout.height
+}
+
+fn effective_layout_dimension(
+    text: &TextRenderer,
+    scenario: ScenarioContext<'_>,
+) -> (usize, usize) {
+    let kind = button_kind_for_page(scenario.selected_page);
+    let label_width = measure_button_label_width(text, button_label_for_kind(kind));
+    let layout = button_layout(
+        scenario
+            .screen_state
+            .button_options
+            .effective_preset_index(scenario.preset_index),
+        scenario.screen_state.button_options.width_mode,
+        scenario.screen_state.button_options.height_mode,
+        label_width,
         kind.has_icon(),
         kind.has_visible_label(),
     );
@@ -216,5 +251,8 @@ pub(super) fn effective_setting_value_for_test(
     scenario: ScenarioContext<'_>,
     control: StorybookButtonOptionControl,
 ) -> String {
-    effective_setting_value(scenario, control)
+    let facade =
+        katana_ui_core::facade::UiCoreFacade::new(katana_ui_core::theme::ThemeSnapshot::dark());
+    let text = TextRenderer::load(&facade, facade.default_font_role());
+    effective_setting_value(&text, scenario, control)
 }

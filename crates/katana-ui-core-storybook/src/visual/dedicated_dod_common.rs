@@ -1,4 +1,5 @@
 use super::canvas::Canvas;
+pub(super) use super::dedicated_dod_common_blocks::{Block, draw_blocks};
 use super::palette::VisualPalette;
 use super::text::{TextRenderer, TextVerticalBox};
 
@@ -26,9 +27,21 @@ pub(super) fn frame(
     y: usize,
     title: &str,
 ) {
-    canvas.fill_rect(x, y, AREA_WIDTH, AREA_HEIGHT, palette.panel);
-    canvas.stroke_rect(x, y, AREA_WIDTH, AREA_HEIGHT, palette.border);
-    canvas.fill_rect(x, y, ACCENT_WIDTH, AREA_HEIGHT, palette.accent);
+    frame_with_height(canvas, text, palette, x, y, AREA_HEIGHT, title);
+}
+
+pub(super) fn frame_with_height(
+    canvas: &mut Canvas,
+    text: &TextRenderer,
+    palette: &VisualPalette,
+    x: usize,
+    y: usize,
+    height: usize,
+    title: &str,
+) {
+    canvas.fill_rect(x, y, AREA_WIDTH, height, palette.panel);
+    canvas.stroke_rect(x, y, AREA_WIDTH, height, palette.border);
+    canvas.fill_rect(x, y, ACCENT_WIDTH, height, palette.accent);
     text.draw(
         canvas,
         title,
@@ -81,22 +94,6 @@ pub(super) fn preview(
     draw_labels(canvas, text, origin.x, origin.y, labels);
 }
 
-pub(super) fn draw_blocks(
-    canvas: &mut Canvas,
-    palette: &VisualPalette,
-    x: usize,
-    y: usize,
-    blocks: &[Block],
-) {
-    for block in blocks {
-        let rect = block.rect.at(x, y);
-        fill(canvas, rect, block.color);
-        if block.outline {
-            outline(canvas, palette, rect);
-        }
-    }
-}
-
 pub(super) fn draw_labels(
     canvas: &mut Canvas,
     text: &TextRenderer,
@@ -140,37 +137,6 @@ pub(super) fn cross_icon(canvas: &mut Canvas, x: usize, y: usize, size: usize, c
     let arm = size.max(MIN_CROSS_ICON_SIZE) / CROSS_ICON_ARM_DIVISOR;
     fill(canvas, Rect::new(x + arm, y, arm, size), color);
     fill(canvas, Rect::new(x, y + arm, size, arm), color);
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct Block {
-    rect: Rect,
-    color: u32,
-    outline: bool,
-}
-
-impl Block {
-    pub(super) const fn new(x: usize, y: usize, width: usize, height: usize, color: u32) -> Self {
-        Self {
-            rect: Rect::new(x, y, width, height),
-            color,
-            outline: false,
-        }
-    }
-
-    pub(super) const fn outlined(
-        x: usize,
-        y: usize,
-        width: usize,
-        height: usize,
-        color: u32,
-    ) -> Self {
-        Self {
-            rect: Rect::new(x, y, width, height),
-            color,
-            outline: true,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

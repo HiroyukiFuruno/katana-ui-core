@@ -2,9 +2,18 @@ use super::{
     TextArea, TextAreaNewlineKey, TextAreaSubmitKey, TextAreaTabBehavior, TextAreaValidationError,
     TextAreaWrapPolicy,
 };
-use crate::render_model::{UiCommonProps, UiSlotPlacement, UiSlotSpec, UiVisualRole};
+use crate::render_model::{
+    UiClearActionSpec, UiCommonProps, UiIconProps, UiSlotPlacement, UiSlotSpec, UiStateId,
+    UiSvgPaintPolicy, UiVisualRole,
+};
 
 impl TextArea {
+    #[must_use]
+    pub fn stable_state_id(mut self, value: impl Into<UiStateId>) -> Self {
+        self.state.state_id = value.into();
+        self
+    }
+
     #[must_use]
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.set_value(value.into());
@@ -133,8 +142,58 @@ impl TextArea {
     }
 
     #[must_use]
+    pub fn leading_icon_slot(mut self, label: impl Into<String>, icon: UiIconProps) -> Self {
+        self.options.leading_slot = Some(UiSlotSpec::icon(UiSlotPlacement::Leading, label, icon));
+        self
+    }
+
+    #[must_use]
+    pub fn leading_svg_icon_slot(
+        self,
+        label: impl Into<String>,
+        svg_source: impl Into<String>,
+    ) -> Self {
+        self.leading_icon_slot(label, text_area_entry_icon(svg_source, "leading"))
+    }
+
+    #[must_use]
     pub fn trailing_slot(mut self, label: impl Into<String>) -> Self {
         self.options.trailing_slot = Some(UiSlotSpec::new(UiSlotPlacement::Trailing, label));
+        self
+    }
+
+    #[must_use]
+    pub fn trailing_icon_button(
+        mut self,
+        label: impl Into<String>,
+        icon: UiIconProps,
+        callback: impl Into<String>,
+    ) -> Self {
+        let button = UiSlotSpec::icon_button(UiSlotPlacement::Trailing, label, icon, callback);
+        if self.options.trailing_slot.is_none() {
+            self.options.trailing_slot = Some(button.clone());
+        }
+        self.options.trailing_icon_buttons.push(button);
+        self
+    }
+
+    #[must_use]
+    pub fn trailing_svg_icon_button(
+        self,
+        label: impl Into<String>,
+        svg_source: impl Into<String>,
+        callback: impl Into<String>,
+    ) -> Self {
+        self.trailing_icon_button(
+            label,
+            text_area_entry_icon(svg_source, "trailing-action"),
+            callback,
+        )
+    }
+
+    #[must_use]
+    pub fn clear_action(mut self, label: impl Into<String>) -> Self {
+        self.options.clear_action = Some(UiClearActionSpec::new(label));
         self
     }
 
@@ -155,4 +214,12 @@ impl TextArea {
     pub fn validate(&self) -> Result<(), TextAreaValidationError> {
         self.options.validate()
     }
+}
+
+fn text_area_entry_icon(svg_source: impl Into<String>, role: impl Into<String>) -> UiIconProps {
+    UiIconProps::new(svg_source)
+        .role(role)
+        .color_token("text")
+        .theme_token("text")
+        .paint_policy(UiSvgPaintPolicy::CurrentColor)
 }

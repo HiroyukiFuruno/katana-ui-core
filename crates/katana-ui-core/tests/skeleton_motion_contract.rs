@@ -5,7 +5,7 @@ use katana_ui_core::interaction::{
     ReducedMotionPolicy, UiAction,
 };
 use katana_ui_core::molecule::{MotionPrimitive, SkeletonCluster, SkeletonClusterPreset};
-use katana_ui_core::render_model::{UiDimension, UiNodeKind, UiTree};
+use katana_ui_core::render_model::{UiDimension, UiNodeKind, UiSkeletonAnimation, UiTree};
 use katana_ui_core::theme::ThemeSnapshot;
 
 const SLIDE_DURATION_MS: u16 = 180;
@@ -47,6 +47,33 @@ fn skeleton_cluster_owns_single_live_region_and_preset() {
     assert_eq!(UiNodeKind::SkeletonCluster, tree.root().kind());
     assert_eq!("Loading messages", tree.root().props().accessibility_label);
     assert_eq!(2, tree.root().children().len());
+}
+
+#[test]
+fn skeleton_cluster_public_options_control_live_region_and_reduced_motion() {
+    let tree = UiTree::new(
+        SkeletonCluster::new("image card")
+            .preset(SkeletonClusterPreset::ImageCard)
+            .live_region("Loading custom image card")
+            .reduced_motion(true),
+    );
+
+    let root = tree.root();
+    assert_eq!(
+        "Loading custom image card",
+        root.props().accessibility_label
+    );
+    assert!(root.props().loading_indicator.reduced_motion);
+    assert!(
+        root.children()
+            .iter()
+            .all(|it| it.props().loading_indicator.reduced_motion)
+    );
+    assert!(
+        root.children()
+            .iter()
+            .all(|it| it.props().skeleton.animation == UiSkeletonAnimation::None)
+    );
 }
 
 #[test]

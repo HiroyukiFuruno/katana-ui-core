@@ -2,6 +2,7 @@ use super::dedicated_banner::{
     ACTION_X, ACTION_Y, BODY_Y, DETAILS_X, DETAILS_Y, DISMISS_X, DISMISS_Y, ICON_X, ICON_Y,
     LABEL_X_OFFSET, LABEL_Y_OFFSET, TEXT_X, TITLE_Y,
 };
+use super::dedicated_banner_style::icon_label;
 use super::dedicated_banner_style::{
     action_label, action_text, banner_text, body_label, details_label, state_label, title_label,
 };
@@ -27,7 +28,7 @@ pub(super) fn labels(
             ICON_Y + ICON_LABEL_Y_OFFSET,
             m::FONT_9,
             banner_text(palette, scenario),
-            "!",
+            icon_label(scenario),
         ),
         TextSpec::new(
             TEXT_X,

@@ -74,6 +74,12 @@ impl Input {
     }
 
     #[must_use]
+    pub fn input_background_token(mut self, value: impl Into<String>) -> Self {
+        self.state.text_entry.background_token = value.into();
+        self
+    }
+
+    #[must_use]
     pub fn submit_on_enter(mut self, value: bool) -> Self {
         self.state.text_entry.submit_on_enter = value;
         self

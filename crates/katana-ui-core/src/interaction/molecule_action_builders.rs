@@ -163,6 +163,17 @@ impl UiAction {
     }
 
     #[must_use]
+    pub fn code_diff_language(target: UiStateId, value: impl Into<String>) -> Self {
+        Self::SetValue {
+            target,
+            value: value.into(),
+            source: UiActionSource::CodeDiffLanguage,
+            progress: None,
+            color_drag: None,
+        }
+    }
+
+    #[must_use]
     pub fn code_diff_expand(target: UiStateId) -> Self {
         Self::Press {
             target,

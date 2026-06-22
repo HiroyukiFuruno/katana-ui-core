@@ -45,9 +45,10 @@ pub(super) const STATUS_HEIGHT: usize = 22;
 pub(super) const STATUS_GAP: usize = 8;
 pub(super) const STATUS_TEXT_X: usize = 7;
 pub(super) const STATUS_TEXT_Y: usize = 5;
-pub(super) const HORIZONTAL_PRESET_INDEX: usize = 1;
-pub(super) const SCROLLBAR_PRESET_INDEX: usize = 2;
-pub(super) const NESTED_PRESET_INDEX: usize = 3;
+pub(super) const VERTICAL_PRESET_INDEX: usize = 1;
+pub(super) const HORIZONTAL_PRESET_INDEX: usize = 2;
+pub(super) const SCROLLBAR_PRESET_INDEX: usize = 3;
+pub(super) const NESTED_PRESET_INDEX: usize = 4;
 const VERTICAL_PRESET_SCROLL_Y: u32 = 220;
 const HORIZONTAL_PRESET_SCROLL_X: u32 = 280;
 
@@ -107,6 +108,14 @@ pub(super) fn panel_props_for_slot(
     let mut next = props.clone();
     let child = scenario.screen_state.panel.child(slot.key);
     match scenario.preset_index {
+        VERTICAL_PRESET_INDEX => {
+            set_horizontal(&mut next, child.scroll_x, false);
+            set_vertical(
+                &mut next,
+                child.scroll_y.max(VERTICAL_PRESET_SCROLL_Y),
+                true,
+            );
+        }
         HORIZONTAL_PRESET_INDEX => {
             set_horizontal(
                 &mut next,
@@ -121,11 +130,7 @@ pub(super) fn panel_props_for_slot(
         }
         _ => {
             set_horizontal(&mut next, child.scroll_x, false);
-            set_vertical(
-                &mut next,
-                child.scroll_y.max(VERTICAL_PRESET_SCROLL_Y),
-                true,
-            );
+            set_vertical(&mut next, child.scroll_y, false);
         }
     }
     apply_visibility(&mut next, component_scrollbars_visible(scenario, slot.key));

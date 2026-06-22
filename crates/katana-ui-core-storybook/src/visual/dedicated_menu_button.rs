@@ -1,6 +1,7 @@
 use super::canvas::Canvas;
 use super::dedicated_dod_common::{self as common, Block, Rect, TextSpec};
 use super::dedicated_dod_metrics as m;
+use super::layout_metrics::LayoutRect;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::text::TextRenderer;
@@ -45,6 +46,31 @@ pub(super) fn menu_button(
         "Menu button panel",
         &blocks(palette, scenario),
         &labels(palette, scenario),
+    );
+    draw_interaction_border(canvas, palette, scenario, x, y);
+}
+
+fn draw_interaction_border(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    x: usize,
+    y: usize,
+) {
+    if scenario.preset_index == DISABLED_PRESET_INDEX {
+        return;
+    }
+    let highlighted =
+        scenario.screen_state.preview_hovered || scenario.screen_state.is_button_focused();
+    if !highlighted {
+        return;
+    }
+    canvas.stroke_rect(
+        x + TRIGGER_X,
+        y + TRIGGER_Y,
+        TRIGGER_WIDTH,
+        TRIGGER_HEIGHT,
+        palette.hover_border,
     );
 }
 
@@ -210,5 +236,32 @@ fn second_item_label(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 fn is_open(scenario: ScenarioContext<'_>) -> bool {
-    scenario.preset_index == OPEN_PRESET_INDEX || scenario.screen_state.has_widget_action()
+    scenario.preset_index == OPEN_PRESET_INDEX || scenario.screen_state.selection.select_open
+}
+
+pub(super) fn trigger_rect(component: LayoutRect) -> LayoutRect {
+    LayoutRect::new(
+        component.x + TRIGGER_X,
+        component.y + TRIGGER_Y,
+        TRIGGER_WIDTH,
+        TRIGGER_HEIGHT,
+    )
+}
+
+pub(super) fn first_item_rect(component: LayoutRect) -> LayoutRect {
+    LayoutRect::new(
+        component.x + ITEM_X,
+        component.y + FIRST_ITEM_Y,
+        ITEM_WIDTH,
+        ITEM_HEIGHT,
+    )
+}
+
+pub(super) fn second_item_rect(component: LayoutRect) -> LayoutRect {
+    LayoutRect::new(
+        component.x + ITEM_X,
+        component.y + SECOND_ITEM_Y,
+        ITEM_WIDTH,
+        ITEM_HEIGHT,
+    )
 }

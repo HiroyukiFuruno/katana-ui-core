@@ -96,6 +96,7 @@ fn rendered_panel_content_does_not_paint_reserved_scrollbar_gutter() {
     let canvas = render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
         theme_id: DARK_THEME,
         selected_page: BUTTON_PAGE,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index: DEFAULT_PRESET,
         preset_tab_scroll_x: 0,
         scroll_y: 0,

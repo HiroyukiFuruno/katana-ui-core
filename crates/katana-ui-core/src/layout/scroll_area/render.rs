@@ -17,6 +17,8 @@ impl From<ScrollArea> for UiNode {
             scrollbar_visibility: value.scrollbar_visibility.into(),
             scrollbar_placement: value.scrollbar_placement.into(),
             edge_threshold: value.edge_threshold,
+            gap: value.gap.into(),
+            alignment: value.alignment.into(),
             visible_rect: UiRect::new(
                 value.offset_x as i32,
                 value.offset_y as i32,

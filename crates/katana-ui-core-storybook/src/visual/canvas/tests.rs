@@ -122,6 +122,42 @@ fn with_clip_limits_round_rect_draw_to_clip_area_on_scaled_canvas() {
 }
 
 #[test]
+fn scroll_rect_vertically_moves_scaled_logical_rows() {
+    let mut canvas = Canvas::new_scaled(4, 4, 2.0, BACKGROUND);
+    fill_physical_row(&mut canvas, 0, ROW0);
+    fill_physical_row(&mut canvas, 1, ROW0);
+    fill_physical_row(&mut canvas, 2, ROW1);
+    fill_physical_row(&mut canvas, 3, ROW1);
+    fill_physical_row(&mut canvas, 4, ROW2);
+    fill_physical_row(&mut canvas, 5, ROW2);
+
+    assert!(canvas.scroll_rect_vertically(0, 0, 4, 3, -1));
+
+    assert_eq!(Some(ROW1), pixel_at(&canvas, 0, 0));
+    assert_eq!(Some(ROW1), pixel_at(&canvas, 7, 1));
+    assert_eq!(Some(ROW2), pixel_at(&canvas, 0, 2));
+    assert_eq!(Some(ROW2), pixel_at(&canvas, 7, 3));
+}
+
+#[test]
+fn scroll_rect_vertically_moves_down_without_overwriting_source_rows() {
+    let mut canvas = Canvas::new_scaled(4, 4, 2.0, BACKGROUND);
+    fill_physical_row(&mut canvas, 0, ROW0);
+    fill_physical_row(&mut canvas, 1, ROW0);
+    fill_physical_row(&mut canvas, 2, ROW1);
+    fill_physical_row(&mut canvas, 3, ROW1);
+    fill_physical_row(&mut canvas, 4, ROW2);
+    fill_physical_row(&mut canvas, 5, ROW2);
+
+    assert!(canvas.scroll_rect_vertically(0, 0, 4, 3, 1));
+
+    assert_eq!(Some(ROW0), pixel_at(&canvas, 0, 2));
+    assert_eq!(Some(ROW0), pixel_at(&canvas, 7, 3));
+    assert_eq!(Some(ROW1), pixel_at(&canvas, 0, 4));
+    assert_eq!(Some(ROW1), pixel_at(&canvas, 7, 5));
+}
+
+#[test]
 fn viewport_y_does_not_duplicate_physical_rows_on_scaled_canvas() {
     let mut canvas = Canvas::new_scaled(4, 4, 2.0, BACKGROUND);
     let width = canvas.width();
@@ -159,6 +195,37 @@ fn viewport_y_maps_logical_rows_with_physical_canvas() {
     }
 }
 
+#[test]
+fn canvas_exposes_copy_payload_for_selected_text_runs() {
+    let mut canvas = Canvas::new(320, 200, BACKGROUND);
+    canvas.record_text_run("Heading", 24, 32, 80, 20);
+    canvas.record_text_run("Body text", 24, 64, 120, 20);
+
+    assert_eq!(
+        Some("Heading".to_string()),
+        canvas.copy_text_in_selection(Some((24, 42)), Some((104, 42)))
+    );
+    assert_eq!(
+        Some("Heading\nBody text".to_string()),
+        canvas.copy_text_in_selection(Some((20, 28)), Some((180, 90)))
+    );
+}
+
+#[test]
+fn canvas_exposes_selection_highlight_for_selected_text_runs() {
+    let mut canvas = Canvas::new(320, 200, BACKGROUND);
+    canvas.record_text_run("Heading", 24, 32, 80, 20);
+
+    assert!(canvas.draw_text_selection_highlight(Some((24, 42)), Some((104, 42)), BLEND));
+    assert_ne!(Some(BACKGROUND), pixel_at(&canvas, 24, 32));
+}
+
 fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {
     canvas.pixels().get(y * canvas.width() + x).copied()
+}
+
+fn fill_physical_row(canvas: &mut Canvas, y: usize, color: u32) {
+    for x in 0..canvas.width() {
+        canvas.set_physical(x, y, color);
+    }
 }

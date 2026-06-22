@@ -3,6 +3,10 @@ use super::visual_interaction_test_support::{
     assert_clicked_page_changes_body, assert_settings_page_changes_body, component_body_pixel_diff,
     pixel_at,
 };
+use super::window_interaction::{
+    StorybookWindowState, apply_clickable_keyboard_activation_for_audit, apply_hover_at,
+    focus_clickable_at_for_audit,
+};
 use super::{StorybookVisual, palette, preview_detail, storybook_ui_option_contract};
 use crate::catalog::StoryPresetLabels;
 use katana_ui_core::theme::ThemeSnapshot;
@@ -16,6 +20,7 @@ const STACK_PRESET: usize = 2;
 const THEME_PRESET: usize = 3;
 const REQUIRED_PRESET_COUNT: usize = 4;
 const REQUIRED_OPTION_COUNT: usize = 4;
+const COMPONENT_HIT_INSET: usize = 4;
 const BODY_DIFF_THRESHOLD: usize = 80;
 const TOAST_X: usize = 46;
 const TOAST_Y: usize = 36;
@@ -61,6 +66,49 @@ fn notification_toast_preview_action_updates_dismiss_state() {
 }
 
 #[test]
+fn notification_toast_live_hover_focus_and_keyboard_dismiss_use_core_actions() {
+    let mut hover_state = page_state();
+    let hover_before = render_state(&hover_state);
+    assert!(apply_hover_at(&mut hover_state, toast_x(), toast_y()));
+    let hover_after = render_state(&hover_state);
+
+    assert_eq!("toast_hover", hover_state.screen_state.last_action);
+    assert_eq!("toast_hovered", hover_state.screen_state.last_event);
+    assert_eq!("hover=true", hover_state.screen_state.state_label);
+    assert!(hover_state.screen_state.preview_hovered);
+    assert!(component_body_pixel_diff(PAGE, &hover_before, &hover_after) > 0);
+
+    let mut keyboard_state = page_state();
+    let focus_before = render_state(&keyboard_state);
+    assert!(focus_clickable_at_for_audit(
+        &mut keyboard_state,
+        toast_x(),
+        toast_y()
+    ));
+    let focus_after = render_state(&keyboard_state);
+
+    assert_eq!("toast_focus", keyboard_state.screen_state.last_action);
+    assert_eq!("toast_focused", keyboard_state.screen_state.last_event);
+    assert_eq!("focus=true", keyboard_state.screen_state.state_label);
+    assert!(keyboard_state.screen_state.is_button_focused());
+    assert!(component_body_pixel_diff(PAGE, &focus_before, &focus_after) > 0);
+
+    let keyboard_before = render_state(&keyboard_state);
+    assert!(apply_clickable_keyboard_activation_for_audit(
+        &mut keyboard_state
+    ));
+    let keyboard_after = render_state(&keyboard_state);
+
+    assert_eq!(
+        "toast_keyboard_dismiss",
+        keyboard_state.screen_state.last_action
+    );
+    assert_eq!("toast_dismissed", keyboard_state.screen_state.last_event);
+    assert_eq!("visible=false", keyboard_state.screen_state.state_label);
+    assert!(component_body_pixel_diff(PAGE, &keyboard_before, &keyboard_after) > 0);
+}
+
+#[test]
 fn notification_toast_light_and_dark_toast_uses_theme_surface() {
     assert_toast_token(DARK_THEME, ThemeSnapshot::dark());
     assert_toast_token(LIGHT_THEME, ThemeSnapshot::light());
@@ -79,4 +127,28 @@ fn assert_toast_token(theme_id: &str, theme: ThemeSnapshot) {
             component.y + TOAST_Y + TOAST_SAMPLE_OFFSET
         )
     );
+}
+
+fn render_state(state: &StorybookWindowState) -> super::Canvas {
+    super::render::render_storybook_canvas_with_screen_state(
+        DARK_THEME,
+        PAGE,
+        state.preset_index,
+        state.screen_state.clone(),
+    )
+}
+
+fn page_state() -> StorybookWindowState {
+    StorybookWindowState {
+        selected_page: PAGE,
+        ..StorybookWindowState::default()
+    }
+}
+
+fn toast_x() -> usize {
+    preview_detail::component_action_hit_rect(PAGE).x + COMPONENT_HIT_INSET
+}
+
+fn toast_y() -> usize {
+    preview_detail::component_action_hit_rect(PAGE).y + COMPONENT_HIT_INSET
 }

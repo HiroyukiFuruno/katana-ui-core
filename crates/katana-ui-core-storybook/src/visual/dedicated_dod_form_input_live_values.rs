@@ -8,13 +8,24 @@ const INPUT_LEADING_ICON_PRESET_INDEX: usize = 5;
 const INPUT_ICON_BUTTONS_PRESET_INDEX: usize = 6;
 const INPUT_INVALID_PRESET_INDEX: usize = 7;
 const INPUT_THEME_PRESET_INDEX: usize = 8;
+const INPUT_DISABLED_PRESET_INDEX: usize = 9;
+const INPUT_FONT_ROLE_PRESET_INDEX: usize = 10;
+const INPUT_TRAILING_SLOT_PRESET_INDEX: usize = 11;
+const INPUT_CLEAR_ACTION_PRESET_INDEX: usize = 12;
+const INPUT_SUBMIT_ENTER_PRESET_INDEX: usize = 13;
+const INPUT_EMOJI_PRESET_INDEX: usize = 14;
 const SEARCH_SUBMIT_PRESET_INDEX: usize = 1;
 const SEARCH_REGEX_PRESET_INDEX: usize = 2;
 const SEARCH_THEME_PRESET_INDEX: usize = 3;
 
 pub(super) fn input_value(scenario: ScenarioContext<'_>) -> &str {
-    if scenario.screen_state.text_input_uses_live_value() {
-        return scenario.screen_state.text_input_value();
+    if scenario
+        .screen_state
+        .text_input_uses_live_value_for(scenario.selected_instance_id)
+    {
+        return scenario
+            .screen_state
+            .text_input_value_for(scenario.selected_instance_id);
     }
     if scenario.screen_state.has_widget_action() {
         return "typed 日本語 🔷";
@@ -32,6 +43,12 @@ pub(super) fn input_static_value_for_preset(preset_index: usize) -> &'static str
         INPUT_ICON_BUTTONS_PRESET_INDEX => "file.rs",
         INPUT_INVALID_PRESET_INDEX => "invalid@example",
         INPUT_THEME_PRESET_INDEX => "theme input bg",
+        INPUT_DISABLED_PRESET_INDEX => "disabled input",
+        INPUT_FONT_ROLE_PRESET_INDEX => "font role monospace",
+        INPUT_TRAILING_SLOT_PRESET_INDEX => "trailing slot",
+        INPUT_CLEAR_ACTION_PRESET_INDEX => "clear action ready",
+        INPUT_SUBMIT_ENTER_PRESET_INDEX => "submit on enter",
+        INPUT_EMOJI_PRESET_INDEX => "emoji disabled",
         _ => "日本語 value 🔷",
     }
 }

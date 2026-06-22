@@ -1,9 +1,10 @@
 use super::button_options::{StorybookButtonOptionControl, control_rect, is_button_page};
 use super::interaction_spec::StorybookInteractionSpec;
 use super::legacy_01_24_contract::{LegacyPageContract, legacy_01_24_contracts};
+use super::legacy_01_24_expected_kind::expected_kind;
 use super::visual_interaction_test_support::component_body_pixel_diff;
 use super::window_interaction::{StorybookWindowState, apply_click};
-use super::{Canvas, layout_metrics, preview_detail, render};
+use super::{Canvas, layout_metrics, preview_detail, render, storybook_ui_option_contract};
 use crate::StoryCatalog;
 use crate::catalog::StoryPresetLabels;
 use katana_ui_core::render_model::{UiNode, UiNodeKind};
@@ -14,6 +15,10 @@ const LAST_LEGACY_NUMBER: u8 = 24;
 const CLICK_POINT_OFFSET: usize = 1;
 const BODY_REPAINT_THRESHOLD: usize = 80;
 const SECOND_PRESET_INDEX: usize = 1;
+const CHECKBOX_CHECKED_PRESET_INDEX: usize = 1;
+const CHECKBOX_DISABLED_PRESET_INDEX: usize = 2;
+const CHECKBOX_FOCUS_PRESET_INDEX: usize = 3;
+const TOGGLE_ON_PRESET_INDEX: usize = 1;
 
 #[test]
 fn legacy_01_24_contract_cases_cover_every_legacy_number() {
@@ -94,38 +99,6 @@ fn legacy_01_24_clicks_emit_expected_action_event_state_and_repaint_body() {
     }
 }
 
-fn expected_kind(page: &str) -> UiNodeKind {
-    match page {
-        "theme-tokens" => UiNodeKind::Card,
-        "text" => UiNodeKind::Text,
-        "icon" => UiNodeKind::Icon,
-        "loading-dots" => UiNodeKind::LoadingDots,
-        "spinner" => UiNodeKind::Spinner,
-        "svg-button" => UiNodeKind::SvgButton,
-        "text-button" => UiNodeKind::TextButton,
-        "icon-text-button" => UiNodeKind::IconTextButton,
-        "toggle" => UiNodeKind::Toggle,
-        "segmented-toggle" => UiNodeKind::SegmentedToggle,
-        "select-box" => UiNodeKind::SelectBox,
-        "color-swatch" => UiNodeKind::ColorSwatch,
-        "text-input" => UiNodeKind::Input,
-        "text-area" => UiNodeKind::TextArea,
-        "search-box" => UiNodeKind::SearchBox,
-        "tooltip" => UiNodeKind::Tooltip,
-        "badge" => UiNodeKind::Badge,
-        "key-cap" => UiNodeKind::KeyCap,
-        "card" => UiNodeKind::Card,
-        "accordion" => UiNodeKind::Accordion,
-        "split-pane" => UiNodeKind::SplitPane,
-        "modal" => UiNodeKind::Modal,
-        "modal-overlay" => UiNodeKind::ModalOverlay,
-        "popover" => UiNodeKind::Popover,
-        "color-picker-rgba" => UiNodeKind::ColorPicker,
-        "code-diff" => UiNodeKind::CodeDiff,
-        _ => UiNodeKind::Text,
-    }
-}
-
 fn contains_kind(node: &UiNode, kind: UiNodeKind) -> bool {
     node.kind() == kind
         || node
@@ -167,6 +140,7 @@ fn legacy_01_24_state_is_isolated_by_page_and_preset() {
             "{} settings",
             case.label
         );
+        let stored_preset_index = state.preset_index;
         let stored = state.screen_state.clone();
 
         state.select_page(other_page(case.page));
@@ -194,13 +168,15 @@ fn legacy_01_24_state_is_isolated_by_page_and_preset() {
             case.label
         );
         if StoryPresetLabels::for_page(case.page).len() > SECOND_PRESET_INDEX {
-            state.select_preset(SECOND_PRESET_INDEX);
+            let other_preset_index = other_preset_index(case.page, stored_preset_index);
+            state.select_preset(other_preset_index);
             assert_eq!(
-                "idle", state.screen_state.state_label,
+                expected_preset_default_state_label(case.page, other_preset_index),
+                state.screen_state.state_label,
                 "{} preset leak",
                 case.label
             );
-            state.select_preset(0);
+            state.select_preset(stored_preset_index);
             assert_eq!(
                 stored,
                 state.screen_state.clone(),
@@ -266,15 +242,30 @@ fn assert_setting(case: &LegacyPageContract, state: &StorybookWindowState) {
         return;
     }
     assert_eq!(
-        case.option, state.screen_state.last_setting,
+        first_option_for_page(case.page).setting,
+        state.screen_state.last_setting,
         "{} setting",
         case.label
     );
     assert_eq!(
-        case.after, state.screen_state.last_setting_value,
+        first_option_for_page(case.page).after,
+        state.screen_state.last_setting_value,
         "{} value",
         case.label
     );
+}
+
+fn first_option_for_page(page: &str) -> storybook_ui_option_contract::StorybookUiOptionContract {
+    storybook_ui_option_contract::options_for_page(page)
+        .first()
+        .copied()
+        .unwrap_or_else(|| {
+            storybook_ui_option_contract::StorybookUiOptionContract::new(
+                "option",
+                "unchanged",
+                "changed",
+            )
+        })
 }
 
 fn assert_body_repainted(case: &LegacyPageContract, before: &Canvas, after: &Canvas, phase: &str) {
@@ -287,4 +278,22 @@ fn assert_body_repainted(case: &LegacyPageContract, before: &Canvas, after: &Can
 
 fn other_page(page: &str) -> &'static str {
     if page == "text" { "icon" } else { "text" }
+}
+
+fn other_preset_index(page: &str, stored_preset_index: usize) -> usize {
+    if stored_preset_index == SECOND_PRESET_INDEX {
+        return 0;
+    }
+    SECOND_PRESET_INDEX.min(StoryPresetLabels::for_page(page).len().saturating_sub(1))
+}
+
+fn expected_preset_default_state_label(page: &str, preset_index: usize) -> &'static str {
+    match (page, preset_index) {
+        ("checkbox", CHECKBOX_CHECKED_PRESET_INDEX) | ("toggle", TOGGLE_ON_PRESET_INDEX) => {
+            "checked=true"
+        }
+        ("checkbox", CHECKBOX_DISABLED_PRESET_INDEX) => "disabled=true",
+        ("checkbox", CHECKBOX_FOCUS_PRESET_INDEX) => "focused=true",
+        _ => "idle",
+    }
 }

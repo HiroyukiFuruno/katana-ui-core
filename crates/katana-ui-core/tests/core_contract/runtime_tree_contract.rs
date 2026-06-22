@@ -3,9 +3,12 @@ use katana_ui_core::layout::Row;
 use katana_ui_core::molecule::Toolbar;
 use katana_ui_core::panel::{Panel, PanelRegion};
 use katana_ui_core::render_model::{UiCommonProps, UiDimension, UiNodeKind, UiTree};
-use katana_ui_core::runtime::{AppConfig, AppHandle, AppLifecycle, Application, RuntimeAdapter};
+use katana_ui_core::runtime::{
+    AppConfig, AppHandle, AppLifecycle, Application, RuntimeAdapter, RuntimeRunReport,
+};
+use katana_ui_core::surface::{PaintRequest, SurfaceMetrics};
 use katana_ui_core::theme::ThemeSnapshot;
-use katana_ui_core::window::WindowConfig;
+use katana_ui_core::window::{WindowConfig, WindowEvent};
 
 #[derive(Default)]
 struct NoopRuntime {
@@ -15,10 +18,25 @@ struct NoopRuntime {
 impl RuntimeAdapter for NoopRuntime {
     fn run(&mut self, config: AppConfig, windows: Vec<WindowConfig>) -> AppHandle {
         self.events.push(AppLifecycle::Started);
-        AppHandle::new(
-            config.app_id,
-            windows.into_iter().map(WindowConfig::into_id).collect(),
-        )
+        let window_ids = windows
+            .into_iter()
+            .map(WindowConfig::into_id)
+            .collect::<Vec<_>>();
+        let first_window = window_ids[0].clone();
+        let report = RuntimeRunReport::new()
+            .lifecycle(AppLifecycle::Created)
+            .lifecycle(AppLifecycle::Started)
+            .window_event(WindowEvent::Created(first_window.clone()))
+            .window_event(WindowEvent::Focused(first_window.clone()))
+            .paint_request(PaintRequest::new(
+                first_window,
+                SurfaceMetrics::new(1024.0, 768.0, 2.0, 220.0),
+            ))
+            .request_redraw()
+            .request_shutdown()
+            .lifecycle(AppLifecycle::ShuttingDown)
+            .lifecycle(AppLifecycle::Stopped);
+        AppHandle::new(config.app_id, window_ids).with_runtime_report(report)
     }
 }
 
@@ -31,6 +49,32 @@ fn application_builds_without_framework_types() {
 
     assert_eq!("katana-ui-core", handle.app_id());
     assert_eq!(1, handle.window_ids().len());
+}
+
+#[test]
+fn runtime_handle_reports_event_loop_redraw_and_shutdown_contract() {
+    let handle = Application::new(AppConfig::new("katana-ui-core"))
+        .window(WindowConfig::new("Main"))
+        .run_with(NoopRuntime::default());
+    let report = handle.runtime_report();
+
+    assert_eq!(
+        &[
+            AppLifecycle::Created,
+            AppLifecycle::Started,
+            AppLifecycle::ShuttingDown,
+            AppLifecycle::Stopped
+        ],
+        report.lifecycle_events()
+    );
+    assert!(matches!(
+        report.window_events(),
+        [WindowEvent::Created(_), WindowEvent::Focused(_)]
+    ));
+    assert_eq!(1, report.paint_requests().len());
+    assert_eq!(2.0, report.paint_requests()[0].metrics().scale_factor);
+    assert!(report.redraw_requested());
+    assert!(report.shutdown_requested());
 }
 
 #[test]

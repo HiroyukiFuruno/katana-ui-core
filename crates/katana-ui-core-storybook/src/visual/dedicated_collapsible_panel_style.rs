@@ -17,6 +17,9 @@ const ICON_ONLY_PANEL_WIDTH: usize = 78;
 const EXPLORER_PANEL_WIDTH: usize = 240;
 
 pub(super) fn active_row_index(scenario: ScenarioContext<'_>) -> usize {
+    if scenario.screen_state.last_action == "collapsible_panel_keyboard_toggle" {
+        return TOC_ROW_INDEX;
+    }
     if scenario.screen_state.has_widget_action() {
         return CHAT_ROW_INDEX;
     }
@@ -41,6 +44,12 @@ pub(super) fn panel_width(scenario: ScenarioContext<'_>) -> usize {
 }
 
 pub(super) fn panel_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.screen_state.last_action == "collapsible_panel_keyboard_toggle" {
+        return common::WARN;
+    }
+    if scenario.screen_state.collapsible_panel.focused {
+        return common::SUCCESS;
+    }
     if scenario.screen_state.has_settings_override() {
         return common::WARN;
     }
@@ -48,6 +57,9 @@ pub(super) fn panel_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>)
 }
 
 pub(super) fn rail_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.screen_state.collapsible_panel.hovered {
+        return common::TOKEN;
+    }
     if scenario.preset_index == ICON_ONLY_PRESET_INDEX {
         return palette.accent;
     }
@@ -72,6 +84,9 @@ pub(super) fn handle_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>
 }
 
 pub(super) fn pin_fill(scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.screen_state.collapsible_panel.context_open {
+        return common::WARN;
+    }
     if scenario.preset_index == FLOATING_PRESET_INDEX {
         return common::TOKEN;
     }

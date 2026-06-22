@@ -1,6 +1,7 @@
 use super::{Button, ColorSwatch, IconTextButton, KeyCap, SvgButton, Text, TextButton};
 use crate::render_model::{
     UiButtonLayoutDto, UiButtonLayoutPatchDto, UiButtonLayoutPreset, UiButtonLayoutSpec,
+    UiInteractivePreset, UiTextSpan, UiTextWrapMode,
 };
 
 impl Text {
@@ -26,6 +27,22 @@ impl Text {
     #[must_use]
     pub fn vertical_centered(mut self, value: bool) -> Self {
         self.state.text.vertical_centered = value;
+        self
+    }
+
+    #[must_use]
+    pub fn wrap(mut self, value: UiTextWrapMode) -> Self {
+        self.state.text.wrap = value;
+        self
+    }
+
+    #[must_use]
+    pub fn text_spans(mut self, value: Vec<UiTextSpan>) -> Self {
+        if value.iter().any(|span| !span.link_target.trim().is_empty()) {
+            self.state.common =
+                UiInteractivePreset::control().apply_to_common_defaults(self.state.common);
+        }
+        self.state.text.spans = value;
         self
     }
 }

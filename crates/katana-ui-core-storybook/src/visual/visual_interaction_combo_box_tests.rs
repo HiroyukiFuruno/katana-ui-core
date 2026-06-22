@@ -13,12 +13,12 @@ use katana_ui_core::theme::ThemeSnapshot;
 const DARK_THEME: &str = "dark";
 const LIGHT_THEME: &str = "light";
 const PAGE: &str = "combo-box";
-const INPUT_LIST_PRESET: usize = 0;
-const SELECT_ROW_PRESET: usize = 1;
-const FILTER_PRESET: usize = 2;
-const THEME_PRESET: usize = 3;
-const REQUIRED_PRESET_COUNT: usize = 4;
-const REQUIRED_OPTION_COUNT: usize = 4;
+const ITEMS_PRESET: usize = 0;
+const SELECTED_PRESET: usize = 2;
+const FILTER_PRESET: usize = 8;
+const FRAMED_PRESET: usize = 15;
+const REQUIRED_PRESET_COUNT: usize = 19;
+const REQUIRED_OPTION_COUNT: usize = 19;
 const BODY_DIFF_THRESHOLD: usize = 80;
 const TRIGGER_FILL_SAMPLE_X_OFFSET: usize = 4;
 const TRIGGER_FILL_SAMPLE_Y_OFFSET: usize = 4;
@@ -38,18 +38,34 @@ fn combo_box_exposes_leaf_presets_options_and_combo_contract() {
     assert_eq!("interaction.selected_index", spec.option);
     assert_eq!("1", spec.after);
     assert_eq!("selected=1", spec.state);
+    assert!(options.iter().any(|option| option.setting == "combo.items"));
+    assert!(
+        options
+            .iter()
+            .any(|option| option.setting == "combo.long_list")
+    );
+    assert!(
+        options
+            .iter()
+            .any(|option| option.setting == "combo.select_action")
+    );
+    assert!(
+        !options
+            .iter()
+            .any(|option| option.setting == "combo.crumb_action")
+    );
 }
 
 #[test]
 fn combo_box_presets_render_distinct_filter_bodies() {
-    let input_list = StorybookVisual.render_preset(DARK_THEME, PAGE, INPUT_LIST_PRESET, 0);
-    let selected = StorybookVisual.render_preset(DARK_THEME, PAGE, SELECT_ROW_PRESET, 0);
+    let input_list = StorybookVisual.render_preset(DARK_THEME, PAGE, ITEMS_PRESET, 0);
+    let selected = StorybookVisual.render_preset(DARK_THEME, PAGE, SELECTED_PRESET, 0);
     let filtered = StorybookVisual.render_preset(DARK_THEME, PAGE, FILTER_PRESET, 0);
-    let themed = StorybookVisual.render_preset(DARK_THEME, PAGE, THEME_PRESET, 0);
+    let framed = StorybookVisual.render_preset(DARK_THEME, PAGE, FRAMED_PRESET, 0);
 
     assert!(component_body_pixel_diff(PAGE, &input_list, &selected) > BODY_DIFF_THRESHOLD);
     assert!(component_body_pixel_diff(PAGE, &selected, &filtered) > BODY_DIFF_THRESHOLD);
-    assert!(component_body_pixel_diff(PAGE, &selected, &themed) > BODY_DIFF_THRESHOLD);
+    assert!(component_body_pixel_diff(PAGE, &selected, &framed) > BODY_DIFF_THRESHOLD);
 }
 
 #[test]
@@ -69,7 +85,7 @@ fn combo_box_light_and_dark_trigger_uses_theme_tokens() {
 }
 
 fn assert_trigger_tokens(theme_id: &str, theme: ThemeSnapshot) {
-    let canvas = StorybookVisual.render_preset(theme_id, PAGE, SELECT_ROW_PRESET, 0);
+    let canvas = StorybookVisual.render_preset(theme_id, PAGE, SELECTED_PRESET, 0);
     let colors = palette::VisualPalette::from_theme(&theme);
     let component = preview_detail::component_action_hit_rect(PAGE);
     let trigger = sm::trigger_rect(component);

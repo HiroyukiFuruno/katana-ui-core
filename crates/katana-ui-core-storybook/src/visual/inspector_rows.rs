@@ -16,98 +16,128 @@ pub(super) fn settings_rows(
     scenario: ScenarioContext<'_>,
 ) -> Vec<String> {
     if example.page == "tree-view" {
-        return vec![
-            "line: solid 1px enabled".to_string(),
-            "node markers: branch/leaf visible".to_string(),
-            "font/theme: body / dark".to_string(),
-            "context menu: enabled".to_string(),
-            "default open: true".to_string(),
-            "trigger: icon+text chevron".to_string(),
-            "virtual: on range + total".to_string(),
-            "rows: overscan/provider".to_string(),
-        ];
+        return with_option_rows(
+            example.page,
+            vec![
+                "line: solid 1px enabled".to_string(),
+                "node markers: branch/leaf visible".to_string(),
+                "font/theme: body / dark".to_string(),
+                "context menu: enabled".to_string(),
+                "default open: true".to_string(),
+                "trigger: icon+text chevron".to_string(),
+                "virtual: on range + total".to_string(),
+                "rows: overscan/provider".to_string(),
+            ],
+        );
     }
     if example.page == "panel" {
         let panel = scenario.screen_state.panel;
         let active = panel.child(panel.active_panel);
-        return vec![
-            row_value(format!("panel.active: {}", panel.active_panel.label())),
-            row_value(format!("panel.vertical_scroll: y={}", active.scroll_y)),
-            row_value(format!("panel.horizontal_scroll: x={}", active.scroll_x)),
-            row_value(format!(
-                "panel.scrollbar_visibility: {}",
-                if active.scrollbar_visible {
-                    "on"
-                } else {
-                    "off"
-                }
-            )),
-        ];
+        return with_option_rows(
+            example.page,
+            vec![
+                row_value(format!("panel.active: {}", panel.active_panel.label())),
+                row_value(format!("panel.vertical_scroll: y={}", active.scroll_y)),
+                row_value(format!("panel.horizontal_scroll: x={}", active.scroll_x)),
+                row_value(format!(
+                    "panel.scrollbar_visibility: {}",
+                    if active.scrollbar_visible {
+                        "on"
+                    } else {
+                        "off"
+                    }
+                )),
+            ],
+        );
     }
     if is_virtualized_page(example.page) {
-        return vec![
-            "virtual: on -> off".to_string(),
-            "overscan: 2 -> 4".to_string(),
-            "row height: fixed -> variable".to_string(),
-            "range/total: logged".to_string(),
-        ];
+        return with_option_rows(
+            example.page,
+            vec![
+                "virtual: on -> off".to_string(),
+                "overscan: 2 -> 4".to_string(),
+                "row height: fixed -> variable".to_string(),
+                "range/total: logged".to_string(),
+            ],
+        );
     }
     if example.page == "context-menu" {
         let props = &node.props().context_menu;
-        return vec![
-            row_value(format!("anchor: {:?}", props.anchor)),
-            row_value(format!("placement: {:?}", props.placement_used)),
-            "items: section/action/submenu".to_string(),
-            "log: opened/highlight/select".to_string(),
-        ];
+        return with_option_rows(
+            example.page,
+            vec![
+                row_value(format!("anchor: {:?}", props.anchor)),
+                row_value(format!("placement: {:?}", props.placement_used)),
+                "items: section/action/submenu".to_string(),
+                "log: opened/highlight/select".to_string(),
+            ],
+        );
     }
     if example.page == "popover" {
-        return vec![
-            "placement: bottom-start".to_string(),
-            "arrow: surface-raised".to_string(),
-            "focus: first interactive".to_string(),
-            "slot: heading/body/action".to_string(),
-        ];
+        return with_option_rows(
+            example.page,
+            vec![
+                "placement: bottom-start".to_string(),
+                "arrow: surface-raised".to_string(),
+                "focus: first interactive".to_string(),
+                "slot: heading/body/action".to_string(),
+            ],
+        );
     }
     if example.page == "hover-card" {
-        return vec![
-            "delay: open100 close50".to_string(),
-            "placement: pointer follow".to_string(),
-            "focus: keep open".to_string(),
-            "slot: heading/body/action".to_string(),
-        ];
+        return with_option_rows(
+            example.page,
+            vec![
+                "delay: open100 close50".to_string(),
+                "placement: pointer follow".to_string(),
+                "focus: keep open".to_string(),
+                "slot: heading/body/action".to_string(),
+            ],
+        );
     }
     if example.page == "toolbar" {
-        return vec![
-            "actions: add/remove".to_string(),
-            "priority: visible/hidden".to_string(),
-            "overflow: Menu".to_string(),
-            "mode/density: icon/default".to_string(),
-        ];
+        return with_option_rows(
+            example.page,
+            vec![
+                "actions: add/remove".to_string(),
+                "priority: visible/hidden".to_string(),
+                "overflow: Menu".to_string(),
+                "mode/density: icon/default".to_string(),
+            ],
+        );
     }
     if example.page == "badge" {
-        return vec![
-            "role: passive status".to_string(),
-            "actions: none".to_string(),
-            "dismiss: use Chip".to_string(),
-            "tone: status token".to_string(),
-        ];
+        return with_option_rows(
+            example.page,
+            vec![
+                "role: passive status".to_string(),
+                "actions: none".to_string(),
+                "dismiss: use Chip".to_string(),
+                "tone: status token".to_string(),
+            ],
+        );
     }
     if example.page == "banner" {
-        return vec![
-            "severity: warning -> danger".to_string(),
-            "density: compact -> default".to_string(),
-            "actions: primary+secondary".to_string(),
-            "details/dismiss: open/yes".to_string(),
-        ];
+        return with_option_rows(
+            example.page,
+            vec![
+                "severity: warning -> danger".to_string(),
+                "density: compact -> default".to_string(),
+                "actions: primary+secondary".to_string(),
+                "details/dismiss: open/yes".to_string(),
+            ],
+        );
     }
     if example.page == "toast-stack-manager" {
-        return vec![
-            "position: bottom -> top".to_string(),
-            "max: 2 -> 4 / gap 10->16".to_string(),
-            "dedup: id -> id+severity".to_string(),
-            "duration/pause: 8000/off".to_string(),
-        ];
+        return with_option_rows(
+            example.page,
+            vec![
+                "position: bottom -> top".to_string(),
+                "max: 2 -> 4 / gap 10->16".to_string(),
+                "dedup: id -> id+severity".to_string(),
+                "duration/pause: 8000/off".to_string(),
+            ],
+        );
     }
     if is_button_page(example.page) {
         let spec = StorybookInteractionSpec::for_page(example.page);
@@ -121,23 +151,48 @@ pub(super) fn settings_rows(
         } else {
             "waiting for click"
         };
-        return vec![
-            row_value(format!("{}: {variant}", spec.option)),
-            "click target: preview button".to_string(),
-            "render: updates on click".to_string(),
-            row_value(format!("event: {event}")),
-        ];
+        return with_option_rows(
+            example.page,
+            vec![
+                row_value(format!("{}: {variant}", spec.option)),
+                "click target: preview button".to_string(),
+                "render: updates on click".to_string(),
+                row_value(format!("event: {event}")),
+            ],
+        );
     }
     let spec = StorybookInteractionSpec::for_page(example.page);
     storybook_ui_option_contract::settings_rows_for(example.page)
         .into_iter()
         .map(|row| {
             if row.starts_with(spec.option) && scenario.screen_state.has_settings_override() {
-                return row_value(format!("{}: active -> {}", spec.option, spec.after));
+                let setting = if is_binary_choice_page(example.page) {
+                    format!("option.{}", spec.option)
+                } else {
+                    spec.option.to_string()
+                };
+                return row_value(format!("{setting}: active -> {}", spec.after));
             }
-            row_value(row)
+            let display_row = if is_binary_choice_page(example.page) {
+                format!("option.{row}")
+            } else {
+                row
+            };
+            row_value(display_row)
         })
         .collect()
+}
+
+fn with_option_rows(page: &str, rows: Vec<String>) -> Vec<String> {
+    let mut output = rows;
+    for row in storybook_ui_option_contract::settings_rows_for(page) {
+        let setting = row.split_once(':').map_or(row.as_str(), |(it, _)| it);
+        if output.iter().any(|it| it.contains(setting)) {
+            continue;
+        }
+        output.push(row_value(row));
+    }
+    output
 }
 
 pub(super) fn settings_title(example: &StoryExample) -> &'static str {
@@ -219,4 +274,8 @@ fn is_virtualized_page(page: &str) -> bool {
         page,
         "list" | "selection-list" | "command-palette" | "diagnostics-list"
     )
+}
+
+fn is_binary_choice_page(page: &str) -> bool {
+    matches!(page, "checkbox" | "radio" | "toggle" | "segmented-toggle")
 }

@@ -91,6 +91,18 @@ fn keyboard_moves_highlight_and_disabled_row_does_not_execute() {
 }
 
 #[test]
+fn keyboard_escape_closes_command_palette() {
+    let mut palette = CommandPalette::new("Commands").result_row(primary_row());
+
+    assert_eq!(
+        vec![CommandLauncherEvent::Closed],
+        palette.apply_launcher_action(CommandLauncherAction::Keyboard(
+            CommandKeyboardInput::Escape
+        ))
+    );
+}
+
+#[test]
 fn virtualization_range_keeps_highlighted_row_reachable() {
     let mut palette = CommandPalette::new("Commands");
     for index in 0..50 {

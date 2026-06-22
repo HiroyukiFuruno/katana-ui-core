@@ -1,3 +1,6 @@
+mod action_bridge;
+mod host_action_bridge;
+
 use crate::event::UiEvent;
 use crate::event::drag::{DRAG_CANCEL_REASON_KEYBOARD_ESCAPE, DragEvent};
 use crate::interaction::drag_and_drop::{
@@ -9,6 +12,9 @@ use crate::molecule::selection::window_control_button_group::{
 use crate::render_model::{RenderContext, UiNodeId, UiTree};
 use crate::window::{WindowCommand, WindowId};
 use serde::{Deserialize, Serialize};
+
+pub use action_bridge::AdapterActionBridge;
+pub use host_action_bridge::AdapterHostActionBridge;
 
 pub trait WidgetAdapter {
     type Output;

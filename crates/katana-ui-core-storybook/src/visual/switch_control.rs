@@ -26,9 +26,27 @@ pub(super) fn draw_switch(
     height: usize,
     enabled: bool,
 ) {
-    let fill = switch_track_fill(palette, enabled);
+    draw_switch_with_disabled(canvas, palette, x, y, width, height, enabled, false);
+}
+
+pub(super) fn draw_switch_with_disabled(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    x: usize,
+    y: usize,
+    width: usize,
+    height: usize,
+    enabled: bool,
+    disabled: bool,
+) {
+    let fill = switch_track_fill(palette, enabled, disabled);
     let radius = height / 2;
-    canvas.fill_round_rect(x, y, width, height, radius, palette.border);
+    let border = if disabled {
+        palette.muted
+    } else {
+        palette.border
+    };
+    canvas.fill_round_rect(x, y, width, height, radius, border);
     draw_track_fill(canvas, x, y, width, height, radius, fill);
     let knob = height.saturating_sub(KNOB_INSET * 2);
     let knob_x = if enabled {
@@ -42,7 +60,7 @@ pub(super) fn draw_switch(
         knob,
         knob,
         knob / 2,
-        switch_thumb_fill(palette),
+        switch_thumb_fill(palette, disabled),
     );
 }
 
@@ -70,14 +88,20 @@ fn draw_track_fill(
     );
 }
 
-fn switch_track_fill(palette: &VisualPalette, enabled: bool) -> u32 {
+fn switch_track_fill(palette: &VisualPalette, enabled: bool, disabled: bool) -> u32 {
+    if disabled {
+        return mix_color(palette.surface, palette.muted, COLOR_ALPHA_MAX / 2);
+    }
     if enabled {
         return palette.accent;
     }
     mix_color(palette.surface, palette.text, OFF_TRACK_TEXT_MIX_ALPHA)
 }
 
-fn switch_thumb_fill(palette: &VisualPalette) -> u32 {
+fn switch_thumb_fill(palette: &VisualPalette, disabled: bool) -> u32 {
+    if disabled {
+        return palette.muted;
+    }
     if luminance(palette.background) < LUMINANCE_DARK_THRESHOLD {
         return SWITCH_THUMB_DARK_THEME;
     }
@@ -137,7 +161,7 @@ mod tests {
         let thumb_center_y = SWITCH_Y + SWITCH_HEIGHT / 2;
         let color = canvas.pixels()[thumb_center_y * canvas.width() + thumb_center_x];
 
-        assert_eq!(switch_thumb_fill(&palette), color);
+        assert_eq!(switch_thumb_fill(&palette, false), color);
         assert_ne!(palette.background, color);
     }
 

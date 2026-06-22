@@ -48,11 +48,13 @@ fn search_control_story_exposes_settings_state_event_action_and_quality() -> Res
 fn search_control_story_has_component_specific_presets() {
     assert_eq!(
         &[
-            "workspace search",
-            "editor find",
-            "editor replace",
-            "viewer search",
-            "history search"
+            "query",
+            "match case",
+            "whole word",
+            "regex",
+            "replace mode",
+            "result count",
+            "active index"
         ],
         StoryPresetLabels::for_page(SEARCH_CONTROL_PAGE)
     );

@@ -8,7 +8,9 @@ pub use motion::MotionPrimitive;
 pub use settings::{
     SettingsControl, SettingsControlKind, SettingsControlOption, SettingsDirtyVisualization,
     SettingsField, SettingsKeyboardInput, SettingsList, SettingsListAction, SettingsListDensity,
-    SettingsListEvent, SettingsSection, SettingsValue,
+    SettingsListEvent, SettingsListHitRect, SettingsListHitTarget, SettingsListHitTestInput,
+    SettingsListHitTestResult, SettingsListInteraction, SettingsListLayoutMetrics, SettingsSection,
+    SettingsValue,
 };
 pub use sidebar::{CollapsibleSidebar, ResizableWidth, SidebarEvent, SidebarMode};
 pub use virtualization::{

@@ -3,7 +3,7 @@
 ### Requirement: Core foundation is established before component work
 
 KUC MUST establish theme, font, text rendering, input, event routing, state ownership, and layout contracts before marking atoms or molecules as complete.
-The foundation MUST be framework-neutral and MUST NOT depend on Floem, egui, or gpui.
+The foundation MUST be framework-neutral and MUST NOT depend on Adapter, adapter, or adapter.
 
 #### Scenario: foundation contract is inspected
 

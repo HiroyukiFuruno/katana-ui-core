@@ -65,7 +65,7 @@ Adapters MUST expose a neutral IME request carrying `input_kind = Multiline`, `p
 
 #### Scenario: adapter reports multiline preedit and caret
 
-- **WHEN** a Floem, egui, or GPUI adapter receives multiline IME preedit
+- **WHEN** a Adapter, adapter, or adapter receives multiline IME preedit
 - **THEN** it maps the update to the neutral IME request DTO
 - **AND** the request carries `input_kind = Multiline`, the preedit string, and the caret byte position
 

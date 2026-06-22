@@ -7,7 +7,7 @@ const RGBA_ALPHA_MAX: u8 = 255;
 const DEFAULT_COLOR_CHANNEL: u8 = 0;
 const DEFAULT_PANEL_SCALE_PERCENT: u16 = 75;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ColorPicker {
     pub(super) label: String,
     pub(super) state: MoleculeState,

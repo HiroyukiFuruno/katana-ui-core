@@ -17,6 +17,7 @@ const ITEMS_PRESET_INDEX: usize = 0;
 const SELECT_PRESET_INDEX: usize = 1;
 const MULTI_PRESET_INDEX: usize = 2;
 const THEME_PRESET_INDEX: usize = 3;
+const VIRTUAL_PRESET_INDEX: usize = 4;
 const SELECTED_ROW_INDEX: usize = 1;
 const MULTI_FOCUS_INDEX: usize = 2;
 const MULTI_PRESET_MASK: u8 = 0b0101;
@@ -177,6 +178,9 @@ fn status_event(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 fn status_state(scenario: ScenarioContext<'_>) -> &'static str {
+    if scenario.preset_index == VIRTUAL_PRESET_INDEX {
+        return "virtual rows=1000";
+    }
     if scenario.screen_state.state_label == "idle" {
         return "single=none multi=none focus=none";
     }
@@ -211,6 +215,9 @@ fn draw_controls(
 }
 
 fn list_surface(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.preset_index == VIRTUAL_PRESET_INDEX {
+        return common::TOKEN;
+    }
     if scenario.preset_index == THEME_PRESET_INDEX {
         return palette.background;
     }
@@ -257,7 +264,7 @@ fn selection_list_focus_index(scenario: ScenarioContext<'_>) -> Option<usize> {
     match scenario.preset_index {
         SELECT_PRESET_INDEX => Some(SELECTED_ROW_INDEX),
         MULTI_PRESET_INDEX => Some(MULTI_FOCUS_INDEX),
-        ITEMS_PRESET_INDEX | THEME_PRESET_INDEX => None,
+        ITEMS_PRESET_INDEX | THEME_PRESET_INDEX | VIRTUAL_PRESET_INDEX => None,
         _ => None,
     }
 }

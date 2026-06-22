@@ -1,6 +1,6 @@
 ## Why
 
-`katana` editor の `toolbar.rs` / `toolbar_popup.rs`、`katana-chat-ui` の vendor bar / composer 上部 action 列、`katana` workspace_toolbar の各画面で「ツールバー（toolbar）アクションが幅に収まらない時に隠れた action を overflow popup に集約する」挙動が求められている。
+`katana` editor の `toolbar.rs` / `toolbar_popup.rs`、`katana-chat-ui` の adapter bar / composer 上部 action 列、`katana` workspace_toolbar の各画面で「ツールバー（toolbar）アクションが幅に収まらない時に隠れた action を overflow popup に集約する」挙動が求められている。
 
 KUC `Toolbar` molecule は actions / groups / disabled / overflow を契約に持つが、現状の実装は overflow popup の挙動（しきい値計算、可視 / 不可視の確定、popup の anchor / placement、キーボード ナビゲーション、accelerator 表示）が薄く、consumer 側で再実装されている。さらに「primary action + secondary action / dropdown action（split button）」「icon-only / icon+label の切替え」「action group の divider」など、現実の toolbar 表現に必要な option が不足している。
 
@@ -32,5 +32,5 @@ KUC `Toolbar` molecule は actions / groups / disabled / overflow を契約に�
 
 - `crates/katana-ui-core/src/molecule/basic.rs`（`Toolbar`）または専用 `molecule/toolbar/` を再配置する。
 - 既存 `Toolbar` の Storybook ページに「overflow」「split action」「density」「accelerator」preset を追加する。
-- consumer (`katana` workspace_toolbar、editor toolbar、`katana-chat-ui` vendor bar) は overflow / display_mode 切替えを KUC option で表現できるようになる。
+- consumer (`katana` workspace_toolbar、editor toolbar、`katana-chat-ui` adapter bar) は overflow / display_mode 切替えを KUC option で表現できるようになる。
 - 共通 placement engine（`04-add-rich-popover-and-hover-card`）に依存。

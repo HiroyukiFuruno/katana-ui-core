@@ -7,7 +7,7 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "collapsible_panel_width_changed",
             "collapsible_panel.width",
             "320",
-            "mode=floating_overlay",
+            "width=320",
         )),
         "virtualization" => Some(spec(
             "virtualized_scroll",
@@ -21,12 +21,12 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "skeleton_cluster_changed",
             "skeleton_cluster.preset",
             "Card",
-            "items=3",
+            "items=2",
         )),
         "motion" => Some(spec(
             "motion_reduce",
             "motion_snapshot_changed",
-            "motion.reduced_motion",
+            "motion.reduced_policy",
             "true",
             "instant=true",
         )),

@@ -64,4 +64,4 @@ test harness MUST UI framework なしで neutral API を構築・実行できる
 #### Scenario: neutral runtime test runs
 
 - **WHEN** runtime / window / surface tests を Noop adapter で実行する
-- **THEN** application creation、window configuration、lifecycle events、surface metrics を Floem / GPUI / egui なしで validate できる
+- **THEN** application creation、window configuration、lifecycle events、surface metrics を framework-specific UI なしで validate できる

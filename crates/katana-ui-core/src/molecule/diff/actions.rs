@@ -32,6 +32,11 @@ impl CodeDiff {
             {
                 self.apply_direction(value)
             }
+            UiAction::SetValue { source, value, .. }
+                if *source == UiActionSource::CodeDiffLanguage =>
+            {
+                self.apply_language(value)
+            }
             UiAction::Press {
                 source: UiActionSource::CodeDiffExpand,
                 ..
@@ -58,6 +63,12 @@ impl CodeDiff {
             return false;
         };
         self.direction = direction;
+        self.state.value = value.to_string();
+        true
+    }
+
+    fn apply_language(&mut self, value: &str) -> bool {
+        self.language = value.to_string();
         self.state.value = value.to_string();
         true
     }

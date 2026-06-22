@@ -3,11 +3,12 @@ use katana_ui_core::component::ComponentAction;
 use katana_ui_core::event::UiEvent;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::layout::{
-    ScrollArea, ScrollAreaAction, ScrollAreaEvent, ScrollAxis, ScrollEdge, ScrollRejectionReason,
-    ScrollbarPlacement, ScrollbarVisibility,
+    Alignment, Length, ScrollArea, ScrollAreaAction, ScrollAreaEvent, ScrollAxis, ScrollEdge,
+    ScrollRejectionReason, ScrollbarPlacement, ScrollbarVisibility,
 };
 use katana_ui_core::render_model::{
-    UiNodeKind, UiRect, UiScrollAreaAxis, UiScrollbarPlacement, UiScrollbarVisibility, UiTree,
+    UiAlignItems, UiDimension, UiNodeKind, UiRect, UiScrollAreaAxis, UiScrollbarPlacement,
+    UiScrollbarVisibility, UiTree,
 };
 
 #[test]
@@ -21,6 +22,8 @@ fn scroll_area_render_props_expose_axis_extent_offset_and_scrollbar() {
             .scrollbar_visibility(ScrollbarVisibility::Always)
             .scrollbar_placement(ScrollbarPlacement::Overlay)
             .edge_threshold(16)
+            .gap(Length::px(10.0))
+            .align(Alignment::Center)
             .child(Text::new("Scroll item")),
     );
     let props = tree.root().props();
@@ -42,6 +45,8 @@ fn scroll_area_render_props_expose_axis_extent_offset_and_scrollbar() {
         props.scroll_area.scrollbar_placement
     );
     assert_eq!(16, props.scroll_area.edge_threshold);
+    assert_eq!(UiDimension::Px(10), props.scroll_area.gap);
+    assert_eq!(UiAlignItems::Center, props.scroll_area.alignment);
 }
 
 #[test]

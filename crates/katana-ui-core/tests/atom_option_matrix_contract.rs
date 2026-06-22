@@ -13,6 +13,7 @@ fn button_input_color_badge_and_keycap_keep_required_options() {
     );
     let input = UiNode::from(
         Input::new("Search")
+            .input_background_token("input.background")
             .submit_on_enter(true)
             .ime_enabled(true)
             .emoji_enabled(true),
@@ -29,6 +30,10 @@ fn button_input_color_badge_and_keycap_keep_required_options() {
     assert_eq!("open-file", button.props().button.command);
     assert!(button.props().button.keyboard_activation);
     assert_eq!("leading", button.props().button.icon_position);
+    assert_eq!(
+        "input.background",
+        input.props().text_entry.background_token
+    );
     assert!(input.props().text_entry.submit_on_enter);
     assert!(input.props().text_entry.ime_enabled);
     assert!(input.props().text_entry.emoji_enabled);

@@ -1,4 +1,5 @@
 use super::identifiers::{WorkspaceTabGroupId, WorkspaceTabId};
+use crate::render_model::UiIconProps;
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_OVERFLOW_TRIGGER_WIDTH: u16 = 44;
@@ -18,10 +19,11 @@ pub enum WorkspaceTabTone {
 pub struct WorkspaceTab {
     pub id: WorkspaceTabId,
     pub title: String,
-    pub icon: Option<String>,
+    pub icon: Option<UiIconProps>,
     pub dirty: bool,
     pub pinned: bool,
     pub closeable: bool,
+    pub groupable: bool,
     pub tone: WorkspaceTabTone,
     pub tooltip: Option<String>,
     pub group_id: Option<WorkspaceTabGroupId>,
@@ -38,6 +40,7 @@ impl WorkspaceTab {
             dirty: false,
             pinned: false,
             closeable: true,
+            groupable: true,
             tone: WorkspaceTabTone::Default,
             tooltip: None,
             group_id: None,
@@ -47,7 +50,13 @@ impl WorkspaceTab {
 
     #[must_use]
     pub fn icon(mut self, value: impl Into<String>) -> Self {
-        self.icon = Some(value.into());
+        self.icon = Some(UiIconProps::new(value));
+        self
+    }
+
+    #[must_use]
+    pub fn svg_icon(mut self, value: UiIconProps) -> Self {
+        self.icon = Some(value);
         self
     }
 
@@ -66,6 +75,12 @@ impl WorkspaceTab {
     #[must_use]
     pub fn closeable(mut self, value: bool) -> Self {
         self.closeable = value;
+        self
+    }
+
+    #[must_use]
+    pub fn groupable(mut self, value: bool) -> Self {
+        self.groupable = value;
         self
     }
 

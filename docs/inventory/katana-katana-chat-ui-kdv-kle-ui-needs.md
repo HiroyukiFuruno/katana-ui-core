@@ -42,11 +42,11 @@ KUC が持つ対象は、最小部品（atoms）と複合部品（molecules）�
 - `crates/katana-chat-ui/src/message.rs`
 - `crates/katana-chat-ui/src/input/attachment.rs`
 - `crates/katana-chat-ui/src/input/path_drop.rs`
-- `crates/katana-chat-ui/src/vendor_ui/**/*.rs`
+- `crates/katana-chat-ui/src/adapter_ui/**/*.rs`
 - `crates/katana-chat-ui/src/usage.rs`
-- `crates/katana-chat-ui-floem/src/widget/**/*.rs`
-- `crates/katana-chat-ui-egui/src/**/*.rs`
-- `crates/katana-chat-ui-gpui/src/**/*.rs`
+- `crates/katana-chat-ui-adapter/src/widget/**/*.rs`
+- `crates/katana-chat-ui-adapter/src/**/*.rs`
+- `crates/katana-chat-ui-adapter/src/**/*.rs`
 
 ### KDV / KLE
 
@@ -76,7 +76,7 @@ KUC が持つ対象は、最小部品（atoms）と複合部品（molecules）�
 | 01 | 文脈メニュー（context menu） | 右クリック位置やボタン付近に出る縦メニュー | action、submenu、toggle、radio、shortcut 表示を選ぶ | katana tab / explorer / editor 周辺、chat output | `ContextMenu` はあるが、shared overlay / placement と consumer preset の整理が必要 |
 | 02 | drag and drop primitive | ドラッグ中の影、drop 線、drop 領域 | 並べ替え、添付 drop、ツリー移動 | katana tab / explorer、chat attachment | 現行 KUC に共通 DnD model が不足 |
 | 03 | closeable tab strip | 横並びの tab、close、dirty dot、overflow | 文書・session の切替、閉じる、並べ替え | katana document tabs / workspace tabs | `Tabs` は segmented 用で、closeable / draggable / grouped tab には option 不足。workspace domain は入れない |
-| 04 | overlay placement / popover / hover card | 対象の近くに浮く説明・詳細・小パネル | hover / focus / click で詳細を開閉 | diagnostics hover、image/diagram controls、vendor tooltip | `Popover` / `Tooltip` はあるが rich content、delay、arrow、pointer-follow、shared placement が不足 |
+| 04 | overlay placement / popover / hover card | 対象の近くに浮く説明・詳細・小パネル | hover / focus / click で詳細を開閉 | diagnostics hover、image/diagram controls、adapter tooltip | `Popover` / `Tooltip` はあるが rich content、delay、arrow、pointer-follow、shared placement が不足 |
 | 05 | toolbar overflow / action rail | 横並びの icon button 群と、入り切らない分の menu | command 実行、表示切替、overflow 操作 | editor 周辺 toolbar、preview side rail、chat composer footer | `Toolbar` はあるが overflow partition、priority、roving focus が不足 |
 | 06 | multiline text input | 複数行の入力欄、placeholder、IME 下線 | chat composer、簡易メモ、form 長文入力 | chat composer、settings、KLE 周辺入力 | `Input` はあるが `TextArea` atom が不足。KLE 本文 editor そのものは対象外 |
 | 07 | chip / attachment chip / chip group | 丸い pill、アイコン、ラベル、削除ボタン、進捗 | 添付、filter、tag、paste preview を表す | chat attachment tray、explorer filter、diagnostic filter | KUC に Chip 系 atom / molecule が不足 |
@@ -114,7 +114,7 @@ KUC が持つ対象は、最小部品（atoms）と複合部品（molecules）�
 | `KeyCap` | modifier + key の platform 表示、検索可能 cheatsheet が不足 | `13-add-shortcut-combo-display` |
 | `CommandPalette` | result row / provider group / keyboard selection / shortcut badge / virtualized highlight は `21-add-command-launcher-results` で対応済み。provider dispatch と app command registry は domain 側に残す | `21-add-command-launcher-results` |
 | `SearchBox` | match case / whole word / regex、前後移動、件数、replace controls は `SearchControlStrip` の typed state / action / event / Storybook settings へ移管済み | `22-add-search-control-strip` |
-| なし | KDV が描画済みの RGBA preview surface、content scale、fit、accessibility label、検索 highlight rect を `UiTree` / adapter plan に載せる契約がない | `23-add-preview-surface-image-contract` |
+| なし | KDV が描画済みの RGBA preview surface、content scale、fit、accessibility label、検索 highlight rect を `UiTree` / integration plan に載せる契約がない | `23-add-preview-surface-image-contract` |
 
 ## 利用側が組む organisms / templates
 
@@ -122,7 +122,7 @@ KUC が持つ対象は、最小部品（atoms）と複合部品（molecules）�
 | --- | --- |
 | KDV | viewer surface、TOC panel、image / diagram overlay controls、export side panel。ただし viewer surface の描画済み RGBA payload は KUC `ImageSurface` node に載せられる |
 | KLE | editor surface、gutter、selection、diagnostic decoration、find bar |
-| katana-chat-ui | chat root、message thread、composer、vendor controls、history panel |
+| katana-chat-ui | chat root、message thread、composer、adapter controls、history panel |
 | katana | app frame、workspace shell、title area、dashboard、splash screen |
 
 KUC はこれらを直接提供しない。

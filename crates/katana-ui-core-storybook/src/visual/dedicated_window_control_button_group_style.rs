@@ -12,6 +12,14 @@ const COMPACT_BUTTON_SIZE: usize = 14;
 const TALL_BUTTON_SIZE: usize = 18;
 
 pub(super) fn chrome_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario
+        .screen_state
+        .runtime_structured
+        .window_control
+        .focused
+    {
+        return palette.hover_border;
+    }
     if scenario.preset_index == FULLSCREEN_PRESET_INDEX {
         return common::PURPLE;
     }
@@ -19,6 +27,14 @@ pub(super) fn chrome_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>
 }
 
 pub(super) fn close_fill(scenario: ScenarioContext<'_>) -> u32 {
+    if scenario
+        .screen_state
+        .runtime_structured
+        .window_control
+        .pressed_close
+    {
+        return common::DANGER;
+    }
     if scenario.screen_state.has_widget_action()
         || scenario.screen_state.has_settings_override()
         || scenario.preset_index == CLOSE_ONLY_PRESET_INDEX
@@ -29,6 +45,14 @@ pub(super) fn close_fill(scenario: ScenarioContext<'_>) -> u32 {
 }
 
 pub(super) fn minimize_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario
+        .screen_state
+        .runtime_structured
+        .window_control
+        .hover_visible
+    {
+        return palette.accent;
+    }
     if scenario.preset_index == CLOSE_ONLY_PRESET_INDEX {
         return palette.panel;
     }
@@ -36,6 +60,14 @@ pub(super) fn minimize_fill(palette: &VisualPalette, scenario: ScenarioContext<'
 }
 
 pub(super) fn maximize_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario
+        .screen_state
+        .runtime_structured
+        .window_control
+        .keyboard_restore
+    {
+        return common::PURPLE;
+    }
     if scenario.preset_index == CLOSE_ONLY_PRESET_INDEX {
         return palette.panel;
     }

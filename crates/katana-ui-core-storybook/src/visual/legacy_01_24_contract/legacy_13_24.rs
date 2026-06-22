@@ -92,7 +92,7 @@ pub(super) const CONTRACTS: &[LegacyPageContract] = &[
         "interaction.value",
         "0.64",
         "ratio=0.64",
-        "min clamp",
+        "min percent clamp",
     ),
     contract!(
         20,
@@ -136,7 +136,7 @@ pub(super) const CONTRACTS: &[LegacyPageContract] = &[
         "color_swatch.selected_color",
         "rgba(64,128,255,204)",
         "rgba=accent",
-        "rgba panel",
+        "rgba value",
     ),
     contract!(
         23,
@@ -147,7 +147,7 @@ pub(super) const CONTRACTS: &[LegacyPageContract] = &[
         "color_swatch.selected_color",
         "rgba(64,128,255,204)",
         "rgba=accent",
-        "floating panel",
+        "disabled block",
     ),
     contract!(
         24,
@@ -158,6 +158,6 @@ pub(super) const CONTRACTS: &[LegacyPageContract] = &[
         "interaction.value",
         "Split",
         "mode=split",
-        "japanese whitespace",
+        "markdown language",
     ),
 ];

@@ -86,5 +86,5 @@ NewlineKey = Enter | ShiftEnter | Disabled
 
 - `Input` atom はそのまま 1 行入力に固定する
 - chat composer の `ImeMultilineEditor` を KUC `TextArea` に置き換える前提
-- adapter（floem / egui / gpui）に multi-line + IME の compile-gate を追加
+- external runtime boundary に multi-line + IME の neutral contract を追加
 - Storybook は `Atom > TextArea` に分類し、chat composer / search multiline / long text / auto grow / max rows / IME input / emoji input の preset を出す

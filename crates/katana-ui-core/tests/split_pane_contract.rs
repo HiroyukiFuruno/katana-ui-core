@@ -3,10 +3,13 @@ use katana_ui_core::component::ComponentAction;
 use katana_ui_core::event::UiEvent;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::layout::{
-    SplitPane, SplitPaneAction, SplitPaneAxis, SplitPaneEvent, SplitPaneResizeMode,
-    SplitPaneResizeSource,
+    Alignment, Length, OverflowBehavior, SplitPane, SplitPaneAction, SplitPaneAxis, SplitPaneEvent,
+    SplitPaneResizeMode, SplitPaneResizeSource,
 };
-use katana_ui_core::render_model::{UiNodeKind, UiSplitPaneAxis, UiSplitPaneResizeMode, UiTree};
+use katana_ui_core::render_model::{
+    UiAlignItems, UiDimension, UiDisplay, UiJustifyContent, UiLayoutAxis, UiNodeKind, UiOverflow,
+    UiSplitPaneAxis, UiSplitPaneResizeMode, UiTree,
+};
 
 #[test]
 fn split_pane_render_props_expose_axis_ratio_bounds_and_handle() {
@@ -19,6 +22,9 @@ fn split_pane_render_props_expose_axis_ratio_bounds_and_handle() {
             .reset_percent(50)
             .handle_width_px(10)
             .resize_mode(SplitPaneResizeMode::PointerAndKeyboard)
+            .gap(Length::px(8.0))
+            .align(Alignment::Center)
+            .overflow(OverflowBehavior::Scroll)
             .child(Text::new("Top"))
             .child(Text::new("Bottom")),
     );
@@ -36,6 +42,12 @@ fn split_pane_render_props_expose_axis_ratio_bounds_and_handle() {
         props.split_pane.resize_mode
     );
     assert_eq!(2, tree.root().children().len());
+    assert_eq!(UiDisplay::Flex, props.common.display);
+    assert_eq!(UiLayoutAxis::Vertical, props.common.layout_axis);
+    assert_eq!(UiDimension::Px(8), props.common.gap);
+    assert_eq!(UiAlignItems::Center, props.common.align_items);
+    assert_eq!(UiJustifyContent::Center, props.common.justify_content);
+    assert_eq!(UiOverflow::Scroll, props.common.overflow);
 }
 
 #[test]

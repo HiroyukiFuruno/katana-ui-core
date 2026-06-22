@@ -3,6 +3,8 @@ use katana_ui_core::atom::{
     TextAreaKeyChord, TextAreaNewlineKey, TextAreaSubmitKey, TextAreaTabBehavior,
     TextAreaValidationError, TextAreaWrapPolicy,
 };
+use katana_ui_core::component::ComponentAction;
+use katana_ui_core::interaction::UiAction;
 use katana_ui_core::render_model::{UiNode, UiNodeKind, UiSlotPlacement, UiVisualRole};
 
 #[test]
@@ -110,6 +112,35 @@ fn disabled_and_readonly_suppress_text_area_actions() {
     assert!(readonly_result.events.is_empty());
     assert_eq!("locked", disabled.state().value);
     assert_eq!("locked", readonly.state().value);
+}
+
+#[test]
+fn readonly_text_area_allows_focus_selection_and_submit_without_value_mutation() {
+    let mut readonly = TextArea::new("Readonly").value("locked").readonly(true);
+
+    let write = readonly.apply_action(&UiAction::input_value(
+        readonly.state_id().clone(),
+        "changed",
+    ));
+    let focus = readonly.apply_action(&UiAction::focus(readonly.state_id().clone()));
+    let selection = readonly.apply_action(&UiAction::cursor_selection(
+        readonly.state_id().clone(),
+        4,
+        1,
+        4,
+    ));
+    let submit = readonly.apply_text_area_action(TextAreaAction::Submit);
+    let node = UiNode::from(readonly);
+
+    assert!(!write.handled);
+    assert!(focus.handled);
+    assert!(selection.handled);
+    assert!(submit.handled);
+    assert_eq!("locked", node.props().interaction.value);
+    assert!(node.props().interaction.focused);
+    assert_eq!(4, node.props().interaction.cursor);
+    assert_eq!(1, node.props().interaction.selection_start);
+    assert_eq!(4, node.props().interaction.selection_end);
 }
 
 #[test]

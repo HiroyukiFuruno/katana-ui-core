@@ -93,6 +93,7 @@ pub struct UiTextEntryProps {
     pub trailing_slot: Option<UiSlotSpec>,
     pub trailing_icon_buttons: Vec<UiSlotSpec>,
     pub clear_action: Option<UiClearActionSpec>,
+    pub background_token: String,
     pub submit_on_enter: bool,
     pub ime_enabled: bool,
     pub emoji_enabled: bool,

@@ -1,13 +1,20 @@
 use super::super::button_operation::{StorybookButtonOperation, button_operation_at};
-use super::super::{StorybookWindowState, apply_click};
+use super::super::{
+    StorybookCursorStyle, StorybookWindowState, apply_click, cursor_style_at_for_test,
+};
 use crate::catalog::StoryCatalog;
+use crate::test_assert::KucTestExpect;
 use crate::visual::preview_detail;
-use crate::visual::{dedicated_dod_form_binary_choice_live, layout_metrics};
+use crate::visual::visual_interaction_test_support::component_body_pixel_diff;
+use crate::visual::{
+    dedicated_dod_form_binary_choice_live, layout_metrics, render, storybook_ui_option_contract,
+};
 use std::collections::BTreeSet;
 
 const HERO_X: usize = preview_detail::HERO_PREVIEW_X_FOR_TEST;
 const HERO_Y: usize = preview_detail::HERO_PREVIEW_Y_FOR_TEST;
 const CLICK_CENTER: usize = 2;
+const DARK_THEME: &str = "dark";
 
 #[test]
 fn radio_hit_target_includes_mark_label_and_row() {
@@ -29,8 +36,12 @@ fn radio_hit_target_includes_mark_label_and_row() {
     .enumerate()
     {
         assert_eq!(
-            Some(StorybookButtonOperation::PreviewComponent),
+            Some(StorybookButtonOperation::RadioSelect),
             button_operation_at(&state, point.0, point.1)
+        );
+        assert_eq!(
+            StorybookCursorStyle::PointingHand,
+            cursor_style_at_for_test(&state, point.0, point.1)
         );
         assert!(action_rect.contains(point.0, point.1));
         assert!(apply_click(&mut state, point.0, point.1));
@@ -198,4 +209,116 @@ fn radio_state_read_and_select_keep_core_state_id_and_selected_in_sync() {
     );
     assert!(!state.screen_state.radio_state_snapshot().checked);
     assert_eq!("before=true after=false", state.screen_state.state_label);
+}
+
+#[test]
+fn radio_disabled_option_blocks_select_and_reset_mutation() {
+    let mut state = StorybookWindowState {
+        selected_page: "radio",
+        ..StorybookWindowState::default()
+    };
+    let disabled_option = storybook_ui_option_contract::options_for_page("radio")
+        .iter()
+        .find(|option| option.setting == "disabled")
+        .cloned()
+        .kuc_expect("radio disabled option must exist");
+    assert!(
+        state
+            .screen_state
+            .register_binary_choice_contract_setting("radio", disabled_option)
+    );
+    assert!(state.screen_state.is_radio_disabled());
+    let before_state = state.screen_state.clone();
+    let before_canvas = render_radio(&state);
+    let select = dedicated_dod_form_binary_choice_live::radio_select_button_rect(HERO_X, HERO_Y);
+    let reset = dedicated_dod_form_binary_choice_live::radio_reset_button_rect(HERO_X, HERO_Y);
+
+    assert!(apply_click(
+        &mut state,
+        select.x + CLICK_CENTER,
+        select.y + CLICK_CENTER
+    ));
+    assert!(apply_click(
+        &mut state,
+        reset.x + CLICK_CENTER,
+        reset.y + CLICK_CENTER
+    ));
+    let after_canvas = render_radio(&state);
+
+    assert_eq!(before_state, state.screen_state);
+    assert_eq!(
+        0,
+        component_body_pixel_diff("radio", &before_canvas, &after_canvas)
+    );
+}
+
+#[test]
+fn radio_group_selection_keeps_only_one_selected_index() {
+    let mut state = StorybookWindowState {
+        selected_page: "radio",
+        ..StorybookWindowState::default()
+    };
+    let first = dedicated_dod_form_binary_choice_live::radio_row_rect(0, HERO_X, HERO_Y);
+    let second = dedicated_dod_form_binary_choice_live::radio_row_rect(1, HERO_X, HERO_Y);
+
+    assert!(apply_click(
+        &mut state,
+        first.x + CLICK_CENTER,
+        first.y + CLICK_CENTER
+    ));
+    assert!(state.screen_state.radio_state_snapshot().checked);
+    assert!(
+        state
+            .screen_state
+            .radio_state_snapshot()
+            .interaction
+            .has_selection
+    );
+    assert_eq!(
+        0,
+        state
+            .screen_state
+            .radio_state_snapshot()
+            .interaction
+            .selected_index
+    );
+    let first_canvas = render_radio(&state);
+
+    assert_eq!(
+        Some(StorybookButtonOperation::RadioSelectIndex(1)),
+        button_operation_at(&state, second.x + CLICK_CENTER, second.y + CLICK_CENTER)
+    );
+    assert!(apply_click(
+        &mut state,
+        second.x + CLICK_CENTER,
+        second.y + CLICK_CENTER
+    ));
+    assert!(state.screen_state.radio_state_snapshot().checked);
+    assert!(
+        state
+            .screen_state
+            .radio_state_snapshot()
+            .interaction
+            .has_selection
+    );
+    assert_eq!(
+        1,
+        state
+            .screen_state
+            .radio_state_snapshot()
+            .interaction
+            .selected_index
+    );
+    let second_canvas = render_radio(&state);
+
+    assert!(component_body_pixel_diff("radio", &first_canvas, &second_canvas) > 0);
+}
+
+fn render_radio(state: &StorybookWindowState) -> super::super::super::Canvas {
+    render::render_storybook_canvas_with_screen_state(
+        DARK_THEME,
+        "radio",
+        state.preset_index,
+        state.screen_state.clone(),
+    )
 }

@@ -99,6 +99,12 @@ impl UiBorder {
         self.radius_px = value;
         self
     }
+
+    #[must_use]
+    pub fn color_token(mut self, value: impl Into<String>) -> Self {
+        self.color_token = value.into();
+        self
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -110,6 +116,25 @@ pub enum UiDisplay {
     Grid,
     Contents,
     None,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UiLayoutAxis {
+    #[default]
+    Unspecified,
+    Horizontal,
+    Vertical,
+    Both,
+    Overlay,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UiOverflow {
+    #[default]
+    Visible,
+    Hidden,
+    Scroll,
+    Auto,
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

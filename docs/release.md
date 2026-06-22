@@ -5,7 +5,6 @@
 `release/vX.Y.Z` ブランチから `master` へ取り込み依頼（Pull Request）を作る。
 取り込み依頼では通常の品質ゲート（quality gate）とリリース前検査を必須にする。
 取り込み（merge）後は自動実行基盤（GitHub Actions）がタグ（tag）、GitHubリリース（GitHub Release）、crates.io公開を実行する。
-互換変換層（compatibility adapter）の失敗でリリースを止める条件は [`compat-adapters.md`](compat-adapters.md) に固定する。
 Storybook は `katana-ui-core` の core-only 確認だけを必須にする。
 
 ## 必須検査
@@ -30,7 +29,7 @@ GitHub のブランチ保護（branch protection）では、KUC repo 内で次�
 - 対象版番号（version）が公開済みrelease lineから自然な次版であること
 - 対象版番号（version）がcrates.ioに未公開であること
 - `katana-ui-core` の梱包（package）と公開の事前実行（publish dry-run）
-- primary adapter 候補である `katana-ui-core-floem` の release gate。`katana-ui-core` が crates.io 公開済みなら梱包（package）と公開の事前実行（publish dry-run）、初回公開前なら package file list / compile / test を実行する。
+外部変換層 crate の梱包や公開は、この repository の release gate に含めない。
 
 ## 公開順序
 
@@ -41,7 +40,6 @@ GitHub のブランチ保護（branch protection）では、KUC repo 内で次�
 2. リリースタグ（release tag）作成
 3. GitHubリリース（GitHub Release）作成
 4. `katana-ui-core` をcrates.ioに公開
-5. `katana-ui-core-floem` をcrates.ioに公開
 
 ## 必要な秘匿値
 

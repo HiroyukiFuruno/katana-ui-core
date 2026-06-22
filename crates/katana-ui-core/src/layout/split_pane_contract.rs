@@ -10,6 +10,7 @@ pub struct SplitPaneOptions {
     pub reset_percent: u8,
     pub handle_width_px: u8,
     pub resize_mode: super::SplitPaneResizeMode,
+    pub overflow: super::OverflowBehavior,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

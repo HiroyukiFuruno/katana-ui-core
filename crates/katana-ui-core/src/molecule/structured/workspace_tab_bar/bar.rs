@@ -1,23 +1,21 @@
 use super::actions::WorkspaceTabBarAction;
 use super::events::WorkspaceTabBarEvent;
-use super::identifiers::WorkspaceTabId;
+use super::identifiers::{WorkspaceTabGroupId, WorkspaceTabId};
 use super::keyboard::{WorkspaceTabKeyboardController, WorkspaceTabKeyboardInput};
+pub use super::model::WorkspaceTabBar;
 use super::options::{WorkspaceTab, WorkspaceTabBarOptions, WorkspaceTabGroup, WorkspaceTabTone};
 use super::ordering::ordered_tabs;
+use super::overflow::{
+    MeasuredWorkspaceTab, WorkspaceTabOverflowConfig, WorkspaceTabOverflowPlan,
+    WorkspaceTabOverflowPlanner,
+};
 use super::state::WorkspaceTabBarState;
-use crate::render_model::{UiCommonProps, UiDimension, UiNode, UiNodeKind, UiVisualRole};
-use serde::{Deserialize, Serialize};
+use crate::render_model::{
+    UiCommonProps, UiDimension, UiNode, UiNodeKind, UiStateId, UiVisualRole,
+};
 
 const WORKSPACE_TAB_BAR_HEIGHT_PX: u16 = 40;
 const WORKSPACE_TAB_HEIGHT_PX: u16 = 36;
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct WorkspaceTabBar {
-    pub(super) label: String,
-    pub(super) options: WorkspaceTabBarOptions,
-    pub(super) state: WorkspaceTabBarState,
-    pub(super) event_log: Vec<WorkspaceTabBarEvent>,
-}
 
 impl WorkspaceTabBar {
     #[must_use]
@@ -39,6 +37,12 @@ impl WorkspaceTabBar {
     }
 
     #[must_use]
+    pub fn recently_closed_tab(mut self, tab: WorkspaceTab) -> Self {
+        self.state.record_closed_tab(tab);
+        self
+    }
+
+    #[must_use]
     pub fn group(mut self, group: WorkspaceTabGroup) -> Self {
         self.options.groups.push(group);
         self
@@ -47,6 +51,25 @@ impl WorkspaceTabBar {
     #[must_use]
     pub fn active_tab_id(mut self, value: impl Into<WorkspaceTabId>) -> Self {
         self.state.active_tab_id = Some(value.into());
+        self
+    }
+
+    #[must_use]
+    pub fn stable_state_id(mut self, value: impl Into<UiStateId>) -> Self {
+        self.state.state_id = value.into();
+        self.state.sync_child_states(&self.options.tabs);
+        self
+    }
+
+    #[must_use]
+    pub fn overflow_trigger_width(mut self, value: u16) -> Self {
+        self.options.overflow_trigger_width = value;
+        self
+    }
+
+    #[must_use]
+    pub fn collapsed_group_auto_expand_ms(mut self, value: u16) -> Self {
+        self.options.collapsed_group_auto_expand_ms = value;
         self
     }
 
@@ -67,39 +90,20 @@ impl WorkspaceTabBar {
 
     #[must_use]
     pub fn visual_tabs(&self) -> Vec<&WorkspaceTab> {
-        ordered_tabs(&self.options.tabs)
+        ordered_tabs(&self.options.tabs, &self.options.groups)
     }
 
-    pub fn apply_action(&mut self, action: WorkspaceTabBarAction) -> Vec<WorkspaceTabBarEvent> {
-        let events = match action {
-            WorkspaceTabBarAction::SelectTab { tab_id } => self.select_tab(tab_id),
-            WorkspaceTabBarAction::CloseTab { tab_id } => self.close_tab(tab_id),
-            WorkspaceTabBarAction::PinTab { tab_id } => self.set_pinned(tab_id, true),
-            WorkspaceTabBarAction::UnpinTab { tab_id } => self.set_pinned(tab_id, false),
-            WorkspaceTabBarAction::MoveTab {
-                tab_id,
-                to_visual_index,
-            } => self.move_tab(tab_id, to_visual_index),
-            WorkspaceTabBarAction::MoveToGroup { tab_id, target } => {
-                self.move_to_group(tab_id, target)
-            }
-            WorkspaceTabBarAction::StartDrag { tab_id } => self.start_drag(tab_id),
-            WorkspaceTabBarAction::EndDrag { committed } => self.end_drag(committed),
-            WorkspaceTabBarAction::CancelDrag => self.end_drag(false),
-            WorkspaceTabBarAction::HoverCollapsedGroupForDrop {
-                group_id,
-                elapsed_ms,
-            } => self.hover_collapsed_group_for_drop(group_id, elapsed_ms),
-            WorkspaceTabBarAction::ToggleGroupCollapse { group_id } => {
-                self.toggle_group_collapse(group_id)
-            }
-            WorkspaceTabBarAction::OpenOverflow { hidden_tab_ids } => {
-                self.open_overflow(hidden_tab_ids)
-            }
-            WorkspaceTabBarAction::ConfirmClose { tab_id } => self.confirm_close(tab_id),
-        };
-        self.event_log.extend(events.clone());
-        events
+    #[must_use]
+    pub fn overflow_plan(
+        &self,
+        available_width: u16,
+        measured_tabs: &[MeasuredWorkspaceTab],
+    ) -> WorkspaceTabOverflowPlan {
+        WorkspaceTabOverflowPlanner::compute(
+            WorkspaceTabOverflowConfig::new(available_width, self.options.overflow_trigger_width),
+            measured_tabs,
+            self.state.active_tab_id.as_ref(),
+        )
     }
 
     pub fn apply_keyboard_input(
@@ -129,16 +133,71 @@ impl From<WorkspaceTabBar> for UiNode {
         let interaction = value.state.interaction(value.options.tabs.len());
         let state_id = value.state.state_id.clone();
         let label = value.label.clone();
-        let mut node = UiNode::from_state(UiNodeKind::CloseableTabStrip, label, state_id)
+        let node = UiNode::from_state(UiNodeKind::CloseableTabStrip, label, state_id)
             .common(common)
             .interaction(interaction)
             .visual_role(UiVisualRole::Control)
             .style_class("closeable-tab-strip");
-        for tab in value.visual_tabs() {
-            node = node.child(workspace_tab_node(tab, value.state.child_state_id(&tab.id)));
-        }
-        node
+        append_workspace_tab_children(node, &value.options, &value.state)
     }
+}
+
+fn append_workspace_tab_children(
+    mut node: UiNode,
+    options: &WorkspaceTabBarOptions,
+    state: &WorkspaceTabBarState,
+) -> UiNode {
+    for tab in options.tabs.iter().filter(|tab| tab.pinned) {
+        node = node.child(workspace_tab_node(tab, state.child_state_id(&tab.id)));
+    }
+    for group in &options.groups {
+        let grouped_tabs = group_tabs(options, &group.id);
+        if grouped_tabs.is_empty() {
+            continue;
+        }
+        node = node.child(workspace_group_header_node(group));
+        if group.collapsed {
+            continue;
+        }
+        for tab in grouped_tabs {
+            node = node.child(workspace_tab_node(tab, state.child_state_id(&tab.id)));
+        }
+    }
+    for tab in unknown_group_tabs(options) {
+        node = node.child(workspace_tab_node(tab, state.child_state_id(&tab.id)));
+    }
+    for tab in options
+        .tabs
+        .iter()
+        .filter(|tab| !tab.pinned && tab.group_id.is_none())
+    {
+        node = node.child(workspace_tab_node(tab, state.child_state_id(&tab.id)));
+    }
+    node
+}
+
+fn group_tabs<'a>(
+    options: &'a WorkspaceTabBarOptions,
+    group_id: &WorkspaceTabGroupId,
+) -> Vec<&'a WorkspaceTab> {
+    options
+        .tabs
+        .iter()
+        .filter(|tab| !tab.pinned && tab.group_id.as_ref() == Some(group_id))
+        .collect()
+}
+
+fn unknown_group_tabs(options: &WorkspaceTabBarOptions) -> Vec<&WorkspaceTab> {
+    options
+        .tabs
+        .iter()
+        .filter(|tab| {
+            !tab.pinned
+                && tab.group_id.as_ref().is_some_and(|group_id| {
+                    options.groups.iter().all(|group| group.id != *group_id)
+                })
+        })
+        .collect()
 }
 
 fn workspace_tab_node(
@@ -166,7 +225,33 @@ fn workspace_tab_node(
     if tab.dirty {
         node = node.style_class("closeable-tab-dirty");
     }
+    if let Some(icon) = tab.icon.as_ref() {
+        node = node.icon(icon.clone());
+    }
     node
+}
+
+fn workspace_group_header_node(group: &WorkspaceTabGroup) -> UiNode {
+    let mut node = UiNode::new(UiNodeKind::CloseableTabGroupHeader, group.label.clone())
+        .width(UiDimension::FitContent)
+        .height(UiDimension::Px(WORKSPACE_TAB_HEIGHT_PX))
+        .focusable(true)
+        .selectable(true)
+        .accessibility_label(group_accessibility_text(group))
+        .style_class("closeable-tab-group-header");
+    if group.collapsed {
+        node = node.style_class("closeable-tab-group-collapsed");
+    }
+    node
+}
+
+fn group_accessibility_text(group: &WorkspaceTabGroup) -> String {
+    let expanded = if group.collapsed {
+        "collapsed"
+    } else {
+        "expanded"
+    };
+    format!("{} group {expanded}", group.label)
 }
 
 fn tab_tone(tone: WorkspaceTabTone) -> crate::render_model::UiTone {

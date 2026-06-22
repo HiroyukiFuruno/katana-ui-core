@@ -8,6 +8,7 @@ use super::text::TextRenderer;
 const COLUMN_ALIGN_PRESET_INDEX: usize = 1;
 const COLUMN_OVERFLOW_PRESET_INDEX: usize = 2;
 const COLUMN_THEME_PRESET_INDEX: usize = 3;
+const COLUMN_PAGE: &str = "column";
 const TRACK_X: usize = m::PX_16;
 const TRACK_Y: usize = m::PX_38;
 const TRACK_WIDTH: usize = m::PX_252;
@@ -36,7 +37,9 @@ pub(super) fn column(
     x: usize,
     y: usize,
 ) {
-    let accent = if scenario.screen_state.has_settings_override() {
+    let accent = if scenario.screen_state.layout.is_page(COLUMN_PAGE)
+        || scenario.screen_state.has_settings_override()
+    {
         common::SUCCESS
     } else {
         palette.accent
@@ -189,6 +192,13 @@ fn draw_status(
 }
 
 fn status_labels(scenario: ScenarioContext<'_>) -> [&'static str; STATUS_LABEL_COUNT] {
+    if scenario.screen_state.layout.is_page(COLUMN_PAGE) {
+        return [
+            scenario.screen_state.last_action,
+            scenario.screen_state.last_event,
+            scenario.screen_state.state_label,
+        ];
+    }
     if scenario.screen_state.has_settings_override() {
         return ["action layout", "event changed", "state override"];
     }

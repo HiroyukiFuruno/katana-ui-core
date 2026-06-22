@@ -9,6 +9,7 @@ pub(super) fn rows_fit(examples: &[StoryExample]) -> bool {
     let screen_state = StorybookScreenState::default();
     let scenario = ScenarioContext {
         selected_page: DEFAULT_STORYBOOK_PAGE,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index: 0,
         preset_tab_scroll_x: 0,
         tree_expansion: Default::default(),

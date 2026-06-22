@@ -11,10 +11,12 @@ const REMOVED: u32 = 0x5a2328;
 const ADDED: u32 = 0x244d31;
 const UNCHANGED: u32 = 0x2d2d30;
 const CODE_DIFF_SLOT_COUNT: usize = 7;
-const VERTICAL_SPLIT_PRESET_INDEX: usize = 1;
-const INLINE_PRESET_INDEX: usize = 2;
-const COLLAPSED_PRESET_INDEX: usize = 3;
-const JAPANESE_WHITESPACE_PRESET_INDEX: usize = 4;
+const WHITESPACE_PRESET_INDEX: usize = 1;
+const DIRECTION_PRESET_INDEX: usize = 2;
+const CONTEXT_PRESET_INDEX: usize = 3;
+const ITEM_COUNT_PRESET_INDEX: usize = 4;
+const SCROLL_SYNC_PRESET_INDEX: usize = 5;
+const LANGUAGE_PRESET_INDEX: usize = 6;
 const SURFACE_TOKEN_X: usize = 338;
 const SURFACE_TOKEN_Y: usize = 20;
 const SURFACE_TOKEN_WIDTH: usize = 140;
@@ -48,9 +50,12 @@ pub(super) fn code_diff(
 
 fn code_diff_blocks(preset_index: usize, mode_fill: u32) -> [Block; CODE_DIFF_SLOT_COUNT] {
     match preset_index {
-        VERTICAL_SPLIT_PRESET_INDEX => vertical_split_blocks(mode_fill),
-        INLINE_PRESET_INDEX => inline_blocks(mode_fill),
-        COLLAPSED_PRESET_INDEX => horizontal_split_blocks(common::WARN),
+        WHITESPACE_PRESET_INDEX => horizontal_split_blocks(common::TOKEN),
+        DIRECTION_PRESET_INDEX => vertical_split_blocks(mode_fill),
+        CONTEXT_PRESET_INDEX => horizontal_split_blocks(common::WARN),
+        ITEM_COUNT_PRESET_INDEX => item_count_blocks(mode_fill),
+        SCROLL_SYNC_PRESET_INDEX => horizontal_split_blocks(common::SUCCESS),
+        LANGUAGE_PRESET_INDEX => horizontal_split_blocks(common::DANGER),
         _ => horizontal_split_blocks(mode_fill),
     }
 }
@@ -90,7 +95,7 @@ fn vertical_split_blocks(mode_fill: u32) -> [Block; CODE_DIFF_SLOT_COUNT] {
     ]
 }
 
-fn inline_blocks(mode_fill: u32) -> [Block; CODE_DIFF_SLOT_COUNT] {
+fn item_count_blocks(mode_fill: u32) -> [Block; CODE_DIFF_SLOT_COUNT] {
     [
         Block::new(m::PX_18, m::PX_34, m::PX_278, m::PX_12, UNCHANGED),
         Block::new(m::PX_18, m::PX_48, m::PX_278, m::PX_12, REMOVED),
@@ -107,8 +112,8 @@ fn code_diff_texts(
     preset_index: usize,
 ) -> [TextSpec; CODE_DIFF_SLOT_COUNT] {
     match preset_index {
-        VERTICAL_SPLIT_PRESET_INDEX => vertical_split_texts(palette),
-        INLINE_PRESET_INDEX => inline_texts(palette),
+        DIRECTION_PRESET_INDEX => vertical_split_texts(palette),
+        ITEM_COUNT_PRESET_INDEX => item_count_texts(palette),
         _ => horizontal_split_texts(palette, preset_index),
     }
 }
@@ -117,10 +122,12 @@ fn horizontal_split_texts(
     palette: &VisualPalette,
     preset_index: usize,
 ) -> [TextSpec; CODE_DIFF_SLOT_COUNT] {
-    let note = if preset_index == JAPANESE_WHITESPACE_PRESET_INDEX {
-        "日本語 / space=· / tab=→"
-    } else {
-        "collapsed / long line / scroll sync"
+    let note = match preset_index {
+        WHITESPACE_PRESET_INDEX => "whitespace=visible / space=· / tab=→",
+        CONTEXT_PRESET_INDEX => "context_lines=0 / collapsed block",
+        SCROLL_SYNC_PRESET_INDEX => "scroll_sync=false / independent panes",
+        LANGUAGE_PRESET_INDEX => "language=markdown / 日本語 diff",
+        _ => "mode=Split / left-right",
     };
     [
         TextSpec::new(m::PX_24, m::PX_36, m::FONT_7, palette.text, " fn render()"),
@@ -175,7 +182,7 @@ fn vertical_split_texts(palette: &VisualPalette) -> [TextSpec; CODE_DIFF_SLOT_CO
     ]
 }
 
-fn inline_texts(palette: &VisualPalette) -> [TextSpec; CODE_DIFF_SLOT_COUNT] {
+fn item_count_texts(palette: &VisualPalette) -> [TextSpec; CODE_DIFF_SLOT_COUNT] {
     [
         TextSpec::new(m::PX_24, m::PX_36, m::FONT_7, palette.text, " fn render()"),
         TextSpec::new(m::PX_24, m::PX_50, m::FONT_7, palette.text, "- old line"),
@@ -185,7 +192,7 @@ fn inline_texts(palette: &VisualPalette) -> [TextSpec; CODE_DIFF_SLOT_COUNT] {
             m::PX_76,
             m::FONT_8,
             palette.muted,
-            "inline disables direction",
+            "item_count=3 compact preview",
         ),
         TextSpec::new(m::PX_24, m::PX_88, m::FONT_7, palette.text, "old"),
         TextSpec::new(m::PX_112, m::PX_88, m::FONT_7, palette.text, "new"),

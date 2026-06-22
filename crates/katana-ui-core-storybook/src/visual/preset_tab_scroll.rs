@@ -65,9 +65,14 @@ pub(super) fn hit_index_at(page: &str, x: usize, y: usize, scroll_x: usize) -> O
 
 pub(super) fn visible_index_range(page: &str, scroll_x: usize) -> std::ops::Range<usize> {
     let labels = StoryPresetLabels::for_page(page);
-    let first = clamp_offset(page, scroll_x).div_ceil(tab_step());
-    let right = clamp_offset(page, scroll_x) + viewport_width();
-    let end = (right / tab_step()).min(labels.len());
+    let offset = clamp_offset(page, scroll_x);
+    let first = offset.div_ceil(tab_step());
+    let right = offset + viewport_width();
+    let end = right
+        .saturating_sub(PRESET_WIDTH)
+        .checked_div(tab_step())
+        .map_or(first, |index| index + 1)
+        .min(labels.len());
     first..end
 }
 

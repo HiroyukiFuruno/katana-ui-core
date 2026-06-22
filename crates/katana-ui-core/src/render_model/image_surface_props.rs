@@ -1,4 +1,4 @@
-use super::{UiNode, UiNodeKind, UiRect, UiTree};
+use super::{UiImageSurfaceTransform, UiRect};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -72,11 +72,17 @@ pub struct UiImageSurfaceProps {
     pub fingerprint: String,
     pub width: u32,
     pub height: u32,
+    pub display_width: u32,
+    pub display_height: u32,
+    pub display_width_milli: u32,
+    pub display_height_milli: u32,
     pub rgba: Vec<u8>,
     pub content_scale: u32,
     pub fit: UiImageSurfaceFit,
     pub accessibility_label: String,
+    pub selection_text: String,
     pub highlight_rects: Vec<UiImageSurfaceHighlight>,
+    pub transform: UiImageSurfaceTransform,
 }
 
 impl UiImageSurfaceProps {
@@ -92,17 +98,41 @@ impl UiImageSurfaceProps {
             fingerprint,
             width,
             height,
+            display_width: 0,
+            display_height: 0,
+            display_width_milli: 0,
+            display_height_milli: 0,
             rgba,
             content_scale: 100,
             fit: UiImageSurfaceFit::Contain,
             accessibility_label: String::new(),
+            selection_text: String::new(),
             highlight_rects: Vec::new(),
+            transform: UiImageSurfaceTransform::default(),
         })
     }
 
     #[must_use]
     pub fn content_scale(mut self, value: u32) -> Self {
         self.content_scale = value;
+        self
+    }
+
+    #[must_use]
+    pub fn display_size(mut self, width: u32, height: u32) -> Self {
+        self.display_width = width;
+        self.display_height = height;
+        self.display_width_milli = width.saturating_mul(DISPLAY_SIZE_MILLI);
+        self.display_height_milli = height.saturating_mul(DISPLAY_SIZE_MILLI);
+        self
+    }
+
+    #[must_use]
+    pub fn display_size_exact(mut self, width: f32, height: f32) -> Self {
+        self.display_width = positive_finite_dimension(width).ceil() as u32;
+        self.display_height = positive_finite_dimension(height).ceil() as u32;
+        self.display_width_milli = display_size_milli(width);
+        self.display_height_milli = display_size_milli(height);
         self
     }
 
@@ -119,8 +149,20 @@ impl UiImageSurfaceProps {
     }
 
     #[must_use]
+    pub fn selection_text(mut self, value: impl Into<String>) -> Self {
+        self.selection_text = value.into();
+        self
+    }
+
+    #[must_use]
     pub fn highlight_rect(mut self, value: UiImageSurfaceHighlight) -> Self {
         self.highlight_rects.push(value);
+        self
+    }
+
+    #[must_use]
+    pub fn transform(mut self, value: UiImageSurfaceTransform) -> Self {
+        self.transform = value;
         self
     }
 
@@ -147,47 +189,18 @@ impl UiImageSurfaceProps {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiImageSurfaceRenderPlan {
-    pub fingerprint: String,
-    pub width: u32,
-    pub height: u32,
-    pub rgba_byte_len: usize,
-    pub content_scale: u32,
-    pub fit: UiImageSurfaceFit,
-    pub accessibility_label: String,
-    pub highlight_rects: Vec<UiImageSurfaceHighlight>,
+const DISPLAY_SIZE_MILLI: u32 = 1000;
+
+fn positive_finite_dimension(value: f32) -> f32 {
+    if value.is_finite() && value > 0.0 {
+        return value;
+    }
+    0.0
 }
 
-impl UiImageSurfaceRenderPlan {
-    #[must_use]
-    pub fn collect_from_tree(tree: &UiTree) -> Vec<Self> {
-        let mut plans = Vec::new();
-        Self::collect_from_node(tree.root(), &mut plans);
-        plans
-    }
-
-    fn collect_from_node(node: &UiNode, plans: &mut Vec<Self>) {
-        if node.kind() == UiNodeKind::ImageSurface {
-            plans.push(Self::from_props(&node.props().image_surface));
-        }
-        for child in node.children() {
-            Self::collect_from_node(child, plans);
-        }
-    }
-
-    fn from_props(props: &UiImageSurfaceProps) -> Self {
-        Self {
-            fingerprint: props.fingerprint.clone(),
-            width: props.width,
-            height: props.height,
-            rgba_byte_len: props.rgba.len(),
-            content_scale: props.content_scale,
-            fit: props.fit,
-            accessibility_label: props.accessibility_label.clone(),
-            highlight_rects: props.highlight_rects.clone(),
-        }
-    }
+fn display_size_milli(value: f32) -> u32 {
+    let value = positive_finite_dimension(value);
+    (value * DISPLAY_SIZE_MILLI as f32).round() as u32
 }
 
 fn expected_rgba_len(width: u32, height: u32) -> Result<usize, UiImageSurfaceValidationError> {

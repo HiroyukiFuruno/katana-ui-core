@@ -3,7 +3,7 @@
 > Superseded: interaction / visual の要件は `openspec/changes/establish-kuc-atoms-molecules-catalog/` の品質ゲートへ移管する。この change の完了記録は旧基準の証跡として扱う。
 
 `ui-core-root-plan` と `katana-widget-parity-backlog` は完了しているが、完了範囲は KUC の中立 model、内部 state、Storybook panel、theme gate の最低線である。
-旧 Floem 実装と同等+αの UI として扱うには、UI ごとの操作意味、専用 props、表示密度、可視検証がまだ不足している。
+旧 Adapter 実装と同等+αの UI として扱うには、UI ごとの操作意味、専用 props、表示密度、可視検証がまだ不足している。
 
 この change は、寝ている間に進めても終わるか終わらない規模の残作業として、KUC 独自 UI の「実操作できる画面部品」化を対象にする。
 
@@ -41,6 +41,6 @@
 ## Non-Goals
 
 - KatanA 本体や sibling repository は変更しない。
-- Floem 旧実装を復活させない。
-- egui / GPUI の本実装はこの change の完了条件にしない。
+- Adapter 旧実装を復活させない。
+- framework-specific adapters の本実装はこの change の完了条件にしない。
 - JSX / TSX 互換は目指さない。

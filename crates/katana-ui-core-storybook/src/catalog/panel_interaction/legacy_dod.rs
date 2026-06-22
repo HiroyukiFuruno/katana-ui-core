@@ -6,6 +6,8 @@ use crate::catalog::StoryExample;
 
 #[path = "legacy_dod_banner_settings.rs"]
 mod legacy_dod_banner_settings;
+#[path = "legacy_dod_card_settings.rs"]
+mod legacy_dod_card_settings;
 #[path = "legacy_dod_chip_settings.rs"]
 mod legacy_dod_chip_settings;
 #[path = "legacy_dod_closeable_tab_strip_settings.rs"]
@@ -70,6 +72,7 @@ impl LegacyDodReports {
         ));
         reports.extend(legacy_dod_banner_settings::settings_mutations(examples));
         reports.extend(legacy_dod_context_menu::settings_mutations(examples));
+        reports.extend(legacy_dod_card_settings::settings_mutations(examples));
         reports.extend(legacy_dod_chip_settings::settings_mutations(examples));
         reports.extend(legacy_dod_color_picker_settings::settings_mutations(
             examples,

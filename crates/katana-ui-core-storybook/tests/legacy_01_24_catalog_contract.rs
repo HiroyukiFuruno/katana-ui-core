@@ -36,6 +36,7 @@ const LEGACY_PAGE_COVERAGE: [(&str, &[&str]); 24] = [
 ];
 
 const INTERACTIVE_LEGACY_PAGES: &[&str] = &[
+    "theme-tokens",
     "loading-dots",
     "spinner",
     "progress-bar",

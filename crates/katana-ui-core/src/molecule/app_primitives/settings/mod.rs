@@ -1,34 +1,29 @@
+mod activation;
 mod component_action;
+mod hit_test;
+mod host_action;
+mod layout_metrics;
+mod list_types;
 mod query;
 mod render;
 mod state;
 mod types;
 
-use crate::render_model::{UiNode, UiNodeKind, UiStateId};
-use serde::{Deserialize, Serialize};
+use crate::render_model::{UiCursor, UiNode, UiNodeId, UiNodeKind, UiStateId};
 use std::collections::BTreeSet;
 
+pub use hit_test::{
+    SettingsListHitRect, SettingsListHitTarget, SettingsListHitTestInput,
+    SettingsListHitTestResult, SettingsListInteraction,
+};
+pub use layout_metrics::SettingsListLayoutMetrics;
+pub use list_types::SettingsList;
 pub use query::SettingsVisibleSection;
 pub use types::{
     SettingsControl, SettingsControlKind, SettingsControlOption, SettingsDirtyVisualization,
     SettingsField, SettingsKeyboardInput, SettingsListAction, SettingsListDensity,
     SettingsListEvent, SettingsSection, SettingsValue,
 };
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SettingsList {
-    label: String,
-    state_id: UiStateId,
-    sections: Vec<SettingsSection>,
-    query: Option<String>,
-    density: SettingsListDensity,
-    dirty_visualization: SettingsDirtyVisualization,
-    collapsed_section_ids: BTreeSet<String>,
-    dirty_field_ids: BTreeSet<String>,
-    focused_field_id: Option<String>,
-    callback_log: Vec<SettingsListEvent>,
-    last_event: Option<SettingsListEvent>,
-}
 
 impl SettingsList {
     #[must_use]
@@ -128,6 +123,123 @@ impl SettingsList {
         state::apply(self, action)
     }
 
+    pub fn apply_field_update(
+        &mut self,
+        field_id: impl Into<String>,
+        value: SettingsValue,
+    ) -> Vec<SettingsListEvent> {
+        self.apply_settings_action(SettingsListAction::UpdateField {
+            field_id: field_id.into(),
+            value,
+        })
+    }
+
+    #[must_use]
+    pub fn activation_action_for_field(&self, field_id: &str) -> Option<SettingsListAction> {
+        activation::field_action(self, field_id)
+    }
+
+    #[must_use]
+    pub fn action_from_host_plan(
+        &self,
+        plan: &crate::render_model::UiHostActionPlan,
+    ) -> Option<SettingsListAction> {
+        host_action::action_from_host_plan(self, plan)
+    }
+
+    #[must_use]
+    pub fn hit_test(&self, input: SettingsListHitTestInput) -> SettingsListHitTestResult {
+        hit_test::hit_test(self, input)
+    }
+
+    #[must_use]
+    pub fn action_for_hit(&self, input: SettingsListHitTestInput) -> Option<SettingsListAction> {
+        hit_test::action_for_hit(self, input)
+    }
+
+    #[must_use]
+    pub fn cursor_for_hit(&self, input: SettingsListHitTestInput) -> UiCursor {
+        hit_test::cursor_for_hit(self, input)
+    }
+
+    #[must_use]
+    pub fn hit_targets(&self, viewport_width: u32) -> Vec<SettingsListHitTarget> {
+        hit_test::hit_targets(self, viewport_width)
+    }
+
+    #[must_use]
+    pub fn hit_target_for_field(
+        &self,
+        field_id: &str,
+        viewport_width: u32,
+    ) -> Option<SettingsListHitTarget> {
+        hit_test::hit_target_for_field(self, field_id, viewport_width)
+    }
+
+    #[must_use]
+    pub fn hit_target_for_section(
+        &self,
+        section_id: &str,
+        viewport_width: u32,
+    ) -> Option<SettingsListHitTarget> {
+        hit_test::hit_target_for_section(self, section_id, viewport_width)
+    }
+
+    #[must_use]
+    pub fn hit_target_for_hit(
+        &self,
+        input: SettingsListHitTestInput,
+        viewport_width: u32,
+    ) -> Option<SettingsListHitTarget> {
+        hit_test::hit_target_for_hit(self, input, viewport_width)
+    }
+
+    #[must_use]
+    pub fn interaction_for_hit(
+        &self,
+        input: SettingsListHitTestInput,
+        viewport_width: u32,
+    ) -> SettingsListInteraction {
+        hit_test::interaction_for_hit(self, input, viewport_width)
+    }
+
+    #[must_use]
+    pub fn content_height(&self) -> u32 {
+        hit_test::content_height(self)
+    }
+
+    #[must_use]
+    pub const fn layout_metrics(&self) -> SettingsListLayoutMetrics {
+        SettingsListLayoutMetrics::DEFAULT
+    }
+
+    #[must_use]
+    pub fn field_node_id(field_id: &str) -> UiNodeId {
+        UiNodeId::new(Self::field_interaction_id(field_id))
+    }
+
+    #[must_use]
+    pub fn control_node_id(field_id: &str) -> UiNodeId {
+        UiNodeId::new(Self::control_interaction_id(field_id))
+    }
+
+    #[must_use]
+    pub fn section_node_id(section_id: &str) -> UiNodeId {
+        UiNodeId::new(Self::section_interaction_id(section_id))
+    }
+
+    pub(super) fn field_interaction_id(field_id: &str) -> String {
+        format!("settings-field:{field_id}")
+    }
+
+    pub(super) fn control_interaction_id(field_id: &str) -> String {
+        format!("settings-control:{field_id}")
+    }
+
+    pub(super) fn section_interaction_id(section_id: &str) -> String {
+        format!("settings-section:{section_id}")
+    }
+
     fn register_section_state(&mut self, section: &SettingsSection) {
         if section.default_collapsed {
             self.collapsed_section_ids.insert(section.id.clone());
@@ -142,3 +254,16 @@ impl From<SettingsList> for UiNode {
         render::render(value)
     }
 }
+
+#[cfg(test)]
+#[path = "action_contract_tests.rs"]
+mod action_contract_tests;
+#[cfg(test)]
+#[path = "hit_contract_tests.rs"]
+mod hit_contract_tests;
+#[cfg(test)]
+#[path = "render_tests.rs"]
+mod render_tests;
+#[cfg(test)]
+#[path = "target_contract_tests.rs"]
+mod target_contract_tests;

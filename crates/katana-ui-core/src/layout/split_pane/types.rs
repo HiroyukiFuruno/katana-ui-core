@@ -1,4 +1,4 @@
-use crate::layout::{Alignment, Length};
+use crate::layout::{Alignment, Length, OverflowBehavior};
 use crate::render_model::{UiInteractionState, UiNode, UiStateId};
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +22,7 @@ pub struct SplitPane {
     pub(in crate::layout) children: Vec<UiNode>,
     pub(super) gap: Length,
     pub(super) alignment: Alignment,
+    pub(super) overflow: OverflowBehavior,
     pub(in crate::layout) interaction: UiInteractionState,
     pub(super) axis: SplitPaneAxis,
     pub(in crate::layout) ratio_percent: u8,

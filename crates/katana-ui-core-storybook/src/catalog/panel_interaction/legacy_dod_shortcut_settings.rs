@@ -2,23 +2,62 @@ use super::{BeforeAfterReport, SettingsMutationReport, TypedOptionMutationReport
 use crate::catalog::StoryExample;
 
 pub(super) fn settings_mutations(examples: &[StoryExample]) -> Vec<SettingsMutationReport> {
-    let Some(example) = examples.iter().find(|it| it.page == "shortcut-combo") else {
-        return Vec::new();
-    };
-    let state_id = example.tree.root().props().state_id.as_str().to_string();
-    shortcut_options()
-        .into_iter()
-        .map(|option| shortcut_report(option, &state_id))
-        .collect()
+    let combo = examples
+        .iter()
+        .find(|it| it.page == "shortcut-combo")
+        .map(|example| example.tree.root().props().state_id.as_str().to_string())
+        .map(|state_id| {
+            shortcut_combo_options()
+                .into_iter()
+                .map(|option| {
+                    shortcut_report(
+                        option,
+                        &state_id,
+                        "shortcut-combo",
+                        "catalog-shortcut-combo",
+                        "shortcut_combo_settings_changed",
+                        "shortcut combo",
+                    )
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let cheatsheet = examples
+        .iter()
+        .find(|it| it.page == "shortcut-cheatsheet")
+        .map(|example| example.tree.root().props().state_id.as_str().to_string())
+        .map(|state_id| {
+            shortcut_cheatsheet_options()
+                .into_iter()
+                .map(|option| {
+                    shortcut_report(
+                        option,
+                        &state_id,
+                        "shortcut-cheatsheet",
+                        "catalog-shortcut-cheatsheet",
+                        "shortcut_cheatsheet_settings_changed",
+                        "shortcut cheatsheet",
+                    )
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    [combo, cheatsheet].concat()
 }
 
-fn shortcut_report(option: ShortcutSettingOption, state_id: &str) -> SettingsMutationReport {
-    let marker = "catalog-shortcut-combo".to_string();
+fn shortcut_report(
+    option: ShortcutSettingOption,
+    state_id: &str,
+    page: &str,
+    marker: &str,
+    event: &str,
+    state_prefix: &str,
+) -> SettingsMutationReport {
     SettingsMutationReport {
-        page: "shortcut-combo".to_string(),
-        ui_marker: marker.clone(),
+        page: page.to_string(),
+        ui_marker: marker.to_string(),
         action: format!("set_{}", option.name),
-        event: "shortcut_combo_settings_changed".to_string(),
+        event: event.to_string(),
         target_state_id: state_id.to_string(),
         option: TypedOptionMutationReport {
             name: option.name.to_string(),
@@ -27,8 +66,8 @@ fn shortcut_report(option: ShortcutSettingOption, state_id: &str) -> SettingsMut
             after_value: option.after.to_string(),
         },
         state: BeforeAfterReport {
-            before: format!("shortcut combo option:{}={}", option.name, option.before),
-            after: format!("shortcut combo option:{}={}", option.name, option.after),
+            before: format!("{state_prefix} option:{}={}", option.name, option.before),
+            after: format!("{state_prefix} option:{}={}", option.name, option.after),
         },
         preview: BeforeAfterReport {
             before: format!("{marker}:preview:{}={}", option.name, option.before),
@@ -37,7 +76,7 @@ fn shortcut_report(option: ShortcutSettingOption, state_id: &str) -> SettingsMut
     }
 }
 
-fn shortcut_options() -> Vec<ShortcutSettingOption> {
+fn shortcut_combo_options() -> Vec<ShortcutSettingOption> {
     vec![
         ShortcutSettingOption {
             name: "shortcut_combo.platform_display",
@@ -62,6 +101,71 @@ fn shortcut_options() -> Vec<ShortcutSettingOption> {
             value_type: "UiTone",
             before: "Neutral",
             after: "Accent",
+        },
+        ShortcutSettingOption {
+            name: "shortcut_combo.a11y_label",
+            value_type: "Option<String>",
+            before: "generated",
+            after: "custom",
+        },
+    ]
+}
+
+fn shortcut_cheatsheet_options() -> Vec<ShortcutSettingOption> {
+    vec![
+        ShortcutSettingOption {
+            name: "shortcut_cheatsheet.label",
+            value_type: "String",
+            before: "Shortcuts",
+            after: "Editor keys",
+        },
+        ShortcutSettingOption {
+            name: "shortcut_cheatsheet.groups",
+            value_type: "usize",
+            before: "2",
+            after: "3",
+        },
+        ShortcutSettingOption {
+            name: "shortcut_cheatsheet.group_title",
+            value_type: "String",
+            before: "Editing",
+            after: "Navigation",
+        },
+        ShortcutSettingOption {
+            name: "shortcut_cheatsheet.items",
+            value_type: "usize",
+            before: "2",
+            after: "4",
+        },
+        ShortcutSettingOption {
+            name: "shortcut_cheatsheet.item_combo",
+            value_type: "KeyCombo",
+            before: "Cmd+F",
+            after: "Cmd+Shift+P",
+        },
+        ShortcutSettingOption {
+            name: "shortcut_cheatsheet.group_layout",
+            value_type: "ShortcutCheatsheetLayout",
+            before: "TwoColumn",
+            after: "OneColumn",
+        },
+        ShortcutSettingOption {
+            name: "shortcut_cheatsheet.query",
+            value_type: "String",
+            before: "format",
+            after: "カテゴリ",
+        },
+        ShortcutSettingOption {
+            name: "shortcut_cheatsheet.selected",
+            value_type: "Option<String>",
+            before: "None",
+            after: "format",
+        },
+        ShortcutSettingOption {
+            name: "shortcut_cheatsheet.result_count",
+            value_type: "usize",
+            before: "2",
+            after: "1",
         },
     ]
 }

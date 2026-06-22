@@ -6,7 +6,7 @@
 ## 結論
 
 KUC の部品実装は、見た目設定（theme）、文字設定（font）、文字描画、入力、イベント、状態、配置の基盤契約が固定された後に開始する。
-この契約は中核 crate（core crate）に閉じ、Floem / egui / GPUI の型や OS 固有の font path を前提にしない。
+この契約は中核 crate（core crate）に閉じ、framework-specific UI の型や OS 固有の font path を前提にしない。
 
 ## 3.1 外部入口（facade）
 

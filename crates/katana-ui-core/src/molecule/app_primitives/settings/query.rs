@@ -1,6 +1,6 @@
 use super::{SettingsField, SettingsList, SettingsSection};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct SettingsVisibleSection<'a> {
     pub section: &'a SettingsSection,
     pub fields: Vec<&'a SettingsField>,

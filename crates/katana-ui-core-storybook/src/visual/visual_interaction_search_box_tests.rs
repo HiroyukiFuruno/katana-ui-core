@@ -3,6 +3,10 @@ use super::visual_interaction_test_support::{
     assert_clicked_page_changes_body, assert_settings_page_changes_body, component_body_pixel_diff,
     pixel_at,
 };
+use super::window_interaction::{
+    StorybookWindowState, apply_clickable_keyboard_activation_for_audit,
+    focus_clickable_at_for_audit,
+};
 use super::{StorybookVisual, palette, preview_detail, storybook_ui_option_contract};
 use crate::catalog::StoryPresetLabels;
 use katana_ui_core::theme::ThemeSnapshot;
@@ -16,6 +20,7 @@ const REGEX_PRESET: usize = 2;
 const THEME_PRESET: usize = 3;
 const REQUIRED_PRESET_COUNT: usize = 4;
 const REQUIRED_OPTION_COUNT: usize = 4;
+const COMPONENT_HIT_INSET: usize = 4;
 const BODY_DIFF_THRESHOLD: usize = 80;
 const FIELD_FILL_SAMPLE_X_OFFSET: usize = 180;
 const FIELD_FILL_SAMPLE_Y_OFFSET: usize = 8;
@@ -68,6 +73,35 @@ fn search_box_preview_action_updates_submit_state() {
 }
 
 #[test]
+fn search_box_live_focus_and_keyboard_submit_use_core_actions() {
+    let mut state = page_state();
+    let focus_before = render_state(&state);
+    assert!(focus_clickable_at_for_audit(
+        &mut state,
+        search_box_x(),
+        search_box_y()
+    ));
+    let focus_after = render_state(&state);
+
+    assert_eq!("search_focus", state.screen_state.last_action);
+    assert_eq!("focus", state.screen_state.last_event);
+    assert_eq!("focus=true", state.screen_state.state_label);
+    assert!(state.screen_state.is_button_focused());
+    assert!(state.screen_state.search_box.focused);
+    assert!(component_body_pixel_diff(PAGE, &focus_before, &focus_after) > 0);
+
+    let keyboard_before = render_state(&state);
+    assert!(apply_clickable_keyboard_activation_for_audit(&mut state));
+    let keyboard_after = render_state(&state);
+
+    assert_eq!("search_keyboard_submit", state.screen_state.last_action);
+    assert_eq!("search_submitted", state.screen_state.last_event);
+    assert_eq!("value=query submitted=true", state.screen_state.state_label);
+    assert!(state.screen_state.search_box.submitted);
+    assert!(component_body_pixel_diff(PAGE, &keyboard_before, &keyboard_after) > 0);
+}
+
+#[test]
 fn search_box_light_and_dark_fields_use_theme_tokens() {
     assert_search_field_tokens(DARK_THEME, ThemeSnapshot::dark());
     assert_search_field_tokens(LIGHT_THEME, ThemeSnapshot::light());
@@ -96,4 +130,28 @@ fn assert_search_field_tokens(theme_id: &str, theme: ThemeSnapshot) {
             rect.y + super::dedicated_dod_form_input_live::FIELD_ICON_Y
         )
     );
+}
+
+fn render_state(state: &StorybookWindowState) -> super::Canvas {
+    super::render::render_storybook_canvas_with_screen_state(
+        DARK_THEME,
+        PAGE,
+        state.preset_index,
+        state.screen_state.clone(),
+    )
+}
+
+fn page_state() -> StorybookWindowState {
+    StorybookWindowState {
+        selected_page: PAGE,
+        ..StorybookWindowState::default()
+    }
+}
+
+fn search_box_x() -> usize {
+    preview_detail::component_action_hit_rect(PAGE).x + COMPONENT_HIT_INSET
+}
+
+fn search_box_y() -> usize {
+    preview_detail::component_action_hit_rect(PAGE).y + COMPONENT_HIT_INSET
 }

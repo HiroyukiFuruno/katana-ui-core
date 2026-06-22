@@ -14,6 +14,7 @@ pub(super) fn settings_line(
         "badge" => {
             format!("{marker} settings: passive status -> use Chip for dismiss / interactive")
         }
+        "card" => card_settings_line(marker),
         "panel" => panel_settings_line(marker),
         "scroll-area" => scroll_area_settings_line(example, marker),
         "search-control-strip" => search_control_settings_line(example, marker),
@@ -46,6 +47,12 @@ fn panel_settings_line(marker: &str) -> String {
     )
 }
 
+fn card_settings_line(marker: &str) -> String {
+    format!(
+        "{marker} settings: card.label card.header card.footer card.variant card.padding card.clickable card.nested_controls card.child_state -> Project summary custom visible theme_border Large true interactive changed"
+    )
+}
+
 fn drag_and_drop_settings_line(example: &StoryExample, marker: &str) -> String {
     let before = example.callback_logs.first().map_or(
         "accept=missing autoscroll=missing keyboard_draggable=missing",
@@ -61,11 +68,14 @@ fn drag_and_drop_settings_line(example: &StoryExample, marker: &str) -> String {
 fn context_menu_settings_line(example: &StoryExample, marker: &str) -> String {
     let props = example.tree.root().props();
     let anchor = super::option_value("context_menu.anchor", props);
-    let placement = super::option_value("context_menu.placement", props);
+    let placement_priority = super::option_value("context_menu.placement_priority", props);
+    let placement_used = super::option_value("context_menu.placement_used", props);
+    let min_width = super::option_value("context_menu.min_width", props);
+    let max_height = super::option_value("context_menu.max_height", props);
     let item_kind = super::option_value("context_menu.item_kind", props);
     let log_count = example.callback_logs.len();
     format!(
-        "{marker} settings: context_menu.anchor={anchor} context_menu.placement={placement} context_menu.item_kind={item_kind} callback_log={log_count} -> context_menu.anchor=Pointer(0,0) context_menu.placement=AboveEnd context_menu.item_kind=Toggle callback_log={log_count}"
+        "{marker} settings: context_menu.anchor={anchor} context_menu.placement_priority={placement_priority} context_menu.placement_used={placement_used} context_menu.min_width={min_width} context_menu.max_height={max_height} context_menu.item_kind={item_kind} callback_log={log_count} -> context_menu.anchor=Pointer(0,0) context_menu.placement_priority=AboveEnd>BelowStart context_menu.placement_used=AboveEnd context_menu.min_width=280 context_menu.max_height=320 callback_log={log_count}"
     )
 }
 
@@ -127,14 +137,14 @@ fn modal_overlay_settings_line(example: &StoryExample, marker: &str) -> String {
 
 fn toolbar_settings_line(marker: &str) -> String {
     format!(
-        "{marker} settings: action/priority/overflow/display/density count4,search10,Menu,IconLeading,Default -> count5,search90,Hide,LabelOnly,Compact"
+        "{marker} settings: toolbar.display_mode toolbar.density toolbar.overflow_strategy toolbar.actions toolbar.groups toolbar.context_menu_anchor toolbar.action_priority toolbar.action_accelerator toolbar.action_split toolbar.action_group toolbar.action_tooltip toolbar.action_a11y toolbar.action_disabled toolbar.group_label toolbar.group_divider toolbar.split_disabled toolbar.split_tooltip toolbar.split_a11y -> IconOnly Compact Custom actions=4 groups=2 anchor=pointer priority=critical accelerator=Alt+P split=menu group=edit tooltip=Save file a11y=custom disabled=true divider=false"
     )
 }
 
 fn split_pane_settings_line(example: &StoryExample, marker: &str) -> String {
     let actions = callback_actions(example);
     format!(
-        "{marker} settings: axis ratio min max reset handle resize_mode; axis=Horizontal/Vertical ratio=50 min=20 max=80 reset=50 handle=8 resize_mode=Drag+Keyboard children=2 nested=true callback_log={} actions={actions}; state: ratio=50 dragging=false focused_handle=false last_event=RatioChanged; event: ResizeStarted RatioChanged ResizeEnded ResizeRejected; action: split_pane_set_ratio split_pane_resize_by split_pane_reset_ratio; quality: clamp event_order public_api_guard -> axis=Vertical ratio=56 min=20 max=80 reset=50 handle=10 resize_mode=Keyboard children=2 nested=true",
+        "{marker} settings: axis gap alignment overflow ratio_percent min_percent max_percent reset_percent handle_width_px resize_mode; axis=Horizontal/Vertical gap=0 alignment=Start overflow=Fit ratio_percent=50 min_percent=20 max_percent=80 reset_percent=50 handle_width_px=8 resize_mode=Drag+Keyboard children=2 nested=true callback_log={} actions={actions}; state: ratio=50 dragging=false focused_handle=false last_event=RatioChanged; event: ResizeStarted RatioChanged ResizeEnded ResizeRejected; action: split_pane_set_ratio split_pane_resize_by split_pane_reset_ratio; quality: clamp event_order public_api_guard -> axis=Vertical gap=12 alignment=Center overflow=Scroll ratio_percent=64 min_percent=24 max_percent=76 reset_percent=55 handle_width_px=10 resize_mode=Keyboard children=2 nested=true",
         example.callback_logs.len()
     )
 }
@@ -148,7 +158,7 @@ fn text_area_settings_line(marker: &str) -> String {
 fn skeleton_settings_line(example: &StoryExample, marker: &str) -> String {
     let actions = callback_actions(example);
     format!(
-        "{marker} settings: shape=Text size=220x44 animation=Shimmer tone=Neutral radius=4 reduced_motion=false accessibility_label=Loading text lines callback_log={} actions={actions} -> shape=Line size=220x44 animation=Wave tone=Success radius=4 reduced_motion=true accessibility_label=Reduced loading text",
+        "{marker} settings: shape=Text text_lines=3 last_line_ratio=0.58 line_thickness=8 size=220x44 animation=Shimmer tone=Neutral radius=4 reduced_motion=false accessibility_label=Loading text lines aspect_ratio=none callback_log={} actions={actions} -> shape=Line text_lines=2 last_line_ratio=0.62 line_thickness=12 size=Fill animation=Wave tone=Success radius=14 reduced_motion=true accessibility_label=Loading profile placeholder aspect_ratio=16:9",
         example.callback_logs.len()
     )
 }
@@ -156,7 +166,7 @@ fn skeleton_settings_line(example: &StoryExample, marker: &str) -> String {
 fn skeleton_cluster_settings_line(example: &StoryExample, marker: &str) -> String {
     let actions = callback_actions(example);
     format!(
-        "{marker} settings: preset=ListRow children=2 live_region=Loading list loading reduced_motion=false callback_log={} actions={actions} -> preset=ImageCard children=3 live_region=Loading image card loading reduced_motion=false",
+        "{marker} settings: preset=ListRow children=2 live_region=Loading list loading reduced_motion=false callback_log={} actions={actions} -> preset=ImageCard children=3 live_region=Loading custom image card reduced_motion=true",
         example.callback_logs.len()
     )
 }

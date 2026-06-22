@@ -195,6 +195,7 @@ fn tree_view_option_visible(tree_view: Option<&StoryExample>, expected: &str) ->
     let screen_state = StorybookScreenState::default();
     let scenario = ScenarioContext {
         selected_page: "tree-view",
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index: 0,
         preset_tab_scroll_x: 0,
         tree_expansion: Default::default(),
@@ -218,6 +219,7 @@ fn navigation_collapsed_pixels_changed() -> usize {
     let closed = render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
         theme_id: "dark",
         selected_page: DEFAULT_STORYBOOK_PAGE,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index: 0,
         preset_tab_scroll_x: 0,
         scroll_y: 0,

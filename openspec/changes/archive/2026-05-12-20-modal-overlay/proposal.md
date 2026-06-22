@@ -1,6 +1,6 @@
 ## Why
 
-確認ダイアログ / 入力ダイアログ / 詳細表示など、画面全体を覆って前面に表示する UI が必要。`../katana/crates/katana-ui/src/widgets/modal/` の役割を Floem に移植。背景 dimmer / Esc 閉じ / 外側クリック閉じ / フォーカストラップ等の慣習を吸収する。
+確認ダイアログ / 入力ダイアログ / 詳細表示など、画面全体を覆って前面に表示する UI が必要。`../katana/crates/katana-ui/src/widgets/modal/` の役割を Adapter に移植。背景 dimmer / Esc 閉じ / 外側クリック閉じ / フォーカストラップ等の慣習を吸収する。
 
 ## What Changes
 

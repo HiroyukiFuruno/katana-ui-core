@@ -11,6 +11,13 @@ Storybook は KUC が提供する UI 群を、利用者や開発者が実画面�
 各 UI page は option、action、event、state、preset、preview、settings を同じ画面で扱える必要がある。
 settings や log だけが変わり、preview 本体が変わらない画面は未完了として扱う。
 
+## Live component boundary
+
+Storybook は絵ではない。
+各 page は KUC の実部品を画面に構築し、props / state / event / action / callback を操作できる replay surface として提供する。
+静的な描画サンプル、Storybook 専用の見た目だけの代替 node、ログだけが動く画面は Storybook として扱わない。
+Storybook が icon を扱う場合も、KUC 本体の icon pack ではなく、呼び出し側から渡す `svg_source` と callback を公開 API に流し込む。
+
 ## 画面構成
 
 画面上では次の構成にする。

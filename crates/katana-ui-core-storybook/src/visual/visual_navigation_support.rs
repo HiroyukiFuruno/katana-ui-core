@@ -220,6 +220,7 @@ pub(super) fn render_navigation_canvas(
     render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
         theme_id: "dark",
         selected_page,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index: 0,
         preset_tab_scroll_x: 0,
         scroll_y: 0,

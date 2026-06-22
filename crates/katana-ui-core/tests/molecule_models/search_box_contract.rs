@@ -37,10 +37,12 @@ fn search_box_input_clear_and_submit_update_owned_state() {
     let selection = UiAction::cursor_selection(search.state_id().clone(), 5, 1, 5);
     let clear = UiAction::clear_value(search.state_id().clone());
     let submit = UiAction::search_submitted(search.state_id().clone());
+    let focus = UiAction::focus(search.state_id().clone());
 
     let input_result = search.apply_action(&input);
     let selection_result = search.apply_action(&selection);
     let clear_result = search.apply_action(&clear);
+    let focus_result = search.apply_action(&focus);
     let submit_result = search.apply_action(&submit);
 
     assert!(input_result.handled);
@@ -51,6 +53,8 @@ fn search_box_input_clear_and_submit_update_owned_state() {
     assert_eq!(5, selection_result.after.selection_end);
     assert!(clear_result.handled);
     assert_eq!("", clear_result.after.value);
+    assert!(focus_result.handled);
+    assert!(focus_result.after.focused);
     assert!(submit_result.handled);
     assert_eq!("search_submitted", submit_result.callback_log[0].action);
 }

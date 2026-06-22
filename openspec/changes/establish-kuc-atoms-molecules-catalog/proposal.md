@@ -32,4 +32,4 @@
 - `openspec/changes/establish-kuc-atoms-molecules-catalog/` が次フェーズの正本 change になる。
 - `docs/ui-separation-plan.md`、`docs/architecture/ui-separation/owned-ui-task-map.md`、`docs/architecture/ui-separation/ui-core-parity-gap.md`、`docs/directory-structure.md`、`docs/widget-extraction-policy.md`、`openspec/changes/README.md`、`README.md` の説明を整理する。
 - コード実装はこの change の apply フェーズで行う。本 change 作成時点では、既存の Rust 実装差分は実装完了根拠にしない。
-- adapter は MVP 外とし、gpui / floem / egui 互換の本実装はこの change の完了条件に含めない。
+- external runtime / renderer は MVP 外とし、その本実装はこの change の完了条件に含めない。

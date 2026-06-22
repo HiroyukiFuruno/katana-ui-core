@@ -8,7 +8,6 @@ use crate::catalog::StoryPresetLabels;
 use katana_ui_core::theme::ThemeSnapshot;
 
 const PAGE: &str = "text-input";
-const LAST_PRESET: usize = 8;
 
 #[test]
 fn overflowing_preset_tabs_have_horizontal_scroll_range() {
@@ -17,7 +16,7 @@ fn overflowing_preset_tabs_have_horizontal_scroll_range() {
         layout_metrics::PRESET_WIDTH * StoryPresetLabels::for_page(PAGE).len() - preview_width(),
         preset_tab_scroll::max_scroll_x_for_page(PAGE)
     );
-    assert_eq!(0, preset_tab_scroll::max_scroll_x_for_page("button"));
+    assert_eq!(0, preset_tab_scroll::max_scroll_x_for_page("theme-tokens"));
 }
 
 #[test]
@@ -59,9 +58,10 @@ fn external_preset_selection_scrolls_current_tab_into_view() {
         ..StorybookWindowState::default()
     };
 
-    state.select_preset(LAST_PRESET);
+    let last_preset = last_preset_index();
+    state.select_preset(last_preset);
 
-    assert_eq!(LAST_PRESET, state.preset_index);
+    assert_eq!(last_preset, state.preset_index);
     assert_eq!(
         preset_tab_scroll::max_scroll_x_for_page(PAGE),
         state.preset_tab_scroll_x
@@ -76,10 +76,11 @@ fn clicking_scrolled_preset_tab_uses_logical_tab_index() -> Result<(), String> {
         preset_tab_scroll_x: preset_tab_scroll::max_scroll_x_for_page(PAGE),
         ..StorybookWindowState::default()
     };
+    let last_preset = last_preset_index();
     let rect = require_some(
         preset_tab_scroll::visual_rect_for_index(
             PAGE,
-            LAST_PRESET,
+            last_preset,
             false,
             state.preset_tab_scroll_x,
         ),
@@ -88,8 +89,37 @@ fn clicking_scrolled_preset_tab_uses_logical_tab_index() -> Result<(), String> {
 
     assert!(apply_click(&mut state, rect.x + 1, rect.y + 1));
 
-    assert_eq!(LAST_PRESET, state.preset_index);
+    assert_eq!(last_preset, state.preset_index);
     assert!(active_tab_is_inside_viewport(&state));
+    Ok(())
+}
+
+#[test]
+fn preset_tab_hit_bounds_reject_gap_and_clipped_edges() -> Result<(), String> {
+    let viewport = preset_tab_scroll::viewport_rect();
+    let scroll_x = 1;
+    let first_visible = require_some(
+        preset_tab_scroll::visual_rect_for_index(PAGE, 1, false, scroll_x),
+        "first fully visible tab should be exposed after a partial scroll",
+    )?;
+    let hit_y = first_visible.y + first_visible.height / 2;
+
+    assert_eq!(
+        None,
+        preset_tab_scroll::hit_index_at(PAGE, viewport.x, hit_y, scroll_x)
+    );
+    assert_eq!(
+        Some(1),
+        preset_tab_scroll::hit_index_at(PAGE, first_visible.x, hit_y, scroll_x)
+    );
+    assert_eq!(
+        None,
+        preset_tab_scroll::hit_index_at(PAGE, viewport.right(), hit_y, scroll_x)
+    );
+    assert_eq!(
+        None,
+        preset_tab_scroll::hit_index_at(PAGE, first_visible.x, viewport.y - 1, scroll_x)
+    );
     Ok(())
 }
 
@@ -114,10 +144,11 @@ fn wheel_over_preset_tabs_scrolls_tabs_without_scrolling_root() {
 
 #[test]
 fn external_render_preset_scrolls_active_overflow_tab_into_view() -> Result<(), String> {
-    let canvas = StorybookVisual.render_preset("dark", PAGE, LAST_PRESET, 0);
-    let scroll_x = preset_tab_scroll::active_index_scroll_x(PAGE, LAST_PRESET);
+    let last_preset = last_preset_index();
+    let canvas = StorybookVisual.render_preset("dark", PAGE, last_preset, 0);
+    let scroll_x = preset_tab_scroll::active_index_scroll_x(PAGE, last_preset);
     let rect = require_some(
-        preset_tab_scroll::visual_rect_for_index(PAGE, LAST_PRESET, true, scroll_x),
+        preset_tab_scroll::visual_rect_for_index(PAGE, last_preset, true, scroll_x),
         "active preset should be visible in external render",
     )?;
     let palette = VisualPalette::from_theme(&ThemeSnapshot::dark());
@@ -163,4 +194,8 @@ fn assert_visible_tabs_inside_viewport(scroll_x: usize) -> Result<(), String> {
 fn preview_width() -> usize {
     let (_, _, width, _) = preview_detail::selected_hero_rect();
     width
+}
+
+fn last_preset_index() -> usize {
+    StoryPresetLabels::for_page(PAGE).len() - 1
 }

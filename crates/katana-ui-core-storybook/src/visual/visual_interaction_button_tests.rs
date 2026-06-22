@@ -11,6 +11,7 @@ const DARK_THEME: &str = "dark";
 const BUTTON_PAGE: &str = "button";
 const TEXT_BUTTON_PAGE: &str = "text-button";
 const SVG_BUTTON_PAGE: &str = "svg-button";
+const ICON_TEXT_BUTTON_PAGE: &str = "icon-text-button";
 const DEFAULT_PRESET: usize = 0;
 const INTERACTIVE_PRESET: usize = 1;
 const EDGE_PRESET: usize = 2;
@@ -32,6 +33,21 @@ fn preset_tab_updates_selected_preview_body() {
     assert!(
         component_body_pixel_diff(BUTTON_PAGE, &before, &after) > COMPONENT_BODY_DIFF_THRESHOLD
     );
+}
+
+#[test]
+fn text_button_presets_render_distinct_text_button_bodies() {
+    assert_button_family_presets_render_distinct(TEXT_BUTTON_PAGE);
+}
+
+#[test]
+fn svg_button_presets_render_distinct_svg_button_bodies() {
+    assert_button_family_presets_render_distinct(SVG_BUTTON_PAGE);
+}
+
+#[test]
+fn icon_text_button_presets_render_distinct_icon_text_button_bodies() {
+    assert_button_family_presets_render_distinct(ICON_TEXT_BUTTON_PAGE);
 }
 
 #[test]
@@ -203,6 +219,17 @@ fn button_preset_tab_updates_inspector_effective_setting_values() {
     assert_eq!("auto 34px", basic);
 }
 
+fn assert_button_family_presets_render_distinct(page: &str) {
+    let default = StorybookVisual.render_preset(DARK_THEME, page, DEFAULT_PRESET, 0);
+    let interactive = StorybookVisual.render_preset(DARK_THEME, page, INTERACTIVE_PRESET, 0);
+    let edge = StorybookVisual.render_preset(DARK_THEME, page, EDGE_PRESET, 0);
+
+    assert!(
+        component_body_pixel_diff(page, &default, &interactive) > COMPONENT_BODY_DIFF_THRESHOLD
+    );
+    assert!(component_body_pixel_diff(page, &interactive, &edge) > COMPONENT_BODY_DIFF_THRESHOLD);
+}
+
 fn button_status_scenario(
     last_action: &'static str,
     last_event: &'static str,
@@ -217,6 +244,7 @@ fn button_status_scenario(
     }));
     ScenarioContext {
         selected_page: BUTTON_PAGE,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index: DEFAULT_PRESET,
         preset_tab_scroll_x: 0,
         tree_expansion: Default::default(),
@@ -242,6 +270,7 @@ fn button_summary_scenario_with_state(
     let screen_state = Box::leak(Box::new(screen_state));
     ScenarioContext {
         selected_page: BUTTON_PAGE,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index,
         preset_tab_scroll_x: 0,
         tree_expansion: Default::default(),

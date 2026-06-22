@@ -7,14 +7,14 @@ use crate::interaction::{UiAction, UiActionResult};
 use crate::molecule::DisclosureTriggerArea;
 use crate::molecule::state::MoleculeState;
 use crate::render_model::{
-    UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea, UiNode, UiNodeKind,
-    UiStateId,
+    UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea, UiInteractivePreset,
+    UiNode, UiNodeKind, UiStateId,
 };
 use serde::{Deserialize, Serialize};
 
 macro_rules! disclosure_molecule {
     ($name:ident, $kind:expr) => {
-        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
         pub struct $name {
             label: String,
             pub(super) state: MoleculeState,
@@ -192,6 +192,11 @@ macro_rules! disclosure_molecule {
                     .disclosure(disclosure_props(&value.model))
                     .modal(modal_props($kind, &value.model))
                     .popover(render_popover_props($kind, &value.model));
+                if $kind == UiNodeKind::Accordion {
+                    let common = UiInteractivePreset::control()
+                        .apply_to_common_defaults(node.props().common.clone());
+                    node = node.common(common);
+                }
                 for child in value.children {
                     node = node.child(child);
                 }

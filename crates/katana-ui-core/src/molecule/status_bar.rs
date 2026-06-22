@@ -19,7 +19,7 @@ pub use model::{
 use render::segment_nodes;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StatusBar {
     label: String,
     state_id: UiStateId,

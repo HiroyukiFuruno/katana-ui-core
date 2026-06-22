@@ -60,7 +60,7 @@ katana-ui-widget/
 
 階層命名は **役割そのもの**（theme / primitive / composite / layout）であり、atom/molecule/organism のようなアトミックデザイン用語は採用しない。理由は次の 2 点。
 
-1. ライブラリ利用者に web のメタファを強制したくない。Floem 前提の Rust crate として「素朴で説明的な役割名」のほうが理解コストが低い。
+1. ライブラリ利用者に web のメタファを強制したくない。Adapter 前提の Rust crate として「素朴で説明的な役割名」のほうが理解コストが低い。
 2. 階層境界の意味（依存方向）は ast-lint で機械的に守るため、命名で示す必要がない。
 
 各ディレクトリは配下のファイル数が 10 を超えた時点で関心事による分割を行う。本 change ではこの規約自体を `kuw-workflow-guide` に明記する。
@@ -80,7 +80,7 @@ theme  ←  primitive  ←  composite  ←  layout
 ## Storybook を crates/ 外に置く理由
 
 - ライブラリ本体の **依存ツリーに dev/demo 専用クレートを混入させない**（`cargo publish` の影響範囲を最小化）
-- ライブラリ側の workspace member に含めると、Storybook 用の重い依存（Floem の事例コード、画像、サンプル文字列など）が `cargo build --workspace` の標準経路に乗ってしまう
+- ライブラリ側の workspace member に含めると、Storybook 用の重い依存（Adapter の事例コード、画像、サンプル文字列など）が `cargo build --workspace` の標準経路に乗ってしまう
 - 独立 Cargo プロジェクトにすることで `cargo build` / `cargo run` が Storybook 単体で完結し、ローカル動作確認の単位が明確になる
 - `Cargo.lock` を独立して保持できるため、Storybook 専用の依存更新がライブラリ側のロックに影響しない
 
@@ -88,12 +88,12 @@ theme  ←  primitive  ←  composite  ←  layout
 
 ## widget 抽出可否の判断軸（docs/widget-extraction-policy.md に格納）
 
-- ✅ 抽出対象: Katana domain に依存しない、Floem 単体で完結する、汎用 UI 部品として他プロジェクトでも使えるもの
-- ❌ 除外: markdown 描画 / KMM / chat 用 vendor 制御 / linter 結果表示 / workspace ファイルツリーなど Katana 固有の domain ロジックを含むもの
+- ✅ 抽出対象: Katana domain に依存しない、Adapter 単体で完結する、汎用 UI 部品として他プロジェクトでも使えるもの
+- ❌ 除外: markdown 描画 / KMM / chat 用 adapter 制御 / linter 結果表示 / workspace ファイルツリーなど Katana 固有の domain ロジックを含むもの
 - 抽出元の参考実装（移植不可、仕様抽出のみ）:
-  - `../katana/crates/katana-ui/src/widgets/` (egui)
-  - `../katana/crates/katana-ui/src/views/` (egui)
-  - `../katana-chat-ui/crates/katana-chat-ui-floem/src/widget/` (Floem)
+  - `../katana/crates/katana-ui/src/widgets/` (adapter)
+  - `../katana/crates/katana-ui/src/views/` (adapter)
+  - `../katana-chat-ui/crates/katana-chat-ui-adapter/src/widget/` (Adapter)
 
 ## ストーリーブックの最小契約
 

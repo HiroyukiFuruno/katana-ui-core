@@ -18,6 +18,13 @@ const BUTTON_VARIANT_PAGES: &[(&str, &str, &str)] = &[
         "icon_text_button_clicked",
     ),
 ];
+const BUTTON_FAMILY_CURSOR_PAGES: &[&str] = &[
+    "button",
+    "text-button",
+    "svg-button",
+    "icon-text-button",
+    "menu-button",
+];
 
 #[test]
 fn click_button_operation_updates_action_event_state_for_button_preview() {
@@ -67,12 +74,12 @@ fn each_button_variant_hit_rect_emits_its_own_action_and_event() {
 
 #[test]
 fn button_variant_hover_uses_pointer_cursor() {
-    for &(page, _, _) in BUTTON_VARIANT_PAGES {
+    for page in BUTTON_FAMILY_CURSOR_PAGES {
         let state = StorybookWindowState {
             selected_page: page,
             ..StorybookWindowState::default()
         };
-        let target = preview_detail::button_action_hit_rect(page);
+        let target = preview_detail::component_action_hit_rect(page);
 
         assert_eq!(
             StorybookCursorStyle::PointingHand,

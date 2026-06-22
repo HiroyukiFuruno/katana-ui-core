@@ -37,7 +37,7 @@ impl WorkspaceTabBar {
         let mut preview =
             DragPreview::new(tab.title.clone()).opacity_percent(DRAG_PREVIEW_OPACITY_PERCENT);
         if let Some(icon) = tab.icon.as_ref() {
-            preview = preview.icon(icon.clone());
+            preview = preview.icon(icon.svg_source.clone());
         }
         if tab.dirty {
             preview = preview.count_badge(DIRTY_TAB_BADGE_COUNT);
@@ -55,7 +55,7 @@ fn drag_metadata(tab: &WorkspaceTab) -> DragMetadata {
         .label(tab.title.clone())
         .insert("tab_id", tab.id.as_str().to_string());
     if let Some(icon) = tab.icon.as_ref() {
-        metadata = metadata.icon(icon.clone());
+        metadata = metadata.icon(icon.svg_source.clone());
     }
     if tab.dirty {
         metadata = metadata.insert("dirty", "true");

@@ -63,7 +63,7 @@ compute_visible_range(
 | --- | --- |
 | 各 molecule が独自の virtualization を持つ | 同じバグや非互換が複数箇所に発生する。 |
 | virtualization なしで強行 | 数千件規模で描画コスト爆発、operability が崩れる。 |
-| Adapter 専属で virtualization を提供 | floem / egui / gpui で挙動差が出て、accessibility が揃わない。 |
+| external runtime 専属で virtualization を提供 | runtime ごとに挙動差が出て、accessibility が揃わない。 |
 
 ## Out of scope
 

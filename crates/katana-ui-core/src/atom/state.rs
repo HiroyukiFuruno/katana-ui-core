@@ -1,9 +1,9 @@
 use super::defaults;
 use crate::facade::DEFAULT_FONT_ROLE;
 use crate::render_model::{
-    UiButtonProps, UiColorSwatchProps, UiCommonProps, UiCursor, UiIconProps, UiInteractionState,
-    UiLoadingProps, UiNode, UiNodeKind, UiShortcutProps, UiSize, UiStateId, UiStatusProps,
-    UiTextEntryProps, UiTextProps, UiTone, UiVariant, UiVisualRole,
+    UiButtonProps, UiColorSwatchProps, UiCommonProps, UiIconProps, UiInteractionState,
+    UiInteractivePreset, UiLoadingProps, UiNode, UiNodeKind, UiShortcutProps, UiSize, UiStateId,
+    UiStatusProps, UiTextEntryProps, UiTextProps, UiTone, UiVariant, UiVisualRole,
 };
 use crate::state::UiComponentState;
 use serde::{Deserialize, Serialize};
@@ -131,16 +131,21 @@ impl AtomState {
 }
 
 fn default_common_props(kind: UiNodeKind) -> UiCommonProps {
-    if is_button_kind(kind) {
-        return UiCommonProps::default().cursor(UiCursor::Pointer);
+    if is_pointer_control_kind(kind) {
+        return UiInteractivePreset::control().apply_to_common(UiCommonProps::default());
     }
     UiCommonProps::default()
 }
 
-const fn is_button_kind(kind: UiNodeKind) -> bool {
+const fn is_pointer_control_kind(kind: UiNodeKind) -> bool {
     matches!(
         kind,
         UiNodeKind::Button
+            | UiNodeKind::Checkbox
+            | UiNodeKind::Radio
+            | UiNodeKind::Toggle
+            | UiNodeKind::ColorSwatch
+            | UiNodeKind::SlideControl
             | UiNodeKind::SvgButton
             | UiNodeKind::TextButton
             | UiNodeKind::IconTextButton

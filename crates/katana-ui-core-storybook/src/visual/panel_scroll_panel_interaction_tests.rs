@@ -85,6 +85,7 @@ fn render_panel_with_offsets(offsets: panel_scroll_state::PanelScrollOffsets) ->
     render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
         theme_id: DARK_THEME,
         selected_page: PANEL_PAGE,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index: DEFAULT_PRESET,
         preset_tab_scroll_x: 0,
         scroll_y: 0,

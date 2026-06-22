@@ -30,12 +30,13 @@ impl AtomActionPolicy {
                 action,
                 UiAction::SetValue { .. }
                     | UiAction::ClearValue { .. }
-                    | UiAction::SetCursorSelection { .. }
+                    | UiAction::PasteText { .. }
             )
     }
 
     fn kind_accepts_action(kind: UiNodeKind, action: &UiAction) -> bool {
         match kind {
+            UiNodeKind::Text => matches!(action, UiAction::CopySelection { .. }),
             UiNodeKind::Button
             | UiNodeKind::SvgButton
             | UiNodeKind::TextButton
@@ -80,6 +81,9 @@ impl AtomActionPolicy {
                 | UiAction::ClearValue { .. }
                 | UiAction::SetFocus { .. }
                 | UiAction::SetCursorSelection { .. }
+                | UiAction::CopySelection { .. }
+                | UiAction::PasteText { .. }
+                | UiAction::InvokeCallback { .. }
                 | UiAction::Press {
                     source: UiActionSource::InputSubmit,
                     ..
@@ -90,7 +94,10 @@ impl AtomActionPolicy {
     fn is_selection_action(action: &UiAction) -> bool {
         matches!(
             action,
-            UiAction::SetSelectedIndex { .. } | UiAction::SetFocus { .. } | UiAction::Press { .. }
+            UiAction::SetSelectedIndex { .. }
+                | UiAction::SetFocus { .. }
+                | UiAction::SetHover { .. }
+                | UiAction::Press { .. }
         )
     }
 
@@ -115,7 +122,10 @@ impl AtomActionPolicy {
     }
 
     fn is_passive_status_action(action: &UiAction) -> bool {
-        matches!(action, UiAction::SetFocus { .. })
+        matches!(
+            action,
+            UiAction::SetFocus { .. } | UiAction::CopySelection { .. }
+        )
     }
 
     fn is_loading_action(action: &UiAction) -> bool {
@@ -132,6 +142,8 @@ impl AtomActionPolicy {
                 source: UiActionSource::SlideControl,
                 ..
             } | UiAction::SetFocus { .. }
+                | UiAction::SetHover { .. }
+                | UiAction::SetDragging { .. }
         )
     }
 }

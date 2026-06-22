@@ -11,12 +11,8 @@ const DARK_THEME: &str = "dark";
 const LIGHT_THEME: &str = "light";
 const PAGE: &str = "color-picker-rgba";
 const RGBA_PANEL_PRESET: usize = 0;
-const COLOR_TRIGGER_PRESET: usize = 1;
-const SIZE_PRESET: usize = 2;
-const BORDERLESS_PRESET: usize = 3;
-const FLOATING_PANEL_PRESET: usize = 4;
-const REQUIRED_PRESET_COUNT: usize = 4;
-const REQUIRED_OPTION_COUNT: usize = 4;
+const REQUIRED_PRESET_COUNT: usize = 15;
+const REQUIRED_OPTION_COUNT: usize = 15;
 const BODY_DIFF_THRESHOLD: usize = 80;
 const PANEL_X: usize = 176;
 const PANEL_Y: usize = 74;
@@ -41,16 +37,16 @@ fn color_picker_exposes_leaf_presets_options_and_rgba_contract() {
 
 #[test]
 fn color_picker_presets_render_distinct_rgba_bodies() {
-    let rgba_panel = StorybookVisual.render_preset(DARK_THEME, PAGE, RGBA_PANEL_PRESET, 0);
-    let color_trigger = StorybookVisual.render_preset(DARK_THEME, PAGE, COLOR_TRIGGER_PRESET, 0);
-    let size = StorybookVisual.render_preset(DARK_THEME, PAGE, SIZE_PRESET, 0);
-    let borderless = StorybookVisual.render_preset(DARK_THEME, PAGE, BORDERLESS_PRESET, 0);
-    let floating = StorybookVisual.render_preset(DARK_THEME, PAGE, FLOATING_PANEL_PRESET, 0);
+    let mut previous = StorybookVisual.render_preset(DARK_THEME, PAGE, RGBA_PANEL_PRESET, 0);
 
-    assert!(component_body_pixel_diff(PAGE, &rgba_panel, &color_trigger) > BODY_DIFF_THRESHOLD);
-    assert!(component_body_pixel_diff(PAGE, &color_trigger, &size) > BODY_DIFF_THRESHOLD);
-    assert!(component_body_pixel_diff(PAGE, &size, &borderless) > BODY_DIFF_THRESHOLD);
-    assert!(component_body_pixel_diff(PAGE, &borderless, &floating) > BODY_DIFF_THRESHOLD);
+    for preset in 1..REQUIRED_PRESET_COUNT {
+        let current = StorybookVisual.render_preset(DARK_THEME, PAGE, preset, 0);
+        assert!(
+            component_body_pixel_diff(PAGE, &previous, &current) > BODY_DIFF_THRESHOLD,
+            "preset {preset} did not repaint color picker body"
+        );
+        previous = current;
+    }
 }
 
 #[test]

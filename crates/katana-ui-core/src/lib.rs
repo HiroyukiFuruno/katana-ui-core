@@ -15,6 +15,7 @@ pub mod runtime;
 pub mod state;
 pub mod style;
 pub mod surface;
+pub mod text_selection;
 pub mod theme;
 pub mod widget;
 pub mod window;

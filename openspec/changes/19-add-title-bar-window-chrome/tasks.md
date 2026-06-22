@@ -18,7 +18,7 @@
 
 - [x] 3.1 `runtime / window / surface` に window control intent を通す境界を確認する。
 - [x] 3.2 adapter contract に window controls dispatch は adapter、draggable region は consumer / adapter 責務と明記する。
-- [x] 3.3 floem / egui / gpui adapter に compile-gate stub を追加する。
+- [x] 3.3 external runtime boundary に window command neutral contract を追加する。
 
 ## 4. 自動テスト
 
@@ -45,11 +45,11 @@
 ## 7. ドキュメント
 
 - [x] 7.1 `docs/architecture/ui-separation/owned-ui-task-map.md` に WindowControlButtonGroup 行を追加する。
-- [x] 7.2 `docs/compat-adapters.md` に window controls dispatch / draggable region の責務分離を追記する。
+- [x] 7.2 window controls dispatch / draggable region は KUC core contract として保持し、repo 外 runtime 側の責務文書は KUC active tree から除外する。
 
 ## 8. 品質ゲート / DoD
 
 - [x] 8.1 `cargo test -p katana-ui-core` をパスする。
 - [x] 8.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。
 - [x] 8.3 `openspec validate 19-add-title-bar-window-chrome --strict` をパスする。
-- [x] 8.4 adapter compile-gate と自動回帰 gate をパスする。
+- [x] 8.4 core contract gate と自動回帰 gate をパスする。

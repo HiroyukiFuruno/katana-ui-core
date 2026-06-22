@@ -8,7 +8,9 @@ pub(super) fn skeleton_cluster_story() -> StoryExample {
     let code_block =
         skeleton_cluster_preset("code block loading", SkeletonClusterPreset::CodeBlock);
     let image_card =
-        skeleton_cluster_preset("image card loading", SkeletonClusterPreset::ImageCard);
+        skeleton_cluster_preset("image card loading", SkeletonClusterPreset::ImageCard)
+            .live_region("Loading custom image card")
+            .reduced_motion(true);
     let logs = vec![
         UiCallbackLog::new(
             card.state_id().clone(),
@@ -20,7 +22,7 @@ pub(super) fn skeleton_cluster_story() -> StoryExample {
             message.state_id().clone(),
             "skeleton_cluster_changed",
             "preset=Message children=3 live_region=Loading message loading reduced_motion=false",
-            "preset=ImageCard children=3 live_region=Loading image card loading reduced_motion=false",
+            "preset=ImageCard children=3 live_region=Loading custom image card reduced_motion=true",
         ),
     ];
     StoryCatalog::interactive_story(

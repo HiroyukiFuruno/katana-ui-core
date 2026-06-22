@@ -21,6 +21,11 @@ impl CodeDiff {
     }
 
     #[must_use]
+    pub fn language_model(&self) -> &str {
+        &self.language
+    }
+
+    #[must_use]
     pub fn lines(&self) -> &[CodeDiffLine] {
         &self.lines
     }

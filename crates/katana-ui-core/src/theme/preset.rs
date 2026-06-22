@@ -10,6 +10,7 @@ const LIGHT_CODE_BACKGROUND: Rgba = [243, 243, 243, 255];
 const LIGHT_TEXT: Rgba = [36, 36, 36, 255];
 const LIGHT_MUTED: Rgba = [106, 106, 106, 255];
 const LIGHT_ACCENT: Rgba = [0, 120, 212, 255];
+const LIGHT_ACCENT_FOREGROUND: Rgba = [248, 250, 252, 255];
 const LIGHT_BORDER: Rgba = [220, 220, 220, 255];
 const LIGHT_SELECTION: Rgba = [173, 214, 255, 255];
 const DARK_BACKGROUND: Rgba = [30, 30, 30, 255];
@@ -19,6 +20,7 @@ const DARK_CODE_BACKGROUND: Rgba = [40, 40, 40, 255];
 const DARK_TEXT: Rgba = [212, 212, 212, 255];
 const DARK_MUTED: Rgba = [142, 142, 142, 255];
 const DARK_ACCENT: Rgba = [86, 156, 214, 255];
+const DARK_ACCENT_FOREGROUND: Rgba = [248, 250, 252, 255];
 const DARK_BORDER: Rgba = [60, 60, 60, 255];
 const DARK_SELECTION: Rgba = [38, 79, 120, 255];
 const BODY_FONT_SIZE: f32 = 14.0;
@@ -46,6 +48,7 @@ pub(super) struct ThemePreset {
     text: Rgba,
     muted: Rgba,
     accent: Rgba,
+    accent_foreground: Rgba,
     border: Rgba,
     selection: Rgba,
 }
@@ -61,6 +64,7 @@ impl ThemePreset {
             text: LIGHT_TEXT,
             muted: LIGHT_MUTED,
             accent: LIGHT_ACCENT,
+            accent_foreground: LIGHT_ACCENT_FOREGROUND,
             border: LIGHT_BORDER,
             selection: LIGHT_SELECTION,
         }
@@ -76,6 +80,7 @@ impl ThemePreset {
             text: DARK_TEXT,
             muted: DARK_MUTED,
             accent: DARK_ACCENT,
+            accent_foreground: DARK_ACCENT_FOREGROUND,
             border: DARK_BORDER,
             selection: DARK_SELECTION,
         }
@@ -120,6 +125,7 @@ impl ThemePreset {
             color_token("text", self.text),
             color_token("muted", self.muted),
             color_token("accent", self.accent),
+            color_token("accent-foreground", self.accent_foreground),
             color_token("border", self.border),
             color_token("selection", self.selection),
         ]

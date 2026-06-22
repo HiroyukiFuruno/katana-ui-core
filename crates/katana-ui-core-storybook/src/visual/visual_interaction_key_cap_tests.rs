@@ -5,6 +5,7 @@ use super::visual_interaction_test_support::{
 };
 use super::{StorybookVisual, preview_detail, storybook_ui_option_contract};
 use crate::catalog::StoryPresetLabels;
+use katana_ui_core::facade::UiCoreFacade;
 
 const DARK_THEME: &str = "dark";
 const LIGHT_THEME: &str = "light";
@@ -18,6 +19,7 @@ const REQUIRED_OPTION_COUNT: usize = 4;
 const BODY_DIFF_THRESHOLD: usize = 80;
 const SAMPLE_X_OFFSET: usize = 106;
 const SAMPLE_Y_OFFSET: usize = 40;
+const MIN_KEY_CAP_RECT_COUNT: usize = 6;
 
 #[test]
 fn key_cap_exposes_leaf_presets_options_and_shortcut_contract() {
@@ -44,6 +46,39 @@ fn key_cap_presets_render_distinct_platform_bodies() {
     assert!(component_body_pixel_diff(PAGE, &single, &combo) > BODY_DIFF_THRESHOLD);
     assert!(component_body_pixel_diff(PAGE, &combo, &non_macos) > BODY_DIFF_THRESHOLD);
     assert!(component_body_pixel_diff(PAGE, &non_macos, &themed) > BODY_DIFF_THRESHOLD);
+}
+
+#[test]
+fn key_cap_shortcut_labels_fit_inside_key_boxes() {
+    let facade = UiCoreFacade::default();
+    let text = super::text::TextRenderer::load(&facade, "shortcut");
+    let rects = super::dedicated_dod_molecule_key_cap::key_cap_rects_for_test();
+
+    assert_eq!(MIN_KEY_CAP_RECT_COUNT, rects.len());
+    for fit in super::dedicated_dod_molecule_key_cap::key_cap_label_fits_for_test() {
+        let measured_width = text.measure_width(fit.value, fit.size);
+        assert!(fit.text_x >= fit.rect.x);
+        assert!(
+            fit.text_x + measured_width <= fit.rect.x + fit.rect.width,
+            "{} width {} should fit in {:?}",
+            fit.value,
+            measured_width,
+            fit.rect
+        );
+    }
+}
+
+#[test]
+fn key_cap_shortcut_boxes_stay_inside_component_bounds() {
+    let component = preview_detail::component_action_hit_rect(PAGE);
+
+    for rect in super::dedicated_dod_molecule_key_cap::key_cap_rects_for_test() {
+        assert!(component.contains(component.x + rect.x, component.y + rect.y));
+        assert!(component.contains(
+            component.x + rect.x + rect.width - 1,
+            component.y + rect.y + rect.height - 1
+        ));
+    }
 }
 
 #[test]

@@ -1,6 +1,6 @@
 use super::canvas::Canvas;
 use super::dedicated_chip_style::{
-    chip_fill, dismiss_fill, dismiss_label, focus_fill, state_label, tone_fill,
+    chip_fill, dismiss_fill, dismiss_label, focus_fill, icon_fill, state_label, tone_fill,
 };
 use super::dedicated_dod_common::{self as common, Block, Rect, TextSpec};
 use super::dedicated_dod_metrics as m;
@@ -10,8 +10,8 @@ use super::text::TextRenderer;
 
 pub(super) const CHIP_X: usize = 34;
 pub(super) const CHIP_Y: usize = 38;
-const CHIP_WIDTH: usize = 164;
-const CHIP_HEIGHT: usize = 26;
+pub(super) const CHIP_WIDTH: usize = 164;
+pub(super) const CHIP_HEIGHT: usize = 26;
 const ICON_X_OFFSET: usize = 12;
 const ICON_Y_OFFSET: usize = 9;
 const ICON_SIZE: usize = 8;
@@ -82,7 +82,7 @@ fn blocks(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [Block; BLO
             CHIP_Y + ICON_Y_OFFSET,
             ICON_SIZE,
             ICON_SIZE,
-            palette.accent,
+            icon_fill(palette, scenario),
         ),
         Block::new(
             CHIP_X + m::PX_4,

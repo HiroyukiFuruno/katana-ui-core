@@ -22,8 +22,8 @@
 
 `katana-ui-core` は、KatanAエコシステム向けのフレームワーク非依存（framework-neutral）UI Coreを管理するリポジトリです。
 
-画面部品（widget）だけでなく、起動、窓、描画面、テーマ、イベント、描画モデル、変換層契約（adapter contract）を扱います。
-Floem / GPUI / egui は中核（core）の依存ではなく、変換層（adapter）で扱います。
+画面部品（widget）だけでなく、起動、窓、描画面、テーマ、イベント、描画モデル、外部変換層向けの中立契約を扱います。
+特定の UI framework は中核（core）の依存に含めません。
 UI ごとの状態（state）は component 内部 model で管理し、同じ種類・同じ label の UI が複数あっても一意に識別します。
 
 現在の主な実装対象は、利用側が組み合わせて UI を構築するための最小部品（atoms）と組み合わせ部品（molecules）です。
@@ -53,25 +53,15 @@ theme / event / render_model
 
 詳細は [`docs/directory-structure.md`](docs/directory-structure.md) を参照。
 
-## Adapter 方針
+## Framework 方針
 
-`katana-ui-core` の中核 crate（core crate）は Floem / GPUI / egui に依存しません。
-画面フレームワーク（UI framework）ごとの描画は次の crate で扱います。
-
-| crate | 位置付け | release gate |
-| --- | --- | --- |
-| `katana-ui-core-floem` | primary adapter 候補 | compile / test |
-| `katana-ui-core-egui` | 互換 adapter skeleton | compile / skeleton test のみ |
-| `katana-ui-core-gpui` | 互換 adapter skeleton | compile / skeleton test のみ |
-
-`katana-ui-core-egui` / `katana-ui-core-gpui` は後続の互換 adapter 候補です。
-現段階では skeleton のみを置き、framework-native 実装と Storybook smoke は必須 gate に含めません。
+`katana-ui-core` の中核 crate（core crate）は framework-specific UI に依存しません。
+この repository の active workspace は `katana-ui-core`、`katana-ui-core-storybook`、`kuc-consumer-app` だけです。
+UI framework ごとの描画実装は、この crate が公開する中立 DTO / trait / render model を消費する外部変換層の責務です。
+KUC 本体の release gate は core と consumer contract に閉じます。
 
 OS ネイティブのドラッグ&ドロップ（native drag and drop）は、中核 crate に OS 固有型を持ち込みません。
-adapter は OS ファイル一覧、URL、テキストを `os/file-list`、`os/url`、`os/text` の `DragData` に変換し、`NativeDragDropBridge` 経由で `DragStart` / `Drop` / `DragCancel` を KUC event に渡します。
-
-primary adapter の決定は [`docs/adr/katana-ui-primary-adapter.md`](docs/adr/katana-ui-primary-adapter.md) に記録します。
-互換 adapter の対応範囲と release blocking 条件は [`docs/compat-adapters.md`](docs/compat-adapters.md) を参照します。
+外部変換層は OS ファイル一覧、URL、テキストを `os/file-list`、`os/url`、`os/text` の `DragData` に変換し、`NativeDragDropBridge` 経由で `DragStart` / `Drop` / `DragCancel` を KUC event に渡します。
 
 ## Storybook
 
@@ -101,9 +91,8 @@ just ast-lint-install
 
 - [`openspec/changes/establish-kuc-atoms-molecules-catalog/`](openspec/changes/establish-kuc-atoms-molecules-catalog/) — atoms / molecules と Storybook 実装の正本 change
 - [`docs/architecture/ui-separation/root-plan-source.md`](docs/architecture/ui-separation/root-plan-source.md) — KUC repo内にコピーしたroot計画
-- [`docs/architecture/ui-separation/implementation-notes.md`](docs/architecture/ui-separation/implementation-notes.md) — workspace 構成と旧 Floem 実装の扱い
+- [`docs/architecture/ui-separation/implementation-notes.md`](docs/architecture/ui-separation/implementation-notes.md) — workspace 構成と旧実装の扱い
 - [`docs/adr/0002-katana-ui-core-rename.md`](docs/adr/0002-katana-ui-core-rename.md) — KUC renameとruntime/window/surface責務
-- [`docs/compat-adapters.md`](docs/compat-adapters.md) — 互換adapterのサポート範囲とrelease条件
 - [`docs/dependency-policy.md`](docs/dependency-policy.md) — core / adapter の依存境界
 - [`docs/directory-structure.md`](docs/directory-structure.md) — 階層図と依存方向
 - [`docs/widget-extraction-policy.md`](docs/widget-extraction-policy.md) — 抽出対象の判断軸

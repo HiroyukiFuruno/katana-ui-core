@@ -10,6 +10,14 @@ const CODE_PRESET_INDEX: usize = 4;
 const IMAGE_PRESET_INDEX: usize = 5;
 
 pub(super) fn media_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario
+        .screen_state
+        .runtime_structured
+        .skeleton_cluster
+        .focused
+    {
+        return common::SUCCESS;
+    }
     if scenario.screen_state.has_widget_action()
         || scenario.screen_state.has_settings_override()
         || scenario.preset_index == CARD_PRESET_INDEX
@@ -23,6 +31,14 @@ pub(super) fn media_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>)
 }
 
 pub(super) fn line_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario
+        .screen_state
+        .runtime_structured
+        .skeleton_cluster
+        .hovered
+    {
+        return common::TOKEN;
+    }
     match scenario.preset_index {
         MESSAGE_PRESET_INDEX => common::SUCCESS,
         CODE_PRESET_INDEX => common::PURPLE,
@@ -31,6 +47,14 @@ pub(super) fn line_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) 
 }
 
 pub(super) fn secondary_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario
+        .screen_state
+        .runtime_structured
+        .skeleton_cluster
+        .keyboard_reduced_motion
+    {
+        return common::PURPLE;
+    }
     if scenario.preset_index == PARAGRAPH_PRESET_INDEX {
         return common::WARN;
     }
@@ -80,4 +104,12 @@ pub(super) fn state_label(scenario: ScenarioContext<'_>) -> &'static str {
         IMAGE_PRESET_INDEX => "image=card",
         _ => "items=2",
     }
+}
+
+pub(super) fn reduced_motion_label(scenario: ScenarioContext<'_>) -> &'static str {
+    if scenario.screen_state.has_settings_override() || scenario.preset_index == IMAGE_PRESET_INDEX
+    {
+        return "reduced=true";
+    }
+    "reduced=false"
 }

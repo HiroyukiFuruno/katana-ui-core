@@ -12,6 +12,15 @@ pub enum UiModalParentInteraction {
     Allow,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UiModalPlacement {
+    Center,
+    Top,
+    Bottom,
+    Left,
+    Right,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UiModalSize {
     Small,
@@ -33,6 +42,7 @@ pub struct UiModalProps {
     pub dismiss_on_escape: bool,
     pub dismiss_on_backdrop: bool,
     pub parent_interaction: UiModalParentInteraction,
+    pub placement: UiModalPlacement,
 }
 
 impl Default for UiModalProps {
@@ -49,6 +59,7 @@ impl Default for UiModalProps {
             dismiss_on_escape: false,
             dismiss_on_backdrop: false,
             parent_interaction: UiModalParentInteraction::Block,
+            placement: UiModalPlacement::Center,
         }
     }
 }

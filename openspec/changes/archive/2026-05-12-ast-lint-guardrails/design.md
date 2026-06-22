@@ -22,7 +22,7 @@
 
 6. `file-length-design-review`
    - `file-length` / `type-separation` が発火した場合、単純に `view()` を別ファイルへ逃がしただけでは解決扱いにしない。
-   - 対象 widget の責務境界を `types.rs`（データ契約） / `ops.rs`（実行時の状態遷移） / `mod.rs`（builder と resolve） / `view.rs`（Floem イベント接続と描画）として見直す。
+   - 対象 widget の責務境界を `types.rs`（データ契約） / `ops.rs`（実行時の状態遷移） / `mod.rs`（builder と resolve） / `view.rs`（Adapter イベント接続と描画）として見直す。
    - Storybook のライブセルが、逃がした view ではなく widget 本体の runtime API を使っていることを確認する。
 
 ## 非対象

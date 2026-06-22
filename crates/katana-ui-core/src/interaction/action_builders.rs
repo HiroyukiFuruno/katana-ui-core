@@ -98,6 +98,20 @@ impl UiAction {
     }
 
     #[must_use]
+    pub fn copy_selection(target: UiStateId) -> Self {
+        Self::CopySelection { target }
+    }
+
+    #[must_use]
+    pub fn paste_text(target: UiStateId, text: impl Into<String>) -> Self {
+        Self::PasteText {
+            target,
+            text: text.into(),
+            source: UiActionSource::Input,
+        }
+    }
+
+    #[must_use]
     pub fn set_open(target: UiStateId, open: bool) -> Self {
         Self::SetOpen { target, open }
     }
@@ -182,6 +196,19 @@ impl UiAction {
     #[must_use]
     pub fn clear_value(target: UiStateId) -> Self {
         Self::ClearValue { target }
+    }
+
+    #[must_use]
+    pub fn invoke_callback(target: UiStateId, callback: impl Into<String>) -> Self {
+        Self::InvokeCallback {
+            target,
+            callback: callback.into(),
+        }
+    }
+
+    #[must_use]
+    pub fn open_uri(target: UiStateId, uri: impl Into<String>) -> Self {
+        Self::invoke_callback(target, format!("open-uri:{}", uri.into()))
     }
 
     #[must_use]

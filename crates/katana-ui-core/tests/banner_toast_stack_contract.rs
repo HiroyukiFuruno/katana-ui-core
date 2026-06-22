@@ -102,7 +102,7 @@ fn banner_details_open_renders_detail_child_and_visual_contract_counts() {
 
 #[test]
 fn banner_action_disabled_state_suppresses_event() {
-    let mut banner = Banner::new("vendor が未接続です")
+    let mut banner = Banner::new("adapter が未接続です")
         .action(BannerAction::new(
             "connect",
             "接続",

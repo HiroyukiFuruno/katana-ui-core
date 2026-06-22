@@ -5,9 +5,11 @@ use super::dedicated_drag_and_drop_style::{
     indicator_fill, mode_label, payload_label, rail_fill, source_fill, state_label, target_fill,
     target_label,
 };
+use super::layout_metrics::LayoutRect;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::text::TextRenderer;
+use super::window_interaction::drag_and_drop_operation::DragAndDropAction;
 
 const SOURCE_X: usize = 42;
 const SOURCE_Y: usize = 42;
@@ -42,6 +44,8 @@ const STATUS_Y: usize = 118;
 const STATUS_GAP: usize = 118;
 const STATE_STATUS_INDEX: usize = 2;
 const STATE_STATUS_X: usize = STATUS_X + STATUS_GAP * STATE_STATUS_INDEX;
+const AUTOSCROLL_EDGE_WIDTH: usize = 48;
+const RESIZE_HANDLE_SIZE: usize = 18;
 const BLOCK_COUNT: usize = 6;
 const LABEL_COUNT: usize = 8;
 
@@ -62,6 +66,75 @@ pub(super) fn drag_and_drop(
         &blocks(palette, scenario),
         &labels(palette, scenario),
     );
+}
+
+pub(super) fn action_at(
+    origin_x: usize,
+    origin_y: usize,
+    x: usize,
+    y: usize,
+) -> Option<DragAndDropAction> {
+    if source_rect(origin_x, origin_y).contains(x, y) {
+        return Some(DragAndDropAction::StartPointer);
+    }
+    if resize_target_rect(origin_x, origin_y).contains(x, y) {
+        return Some(DragAndDropAction::ResizeTarget);
+    }
+    if target_rect(origin_x, origin_y).contains(x, y) {
+        return Some(DragAndDropAction::DropPointer);
+    }
+    if autoscroll_edge_rect(origin_x, origin_y).contains(x, y) {
+        return Some(DragAndDropAction::ScrollEdge);
+    }
+    if rail_rect(origin_x, origin_y).contains(x, y) {
+        return Some(DragAndDropAction::KeyboardCancel);
+    }
+    None
+}
+
+pub(super) fn source_rect(origin_x: usize, origin_y: usize) -> LayoutRect {
+    LayoutRect::new(
+        origin_x + SOURCE_X,
+        origin_y + SOURCE_Y,
+        SOURCE_WIDTH,
+        SOURCE_HEIGHT,
+    )
+}
+
+pub(super) fn target_rect(origin_x: usize, origin_y: usize) -> LayoutRect {
+    LayoutRect::new(
+        origin_x + TARGET_X,
+        origin_y + TARGET_Y,
+        TARGET_WIDTH,
+        TARGET_HEIGHT,
+    )
+}
+
+pub(super) fn rail_rect(origin_x: usize, origin_y: usize) -> LayoutRect {
+    LayoutRect::new(
+        origin_x + RAIL_X,
+        origin_y + RAIL_Y,
+        RAIL_WIDTH,
+        RAIL_HEIGHT,
+    )
+}
+
+pub(super) fn autoscroll_edge_rect(origin_x: usize, origin_y: usize) -> LayoutRect {
+    LayoutRect::new(
+        origin_x + RAIL_X,
+        origin_y + RAIL_Y,
+        AUTOSCROLL_EDGE_WIDTH,
+        RAIL_HEIGHT,
+    )
+}
+
+pub(super) fn resize_target_rect(origin_x: usize, origin_y: usize) -> LayoutRect {
+    LayoutRect::new(
+        origin_x + TARGET_X + TARGET_WIDTH - RESIZE_HANDLE_SIZE,
+        origin_y + TARGET_Y + TARGET_HEIGHT - RESIZE_HANDLE_SIZE,
+        RESIZE_HANDLE_SIZE,
+        RESIZE_HANDLE_SIZE,
+    )
 }
 
 fn blocks(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [Block; BLOCK_COUNT] {

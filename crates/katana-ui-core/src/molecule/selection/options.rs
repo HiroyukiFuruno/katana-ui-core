@@ -8,36 +8,6 @@ macro_rules! selection_options {
     ($name:ident) => {
         impl $name {
             #[must_use]
-            pub fn icon_action(mut self, value: impl Into<String>) -> Self {
-                self.model.icon_action = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn hover_expansion(mut self, value: bool) -> Self {
-                self.model.hover_expansion = value;
-                self
-            }
-
-            #[must_use]
-            pub fn section(mut self, value: impl Into<String>) -> Self {
-                self.model.section = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn marker(mut self, value: impl Into<String>) -> Self {
-                self.model.marker = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn more_row(mut self, value: bool) -> Self {
-                self.model.more_row = value;
-                self
-            }
-
-            #[must_use]
             pub fn state_id(&self) -> &UiStateId {
                 &self.state.state_id
             }
@@ -57,6 +27,42 @@ selection_options!(SelectBox);
 selection_options!(SelectionList);
 selection_options!(SideMenu);
 selection_options!(Tabs);
+
+impl Tabs {
+    #[must_use]
+    pub fn icon_action(mut self, value: impl Into<String>) -> Self {
+        self.model.icon_action = value.into();
+        self
+    }
+}
+
+impl SideMenu {
+    #[must_use]
+    pub fn hover_expansion(mut self, value: bool) -> Self {
+        self.model.hover_expansion = value;
+        self
+    }
+}
+
+impl SelectionList {
+    #[must_use]
+    pub fn section(mut self, value: impl Into<String>) -> Self {
+        self.model.section = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn marker(mut self, value: impl Into<String>) -> Self {
+        self.model.marker = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn more_row(mut self, value: bool) -> Self {
+        self.model.more_row = value;
+        self
+    }
+}
 
 impl SelectionList {
     #[must_use]

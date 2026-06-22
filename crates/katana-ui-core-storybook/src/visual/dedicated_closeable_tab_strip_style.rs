@@ -14,6 +14,9 @@ const DIRTY_TAB_INDEX: usize = 3;
 const DRAGGING_TAB_INDEX: usize = 4;
 
 pub(super) fn active_index(scenario: ScenarioContext<'_>) -> usize {
+    if scenario.screen_state.state_label == "tabs.active=settings" {
+        return DIRTY_TAB_INDEX;
+    }
     if scenario.screen_state.has_widget_action() {
         return DIRTY_TAB_INDEX;
     }

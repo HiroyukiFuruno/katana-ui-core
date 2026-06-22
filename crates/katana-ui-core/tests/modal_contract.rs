@@ -3,7 +3,8 @@ use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::molecule::{Modal, ModalOverlay, ModalParentInteraction};
 use katana_ui_core::render_model::{
-    UiModalParentInteraction, UiModalPresentation, UiModalSize, UiNodeKind, UiTree,
+    UiModalParentInteraction, UiModalPlacement, UiModalPresentation, UiModalSize, UiNodeKind,
+    UiTree,
 };
 
 #[test]
@@ -50,6 +51,7 @@ fn modal_overlay_render_props_identify_same_window_overlay_contract() {
             .dismiss_policy("escape+backdrop")
             .escape_dismiss(true)
             .outside_click_dismiss(true)
+            .placement(UiModalPlacement::Right)
             .child(Modal::new("Dialog").title("Inline dialog")),
     );
     let props = tree.root().props();
@@ -59,6 +61,7 @@ fn modal_overlay_render_props_identify_same_window_overlay_contract() {
     assert_eq!("dim", props.modal.backdrop);
     assert_eq!("trigger-button", props.modal.focus_return);
     assert_eq!("escape+backdrop", props.modal.dismiss_policy);
+    assert_eq!(UiModalPlacement::Right, props.modal.placement);
     assert!(props.modal.focus_trap);
     assert!(props.modal.dismiss_on_escape);
     assert!(props.modal.dismiss_on_backdrop);

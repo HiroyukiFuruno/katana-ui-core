@@ -37,7 +37,10 @@ pub(super) fn assert_closeable_tab_strip_settings_are_switchable(
 pub(super) fn assert_context_menu_settings_are_switchable(settings: &[SettingsMutationReport]) {
     for option in [
         "context_menu.anchor",
-        "context_menu.placement",
+        "context_menu.placement_priority",
+        "context_menu.placement_used",
+        "context_menu.min_width",
+        "context_menu.max_height",
         "context_menu.item_kind",
     ] {
         assert!(

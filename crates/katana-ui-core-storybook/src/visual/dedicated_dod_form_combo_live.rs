@@ -4,6 +4,7 @@ pub(super) use super::dedicated_dod_form_combo_layout::{
     combo_filter_button_rect, combo_reset_button_rect, combo_select_button_rect,
     combo_state_read_button_rect,
 };
+use super::dedicated_dod_form_combo_model as combo_model;
 use super::dedicated_dod_metrics as m;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
@@ -15,15 +16,12 @@ const FILTER_BADGE_Y: usize = 7;
 const FILTER_BADGE_WIDTH: usize = 28;
 const FILTER_BADGE_HEIGHT: usize = 10;
 const FILTER_BADGE_TEXT_X_OFFSET: usize = 5;
+const FILTER_BADGE_TEXT_Y_OFFSET: usize = 2;
 const COMBO_OPTION_TEXT_Y_OFFSET: usize = 5;
-const STATUS_ROW_COUNT: usize = 3;
 const CONTROL_BUTTON_GAP: usize = 8;
 const CONTROL_TEXT_Y: usize = 6;
-const INPUT_LIST_PRESET_INDEX: usize = 0;
-const SELECT_ROW_PRESET_INDEX: usize = 1;
-const FILTER_PRESET_INDEX: usize = 2;
-const THEME_PRESET_INDEX: usize = 3;
-const SELECTED_OPTION_INDEX: usize = 1;
+const FRAME_OUTSET: usize = 4;
+const FRAME_GROW: usize = FRAME_OUTSET * 2;
 
 pub(super) fn combo_box(
     canvas: &mut Canvas,
@@ -34,6 +32,7 @@ pub(super) fn combo_box(
     y: usize,
 ) {
     common::frame(canvas, text, palette, x, y, "ComboBox");
+    draw_combo_frame(canvas, palette, scenario, x, y);
     draw_input(canvas, text, palette, scenario, x, y);
     draw_options(canvas, text, palette, scenario, x, y);
     draw_controls(canvas, text, palette, x, y);
@@ -48,39 +47,29 @@ fn draw_input(
     x: usize,
     y: usize,
 ) {
-    let fill = if scenario.preset_index == THEME_PRESET_INDEX {
-        palette.background
-    } else {
-        palette.surface
-    };
-    let border = if scenario.preset_index == THEME_PRESET_INDEX {
-        palette.accent
-    } else {
-        palette.border
-    };
     canvas.fill_rect(
         x + sm::TRIGGER_X,
         y + sm::TRIGGER_Y,
         sm::TRIGGER_WIDTH,
         sm::TRIGGER_HEIGHT,
-        fill,
+        combo_model::input_fill(palette, scenario),
     );
     canvas.stroke_rect(
         x + sm::TRIGGER_X,
         y + sm::TRIGGER_Y,
         sm::TRIGGER_WIDTH,
         sm::TRIGGER_HEIGHT,
-        border,
+        combo_model::input_border(palette, scenario),
     );
     text.draw_centered(
         canvas,
-        input_value(scenario),
+        combo_model::input_value(scenario),
         x + sm::TRIGGER_X + sm::TEXT_X,
         TextVerticalBox::new(y + sm::TRIGGER_Y, sm::TRIGGER_HEIGHT as f32),
         m::FONT_9,
-        palette.text,
+        combo_model::input_text_color(palette, scenario),
     );
-    if combo_filtered(scenario) {
+    if combo_model::filtered(scenario) {
         draw_filter_badge(canvas, text, palette, x, y);
     }
 }
@@ -103,7 +92,7 @@ fn draw_filter_badge(
         canvas,
         "tw",
         x + sm::TRIGGER_X + FILTER_BADGE_X + FILTER_BADGE_TEXT_X_OFFSET,
-        y + sm::TRIGGER_Y + FILTER_BADGE_Y + 2,
+        y + sm::TRIGGER_Y + FILTER_BADGE_Y + FILTER_BADGE_TEXT_Y_OFFSET,
         m::FONT_7,
         palette.text,
     );
@@ -117,18 +106,28 @@ fn draw_options(
     x: usize,
     y: usize,
 ) {
-    if !combo_open(scenario) {
+    if !combo_model::open(scenario) {
         return;
     }
+    let panel_y = y + combo_model::options_y(scenario);
     canvas.fill_rect(
         x + sm::TRIGGER_X,
-        y + sm::COMBO_OPTIONS_Y,
+        panel_y,
         sm::TRIGGER_WIDTH,
-        sm::COMBO_OPTION_HEIGHT * option_count(scenario),
+        sm::COMBO_OPTION_HEIGHT * combo_model::option_count(scenario),
         palette.surface,
     );
-    for (index, label) in option_labels(scenario).iter().enumerate() {
-        let row_y = y + sm::COMBO_OPTIONS_Y + index * sm::COMBO_OPTION_HEIGHT;
+    for (index, label) in combo_model::option_labels(scenario).iter().enumerate() {
+        let row_y = panel_y + index * sm::COMBO_OPTION_HEIGHT;
+        if combo_model::highlighted_index(scenario) == Some(index) {
+            canvas.fill_rect(
+                x + sm::TRIGGER_X + sm::OPTION_ROW_INSET,
+                row_y,
+                sm::TRIGGER_WIDTH - sm::OPTION_ROW_WIDTH_REDUCTION,
+                sm::COMBO_OPTION_HEIGHT,
+                palette.selection,
+            );
+        }
         text.draw(
             canvas,
             label,
@@ -148,7 +147,7 @@ fn draw_status(
     x: usize,
     y: usize,
 ) {
-    for (index, row) in status_rows(scenario).into_iter().enumerate() {
+    for (index, row) in combo_model::status_rows(scenario).into_iter().enumerate() {
         let row_y = y + sm::STATUS_Y + index * (sm::STATUS_HEIGHT + sm::STATUS_GAP);
         canvas.fill_rect(
             x + sm::STATUS_X,
@@ -201,63 +200,21 @@ fn draw_controls(
     }
 }
 
-fn input_value(scenario: ScenarioContext<'_>) -> &'static str {
-    if combo_selected_index(scenario) == Some(SELECTED_OPTION_INDEX) {
-        return "Two";
+fn draw_combo_frame(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    x: usize,
+    y: usize,
+) {
+    if !combo_model::framed(scenario) {
+        return;
     }
-    if combo_filtered(scenario) {
-        return "tw";
-    }
-    "Type command"
-}
-
-fn option_labels(scenario: ScenarioContext<'_>) -> &'static [&'static str] {
-    if combo_filtered(scenario) {
-        return &["Two"];
-    }
-    &["One", "Two"]
-}
-
-fn combo_open(scenario: ScenarioContext<'_>) -> bool {
-    scenario.screen_state.selection.combo_open
-        || scenario.preset_index == INPUT_LIST_PRESET_INDEX
-        || scenario.preset_index == FILTER_PRESET_INDEX
-}
-
-fn combo_filtered(scenario: ScenarioContext<'_>) -> bool {
-    scenario.screen_state.selection.combo_filtered || scenario.preset_index == FILTER_PRESET_INDEX
-}
-
-fn combo_selected_index(scenario: ScenarioContext<'_>) -> Option<usize> {
-    if scenario
-        .screen_state
-        .selection
-        .combo_selected_index
-        .is_some()
-    {
-        return scenario.screen_state.selection.combo_selected_index;
-    }
-    if scenario.preset_index == SELECT_ROW_PRESET_INDEX {
-        return Some(SELECTED_OPTION_INDEX);
-    }
-    None
-}
-
-fn option_count(scenario: ScenarioContext<'_>) -> usize {
-    option_labels(scenario).len()
-}
-
-fn status_rows(scenario: ScenarioContext<'_>) -> [&'static str; STATUS_ROW_COUNT] {
-    [
-        status_or_default(scenario.screen_state.last_action, "filter ready"),
-        status_or_default(scenario.screen_state.last_event, "event ready"),
-        status_or_default(scenario.screen_state.state_label, "query=empty"),
-    ]
-}
-
-fn status_or_default(value: &'static str, default_value: &'static str) -> &'static str {
-    if matches!(value, "none" | "idle") {
-        return default_value;
-    }
-    value
+    canvas.stroke_rect(
+        x + sm::TRIGGER_X - FRAME_OUTSET,
+        y + sm::TRIGGER_Y - FRAME_OUTSET,
+        sm::TRIGGER_WIDTH + FRAME_GROW,
+        sm::TRIGGER_HEIGHT + FRAME_GROW,
+        palette.hover_border,
+    );
 }

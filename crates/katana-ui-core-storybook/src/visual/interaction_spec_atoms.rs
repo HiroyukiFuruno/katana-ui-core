@@ -5,7 +5,7 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
         "theme-tokens" => Some(spec(
             "theme_switch",
             "theme_changed",
-            "theme_id",
+            "theme.id",
             "light",
             "theme=light",
         )),
@@ -48,8 +48,8 @@ pub(super) fn for_page(page: &str) -> Option<StorybookInteractionSpec> {
             "progress_change",
             "progress_changed",
             "progress.percent",
-            "64",
-            "percent=64",
+            "82",
+            "percent=82",
         )),
         "button" => Some(spec(
             "button_press",

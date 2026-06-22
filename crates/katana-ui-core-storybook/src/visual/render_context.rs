@@ -17,6 +17,7 @@ pub(super) struct RenderContext<'a> {
 #[derive(Clone, Copy)]
 pub(super) struct ScenarioContext<'a> {
     pub(super) selected_page: &'a str,
+    pub(super) selected_instance_id: &'static str,
     pub(super) preset_index: usize,
     pub(super) preset_tab_scroll_x: usize,
     pub(super) tree_expansion: TreeExpansionState,

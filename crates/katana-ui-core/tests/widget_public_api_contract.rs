@@ -145,6 +145,43 @@ fn widget_consumer_can_compose_atoms_and_molecules_without_pages() {
     assert_eq!(2, tree.root().children().len());
 }
 
+#[test]
+fn basic_composites_project_selection_empty_state_and_row_theme() {
+    let menu = UiNode::from(
+        Menu::new("menu")
+            .selected_index(1)
+            .child(Button::new("Open"))
+            .child(Button::new("Close")),
+    );
+    let field_model = FormField::new("field")
+        .selected_index(2)
+        .invalid(true)
+        .helper_text("Required");
+    assert!(field_model.invalid_model());
+    assert_eq!("Required", field_model.helper_text_model());
+    let field = UiNode::from(field_model);
+    let list = UiNode::from(
+        List::new("list")
+            .selected_index(3)
+            .row_theme_slot("row.accent")
+            .empty_state(Text::new("No rows")),
+    );
+
+    assert!(menu.props().interaction.has_selection);
+    assert_eq!(1, menu.props().interaction.selected_index);
+    assert_eq!(2, menu.children().len());
+    assert_eq!("Open", menu.children()[0].props().label);
+    assert_eq!("Close", menu.children()[1].props().label);
+    assert!(field.props().interaction.has_selection);
+    assert_eq!(2, field.props().interaction.selected_index);
+    assert!(field.props().invalid);
+    assert_eq!("Required", field.props().placeholder);
+    assert!(list.props().interaction.has_selection);
+    assert_eq!(3, list.props().interaction.selected_index);
+    assert_eq!("row.accent", list.props().common.theme_slot);
+    assert_eq!("No rows", list.children()[0].props().label);
+}
+
 fn assert_kinds(nodes: &[UiNode], expected: &[UiNodeKind]) {
     let actual: Vec<UiNodeKind> = nodes.iter().map(UiNode::kind).collect();
 

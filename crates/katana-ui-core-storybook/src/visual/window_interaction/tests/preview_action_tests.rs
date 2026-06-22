@@ -21,6 +21,7 @@ const REPRESENTATIVE_PREVIEW_PAGES: &[&str] = &[
     "code-diff",
     "badge",
     "card",
+    "side-menu",
 ];
 
 #[test]
@@ -88,6 +89,35 @@ fn representative_preview_clicks_emit_action_event_state_and_repaint_canvas() {
 }
 
 #[test]
+fn side_menu_window_interaction_selects_route_and_repaints() {
+    let mut state = StorybookWindowState {
+        selected_page: "side-menu",
+        ..StorybookWindowState::default()
+    };
+    let before = render::render_storybook_canvas_with_screen_state(
+        state.theme_id,
+        state.selected_page,
+        state.preset_index,
+        state.screen_state.clone(),
+    );
+    let target = preview_detail::component_action_hit_rect(state.selected_page);
+
+    assert!(apply_click(&mut state, target.x + 1, target.y + 1));
+    assert_eq!(1, state.screen_state.action_count);
+    assert_eq!("side_menu_select", state.screen_state.last_action);
+    assert_eq!("select_box_selected", state.screen_state.last_event);
+    assert_eq!("route=1 focus=1", state.screen_state.state_label);
+
+    let after = render::render_storybook_canvas_with_screen_state(
+        state.theme_id,
+        state.selected_page,
+        state.preset_index,
+        state.screen_state.clone(),
+    );
+    assert!(pixel_diff(&before, &after) > UI_INTERACTION_DIFF_THRESHOLD);
+}
+
+#[test]
 fn every_required_page_preview_hit_target_contains_drawn_component_pixels() {
     for &page in StoryRequirements::required_pages() {
         let canvas = render::render_storybook_canvas_for_preset("dark", page, 0, 0);
@@ -118,8 +148,8 @@ fn clicking_settings_row_mutates_selected_component_options() {
 
     assert!(apply_click(&mut state, setting.x + 1, setting.y + 1));
     assert_eq!(1, state.screen_state.settings_revision);
-    assert_eq!("settings_option_changed", state.screen_state.last_action);
-    assert_eq!("interaction.active", state.screen_state.last_setting);
+    assert_eq!("settings_card_option", state.screen_state.last_action);
+    assert_eq!("card.label", state.screen_state.last_setting);
 
     let after = render::render_storybook_canvas_with_screen_state(
         state.theme_id,
@@ -162,6 +192,26 @@ fn clicking_visible_tree_view_row_uses_the_drawn_row_hit_target() {
     assert_eq!("tree_click_toggle", state.screen_state.last_action);
     assert_eq!("tree_toggled", state.screen_state.last_event);
     assert_eq!("open=false", state.screen_state.state_label);
+}
+
+#[test]
+fn clicking_tree_view_after_preview_scroll_retains_tree_scroll_offset() {
+    let mut state = StorybookWindowState {
+        selected_page: "tree-view",
+        ..StorybookWindowState::default()
+    };
+    state.screen_state.tree_view_scroll_offset = 96;
+    let x = preview_detail::HERO_PREVIEW_X_FOR_TEST + tree_parts::LABEL_X + 8;
+    let y = preview_detail::HERO_PREVIEW_Y_FOR_TEST
+        + tree_parts::TREE_PANEL_Y
+        + tree_parts::ROW_HEIGHT / 2;
+
+    assert!(apply_click(&mut state, x, y));
+
+    assert_eq!(96, state.screen_state.tree_view_scroll_offset);
+    assert_eq!("tree_select_file", state.screen_state.last_action);
+    assert_eq!("tree_selected", state.screen_state.last_event);
+    assert_eq!("katana/nested/b.md", state.screen_state.last_setting_value);
 }
 
 #[test]

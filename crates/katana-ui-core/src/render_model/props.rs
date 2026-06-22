@@ -2,10 +2,10 @@ use super::UiStateId;
 use super::{
     UiButtonProps, UiColorPickerProps, UiColorSwatchProps, UiCommandResultProps, UiCommonProps,
     UiContextMenuProps, UiDisclosureProps, UiDragHandleProps, UiDragPreviewProps,
-    UiDropIndicatorProps, UiIconProps, UiImageSurfaceProps, UiLoadingProps, UiModalProps,
-    UiPanelProps, UiPopoverProps, UiScrollAreaProps, UiSearchControlProps, UiShortcutProps,
-    UiSkeletonProps, UiSplitPaneProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps,
-    UiTextProps, UiTreeProps,
+    UiDropIndicatorProps, UiFormFieldProps, UiIconProps, UiImageSurfaceProps, UiLoadingProps,
+    UiModalProps, UiPanelProps, UiPopoverProps, UiScrollAreaProps, UiSearchControlProps,
+    UiShortcutProps, UiSkeletonProps, UiSplitPaneProps, UiStatusProps, UiTextAreaProps,
+    UiTextEntryProps, UiTextProps, UiTreeProps,
 };
 use crate::facade::DEFAULT_FONT_ROLE;
 use serde::{Deserialize, Serialize};
@@ -21,6 +21,9 @@ pub enum UiVisualRole {
     Separator,
     Loading,
     Progress,
+    MediaFrame,
+    ExportMediaFrame,
+    HoverSurface,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -58,6 +61,8 @@ pub struct UiInteractionState {
     pub selected_index: usize,
     pub item_count: usize,
     pub value: String,
+    #[serde(default)]
+    pub surface_control_target_id: String,
     pub hovered: bool,
     pub active: bool,
     pub focused: bool,
@@ -123,6 +128,7 @@ pub struct UiProps {
     pub color_swatch: UiColorSwatchProps,
     pub color_picker: UiColorPickerProps,
     pub command_result: UiCommandResultProps,
+    pub form_field: UiFormFieldProps,
     pub shortcut: UiShortcutProps,
     pub image_surface: UiImageSurfaceProps,
     pub search_control: UiSearchControlProps,
@@ -176,6 +182,7 @@ impl UiProps {
             color_swatch: UiColorSwatchProps::default(),
             color_picker: UiColorPickerProps::default(),
             command_result: UiCommandResultProps::default(),
+            form_field: UiFormFieldProps::default(),
             shortcut: UiShortcutProps::default(),
             image_surface: UiImageSurfaceProps::default(),
             search_control: UiSearchControlProps::default(),

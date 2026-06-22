@@ -26,6 +26,18 @@ impl UiNodeId {
     }
 }
 
+impl From<&str> for UiNodeId {
+    fn from(value: &str) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<String> for UiNodeId {
+    fn from(value: String) -> Self {
+        Self::new(value)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct UiStateId(String);
 
@@ -43,5 +55,17 @@ impl UiStateId {
     pub(crate) fn next_for(kind: UiNodeKind) -> Self {
         let sequence = STATE_SEQUENCE.fetch_add(INITIAL_ID_SEQUENCE, Ordering::Relaxed);
         Self::new(format!("state:{kind:?}:{sequence}"))
+    }
+}
+
+impl From<&str> for UiStateId {
+    fn from(value: &str) -> Self {
+        Self::new(value)
+    }
+}
+
+impl From<String> for UiStateId {
+    fn from(value: String) -> Self {
+        Self::new(value)
     }
 }

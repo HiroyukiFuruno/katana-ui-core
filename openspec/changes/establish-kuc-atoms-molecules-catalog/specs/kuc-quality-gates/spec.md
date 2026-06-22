@@ -103,6 +103,6 @@ KUC MUST reject legacy framework-specific completion evidence as current KUC com
 
 #### Scenario: legacy evidence is used
 
-- **WHEN** a task cites old Storybook smoke, old Floem image evidence, or old checkbox completion as final proof
+- **WHEN** a task cites old Storybook smoke, old Adapter image evidence, or old checkbox completion as final proof
 - **THEN** the quality gate rejects that proof
 - **AND** the task must point to current KUC tests and automated coverage evidence

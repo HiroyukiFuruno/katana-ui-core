@@ -36,6 +36,15 @@ const ESCAPE_PRESET_INDEX: usize = 1;
 pub(super) const FOCUS_PRESET_INDEX: usize = 2;
 const PARENT_BLOCK_PRESET_INDEX: usize = 3;
 const TITLE_SIZE_PRESET_INDEX: usize = 4;
+#[cfg(test)]
+const MODAL_BLOCK_COUNT: usize = BLOCK_COUNT;
+
+#[cfg(test)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(super) struct ModalBlockSnapshot {
+    pub(super) rect: Rect,
+    pub(super) fill: u32,
+}
 
 pub(super) fn modal(
     canvas: &mut Canvas,
@@ -61,32 +70,91 @@ fn blocks(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [Block; BLO
         Block::new(
             BACKDROP_X,
             BACKDROP_Y,
-            BACKDROP_WIDTH,
-            BACKDROP_HEIGHT,
+            modal_surface_width(scenario, BACKDROP_WIDTH),
+            modal_surface_height(scenario, BACKDROP_HEIGHT),
             backdrop_fill(scenario),
         ),
         Block::outlined(
             DIALOG_X,
             DIALOG_Y,
-            dialog_width(scenario),
-            DIALOG_HEIGHT,
+            modal_surface_width(scenario, dialog_width(scenario)),
+            modal_surface_height(scenario, DIALOG_HEIGHT),
             dialog_fill(palette, scenario),
         ),
         Block::outlined(
             NATIVE_X,
             NATIVE_Y,
-            NATIVE_WIDTH,
-            NATIVE_HEIGHT,
+            modal_surface_width(scenario, NATIVE_WIDTH),
+            modal_surface_height(scenario, NATIVE_HEIGHT),
             native_fill(palette, scenario),
         ),
         Block::outlined(
             CLOSE_X,
             CLOSE_Y,
-            CLOSE_WIDTH,
-            CLOSE_HEIGHT,
+            modal_surface_width(scenario, CLOSE_WIDTH),
+            modal_surface_height(scenario, CLOSE_HEIGHT),
             close_fill(palette, scenario),
         ),
     ]
+}
+
+#[cfg(test)]
+pub(super) fn modal_blocks_for_test(
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+) -> [ModalBlockSnapshot; MODAL_BLOCK_COUNT] {
+    [
+        ModalBlockSnapshot {
+            rect: Rect::new(
+                BACKDROP_X,
+                BACKDROP_Y,
+                modal_surface_width(scenario, BACKDROP_WIDTH),
+                modal_surface_height(scenario, BACKDROP_HEIGHT),
+            ),
+            fill: backdrop_fill(scenario),
+        },
+        ModalBlockSnapshot {
+            rect: Rect::new(
+                DIALOG_X,
+                DIALOG_Y,
+                modal_surface_width(scenario, dialog_width(scenario)),
+                modal_surface_height(scenario, DIALOG_HEIGHT),
+            ),
+            fill: dialog_fill(palette, scenario),
+        },
+        ModalBlockSnapshot {
+            rect: Rect::new(
+                NATIVE_X,
+                NATIVE_Y,
+                modal_surface_width(scenario, NATIVE_WIDTH),
+                modal_surface_height(scenario, NATIVE_HEIGHT),
+            ),
+            fill: native_fill(palette, scenario),
+        },
+        ModalBlockSnapshot {
+            rect: Rect::new(
+                CLOSE_X,
+                CLOSE_Y,
+                modal_surface_width(scenario, CLOSE_WIDTH),
+                modal_surface_height(scenario, CLOSE_HEIGHT),
+            ),
+            fill: close_fill(palette, scenario),
+        },
+    ]
+}
+
+fn modal_surface_width(scenario: ScenarioContext<'_>, width: usize) -> usize {
+    if scenario.selected_page == "modal" && !scenario.screen_state.modal_open {
+        return m::PX_0;
+    }
+    width
+}
+
+fn modal_surface_height(scenario: ScenarioContext<'_>, height: usize) -> usize {
+    if scenario.selected_page == "modal" && !scenario.screen_state.modal_open {
+        return m::PX_0;
+    }
+    height
 }
 
 fn backdrop_fill(scenario: ScenarioContext<'_>) -> u32 {

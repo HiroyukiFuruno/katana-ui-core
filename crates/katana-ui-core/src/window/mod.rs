@@ -1,9 +1,15 @@
 use serde::{Deserialize, Serialize};
 
+mod coordinate;
+#[cfg(test)]
+mod coordinate_tests;
 mod placement;
 #[cfg(test)]
 mod placement_tests;
 
+pub use coordinate::{
+    WindowCanvasPoint, WindowInputNormalizer, WindowSurfacePoint, WindowSurfaceSize,
+};
 pub use placement::{
     DisplayBounds, ModalWindowPlacement, ModalWindowPlacementError, ModalWindowPlan, WindowPoint,
     WindowRect,

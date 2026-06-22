@@ -1,10 +1,10 @@
 use super::{
     UiButtonProps, UiColorPickerProps, UiColorSwatchProps, UiCommandResultProps,
-    UiContextMenuProps, UiDisclosureProps, UiIconProps, UiImageSurfaceProps, UiInteractionState,
-    UiLoadingProps, UiModalProps, UiNode, UiPanelProps, UiPopoverProps, UiScrollAreaProps,
-    UiSearchControlProps, UiShortcutProps, UiSize, UiSkeletonProps, UiSplitPaneProps,
-    UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTone, UiTreeProps, UiVariant,
-    UiVisualRole,
+    UiContextMenuProps, UiDisclosureProps, UiFormFieldProps, UiIconProps, UiImageSurfaceProps,
+    UiInteractionState, UiLoadingProps, UiModalProps, UiNode, UiPanelProps, UiPopoverProps,
+    UiScrollAreaProps, UiSearchControlProps, UiShortcutProps, UiSize, UiSkeletonProps,
+    UiSplitPaneProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTone,
+    UiTreeProps, UiVariant, UiVisualRole,
 };
 use crate::theme::ThemeSnapshot;
 
@@ -12,6 +12,12 @@ impl UiNode {
     #[must_use]
     pub fn interaction(mut self, value: UiInteractionState) -> Self {
         self.props.interaction = value;
+        self
+    }
+
+    #[must_use]
+    pub fn surface_control_target_id(mut self, value: impl Into<String>) -> Self {
+        self.props.interaction.surface_control_target_id = value.into();
         self
     }
 
@@ -127,6 +133,12 @@ impl UiNode {
     #[must_use]
     pub fn command_result(mut self, value: UiCommandResultProps) -> Self {
         self.props.command_result = value;
+        self
+    }
+
+    #[must_use]
+    pub fn form_field(mut self, value: UiFormFieldProps) -> Self {
+        self.props.form_field = value;
         self
     }
 

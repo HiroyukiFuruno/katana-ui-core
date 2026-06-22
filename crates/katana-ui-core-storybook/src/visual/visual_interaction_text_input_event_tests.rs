@@ -8,7 +8,7 @@ use katana_ui_core::theme::ThemeSnapshot;
 const PAGE: &str = "text-input";
 const DARK_THEME: &str = "dark";
 const ICON_BUTTONS_PRESET: usize = 6;
-const KATANA_SEARCH_SVG: &str = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"7\" cy=\"7\" r=\"4\"/><line x1=\"10\" y1=\"10\" x2=\"14\" y2=\"14\"/></svg>";
+const STORYBOOK_SEARCH_SVG: &str = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"/></svg>";
 
 #[test]
 fn text_input_typing_updates_event_in_realtime() {
@@ -39,7 +39,7 @@ fn text_input_typing_updates_event_in_realtime() {
 }
 
 #[test]
-fn text_input_storybook_uses_katana_search_svg_source() -> Result<(), String> {
+fn text_input_storybook_uses_external_search_svg_source() -> Result<(), String> {
     let examples = crate::StoryCatalog.examples();
     let input = examples
         .iter()
@@ -47,11 +47,11 @@ fn text_input_storybook_uses_katana_search_svg_source() -> Result<(), String> {
         .ok_or_else(|| "text-input story example".to_string())?;
 
     assert_eq!(
-        KATANA_SEARCH_SVG,
-        super::dedicated_dod_form_input_live::text_input_katana_search_svg_for_test()
+        STORYBOOK_SEARCH_SVG,
+        super::dedicated_dod_form_input_live::text_input_search_svg_fixture_for_test()
     );
     assert_eq!(
-        Some(KATANA_SEARCH_SVG),
+        Some(STORYBOOK_SEARCH_SVG),
         input
             .tree
             .root()

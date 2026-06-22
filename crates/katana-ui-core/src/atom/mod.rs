@@ -17,8 +17,9 @@ mod typed;
 
 use crate::interaction::{UiAction, UiActionResult};
 use crate::render_model::{
-    UiCommonProps, UiCursor, UiDimension, UiDisplay, UiNode, UiNodeKind, UiPointerEvents,
-    UiPosition, UiProgressMode, UiSize, UiStateId, UiTone, UiVariant, UiVisualRole, UiZIndex,
+    UiCommonProps, UiCursor, UiDimension, UiDisplay, UiHostActionSpec, UiNode, UiNodeKind,
+    UiPointerEvents, UiPosition, UiProgressMode, UiSize, UiStateId, UiTone, UiVariant,
+    UiVisualRole, UiZIndex,
 };
 use crate::state::{UiComponentState, UiStateHandle};
 pub use chip::{Chip, ChipAction, ChipEvent, ChipKeyboardInput, ChipSize, ChipTone, ChipVariant};
@@ -36,8 +37,8 @@ use state::AtomState;
 pub use text_area::{
     TextArea, TextAreaAction, TextAreaActionOutcome, TextAreaCaretMove, TextAreaCompositionPhase,
     TextAreaCompositionState, TextAreaEvent, TextAreaKey, TextAreaKeyChord, TextAreaNewlineKey,
-    TextAreaOptions, TextAreaResizeEvent, TextAreaSelection, TextAreaState, TextAreaSubmitKey,
-    TextAreaTabBehavior, TextAreaValidationError, TextAreaWrapPolicy,
+    TextAreaOptions, TextAreaResizeDelta, TextAreaResizeEvent, TextAreaSelection, TextAreaState,
+    TextAreaSubmitKey, TextAreaTabBehavior, TextAreaValidationError, TextAreaWrapPolicy,
 };
 
 macro_rules! atom_model {
@@ -77,6 +78,12 @@ macro_rules! atom_model {
                 let label = value.into();
                 self.state.accessibility_label = label.clone();
                 self.state.common.accessibility_label = label;
+                self
+            }
+
+            #[must_use]
+            pub fn theme_slot(mut self, value: impl Into<String>) -> Self {
+                self.state.common.theme_slot = value.into();
                 self
             }
 
@@ -140,6 +147,12 @@ macro_rules! atom_model {
             #[must_use]
             pub fn pointer_events(mut self, value: UiPointerEvents) -> Self {
                 self.state.common.pointer_events = value;
+                self
+            }
+
+            #[must_use]
+            pub fn host_action(mut self, value: UiHostActionSpec) -> Self {
+                self.state.common = self.state.common.host_action(value);
                 self
             }
 
@@ -248,6 +261,12 @@ macro_rules! atom_model {
             #[must_use]
             pub fn state_id(&self) -> &UiStateId {
                 &self.state.state_id
+            }
+
+            #[must_use]
+            pub fn stable_state_id(mut self, value: impl Into<UiStateId>) -> Self {
+                self.state.state_id = value.into();
+                self
             }
 
             #[must_use]

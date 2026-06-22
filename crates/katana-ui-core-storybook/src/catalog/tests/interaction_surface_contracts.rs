@@ -75,7 +75,15 @@ fn context_menu_story_exposes_detail_settings_and_callback_log() -> Result<(), &
             "context-menu preview lacks preset {preset}"
         );
     }
-    for setting in ["anchor=", "placement=", "item_kind=", "callback_log="] {
+    for setting in [
+        "context_menu.anchor=",
+        "context_menu.placement_priority=",
+        "context_menu.placement_used=",
+        "context_menu.min_width=",
+        "context_menu.max_height=",
+        "item_kind=",
+        "callback_log=",
+    ] {
         assert!(
             details.settings.contains(setting),
             "context-menu settings inspector lacks {setting}"
@@ -140,7 +148,7 @@ fn closeable_tab_strip_story_exposes_settings_presets_and_logs() -> Result<(), &
         );
     }
     for event in [
-        "tab_added",
+        "closeable_tab_added",
         "closeable_tab_closed",
         "closeable_tab_reordered",
         "closeable_tab_overflow_opened",
@@ -172,11 +180,41 @@ fn toolbar_story_exposes_overflow_split_settings_and_logs() -> Result<(), &'stat
             "split action",
             "display mode",
             "density",
-            "accelerator"
+            "accelerator",
+            "context anchor",
+            "action priority",
+            "action accelerator",
+            "action split",
+            "action group",
+            "action tooltip",
+            "action a11y",
+            "action disabled",
+            "group label",
+            "group divider",
+            "split disabled",
+            "split tooltip",
+            "split a11y"
         ],
         StoryPresetLabels::for_page("toolbar")
     );
-    for setting in ["action", "priority", "overflow", "display", "density"] {
+    for setting in [
+        "toolbar.display_mode",
+        "toolbar.density",
+        "toolbar.overflow_strategy",
+        "toolbar.context_menu_anchor",
+        "toolbar.action_priority",
+        "toolbar.action_accelerator",
+        "toolbar.action_split",
+        "toolbar.action_group",
+        "toolbar.action_tooltip",
+        "toolbar.action_a11y",
+        "toolbar.action_disabled",
+        "toolbar.group_label",
+        "toolbar.group_divider",
+        "toolbar.split_disabled",
+        "toolbar.split_tooltip",
+        "toolbar.split_a11y",
+    ] {
         assert!(
             details.settings.contains(setting),
             "toolbar settings inspector lacks {setting}"
@@ -204,12 +242,16 @@ fn split_pane_story_exposes_presets_settings_and_logs() -> Result<(), &'static s
 
     assert_eq!(
         &[
-            "horizontal",
-            "vertical",
-            "min clamp",
-            "reset",
-            "keyboard resize",
-            "nested"
+            "axis vertical",
+            "wide gap",
+            "center alignment",
+            "overflow scroll",
+            "ratio percent",
+            "min percent clamp",
+            "max percent clamp",
+            "reset percent",
+            "wide handle",
+            "keyboard resize mode"
         ],
         StoryPresetLabels::for_page("split-pane")
     );
@@ -225,11 +267,14 @@ fn split_pane_story_exposes_presets_settings_and_logs() -> Result<(), &'static s
     }
     for setting in [
         "axis=",
-        "ratio=",
-        "min=",
-        "max=",
-        "reset=",
-        "handle=",
+        "gap=",
+        "alignment=",
+        "overflow=",
+        "ratio_percent=",
+        "min_percent=",
+        "max_percent=",
+        "reset_percent=",
+        "handle_width_px=",
         "resize_mode=",
         "children=",
         "nested=",

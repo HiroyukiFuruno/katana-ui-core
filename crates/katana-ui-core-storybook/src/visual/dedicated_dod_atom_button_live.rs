@@ -1,7 +1,7 @@
 use super::canvas::Canvas;
 use super::dedicated_dod_atom_button_live_status::draw_status_rows;
 use super::dedicated_dod_atom_button_live_surface::{
-    button_layout, draw_button_label, draw_button_surface,
+    button_layout, draw_button_label, draw_button_surface, measure_button_label_width,
 };
 use super::dedicated_dod_common::{self as common, Rect};
 use super::palette::VisualPalette;
@@ -24,11 +24,15 @@ pub(super) fn draw(
     let kind = ButtonLiveKind::from_title(title);
     common::frame(canvas, text, palette, x, y, title);
     let label = button_label_for(scenario, kind);
+    let label_width = measure_button_label_width(text, label);
     let layout = button_layout(
-        scenario.preset_index,
+        scenario
+            .screen_state
+            .button_options
+            .effective_preset_index(scenario.preset_index),
         scenario.screen_state.button_options.width_mode,
         scenario.screen_state.button_options.height_mode,
-        label,
+        label_width,
         kind.has_icon(),
         kind.has_visible_label(),
     );

@@ -8,7 +8,8 @@ use super::text::TextRenderer;
 
 const INVALID_PRESET: usize = 1;
 const HELPER_PRESET: usize = 2;
-const THEME_PRESET: usize = 3;
+const REQUIRED_PRESET: usize = 3;
+const THEME_PRESET: usize = 4;
 const BLOCK_COUNT: usize = 5;
 
 pub(super) fn form_field(
@@ -87,15 +88,17 @@ fn label_marker_width(scenario: ScenarioContext<'_>) -> usize {
 }
 
 fn label_marker_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.preset_index == INVALID_PRESET {
+    if form_field_invalid(scenario) {
         common::DANGER
+    } else if form_field_focused(scenario) || form_field_required(scenario) {
+        common::TOKEN
     } else {
         palette.accent
     }
 }
 
 fn value_width(scenario: ScenarioContext<'_>) -> usize {
-    if scenario.preset_index == INVALID_PRESET {
+    if form_field_invalid(scenario) {
         return m::PX_174;
     }
     if scenario.screen_state.has_widget_action() {
@@ -113,25 +116,47 @@ fn value_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
 }
 
 fn helper_width(scenario: ScenarioContext<'_>) -> usize {
-    if scenario.preset_index == HELPER_PRESET {
+    if scenario.preset_index == HELPER_PRESET || form_field_helper_expanded(scenario) {
         return m::PX_230;
     }
     m::PX_166
 }
 
 fn helper_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.preset_index == INVALID_PRESET {
+    if form_field_invalid(scenario) {
         return common::DANGER;
     }
     palette.panel
 }
 
 fn status_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.preset_index == INVALID_PRESET || scenario.screen_state.has_widget_action() {
+    if form_field_invalid(scenario) {
         return common::DANGER;
+    }
+    if form_field_focused(scenario) || form_field_required(scenario) {
+        return common::TOKEN;
     }
     if scenario.preset_index == THEME_PRESET {
         return common::TOKEN;
     }
     palette.accent
+}
+
+fn form_field_invalid(scenario: ScenarioContext<'_>) -> bool {
+    scenario.preset_index == INVALID_PRESET
+        || scenario.screen_state.last_action == "field_validate"
+        || scenario.screen_state.last_setting == "form_field.invalid"
+}
+
+fn form_field_helper_expanded(scenario: ScenarioContext<'_>) -> bool {
+    scenario.screen_state.last_setting == "form_field.helper_text"
+}
+
+fn form_field_required(scenario: ScenarioContext<'_>) -> bool {
+    scenario.preset_index == REQUIRED_PRESET
+        || scenario.screen_state.last_setting == "form_field.required"
+}
+
+fn form_field_focused(scenario: ScenarioContext<'_>) -> bool {
+    scenario.screen_state.last_action == "form_field_focus_link"
 }

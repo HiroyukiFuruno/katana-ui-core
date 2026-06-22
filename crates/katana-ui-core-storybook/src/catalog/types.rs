@@ -36,7 +36,7 @@ const PASSIVE_CONTRACT_PAGES: &[&str] = &[
     "empty-state",
 ];
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct StoryExample {
     pub page: &'static str,
     pub tree: UiTree,

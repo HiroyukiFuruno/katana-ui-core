@@ -6,8 +6,16 @@ const EDITOR_FIND_PRESET_INDEX: usize = 1;
 const EDITOR_REPLACE_PRESET_INDEX: usize = 2;
 const VIEWER_PRESET_INDEX: usize = 3;
 const HISTORY_PRESET_INDEX: usize = 4;
+const RESULT_COUNT_PRESET_INDEX: usize = 5;
+const ACTIVE_INDEX_PRESET_INDEX: usize = 6;
 
 pub(super) fn query_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.screen_state.last_action == "search_control_keyboard_next" {
+        return common::SUCCESS;
+    }
+    if scenario.screen_state.search_control.focused {
+        return common::TOKEN;
+    }
     if scenario.screen_state.has_settings_override() {
         return common::TOKEN;
     }
@@ -15,6 +23,9 @@ pub(super) fn query_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>)
 }
 
 pub(super) fn option_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.screen_state.last_action == "search_control_keyboard_next" {
+        return common::SUCCESS;
+    }
     if scenario.screen_state.has_widget_action()
         || scenario.screen_state.has_settings_override()
         || scenario.preset_index == EDITOR_FIND_PRESET_INDEX
@@ -34,8 +45,21 @@ pub(super) fn replace_fill(palette: &VisualPalette, scenario: ScenarioContext<'_
     palette.surface
 }
 
+pub(super) fn count_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.preset_index == RESULT_COUNT_PRESET_INDEX {
+        return common::TOKEN;
+    }
+    palette.surface
+}
+
 pub(super) fn navigation_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.preset_index == HISTORY_PRESET_INDEX {
+    if scenario.screen_state.last_action == "search_control_keyboard_next" {
+        return common::TOKEN;
+    }
+    if matches!(
+        scenario.preset_index,
+        HISTORY_PRESET_INDEX | ACTIVE_INDEX_PRESET_INDEX
+    ) {
         return common::WARN;
     }
     palette.panel
@@ -50,6 +74,8 @@ pub(super) fn query_label(scenario: ScenarioContext<'_>) -> &'static str {
         EDITOR_REPLACE_PRESET_INDEX => "replace title",
         VIEWER_PRESET_INDEX => "viewer text",
         HISTORY_PRESET_INDEX => "recent query",
+        RESULT_COUNT_PRESET_INDEX => "query count",
+        ACTIVE_INDEX_PRESET_INDEX => "active result",
         _ => "head",
     }
 }
@@ -58,6 +84,8 @@ pub(super) fn result_label(scenario: ScenarioContext<'_>) -> &'static str {
     match scenario.preset_index {
         VIEWER_PRESET_INDEX => "0 / 0",
         HISTORY_PRESET_INDEX => "7 / 18",
+        RESULT_COUNT_PRESET_INDEX => "46",
+        ACTIVE_INDEX_PRESET_INDEX => "44 / 46",
         _ => "3 / 12",
     }
 }
@@ -78,6 +106,8 @@ pub(super) fn status_label(scenario: ScenarioContext<'_>) -> &'static str {
         EDITOR_REPLACE_PRESET_INDEX => "replace=title",
         VIEWER_PRESET_INDEX => "result=0",
         HISTORY_PRESET_INDEX => "active=7",
+        RESULT_COUNT_PRESET_INDEX => "count=46",
+        ACTIVE_INDEX_PRESET_INDEX => "active=44",
         _ => "regex=false",
     }
 }

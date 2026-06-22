@@ -120,15 +120,17 @@ impl ContextMenuState {
         path: Vec<usize>,
         props: &mut UiContextMenuProps,
     ) -> Vec<ContextMenuEvent> {
+        let command = command_for_path(props, &path);
+        if command.is_empty() {
+            props.highlighted_path = path.clone();
+            return vec![ContextMenuEvent::ItemActivationBlocked { path }];
+        }
         self.open = false;
         props.highlighted_path = path.clone();
         self.pending_submenu_path.clear();
         apply_checked_state(props, &path);
         vec![
-            ContextMenuEvent::ItemSelected {
-                command: command_for_path(props, &path),
-                path,
-            },
+            ContextMenuEvent::ItemSelected { command, path },
             ContextMenuEvent::Closed {
                 reason: ContextMenuCloseReason::Selected,
             },

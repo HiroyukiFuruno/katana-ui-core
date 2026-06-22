@@ -5,8 +5,9 @@ const TEXT_AREA_SCROLL_STEP_LINES: usize = 1;
 const TEXT_AREA_SCROLL_STEP_X: usize = 12;
 
 impl StorybookScreenState {
-    pub(super) fn scroll_text_area_vertical(
+    pub(in crate::visual) fn scroll_text_area_vertical_for(
         &mut self,
+        instance: &'static str,
         delta_y: f32,
         enabled: bool,
         max_offset: usize,
@@ -14,7 +15,10 @@ impl StorybookScreenState {
         if !enabled {
             return false;
         }
-        let previous = self.text_area_scroll_offset.min(max_offset);
+        let previous = self
+            .text_area_runtime_for(instance)
+            .scroll_offset()
+            .min(max_offset);
         let next = if delta_y > 0.0 {
             previous.saturating_add(TEXT_AREA_SCROLL_STEP_LINES)
         } else {
@@ -25,7 +29,7 @@ impl StorybookScreenState {
             return false;
         }
         self.action_count += 1;
-        self.text_area_scroll_offset = next;
+        self.text_area_runtime_mut_for(instance).scroll_offset = next;
         self.last_action = "text_area_scroll_y";
         self.last_event = "text_area_scroll_changed";
         self.last_setting = "text_area.vertical_scroll";
@@ -34,8 +38,9 @@ impl StorybookScreenState {
         true
     }
 
-    pub(super) fn scroll_text_area_horizontal(
+    pub(in crate::visual) fn scroll_text_area_horizontal_for(
         &mut self,
+        instance: &'static str,
         delta_x: f32,
         enabled: bool,
         max_offset: usize,
@@ -43,7 +48,10 @@ impl StorybookScreenState {
         if !enabled {
             return false;
         }
-        let previous = self.text_area_scroll_x_offset.min(max_offset);
+        let previous = self
+            .text_area_runtime_for(instance)
+            .scroll_x_offset()
+            .min(max_offset);
         let next = if delta_x > 0.0 {
             previous.saturating_add(TEXT_AREA_SCROLL_STEP_X)
         } else {
@@ -54,7 +62,7 @@ impl StorybookScreenState {
             return false;
         }
         self.action_count += 1;
-        self.text_area_scroll_x_offset = next;
+        self.text_area_runtime_mut_for(instance).scroll_x_offset = next;
         self.last_action = "text_area_scroll_x";
         self.last_event = "text_area_scroll_changed";
         self.last_setting = "text_area.horizontal_scroll";
@@ -63,8 +71,12 @@ impl StorybookScreenState {
         true
     }
 
-    pub(super) fn text_area_max_scroll_offset(&self) -> usize {
-        text_area_line_count(self.text_area_value()).saturating_sub(TEXT_AREA_VISIBLE_LINES)
+    pub(in crate::visual) fn text_area_max_scroll_offset_for(
+        &self,
+        instance: &'static str,
+    ) -> usize {
+        text_area_line_count(self.text_area_value_for(instance))
+            .saturating_sub(TEXT_AREA_VISIBLE_LINES)
     }
 }
 

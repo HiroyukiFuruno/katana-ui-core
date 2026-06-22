@@ -6,10 +6,20 @@ use super::render_context::ScenarioContext;
 use super::text::TextRenderer;
 
 const PICKED: u32 = 0x40a6ff;
-const COLOR_TRIGGER_PRESET_INDEX: usize = 1;
-const SIZE_PRESET_INDEX: usize = 2;
-const BORDERLESS_PRESET_INDEX: usize = 3;
-const FLOATING_PANEL_PRESET_INDEX: usize = 4;
+const VALUE_PRESET_INDEX: usize = 1;
+const OPEN_PRESET_INDEX: usize = 2;
+const HUE_PRESET_INDEX: usize = 3;
+const ALPHA_PRESET_INDEX: usize = 4;
+const BLEND_PRESET_INDEX: usize = 5;
+const COLOR_AREA_PRESET_INDEX: usize = 6;
+const TRIGGER_SIZE_PRESET_INDEX: usize = 7;
+const TITLE_PRESET_INDEX: usize = 8;
+const RGB_MODE_PRESET_INDEX: usize = 9;
+const PANEL_SCALE_PRESET_INDEX: usize = 10;
+const TRIGGER_BORDER_PRESET_INDEX: usize = 11;
+const EYEDROPPER_PRESET_INDEX: usize = 12;
+const READONLY_PRESET_INDEX: usize = 13;
+const DISABLED_PRESET_INDEX: usize = 14;
 
 pub(super) fn color_picker(
     canvas: &mut Canvas,
@@ -51,24 +61,29 @@ fn color_picker_blocks(
     palette: &VisualPalette,
     scenario: ScenarioContext<'_>,
 ) -> [Block; m::PX_16] {
-    let preview_color = if scenario.screen_state.has_widget_action()
-        || scenario.screen_state.has_settings_override()
-        || scenario.preset_index == COLOR_TRIGGER_PRESET_INDEX
-    {
+    let preview_color = if scenario.screen_state.is_button_focused() {
+        common::TOKEN
+    } else if scenario.screen_state.preview_hovered {
+        m::COLOR_HUE_CYAN
+    } else if should_show_picked_color(scenario) {
         PICKED
     } else {
         palette.accent
     };
-    let floating_panel_fill = if scenario.preset_index == FLOATING_PANEL_PRESET_INDEX {
+    let floating_panel_fill = if matches!(
+        scenario.preset_index,
+        OPEN_PRESET_INDEX | PANEL_SCALE_PRESET_INDEX
+    ) {
         palette.panel
     } else {
         palette.surface
     };
-    let size_marker_color = if scenario.preset_index == SIZE_PRESET_INDEX {
+    let size_marker_color = if scenario.preset_index == TRIGGER_SIZE_PRESET_INDEX {
         common::TOKEN
     } else {
         preview_color
     };
+    let variant_color = color_picker_variant_color(scenario.preset_index, palette);
     [
         Block::new(m::PX_14, m::PX_34, m::PX_68, m::PX_50, preview_color),
         Block::new(m::PX_90, m::PX_34, m::PX_64, m::PX_8, common::DANGER),
@@ -106,8 +121,14 @@ fn color_picker_blocks(
             m::PX_28,
             floating_panel_fill,
         ),
-        Block::new(m::PX_28, m::PX_48, m::PX_18, m::PX_18, common::DANGER),
-        Block::new(m::PX_50, m::PX_58, m::PX_18, m::PX_18, common::WARN),
+        Block::new(m::PX_28, m::PX_48, m::PX_18, m::PX_18, variant_color),
+        Block::new(
+            m::PX_50,
+            m::PX_58,
+            m::PX_18,
+            m::PX_18,
+            color_picker_variant_shadow(scenario.preset_index, palette),
+        ),
         Block::new(m::PX_64, m::PX_42, m::PX_10, m::PX_10, common::TOKEN),
         Block::new(m::PX_182, m::PX_84, m::PX_10, m::PX_8, common::DANGER),
         Block::new(m::PX_192, m::PX_84, m::PX_10, m::PX_8, common::WARN),
@@ -124,7 +145,7 @@ fn trigger_block(
     color: u32,
     scenario: ScenarioContext<'_>,
 ) -> Block {
-    if scenario.preset_index == BORDERLESS_PRESET_INDEX {
+    if scenario.preset_index == TRIGGER_BORDER_PRESET_INDEX {
         return Block::new(x, y, width, height, color);
     }
     Block::outlined(x, y, width, height, color)
@@ -132,11 +153,59 @@ fn trigger_block(
 
 fn color_picker_note(preset_index: usize) -> &'static str {
     match preset_index {
-        COLOR_TRIGGER_PRESET_INDEX => "color-only trigger / value outside",
-        SIZE_PRESET_INDEX => "xs sm mid large xlarge",
-        BORDERLESS_PRESET_INDEX => "border off / single frame",
-        FLOATING_PANEL_PRESET_INDEX => "floating panel / close actions",
+        VALUE_PRESET_INDEX => "string value mirrors rgba",
+        OPEN_PRESET_INDEX => "open panel / close actions",
+        HUE_PRESET_INDEX => "hue slider live preview",
+        ALPHA_PRESET_INDEX => "alpha slider opacity",
+        BLEND_PRESET_INDEX => "blend mode compare",
+        COLOR_AREA_PRESET_INDEX => "color plane drag target",
+        TRIGGER_SIZE_PRESET_INDEX => "xs sm mid large xlarge",
+        TITLE_PRESET_INDEX => "panel title text",
+        RGB_MODE_PRESET_INDEX => "rgb mode hides alpha",
+        PANEL_SCALE_PRESET_INDEX => "scaled floating panel",
+        TRIGGER_BORDER_PRESET_INDEX => "border off / single frame",
+        EYEDROPPER_PRESET_INDEX => "eyedropper callback ready",
+        READONLY_PRESET_INDEX => "readonly blocks writes",
+        DISABLED_PRESET_INDEX => "disabled blocks focus",
         _ => "rgba panel / seamless hue",
+    }
+}
+
+fn should_show_picked_color(scenario: ScenarioContext<'_>) -> bool {
+    scenario.screen_state.color_picker.has_committed_color()
+        || scenario.screen_state.has_settings_override()
+        || matches!(
+            scenario.preset_index,
+            VALUE_PRESET_INDEX | COLOR_AREA_PRESET_INDEX | EYEDROPPER_PRESET_INDEX
+        )
+}
+
+fn color_picker_variant_color(preset_index: usize, palette: &VisualPalette) -> u32 {
+    match preset_index {
+        VALUE_PRESET_INDEX => PICKED,
+        OPEN_PRESET_INDEX => palette.panel,
+        HUE_PRESET_INDEX => m::COLOR_HUE_ORANGE,
+        ALPHA_PRESET_INDEX => common::PURPLE,
+        BLEND_PRESET_INDEX => common::SUCCESS,
+        COLOR_AREA_PRESET_INDEX => common::TOKEN,
+        TRIGGER_SIZE_PRESET_INDEX => common::WARN,
+        TITLE_PRESET_INDEX => palette.text,
+        RGB_MODE_PRESET_INDEX => m::COLOR_HUE_CYAN,
+        PANEL_SCALE_PRESET_INDEX => palette.accent,
+        TRIGGER_BORDER_PRESET_INDEX => palette.border,
+        EYEDROPPER_PRESET_INDEX => common::DANGER,
+        READONLY_PRESET_INDEX => palette.muted,
+        DISABLED_PRESET_INDEX => palette.muted,
+        _ => common::DANGER,
+    }
+}
+
+fn color_picker_variant_shadow(preset_index: usize, palette: &VisualPalette) -> u32 {
+    match preset_index {
+        ALPHA_PRESET_INDEX | DISABLED_PRESET_INDEX => palette.surface,
+        OPEN_PRESET_INDEX | PANEL_SCALE_PRESET_INDEX => palette.panel,
+        TRIGGER_BORDER_PRESET_INDEX | READONLY_PRESET_INDEX => palette.border,
+        _ => common::WARN,
     }
 }
 

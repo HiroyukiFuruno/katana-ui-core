@@ -91,8 +91,8 @@ KDV (`katana-document-viewer`) / KLE (`katana-language-editor`) は、KUC や他
 - 新規作業では `katana-ui-core` / `KUC` 表記を使う。
 - 旧リポジトリ名や旧略称は archive 済み change の履歴説明だけに残す。
 - repo 外の実装挙動が必要な場合は、先に `docs/inventory/<topic>.md` へ画面・操作・入力・出力・状態遷移をコピーしてから実装する。
-- 中核 crate（core crate）は `floem` / `egui` / `gpui` を直接依存に持たない。
-- 画面フレームワーク（UI framework）固有の型は変換層 crate（adapter crate）に閉じる。
+- 中核 crate（core crate）は `adapter` / `adapter` / `adapter` を直接依存に持たない。
+- 画面フレームワーク（UI framework）固有の型は KUC active workspace に入れない。
 - KUC 公開 API は atoms / molecules までに限定し、organisms / templates / pages を公開 widget として追加しない。
 - `WorkspaceTabBar`、`AppShell`、`TitleBar`、`SplashScreen` のような draft 名が残る change は、実装前に domain-free な atoms / molecules へ粒度を落とす。
 - Storybook は KUC の部品を実画面で触ってフィードバックするための画面であり、KUC の中立 model と専用 surface で表示する。
@@ -148,7 +148,7 @@ KDV (`katana-document-viewer`) / KLE (`katana-language-editor`) は、KUC や他
 次は KUC core に入れない。
 
 - markdown rendering panel
-- AI vendor control
+- AI adapter control
 - chat composer
 - linter result list
 - workspace file tree

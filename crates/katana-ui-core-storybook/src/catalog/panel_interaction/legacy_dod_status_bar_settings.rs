@@ -57,6 +57,30 @@ fn status_bar_options() -> Vec<StatusBarSettingOption> {
             before: "Default",
             after: "Compact",
         },
+        StatusBarSettingOption {
+            name: "status_bar.message",
+            value_type: "Option<String>",
+            before: "None",
+            after: "Ready",
+        },
+        StatusBarSettingOption {
+            name: "status_bar.severity",
+            value_type: "UiTone",
+            before: "Neutral",
+            after: "Warning",
+        },
+        StatusBarSettingOption {
+            name: "status_bar.dismiss",
+            value_type: "UiDismissAction",
+            before: "None",
+            after: "Available",
+        },
+        StatusBarSettingOption {
+            name: "status_bar.segment_a11y",
+            value_type: "String",
+            before: "default",
+            after: "custom",
+        },
     ]
 }
 

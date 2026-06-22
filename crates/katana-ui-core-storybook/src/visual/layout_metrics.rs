@@ -40,6 +40,7 @@ const INSPECTOR_SECTION_X_OFFSET: usize = 28;
 const INSPECTOR_FIRST_ROW_Y_OFFSET: usize = 112;
 const INSPECTOR_SETTING_ROW_WIDTH_OFFSET: usize = 56;
 const INSPECTOR_SETTING_ROW_HEIGHT: usize = 22;
+const INSPECTOR_SETTING_ROW_STEP: usize = 24;
 const NAV_PANEL_X_INSET: usize = 6;
 const NAV_PANEL_Y_INSET: usize = 8;
 const NAV_PANEL_WIDTH_INSET: usize = 12;
@@ -168,9 +169,13 @@ pub(super) fn navigation_hit_rect(row_y: usize) -> LayoutRect {
 }
 
 pub(super) fn button_setting_hit_rect() -> LayoutRect {
+    inspector_setting_row_hit_rect(0)
+}
+
+pub(super) fn inspector_setting_row_hit_rect(index: usize) -> LayoutRect {
     LayoutRect::new(
         INSPECTOR_X + INSPECTOR_SECTION_X_OFFSET,
-        INSPECTOR_Y + INSPECTOR_FIRST_ROW_Y_OFFSET,
+        INSPECTOR_Y + INSPECTOR_FIRST_ROW_Y_OFFSET + index * INSPECTOR_SETTING_ROW_STEP,
         INSPECTOR_WIDTH - INSPECTOR_SETTING_ROW_WIDTH_OFFSET,
         INSPECTOR_SETTING_ROW_HEIGHT,
     )

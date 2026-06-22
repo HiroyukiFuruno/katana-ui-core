@@ -73,8 +73,11 @@ fn draw_header(canvas: &mut Canvas, render: RenderContext<'_>, scenario: Scenari
 }
 
 fn preview_meta(scenario: ScenarioContext<'_>) -> &'static str {
-    if scenario.preset_index > 0 {
+    if scenario.screen_state.action_count > 0 || scenario.screen_state.last_action != "none" {
         return "operation after / callback log visible";
+    }
+    if scenario.preset_index > 0 {
+        return "preset state / public API visible";
     }
     "core-only / pure Rust / late-bound style"
 }
@@ -106,7 +109,7 @@ fn draw_summary_controls(
 }
 
 fn short_value(value: &str) -> String {
-    const MAX_CHARS: usize = 18;
+    const MAX_CHARS: usize = 20;
     const SUFFIX: &str = "...";
     if value.chars().count() <= MAX_CHARS {
         return value.to_string();

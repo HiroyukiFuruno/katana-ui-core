@@ -70,11 +70,11 @@ It MUST NOT show numeric RGB / RGBA values inside the trigger.
 - **THEN** only the parent trigger node renders a border
 - **AND** the inner color preview does not render its own outer border
 
-#### Scenario: Trigger rendering does not crash Floem
+#### Scenario: Trigger rendering does not crash Adapter
 
 - **WHEN** the Storybook page renders ColorPicker trigger presets
-- **THEN** the trigger is built from normal Floem nodes
-- **AND** it does not panic in Floem view state updates
+- **THEN** the trigger is built from normal Adapter nodes
+- **AND** it does not panic in framework view state updates
 
 ### Requirement: No fake picker controls
 

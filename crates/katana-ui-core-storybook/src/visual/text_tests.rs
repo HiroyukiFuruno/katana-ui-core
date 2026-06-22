@@ -43,6 +43,20 @@ fn measured_width_matches_drawn_ink_right_edge() -> Result<(), String> {
 }
 
 #[test]
+fn text_space_advances_latin_words() {
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+
+    let collapsed = renderer.measure_width("H1Heading", TEXT_SIZE);
+    let spaced = renderer.measure_width("H1 Heading", TEXT_SIZE);
+
+    assert!(
+        spaced > collapsed,
+        "space must advance text width: collapsed={collapsed} spaced={spaced}"
+    );
+}
+
+#[test]
 fn resolves_default_and_code_font_roles_from_theme() {
     let facade = UiCoreFacade::default();
     let default_renderer = TextRenderer::load(&facade, facade.default_font_role());

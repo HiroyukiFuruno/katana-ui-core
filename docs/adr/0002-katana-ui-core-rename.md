@@ -6,7 +6,7 @@
 
 ## コンテキスト
 
-`katana-ui-widget` は当初「Floem 向け共通 UI widget の共通基盤」として設計された。
+`katana-ui-widget` は当初「Adapter 向け共通 UI widget の共通基盤」として設計された。
 今回の UI 分離構想で以下を整理した結果、本 repo の責務が「画面部品（widget: atoms / molecules）の集合」を超えていることが明らかになった。
 
 本 repo の実体は **フレームワーク非依存（framework-neutral）な UI Core** であり、以下を所有する。
@@ -14,7 +14,7 @@
 - Component model / render model (`UiTree` / `UiNode` 等)
 - theme token
 - event model
-- adapter contract (Floem / GPUI / egui / native への変換 trait)
+- external runtime contract (framework-specific UI / native が消費する中立 trait)
 - **window / runtime / surface API** (`Application::new().window(...).run()` のような entry point)
 - atoms / molecules (widget primitive はその一部)
 
@@ -28,21 +28,21 @@
 
 1. GitHub repo 名を `katana-ui-widget` から `katana-ui-core` にリネームする。
 2. Cargo crate 名も `katana-ui-core` に変更する。
-3. adapter crate 名を `katana-ui-core-floem` / `katana-ui-core-egui` / `katana-ui-core-gpui` に変更する。
+3. external runtime / renderer crate は KUC active workspace の管理対象外にする。
 4. storybook crate 名を `katana-ui-core-storybook` に変更する。
 5. 略語を `KUW` から `KUC` に変更する。新規 docs では KUC を使う。
 6. UI 分離構想の Phase 1 で **window / runtime / surface module** を core に追加する。
 
 window API の中立化（neutral）粒度は「中」とする。
 標準 API に含める範囲は title / size / close / focus / fullscreen / multi-window / icon。
-platform menu / IME / drag & drop は標準 API には入れず、変換層（adapter）経由の逃がし口（escape hatch）で扱う。
+platform menu / IME / drag & drop は標準 API には入れず、external runtime 経由の逃がし口（escape hatch）で扱う。
 
 ## 理由
 
 - 未公開段階なので rename cost が小さい。
 - 命名と実体を合わせることで、将来の保守時に責務を誤解しにくくなる。
 - KUC 略語は「core」を反映しており、KDV / KLE / KCF / KDR / KMM / KCU と同じ形式で読める。
-- window / runtime / surface を core に置くことで、Floem / GPUI / egui の各 adapter は共通の neutral API を変換する責務に集中できる。
+- window / runtime / surface を core に置くことで、external runtime / renderer は共通の neutral API を消費する責務に集中できる。
 
 ## 代替案
 
@@ -52,16 +52,16 @@ platform menu / IME / drag & drop は標準 API には入れず、変換層（ad
 
 ### 案 B: `katana-ui-runtime` と `katana-ui-widget` に分割する
 
-却下理由: adapter crate も runtime adapter と widget adapter の 2 系統になり、利用側の dependency 数と設計判断が増える。
-1 crate に集約しても責務境界は module と adapter contract で表現できる。
+却下理由: runtime と widget を分けると、利用側の dependency 数と設計判断が増える。
+1 crate に集約しても責務境界は module と external runtime contract で表現できる。
 
 ### 案 C: window API の neutral 化粒度を「最小」または「最大」にする
 
 却下理由:
 
 - 最小では editor 系 product で実用上必要な fullscreen / multi-window が不足する。
-- 最大では platform menu / IME / drag & drop まで neutral 化が必要となり、Floem / GPUI / egui の差異が大きく破綻しやすい。
-- 「中」は 3 adapter 共通サポート範囲とほぼ一致し、特殊機能は adapter contract 拡張で逃がせる。
+- 最大では platform menu / IME / drag & drop まで neutral 化が必要となり、framework-specific UI の差異が大きく破綻しやすい。
+- 「中」は一般的な desktop runtime の共通サポート範囲とほぼ一致し、特殊機能は external runtime contract 拡張で逃がせる。
 
 ## 影響
 

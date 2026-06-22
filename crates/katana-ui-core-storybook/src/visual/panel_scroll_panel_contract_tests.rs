@@ -1,6 +1,6 @@
 use super::{
     Canvas, layout_metrics, palette, panel_scroll_state, panel_scrollbars, preview_detail, render,
-    screen_state,
+    screen_state, storybook_ui_option_contract,
 };
 use katana_ui_core::theme::ThemeSnapshot;
 
@@ -62,7 +62,7 @@ fn panel_story_keeps_storybook_preview_scrollbars_hidden_for_panel_playground() 
 fn panel_story_scrollbar_toggle_hides_preview_scrollbar_pixels() {
     let visible = render_panel_with_offsets(Default::default(), true);
     let mut state = screen_state::StorybookScreenState::default();
-    state.register_settings_change(PANEL_PAGE);
+    apply_scrollbar_hidden_setting(&mut state);
     let hidden = render_panel_with_state(state);
     let accent = palette::VisualPalette::from_theme(&ThemeSnapshot::dark()).accent;
 
@@ -121,6 +121,7 @@ fn render_panel_with_offsets(
     render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
         theme_id: DARK_THEME,
         selected_page: PANEL_PAGE,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index: DEFAULT_PRESET,
         preset_tab_scroll_x: 0,
         scroll_y: 0,
@@ -137,6 +138,7 @@ fn render_panel_with_state(screen_state: screen_state::StorybookScreenState) -> 
     render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
         theme_id: DARK_THEME,
         selected_page: PANEL_PAGE,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index: DEFAULT_PRESET,
         preset_tab_scroll_x: 0,
         scroll_y: 0,
@@ -147,6 +149,17 @@ fn render_panel_with_state(screen_state: screen_state::StorybookScreenState) -> 
         show_navigation_text_connectors: false,
         screen_state,
     })
+}
+
+fn apply_scrollbar_hidden_setting(state: &mut screen_state::StorybookScreenState) {
+    state.register_settings_contract_change(
+        PANEL_PAGE,
+        storybook_ui_option_contract::StorybookUiOptionContract::new(
+            "scrollbar_visibility",
+            "on",
+            "off",
+        ),
+    );
 }
 
 fn region_pixel_diff(

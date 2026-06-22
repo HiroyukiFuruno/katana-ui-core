@@ -1,10 +1,15 @@
 use super::canvas::Canvas;
 use super::dedicated_context_menu_labels as labels;
 use super::dedicated_context_menu_metrics as cm;
+use super::dedicated_context_menu_submenu;
 use super::dedicated_dod_common::{self as common, Rect};
 use super::dedicated_dod_metrics as m;
+use super::layout_metrics::LayoutRect;
 use super::palette::VisualPalette;
+use super::render_context::ScenarioContext;
 use super::text::TextRenderer;
+
+pub(super) use dedicated_context_menu_submenu::ContextMenuPreviewCommand;
 
 #[derive(Clone, Copy)]
 struct MenuRowSpec<'a> {
@@ -19,7 +24,7 @@ pub(super) fn draw_menu(
     canvas: &mut Canvas,
     text: &TextRenderer,
     palette: &VisualPalette,
-    preset_index: usize,
+    scenario: ScenarioContext<'_>,
     x: usize,
     y: usize,
 ) {
@@ -31,7 +36,43 @@ pub(super) fn draw_menu(
     );
     common::fill(canvas, menu, palette.panel);
     common::outline(canvas, palette, menu);
-    draw_rows(canvas, text, palette, preset_index, x, y);
+    draw_rows(canvas, text, palette, scenario.preset_index, x, y);
+    draw_interaction_border(canvas, palette, scenario, x, y);
+    if scenario.screen_state.state_label == "context_menu.submenu=[2]" {
+        dedicated_context_menu_submenu::draw(canvas, text, palette, x, y);
+    }
+}
+
+fn draw_interaction_border(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    x: usize,
+    y: usize,
+) {
+    let highlighted =
+        scenario.screen_state.preview_hovered || scenario.screen_state.is_button_focused();
+    if !highlighted {
+        return;
+    }
+    let rect = dedicated_context_menu_submenu::insert_row_rect(x, y);
+    canvas.stroke_rect(
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
+        palette.hover_border,
+    );
+}
+
+pub(super) fn command_at(
+    component_x: usize,
+    component_y: usize,
+    x: usize,
+    y: usize,
+    submenu_open: bool,
+) -> Option<ContextMenuPreviewCommand> {
+    dedicated_context_menu_submenu::command_at(component_x, component_y, x, y, submenu_open)
 }
 
 fn draw_rows(
@@ -182,4 +223,13 @@ fn draw_divider(canvas: &mut Canvas, palette: &VisualPalette, x: usize, y: usize
         ),
         palette.border,
     );
+}
+
+pub(super) fn insert_row_rect(component_x: usize, component_y: usize) -> LayoutRect {
+    dedicated_context_menu_submenu::insert_row_rect(component_x, component_y)
+}
+
+#[cfg(test)]
+pub(super) fn submenu_link_rect(component_x: usize, component_y: usize) -> LayoutRect {
+    dedicated_context_menu_submenu::submenu_link_rect(component_x, component_y)
 }

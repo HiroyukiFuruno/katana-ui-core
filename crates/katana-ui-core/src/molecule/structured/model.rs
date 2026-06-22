@@ -7,14 +7,14 @@ use crate::molecule::DisclosureTriggerArea;
 use crate::molecule::state::MoleculeState;
 use crate::molecule::virtualization::MoleculeVirtualization;
 use crate::render_model::{
-    UiNode, UiNodeKind, UiTreeLineStyle, UiTreeNodeKind, UiTreeNodeProps, UiTreeProps,
-    UiTreeToggleTriggerArea,
+    UiCommonProps, UiInteractivePreset, UiNode, UiNodeKind, UiTreeLineStyle, UiTreeNodeKind,
+    UiTreeNodeProps, UiTreeProps, UiTreeToggleTriggerArea,
 };
 use serde::{Deserialize, Serialize};
 
 macro_rules! structured_molecule {
     ($name:ident, $item:ty, $kind:expr) => {
-        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
         pub struct $name {
             pub(super) label: String,
             pub(super) state: MoleculeState,
@@ -88,14 +88,16 @@ impl From<TreeView> for UiNode {
     fn from(value: TreeView) -> Self {
         let model = value.model.clone();
         let range = value.virtual_range_model();
+        let interactive = tree_row_interactive_common();
         let mut node = value
             .state
             .node(UiNodeKind::TreeView, value.label)
+            .common(interactive.clone())
             .interaction(MoleculeVirtualization::interaction(
                 value.state.interaction(),
                 range.as_ref(),
             ))
-            .tree(tree_props(model, value.items, range.as_ref()));
+            .tree(tree_props(model, value.items, range.as_ref(), interactive));
         if !value.model.font_role.is_empty() {
             node = node.font_role(value.model.font_role);
         }
@@ -137,9 +139,11 @@ fn tree_props(
     model: StructuredTypedModel,
     items: Vec<TreeNode>,
     range: Option<&VirtualRange>,
+    interactive: UiCommonProps,
 ) -> UiTreeProps {
     UiTreeProps {
         active_id: model.active_id,
+        hovered_id: model.hovered_id,
         line_display: model.line_display,
         line_style: tree_line_style(model.line_style),
         line_width: model.line_width,
@@ -152,11 +156,17 @@ fn tree_props(
         default_open: model.default_open,
         toggle_icon: model.toggle_icon,
         toggle_trigger_area: trigger_area(model.toggle_trigger_area),
+        row_cursor: interactive.cursor,
+        row_hover_border: interactive.hover_border,
         nodes: MoleculeVirtualization::slice_by_range(items, range)
             .into_iter()
             .map(tree_node_props)
             .collect(),
     }
+}
+
+fn tree_row_interactive_common() -> UiCommonProps {
+    UiInteractivePreset::control().apply_to_common_defaults(UiCommonProps::default())
 }
 
 fn tree_node_props(node: TreeNode) -> UiTreeNodeProps {
@@ -172,6 +182,7 @@ fn tree_node_props(node: TreeNode) -> UiTreeNodeProps {
     .expanded(node.expanded)
     .selected(node.selected)
     .active(node.active)
+    .icon(node.icon)
 }
 
 fn tree_line_style(value: TreeLineStyle) -> UiTreeLineStyle {

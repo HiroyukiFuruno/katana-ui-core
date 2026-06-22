@@ -10,6 +10,10 @@ pub(super) fn command_for_path(props: &UiContextMenuProps, path: &[usize]) -> St
     })
 }
 
+pub(super) fn path_for_command(props: &UiContextMenuProps, command: &str) -> Option<Vec<usize>> {
+    path_for_command_in_items(&props.items, command, &[])
+}
+
 pub(super) fn first_enabled_child_path(props: &UiContextMenuProps, path: &[usize]) -> Vec<usize> {
     let Some(item) = item_for_path(&props.items, path) else {
         return path.to_vec();
@@ -41,6 +45,25 @@ fn child_path(path: &[usize], child_index: usize) -> Vec<usize> {
     let mut result = path.to_vec();
     result.push(child_index);
     result
+}
+
+fn path_for_command_in_items(
+    items: &[UiContextMenuItem],
+    command: &str,
+    parent_path: &[usize],
+) -> Option<Vec<usize>> {
+    for (index, item) in items.iter().enumerate() {
+        let path = child_path(parent_path, index);
+        if selectable(item) && item.id == command {
+            return Some(path);
+        }
+        if selectable(item)
+            && let Some(child_path) = path_for_command_in_items(&item.children, command, &path)
+        {
+            return Some(child_path);
+        }
+    }
+    None
 }
 
 fn set_radio_group(items: &mut [UiContextMenuItem], path: &[usize], radio_group: &str) {

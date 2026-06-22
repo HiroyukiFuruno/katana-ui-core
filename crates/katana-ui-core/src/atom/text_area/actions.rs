@@ -28,6 +28,22 @@ pub enum TextAreaCaretMove {
     To(usize),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TextAreaResizeDelta {
+    pub width_delta: u16,
+    pub height_delta: u16,
+}
+
+impl TextAreaResizeDelta {
+    #[must_use]
+    pub const fn new(width_delta: u16, height_delta: u16) -> Self {
+        Self {
+            width_delta,
+            height_delta,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TextAreaAction {
     Type(String),
@@ -39,6 +55,7 @@ pub enum TextAreaAction {
     ImeComposition(TextAreaCompositionState),
     ImeCommit(String),
     DeleteBackward,
+    Resize(TextAreaResizeDelta),
 }
 
 impl TextAreaAction {
@@ -54,6 +71,11 @@ impl TextAreaAction {
     #[must_use]
     pub fn ime_commit(value: impl Into<String>) -> Self {
         Self::ImeCommit(value.into())
+    }
+
+    #[must_use]
+    pub const fn resize(width_delta: u16, height_delta: u16) -> Self {
+        Self::Resize(TextAreaResizeDelta::new(width_delta, height_delta))
     }
 }
 
@@ -108,6 +130,7 @@ impl TextArea {
             TextAreaAction::ImeComposition(value) => self.compose(value, &mut events),
             TextAreaAction::ImeCommit(value) => self.commit_ime(value, &mut events),
             TextAreaAction::DeleteBackward => self.delete_backward(&mut events),
+            TextAreaAction::Resize(value) => self.resize(value, &mut events),
         };
 
         if handled {

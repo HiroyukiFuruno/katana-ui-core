@@ -1,6 +1,6 @@
 ## Why
 
-検索 UI は「leading に search icon」「trailing に clear（値があるとき）」「Esc で clear」「on_submit で確定」などの慣習があり、`TextInput` を直接組ませると毎回同じ合成コードが書かれる。`SearchBox` を 1 件提供して定型を吸収する。`../katana/crates/katana-ui/src/widgets/search_bar/` の役割を Floem に移植。
+検索 UI は「leading に search icon」「trailing に clear（値があるとき）」「Esc で clear」「on_submit で確定」などの慣習があり、`TextInput` を直接組ませると毎回同じ合成コードが書かれる。`SearchBox` を 1 件提供して定型を吸収する。`../katana/crates/katana-ui/src/widgets/search_bar/` の役割を Adapter に移植。
 
 ## What Changes
 

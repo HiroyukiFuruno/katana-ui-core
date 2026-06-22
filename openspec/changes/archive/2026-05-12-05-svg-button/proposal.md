@@ -1,6 +1,6 @@
 ## Why
 
-ツールバー / ヘッダ / 各種フォームで「アイコンのみのクリック可能要素」は最頻出。既存の Floem `button + icon` 直書きでは hover / active / disabled / focus-ring / a11y label が呼び出し側ごとにバラつくため、汎用 widget として固定する。`Icon` primitive と `theme` を素直に合成した最小ボタン。
+ツールバー / ヘッダ / 各種フォームで「アイコンのみのクリック可能要素」は最頻出。既存の Adapter `button + icon` 直書きでは hover / active / disabled / focus-ring / a11y label が呼び出し側ごとにバラつくため、汎用 widget として固定する。`Icon` primitive と `theme` を素直に合成した最小ボタン。
 
 ## What Changes
 

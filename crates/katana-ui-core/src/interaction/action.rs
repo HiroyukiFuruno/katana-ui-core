@@ -1,4 +1,3 @@
-use super::action_name::value_name;
 use crate::interaction::{ColorDragAction, ProgressAction, UiActionSource};
 use crate::layout::SplitPaneResizeSource;
 use crate::render_model::{UiRect, UiScrollbarVisibility, UiStateId};
@@ -40,6 +39,14 @@ pub enum UiAction {
         selection_start: usize,
         selection_end: usize,
     },
+    CopySelection {
+        target: UiStateId,
+    },
+    PasteText {
+        target: UiStateId,
+        text: String,
+        source: UiActionSource,
+    },
     SetOpen {
         target: UiStateId,
         open: bool,
@@ -59,6 +66,10 @@ pub enum UiAction {
     },
     ClearValue {
         target: UiStateId,
+    },
+    InvokeCallback {
+        target: UiStateId,
+        callback: String,
     },
     Dismiss {
         target: UiStateId,
@@ -99,97 +110,84 @@ pub enum UiAction {
     SplitPaneEndResize {
         target: UiStateId,
     },
-}
-
-impl UiAction {
-    #[must_use]
-    pub fn target(&self) -> &UiStateId {
-        match self {
-            Self::Press { target, .. }
-            | Self::SetFocus { target, .. }
-            | Self::SetHover { target, .. }
-            | Self::SetActive { target, .. }
-            | Self::SetDragging { target, .. }
-            | Self::AnimationTick { target, .. }
-            | Self::SetReducedMotion { target, .. }
-            | Self::SetCursorSelection { target, .. }
-            | Self::SetOpen { target, .. }
-            | Self::SetSelectedIndex { target, .. }
-            | Self::SetValue { target, .. }
-            | Self::ClearValue { target }
-            | Self::Dismiss { target }
-            | Self::ScrollTo { target, .. }
-            | Self::ScrollBy { target, .. }
-            | Self::ScrollIntoView { target, .. }
-            | Self::SetScrollbarVisibility { target, .. }
-            | Self::SplitPaneSetRatio { target, .. }
-            | Self::SplitPaneResizeBy { target, .. }
-            | Self::SplitPaneResetRatio { target }
-            | Self::SplitPaneStartResize { target }
-            | Self::SplitPaneEndResize { target } => target,
-        }
-    }
-
-    #[must_use]
-    pub fn name(&self) -> &'static str {
-        match self {
-            Self::Press { source, .. } => source.press_name(),
-            Self::SetFocus { focused, .. } => {
-                if *focused {
-                    "focus"
-                } else {
-                    "blur"
-                }
-            }
-            Self::SetHover { hovered, .. } => {
-                if *hovered {
-                    "hover_start"
-                } else {
-                    "hover_end"
-                }
-            }
-            Self::SetActive { active, .. } => {
-                if *active {
-                    "active_start"
-                } else {
-                    "active_end"
-                }
-            }
-            Self::SetDragging { dragging, .. } => {
-                if *dragging {
-                    "drag_start"
-                } else {
-                    "drag_end"
-                }
-            }
-            Self::AnimationTick { .. } => "animation_tick",
-            Self::SetReducedMotion { .. } => "reduced_motion_toggle",
-            Self::SetCursorSelection { .. } => "cursor_selection_changed",
-            Self::SetSelectedIndex { source, .. } => source.selection_name(),
-            Self::SetValue {
-                source,
-                progress,
-                color_drag,
-                ..
-            } => value_name(*source, progress, color_drag),
-            Self::SetOpen { open, .. } => {
-                if *open {
-                    "open"
-                } else {
-                    "close"
-                }
-            }
-            Self::ClearValue { .. } => "clear_value",
-            Self::Dismiss { .. } => "dismiss",
-            Self::ScrollTo { .. } => "scroll_to",
-            Self::ScrollBy { .. } => "scroll_by",
-            Self::ScrollIntoView { .. } => "scroll_into_view",
-            Self::SetScrollbarVisibility { .. } => "scrollbar_visibility_changed",
-            Self::SplitPaneSetRatio { .. } => "split_pane_set_ratio",
-            Self::SplitPaneResizeBy { .. } => "split_pane_resize_by",
-            Self::SplitPaneResetRatio { .. } => "split_pane_reset_ratio",
-            Self::SplitPaneStartResize { .. } => "split_pane_start_resize",
-            Self::SplitPaneEndResize { .. } => "split_pane_end_resize",
-        }
-    }
+    TabSelect {
+        target: UiStateId,
+        tab_id: String,
+    },
+    TabAdd {
+        target: UiStateId,
+        tab_id: String,
+        label: String,
+        activate: bool,
+    },
+    TabClose {
+        target: UiStateId,
+        tab_id: String,
+    },
+    TabCloseOthers {
+        target: UiStateId,
+        tab_id: String,
+    },
+    TabCloseToRight {
+        target: UiStateId,
+        tab_id: String,
+    },
+    TabCloseToLeft {
+        target: UiStateId,
+        tab_id: String,
+    },
+    TabCloseAll {
+        target: UiStateId,
+    },
+    TabRestoreClosed {
+        target: UiStateId,
+    },
+    TabPin {
+        target: UiStateId,
+        tab_id: String,
+        pinned: bool,
+    },
+    TabMove {
+        target: UiStateId,
+        tab_id: String,
+        to_visual_index: usize,
+    },
+    TabMoveToGroup {
+        target: UiStateId,
+        tab_id: String,
+        group_id: Option<String>,
+    },
+    TabMoveToNewGroup {
+        target: UiStateId,
+        tab_id: String,
+        group_id: String,
+        group_label: String,
+    },
+    TabMoveGroup {
+        target: UiStateId,
+        group_id: String,
+        to_index: usize,
+    },
+    TabRenameGroup {
+        target: UiStateId,
+        group_id: String,
+        label: String,
+    },
+    TabSetGroupColor {
+        target: UiStateId,
+        group_id: String,
+        color: String,
+    },
+    TabUngroup {
+        target: UiStateId,
+        group_id: String,
+    },
+    TabCloseGroup {
+        target: UiStateId,
+        group_id: String,
+    },
+    TabToggleGroupCollapse {
+        target: UiStateId,
+        group_id: String,
+    },
 }

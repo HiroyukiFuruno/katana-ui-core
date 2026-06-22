@@ -12,6 +12,7 @@ const COLLAPSED_START_LINE: usize = 2;
 const COLLAPSED_LINE_COUNT: usize = 3;
 const LONG_LINE_COLUMN: usize = 80;
 const LONG_LINE_COLUMN_JSON: &str = "\"long_line_column\":80";
+const DIFF_LANGUAGE_JSON: &str = "\"language\":\"rust\"";
 const BRAND_RED: u8 = 64;
 const BRAND_GREEN: u8 = 128;
 const BRAND_BLUE: u8 = 255;
@@ -66,6 +67,7 @@ fn code_diff_snapshot_requires_typed_layout_whitespace_newline_and_collapse_deta
         })
         .mode(CodeDiffMode::Inline)
         .direction(CodeDiffDirection::Vertical)
+        .language("rust")
         .whitespace(CodeDiffWhitespace::visible("·", "→"))
         .long_line_column(LONG_LINE_COLUMN)
         .trailing_newline_difference(true)
@@ -85,11 +87,13 @@ fn code_diff_snapshot_requires_typed_layout_whitespace_newline_and_collapse_deta
 
     assert!(encoded.contains("\"mode\":\"Inline\""));
     assert!(encoded.contains("\"direction\":\"Vertical\""));
+    assert!(encoded.contains(DIFF_LANGUAGE_JSON));
     assert!(encoded.contains("\"space_symbol\":\"·\""));
     assert!(encoded.contains("\"tab_symbol\":\"→\""));
     assert!(encoded.contains(LONG_LINE_COLUMN_JSON));
     assert!(encoded.contains("\"trailing_newline_difference\":true"));
     assert_eq!(CodeDiffDirection::Vertical, diff.direction_model());
+    assert_eq!("rust", diff.language_model());
     assert_eq!(Some(LONG_LINE_COLUMN), diff.long_line_column_model());
     assert!(diff.has_trailing_newline_difference());
     assert!(diff.whitespace_model().is_some());
@@ -104,6 +108,7 @@ fn code_diff_is_not_complete_with_only_generic_value_or_item_count() {
     assert!(diff.lines().is_empty());
     assert!(diff.collapsed_blocks().is_empty());
     assert!(diff.whitespace_model().is_none());
+    assert!(diff.language_model().is_empty());
     assert_eq!(CodeDiffMode::Split, diff.mode_model());
     assert_eq!(CodeDiffDirection::Horizontal, diff.direction_model());
 }

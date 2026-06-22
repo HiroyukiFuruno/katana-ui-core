@@ -15,6 +15,7 @@ pub enum TreeLineStyle {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct StructuredTypedModel {
     pub active_id: String,
+    pub hovered_id: String,
     pub line_display: bool,
     pub line_style: TreeLineStyle,
     pub line_width: u8,

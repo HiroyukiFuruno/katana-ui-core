@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from pathlib import Path
+import json
 import re
 import sys
 import tempfile
@@ -14,6 +15,8 @@ QUALITY_CONTRACT = CHANGE / "quality-gates-contract.md"
 LEGACY_DOD = CHANGE / "legacy-01-24-dod.md"
 LEGACY_CATALOG_CONTRACT = ROOT / "crates/katana-ui-core-storybook/tests/legacy_01_24_catalog_contract.rs"
 STORYBOOK_REQUIREMENT_GATE = ROOT / "scripts/storybook-requirement-gate.sh"
+STORYBOOK_INTERACTION_MANIFEST = ROOT / "docs/storybook-77ui-interaction-manifest.json"
+STORYBOOK_DEEP_AUDIT_LEDGER = ROOT / "docs/storybook-77ui-deep-audit-ledger.md"
 CANONICAL_FILES = (
     CHANGE / "proposal.md",
     DESIGN,
@@ -42,6 +45,11 @@ GATE_FILES = (
     STORYBOOK_REQUIREMENT_GATE,
     ROOT / "scripts/assert-storybook-page-layout.py",
 )
+CONSUMER_APP_CARGO = ROOT / "examples/kuc-consumer-app/Cargo.toml"
+CONSUMER_APP_LIB = ROOT / "examples/kuc-consumer-app/src/lib.rs"
+CONSUMER_APP_FIXTURES = ROOT / "examples/kuc-consumer-app/src/fixtures.rs"
+CONSUMER_APP_TESTS = ROOT / "examples/kuc-consumer-app/src/tests.rs"
+CONSUMER_APP_MAIN = ROOT / "examples/kuc-consumer-app/src/main.rs"
 
 INCOMPLETE_TASK = re.compile(r"^- \[ \] .+", re.MULTILINE)
 RELEASE_TRACK_CHANGE = re.compile(r"^\d{2}-add-.+")
@@ -150,9 +158,34 @@ TRACEABILITY_REQUIREMENTS = (
         ("clicked_button_updates_visible_button_body", "button_layout_presets_change_button_body_size", "MIN_BUTTON_WIDTH"),
     ),
     (
+        "18",
+        ROOT / "crates/katana-ui-core/tests/atom_button_variant_contract.rs",
+        ("button_atom_variants_default_to_pointer_cursor", "button_layout_label_align_center_is_part_of_core_dto_contract", "UiCursor::Pointer"),
+    ),
+    (
+        "18",
+        ROOT / "crates/katana-ui-core-storybook/src/visual/visual_interaction_button_hover_tests.rs",
+        ("hover_draws_visible_border_for_all_button_surfaces", "hover_border", "must not use text color"),
+    ),
+    (
+        "18",
+        ROOT / "crates/katana-ui-core-storybook/src/visual/visual_interaction_button_center_tests.rs",
+        ("button_label_center_uses_measured_text_width", "measure_button_label_width", "centered_label_x_for_test"),
+    ),
+    (
+        "18",
+        ROOT / "crates/katana-ui-core-storybook/src/visual/window_interaction/tests/button_operation_tests.rs",
+        ("BUTTON_FAMILY_CURSOR_PAGES", "StorybookCursorStyle::PointingHand", "\"menu-button\""),
+    ),
+    (
+        "18",
+        ROOT / "crates/katana-ui-core-storybook/src/visual/visual_interaction_menu_button_tests.rs",
+        ("menu_button_hover_draws_shared_button_family_border_token", "hover_border", "ThemeSnapshot::dark"),
+    ),
+    (
         "19",
         ROOT / "crates/katana-ui-core-storybook/src/visual/visual_interaction_tests.rs",
-        ("clicked_toggle_updates_visible_switch_body", "INPUT_PAGE", "SEARCH_PAGE"),
+        ("clicked_toggle_updates_visible_row_and_switch_body", "INPUT_PAGE", "SEARCH_PAGE"),
     ),
     (
         "20",
@@ -241,6 +274,31 @@ LEGACY_DOD_TRACE = {
     "23": ("23-color-picker-parity", "legacy-23-color-picker-parity"),
     "24": ("24-code-diff", "legacy-24-code-diff"),
 }
+STORYBOOK_MANIFEST_REQUIRED_ARRAYS = (
+    "public_props_options",
+    "state",
+    "action",
+    "event",
+    "callback",
+    "required_operations",
+    "evidence",
+)
+STORYBOOK_MANIFEST_REQUIRED_TEST_KEYS = (
+    "window_interaction",
+    "visual_interaction",
+    "guard",
+)
+STORYBOOK_MANIFEST_OPERATION_KINDS = (
+    "pointer",
+    "keyboard",
+    "scroll",
+    "drag",
+    "context_menu",
+    "focus",
+    "hover",
+    "resize",
+    "timed_tick",
+)
 
 
 def missing_tokens(path: Path, tokens: tuple[str, ...]) -> list[str]:
@@ -253,6 +311,169 @@ def path_label(path: Path, root: Path = ROOT) -> str:
         return path.relative_to(root).as_posix()
     except ValueError:
         return path.as_posix()
+
+
+def storybook_effective_value(
+    manifest: dict,
+    entry: dict,
+    key: str,
+) -> object:
+    value = entry.get(key)
+    if value:
+        return value
+    engine = entry.get("engine")
+    defaults = manifest.get("defaults_by_engine", {})
+    if not isinstance(defaults, dict) or not isinstance(engine, str):
+        return value
+    engine_defaults = defaults.get(engine, {})
+    if not isinstance(engine_defaults, dict):
+        return value
+    return engine_defaults.get(key, value)
+
+
+def storybook_effective_list_failures(
+    manifest_path: Path,
+    root: Path,
+    manifest: dict,
+    entry: dict,
+    page: str,
+) -> list[str]:
+    failures: list[str] = []
+    for key in STORYBOOK_MANIFEST_REQUIRED_ARRAYS:
+        value = storybook_effective_value(manifest, entry, key)
+        if not isinstance(value, list) or not value:
+            failures.append(
+                f"{path_label(manifest_path, root)}: Storybook page `{page}` "
+                f"must have effective `{key}`"
+            )
+    operations = storybook_effective_value(manifest, entry, "required_operations")
+    if isinstance(operations, list):
+        declared = set(manifest.get("operation_kinds", STORYBOOK_MANIFEST_OPERATION_KINDS))
+        unknown = sorted(str(operation) for operation in operations if operation not in declared)
+        if unknown:
+            failures.append(
+                f"{path_label(manifest_path, root)}: Storybook page `{page}` "
+                f"has unknown required operation(s): {', '.join(unknown)}"
+            )
+    return failures
+
+
+def storybook_effective_test_failures(
+    manifest_path: Path,
+    root: Path,
+    manifest: dict,
+    entry: dict,
+    page: str,
+) -> list[str]:
+    tests = storybook_effective_value(manifest, entry, "tests")
+    if not isinstance(tests, dict):
+        return [
+            f"{path_label(manifest_path, root)}: Storybook page `{page}` "
+            "must have effective `tests`"
+        ]
+    failures: list[str] = []
+    for key in STORYBOOK_MANIFEST_REQUIRED_TEST_KEYS:
+        value = tests.get(key)
+        if not isinstance(value, list) or not value:
+            failures.append(
+                f"{path_label(manifest_path, root)}: Storybook page `{page}` "
+                f"must have effective `tests.{key}`"
+            )
+    return failures
+
+
+def storybook_release_gate_failures(
+    root: Path = ROOT,
+    manifest_source: str | None = None,
+    ledger_source: str | None = None,
+) -> list[str]:
+    manifest_path = root / "docs/storybook-77ui-interaction-manifest.json"
+    ledger_path = root / "docs/storybook-77ui-deep-audit-ledger.md"
+    failures: list[str] = []
+
+    if manifest_source is None:
+        if not manifest_path.exists():
+            failures.append(f"{path_label(manifest_path, root)}: Storybook interaction manifest is missing")
+            return failures
+        manifest_source = manifest_path.read_text(encoding="utf-8")
+
+    try:
+        manifest = json.loads(manifest_source)
+    except json.JSONDecodeError as error:
+        failures.append(
+            f"{path_label(manifest_path, root)}:{error.lineno}: Storybook interaction manifest is invalid JSON"
+        )
+        return failures
+
+    pages = manifest.get("ui") if isinstance(manifest, dict) else None
+    if not isinstance(pages, list):
+        failures.append(f"{path_label(manifest_path, root)}: Storybook interaction manifest missing `ui` list")
+        pages = []
+    if len(pages) != 77:
+        failures.append(
+            f"{path_label(manifest_path, root)}: Storybook interaction manifest must cover 77 UI pages, found {len(pages)}"
+        )
+
+    seen_pages: set[str] = set()
+    for index, entry in enumerate(pages, start=1):
+        if not isinstance(entry, dict):
+            failures.append(
+                f"{path_label(manifest_path, root)}: Storybook manifest row {index} is not an object"
+            )
+            continue
+        page = str(entry.get("page") or f"<missing:{index}>")
+        if page in seen_pages:
+            failures.append(f"{path_label(manifest_path, root)}: duplicate Storybook page `{page}`")
+        seen_pages.add(page)
+        audit_status = entry.get("audit_status")
+        if audit_status != "verified":
+            failures.append(
+                f"{path_label(manifest_path, root)}: Storybook page `{page}` has audit_status `{audit_status}`, not `verified`"
+            )
+        failures.extend(
+            storybook_effective_list_failures(manifest_path, root, manifest, entry, page)
+        )
+        failures.extend(
+            storybook_effective_test_failures(manifest_path, root, manifest, entry, page)
+        )
+        gaps = entry.get("gaps") or []
+        if not isinstance(gaps, list):
+            failures.append(f"{path_label(manifest_path, root)}: Storybook page `{page}` gaps must be a list")
+            continue
+        for gap in gaps:
+            if "manual_acceptance_pending" in str(gap):
+                failures.append(
+                    f"{path_label(manifest_path, root)}: Storybook page `{page}` still has `manual_acceptance_pending` gap"
+                )
+
+    if ledger_source is None:
+        if not ledger_path.exists():
+            failures.append(f"{path_label(ledger_path, root)}: Storybook deep audit ledger is missing")
+            return failures
+        ledger_source = ledger_path.read_text(encoding="utf-8")
+
+    ledger_rows = 0
+    for line_number, line in enumerate(ledger_source.splitlines(), start=1):
+        if not line.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 6 or cells[0] in {"No", "---:"}:
+            continue
+        if not re.match(r"^\d{2}[a-z]?$", cells[0]):
+            continue
+        ledger_rows += 1
+        status = cells[-1]
+        ui_name = cells[1]
+        if status != "実証済み":
+            failures.append(
+                f"{path_label(ledger_path, root)}:{line_number}: Storybook ledger row `{ui_name}` is `{status}`, not `実証済み`"
+            )
+    if ledger_rows < 77:
+        failures.append(
+            f"{path_label(ledger_path, root)}: Storybook ledger must contain at least 77 audited UI rows, found {ledger_rows}"
+        )
+
+    return failures
 
 
 def incomplete_task_line_failures(path: Path, source: str, root: Path = ROOT) -> list[str]:
@@ -268,7 +489,11 @@ def incomplete_task_failures(path: Path = TASKS, root: Path = ROOT) -> list[str]
 
 
 def is_release_track_change(name: str) -> bool:
-    return name == CHANGE.name or bool(RELEASE_TRACK_CHANGE.match(name))
+    return (
+        name == CHANGE.name
+        or name.startswith("storybook-page-")
+        or bool(RELEASE_TRACK_CHANGE.match(name))
+    )
 
 
 def release_track_task_files(root: Path = ROOT) -> list[Path]:
@@ -297,6 +522,371 @@ def dod_failures() -> list[str]:
     failures: list[str] = []
     for path in (DESIGN, STORYBOOK_SPEC, QUALITY_SPEC, QUALITY_CONTRACT):
         failures.extend(missing_tokens(path, required))
+    return failures
+
+
+def consumer_app_failures(root: Path = ROOT) -> list[str]:
+    root_cargo = root / "Cargo.toml"
+    justfile = root / "Justfile"
+    cargo = root / "examples/kuc-consumer-app/Cargo.toml"
+    lib = root / "examples/kuc-consumer-app/src/lib.rs"
+    fixtures = root / "examples/kuc-consumer-app/src/fixtures.rs"
+    tests = root / "examples/kuc-consumer-app/src/tests.rs"
+    main = root / "examples/kuc-consumer-app/src/main.rs"
+    src_dir = root / "examples/kuc-consumer-app/src"
+    failures: list[str] = []
+    for path in (justfile, cargo, lib, fixtures, tests, main):
+        if not path.exists():
+            failures.append(f"{path_label(path, root)}: consumer app file is missing")
+    if failures:
+        return failures
+
+    root_source = root_cargo.read_text(encoding="utf-8")
+    justfile_source = justfile.read_text(encoding="utf-8")
+    cargo_source = cargo.read_text(encoding="utf-8")
+    combined = "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted(src_dir.glob("*.rs"))
+    )
+    required_root_tokens = ('"examples/kuc-consumer-app"',)
+    required_justfile_tokens = (
+        "consumer-app-contract:",
+        "test -p kuc-consumer-app --locked",
+        "test -p katana-ui-core --test generic_rust_app_contract --locked",
+        "test -p katana-ui-core --test generic_rust_app_layout_contract --locked",
+        "test -p katana-ui-core --test generic_rust_app_action_contract --locked",
+        "integration-test: consumer-app-contract",
+        "e2e-test:",
+        "bash scripts/storybook-requirement-gate.sh",
+        "smoke-test: storybook-smoke storybook-interaction-smoke",
+        "kuc-guardrails: consumer-app-contract",
+        "release-readiness-check: integration-test e2e-test smoke-test",
+    )
+    required_cargo_tokens = ("katana-ui-core.workspace = true",)
+    required_source_tokens = (
+        "ComponentTree::new",
+        "Panel::new",
+        "SplitPane::new",
+        "ScrollArea::new",
+        "CloseableTabStrip::new",
+        "Input::new",
+        "TextArea::new",
+        "SelectionList::new",
+        "Toolbar::new",
+        "apply_action",
+        "UiAction::invoke_callback",
+        "invoke_search_callback",
+        "add_fixed_tab",
+        "CloseableTabStripAction::AddTab",
+        "CloseableTabStripAction::CloseOthers",
+        "CloseableTabStripAction::CloseToRight",
+        "CloseableTabStripAction::CloseToLeft",
+        "CloseableTabStripAction::CloseAll",
+        "CloseableTabStripAction::PinTab",
+        "CloseableTabStripAction::MoveToGroup",
+        "CloseableTabStripEvent::TabPinChanged",
+        "CloseableTabStripEvent::TabGroupChanged",
+        "CloseableTabStripEvent::GroupCreated",
+        "CloseableTabContextCommand::CloseOthers",
+        "consumer_app_handles_input_textarea_scroll_split_and_tabs",
+        "consumer_app_handles_workspace_tab_bulk_actions",
+        "consumer_app_keeps_endpoint_closes_noop_and_non_closeable_tabs",
+        "consumer_app_handles_workspace_tab_context_commands",
+        "consumer_app_observes_tab_pin_and_group_events",
+    )
+    failures.extend(
+        f"Cargo.toml: consumer app workspace member missing `{token}`"
+        for token in required_root_tokens
+        if token not in root_source
+    )
+    failures.extend(
+        f"Justfile: consumer app contract recipe missing `{token}`"
+        for token in required_justfile_tokens
+        if token not in justfile_source
+    )
+    failures.extend(
+        f"{path_label(cargo, root)}: consumer app dependency missing `{token}`"
+        for token in required_cargo_tokens
+        if token not in cargo_source
+    )
+    for forbidden in ("katana-ui-core-storybook",):
+        if forbidden in cargo_source:
+            failures.append(
+                f"{path_label(cargo, root)}: consumer app must depend only on katana-ui-core, not `{forbidden}`"
+            )
+    failures.extend(
+        f"examples/kuc-consumer-app: consumer app contract missing `{token}`"
+        for token in required_source_tokens
+        if token not in combined
+    )
+    return failures
+
+
+def adapter_consumer_app_failures(root: Path = ROOT) -> list[str]:
+    return []
+
+
+def storybook_requirement_gate_command_failures(root: Path = ROOT) -> list[str]:
+    failures: list[str] = []
+    required_commands = (
+        (
+            root / "scripts/storybook-requirement-gate.sh",
+            "cargo rustc --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings",
+        ),
+        (
+            root / "scripts/storybook-headless-smoke.sh",
+            "cargo rustc -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings",
+        ),
+        (
+            root / "scripts/assert-menu-button-contract.sh",
+            '"${CARGO_CMD[@]}" rustc -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings',
+        ),
+    )
+    forbidden = (
+        'RUSTFLAGS="-D warnings" cargo build',
+        "RUSTFLAGS='-D warnings' cargo build",
+        'RUSTFLAGS="-D warnings" "${CARGO_CMD[@]}" build',
+        "RUSTFLAGS='-D warnings' \"${CARGO_CMD[@]}\" build",
+    )
+    for gate, command in required_commands:
+        if not gate.exists():
+            failures.append(f"{path_label(gate, root)}: Storybook gate script is missing")
+            continue
+        source = gate.read_text(encoding="utf-8")
+        if command not in source:
+            failures.append(
+                f"{path_label(gate, root)}: Storybook gate must deny warnings on the Storybook target with `{command}`"
+            )
+        failures.extend(
+            f"{path_label(gate, root)}: Storybook gate must not apply KUC warning policy to path dependencies with `{token}`"
+            for token in forbidden
+            if token in source
+        )
+    return failures
+
+
+def justfile_fmt_scope_failures(root: Path = ROOT) -> list[str]:
+    justfile = root / "Justfile"
+    if not justfile.exists():
+        return [f"{path_label(justfile, root)}: Justfile is missing"]
+    source = justfile.read_text(encoding="utf-8")
+    required = (
+        'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"',
+        "{{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}}",
+        "{{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}} -- --check",
+    )
+    forbidden = (
+        "{{CARGO}} fmt --all",
+        "{{CARGO}} fmt --workspace",
+        "cargo fmt --all",
+        "cargo fmt --workspace",
+    )
+    failures = [
+        f"{path_label(justfile, root)}: fmt gate must scope formatting to KUC workspace packages with `{token}`"
+        for token in required
+        if token not in source
+    ]
+    failures.extend(
+        f"{path_label(justfile, root)}: fmt gate must not format path dependencies with `{token}`"
+        for token in forbidden
+        if token in source
+    )
+    return failures
+
+
+def justfile_lint_scope_failures(root: Path = ROOT) -> list[str]:
+    justfile = root / "Justfile"
+    if not justfile.exists():
+        return [f"{path_label(justfile, root)}: Justfile is missing"]
+    source = justfile.read_text(encoding="utf-8")
+    required = (
+        'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"',
+        "{{CARGO}} clippy -j {{JOBS}} {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked -- -D warnings",
+    )
+    forbidden = (
+        'RUSTFLAGS="-D warnings" {{CARGO}} clippy',
+        "RUSTFLAGS='-D warnings' {{CARGO}} clippy",
+        "{{CARGO}} clippy -j {{JOBS}} --workspace",
+        "cargo clippy --workspace",
+    )
+    failures = [
+        f"{path_label(justfile, root)}: lint gate must scope Clippy to KUC workspace packages with `{token}`"
+        for token in required
+        if token not in source
+    ]
+    failures.extend(
+        f"{path_label(justfile, root)}: lint gate must not deny warnings for path dependencies with `{token}`"
+        for token in forbidden
+        if token in source
+    )
+    return failures
+
+
+def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
+    justfile = root / "Justfile"
+    if not justfile.exists():
+        return [f"{path_label(justfile, root)}: Justfile is missing"]
+    source = justfile.read_text(encoding="utf-8")
+    required = (
+        "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked",
+        "{{CARGO}} llvm-cov {{KUC_WORKSPACE_PACKAGES}} --all-features --locked --summary-only --fail-under-lines {{COVERAGE_MIN_LINES}}",
+        "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --locked",
+    )
+    forbidden = (
+        "{{CARGO}} test --workspace",
+        "{{CARGO}} llvm-cov --workspace",
+        'RUSTFLAGS="-D warnings" cargo test --workspace',
+        "cargo test --workspace",
+    )
+    failures = [
+        f"{path_label(justfile, root)}: Rust test gate must scope execution to KUC workspace packages with `{token}`"
+        for token in required
+        if token not in source
+    ]
+    failures.extend(
+        f"{path_label(justfile, root)}: Rust test gate must not execute path dependency tests with `{token}`"
+        for token in forbidden
+        if token in source
+    )
+    return failures
+
+
+def justfile_storybook_command_scope_failures(root: Path = ROOT) -> list[str]:
+    justfile = root / "Justfile"
+    if not justfile.exists():
+        return [f"{path_label(justfile, root)}: Justfile is missing"]
+    source = justfile.read_text(encoding="utf-8")
+    required = (
+        "{{CARGO}} rustc --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings",
+        "{{CARGO}} rustc -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings",
+        "{{CARGO}} rustc -p katana-ui-core-storybook --lib --locked -- -D warnings",
+        "{{CARGO}} run --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- --open-window 0",
+        "{{CARGO}} run -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked",
+        "{{CARGO}} run --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- --open-modal-window 0",
+        "{{CARGO}} run --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- --visual-snapshot target/storybook-panel.png",
+    )
+    forbidden = (
+        'RUSTFLAGS="-D warnings" {{CARGO}} run',
+        'RUSTFLAGS="-D warnings" {{CARGO}} check',
+        'RUSTFLAGS="-D warnings" cargo run',
+        'RUSTFLAGS="-D warnings" cargo check',
+    )
+    failures = [
+        f"{path_label(justfile, root)}: Storybook command must deny warnings on the Storybook target with `{token}`"
+        for token in required
+        if token not in source
+    ]
+    failures.extend(
+        f"{path_label(justfile, root)}: Storybook command must not deny warnings for path dependencies with `{token}`"
+        for token in forbidden
+        if token in source
+    )
+    return failures
+
+
+def viewer_consumer_event_contract_failures(root: Path = ROOT) -> list[str]:
+    required_sources = (
+        (
+            root / "crates/katana-ui-core/src/render_model/host_action_types.rs",
+            (
+                "pub struct UiHostActionPlan",
+                "pub action_id: String",
+                "pub enabled: bool",
+                "ui.link.open",
+                "ui.disclosure.",
+                "ui.image.highlight",
+            ),
+        ),
+        (
+            root / "crates/katana-ui-core/src/render_model/host_action_plan.rs",
+            (
+                "pub fn collect_from_tree",
+                "push_context_menu_item_plans",
+            ),
+        ),
+        (
+            root / "crates/katana-ui-core/src/render_model/common.rs",
+            ("pub host_actions: Vec<UiHostActionSpec>",),
+        ),
+        (
+            root / "crates/katana-ui-core/src/render_model/mod.rs",
+            ("UiHostActionPlan", "UiHostActionSpec"),
+        ),
+        (
+            root / "crates/katana-ui-core/tests/host_action_plan_contract.rs",
+            (
+                "generic_host_action_plan_collects_action_ids_and_enabled_state",
+                "app.toolbar.",
+                "ui.surface.",
+                "UI_IMAGE_HIGHLIGHT_ACTION_ID",
+            ),
+        ),
+    )
+    failures: list[str] = []
+    for path, tokens in required_sources:
+        if not path.exists():
+            failures.append(f"{path_label(path, root)}: viewer consumer event contract file is missing")
+            continue
+        source = path.read_text(encoding="utf-8")
+        failures.extend(
+            f"{path_label(path, root)}: viewer consumer event contract missing `{token}`"
+            for token in tokens
+            if token not in source
+        )
+
+    return failures
+
+
+def preset_tab_scroll_contract_failures(root: Path = ROOT) -> list[str]:
+    required_sources = (
+        (
+            root / "crates/katana-ui-core-storybook/src/visual/preset_tab_scroll.rs",
+            (
+                "pub(super) fn viewport_rect",
+                "pub(super) fn max_scroll_x_for_page",
+                "pub(super) fn ensure_index_visible",
+                "pub(super) fn hit_index_at",
+                "visible_index_range",
+                "visual_rect_for_index",
+            ),
+        ),
+        (
+            root / "crates/katana-ui-core-storybook/src/visual/preset_tab_label.rs",
+            (
+                "pub(super) fn fit",
+                "TRUNCATION_MARKER",
+                "measured_width_for_test",
+            ),
+        ),
+        (
+            root / "crates/katana-ui-core-storybook/src/visual/visual_preset_tab_scroll_tests.rs",
+            (
+                "overflowing_preset_tabs_have_horizontal_scroll_range",
+                "rendered_preset_tabs_are_clipped_at_preview_right_edge",
+                "external_preset_selection_scrolls_current_tab_into_view",
+                "clicking_scrolled_preset_tab_uses_logical_tab_index",
+                "preset_tab_hit_bounds_reject_gap_and_clipped_edges",
+            ),
+        ),
+        (
+            root / "crates/katana-ui-core-storybook/src/visual/visual_tests.rs",
+            (
+                "every_required_page_preset_tab_labels_fit_clip_width",
+                "StoryRequirements::required_pages()",
+                "measured_width_for_test",
+            ),
+        ),
+    )
+    failures: list[str] = []
+    for path, tokens in required_sources:
+        if not path.exists():
+            failures.append(f"{path_label(path, root)}: preset tab scroll contract file is missing")
+            continue
+        source = path.read_text(encoding="utf-8")
+        failures.extend(
+            f"{path_label(path, root)}: preset tab scroll contract missing `{token}`"
+            for token in tokens
+            if token not in source
+        )
     return failures
 
 
@@ -466,6 +1056,9 @@ def self_test() -> int:
         active_task = active_root / "openspec/changes/01-add-context-menu/tasks.md"
         active_task.parent.mkdir(parents=True)
         active_task.write_text("- [ ] 1. 未完了 task\n", encoding="utf-8")
+        storybook_task = active_root / "openspec/changes/storybook-page-text/tasks.md"
+        storybook_task.parent.mkdir(parents=True)
+        storybook_task.write_text("- [ ] 1. Storybook 未完了 task\n", encoding="utf-8")
         feedback_task = active_root / "openspec/changes/02-add-drag-drop-primitive/tasks.md"
         feedback_task.parent.mkdir(parents=True)
         feedback_task.write_text("- [/] 1. 対応完了 feedback\n", encoding="utf-8")
@@ -507,11 +1100,208 @@ def self_test() -> int:
     legacy_trace_good_failed = bool(legacy_trace_good)
     legacy_trace_bad_passed = not any("02" in line for line in legacy_trace_bad)
     active_task_bad_passed = (
-        len(active_task_bad) != 1
+        len(active_task_bad) != 2
         or "archive" in active_task_bad[0]
-        or "02-add-drag-drop-primitive" in active_task_bad[0]
+        or not any("storybook-page-text" in line for line in active_task_bad)
+        or any("02-add-drag-drop-primitive" in line for line in active_task_bad)
     )
     active_task_missing_passed = not any("tasks.md is missing" in line for line in active_task_missing)
+    with tempfile.TemporaryDirectory() as tmp:
+        consumer_root = Path(tmp)
+        write_consumer_app_self_test_files(consumer_root, include_member=True)
+        consumer_good_failed = bool(consumer_app_failures(consumer_root))
+    with tempfile.TemporaryDirectory() as tmp:
+        consumer_root = Path(tmp)
+        write_consumer_app_self_test_files(consumer_root, include_member=False)
+        consumer_bad_passed = not any(
+            "workspace member missing" in line for line in consumer_app_failures(consumer_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        consumer_root = Path(tmp)
+        write_consumer_app_self_test_files(
+            consumer_root,
+            include_member=True,
+            include_dynamic_actions=False,
+        )
+        consumer_dynamic_bad_passed = not any(
+            "UiAction::invoke_callback" in line for line in consumer_app_failures(consumer_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        gate_root = Path(tmp)
+        write_storybook_requirement_gate_self_test_files(gate_root, use_target_rustc=True)
+        requirement_gate_good_failed = bool(
+            storybook_requirement_gate_command_failures(gate_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        gate_root = Path(tmp)
+        write_storybook_requirement_gate_self_test_files(gate_root, use_target_rustc=False)
+        requirement_gate_bad_passed = not any(
+            "must not apply KUC warning policy to path dependencies" in line
+            for line in storybook_requirement_gate_command_failures(gate_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        fmt_root = Path(tmp)
+        write_justfile_fmt_scope_self_test_file(fmt_root, use_scoped_packages=True)
+        justfile_fmt_good_failed = bool(justfile_fmt_scope_failures(fmt_root))
+    with tempfile.TemporaryDirectory() as tmp:
+        fmt_root = Path(tmp)
+        write_justfile_fmt_scope_self_test_file(fmt_root, use_scoped_packages=False)
+        justfile_fmt_bad_passed = not any(
+            "must not format path dependencies" in line
+            for line in justfile_fmt_scope_failures(fmt_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        lint_root = Path(tmp)
+        write_justfile_lint_scope_self_test_file(lint_root, use_scoped_packages=True)
+        justfile_lint_good_failed = bool(justfile_lint_scope_failures(lint_root))
+    with tempfile.TemporaryDirectory() as tmp:
+        lint_root = Path(tmp)
+        write_justfile_lint_scope_self_test_file(lint_root, use_scoped_packages=False)
+        justfile_lint_bad_passed = not any(
+            "must not deny warnings for path dependencies" in line
+            for line in justfile_lint_scope_failures(lint_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        test_root = Path(tmp)
+        write_justfile_test_scope_self_test_file(test_root, use_scoped_packages=True)
+        justfile_test_good_failed = bool(justfile_test_scope_failures(test_root))
+    with tempfile.TemporaryDirectory() as tmp:
+        test_root = Path(tmp)
+        write_justfile_test_scope_self_test_file(test_root, use_scoped_packages=False)
+        justfile_test_bad_passed = not any(
+            "must not execute path dependency tests" in line
+            for line in justfile_test_scope_failures(test_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        storybook_root = Path(tmp)
+        write_justfile_storybook_command_self_test_file(
+            storybook_root,
+            use_target_rustc=True,
+        )
+        justfile_storybook_good_failed = bool(
+            justfile_storybook_command_scope_failures(storybook_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        storybook_root = Path(tmp)
+        write_justfile_storybook_command_self_test_file(
+            storybook_root,
+            use_target_rustc=False,
+        )
+        justfile_storybook_bad_passed = not any(
+            "must not deny warnings for path dependencies" in line
+            for line in justfile_storybook_command_scope_failures(storybook_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        preset_root = Path(tmp)
+        write_preset_tab_scroll_self_test_files(preset_root, include_hit_bounds=True)
+        preset_tab_good_failed = bool(preset_tab_scroll_contract_failures(preset_root))
+    with tempfile.TemporaryDirectory() as tmp:
+        preset_root = Path(tmp)
+        write_preset_tab_scroll_self_test_files(preset_root, include_hit_bounds=False)
+        preset_tab_bad_passed = not any(
+            "preset_tab_hit_bounds_reject_gap_and_clipped_edges" in line
+            for line in preset_tab_scroll_contract_failures(preset_root)
+        )
+    storybook_good_manifest = json.dumps(
+        {
+            "operation_kinds": list(STORYBOOK_MANIFEST_OPERATION_KINDS),
+            "defaults_by_engine": {
+                "clickable": {
+                    "public_props_options": ["source:storybook options"],
+                    "state": ["clickable_state"],
+                    "action": ["clickable_action"],
+                    "event": ["clickable_event"],
+                    "callback": ["clickable_callback"],
+                    "required_operations": ["pointer", "keyboard"],
+                    "evidence": ["contract evidence"],
+                    "tests": {
+                        "window_interaction": ["shared:window_interaction"],
+                        "visual_interaction": ["shared:visual_interaction"],
+                        "guard": ["shared:guard"],
+                    },
+                }
+            },
+            "ui": [
+                {
+                    "page": f"page-{index:02}",
+                    "engine": "clickable",
+                    "audit_status": "verified",
+                    "gaps": [],
+                }
+                for index in range(1, 78)
+            ]
+        },
+        ensure_ascii=False,
+    )
+    storybook_good_ledger = "\n".join(
+        [
+            "| No | UI | 不足 | あるべき姿 | 設計/階層監査観点 | 現判定 |",
+            "| ---: | --- | --- | --- | --- | --- |",
+            *(
+                f"| {index:02} | page-{index:02} | done | expected | design | 実証済み |"
+                for index in range(1, 78)
+            ),
+        ]
+    )
+    storybook_bad_manifest = json.dumps(
+        {
+            "operation_kinds": list(STORYBOOK_MANIFEST_OPERATION_KINDS),
+            "ui": [
+                {
+                    "page": "text" if index == 1 else f"page-{index:02}",
+                    "engine": "clickable",
+                    "audit_status": "partial" if index == 1 else "verified",
+                    "gaps": [
+                        "manual_acceptance_pending: Storybook user confirmation is required"
+                    ]
+                    if index == 1
+                    else [],
+                }
+                for index in range(1, 78)
+            ]
+        },
+        ensure_ascii=False,
+    )
+    storybook_bad_ledger = storybook_good_ledger.replace(
+        "| 01 | page-01 | done | expected | design | 実証済み |",
+        "| 01 | text | pending | expected | design | manual_acceptance_pending |",
+    )
+    storybook_missing_contract_manifest = json.dumps(
+        {
+            "operation_kinds": list(STORYBOOK_MANIFEST_OPERATION_KINDS),
+            "ui": [
+                {
+                    "page": f"page-{index:02}",
+                    "engine": "clickable",
+                    "audit_status": "verified",
+                    "gaps": [],
+                }
+                for index in range(1, 78)
+            ],
+        },
+        ensure_ascii=False,
+    )
+    storybook_release_good_failed = bool(
+        storybook_release_gate_failures(
+            manifest_source=storybook_good_manifest,
+            ledger_source=storybook_good_ledger,
+        )
+    )
+    storybook_release_bad_passed = not any(
+        "manual_acceptance_pending" in line or "audit_status" in line
+        for line in storybook_release_gate_failures(
+            manifest_source=storybook_bad_manifest,
+            ledger_source=storybook_bad_ledger,
+        )
+    )
+    storybook_missing_contract_passed = not any(
+        "must have effective `public_props_options`" in line
+        or "must have effective `tests`" in line
+        for line in storybook_release_gate_failures(
+            manifest_source=storybook_missing_contract_manifest,
+            ledger_source=storybook_good_ledger,
+        )
+    )
     if (
         allowed_failed
         or rejected_passed
@@ -522,6 +1312,24 @@ def self_test() -> int:
         or legacy_trace_bad_passed
         or active_task_bad_passed
         or active_task_missing_passed
+        or consumer_good_failed
+        or consumer_bad_passed
+        or consumer_dynamic_bad_passed
+        or requirement_gate_good_failed
+        or requirement_gate_bad_passed
+        or justfile_fmt_good_failed
+        or justfile_fmt_bad_passed
+        or justfile_lint_good_failed
+        or justfile_lint_bad_passed
+        or justfile_test_good_failed
+        or justfile_test_bad_passed
+        or justfile_storybook_good_failed
+        or justfile_storybook_bad_passed
+        or preset_tab_good_failed
+        or preset_tab_bad_passed
+        or storybook_release_good_failed
+        or storybook_release_bad_passed
+        or storybook_missing_contract_passed
     ):
         print("KUC release readiness self-test failed", file=sys.stderr)
         for line in allowed_failed:
@@ -542,8 +1350,285 @@ def self_test() -> int:
             print("- active release-track incomplete task allowed", file=sys.stderr)
         if active_task_missing_passed:
             print("- active release-track missing tasks.md allowed", file=sys.stderr)
+        if consumer_good_failed:
+            print("- valid consumer app contract rejected", file=sys.stderr)
+        if consumer_bad_passed:
+            print("- missing consumer app workspace member allowed", file=sys.stderr)
+        if consumer_dynamic_bad_passed:
+            print("- missing consumer app dynamic action contract allowed", file=sys.stderr)
+        if requirement_gate_good_failed:
+            print("- valid Storybook requirement gate command rejected", file=sys.stderr)
+        if requirement_gate_bad_passed:
+            print("- dependency-wide Storybook requirement gate warning policy allowed", file=sys.stderr)
+        if justfile_fmt_good_failed:
+            print("- valid KUC-scoped Justfile fmt gate rejected", file=sys.stderr)
+        if justfile_fmt_bad_passed:
+            print("- dependency-wide Justfile fmt gate allowed", file=sys.stderr)
+        if justfile_lint_good_failed:
+            print("- valid KUC-scoped Justfile lint gate rejected", file=sys.stderr)
+        if justfile_lint_bad_passed:
+            print("- dependency-wide Justfile lint warning policy allowed", file=sys.stderr)
+        if justfile_test_good_failed:
+            print("- valid KUC-scoped Justfile test gate rejected", file=sys.stderr)
+        if justfile_test_bad_passed:
+            print("- dependency-wide Justfile test gate allowed", file=sys.stderr)
+        if justfile_storybook_good_failed:
+            print("- valid target-scoped Storybook Justfile commands rejected", file=sys.stderr)
+        if justfile_storybook_bad_passed:
+            print("- dependency-wide Storybook Justfile warning policy allowed", file=sys.stderr)
+        if preset_tab_good_failed:
+            print("- valid preset tab scroll contract rejected", file=sys.stderr)
+        if preset_tab_bad_passed:
+            print("- missing preset tab hit bounds contract allowed", file=sys.stderr)
+        if storybook_release_good_failed:
+            print("- valid Storybook release ledger/manifest rejected", file=sys.stderr)
+        if storybook_release_bad_passed:
+            print("- partial Storybook release ledger/manifest allowed", file=sys.stderr)
+        if storybook_missing_contract_passed:
+            print("- Storybook manifest without effective contract fields allowed", file=sys.stderr)
         return 1
     return 0
+
+
+def write_consumer_app_self_test_files(
+    root: Path,
+    include_member: bool,
+    include_dynamic_actions: bool = True,
+) -> None:
+    root.mkdir(parents=True, exist_ok=True)
+    members = '"examples/kuc-consumer-app"' if include_member else '"crates/katana-ui-core"'
+    (root / "Cargo.toml").write_text(f"[workspace]\nmembers = [{members}]\n", encoding="utf-8")
+    (root / "Justfile").write_text(
+        "consumer-app-contract:\n"
+        "    cargo test -p kuc-consumer-app --locked\n"
+        "    cargo test -p katana-ui-core --test generic_rust_app_contract --locked\n"
+        "    cargo test -p katana-ui-core --test generic_rust_app_layout_contract --locked\n"
+        "    cargo test -p katana-ui-core --test generic_rust_app_action_contract --locked\n"
+        "integration-test: consumer-app-contract\n"
+        "e2e-test:\n"
+        "    bash scripts/storybook-requirement-gate.sh\n"
+        "smoke-test: storybook-smoke storybook-interaction-smoke\n"
+        "kuc-guardrails: consumer-app-contract\n"
+        "release-readiness-check: integration-test e2e-test smoke-test\n",
+        encoding="utf-8",
+    )
+    app = root / "examples/kuc-consumer-app"
+    (app / "src").mkdir(parents=True)
+    (app / "Cargo.toml").write_text(
+        "[package]\nname = \"kuc-consumer-app\"\n"
+        "[dependencies]\nkatana-ui-core.workspace = true\n",
+        encoding="utf-8",
+    )
+    source_tokens = [
+        "ComponentTree::new Panel::new SplitPane::new ScrollArea::new",
+        "CloseableTabStrip::new Input::new TextArea::new SelectionList::new",
+        "Toolbar::new apply_action CloseableTabStripAction::AddTab",
+        "add_fixed_tab consumer_app_keeps_endpoint_closes_noop_and_non_closeable_tabs",
+        "consumer_app_handles_input_textarea_scroll_split_and_tabs",
+    ]
+    if include_dynamic_actions:
+        source_tokens.extend(
+            (
+                "UiAction::invoke_callback invoke_search_callback",
+                "CloseableTabStripAction::CloseOthers",
+                "CloseableTabStripAction::CloseToRight",
+                "CloseableTabStripAction::CloseToLeft",
+                "CloseableTabStripAction::CloseAll",
+                "CloseableTabStripAction::PinTab",
+                "CloseableTabStripAction::MoveToGroup",
+                "CloseableTabStripEvent::TabPinChanged",
+                "CloseableTabStripEvent::TabGroupChanged",
+                "CloseableTabStripEvent::GroupCreated",
+                "CloseableTabContextCommand::CloseOthers",
+                "consumer_app_handles_workspace_tab_bulk_actions",
+                "consumer_app_handles_workspace_tab_context_commands",
+                "consumer_app_observes_tab_pin_and_group_events",
+            )
+        )
+    source = " ".join(source_tokens)
+    (app / "src/lib.rs").write_text(source, encoding="utf-8")
+    (app / "src/fixtures.rs").write_text(source, encoding="utf-8")
+    (app / "src/tests.rs").write_text(source, encoding="utf-8")
+    (app / "src/main.rs").write_text(source, encoding="utf-8")
+
+
+def write_storybook_requirement_gate_self_test_files(
+    root: Path,
+    use_target_rustc: bool,
+) -> None:
+    scripts = root / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    requirement_command = (
+        "cargo rustc --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings"
+        if use_target_rustc
+        else 'RUSTFLAGS="-D warnings" cargo build --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked'
+    )
+    smoke_command = (
+        "cargo rustc -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings"
+        if use_target_rustc
+        else 'RUSTFLAGS="-D warnings" cargo build -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked'
+    )
+    menu_command = (
+        '"${CARGO_CMD[@]}" rustc -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings'
+        if use_target_rustc
+        else 'RUSTFLAGS="-D warnings" "${CARGO_CMD[@]}" build -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked'
+    )
+    (scripts / "storybook-requirement-gate.sh").write_text(
+        "#!/usr/bin/env bash\nset -euo pipefail\n" f"{requirement_command}\n",
+        encoding="utf-8",
+    )
+    (scripts / "storybook-headless-smoke.sh").write_text(
+        "#!/usr/bin/env bash\nset -euo pipefail\n" f"{smoke_command}\n",
+        encoding="utf-8",
+    )
+    (scripts / "assert-menu-button-contract.sh").write_text(
+        "#!/usr/bin/env bash\nset -euo pipefail\nread -r -a CARGO_CMD <<<\"${CARGO:-cargo}\"\n"
+        f"{menu_command}\n",
+        encoding="utf-8",
+    )
+
+
+def write_justfile_fmt_scope_self_test_file(root: Path, use_scoped_packages: bool) -> None:
+    root.mkdir(parents=True, exist_ok=True)
+    scoped_packages = (
+        'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"\n'
+        "\n"
+        "fmt:\n"
+        "    {{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}}\n"
+        "\n"
+        "fmt-check:\n"
+        "    {{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}} -- --check\n"
+    )
+    dependency_wide = (
+        "fmt:\n"
+        "    {{CARGO}} fmt --all\n"
+        "\n"
+        "fmt-check:\n"
+        "    {{CARGO}} fmt --all -- --check\n"
+    )
+    source = scoped_packages if use_scoped_packages else dependency_wide
+    (root / "Justfile").write_text(source, encoding="utf-8")
+
+
+def write_justfile_lint_scope_self_test_file(root: Path, use_scoped_packages: bool) -> None:
+    root.mkdir(parents=True, exist_ok=True)
+    lint_flags = (
+        "-D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo "
+        "-D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports"
+    )
+    scoped_packages = (
+        'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"\n'
+        "\n"
+        "lint:\n"
+        f"    {{{{CARGO}}}} clippy -j {{{{JOBS}}}} {{{{KUC_WORKSPACE_PACKAGES}}}} --all-targets --all-features --locked -- {lint_flags}\n"
+    )
+    dependency_wide = (
+        "lint:\n"
+        f"    RUSTFLAGS=\"-D warnings\" {{{{CARGO}}}} clippy -j {{{{JOBS}}}} --workspace --all-targets --all-features --locked -- {lint_flags}\n"
+    )
+    source = scoped_packages if use_scoped_packages else dependency_wide
+    (root / "Justfile").write_text(source, encoding="utf-8")
+
+
+def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bool) -> None:
+    root.mkdir(parents=True, exist_ok=True)
+    scoped_packages = (
+        'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"\n'
+        "\n"
+        "unit-test:\n"
+        "    {{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked\n"
+        "\n"
+        "coverage:\n"
+        "    {{CARGO}} llvm-cov {{KUC_WORKSPACE_PACKAGES}} --all-features --locked --summary-only --fail-under-lines {{COVERAGE_MIN_LINES}}\n"
+        "\n"
+        "cargo-test:\n"
+        "    {{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --locked\n"
+    )
+    dependency_wide = (
+        "unit-test:\n"
+        "    {{CARGO}} test --workspace --all-targets --all-features --locked\n"
+        "\n"
+        "coverage:\n"
+        "    {{CARGO}} llvm-cov --workspace --all-features --locked --summary-only --fail-under-lines {{COVERAGE_MIN_LINES}}\n"
+        "\n"
+        "cargo-test:\n"
+        "    RUSTFLAGS=\"-D warnings\" cargo test --workspace --all-targets\n"
+    )
+    source = scoped_packages if use_scoped_packages else dependency_wide
+    (root / "Justfile").write_text(source, encoding="utf-8")
+
+
+def write_justfile_storybook_command_self_test_file(
+    root: Path,
+    use_target_rustc: bool,
+) -> None:
+    root.mkdir(parents=True, exist_ok=True)
+    target_scoped = (
+        "storybook:\n"
+        "    {{CARGO}} rustc --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings\n"
+        "    {{CARGO}} run --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- --open-window 0\n"
+        "\n"
+        "storybook-summary:\n"
+        "    {{CARGO}} rustc -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings\n"
+        "    {{CARGO}} run -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked\n"
+        "\n"
+        "storybook-modal:\n"
+        "    {{CARGO}} rustc --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings\n"
+        "    {{CARGO}} run --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- --open-modal-window 0\n"
+        "\n"
+        "storybook-check:\n"
+        "    {{CARGO}} rustc -p katana-ui-core-storybook --lib --locked -- -D warnings\n"
+        "    {{CARGO}} rustc -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings\n"
+        "\n"
+        "storybook-visual-snapshot:\n"
+        "    {{CARGO}} rustc --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- -D warnings\n"
+        "    {{CARGO}} run --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- --visual-snapshot target/storybook-panel.png\n"
+    )
+    dependency_wide = (
+        "storybook:\n"
+        "    RUSTFLAGS=\"-D warnings\" {{CARGO}} run --release -p katana-ui-core-storybook --bin katana-ui-core-storybook --locked -- --open-window 0\n"
+        "\n"
+        "storybook-check:\n"
+        "    RUSTFLAGS=\"-D warnings\" {{CARGO}} check -p katana-ui-core-storybook --all-targets --locked\n"
+    )
+    source = target_scoped if use_target_rustc else dependency_wide
+    (root / "Justfile").write_text(source, encoding="utf-8")
+
+
+def write_preset_tab_scroll_self_test_files(root: Path, include_hit_bounds: bool) -> None:
+    visual = root / "crates/katana-ui-core-storybook/src/visual"
+    visual.mkdir(parents=True, exist_ok=True)
+    (visual / "preset_tab_scroll.rs").write_text(
+        "pub(super) fn viewport_rect() {}\n"
+        "pub(super) fn max_scroll_x_for_page() {}\n"
+        "pub(super) fn ensure_index_visible() {}\n"
+        "pub(super) fn hit_index_at() {}\n"
+        "visible_index_range visual_rect_for_index\n",
+        encoding="utf-8",
+    )
+    (visual / "preset_tab_label.rs").write_text(
+        "pub(super) fn fit() {}\nTRUNCATION_MARKER\nmeasured_width_for_test\n",
+        encoding="utf-8",
+    )
+    hit_bounds = (
+        "fn preset_tab_hit_bounds_reject_gap_and_clipped_edges() {}\n"
+        if include_hit_bounds
+        else ""
+    )
+    (visual / "visual_preset_tab_scroll_tests.rs").write_text(
+        "fn overflowing_preset_tabs_have_horizontal_scroll_range() {}\n"
+        "fn rendered_preset_tabs_are_clipped_at_preview_right_edge() {}\n"
+        "fn external_preset_selection_scrolls_current_tab_into_view() {}\n"
+        "fn clicking_scrolled_preset_tab_uses_logical_tab_index() {}\n"
+        f"{hit_bounds}",
+        encoding="utf-8",
+    )
+    (visual / "visual_tests.rs").write_text(
+        "fn every_required_page_preset_tab_labels_fit_clip_width() {}\n"
+        "StoryRequirements::required_pages()\n"
+        "measured_width_for_test\n",
+        encoding="utf-8",
+    )
 
 
 def main() -> int:
@@ -554,6 +1639,16 @@ def main() -> int:
     failures.extend(no_image_policy_failures(REPOSITORY_POLICY_FILES))
     failures.extend(storybook_role_failures())
     failures.extend(image_gate_failures())
+    failures.extend(consumer_app_failures())
+    failures.extend(adapter_consumer_app_failures())
+    failures.extend(storybook_requirement_gate_command_failures())
+    failures.extend(justfile_fmt_scope_failures())
+    failures.extend(justfile_lint_scope_failures())
+    failures.extend(justfile_test_scope_failures())
+    failures.extend(justfile_storybook_command_scope_failures())
+    failures.extend(viewer_consumer_event_contract_failures())
+    failures.extend(preset_tab_scroll_contract_failures())
+    failures.extend(storybook_release_gate_failures())
     failures.extend(traceability_failures())
     failures.extend(legacy_dod_trace_failures())
     if failures:

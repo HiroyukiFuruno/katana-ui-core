@@ -75,6 +75,7 @@ pub(super) const PX_142: usize = 142;
 pub(super) const PX_148: usize = 148;
 pub(super) const PX_150: usize = 150;
 pub(super) const PX_152: usize = 152;
+pub(super) const PX_156: usize = 156;
 pub(super) const PX_160: usize = 160;
 pub(super) const PX_164: usize = 164;
 pub(super) const PX_166: usize = 166;
@@ -100,6 +101,7 @@ pub(super) const PX_252: usize = 252;
 pub(super) const PX_258: usize = 258;
 pub(super) const PX_278: usize = 278;
 pub(super) const PX_284: usize = 284;
+pub(super) const PX_326: usize = 326;
 
 pub(super) const FONT_7: f32 = 7.0;
 pub(super) const FONT_8: f32 = 8.0;

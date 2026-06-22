@@ -1,6 +1,6 @@
 ## Why
 
-`katana-ui-widget` は `chore: KUWリポジトリ標準構成を横展開` (d81b8fd) で OpenSpec / opsx 系 skill と CI/release のひな型を取り込んだが、Floem 前提の汎用 UI widget を**安全に切り出して育てるための開発基盤**は未整備である。具体的には次が欠けている。
+`katana-ui-widget` は `chore: KUWリポジトリ標準構成を横展開` (d81b8fd) で OpenSpec / opsx 系 skill と CI/release のひな型を取り込んだが、Adapter 前提の汎用 UI widget を**安全に切り出して育てるための開発基盤**は未整備である。具体的には次が欠けている。
 
 - 階層間の依存方向（`theme ← primitive ← composite ← layout`）を機械的に強制する **ast-lint ルール** が無い。命名や口頭ルールでは時間とともに崩れる（Harness Engineering の核：機械的制約への昇格）。
 - 実装した widget を**目視確認できる場所**（Storybook 相当）が無い。Legibility が低い状態では実装に着手すべきでない。
@@ -18,19 +18,19 @@
   - `primitive` は `theme` にのみ依存できる。
   - `composite` は `theme` / `primitive` に依存できる。**異なるサブカテゴリ間**（例: `composite/button/` と `composite/selector/`）の参照は禁止。同一サブカテゴリ配下の sub-widget 間（例: `composite/input/search/` から `composite/input/text/`）は許可。
   - `layout` は `theme` / `primitive` / `composite` に依存できる。
-- リポジトリルートに **`storybook/` ディレクトリを新設**し、`crates/` の外で独立した Cargo プロジェクトとして管理する（workspace member には**含めない**、`crates/katana-ui-widget` を `path` 依存で参照、独自の `Cargo.lock` を保持）。Floem アプリとして widget 一覧 + ページ表示の最小骨格を実装する。
+- リポジトリルートに **`storybook/` ディレクトリを新設**し、`crates/` の外で独立した Cargo プロジェクトとして管理する（workspace member には**含めない**、`crates/katana-ui-widget` を `path` 依存で参照、独自の `Cargo.lock` を保持）。Adapter アプリとして widget 一覧 + ページ表示の最小骨格を実装する。
 - `Justfile` に `storybook` recipe（起動）と `storybook-check` recipe（cargo check のみ）を追加。`scripts/` に必要な補助スクリプトを置く。
-- KUW 専用の **`kuw-workflow-guide` skill** を新規作成し、widget 抽出方針 / Floem 前提 / Katana domain 除外ルール / Storybook 別管理ルール / 階層と ast-lint 制約を明文化する。
+- KUW 専用の **`kuw-workflow-guide` skill** を新規作成し、widget 抽出方針 / Adapter 前提 / Katana domain 除外ルール / Storybook 別管理ルール / 階層と ast-lint 制約を明文化する。
 - `docs/` に **`widget-extraction-policy.md`**（抽出 / 除外判断軸）と **`directory-structure.md`**（階層と依存方向）を追加。
-- `README.md` を Floem 前提・階層構造・Storybook 起動手順を反映する内容に更新。
+- `README.md` を Adapter 前提・階層構造・Storybook 起動手順を反映する内容に更新。
 
 ## Capabilities
 
 ### New Capabilities
 
 - `widget-foundation-layout`: `theme` / `primitive` / `composite/{button,selector,input,indicator}` / `layout` の階層スケルトンと、その依存方向に対する ast-lint 制約。
-- `widget-storybook`: `crates/` の外側にある独立した Floem アプリで、登録された widget をページ単位で目視確認できる。各 widget change はここに 1 ページ以上を追加する。
-- `kuw-workflow-guide`: KUW における widget 抽出 / 除外 / Floem 実装 / Storybook 連携の運用ルールを skill として codify。
+- `widget-storybook`: `crates/` の外側にある独立した Adapter アプリで、登録された widget をページ単位で目視確認できる。各 widget change はここに 1 ページ以上を追加する。
+- `kuw-workflow-guide`: KUW における widget 抽出 / 除外 / Adapter 実装 / Storybook 連携の運用ルールを skill として codify。
 
 ### Modified Capabilities
 

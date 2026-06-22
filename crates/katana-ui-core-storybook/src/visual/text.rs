@@ -1,40 +1,89 @@
 use crate::visual::canvas::Canvas;
-use cosmic_text::{FontSystem, SwashCache};
+use crate::visual::markdown_font_loader::font_system_with_markdown_fonts;
+use cosmic_text::SwashCache;
 use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::theme::{FontFamily, FontToken};
 use std::cell::RefCell;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[cfg(test)]
 pub(crate) use super::text_raster::TextCacheStats;
-use super::text_raster::{TextRasterCache, TextStyle};
+use super::text_raster::{RichTextRasterSpan, TextRasterCache, TextStyle};
 use super::text_raster_request::TextRasterDrawRequest;
+#[path = "text_types.rs"]
+mod text_types;
+pub use text_types::TextRenderer;
+pub(crate) use text_types::{
+    RichTextLineSpan, RichTextStyle, TextBox, TextHorizontalAlign, TextOrigin, TextVerticalAlign,
+    TextVerticalBox,
+};
 
 const LINE_HEIGHT_RATIO: f32 = 1.45;
 const REGULAR_WEIGHT: u16 = 400;
+const BOLD_WEIGHT: u16 = 700;
 const FALLBACK_FONT_SIZE: f32 = 14.0;
 const FALLBACK_FONT_NAME: &str = "body";
 const CODE_FONT_ROLE: &str = "code";
 const SHORTCUT_FONT_ROLE: &str = "shortcut";
 
-pub(crate) struct TextRenderer {
-    font_system: RefCell<FontSystem>,
-    swash_cache: RefCell<SwashCache>,
-    raster_cache: RefCell<TextRasterCache>,
-    font: FontToken,
-}
-
 impl TextRenderer {
-    pub(crate) fn load(facade: &UiCoreFacade, role: &str) -> Self {
+    pub fn load(facade: &UiCoreFacade, role: &str) -> Self {
         let font = resolve_font(facade, role);
         Self {
-            font_system: RefCell::new(FontSystem::new()),
+            font_system: RefCell::new(font_system_with_markdown_fonts()),
             swash_cache: RefCell::new(SwashCache::new()),
             raster_cache: RefCell::new(TextRasterCache::default()),
             font,
         }
     }
 
-    pub(crate) fn draw(
+    pub fn draw(&self, canvas: &mut Canvas, text: &str, x: usize, y: usize, size: f32, color: u32) {
+        self.draw_signed(canvas, text, x as isize, y, size, color);
+    }
+
+    pub(crate) fn draw_signed(
+        &self,
+        canvas: &mut Canvas,
+        text: &str,
+        x: isize,
+        y: usize,
+        size: f32,
+        color: u32,
+    ) {
+        self.draw_layout(
+            canvas,
+            text,
+            x,
+            y,
+            TextStyle::new(size, size * LINE_HEIGHT_RATIO, color),
+            false,
+            canvas.scale_factor(),
+        );
+    }
+
+    pub(crate) fn draw_signed_styled(
+        &self,
+        canvas: &mut Canvas,
+        text: &str,
+        x: isize,
+        y: usize,
+        style: RichTextStyle,
+    ) {
+        self.draw_layout_with_font(
+            canvas,
+            text,
+            x,
+            y,
+            TextStyle::new(style.size, style.size * LINE_HEIGHT_RATIO, style.color)
+                .italic(style.italic)
+                .raster_vertical_scale(style.raster_vertical_scale),
+            style.emoji,
+            canvas.scale_factor(),
+            &self.font_for_weight(style.bold),
+        );
+    }
+
+    pub fn draw_emoji(
         &self,
         canvas: &mut Canvas,
         text: &str,
@@ -46,10 +95,85 @@ impl TextRenderer {
         self.draw_layout(
             canvas,
             text,
-            x,
+            x as isize,
             y,
             TextStyle::new(size, size * LINE_HEIGHT_RATIO, color),
+            true,
             canvas.scale_factor(),
+        );
+    }
+
+    pub(crate) fn draw_rich_line_signed(
+        &self,
+        canvas: &mut Canvas,
+        spans: &[RichTextLineSpan],
+        x: isize,
+        y: usize,
+    ) {
+        self.record_rich_text_run(canvas, spans, x, y);
+        let normalized_scale_factor = normalized_scale_factor(canvas.scale_factor());
+        let raster_spans = spans
+            .iter()
+            .map(RichTextLineSpan::to_raster_span)
+            .collect::<Vec<_>>();
+        self.raster_cache.borrow_mut().draw_rich_line(
+            canvas,
+            &raster_spans,
+            scaled_signed_coordinate(x, normalized_scale_factor),
+            scaled_unsigned_coordinate(y, normalized_scale_factor),
+            normalized_scale_factor,
+            &mut self.font_system.borrow_mut(),
+            &mut self.swash_cache.borrow_mut(),
+        );
+    }
+
+    fn record_rich_text_run(
+        &self,
+        canvas: &mut Canvas,
+        spans: &[RichTextLineSpan],
+        x: isize,
+        y: usize,
+    ) {
+        let Some(origin_x) = usize::try_from(x).ok() else {
+            return;
+        };
+        let text = spans
+            .iter()
+            .map(|span| span.text.as_str())
+            .collect::<String>();
+        if text.is_empty() {
+            return;
+        }
+        let mut line_height = 1usize;
+        let mut glyph_widths = Vec::new();
+        let mut width = 0usize;
+        {
+            let mut font_system = self.font_system.borrow_mut();
+            let mut swash_cache = self.swash_cache.borrow_mut();
+            for span in spans {
+                for grapheme in span.text.graphemes(true) {
+                    let glyph_width = TextRasterCache::measure_width_uncached(
+                        grapheme,
+                        span.style,
+                        &span.font,
+                        span.emoji,
+                        &mut font_system,
+                        &mut swash_cache,
+                        1.0,
+                    );
+                    glyph_widths.push(glyph_width.max(1));
+                    width = width.saturating_add(glyph_width.max(1));
+                }
+                line_height = line_height.max(span.style.line_height.ceil().max(1.0) as usize);
+            }
+        }
+        canvas.record_text_run_with_glyph_widths(
+            &text,
+            origin_x,
+            y,
+            width.max(1),
+            line_height,
+            &glyph_widths,
         );
     }
 
@@ -65,9 +189,10 @@ impl TextRenderer {
         self.draw_layout(
             canvas,
             text,
-            x,
+            x as isize,
             vertical_box.y,
             TextStyle::new(size, vertical_box.height, color),
+            false,
             canvas.scale_factor(),
         );
     }
@@ -84,18 +209,40 @@ impl TextRenderer {
         self.draw_layout(
             canvas,
             text,
-            origin.x,
+            origin.x as isize,
             origin.y,
             TextStyle::new(size, text_box.line_height(), color),
+            false,
             canvas.scale_factor(),
         );
     }
 
-    pub(crate) fn measure_width(&self, text: &str, size: f32) -> usize {
+    pub fn measure_width(&self, text: &str, size: f32) -> usize {
+        self.measure_width_with_emoji(text, size, false)
+    }
+
+    pub fn measure_emoji_width(&self, text: &str, size: f32) -> usize {
+        self.measure_width_with_emoji(text, size, true)
+    }
+
+    pub(crate) fn measure_width_rich(&self, text: &str, style: RichTextStyle) -> usize {
+        self.raster_cache.borrow_mut().measure_width(
+            text,
+            TextStyle::new(style.size, style.size * LINE_HEIGHT_RATIO, 0).italic(style.italic),
+            &self.font_for_weight(style.bold),
+            style.emoji,
+            &mut self.font_system.borrow_mut(),
+            &mut self.swash_cache.borrow_mut(),
+            1.0,
+        )
+    }
+
+    fn measure_width_with_emoji(&self, text: &str, size: f32, emoji: bool) -> usize {
         self.raster_cache.borrow_mut().measure_width(
             text,
             TextStyle::new(size, size * LINE_HEIGHT_RATIO, 0),
             &self.font,
+            emoji,
             &mut self.font_system.borrow_mut(),
             &mut self.swash_cache.borrow_mut(),
             1.0,
@@ -128,29 +275,107 @@ impl TextRenderer {
         &self,
         canvas: &mut Canvas,
         text: &str,
-        x: usize,
+        x: isize,
         y: usize,
         style: TextStyle,
+        emoji: bool,
         scale_factor: f32,
     ) {
-        let normalized_scale_factor = if scale_factor.is_finite() && scale_factor >= 1.0 {
-            scale_factor
-        } else {
-            1.0
-        };
+        self.draw_layout_with_font(canvas, text, x, y, style, emoji, scale_factor, &self.font);
+    }
+
+    fn draw_layout_with_font(
+        &self,
+        canvas: &mut Canvas,
+        text: &str,
+        x: isize,
+        y: usize,
+        style: TextStyle,
+        emoji: bool,
+        scale_factor: f32,
+        font: &FontToken,
+    ) {
+        let normalized_scale_factor = normalized_scale_factor(scale_factor);
+        self.record_measured_text_run(canvas, text, x, y, style, emoji, font);
         self.raster_cache.borrow_mut().draw(
             canvas,
             TextRasterDrawRequest {
                 text,
                 style,
-                font: &self.font,
-                origin_x: (x as f64 * f64::from(normalized_scale_factor)).round() as usize,
-                origin_y: (y as f64 * f64::from(normalized_scale_factor)).round() as usize,
+                font,
+                emoji,
+                origin_x: scaled_signed_coordinate(x, normalized_scale_factor),
+                origin_y: scaled_unsigned_coordinate(y, normalized_scale_factor),
                 scale_factor: normalized_scale_factor,
             },
             &mut self.font_system.borrow_mut(),
             &mut self.swash_cache.borrow_mut(),
         );
+    }
+
+    fn record_measured_text_run(
+        &self,
+        canvas: &mut Canvas,
+        text: &str,
+        x: isize,
+        y: usize,
+        style: TextStyle,
+        emoji: bool,
+        font: &FontToken,
+    ) {
+        let Some(origin_x) = usize::try_from(x).ok() else {
+            return;
+        };
+        let mut font_system = self.font_system.borrow_mut();
+        let mut swash_cache = self.swash_cache.borrow_mut();
+        let mut glyph_widths = Vec::new();
+        let mut width = 0usize;
+        for grapheme in text.graphemes(true) {
+            let glyph_width = TextRasterCache::measure_width_uncached(
+                grapheme,
+                style,
+                font,
+                emoji,
+                &mut font_system,
+                &mut swash_cache,
+                1.0,
+            );
+            glyph_widths.push(glyph_width.max(1));
+            width = width.saturating_add(glyph_width.max(1));
+        }
+        canvas.record_text_run_with_glyph_widths(
+            text,
+            origin_x,
+            y,
+            width.max(1),
+            style.line_height.ceil().max(1.0) as usize,
+            &glyph_widths,
+        );
+    }
+
+    fn font_for_weight(&self, bold: bool) -> FontToken {
+        let mut font = self.font.clone();
+        if bold {
+            font.weight = font.weight.max(BOLD_WEIGHT);
+        } else {
+            font.weight = font.weight.max(REGULAR_WEIGHT);
+        }
+        font
+    }
+
+    pub(crate) fn rich_line_span(
+        &self,
+        text: impl Into<String>,
+        style: RichTextStyle,
+    ) -> RichTextLineSpan {
+        RichTextLineSpan {
+            text: text.into(),
+            font: self.font_for_weight(style.bold),
+            style: TextStyle::new(style.size, style.size * LINE_HEIGHT_RATIO, style.color)
+                .italic(style.italic)
+                .raster_vertical_scale(style.raster_vertical_scale),
+            emoji: style.emoji,
+        }
     }
 
     fn origin_in_box(&self, text: &str, text_box: TextBox, size: f32) -> TextOrigin {
@@ -167,20 +392,64 @@ impl TextRenderer {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct TextOrigin {
-    pub(crate) x: usize,
-    pub(crate) y: usize,
+fn scaled_signed_coordinate(value: isize, scale: f32) -> i32 {
+    (value as f64 * f64::from(scale)).round() as i32
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) struct TextBox {
-    x: usize,
-    y: usize,
-    width: usize,
-    height: usize,
-    horizontal_align: TextHorizontalAlign,
-    vertical_align: TextVerticalAlign,
+fn scaled_unsigned_coordinate(value: usize, scale: f32) -> i32 {
+    (value as f64 * f64::from(scale)).round() as i32
+}
+
+fn normalized_scale_factor(scale_factor: f32) -> f32 {
+    if scale_factor.is_finite() && scale_factor >= 1.0 {
+        scale_factor
+    } else {
+        1.0
+    }
+}
+
+impl RichTextLineSpan {
+    fn to_raster_span(&self) -> RichTextRasterSpan<'_> {
+        RichTextRasterSpan {
+            text: &self.text,
+            style: self.style,
+            font: &self.font,
+            emoji: self.emoji,
+        }
+    }
+}
+
+impl RichTextStyle {
+    pub(crate) const fn new(size: f32, color: u32) -> Self {
+        Self {
+            size,
+            color,
+            bold: false,
+            italic: false,
+            emoji: false,
+            raster_vertical_scale: 1.0,
+        }
+    }
+
+    pub(crate) const fn bold(mut self, value: bool) -> Self {
+        self.bold = value;
+        self
+    }
+
+    pub(crate) const fn italic(mut self, value: bool) -> Self {
+        self.italic = value;
+        self
+    }
+
+    pub(crate) const fn emoji(mut self, value: bool) -> Self {
+        self.emoji = value;
+        self
+    }
+
+    pub(crate) const fn raster_vertical_scale(mut self, value: f32) -> Self {
+        self.raster_vertical_scale = value;
+        self
+    }
 }
 
 impl TextBox {
@@ -217,24 +486,6 @@ impl TextBox {
             TextVerticalAlign::Center => self.height as f32,
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum TextHorizontalAlign {
-    Start,
-    Center,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum TextVerticalAlign {
-    Top,
-    Center,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct TextVerticalBox {
-    y: usize,
-    height: f32,
 }
 
 impl TextVerticalBox {

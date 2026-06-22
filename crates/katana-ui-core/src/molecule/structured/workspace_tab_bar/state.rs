@@ -4,10 +4,24 @@ use crate::render_model::UiInteractionState;
 use crate::render_model::{UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
 
+pub const MAX_RECENTLY_CLOSED_TABS: usize = 10;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkspaceTabChildState {
     pub tab_id: WorkspaceTabId,
     pub state_id: UiStateId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkspaceClosedTab {
+    pub tab: WorkspaceTab,
+}
+
+impl WorkspaceClosedTab {
+    #[must_use]
+    pub fn new(tab: WorkspaceTab) -> Self {
+        Self { tab }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -18,6 +32,7 @@ pub struct WorkspaceTabBarState {
     pub drag_in_progress: bool,
     pub dragged_tab_id: Option<WorkspaceTabId>,
     pub pending_close_confirm: Option<WorkspaceTabId>,
+    pub recently_closed_tabs: Vec<WorkspaceClosedTab>,
     pub child_states: Vec<WorkspaceTabChildState>,
 }
 
@@ -33,6 +48,18 @@ impl WorkspaceTabBarState {
             drag_in_progress: false,
             dragged_tab_id: None,
             pending_close_confirm: None,
+            recently_closed_tabs: Vec::new(),
+        }
+    }
+
+    pub(super) fn record_closed_tab(&mut self, tab: WorkspaceTab) {
+        self.recently_closed_tabs.push(WorkspaceClosedTab::new(tab));
+        let overflow = self
+            .recently_closed_tabs
+            .len()
+            .saturating_sub(MAX_RECENTLY_CLOSED_TABS);
+        if overflow > 0 {
+            self.recently_closed_tabs.drain(0..overflow);
         }
     }
 
@@ -66,11 +93,10 @@ impl WorkspaceTabBarState {
 
 fn child_states(parent_state_id: &UiStateId, tabs: &[WorkspaceTab]) -> Vec<WorkspaceTabChildState> {
     tabs.iter()
-        .enumerate()
-        .map(|(index, tab)| WorkspaceTabChildState {
+        .map(|tab| WorkspaceTabChildState {
             tab_id: tab.id.clone(),
             state_id: UiStateId::new(format!(
-                "{}:closeable-tab:{}:{index}",
+                "{}:closeable-tab:{}",
                 parent_state_id.as_str(),
                 tab.id.as_str()
             )),

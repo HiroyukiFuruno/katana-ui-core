@@ -80,6 +80,7 @@ pub(super) fn text_input_text_x(x: usize, leading_slot_reserved: bool) -> usize 
 pub(super) fn text_input_text_clip_width(
     leading_slot_reserved: bool,
     trailing_icon_buttons: bool,
+    clear_action: bool,
 ) -> usize {
     let text_x = if leading_slot_reserved {
         FIELD_TEXT_X_WITH_LEADING_SLOT
@@ -90,6 +91,8 @@ pub(super) fn text_input_text_clip_width(
         FIELD_TRAILING_BUTTON_COUNT * FIELD_TRAILING_BUTTON_SIZE
             + (FIELD_TRAILING_BUTTON_COUNT - 1) * FIELD_TRAILING_BUTTON_GAP
             + FIELD_TRAILING_BUTTON_INSET
+    } else if clear_action {
+        FIELD_X + FIELD_WIDTH - CLEAR_X + FIELD_TEXT_PADDING
     } else {
         FIELD_TEXT_PADDING
     };

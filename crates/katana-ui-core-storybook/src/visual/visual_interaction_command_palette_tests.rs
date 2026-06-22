@@ -15,6 +15,7 @@ const RESULTS_PRESET: usize = 1;
 const SLASH_PRESET: usize = 2;
 const DISABLED_PRESET: usize = 3;
 const VIRTUAL_PRESET: usize = 4;
+const VIRTUALIZATION_PRESET: usize = 5;
 const REQUIRED_PRESET_COUNT: usize = 4;
 const REQUIRED_OPTION_COUNT: usize = 4;
 const BODY_DIFF_THRESHOLD: usize = 80;
@@ -55,11 +56,13 @@ fn command_palette_presets_render_distinct_results_slash_disabled_and_virtual_st
     let slash = StorybookVisual.render_preset(DARK_THEME, PAGE, SLASH_PRESET, 0);
     let disabled = StorybookVisual.render_preset(DARK_THEME, PAGE, DISABLED_PRESET, 0);
     let virtualized = StorybookVisual.render_preset(DARK_THEME, PAGE, VIRTUAL_PRESET, 0);
+    let virtualization = StorybookVisual.render_preset(DARK_THEME, PAGE, VIRTUALIZATION_PRESET, 0);
 
     assert!(component_body_pixel_diff(PAGE, &palette, &results) > BODY_DIFF_THRESHOLD);
     assert!(component_body_pixel_diff(PAGE, &results, &slash) > BODY_DIFF_THRESHOLD);
     assert!(component_body_pixel_diff(PAGE, &slash, &disabled) > BODY_DIFF_THRESHOLD);
     assert!(component_body_pixel_diff(PAGE, &disabled, &virtualized) > BODY_DIFF_THRESHOLD);
+    assert!(component_body_pixel_diff(PAGE, &palette, &virtualization) > BODY_DIFF_THRESHOLD);
 }
 
 #[test]

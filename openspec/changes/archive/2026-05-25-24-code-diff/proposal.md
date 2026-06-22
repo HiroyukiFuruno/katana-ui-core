@@ -38,7 +38,7 @@ Katana にはファイル修正の承認画面として差分確認 UI がある
 - Problems パネル、lint、自動修正との連携
 - コード編集機能
 - 言語別の構文色分け
-- Katana の egui UI の完全再現
+- Katana の adapter UI の完全再現
 
 ## 既存方針との関係
 

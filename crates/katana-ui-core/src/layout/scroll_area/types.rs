@@ -1,3 +1,4 @@
+use crate::layout::types::{Alignment, Length};
 use crate::render_model::{UiInteractionState, UiNode, UiNodeKind, UiRect, UiStateId};
 use serde::{Deserialize, Serialize};
 
@@ -87,6 +88,8 @@ pub struct ScrollArea {
     pub(super) scrollbar_visibility: ScrollbarVisibility,
     pub(super) scrollbar_placement: ScrollbarPlacement,
     pub(super) edge_threshold: u32,
+    pub(super) gap: Length,
+    pub(super) alignment: Alignment,
 }
 
 impl ScrollArea {
@@ -106,6 +109,8 @@ impl ScrollArea {
             scrollbar_visibility: ScrollbarVisibility::Auto,
             scrollbar_placement: ScrollbarPlacement::Reserved,
             edge_threshold: 0,
+            gap: Length::Px(0.0),
+            alignment: Alignment::Start,
         }
     }
 }

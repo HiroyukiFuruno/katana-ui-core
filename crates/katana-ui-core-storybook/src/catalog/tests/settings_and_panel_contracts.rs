@@ -36,6 +36,36 @@ fn panel_story_exposes_real_axis_scroll_models_and_inspector_contract() -> Resul
             "panel settings inspector lacks {setting}"
         );
     }
+    for action in [
+        "panel_wheel_y",
+        "panel_wheel_x",
+        "panel_scrollbar_visibility",
+    ] {
+        assert!(
+            story
+                .callback_logs
+                .iter()
+                .any(|it| it.action == action && it.after.contains("event=panel_scroll")),
+            "panel callback log lacks action {action}"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn theme_tokens_story_exposes_theme_switch_log() -> Result<(), &'static str> {
+    let examples = StoryCatalog.examples();
+    let story = examples
+        .iter()
+        .find(|it| it.page == "theme-tokens")
+        .ok_or("theme-tokens page missing")?;
+
+    assert!(
+        story
+            .callback_logs
+            .iter()
+            .any(|it| it.action == "theme_switch" && it.after.contains("theme=light"))
+    );
     Ok(())
 }
 
@@ -56,7 +86,20 @@ fn settings_list_story_exposes_presets_settings_and_logs() -> Result<(), &'stati
             "lint settings",
             "dirty 表示",
             "query filter",
-            "reset"
+            "reset",
+            "label",
+            "section label",
+            "section description",
+            "section icon",
+            "field count",
+            "section footer",
+            "section collapse",
+            "default collapsed",
+            "field label",
+            "field description",
+            "control options",
+            "custom control",
+            "set value"
         ],
         StoryPresetLabels::for_page("settings-list")
     );
@@ -85,7 +128,20 @@ fn settings_list_story_exposes_presets_settings_and_logs() -> Result<(), &'stati
         "dirty_visualization",
         "query",
         "sections",
+        "settings_list.label",
+        "settings_list.section_label",
+        "settings_list.section_description",
+        "settings_list.section_icon",
+        "settings_list.field_count",
+        "settings_list.section_footer",
+        "settings_list.section_collapsible",
+        "settings_list.default_collapsed",
+        "settings_list.field_label",
+        "settings_list.field_description",
         "control_kind",
+        "settings_list.control_options",
+        "settings_list.custom_control",
+        "settings_list.set_value",
         "reset",
     ] {
         assert!(

@@ -75,7 +75,7 @@ impl DiagnosticFixPreview {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DiagnosticItem {
     pub id: DiagnosticId,
     pub message: String,

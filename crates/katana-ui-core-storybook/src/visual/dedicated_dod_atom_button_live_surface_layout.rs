@@ -1,8 +1,8 @@
 use super::{
-    BASIC_HEIGHT, BASIC_MIN_WIDTH, BASIC_PRESET_INDEX, BUTTON_ICON_GAP, BUTTON_LABEL_AVG_WIDTH,
-    BUTTON_LABEL_ICON_OFFSET, BUTTON_PADDING_X, CLASSIC_HEIGHT, CLASSIC_MIN_WIDTH,
-    CLASSIC_PRESET_INDEX, CUSTOM_WIDTH, DENSE_HEIGHT, DENSE_MIN_WIDTH, DENSE_PRESET_INDEX,
-    FILL_WIDTH, MODERN_HEIGHT, MODERN_MIN_WIDTH, PERCENT_WIDTH,
+    BASIC_HEIGHT, BASIC_MIN_WIDTH, BASIC_PRESET_INDEX, BUTTON_ICON_GAP, BUTTON_LABEL_ICON_OFFSET,
+    BUTTON_PADDING_X, CLASSIC_HEIGHT, CLASSIC_MIN_WIDTH, CLASSIC_PRESET_INDEX, CUSTOM_WIDTH,
+    DENSE_HEIGHT, DENSE_MIN_WIDTH, DENSE_PRESET_INDEX, FILL_WIDTH, MODERN_HEIGHT, MODERN_MIN_WIDTH,
+    PERCENT_WIDTH,
 };
 use crate::visual::button_options::{StorybookButtonHeightMode, StorybookButtonWidthMode};
 
@@ -13,7 +13,7 @@ pub(in crate::visual) fn button_layout(
     preset_index: usize,
     width_mode: StorybookButtonWidthMode,
     height_mode: StorybookButtonHeightMode,
-    label: &str,
+    label_width: usize,
     icon: bool,
     label_visible: bool,
 ) -> ButtonVisualLayout {
@@ -33,7 +33,7 @@ pub(in crate::visual) fn button_layout(
         DENSE_PRESET_INDEX => DENSE_MIN_WIDTH,
         _ => MODERN_MIN_WIDTH,
     };
-    auto_layout(label, min_width, height, icon)
+    auto_layout(label_width, min_width, height, icon)
 }
 
 fn button_height(preset_index: usize, height_mode: StorybookButtonHeightMode) -> usize {
@@ -53,15 +53,19 @@ fn preset_height(preset_index: usize) -> usize {
     }
 }
 
-fn auto_layout(label: &str, min_width: usize, height: usize, icon: bool) -> ButtonVisualLayout {
+fn auto_layout(
+    label_width: usize,
+    min_width: usize,
+    height: usize,
+    icon: bool,
+) -> ButtonVisualLayout {
     let icon_space = if icon {
         BUTTON_LABEL_ICON_OFFSET + BUTTON_ICON_GAP
     } else {
         0
     };
-    let text_width = label.chars().count() * BUTTON_LABEL_AVG_WIDTH;
     ButtonVisualLayout::new(
-        min_width.max(text_width + BUTTON_PADDING_X + icon_space),
+        min_width.max(label_width + BUTTON_PADDING_X + icon_space),
         height,
     )
 }

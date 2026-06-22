@@ -17,7 +17,7 @@ katana と katana-chat-ui で繰り返し使われる UI が widget 化されて
 
 ### 横断調査で採用した widget（2026-05-11）
 
-以下は katana (`katana-ui/src/`) と katana-chat-ui (`katana-chat-ui-floem/src/widget/`) のソースコード横断調査で採用判定を 1 とした汎用 UI 部品である。
+以下は katana (`katana-ui/src/`) と katana-chat-ui (`katana-chat-ui-adapter/src/widget/`) のソースコード横断調査で採用判定を 1 とした汎用 UI 部品である。
 判定は `1 = 採用して実装対象`、`0 = widget crate では実装しない` とする。未判定状態は作らない。
 
 - **TreeView**: 階層データの展開・折り畳み表示。katana の explorer (`views/panels/explorer/`)、TOC (`views/panels/toc/`)、settings tree (`settings/settings_tree.rs`) で繰り返し利用されるパターン。ファイルツリー、設定ツリー、目次など広く使える。
@@ -58,7 +58,7 @@ katana と katana-chat-ui で繰り返し使われる UI が widget 化されて
 | 0 | Composer | chat input domain 固有 UI | 実装しない |
 | 0 | Thread | chat message domain 固有 UI | 実装しない |
 | 0 | History | chat session domain 固有 UI | 実装しない |
-| 0 | VendorControls | AI vendor domain 固有 UI | 実装しない |
+| 0 | AdapterControls | AI adapter domain 固有 UI | 実装しない |
 | 0 | ProviderIconSelector | AI provider domain 固有 UI | 実装しない |
 | 0 | WidgetInventoryAudit | 実装 widget ではなく調査作業 | この change から除外 |
 

@@ -165,10 +165,12 @@ fn option_summary(tree: &UiTreeProps) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use katana_ui_core::render_model::{UiBorder, UiCursor};
 
     fn sample_tree_props() -> UiTreeProps {
         UiTreeProps {
             active_id: "tree-active".to_string(),
+            hovered_id: String::new(),
             line_display: true,
             line_style: UiTreeLineStyle::Solid,
             line_width: 1,
@@ -182,6 +184,8 @@ mod tests {
             empty_area_context_menu: true,
             toggle_icon: "<svg data-icon=\"chevron\"/>".to_string(),
             toggle_trigger_area: UiTreeToggleTriggerArea::IconAndText,
+            row_cursor: UiCursor::Pointer,
+            row_hover_border: UiBorder::default(),
         }
     }
 

@@ -1,4 +1,6 @@
 use super::{StoryCatalog, StoryExample};
+use katana_ui_core::interaction::UiCallbackLog;
+use katana_ui_core::render_model::UiStateId;
 use katana_ui_core::theme::ThemeSnapshot;
 use katana_ui_core::{atom, molecule, panel};
 
@@ -78,14 +80,44 @@ fn panel_story() -> StoryExample {
         .child(atom::Text::new(
             "quality: clipping hit_target scrollbar_visibility nested_state axis_isolation",
         ));
-    StoryCatalog::story("panel", root)
+    StoryCatalog::interactive_story("panel", root, panel_logs())
 }
 
 fn theme_tokens_story() -> StoryExample {
-    StoryCatalog::story(
+    let card = molecule::Card::new("Theme tokens")
+        .child(atom::Badge::new("Light/Dark"))
+        .child(atom::ColorSwatch::new("Accent"));
+    StoryCatalog::interactive_story(
         "theme-tokens",
-        molecule::Card::new("Theme tokens")
-            .child(atom::Badge::new("Light/Dark"))
-            .child(atom::ColorSwatch::new("Accent")),
+        card,
+        vec![UiCallbackLog::new(
+            UiStateId::new("state:ThemeTokens:theme"),
+            "theme_switch",
+            "theme=dark",
+            "event=theme_changed theme=light token=accent",
+        )],
     )
+}
+
+fn panel_logs() -> Vec<UiCallbackLog> {
+    vec![
+        UiCallbackLog::new(
+            UiStateId::new("state:Panel:navigation"),
+            "panel_wheel_y",
+            "navigation.scroll_y=48",
+            "event=panel_scroll_changed navigation.scroll_y=96",
+        ),
+        UiCallbackLog::new(
+            UiStateId::new("state:Panel:preview"),
+            "panel_wheel_x",
+            "preview.scroll_x=96",
+            "event=panel_scroll_changed preview.scroll_x=144",
+        ),
+        UiCallbackLog::new(
+            UiStateId::new("state:Panel:visibility"),
+            "panel_scrollbar_visibility",
+            "scrollbar_visible=true",
+            "event=panel_scrollbar_changed scrollbar_visible=false",
+        ),
+    ]
 }

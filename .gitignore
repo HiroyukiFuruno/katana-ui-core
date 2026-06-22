@@ -16,6 +16,9 @@ __pycache__/
 **/opsx*/*.md
 **/opsx-*.md
 
+# Storybook manual acceptance local state
+docs/storybook-manual-acceptance-approvals.json
+
 # Editors
 .idea/
 *.swp

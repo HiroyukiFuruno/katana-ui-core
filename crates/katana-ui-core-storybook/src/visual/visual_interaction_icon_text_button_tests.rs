@@ -28,7 +28,7 @@ fn icon_text_button_exposes_leaf_presets_and_options() {
     assert!(presets.len() >= REQUIRED_PRESET_COUNT);
     assert!(options.len() >= REQUIRED_OPTION_COUNT);
     assert_eq!(options.len(), rows.len());
-    assert_eq!(StorybookButtonOptionControl::all().len(), options.len() + 3);
+    assert_eq!(StorybookButtonOptionControl::all().len(), options.len());
 }
 
 #[test]

@@ -100,3 +100,77 @@ impl StorybookButtonZIndex {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::visual) enum StorybookButtonCommandMode {
+    Save,
+    Open,
+}
+
+impl StorybookButtonCommandMode {
+    pub(in crate::visual) const fn next(self) -> Self {
+        match self {
+            Self::Save => Self::Open,
+            Self::Open => Self::Save,
+        }
+    }
+
+    pub(in crate::visual) const fn label(self) -> &'static str {
+        match self {
+            Self::Save => "save",
+            Self::Open => "open",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::visual) enum StorybookButtonIconPosition {
+    Leading,
+    Trailing,
+}
+
+impl StorybookButtonIconPosition {
+    pub(in crate::visual) const fn next(self) -> Self {
+        match self {
+            Self::Leading => Self::Trailing,
+            Self::Trailing => Self::Leading,
+        }
+    }
+
+    pub(in crate::visual) const fn label(self) -> &'static str {
+        match self {
+            Self::Leading => "leading",
+            Self::Trailing => "trailing",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(in crate::visual) enum StorybookButtonLayoutPreset {
+    Page,
+    Dense,
+}
+
+impl StorybookButtonLayoutPreset {
+    pub(in crate::visual) const fn next(self) -> Self {
+        match self {
+            Self::Page => Self::Dense,
+            Self::Dense => Self::Page,
+        }
+    }
+
+    pub(in crate::visual) const fn label(self) -> &'static str {
+        match self {
+            Self::Page => "page",
+            Self::Dense => "dense",
+        }
+    }
+
+    pub(in crate::visual) const fn preset_index(self, fallback: usize) -> usize {
+        const DENSE_PRESET_INDEX: usize = 3;
+        match self {
+            Self::Page => fallback,
+            Self::Dense => DENSE_PRESET_INDEX,
+        }
+    }
+}

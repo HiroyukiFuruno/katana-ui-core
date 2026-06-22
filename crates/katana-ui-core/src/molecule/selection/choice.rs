@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 macro_rules! choice_molecule {
     ($name:ident, $kind:expr, $close_on_select:expr) => {
-        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
         pub struct $name {
             pub(super) label: String,
             pub(super) state: MoleculeState,
@@ -86,24 +86,6 @@ macro_rules! choice_molecule {
             }
 
             #[must_use]
-            pub fn input_value(mut self, value: impl Into<String>) -> Self {
-                self.model.input_value = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn filter_result(mut self, item: ChoiceItem) -> Self {
-                self.model.filter_results.push(item);
-                self
-            }
-
-            #[must_use]
-            pub fn free_input(mut self, value: bool) -> Self {
-                self.model.free_input = value;
-                self
-            }
-
-            #[must_use]
             pub fn keyboard_navigation(mut self, value: impl Into<String>) -> Self {
                 self.model.keyboard_navigation_summary = value.into();
                 self
@@ -150,12 +132,6 @@ macro_rules! choice_molecule {
                 self.model.select_action = value.into();
                 self
             }
-
-            #[must_use]
-            pub fn crumb_action(mut self, value: impl Into<String>) -> Self {
-                self.model.crumb_action = value.into();
-                self
-            }
         }
     };
 }
@@ -167,3 +143,37 @@ choice_molecule!(SelectionList, UiNodeKind::SelectionList, false);
 choice_molecule!(SideMenu, UiNodeKind::SideMenu, false);
 choice_molecule!(Tabs, UiNodeKind::Tabs, false);
 choice_molecule!(Breadcrumb, UiNodeKind::Breadcrumb, false);
+
+impl ComboBox {
+    #[must_use]
+    pub fn input_value(mut self, value: impl Into<String>) -> Self {
+        self.model.input_value = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn filter_result(mut self, item: ChoiceItem) -> Self {
+        self.model.filter_results.push(item);
+        self
+    }
+
+    #[must_use]
+    pub fn free_input(mut self, value: bool) -> Self {
+        self.model.free_input = value;
+        self
+    }
+
+    #[must_use]
+    pub fn invalid(mut self, value: bool) -> Self {
+        self.state.invalid = value;
+        self
+    }
+}
+
+impl Breadcrumb {
+    #[must_use]
+    pub fn crumb_action(mut self, value: impl Into<String>) -> Self {
+        self.model.crumb_action = value.into();
+        self
+    }
+}

@@ -11,7 +11,7 @@ pub use types::{ReplaceMode, SearchOptionKind, SearchOptions};
 use crate::render_model::{UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SearchControlStrip {
     label: String,
     state_id: UiStateId,

@@ -11,6 +11,12 @@ macro_rules! structured_options {
             }
 
             #[must_use]
+            pub fn hovered(mut self, value: impl Into<String>) -> Self {
+                self.model.hovered_id = value.into();
+                self
+            }
+
+            #[must_use]
             pub fn line_display(mut self, value: bool) -> Self {
                 self.model.line_display = value;
                 self

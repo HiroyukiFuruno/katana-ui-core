@@ -38,7 +38,11 @@ pub(super) fn align_center(
     x: usize,
     y: usize,
 ) {
-    let accent = if scenario.screen_state.has_settings_override() {
+    let accent = if scenario.screen_state.state_label == "keyboard=center" {
+        common::TOKEN
+    } else if scenario.screen_state.has_settings_override()
+        || scenario.screen_state.layout.is_page("align-center")
+    {
         common::SUCCESS
     } else {
         palette.accent
@@ -133,6 +137,11 @@ fn align_labels(
 }
 
 fn child_width_for(scenario: ScenarioContext<'_>) -> usize {
+    if scenario.screen_state.layout.is_page("align-center")
+        && scenario.screen_state.layout.resized()
+    {
+        return MIXED_CHILD_WIDTH;
+    }
     if scenario.preset_index == MIXED_TEXT_PRESET_INDEX {
         return MIXED_CHILD_WIDTH;
     }
@@ -147,6 +156,14 @@ fn child_y_for(scenario: ScenarioContext<'_>) -> usize {
 }
 
 fn theme_marker_width(scenario: ScenarioContext<'_>) -> usize {
+    if scenario.screen_state.state_label == "keyboard=center" {
+        return m::PX_26;
+    }
+    if scenario.screen_state.layout.is_page("align-center")
+        && (scenario.screen_state.layout.hovered() || scenario.screen_state.layout.focused())
+    {
+        return m::PX_18;
+    }
     if scenario.preset_index == THEME_ALIGN_PRESET_INDEX {
         return m::PX_22;
     }
@@ -198,6 +215,24 @@ fn draw_status(
 }
 
 fn status_labels(scenario: ScenarioContext<'_>) -> [&'static str; STATUS_LABEL_COUNT] {
+    if scenario.screen_state.layout.is_page("align-center")
+        && scenario.screen_state.layout.hovered()
+    {
+        return ["action hover", "event hover", "state center"];
+    }
+    if scenario.screen_state.layout.is_page("align-center")
+        && scenario.screen_state.layout.focused()
+    {
+        return ["action focus", "event focus", "state center"];
+    }
+    if scenario.screen_state.layout.is_page("align-center")
+        && scenario.screen_state.layout.resized()
+    {
+        return ["action resize", "event layout", "state center"];
+    }
+    if scenario.screen_state.layout.is_page("align-center") {
+        return ["action key", "event center", "state center"];
+    }
     if scenario.screen_state.has_settings_override() {
         return ["action align", "event center", "state override"];
     }

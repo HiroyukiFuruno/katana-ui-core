@@ -3,7 +3,13 @@ use super::canvas_model::Canvas;
 impl Canvas {
     #[must_use]
     pub fn viewport_y(&self, offset_y: usize, height: usize, fill: u32) -> Self {
-        let mut viewport = Self::new_scaled(self.logical_width, height, self.scale_factor, fill);
+        let mut viewport = Self::new_scaled_with_raster_scale(
+            self.logical_width,
+            height,
+            self.scale_factor,
+            self.raster_scale_factor,
+            fill,
+        );
         if self.logical_height == 0 || self.logical_width == 0 || height == 0 {
             return viewport;
         }
@@ -19,6 +25,19 @@ impl Canvas {
             let source_end = source_start + self.width;
             viewport.pixels[target_start..copy_end]
                 .copy_from_slice(&self.pixels[source_start..source_end]);
+        }
+        for run in &self.text_runs {
+            let rect = run.rect();
+            if rect.bottom() <= offset_y || rect.y >= offset_y.saturating_add(height) {
+                continue;
+            }
+            viewport.record_text_run(
+                run.text(),
+                rect.x,
+                rect.y.saturating_sub(offset_y),
+                rect.width,
+                rect.height,
+            );
         }
         viewport
     }

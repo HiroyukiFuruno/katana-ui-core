@@ -24,8 +24,8 @@
 - `requirements.rs` required page: 77
 - menu に存在し required に存在しない page: 0
 - required に存在し menu に存在しない page: 0
-- `draw_page` page 別描画あり: 49
-- `draw_page` page 別描画未作成: 28
+- `draw_page` page 別描画あり: 77
+- `draw_page` page 別描画未作成: 0
 
 ## Leaf change map
 

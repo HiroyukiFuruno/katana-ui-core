@@ -1,14 +1,22 @@
 mod actions;
+mod apply_action;
 mod bar;
+mod bulk_close;
+mod component_action;
+mod context_commands;
 mod context_menu;
 mod dnd;
 mod events;
+mod group_mutations;
 mod identifiers;
 mod keyboard;
+mod model;
 mod mutations;
 mod options;
 mod ordering;
 mod overflow;
+mod overflow_action;
+mod scroll;
 mod state;
 
 pub use actions::{
@@ -16,9 +24,8 @@ pub use actions::{
     WorkspaceTabGroupTarget,
 };
 pub use bar::WorkspaceTabBar;
-pub use context_menu::{
-    WorkspaceGroupContextCommand, WorkspaceTabContextCommand, WorkspaceTabContextMenu,
-};
+pub use context_commands::{WorkspaceGroupContextCommand, WorkspaceTabContextCommand};
+pub use context_menu::WorkspaceTabContextMenu;
 pub use events::WorkspaceTabBarEvent;
 pub use identifiers::{WorkspaceTabGroupId, WorkspaceTabId};
 pub use keyboard::{
@@ -30,7 +37,10 @@ pub use overflow::{
     MeasuredWorkspaceTab, WorkspaceTabOverflowConfig, WorkspaceTabOverflowPlan,
     WorkspaceTabOverflowPlanner,
 };
-pub use state::{WorkspaceTabBarState, WorkspaceTabChildState};
+pub use scroll::{WorkspaceTabScrollConfig, WorkspaceTabScrollPlan, WorkspaceTabScrollPlanner};
+pub use state::{
+    MAX_RECENTLY_CLOSED_TABS, WorkspaceClosedTab, WorkspaceTabBarState, WorkspaceTabChildState,
+};
 
 pub type CloseableTab = WorkspaceTab;
 pub type CloseableTabChildState = WorkspaceTabChildState;
@@ -50,12 +60,16 @@ pub type CloseableTabKeyboardShortcut = WorkspaceTabKeyboardShortcut;
 pub type CloseableTabOverflowConfig = WorkspaceTabOverflowConfig;
 pub type CloseableTabOverflowPlan = WorkspaceTabOverflowPlan;
 pub type CloseableTabOverflowPlanner = WorkspaceTabOverflowPlanner;
+pub type CloseableTabScrollConfig = WorkspaceTabScrollConfig;
+pub type CloseableTabScrollPlan = WorkspaceTabScrollPlan;
+pub type CloseableTabScrollPlanner = WorkspaceTabScrollPlanner;
 pub type CloseableTabStrip = WorkspaceTabBar;
 pub type CloseableTabStripAction = WorkspaceTabBarAction;
 pub type CloseableTabStripEvent = WorkspaceTabBarEvent;
 pub type CloseableTabStripOptions = WorkspaceTabBarOptions;
 pub type CloseableTabStripState = WorkspaceTabBarState;
 pub type CloseableTabTone = WorkspaceTabTone;
+pub type ClosedTab = WorkspaceClosedTab;
 pub type MeasuredCloseableTab = MeasuredWorkspaceTab;
 pub type TabGroup = WorkspaceTabGroup;
 pub type TabGroupId = WorkspaceTabGroupId;

@@ -12,24 +12,27 @@ const LEGACY_UI_MARKER_COUNT: usize = 30;
 const SELECTOR_OPERATION_COUNT: usize = 13;
 const DND_SETTINGS_MUTATION_COUNT: usize = 3;
 const CLOSEABLE_TAB_STRIP_SETTINGS_MUTATION_COUNT: usize = 5;
+const CONTEXT_MENU_SETTINGS_MUTATION_COUNT: usize = 6;
 const OVERLAY_SETTINGS_MUTATION_COUNT: usize = 9;
-const TOOLBAR_SETTINGS_MUTATION_COUNT: usize = 5;
+const TOOLBAR_SETTINGS_MUTATION_COUNT: usize = 17;
 const TEXT_AREA_SETTINGS_MUTATION_COUNT: usize = 10;
-const CHIP_SETTINGS_MUTATION_COUNT: usize = 6;
-const COLOR_PICKER_SETTINGS_MUTATION_COUNT: usize = 9;
+const CHIP_SETTINGS_MUTATION_COUNT: usize = 26;
+const COLOR_PICKER_SETTINGS_MUTATION_COUNT: usize = 15;
 const COLOR_PICKER_UPDATE_COUNT: usize = 10;
 const COMMAND_PALETTE_SETTINGS_MUTATION_COUNT: usize = 5;
 const DIAGNOSTICS_SETTINGS_MUTATION_COUNT: usize = 5;
-const EMPTY_STATE_SETTINGS_MUTATION_COUNT: usize = 4;
+const EMPTY_STATE_SETTINGS_MUTATION_COUNT: usize = 8;
 const MOTION_SETTINGS_MUTATION_COUNT: usize = 6;
-const BANNER_SETTINGS_MUTATION_COUNT: usize = 5;
+const BANNER_SETTINGS_MUTATION_COUNT: usize = 8;
+const CARD_SETTINGS_MUTATION_COUNT: usize = 4;
 const TOAST_STACK_SETTINGS_MUTATION_COUNT: usize = 6;
-const STATUS_BAR_SETTINGS_MUTATION_COUNT: usize = 3;
-const SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT: usize = 4;
+const STATUS_BAR_SETTINGS_MUTATION_COUNT: usize = 7;
+const SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT: usize = 5;
+const SHORTCUT_CHEATSHEET_SETTINGS_MUTATION_COUNT: usize = 9;
 const SEARCH_CONTROL_STRIP_SETTINGS_MUTATION_COUNT: usize = 7;
 const SCROLL_AREA_SETTINGS_MUTATION_COUNT: usize = 6;
-const SPLIT_PANE_SETTINGS_MUTATION_COUNT: usize = 6;
-const SETTINGS_LIST_SETTINGS_MUTATION_COUNT: usize = 6;
+const SPLIT_PANE_SETTINGS_MUTATION_COUNT: usize = 10;
+const SETTINGS_LIST_SETTINGS_MUTATION_COUNT: usize = 19;
 const COLLAPSIBLE_PANEL_SETTINGS_MUTATION_COUNT: usize = 5;
 const WINDOW_CONTROL_SETTINGS_MUTATION_COUNT: usize = 4;
 const STARTUP_STATE_SETTINGS_MUTATION_COUNT: usize = 5;
@@ -46,7 +49,7 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
         examples.len()
             + 1
             + DND_SETTINGS_MUTATION_COUNT
-            + 3
+            + CONTEXT_MENU_SETTINGS_MUTATION_COUNT
             + OVERLAY_SETTINGS_MUTATION_COUNT
             + TOOLBAR_SETTINGS_MUTATION_COUNT
             + TEXT_AREA_SETTINGS_MUTATION_COUNT
@@ -57,10 +60,12 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             + EMPTY_STATE_SETTINGS_MUTATION_COUNT
             + MOTION_SETTINGS_MUTATION_COUNT
             + BANNER_SETTINGS_MUTATION_COUNT
+            + CARD_SETTINGS_MUTATION_COUNT
             + TOAST_STACK_SETTINGS_MUTATION_COUNT
             + STATUS_BAR_SETTINGS_MUTATION_COUNT
             + STARTUP_STATE_SETTINGS_MUTATION_COUNT
             + SHORTCUT_COMBO_SETTINGS_MUTATION_COUNT
+            + SHORTCUT_CHEATSHEET_SETTINGS_MUTATION_COUNT
             + SEARCH_CONTROL_STRIP_SETTINGS_MUTATION_COUNT
             + SCROLL_AREA_SETTINGS_MUTATION_COUNT
             + SPLIT_PANE_SETTINGS_MUTATION_COUNT
@@ -138,10 +143,12 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
     assert_empty_state_settings_are_switchable(&report.settings_mutations);
     assert_motion_settings_are_switchable(&report.settings_mutations);
     assert_banner_settings_are_switchable(&report.settings_mutations);
+    assert_card_settings_are_switchable(&report.settings_mutations);
     assert_toast_stack_settings_are_switchable(&report.settings_mutations);
     assert_status_bar_settings_are_switchable(&report.settings_mutations);
     assert_startup_state_settings_are_switchable(&report.settings_mutations);
     assert_shortcut_combo_settings_are_switchable(&report.settings_mutations);
+    assert_shortcut_cheatsheet_settings_are_switchable(&report.settings_mutations);
     assert_search_control_strip_settings_are_switchable(&report.settings_mutations);
     assert_scroll_area_settings_are_switchable(&report.settings_mutations);
     assert_split_pane_settings_are_switchable(&report.settings_mutations);

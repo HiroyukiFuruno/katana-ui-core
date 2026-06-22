@@ -31,6 +31,23 @@ fn toolbar_settings() -> Vec<ToolbarSetting> {
             "LabelOnly",
         ),
         setting("toolbar.density", "Density", "Default", "Compact"),
+        setting("toolbar.action_priority", "Priority", "normal", "critical"),
+        setting("toolbar.action_accelerator", "KeyCombo", "Cmd+S", "Alt+P"),
+        setting("toolbar.action_split", "SplitAction", "none", "menu"),
+        setting("toolbar.action_group", "GroupId", "primary", "edit"),
+        setting("toolbar.action_tooltip", "String", "none", "Save file"),
+        setting("toolbar.action_a11y", "String", "label", "custom"),
+        setting("toolbar.action_disabled", "bool", "false", "true"),
+        setting("toolbar.group_label", "String", "none", "File actions"),
+        setting("toolbar.group_divider", "bool", "true", "false"),
+        setting("toolbar.split_disabled", "bool", "false", "true"),
+        setting(
+            "toolbar.split_tooltip",
+            "String",
+            "none",
+            "More save options",
+        ),
+        setting("toolbar.split_a11y", "String", "generated", "custom"),
     ]
 }
 

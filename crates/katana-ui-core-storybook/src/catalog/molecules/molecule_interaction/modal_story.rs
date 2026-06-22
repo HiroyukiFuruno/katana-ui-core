@@ -1,6 +1,7 @@
 use super::{
     ComponentAction, StoryCatalog, StoryExample, UiAction, UiCallbackLog, UiStateId, atom, molecule,
 };
+use katana_ui_core::render_model::UiModalPlacement;
 
 pub(super) fn modal_story() -> StoryExample {
     let mut modal = molecule::Modal::new("Modal")
@@ -47,6 +48,7 @@ pub(super) fn modal_overlay_story() -> StoryExample {
         .focus_return("trigger:open-overlay")
         .outside_click_dismiss(true)
         .dismiss_policy("backdrop=true escape=true dismiss_disabled=false")
+        .placement(UiModalPlacement::Center)
         .child(
             molecule::Modal::new("Overlay dialog")
                 .open(true)
@@ -57,6 +59,9 @@ pub(super) fn modal_overlay_story() -> StoryExample {
         )
         .child(atom::Text::new(
             "overlay dialog preset=overlay dialog same_window_overlay=true",
+        ))
+        .child(atom::Text::new(
+            "placement default=center option=edge=right",
         ))
         .child(atom::Button::new(
             "backdrop close action=modal_backdrop_click backdrop_close=true",

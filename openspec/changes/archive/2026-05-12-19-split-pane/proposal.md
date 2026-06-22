@@ -1,6 +1,6 @@
 ## Why
 
-エディタ + プレビュー / サイドバー + メイン / 上下分割など、可変サイズの 2 ペイン分割は汎用 UI で頻出。`../katana/crates/katana-ui/src/views/layout/` (split.rs / split_horizontal.rs / split_vertical.rs / split_handle.rs) の役割を Floem に移植する。各ペインの中身は consumer の責務とし、`SplitPane` はサイズ管理のみを担う。
+エディタ + プレビュー / サイドバー + メイン / 上下分割など、可変サイズの 2 ペイン分割は汎用 UI で頻出。`../katana/crates/katana-ui/src/views/layout/` (split.rs / split_horizontal.rs / split_vertical.rs / split_handle.rs) の役割を Adapter に移植する。各ペインの中身は consumer の責務とし、`SplitPane` はサイズ管理のみを担う。
 
 ## What Changes
 

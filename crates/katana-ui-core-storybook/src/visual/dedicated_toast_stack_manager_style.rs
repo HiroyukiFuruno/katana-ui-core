@@ -15,7 +15,9 @@ pub(super) fn position_fill(palette: &VisualPalette, scenario: ScenarioContext<'
 }
 
 pub(super) fn pause_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.preset_index == PAUSE_PRESET_INDEX {
+    if scenario.preset_index == PAUSE_PRESET_INDEX
+        || scenario.screen_state.state_label == "toast_stack.paused=true"
+    {
         return palette.accent;
     }
     palette.panel
@@ -74,7 +76,9 @@ pub(super) fn position_text(palette: &VisualPalette, scenario: ScenarioContext<'
 }
 
 pub(super) fn pause_text(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.preset_index == PAUSE_PRESET_INDEX {
+    if scenario.preset_index == PAUSE_PRESET_INDEX
+        || scenario.screen_state.state_label == "toast_stack.paused=true"
+    {
         return palette.background;
     }
     palette.text
@@ -102,6 +106,9 @@ pub(super) fn position_label(scenario: ScenarioContext<'_>) -> &'static str {
 }
 
 pub(super) fn pause_label(scenario: ScenarioContext<'_>) -> &'static str {
+    if scenario.screen_state.state_label == "toast_stack.paused=true" {
+        return "paused by pointer/focus";
+    }
     if scenario.preset_index == PAUSE_PRESET_INDEX {
         return "pause on hover";
     }

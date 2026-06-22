@@ -2,11 +2,11 @@ use crate::visual::layout_metrics::LayoutRect;
 use crate::visual::layout_metrics::PREVIEW_X;
 use crate::visual::{
     canvas::Canvas,
+    dedicated_dod_atom_buttons, dedicated_dod_layout_scroll_area,
     panel_scroll_state::{self, PanelScrollRegion},
     render_context::{RenderContext, ScenarioContext},
 };
 
-const ACTION_TEXT_SIZE: f32 = 10.0;
 const TEXT_BUTTON_REL_X: usize = 16;
 const TEXT_BUTTON_REL_Y: usize = 50;
 const BUTTON_WIDTH: usize = 106;
@@ -20,16 +20,11 @@ const ICON_TEXT_BUTTON_REL_X: usize = 20;
 const ICON_TEXT_BUTTON_REL_Y: usize = 50;
 const ICON_TEXT_BUTTON_WIDTH: usize = 138;
 const ICON_TEXT_BUTTON_HEIGHT: usize = 40;
-const TOGGLE_REL_X: usize = 18;
-const TOGGLE_REL_Y: usize = 36;
-const TOGGLE_ROW_WIDTH: usize = 294;
-const TOGGLE_ROW_HEIGHT: usize = 34;
 const GENERIC_ACTION_WIDTH: usize = 344;
 const GENERIC_ACTION_HEIGHT: usize = 132;
+const BINARY_CHOICE_ACTION_HEIGHT: usize = 156;
 const TABS_ACTION_WIDTH: usize = 520;
 const ACTION_MARKER_HEIGHT: usize = 4;
-const ACTION_LABEL_X_OFFSET: usize = 18;
-const ACTION_LABEL_Y_OFFSET: usize = 18;
 
 const HERO_Y: usize = 136;
 const HERO_WIDTH: usize = 710;
@@ -80,6 +75,9 @@ pub(super) fn draw_runtime_state(
     if scenario.selected_page == "panel" {
         return;
     }
+    if has_inline_state_surface(scenario.selected_page) {
+        return;
+    }
 
     let rect = component_action_hit_rect(scenario.selected_page);
     if rect.width == 0 {
@@ -107,21 +105,10 @@ pub(super) fn draw_runtime_state(
         ACTION_MARKER_HEIGHT,
         render.palette.accent,
     );
-    if !should_draw_runtime_label(scenario.selected_page) {
-        return;
-    }
-    render.code_text.draw(
-        canvas,
-        &format!("clicked {}", scenario.screen_state.action_count),
-        rect.x + ACTION_LABEL_X_OFFSET,
-        rect.bottom().saturating_sub(ACTION_LABEL_Y_OFFSET),
-        ACTION_TEXT_SIZE,
-        render.palette.text,
-    );
 }
 
-fn should_draw_runtime_label(page: &str) -> bool {
-    !matches!(page, "text-input" | "text-area")
+fn has_inline_state_surface(page: &str) -> bool {
+    matches!(page, "checkbox" | "radio" | "toggle")
 }
 
 fn is_button_page(page: &str) -> bool {
@@ -175,20 +162,34 @@ pub(super) fn component_action_hit_rect(page: &str) -> LayoutRect {
         );
     }
     if page == "toggle" {
+        return dedicated_dod_atom_buttons::toggle_row_rect(HERO_PREVIEW_X, HERO_PREVIEW_Y);
+    }
+    if matches!(page, "checkbox" | "radio") {
         return LayoutRect::new(
-            HERO_PREVIEW_X + TOGGLE_REL_X,
-            HERO_PREVIEW_Y + TOGGLE_REL_Y,
-            TOGGLE_ROW_WIDTH,
-            TOGGLE_ROW_HEIGHT,
+            HERO_PREVIEW_X,
+            HERO_PREVIEW_Y,
+            GENERIC_ACTION_WIDTH,
+            BINARY_CHOICE_ACTION_HEIGHT,
         );
     }
-    if page == "tabs" {
+    if matches!(page, "tabs" | "closeable-tab-strip") {
         return LayoutRect::new(
             HERO_PREVIEW_X,
             HERO_PREVIEW_Y,
             TABS_ACTION_WIDTH,
             GENERIC_ACTION_HEIGHT,
         );
+    }
+    if matches!(page, "breadcrumb" | "toast-stack-manager") {
+        return LayoutRect::new(
+            HERO_PREVIEW_X,
+            HERO_PREVIEW_Y,
+            TABS_ACTION_WIDTH,
+            GENERIC_ACTION_HEIGHT,
+        );
+    }
+    if page == "scroll-area" {
+        return dedicated_dod_layout_scroll_area::frame_rect(HERO_PREVIEW_X, HERO_PREVIEW_Y);
     }
     LayoutRect::new(
         HERO_PREVIEW_X,

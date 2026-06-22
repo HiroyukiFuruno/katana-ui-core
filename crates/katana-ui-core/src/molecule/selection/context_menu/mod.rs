@@ -27,9 +27,10 @@ pub use types::{
     ContextMenuPlacement, ContextMenuRect,
 };
 
+use item_state::path_for_command;
 use state::ContextMenuState;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ContextMenu {
     label: String,
     state: ContextMenuState,
@@ -120,6 +121,12 @@ impl ComponentAction for ContextMenu {
                 self.apply_context_action(&ContextMenuAction::Close {
                     reason: ContextMenuCloseReason::Escape,
                 });
+            }
+            UiAction::InvokeCallback { callback, .. } => {
+                let Some(path) = path_for_command(&self.props, callback) else {
+                    return UiActionResult::ignored(self.state.state_id.clone(), before);
+                };
+                self.apply_context_action(&ContextMenuAction::Activate { path });
             }
             _ => {}
         }

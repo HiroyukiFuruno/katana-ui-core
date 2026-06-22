@@ -30,7 +30,7 @@
 ## 5. Storybook ページ
 
 - [x] 5.1 `Disclosure > Banner` ノードを追加する。
-- [x] 5.2 preset「保存失敗」「vendor 未接続」「添付サイズ超過」「成功通知」「details 展開」を実装する。
+- [x] 5.2 preset「保存失敗」「adapter 未接続」「添付サイズ超過」「成功通知」「details 展開」を実装する。
 - [x] 5.3 settings で severity / density / actions / details / dismissible を切替えできるようにする。
 
 ## 6. ドキュメント

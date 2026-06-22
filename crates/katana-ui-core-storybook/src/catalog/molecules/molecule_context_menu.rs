@@ -55,6 +55,7 @@ fn context_menu_items() -> Vec<molecule::ContextMenuItem> {
         .checked(true)
         .radio_group("selection-scope"),
         molecule::ContextMenuItem::action("delete", "Delete").destructive(true),
+        molecule::ContextMenuItem::action("locked", "Locked action").disabled(true),
     ]
 }
 
@@ -171,6 +172,7 @@ mod tests {
                 .iter()
                 .any(|it| !it.shortcut.is_empty())
         );
+        assert!(props.context_menu.items.iter().any(|it| it.disabled));
         assert!(
             story
                 .callback_logs

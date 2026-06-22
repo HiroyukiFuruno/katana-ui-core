@@ -1,3 +1,4 @@
+use super::{UiBorder, UiCursor};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -11,6 +12,7 @@ pub enum UiTreeNodeKind {
 pub struct UiTreeNodeProps {
     pub id: String,
     pub label: String,
+    pub icon: String,
     pub depth: usize,
     pub kind: UiTreeNodeKind,
     pub expanded: bool,
@@ -29,6 +31,7 @@ impl UiTreeNodeProps {
         Self {
             id: id.into(),
             label: label.into(),
+            icon: String::new(),
             depth,
             kind,
             expanded: false,
@@ -54,6 +57,12 @@ impl UiTreeNodeProps {
         self.active = value;
         self
     }
+
+    #[must_use]
+    pub fn icon(mut self, value: impl Into<String>) -> Self {
+        self.icon = value.into();
+        self
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -76,6 +85,7 @@ pub enum UiTreeToggleTriggerArea {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiTreeProps {
     pub active_id: String,
+    pub hovered_id: String,
     pub line_display: bool,
     pub line_style: UiTreeLineStyle,
     pub line_width: u8,
@@ -88,5 +98,7 @@ pub struct UiTreeProps {
     pub default_open: bool,
     pub toggle_icon: String,
     pub toggle_trigger_area: UiTreeToggleTriggerArea,
+    pub row_cursor: UiCursor,
+    pub row_hover_border: UiBorder,
     pub nodes: Vec<UiTreeNodeProps>,
 }

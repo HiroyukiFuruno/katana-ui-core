@@ -97,7 +97,7 @@ Button 幅は `ButtonWidthDto` で表す。
 | event | key input、text input、IME composition、IME commit、emoji text、focus event、change event、submit event |
 | state | value、focused、disabled、readonly、invalid、cursor / selection summary、`UiStateId` |
 | preset | default、leading icon、trailing action、readonly、disabled、invalid、日本語、絵文字 |
-| test | disabled / readonly 抑止、clear action、IME commit、emoji input、上下中央揃え |
+| test | disabled 抑止、readonly は値 mutation を抑止しつつ focus / cursor / selection / submit を許可、clear action、IME commit、emoji input、上下中央揃え |
 | Storybook page | live input、settings for flags、state log、event log、action log |
 
 ## 4.5 Checkbox / Radio / Switch / Toggle

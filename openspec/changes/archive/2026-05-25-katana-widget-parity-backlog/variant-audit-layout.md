@@ -12,7 +12,7 @@
 ### Tooltip
 
 - placement、delay、focus、close、edge flip を確認できる。
-- Tooltip を開いても `floem::view_state` のクラッシュが発生しないことを `storybook-smoke` で確認済み。
+- Tooltip を開いても `adapter::view_state` のクラッシュが発生しないことを `storybook-smoke` で確認済み。
 
 ### Card
 

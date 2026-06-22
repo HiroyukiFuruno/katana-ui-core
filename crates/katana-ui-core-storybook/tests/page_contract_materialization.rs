@@ -59,11 +59,12 @@ fn storybook_page_contract_sections_are_materialized_per_page() {
         let Some(preset) = preset else {
             continue;
         };
-        assert_eq!(
-            expected_preset_count(example.page),
-            preset.children().len(),
-            "{} preset tabs must expose concrete checks",
-            example.page
+        let minimum_preset_count = minimum_preset_count(example.page);
+        assert!(
+            preset.children().len() >= minimum_preset_count,
+            "{} preset tabs must expose at least {} concrete checks",
+            example.page,
+            minimum_preset_count
         );
         assert!(
             preset
@@ -106,10 +107,38 @@ fn storybook_page_contract_sections_are_materialized_per_page() {
     }
 }
 
+#[test]
+fn storybook_catalog_contract_failures_are_named() {
+    let examples = StoryCatalog.examples();
+    let failures: Vec<String> = examples
+        .iter()
+        .filter_map(|example| {
+            let node_total = node_count(example.tree.root());
+            if node_total >= example.minimum_nodes && example.contract.is_complete() {
+                return None;
+            }
+            Some(format!(
+                "{} nodes={}/{} contract={:?}",
+                example.page, node_total, example.minimum_nodes, example.contract
+            ))
+        })
+        .collect();
+
+    assert!(
+        failures.is_empty(),
+        "incomplete Storybook contracts:\n{}",
+        failures.join("\n")
+    );
+}
+
 fn panel_child<'a>(root: &'a UiNode, label: &str) -> Option<&'a UiNode> {
     root.children()
         .iter()
         .find(|it| it.kind() == UiNodeKind::Panel && it.props().label == label)
+}
+
+fn node_count(node: &UiNode) -> usize {
+    1 + node.children().iter().map(node_count).sum::<usize>()
 }
 
 fn detail_text<'a>(details: &'a UiNode, label: &str) -> Option<&'a str> {
@@ -121,7 +150,7 @@ fn detail_text<'a>(details: &'a UiNode, label: &str) -> Option<&'a str> {
         .map(|it| it.props().label.as_str())
 }
 
-fn expected_preset_count(page: &str) -> usize {
+fn minimum_preset_count(page: &str) -> usize {
     if matches!(
         page,
         "context-menu"

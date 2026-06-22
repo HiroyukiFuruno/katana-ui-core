@@ -51,6 +51,8 @@ pub struct UiTextAreaProps {
     pub horizontal_scrollbar_visible: bool,
     pub measured_rows: u16,
     pub internal_scroll: bool,
+    pub resize_width_delta: u16,
+    pub resize_height_delta: u16,
 }
 
 impl Default for UiTextAreaProps {
@@ -71,6 +73,8 @@ impl Default for UiTextAreaProps {
             horizontal_scrollbar_visible: false,
             measured_rows: DEFAULT_TEXT_AREA_MIN_ROWS,
             internal_scroll: false,
+            resize_width_delta: 0,
+            resize_height_delta: 0,
         }
     }
 }

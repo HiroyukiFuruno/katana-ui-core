@@ -5,14 +5,13 @@ use super::render_context::ScenarioContext;
 const CLICK_PRESET_INDEX: usize = 1;
 const OVERFLOW_PRESET_INDEX: usize = 2;
 const THEME_PRESET_INDEX: usize = 3;
-const FIRST_CRUMB_INDEX: usize = 0;
 const FILE_CRUMB_INDEX: usize = 2;
 
 pub(super) fn active_index(scenario: ScenarioContext<'_>) -> usize {
-    if scenario.screen_state.has_widget_action() || scenario.preset_index == CLICK_PRESET_INDEX {
+    if scenario.preset_index == CLICK_PRESET_INDEX {
         return FILE_CRUMB_INDEX;
     }
-    FIRST_CRUMB_INDEX
+    scenario.screen_state.breadcrumb_selected_index
 }
 
 pub(super) fn bar_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
@@ -55,7 +54,15 @@ pub(super) fn crumb_text(palette: &VisualPalette, active: usize, index: usize) -
 
 pub(super) fn state_label(scenario: ScenarioContext<'_>) -> &'static str {
     if scenario.screen_state.state_label == "idle" {
-        return "route=0";
+        return breadcrumb_state_label(scenario.screen_state.breadcrumb_selected_index);
     }
     scenario.screen_state.state_label
+}
+
+fn breadcrumb_state_label(index: usize) -> &'static str {
+    match index {
+        0 => "route=0",
+        1 => "route=1",
+        _ => "route=2",
+    }
 }

@@ -2,7 +2,8 @@ use super::canvas::Canvas;
 use super::dedicated_dod_common::{self as common, Block, Rect, TextSpec};
 use super::dedicated_dod_metrics as m;
 use super::dedicated_skeleton_cluster_style::{
-    line_fill, line_width, media_fill, media_width, preset_label, secondary_fill, state_label,
+    line_fill, line_width, media_fill, media_width, preset_label, reduced_motion_label,
+    secondary_fill, state_label,
 };
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
@@ -141,7 +142,7 @@ fn labels(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [TextSpec; 
             STATUS_Y,
             m::FONT_7,
             palette.muted,
-            "reduced=false",
+            reduced_motion_label(scenario),
         ),
     ]
 }

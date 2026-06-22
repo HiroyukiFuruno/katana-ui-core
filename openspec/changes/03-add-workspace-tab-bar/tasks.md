@@ -21,6 +21,9 @@
 
 - [x] 3.1 `02-add-drag-drop-primitive` の DragSource / DropTarget / DropIndicator / DragPreview を使う。
 - [x] 3.2 `01-add-context-menu` の `ContextMenu` を tab 右クリック / group header 右クリックで使う。
+- [x] 3.3 tab / group 右クリックメニューを独自 enum 止まりにせず、既存 `ContextMenu` molecule と consumer-provided `ContextMenuItem` で構築する。根拠: `molecule/structured/workspace_tab_bar/context_commands.rs`、`molecule/structured/workspace_tab_bar/context_menu.rs`、`molecule/structured/workspace_tab_bar/tests/api_contract.rs`、`visual/screen_state_tabs_context.rs`、`visual/visual_interaction_tabs_context_tests.rs`、`scripts/kuc_guardrails.py`、`scripts/test_kuc_guardrails.py`。
+- [x] 3.4 group header 右クリックから Collapse/Expand を実操作でき、core `GroupCollapseChanged` event と Storybook state へ反映される。根拠: `molecule/structured/workspace_tab_bar/context_commands.rs`、`molecule/structured/workspace_tab_bar/context_menu.rs`、`molecule/structured/workspace_tab_bar/tests/api_contract.rs`、`visual/dedicated_tabs_layout.rs`、`visual/screen_state_tabs_group_context.rs`、`visual/visual_interaction_tabs_context_tests.rs`、`scripts/kuc_guardrails.py`、`scripts/test_kuc_guardrails.py`。
+- [x] 3.5 pinned tab の visible pin icon を直接左クリックすると、Storybook の実クリック経路から core `UnpinTab` が実行され、closeable state に戻る。根拠: `visual/dedicated_tabs.rs`、`visual/dedicated_tabs_layout.rs`、`visual/window_interaction/button_operation.rs`、`visual/screen_state_tabs.rs`、`visual/screen_state_tabs_bridge.rs`、`visual/visual_interaction_tabs_tests.rs`、`scripts/kuc_guardrails.py`、`scripts/test_kuc_guardrails.py`。
 
 ## 4. 公開境界
 
@@ -43,6 +46,8 @@
 - [x] 6.2 ドラッグ中の ghost + drop indicator（before / after / inside-group / new-group）を DragPreview / DropTarget / event 契約で回帰する。
 - [x] 6.3 group collapsed / expanded、group color tone を state / render model 契約で回帰する。
 - [x] 6.4 light / dark theme での tab tone（Default / Accent / Warning / Danger / Muted）を render model 契約で回帰する。
+- [x] 6.5 core render tree が group header を `CloseableTabGroupHeader` として露出し、collapsed group の配下 tab を非表示にする。根拠: `render_model/kind.rs`、`molecule/structured/workspace_tab_bar/bar.rs`、`crates/katana-ui-core/tests/closeable_tab_strip_rendering_contract.rs`、`tree_painter.rs`。
+- [x] 6.6 tab strip の表示順を group block → pinned tab → ungrouped tab とし、Storybook layout、core render tree、core action order / drop rule の全てで回帰する。根拠: `visual/dedicated_tabs_layout.rs`、`visual/visual_interaction_tabs_tests.rs`、`molecule/structured/workspace_tab_bar/bar.rs`、`molecule/structured/workspace_tab_bar/ordering.rs`、`molecule/structured/workspace_tab_bar/bulk_close.rs`、`molecule/structured/workspace_tab_bar/actions.rs`、`molecule/structured/workspace_tab_bar/tests/state_action_contract.rs`、`crates/katana-ui-core/tests/closeable_tab_strip_rendering_contract.rs`、`scripts/kuc_workspace_tab_guardrails.py`、`scripts/kuc_guardrails.py`、`scripts/test_kuc_guardrails.py`。
 
 ## 7. Storybook ページ
 

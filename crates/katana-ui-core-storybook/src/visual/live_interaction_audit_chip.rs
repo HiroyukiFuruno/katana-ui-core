@@ -1,0 +1,78 @@
+use crate::visual::window_interaction::{
+    apply_clickable_keyboard_activation_for_audit, focus_clickable_at_for_audit,
+};
+use crate::visual::{dedicated_chip, layout_metrics::LayoutRect, preview_detail};
+
+use super::{
+    StorybookLiveInteractionScenario, component_body_pixel_diff, page_state, render_state, scenario,
+};
+
+const CHIP_PAGE: &str = "chip";
+const CLICK_OFFSET: usize = 4;
+
+pub(super) fn scenarios(page: &'static str) -> Vec<StorybookLiveInteractionScenario> {
+    if page != CHIP_PAGE {
+        return Vec::new();
+    }
+    vec![chip_focus_scenario(), chip_keyboard_dismiss_scenario()]
+}
+
+fn chip_focus_scenario() -> StorybookLiveInteractionScenario {
+    let mut state = page_state(CHIP_PAGE);
+    let before = render_state(CHIP_PAGE, &state);
+    let target = chip_focus_target();
+    let focused =
+        focus_clickable_at_for_audit(&mut state, target.x + CLICK_OFFSET, target.y + CLICK_OFFSET);
+    let after = render_state(CHIP_PAGE, &state);
+    let body_pixel_diff = component_body_pixel_diff(CHIP_PAGE, &before, &after);
+    let passed = focused
+        && state.screen_state.last_action == "chip_focus"
+        && state.screen_state.last_event == "chip_focused"
+        && state.screen_state.is_button_focused()
+        && body_pixel_diff > 0;
+    scenario(
+        CHIP_PAGE,
+        "chip_focus",
+        "focus",
+        focused,
+        passed,
+        body_pixel_diff,
+        &state,
+    )
+}
+
+fn chip_keyboard_dismiss_scenario() -> StorybookLiveInteractionScenario {
+    let mut state = page_state(CHIP_PAGE);
+    let target = chip_focus_target();
+    let focused =
+        focus_clickable_at_for_audit(&mut state, target.x + CLICK_OFFSET, target.y + CLICK_OFFSET);
+    let before = render_state(CHIP_PAGE, &state);
+    let activated = apply_clickable_keyboard_activation_for_audit(&mut state);
+    let after = render_state(CHIP_PAGE, &state);
+    let body_pixel_diff = component_body_pixel_diff(CHIP_PAGE, &before, &after);
+    let passed = focused
+        && activated
+        && state.screen_state.last_action == "chip_dismiss"
+        && state.screen_state.last_event == "chip_dismissed"
+        && state.screen_state.state_label == "dismissed=true"
+        && body_pixel_diff > 0;
+    scenario(
+        CHIP_PAGE,
+        "chip_keyboard_dismiss",
+        "keyboard",
+        activated,
+        passed,
+        body_pixel_diff,
+        &state,
+    )
+}
+
+fn chip_focus_target() -> LayoutRect {
+    let component = preview_detail::component_action_hit_rect(CHIP_PAGE);
+    LayoutRect::new(
+        component.x + dedicated_chip::CHIP_X,
+        component.y + dedicated_chip::CHIP_Y,
+        dedicated_chip::CHIP_WIDTH,
+        dedicated_chip::CHIP_HEIGHT,
+    )
+}

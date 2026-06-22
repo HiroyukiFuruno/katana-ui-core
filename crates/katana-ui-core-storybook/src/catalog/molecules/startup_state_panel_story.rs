@@ -3,7 +3,7 @@ use katana_ui_core::interaction::UiCallbackLog;
 use katana_ui_core::molecule::{self, StartupState, StartupStatePanelAction};
 
 const STARTUP_PROGRESS: u8 = 64;
-const STARTUP_PRESET_COUNT: usize = 4;
+const STARTUP_PRESET_COUNT: usize = 5;
 
 pub(super) fn example() -> StoryExample {
     let presets = presets();
@@ -35,6 +35,11 @@ fn presets() -> [StartupPreset; STARTUP_PRESET_COUNT] {
         StartupPreset {
             name: "error retry",
             state: StartupState::error("Workspace failed to open", true, true),
+            version_label: Some("v0.1.0"),
+        },
+        StartupPreset {
+            name: "cancel action",
+            state: StartupState::error("Startup cancelled by user", false, true),
             version_label: Some("v0.1.0"),
         },
     ]

@@ -32,7 +32,7 @@ pub(super) fn context_menu(
         x,
         y,
     );
-    dedicated_context_menu_popup::draw_menu(canvas, text, palette, scenario.preset_index, x, y);
+    dedicated_context_menu_popup::draw_menu(canvas, text, palette, scenario, x, y);
     draw_markers(canvas, text, palette, scenario, x, y);
 }
 

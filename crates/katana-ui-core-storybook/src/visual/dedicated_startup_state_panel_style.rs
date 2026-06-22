@@ -6,8 +6,17 @@ use super::render_context::ScenarioContext;
 const SESSION_PRESET_INDEX: usize = 1;
 const UPDATE_PRESET_INDEX: usize = 2;
 const ERROR_PRESET_INDEX: usize = 3;
+const CANCEL_PRESET_INDEX: usize = 4;
 
 pub(super) fn status_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario
+        .screen_state
+        .runtime_structured
+        .startup_state
+        .focused
+    {
+        return palette.hover_border;
+    }
     if scenario.screen_state.has_widget_action()
         || scenario.screen_state.has_settings_override()
         || scenario.preset_index == ERROR_PRESET_INDEX
@@ -33,8 +42,31 @@ pub(super) fn progress_width(scenario: ScenarioContext<'_>) -> usize {
 }
 
 pub(super) fn action_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario
+        .screen_state
+        .runtime_structured
+        .startup_state
+        .hovered
+    {
+        return common::WARN;
+    }
+    if scenario
+        .screen_state
+        .runtime_structured
+        .startup_state
+        .retried
+    {
+        return common::SUCCESS;
+    }
     if scenario.screen_state.has_widget_action() || scenario.preset_index == ERROR_PRESET_INDEX {
         return palette.accent;
+    }
+    palette.panel
+}
+
+pub(super) fn cancel_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.preset_index == CANCEL_PRESET_INDEX {
+        return common::TOKEN;
     }
     palette.panel
 }
@@ -47,6 +79,7 @@ pub(super) fn state_label(scenario: ScenarioContext<'_>) -> &'static str {
         SESSION_PRESET_INDEX => "session init",
         UPDATE_PRESET_INDEX => "progress=64",
         ERROR_PRESET_INDEX => "retry=true",
+        CANCEL_PRESET_INDEX => "cancel=requested",
         _ => "idle=v0.1.0",
     }
 }
@@ -59,6 +92,7 @@ pub(super) fn headline_label(scenario: ScenarioContext<'_>) -> &'static str {
         SESSION_PRESET_INDEX => "Preparing session",
         UPDATE_PRESET_INDEX => "Installing update",
         ERROR_PRESET_INDEX => "Workspace failed",
+        CANCEL_PRESET_INDEX => "Cancel requested",
         _ => "Ready to start",
     }
 }

@@ -1,6 +1,6 @@
 ## Why
 
-`katana` の status bar（`top_bar/status_bar.rs`、`workspace_toolbar.rs`）、`katana-chat-ui` の usage / vendor 状態の表示、`katana-markdown-linter` の linter summary は、いずれも複数 segment を持つ status bar 構造を取る（leading に file info、center に lint summary、trailing に encoding / line:col / language 等）。
+`katana` の status bar（`top_bar/status_bar.rs`、`workspace_toolbar.rs`）、`katana-chat-ui` の usage / adapter 状態の表示、`katana-markdown-linter` の linter summary は、いずれも複数 segment を持つ status bar 構造を取る（leading に file info、center に lint summary、trailing に encoding / line:col / language 等）。
 
 KUC は `StatusBar` molecule と `ProgressBar` atom を持つが、現状は「severity message 1 件 + dismiss + action」と線形 progress に留まる。
 複数 segment 構造（leading / center / trailing × 複数 segment、segment ごとの click / popover）と、`katana-chat-ui` の usage 表示で必要な ring / pie 型の progress meter を持たない。

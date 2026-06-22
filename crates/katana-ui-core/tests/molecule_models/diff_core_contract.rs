@@ -8,9 +8,11 @@ use katana_ui_core::molecule::{
 #[test]
 fn code_diff_builds_from_before_after_first_line_and_line_count_contracts()
 -> Result<(), CodeDiffBuildError> {
-    let diff = CodeDiff::from_sources("Diff", "alpha\nbeta", 10, 2, "alpha\ngamma", 20, 2)?;
+    let diff = CodeDiff::from_sources("Diff", "alpha\nbeta", 10, 2, "alpha\ngamma", 20, 2)?
+        .language("rust");
 
     assert_eq!(CodeDiffMode::Split, diff.mode_model());
+    assert_eq!("rust", diff.language_model());
     assert_eq!(
         Some(CodeDiffDirection::Horizontal),
         diff.effective_direction_model()

@@ -5,6 +5,7 @@ use super::dedicated_toolbar_style::{
     accelerator_fill, accelerator_label, action_fill, action_text, bar_fill, density_fill,
     more_fill, split_fill, state_label,
 };
+use super::layout_metrics::LayoutRect;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::text::TextRenderer;
@@ -40,6 +41,12 @@ const LABEL_Y_OFFSET: usize = 7;
 const STATUS_TEXT_Y_OFFSET: usize = 6;
 const BLOCK_COUNT: usize = 9;
 const LABEL_COUNT: usize = 8;
+const SAVE_ACTION_INDEX: usize = 0;
+const SPLIT_ACTION_INDEX: usize = 1;
+const SEARCH_ACTION_INDEX: usize = 2;
+const EXPORT_ACTION_INDEX: usize = 3;
+const MORE_ACTION_INDEX: usize = 4;
+const ACTION_COUNT: usize = 5;
 
 pub(super) fn toolbar(
     canvas: &mut Canvas,
@@ -57,6 +64,43 @@ pub(super) fn toolbar(
         "Toolbar",
         &blocks(palette, scenario),
         &labels(palette, scenario),
+    );
+    draw_hover_border(canvas, palette, scenario, x, y);
+}
+
+pub(super) fn action_index_at(
+    origin_x: usize,
+    origin_y: usize,
+    x: usize,
+    y: usize,
+) -> Option<usize> {
+    (0..ACTION_COUNT).find(|&index| action_layout_rect(origin_x, origin_y, index).contains(x, y))
+}
+
+pub(super) fn action_rect_for_test(index: usize) -> Option<LayoutRect> {
+    if index >= ACTION_COUNT {
+        return None;
+    }
+    Some(action_layout_rect(0, 0, index))
+}
+
+fn draw_hover_border(
+    canvas: &mut Canvas,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    x: usize,
+    y: usize,
+) {
+    let Some(index) = scenario.screen_state.hovered_toolbar_action_index else {
+        return;
+    };
+    let rect = action_rect(index).at(x, y);
+    canvas.stroke_rect(
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
+        palette.hover_border,
     );
 }
 
@@ -126,6 +170,27 @@ fn blocks(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [Block; BLO
             density_fill(palette, scenario),
         ),
     ]
+}
+
+fn action_layout_rect(origin_x: usize, origin_y: usize, index: usize) -> LayoutRect {
+    let rect = action_rect(index);
+    LayoutRect::new(
+        origin_x + rect.x,
+        origin_y + rect.y,
+        rect.width,
+        rect.height,
+    )
+}
+
+const fn action_rect(index: usize) -> Rect {
+    match index {
+        SAVE_ACTION_INDEX => Rect::new(SAVE_X, ACTION_Y, ACTION_WIDTH, ACTION_HEIGHT),
+        SPLIT_ACTION_INDEX => Rect::new(SPLIT_X, ACTION_Y, SPLIT_WIDTH, ACTION_HEIGHT),
+        SEARCH_ACTION_INDEX => Rect::new(SEARCH_X, ACTION_Y, ACTION_WIDTH, ACTION_HEIGHT),
+        EXPORT_ACTION_INDEX => Rect::new(EXPORT_X, ACTION_Y, ACTION_WIDTH, ACTION_HEIGHT),
+        MORE_ACTION_INDEX => Rect::new(MORE_X, ACTION_Y, MORE_WIDTH, ACTION_HEIGHT),
+        _ => Rect::new(SAVE_X, ACTION_Y, ACTION_WIDTH, ACTION_HEIGHT),
+    }
 }
 
 fn labels(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [TextSpec; LABEL_COUNT] {

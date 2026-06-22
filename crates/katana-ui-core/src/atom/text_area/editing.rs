@@ -1,6 +1,9 @@
 use super::caret;
 use super::events::{TextAreaCompositionState, TextAreaResizeEvent};
-use super::{TextArea, TextAreaAction, TextAreaCaretMove, TextAreaEvent, TextAreaSelection};
+use super::{
+    TextArea, TextAreaAction, TextAreaCaretMove, TextAreaEvent, TextAreaResizeDelta,
+    TextAreaSelection,
+};
 
 impl TextArea {
     pub(super) fn suppresses(&self, action: &TextAreaAction) -> bool {
@@ -9,7 +12,6 @@ impl TextArea {
                 && matches!(
                     action,
                     TextAreaAction::Type(_)
-                        | TextAreaAction::Submit
                         | TextAreaAction::InsertNewline
                         | TextAreaAction::Clear
                         | TextAreaAction::ImeComposition(_)
@@ -109,6 +111,28 @@ impl TextArea {
         true
     }
 
+    pub(super) fn resize(
+        &mut self,
+        value: TextAreaResizeDelta,
+        events: &mut Vec<TextAreaEvent>,
+    ) -> bool {
+        if !self.options.resize_enabled
+            || (self.state.resize_width_delta == value.width_delta
+                && self.state.resize_height_delta == value.height_delta)
+        {
+            return false;
+        }
+        self.state.resize_width_delta = value.width_delta;
+        self.state.resize_height_delta = value.height_delta;
+        events.push(TextAreaEvent::Resize(TextAreaResizeEvent {
+            rows: self.state.measured_rows,
+            internal_scroll: self.state.internal_scroll,
+            width_delta: self.state.resize_width_delta,
+            height_delta: self.state.resize_height_delta,
+        }));
+        true
+    }
+
     fn replace_selection_or_insert(&mut self, value: &str) {
         let (start, end) = self.state.selection.ordered();
         let start = caret::clamp_to_char_boundary(&self.state.value, start);
@@ -129,6 +153,8 @@ impl TextArea {
             events.push(TextAreaEvent::Resize(TextAreaResizeEvent {
                 rows: self.state.measured_rows,
                 internal_scroll: self.state.internal_scroll,
+                width_delta: self.state.resize_width_delta,
+                height_delta: self.state.resize_height_delta,
             }));
         }
     }

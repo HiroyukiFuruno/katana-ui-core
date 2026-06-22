@@ -1,7 +1,8 @@
 use super::canvas::Canvas;
+use super::presentation::StorybookPresentation;
 use super::text::TextRenderer;
 use super::text_test_support::{
-    BACKGROUND, CANVAS_HEIGHT, CANVAS_WIDTH, SMALL_CODE_TEXT_SIZE, TEXT, TEXT_X, TEXT_Y,
+    BACKGROUND, CANVAS_HEIGHT, CANVAS_WIDTH, SMALL_CODE_TEXT_SIZE, TEXT, TEXT_SIZE, TEXT_X, TEXT_Y,
     WIDGET_LABEL_BOX_HEIGHT, WIDGET_LABEL_TEXT_SIZE, antialias_intensity_levels_count,
     antialias_pixel_count_for_colors, antialias_pixels_for_centered_draw,
     antialias_pixels_for_draw, average_alpha_for_antialias_pixels, scale_nearest,
@@ -91,6 +92,49 @@ fn text_on_hidpi_canvas_has_more_anti_aliased_pixels_than_nearest_scaled_1x_canv
     assert!(
         differing_pixels > 0,
         "hidpi rendering should produce different raster than nearest-scaling 1x"
+    );
+}
+
+#[test]
+fn presented_hidpi_text_keeps_edge_intensity_close_to_direct_text() {
+    const HI_DPI_BACKGROUND: u32 = 0x1e1e1e;
+    const HI_DPI_TEXT: u32 = 0xd4d4d4;
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+    let mut direct = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, HI_DPI_BACKGROUND);
+    let mut scaled = Canvas::new_scaled(CANVAS_WIDTH, CANVAS_HEIGHT, 2.0, HI_DPI_BACKGROUND);
+
+    renderer.draw(
+        &mut direct,
+        "KatanA Rendering Regression Test",
+        TEXT_X,
+        TEXT_Y,
+        TEXT_SIZE,
+        HI_DPI_TEXT,
+    );
+    renderer.draw(
+        &mut scaled,
+        "KatanA Rendering Regression Test",
+        TEXT_X,
+        TEXT_Y,
+        TEXT_SIZE,
+        HI_DPI_TEXT,
+    );
+
+    let presented = StorybookPresentation::present_frame_for_window(
+        &scaled,
+        CANVAS_WIDTH,
+        CANVAS_HEIGHT,
+        HI_DPI_BACKGROUND,
+    );
+    let direct_edge_alpha =
+        average_alpha_for_antialias_pixels(&direct, HI_DPI_BACKGROUND, HI_DPI_TEXT);
+    let presented_edge_alpha =
+        average_alpha_for_antialias_pixels(&presented, HI_DPI_BACKGROUND, HI_DPI_TEXT);
+
+    assert!(
+        presented_edge_alpha >= direct_edge_alpha * 0.92,
+        "presented HiDPI text must not crush glyph edge intensity: presented={presented_edge_alpha:.2} direct={direct_edge_alpha:.2}"
     );
 }
 

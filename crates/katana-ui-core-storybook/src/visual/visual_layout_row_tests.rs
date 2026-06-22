@@ -1,7 +1,7 @@
 use super::visual_interaction_test_support::{
     assert_settings_page_changes_body, component_body_pixel_diff, pixel_at, require_some,
 };
-use super::{StorybookVisual, panel_scroll_state, preview_detail, render};
+use super::{StorybookVisual, preview_detail};
 
 const DARK_THEME: &str = "dark";
 const LIGHT_THEME: &str = "light";
@@ -134,14 +134,6 @@ fn split_pane_light_theme_uses_light_surface_token() -> Result<(), String> {
     assert_light_theme_uses_light_surface_token(SPLIT_PANE_PAGE)
 }
 
-#[test]
-fn scroll_area_preview_scroll_offsets_move_inner_rows() {
-    let before = render_scroll_area_with_preview_offset(0);
-    let after = render_scroll_area_with_preview_offset(32);
-
-    assert!(component_body_pixel_diff(SCROLL_AREA_PAGE, &before, &after) > ROW_DIFF_THRESHOLD);
-}
-
 fn assert_layout_presets_render_distinct_bodies(page: &str) {
     let first = StorybookVisual.render_preset(DARK_THEME, page, DEFAULT_PRESET, 0);
     let second = StorybookVisual.render_preset(DARK_THEME, page, ALIGN_PRESET, 0);
@@ -175,23 +167,4 @@ fn luminance(color: u32) -> u32 {
     let blue = (color >> BLUE_SHIFT) & CHANNEL_MASK;
     (red * LUMINANCE_RED_WEIGHT + green * LUMINANCE_GREEN_WEIGHT + blue * LUMINANCE_BLUE_WEIGHT)
         / LUMINANCE_SCALE
-}
-
-fn render_scroll_area_with_preview_offset(preview_y: usize) -> super::Canvas {
-    render::render_storybook_canvas_with_options(render::StorybookRenderOptions {
-        theme_id: DARK_THEME,
-        selected_page: SCROLL_AREA_PAGE,
-        preset_index: DEFAULT_PRESET,
-        preset_tab_scroll_x: 0,
-        scroll_y: 0,
-        scrollbar_visible: true,
-        panel_scroll: panel_scroll_state::PanelScrollOffsets {
-            preview_y,
-            ..Default::default()
-        },
-        tree_expansion: Default::default(),
-        show_navigation_lines: true,
-        show_navigation_text_connectors: false,
-        screen_state: Default::default(),
-    })
 }

@@ -81,7 +81,8 @@ fn text_input_empty_caret_uses_two_px_inner_left_margin() {
     let origin = preview_detail::component_action_hit_rect(PAGE);
     let field = super::dedicated_dod_form_input_live::search_field_rect(origin.x, origin.y);
     let text_x = super::dedicated_dod_form_input_live::text_input_text_x(origin.x, false);
-    let clip_width = super::dedicated_dod_form_input_live::text_input_text_clip_width(false, false);
+    let clip_width =
+        super::dedicated_dod_form_input_live::text_input_text_clip_width(false, false, false);
     let caret = super::dedicated_dod_form_input_live::text_input_caret_rect_with_layout_for_test(
         text_x, origin.y, clip_width, 0,
     );
@@ -111,7 +112,8 @@ fn text_input_reserved_icon_space_keeps_legacy_left_slot_width() {
     let origin = preview_detail::component_action_hit_rect(PAGE);
     let value_width = measured_body_width("search");
     let text_x = super::dedicated_dod_form_input_live::text_input_text_x(origin.x, true);
-    let clip_width = super::dedicated_dod_form_input_live::text_input_text_clip_width(true, false);
+    let clip_width =
+        super::dedicated_dod_form_input_live::text_input_text_clip_width(true, false, false);
     let caret = super::dedicated_dod_form_input_live::text_input_caret_rect_with_layout_for_test(
         text_x,
         origin.y,

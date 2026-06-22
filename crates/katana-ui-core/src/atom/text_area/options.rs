@@ -1,6 +1,6 @@
 use super::{TextAreaKey, TextAreaKeyChord};
 use crate::facade::DEFAULT_FONT_ROLE;
-use crate::render_model::{UiSlotSpec, UiTextAreaProps, UiTextEntryProps};
+use crate::render_model::{UiClearActionSpec, UiSlotSpec, UiTextAreaProps, UiTextEntryProps};
 use serde::{Deserialize, Serialize};
 
 const DEFAULT_MIN_ROWS: u16 = 2;
@@ -43,6 +43,8 @@ pub struct TextAreaOptions {
     pub horizontal_scrollbar_visible: bool,
     pub leading_slot: Option<UiSlotSpec>,
     pub trailing_slot: Option<UiSlotSpec>,
+    pub trailing_icon_buttons: Vec<UiSlotSpec>,
+    pub clear_action: Option<UiClearActionSpec>,
 }
 
 impl Default for TextAreaOptions {
@@ -69,6 +71,8 @@ impl Default for TextAreaOptions {
             horizontal_scrollbar_visible: false,
             leading_slot: None,
             trailing_slot: None,
+            trailing_icon_buttons: Vec::new(),
+            clear_action: None,
         }
     }
 }
@@ -95,7 +99,13 @@ impl TextAreaOptions {
         Ok(())
     }
 
-    pub(super) fn text_area_props(&self, rows: u16, internal_scroll: bool) -> UiTextAreaProps {
+    pub(super) fn text_area_props(
+        &self,
+        rows: u16,
+        internal_scroll: bool,
+        resize_width_delta: u16,
+        resize_height_delta: u16,
+    ) -> UiTextAreaProps {
         UiTextAreaProps {
             min_rows: self.min_rows,
             max_rows: self.max_rows,
@@ -112,6 +122,8 @@ impl TextAreaOptions {
             horizontal_scrollbar_visible: self.horizontal_scrollbar_visible,
             measured_rows: rows,
             internal_scroll,
+            resize_width_delta,
+            resize_height_delta,
         }
     }
 
@@ -119,6 +131,8 @@ impl TextAreaOptions {
         UiTextEntryProps {
             leading_slot: self.leading_slot.clone(),
             trailing_slot: self.trailing_slot.clone(),
+            trailing_icon_buttons: self.trailing_icon_buttons.clone(),
+            clear_action: self.clear_action.clone(),
             ime_enabled: self.ime_enabled,
             emoji_enabled: true,
             ..UiTextEntryProps::default()

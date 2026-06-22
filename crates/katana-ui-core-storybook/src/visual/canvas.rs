@@ -1,6 +1,7 @@
 use super::canvas_clip::CanvasClip;
 use super::canvas_color::blend_color;
 pub use super::canvas_model::Canvas;
+use super::canvas_model::CanvasImageSurfaceExtentMode;
 use super::canvas_scale::{normalized_scale, physical_size};
 const RECT_BORDER_WIDTH: usize = 1;
 
@@ -12,16 +13,37 @@ impl Canvas {
 
     #[must_use]
     pub fn new_scaled(width: usize, height: usize, scale: f32, color: u32) -> Self {
+        Self::new_scaled_with_raster_scale(width, height, scale, scale, color)
+    }
+
+    #[must_use]
+    pub fn new_scaled_with_raster_scale(
+        width: usize,
+        height: usize,
+        scale: f32,
+        raster_scale: f32,
+        color: u32,
+    ) -> Self {
         let scale = normalized_scale(scale);
+        let raster_scale = normalized_scale(raster_scale);
         Self {
             width: physical_size(width, scale),
             height: physical_size(height, scale),
             logical_width: width,
             logical_height: height,
             scale_factor: scale,
+            raster_scale_factor: raster_scale,
+            image_surface_extent_mode: CanvasImageSurfaceExtentMode::LogicalDisplay,
             pixels: vec![color; physical_size(width, scale) * physical_size(height, scale)],
             clip: None,
+            text_runs: Vec::new(),
         }
+    }
+
+    #[must_use]
+    pub fn with_reference_capture_image_surface_extents(mut self) -> Self {
+        self.image_surface_extent_mode = CanvasImageSurfaceExtentMode::RasterPresentation;
+        self
     }
 
     #[must_use]
@@ -47,6 +69,15 @@ impl Canvas {
     #[must_use]
     pub fn scale_factor(&self) -> f32 {
         self.scale_factor
+    }
+
+    #[must_use]
+    pub fn raster_scale_factor(&self) -> f32 {
+        self.raster_scale_factor
+    }
+
+    pub(super) fn uses_reference_capture_image_surface_extents(&self) -> bool {
+        self.image_surface_extent_mode == CanvasImageSurfaceExtentMode::RasterPresentation
     }
 
     #[must_use]
@@ -89,7 +120,13 @@ impl Canvas {
     }
 
     #[must_use]
-    fn visible_rect(&self, x: usize, y: usize, width: usize, height: usize) -> Option<CanvasClip> {
+    pub(super) fn visible_rect(
+        &self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+    ) -> Option<CanvasClip> {
         let rect = self.to_physical_clip(x, y, width, height)?;
         match self.clip {
             Some(clip) => rect.intersect(clip),
@@ -184,101 +221,6 @@ impl Canvas {
                 self.pixels[index] = blend_color(destination, color, alpha);
             }
         }
-    }
-
-    fn logical_to_physical_position(&self, logical: usize) -> usize {
-        (logical as f64 * f64::from(self.scale_factor)).round() as usize
-    }
-
-    fn physical_span_x(&self, x: usize) -> Option<(usize, usize)> {
-        let left = self.to_physical_x(x);
-        if left >= self.width {
-            return None;
-        }
-        let mut right = self
-            .to_physical_x(x.saturating_add(1))
-            .saturating_sub(left)
-            .max(1)
-            .saturating_add(left);
-        if right > self.width {
-            right = self.width;
-        }
-        Some((left, right))
-    }
-
-    fn physical_span_y(&self, y: usize) -> Option<(usize, usize)> {
-        let top = self.to_physical_y(y);
-        if top >= self.height {
-            return None;
-        }
-        let mut bottom = self
-            .to_physical_y(y.saturating_add(1))
-            .saturating_sub(top)
-            .max(1)
-            .saturating_add(top);
-        if bottom > self.height {
-            bottom = self.height;
-        }
-        Some((top, bottom))
-    }
-
-    pub(super) fn to_physical_x(&self, x: usize) -> usize {
-        self.logical_to_physical_position(x).min(self.width)
-    }
-
-    pub(super) fn to_physical_y(&self, y: usize) -> usize {
-        self.logical_to_physical_position(y).min(self.height)
-    }
-
-    pub(super) fn logical_scale(&self, value: usize) -> usize {
-        self.logical_to_physical_position(value)
-    }
-
-    fn to_physical_clip(
-        &self,
-        x: usize,
-        y: usize,
-        width: usize,
-        height: usize,
-    ) -> Option<CanvasClip> {
-        let rect = self.visible_logical_span(x, y, width, height)?;
-        if rect.0 >= rect.2 || rect.1 >= rect.3 {
-            return None;
-        }
-        CanvasClip::from_rect(
-            rect.0,
-            rect.1,
-            rect.2 - rect.0,
-            rect.3 - rect.1,
-            self.width,
-            self.height,
-        )
-    }
-
-    fn visible_logical_span(
-        &self,
-        x: usize,
-        y: usize,
-        width: usize,
-        height: usize,
-    ) -> Option<(usize, usize, usize, usize)> {
-        if width == 0 || height == 0 {
-            return None;
-        }
-        let left = self.logical_to_physical_position(x).min(self.width);
-        let top = self.logical_to_physical_position(y).min(self.height);
-        if left >= self.width || top >= self.height {
-            return None;
-        }
-        let right = self
-            .logical_to_physical_position(x.saturating_add(width))
-            .min(self.width)
-            .max(left + 1);
-        let bottom = self
-            .logical_to_physical_position(y.saturating_add(height))
-            .min(self.height)
-            .max(top + 1);
-        Some((left, top, right, bottom))
     }
 }
 

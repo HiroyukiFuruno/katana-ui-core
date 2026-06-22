@@ -14,6 +14,7 @@ mod panel_interaction;
 mod panel_operations;
 mod panel_report;
 mod preset_label_extra;
+mod preset_label_extra_feedback;
 mod preset_labels;
 mod runtime_app_primitives;
 #[cfg(test)]

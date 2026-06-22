@@ -10,10 +10,12 @@ mod state;
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult, UiActionSource};
 use crate::render_model::{UiCommonProps, UiNode, UiNodeKind, UiStateId, UiVisualRole};
+use crate::text_selection::{UiTextSelectionModel, UiTextSelectionRange};
 use serde::{Deserialize, Serialize};
 
 pub use actions::{
     TextAreaAction, TextAreaActionOutcome, TextAreaCaretMove, TextAreaKey, TextAreaKeyChord,
+    TextAreaResizeDelta,
 };
 pub use events::{
     TextAreaCompositionPhase, TextAreaCompositionState, TextAreaEvent, TextAreaResizeEvent,
@@ -90,6 +92,17 @@ impl TextArea {
             TextAreaEvent::Blur
         });
     }
+
+    fn paste_text_action(&mut self, text: &str) {
+        let result = UiTextSelectionModel::replace_grapheme_range(
+            &self.state.value,
+            UiTextSelectionRange::new(self.state.selection.start, self.state.selection.end),
+            text,
+        );
+        self.set_value(result.text);
+        self.state.caret = result.selection.caret_position();
+        self.state.selection = TextAreaSelection::collapsed(self.state.caret);
+    }
 }
 
 impl ComponentAction for TextArea {
@@ -113,18 +126,23 @@ impl ComponentAction for TextArea {
                 selection_start,
                 selection_end,
                 ..
-            } if !self.state.readonly => {
-                self.state.set_caret(*cursor);
-                self.state.set_selection(TextAreaSelection {
+            } => {
+                self.state.caret = *cursor;
+                self.state.selection = TextAreaSelection {
                     start: *selection_start,
                     end: *selection_end,
-                });
+                };
+                true
+            }
+            UiAction::CopySelection { .. } => true,
+            UiAction::PasteText { text, .. } if !self.state.readonly => {
+                self.paste_text_action(text);
                 true
             }
             UiAction::Press {
                 source: UiActionSource::InputSubmit,
                 ..
-            } if !self.state.readonly => true,
+            } => true,
             UiAction::SetFocus { focused, .. } => {
                 self.sync_focus(*focused);
                 true
@@ -149,9 +167,12 @@ impl From<TextArea> for UiNode {
         let interaction = value.state.interaction_state();
         let state_id = value.state.state_id.clone();
         let text_entry = value.options.text_entry_props();
-        let text_area = value
-            .options
-            .text_area_props(value.state.measured_rows, value.state.internal_scroll);
+        let text_area = value.options.text_area_props(
+            value.state.measured_rows,
+            value.state.internal_scroll,
+            value.state.resize_width_delta,
+            value.state.resize_height_delta,
+        );
 
         UiNode::from_state(UiNodeKind::TextArea, value.label, state_id)
             .common(value.common)

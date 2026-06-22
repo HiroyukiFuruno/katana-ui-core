@@ -15,6 +15,7 @@ LEAF_CHANGE_STATUS_ROW = re.compile(
 PRIORITY_ROW = re.compile(
     r"\|\s*(SB-\d{3})\s*\|\s*`([a-z0-9-]+)`\s*\|\s*`(storybook-page-[a-z0-9-]+)`\s*\|"
 )
+SPLIT_SUMMARY_COUNT = re.compile(r"`draw_page` page 別描画(あり|未作成):\s*(\d+)")
 DEDICATED_PAGE_ARM = re.compile(r'((?:"[a-z0-9-]+"(?:\s*\|\s*)?)+)\s*=>\s*')
 OPTION_ARM = re.compile(
     r'((?:"[a-z0-9-]+"(?:\s*\|\s*)?)+)\s*=>\s*(?:&([A-Z_]+)|\{\s*&([A-Z_]+)\s*\})',
@@ -28,6 +29,7 @@ OPTION_ARRAY = re.compile(
     r"const\s+([A-Z_]+):\s+\[StorybookUiOptionContract;\s+\d+\]\s*=\s*\[(.*?)\];",
     re.S,
 )
+OPTION_SETTING = re.compile(r'StorybookUiOptionContract::new\(\s*"([^"]+)"')
 
 
 class StorybookUiHarnessSources:
@@ -51,6 +53,7 @@ class StorybookUiHarnessSources:
         paths = [
             "crates/katana-ui-core-storybook/src/catalog/preset_labels.rs",
             "crates/katana-ui-core-storybook/src/catalog/preset_label_extra.rs",
+            "crates/katana-ui-core-storybook/src/catalog/preset_label_extra_feedback.rs",
         ]
         return [
             self.read(relative)
@@ -89,6 +92,18 @@ class StorybookUiHarnessSources:
             for page, _change, status in LEAF_CHANGE_STATUS_ROW.findall(
                 path.read_text(encoding="utf-8")
             )
+        }
+
+    def split_summary_counts(self) -> dict[str, int]:
+        path = (
+            self.root
+            / "openspec/changes/establish-kuc-atoms-molecules-catalog/storybook-menu-change-split.md"
+        )
+        if not path.exists():
+            return {}
+        return {
+            label: int(count)
+            for label, count in SPLIT_SUMMARY_COUNT.findall(path.read_text(encoding="utf-8"))
         }
 
     def dedicated_pages(self) -> set[str]:
@@ -130,10 +145,32 @@ class StorybookUiHarnessSources:
             )
         return counts
 
+    def option_settings_by_page(self) -> dict[str, set[str]]:
+        options_by_array = self.option_settings_by_array()
+        return {
+            page: options_by_array.get(array_name, set())
+            for page, array_name in self.option_pages().items()
+        }
+
+    def option_settings_by_array(self) -> dict[str, set[str]]:
+        settings: dict[str, set[str]] = {}
+        for source in self.option_sources():
+            settings.update(
+                {
+                    name: set(OPTION_SETTING.findall(body))
+                    for name, body in OPTION_ARRAY.findall(source)
+                }
+            )
+        return settings
+
     def option_sources(self) -> list[str]:
         paths = [
             "crates/katana-ui-core-storybook/src/visual/storybook_ui_option_contract.rs",
+            "crates/katana-ui-core-storybook/src/visual/storybook_ui_form_options.rs",
+            "crates/katana-ui-core-storybook/src/visual/storybook_ui_foundation_options.rs",
+            "crates/katana-ui-core-storybook/src/visual/storybook_ui_molecule_options.rs",
             "crates/katana-ui-core-storybook/src/visual/storybook_ui_runtime_options.rs",
+            "crates/katana-ui-core-storybook/src/visual/storybook_ui_surface_options.rs",
             "crates/katana-ui-core-storybook/src/visual/storybook_ui_tabs_options.rs",
         ]
         return [self.read(relative) for relative in paths if (self.root / relative).exists()]

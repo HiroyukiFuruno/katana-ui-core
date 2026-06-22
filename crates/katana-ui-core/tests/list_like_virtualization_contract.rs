@@ -72,6 +72,25 @@ fn disabled_virtualization_preserves_full_list_rendering() {
 }
 
 #[test]
+fn list_public_props_expose_selection_and_virtual_range_state() {
+    let tree = UiTree::new(
+        list_rows(TOTAL_ROWS)
+            .selected_index(1)
+            .row_theme_slot("accent-row")
+            .virtualization(virtual_config(true)),
+    );
+    let interaction = &tree.root().props().interaction;
+
+    assert_eq!("accent-row", tree.root().props().common.theme_slot);
+    assert!(interaction.has_selection);
+    assert_eq!(1, interaction.selected_index);
+    assert_eq!("3..9/100", interaction.value);
+    assert_eq!(3, interaction.selection_start);
+    assert_eq!(9, interaction.selection_end);
+    assert_eq!("aria-setsize=100", interaction.dismiss_reason);
+}
+
+#[test]
 fn diagnostics_virtualized_selection_stays_item_id_based() {
     let target = DiagnosticId::new("diagnostic-80");
     let mut diagnostics = diagnostics_rows(TOTAL_ROWS).virtualization(virtual_config(true));

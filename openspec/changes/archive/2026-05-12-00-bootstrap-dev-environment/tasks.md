@@ -55,8 +55,8 @@
 ## 4. Storybook 別管理プロジェクトの新設
 
 - [x] 4.1 リポジトリルートに `storybook/` ディレクトリを作成（`crates/` 配下には**置かない**、workspace member にも**しない**）
-- [x] 4.2 `storybook/Cargo.toml` を独立した bin crate として作成し、`katana-ui-widget = { path = "../crates/katana-ui-widget" }` を依存に追加。Floem 0.2.0 を依存に追加
-- [x] 4.3 `storybook/src/main.rs` に Floem アプリの起点を実装（widget 一覧サイドバー + ページ表示エリアの最小骨格）
+- [x] 4.2 `storybook/Cargo.toml` を独立した bin crate として作成し、`katana-ui-widget = { path = "../crates/katana-ui-widget" }` を依存に追加。Adapter 0.2.0 を依存に追加
+- [x] 4.3 `storybook/src/main.rs` に Adapter アプリの起点を実装（widget 一覧サイドバー + ページ表示エリアの最小骨格）
 - [x] 4.4 `storybook/src/pages/mod.rs` を用意し、widget 1 件 = 1 ページ（`pages/<widget_name>.rs`）の登録規約を確立
 - [x] 4.5 placeholder ページ（welcome）を追加し、`just storybook-check` でコンパイル確認（`just storybook` 実行は GUI が必要なため CI では storybook-check で代替）
 - [x] 4.6 `storybook/Cargo.lock` をコミット対象に含める（独立プロジェクトのため）
@@ -68,7 +68,7 @@
 ## 5. kuw-workflow-guide skill の新規作成
 
 - [x] 5.1 `.claude/skills/kuw-workflow-guide/SKILL.md` を作成し、以下を明文化
-  - [x] Floem 前提（egui 互換層は対象外）
+  - [x] Adapter 前提（adapter 互換層は対象外）
   - [x] 階層 `theme / primitive / composite{button,selector,input,indicator} / layout` と依存方向
   - [x] widget 抽出可否の判断軸（Katana domain は除外）
   - [x] Storybook は `crates/` 外の独立プロジェクトとして管理する規約
@@ -80,15 +80,15 @@
 ## 6. ドキュメント整備
 
 - [x] 6.1 `docs/widget-extraction-policy.md` を新規作成
-  - [x] 抽出対象の判断軸（汎用度・Floem 単体で完結・Katana domain 非依存）
-  - [x] 除外例（markdown_hooks / vendor_ui / chat composer 等）
+  - [x] 抽出対象の判断軸（汎用度・Adapter 単体で完結・Katana domain 非依存）
+  - [x] 除外例（markdown_hooks / adapter_ui / chat composer 等）
   - [x] 抽出元として参照する既存実装の所在
 - [x] 6.2 `docs/directory-structure.md` を新規作成
   - [x] 階層図
   - [x] 依存方向の図
   - [x] 各 widget モジュール内の慣例（`mod.rs` / `types.rs` / `ops.rs` / `view.rs` / `tests.rs`）
 - [x] 6.3 `README.md` を更新
-  - [x] Floem 前提の明記
+  - [x] Adapter 前提の明記
   - [x] 階層と依存方向のサマリ
   - [x] Storybook 起動手順（`just storybook`）
   - [x] 各 docs / skill へのリンク

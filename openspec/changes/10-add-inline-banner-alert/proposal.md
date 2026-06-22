@@ -1,6 +1,6 @@
 ## Why
 
-`katana` 編集画面のセーブ失敗、`katana` settings 画面の警告、`katana-chat-ui` の vendor 接続失敗 / モデル切替注意 / 添付サイズ超過 / プロバイダ未認証など、画面内（インライン）に常駐するアラート（banner）が必要な箇所がある。これらは toast（一過性）でも modal（モーダル中断）でもなく、当該 view 上部や form 上部に persistent に並ぶ告知である。
+`katana` 編集画面のセーブ失敗、`katana` settings 画面の警告、`katana-chat-ui` の adapter 接続失敗 / モデル切替注意 / 添付サイズ超過 / プロバイダ未認証など、画面内（インライン）に常駐するアラート（banner）が必要な箇所がある。これらは toast（一過性）でも modal（モーダル中断）でもなく、当該 view 上部や form 上部に persistent に並ぶ告知である。
 
 KUC は `NotificationToast`（一過性）と `StatusBar`（severity message 1 件）を持つが、persistent な「インライン banner / alert」widget がない。consumer ごとに `Card` + 色 + アイコンで ad hoc に組まれており、デザイン揺れが出ている。
 

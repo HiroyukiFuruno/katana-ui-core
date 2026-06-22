@@ -21,7 +21,7 @@ pub use types::{
     DiagnosticSeverity,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DiagnosticsList {
     pub(super) label: String,
     pub(super) state_id: UiStateId,

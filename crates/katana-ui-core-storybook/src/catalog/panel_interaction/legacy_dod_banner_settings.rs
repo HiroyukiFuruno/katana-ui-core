@@ -69,6 +69,24 @@ fn banner_options() -> Vec<BannerSettingOption> {
             before: "true",
             after: "false",
         },
+        BannerSettingOption {
+            name: "banner.title",
+            value_type: "Option<String>",
+            before: "Format result",
+            after: "none",
+        },
+        BannerSettingOption {
+            name: "banner.leading_icon",
+            value_type: "Option<String>",
+            before: "alert-triangle",
+            after: "info",
+        },
+        BannerSettingOption {
+            name: "banner.placement",
+            value_type: "BannerPlacementHint",
+            before: "Sticky",
+            after: "Inline",
+        },
     ]
 }
 

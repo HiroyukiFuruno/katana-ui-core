@@ -54,6 +54,9 @@ pub(super) struct PanelScreenState {
     pub(super) navigation: PanelChildState,
     pub(super) preview: PanelChildState,
     pub(super) details: PanelChildState,
+    pub(super) focused: bool,
+    pub(super) hovered: bool,
+    pub(super) resized: bool,
 }
 
 impl Default for PanelScreenState {
@@ -63,6 +66,9 @@ impl Default for PanelScreenState {
             navigation: PanelChildState::new(0, NAV_SCROLL_Y),
             preview: PanelChildState::new(PREVIEW_SCROLL_X, PREVIEW_SCROLL_Y),
             details: PanelChildState::new(0, DETAILS_SCROLL_Y),
+            focused: false,
+            hovered: false,
+            resized: false,
         }
     }
 }
@@ -95,6 +101,60 @@ impl PanelScreenState {
             PanelOptionControl::ActivePanel(panel) => self.select_panel(panel),
             PanelOptionControl::ScrollbarVisible(visible) => self.set_scrollbar_visible(visible),
         }
+    }
+
+    pub(super) fn apply_hover(&mut self) -> PanelScreenUpdate {
+        self.hovered = true;
+        self.active_panel = PanelChildKey::Navigation;
+        PanelScreenUpdate::new(
+            "panel_hover",
+            "panel_hovered",
+            "panel.hover",
+            "navigation",
+            "hover=navigation",
+        )
+    }
+
+    pub(super) fn apply_focus(&mut self) -> PanelScreenUpdate {
+        self.focused = true;
+        self.active_panel = PanelChildKey::Details;
+        PanelScreenUpdate::new(
+            "panel_focus",
+            "panel_focused",
+            "panel.focus",
+            "details",
+            "focus=details",
+        )
+    }
+
+    pub(super) fn apply_keyboard_scroll(&mut self) -> PanelScreenUpdate {
+        self.focused = true;
+        self.active_panel = PanelChildKey::Preview;
+        let preview = self.child_mut(PanelChildKey::Preview);
+        preview.scroll_x = ACTION_SCROLL.min(MAX_SCROLL_X);
+        preview.scroll_y = ACTION_SCROLL.min(MAX_SCROLL_Y);
+        PanelScreenUpdate::new(
+            "panel_keyboard_scroll",
+            "panel_scroll_changed",
+            "panel.keyboard",
+            "scroll_preview",
+            "keyboard_scroll=preview",
+        )
+    }
+
+    pub(super) fn apply_resize(&mut self) -> PanelScreenUpdate {
+        self.resized = true;
+        self.active_panel = PanelChildKey::Preview;
+        let preview = self.child_mut(PanelChildKey::Preview);
+        preview.scroll_x = MAX_SCROLL_X / 2;
+        preview.scroll_y = MAX_SCROLL_Y / 2;
+        PanelScreenUpdate::new(
+            "panel_resize",
+            "panel_resized",
+            "panel.resize",
+            "preview",
+            "resize=preview",
+        )
     }
 
     pub(super) fn scroll_vertical(&mut self, panel: PanelChildKey, delta_y: f32) -> bool {

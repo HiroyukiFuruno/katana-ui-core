@@ -1,4 +1,4 @@
-pub(super) const ROW_MAX_CHARS: usize = 34;
+pub(super) const ROW_MAX_CHARS: usize = 37;
 const CLIP_SUFFIX: &str = "...";
 
 pub(super) fn row_value(value: String) -> String {

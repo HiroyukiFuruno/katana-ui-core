@@ -6,7 +6,8 @@ use crate::atom::{Button, Chip, Icon, Input, Radio, Text, TextArea, Toggle};
 use crate::molecule::{
     ChipGroup, ColorPicker, ComboBox, EmptyState, FormField, RgbaColor, SearchBox, SelectBox,
 };
-use crate::render_model::{UiNode, UiNodeKind, UiSize, UiVariant};
+use crate::render_model::{UiCommonProps, UiHostActionSpec, UiInteractivePreset};
+use crate::render_model::{UiNode, UiNodeId, UiNodeKind, UiSize, UiStateId, UiVariant};
 
 const DEFAULT_CHIP_WIDTH: u16 = 64;
 
@@ -36,6 +37,7 @@ pub(super) fn render(value: SettingsList) -> UiNode {
         node = node.child(render_section_header(visible.section));
         for field in visible.fields {
             node = node.child(render_field(
+                &value,
                 field,
                 value.dirty_field_ids.contains(&field.id),
             ));
@@ -48,15 +50,34 @@ pub(super) fn render(value: SettingsList) -> UiNode {
 }
 
 fn render_section_header(section: &SettingsSection) -> UiNode {
-    let mut header = UiNode::new(UiNodeKind::Panel, section.label.clone());
+    let section_id = SettingsList::section_interaction_id(&section.id);
+    let mut header = UiNode::new(UiNodeKind::Panel, section.label.clone())
+        .common(interactive_common())
+        .stable_node_id(UiNodeId::new(section_id.clone()))
+        .stable_state_id(UiStateId::new(section_id))
+        .host_action(UiHostActionSpec::settings_section_toggle(
+            section.label.clone(),
+            section.id.clone(),
+        ));
     if let Some(icon) = &section.icon {
         header = header.child(Icon::new(icon.clone()));
     }
     header.child(Text::new(section.label.clone()))
 }
 
-fn render_field(field: &SettingsField, dirty: bool) -> UiNode {
-    let mut form = FormField::new(field.label.clone()).child(render_control(field));
+fn render_field(list: &SettingsList, field: &SettingsField, dirty: bool) -> UiNode {
+    let field_id = SettingsList::field_interaction_id(&field.id);
+    let mut form = FormField::new(field.label.clone())
+        .common(interactive_common())
+        .stable_node_id(UiNodeId::new(field_id.clone()))
+        .stable_state_id(UiStateId::new(field_id))
+        .child(render_control(list, field));
+    if list.activation_action_for_field(&field.id).is_some() {
+        form = form.host_action(UiHostActionSpec::settings_field_control(
+            field.label.clone(),
+            field.id.clone(),
+        ));
+    }
     if let Some(description) = &field.description {
         form = form.child(Text::new(description.clone()));
     }
@@ -68,11 +89,13 @@ fn render_field(field: &SettingsField, dirty: bool) -> UiNode {
     form.into()
 }
 
-fn render_control(field: &SettingsField) -> UiNode {
-    match &field.control {
-        SettingsControl::Toggle { checked } => {
-            Toggle::new(field.label.clone()).checked(*checked).into()
-        }
+fn render_control(list: &SettingsList, field: &SettingsField) -> UiNode {
+    let control_id = SettingsList::control_interaction_id(&field.id);
+    let mut node: UiNode = match &field.control {
+        SettingsControl::Toggle { checked } => Toggle::new(field.label.clone())
+            .stable_state_id(control_id.clone())
+            .checked(*checked)
+            .into(),
         SettingsControl::Select { options, selected } => {
             let mut select = SelectBox::new(field.label.clone()).value(selected.clone());
             for option in options {
@@ -94,13 +117,16 @@ fn render_control(field: &SettingsField) -> UiNode {
             }
             combo.into()
         }
-        SettingsControl::Input { value } => {
-            Input::new(field.label.clone()).value(value.clone()).into()
-        }
+        SettingsControl::Input { value } => Input::new(field.label.clone())
+            .stable_state_id(control_id.clone())
+            .value(value.clone())
+            .into(),
         SettingsControl::TextArea { value } => TextArea::new(field.label.clone())
+            .stable_state_id(control_id.clone())
             .value(value.clone())
             .into(),
         SettingsControl::Number { value, .. } => Input::new(field.label.clone())
+            .stable_state_id(control_id.clone())
             .value(value.to_string())
             .into(),
         SettingsControl::Chips { values } => render_chips(field, values),
@@ -113,7 +139,15 @@ fn render_control(field: &SettingsField) -> UiNode {
         }
         SettingsControl::ColorPicker { color } => render_color(field, color),
         SettingsControl::Custom(node) => node.as_ref().clone(),
+    };
+    node = node.stable_node_id(SettingsList::control_node_id(&field.id));
+    if list.activation_action_for_field(&field.id).is_some() {
+        node = node.host_action(UiHostActionSpec::settings_field_control(
+            field.label.clone(),
+            field.id.clone(),
+        ));
     }
+    node
 }
 
 fn render_chips(field: &SettingsField, values: &[String]) -> UiNode {
@@ -162,4 +196,8 @@ fn density_class(value: SettingsListDensity) -> &'static str {
         SettingsListDensity::Default => "settings-density-default",
         SettingsListDensity::Spacious => "settings-density-spacious",
     }
+}
+
+fn interactive_common() -> UiCommonProps {
+    UiInteractivePreset::control().apply_to_common_defaults(UiCommonProps::default())
 }

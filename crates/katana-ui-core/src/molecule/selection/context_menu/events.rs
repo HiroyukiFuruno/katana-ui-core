@@ -25,6 +25,9 @@ pub enum ContextMenuEvent {
         path: Vec<usize>,
         command: String,
     },
+    ItemActivationBlocked {
+        path: Vec<usize>,
+    },
     SubmenuOpened {
         path: Vec<usize>,
     },
@@ -45,6 +48,7 @@ impl ContextMenuEvent {
             Self::Closed { .. } => "context_menu_closed",
             Self::ItemHighlighted { .. } => "context_menu_item_highlighted",
             Self::ItemSelected { .. } => "context_menu_item_selected",
+            Self::ItemActivationBlocked { .. } => "context_menu_item_activation_blocked",
             Self::SubmenuOpened { .. } => "context_menu_submenu_opened",
             Self::SubmenuClosed { .. } => "context_menu_submenu_closed",
             Self::TypeAheadMatched { .. } => "context_menu_typeahead_matched",

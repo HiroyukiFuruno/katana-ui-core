@@ -17,10 +17,15 @@ pub(in crate::visual) fn apply_text_area_key(
     if state.selected_page != TEXT_AREA_PAGE {
         return false;
     }
-    state.screen_state.register_text_area_key(match key {
-        TextAreaKey::Character(value) => TextAreaInputKey::Character(value),
-        TextAreaKey::Backspace => TextAreaInputKey::Backspace,
-        TextAreaKey::Newline => TextAreaInputKey::Newline,
-        TextAreaKey::Submit => TextAreaInputKey::Submit,
-    })
+    let instance =
+        super::component_instance_id_for_page(state.selected_page, state.selected_instance_id);
+    state.screen_state.register_text_area_key_for(
+        instance,
+        match key {
+            TextAreaKey::Character(value) => TextAreaInputKey::Character(value),
+            TextAreaKey::Backspace => TextAreaInputKey::Backspace,
+            TextAreaKey::Newline => TextAreaInputKey::Newline,
+            TextAreaKey::Submit => TextAreaInputKey::Submit,
+        },
+    )
 }

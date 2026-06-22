@@ -2,7 +2,7 @@ use super::canvas::Canvas;
 use super::dedicated_dod_common::{self as common, Block, Rect, TextSpec};
 use super::dedicated_dod_metrics as m;
 use super::dedicated_startup_state_panel_style::{
-    action_fill, headline_label, progress_width, state_label, status_fill,
+    action_fill, cancel_fill, headline_label, progress_width, state_label, status_fill,
 };
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
@@ -88,7 +88,7 @@ fn blocks(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [Block; BLO
             ACTION_Y,
             ACTION_WIDTH,
             ACTION_HEIGHT,
-            palette.panel,
+            cancel_fill(palette, scenario),
         ),
         Block::outlined(
             SURFACE_TOKEN_X,

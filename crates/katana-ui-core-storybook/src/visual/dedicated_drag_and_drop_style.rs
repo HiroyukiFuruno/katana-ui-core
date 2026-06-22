@@ -8,7 +8,9 @@ const ATTACHMENT_PRESET_INDEX: usize = 3;
 const KEYBOARD_PRESET_INDEX: usize = 4;
 
 pub(super) fn source_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.screen_state.has_widget_action() || scenario.preset_index == KEYBOARD_PRESET_INDEX {
+    if scenario.screen_state.drag_and_drop.is_dragging()
+        || scenario.preset_index == KEYBOARD_PRESET_INDEX
+    {
         return palette.accent;
     }
     palette.surface
@@ -25,7 +27,8 @@ pub(super) fn target_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>
 }
 
 pub(super) fn indicator_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.screen_state.has_widget_action() || scenario.preset_index == TAB_PRESET_INDEX {
+    if scenario.screen_state.drag_and_drop.committed() || scenario.preset_index == TAB_PRESET_INDEX
+    {
         return palette.accent;
     }
     common::WARN

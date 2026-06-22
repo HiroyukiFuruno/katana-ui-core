@@ -28,6 +28,7 @@ fn code_diff_story() -> StoryExample {
             text: "- old\n+ new\n  日本語 diff".to_string(),
         })
         .mode(CodeDiffMode::Inline)
+        .language("rust")
         .line(removed_line())
         .line(added_line())
         .highlight(HighlightRange {
@@ -40,6 +41,7 @@ fn code_diff_story() -> StoryExample {
         })
         .child(atom::Text::new("mode: split / inline"))
         .child(atom::Text::new("direction: left-right / top-bottom"))
+        .child(atom::Text::new("language: rust / markdown"))
         .child(atom::Text::new("collapse: 非表示 4 行"))
         .child(atom::Text::new("whitespace: space=· tab=→"))
         .child(atom::Text::new("日本語 highlight: 表示ずれなし"));

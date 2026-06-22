@@ -15,7 +15,12 @@ use super::{
     common, m, text_input_chip_rects, text_input_status_rects,
 };
 use super::{INPUT_INVALID_PRESET_INDEX, INPUT_THEME_PRESET_INDEX};
-use super::{dedicated_dod_form_input_live_caret, search_field_rect};
+use super::{
+    dedicated_dod_form_input_live_caret, dedicated_dod_form_input_live_text_input_clear,
+    search_field_rect,
+};
+
+const INPUT_CLEAR_ACTION_PRESET_INDEX: usize = 12;
 
 pub(super) fn input(
     canvas: &mut Canvas,
@@ -119,6 +124,8 @@ fn draw_input_field(
 ) {
     let border = if field.scenario.preset_index == INPUT_INVALID_PRESET_INDEX {
         common::DANGER
+    } else if field.scenario.screen_state.preview_hovered {
+        palette.hover_border
     } else if field.scenario.screen_state.has_widget_action() {
         palette.accent
     } else {
@@ -147,6 +154,16 @@ fn draw_input_field(
             .screen_state
             .hovered_text_input_icon_button_index,
     );
+    if clear_action_visible(field.scenario.preset_index) {
+        dedicated_dod_form_input_live_text_input_clear::draw_clear_action(
+            canvas,
+            text,
+            palette,
+            field.x,
+            field.y,
+            field.scenario.screen_state.hovered_text_input_clear_action,
+        );
+    }
     draw_field_value(canvas, text, palette, field);
     draw_text_input_caret(canvas, text, palette, field);
 }
@@ -161,6 +178,7 @@ fn draw_field_value(
     let clip_width = text_input_text_clip_width(
         field.chrome.leading_slot_reserved(),
         field.chrome.trailing_icon_buttons,
+        clear_action_visible(field.scenario.preset_index),
     );
     let (label, color) = if field.value.is_empty() {
         (field.chrome.placeholder.unwrap_or_default(), palette.muted)
@@ -194,8 +212,14 @@ fn draw_text_input_caret(
     if field.chrome.readonly {
         return;
     }
-    if !field.scenario.screen_state.text_input_focused()
-        || !field.scenario.screen_state.text_input_caret_visible()
+    if !field
+        .scenario
+        .screen_state
+        .text_input_focused_for(field.scenario.selected_instance_id)
+        || !field
+            .scenario
+            .screen_state
+            .text_input_caret_visible_for(field.scenario.selected_instance_id)
     {
         return;
     }
@@ -206,6 +230,7 @@ fn draw_text_input_caret(
         text_input_text_clip_width(
             field.chrome.leading_slot_reserved(),
             field.chrome.trailing_icon_buttons,
+            clear_action_visible(field.scenario.preset_index),
         ),
         value_width,
     );
@@ -254,4 +279,8 @@ fn draw_chips(
             ),
         ],
     );
+}
+
+fn clear_action_visible(preset_index: usize) -> bool {
+    preset_index == INPUT_CLEAR_ACTION_PRESET_INDEX
 }

@@ -3,7 +3,11 @@ use super::navigation_tree::TreeExpansionState;
 use super::palette::VisualPalette;
 use super::panel_scroll_state::PanelScrollOffsets;
 use super::preset_tab_scroll;
+#[cfg(test)]
+use super::render_cache::StorybookFrameRendererStats;
+use super::render_cache::{ContentFrameCache, ContentFrameKey};
 use super::render_context::{RenderContext, ScenarioContext, ShellContext};
+use super::render_preset_defaults::apply_preset_default_screen_state;
 use super::screen_state::StorybookScreenState;
 use super::shell;
 use super::text::TextRenderer;
@@ -14,6 +18,7 @@ use crate::panel::StorybookPanel;
 use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::render_model::UiTree;
 use katana_ui_core::theme::ThemeSnapshot;
+use std::cell::RefCell;
 
 pub(super) const WIDTH: usize = 1440;
 pub(super) const VIEWPORT_HEIGHT: usize = 920;
@@ -25,6 +30,7 @@ pub(super) const FRAME_DELAY_MS: u64 = 16;
 pub(super) struct StorybookRenderOptions<'a> {
     pub(super) theme_id: &'a str,
     pub(super) selected_page: &'a str,
+    pub(super) selected_instance_id: &'static str,
     pub(super) preset_index: usize,
     pub(super) preset_tab_scroll_x: usize,
     pub(super) scroll_y: usize,
@@ -66,6 +72,7 @@ pub(super) fn render_storybook_canvas_for_preset(
     render_storybook_canvas_with_options(StorybookRenderOptions {
         theme_id,
         selected_page,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index,
         preset_tab_scroll_x: preset_tab_scroll::active_index_scroll_x(selected_page, preset_index),
         scroll_y,
@@ -78,8 +85,16 @@ pub(super) fn render_storybook_canvas_for_preset(
     })
 }
 
-pub(super) fn render_storybook_canvas_with_options(options: StorybookRenderOptions<'_>) -> Canvas {
-    StorybookFrameRenderer::new().render(options)
+pub(super) fn render_storybook_canvas_with_options(
+    mut options: StorybookRenderOptions<'_>,
+) -> Canvas {
+    apply_preset_default_screen_state(&mut options);
+    FRAME_RENDERER.with(|renderer| renderer.borrow_mut().render(options))
+}
+
+thread_local! {
+    static FRAME_RENDERER: RefCell<StorybookFrameRenderer> =
+        RefCell::new(StorybookFrameRenderer::new());
 }
 
 pub(super) struct StorybookFrameRenderer {
@@ -111,9 +126,10 @@ impl StorybookFrameRenderer {
 
     pub(super) fn render_for_scale(
         &mut self,
-        options: StorybookRenderOptions<'_>,
+        mut options: StorybookRenderOptions<'_>,
         scale_factor: f32,
     ) -> Canvas {
+        apply_preset_default_screen_state(&mut options);
         let key = ContentFrameKey::from_options_scaled(&options, scale_factor);
         if let Some(cache) = self.content_cache.as_ref().filter(|cache| cache.key == key) {
             self.content_cache_hits += 1;
@@ -195,6 +211,10 @@ impl ThemeFrameCache {
         };
         let scenario = ScenarioContext {
             selected_page: options.selected_page,
+            selected_instance_id: super::window_interaction::component_instance_id_for_page(
+                options.selected_page,
+                options.selected_instance_id,
+            ),
             preset_index: options.preset_index,
             preset_tab_scroll_x: options.preset_tab_scroll_x,
             tree_expansion: options.tree_expansion,
@@ -220,63 +240,6 @@ impl ThemeFrameCache {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-struct ContentFrameKey {
-    theme_id: &'static str,
-    selected_page: String,
-    preset_index: usize,
-    preset_tab_scroll_x: usize,
-    scale_bits: u32,
-    scrollbar_visible: bool,
-    panel_scroll: PanelScrollOffsets,
-    tree_expansion: TreeExpansionState,
-    screen_state: StorybookScreenState,
-    show_navigation_lines: bool,
-    show_navigation_text_connectors: bool,
-}
-
-impl ContentFrameKey {
-    fn from_options_scaled(options: &StorybookRenderOptions<'_>, scale_factor: f32) -> Self {
-        let mut panel_scroll = options.panel_scroll;
-        panel_scroll.root_x = 0;
-        panel_scroll.root_y = 0;
-        Self {
-            theme_id: theme_key(options.theme_id),
-            selected_page: options.selected_page.to_string(),
-            preset_index: options.preset_index,
-            preset_tab_scroll_x: options.preset_tab_scroll_x,
-            scale_bits: scale_factor.to_bits(),
-            scrollbar_visible: options.scrollbar_visible,
-            panel_scroll,
-            tree_expansion: options.tree_expansion,
-            screen_state: options.screen_state.clone(),
-            show_navigation_lines: options.show_navigation_lines,
-            show_navigation_text_connectors: options.show_navigation_text_connectors,
-        }
-    }
-}
-
-struct ContentFrameCache {
-    key: ContentFrameKey,
-    canvas: Canvas,
-}
-
-#[cfg(test)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) struct StorybookFrameRendererStats {
-    pub(super) theme_caches: usize,
-    pub(super) content_renders: usize,
-    pub(super) content_cache_hits: usize,
-}
-
-fn theme_key(theme_id: &str) -> &'static str {
-    if theme_id == "light" {
-        return "light";
-    }
-    "dark"
-}
-
-#[cfg(test)]
 pub(super) fn render_storybook_canvas_with_screen_state(
     theme_id: &str,
     selected_page: &str,
@@ -286,6 +249,7 @@ pub(super) fn render_storybook_canvas_with_screen_state(
     render_storybook_canvas_with_options(StorybookRenderOptions {
         theme_id,
         selected_page,
+        selected_instance_id: super::window_interaction::DEFAULT_INSTANCE_ID,
         preset_index,
         preset_tab_scroll_x: preset_tab_scroll::active_index_scroll_x(selected_page, preset_index),
         scroll_y: 0,
@@ -346,6 +310,27 @@ mod tests {
         assert_eq!(2.0, scaled.scale_factor());
     }
 
+    #[test]
+    fn frame_renderer_does_not_share_content_cache_across_component_instances() {
+        let mut renderer = StorybookFrameRenderer::new();
+        let mut primary = options(
+            0,
+            PanelScrollOffsets::default(),
+            StorybookScreenState::default(),
+        );
+        primary.selected_page = "text-area";
+        primary.selected_instance_id = "text-area.primary";
+        let mut secondary = primary.clone();
+        secondary.selected_instance_id = "text-area.secondary";
+
+        renderer.render(primary);
+        renderer.render(secondary);
+
+        let stats = renderer.stats();
+        assert_eq!(2, stats.content_renders);
+        assert_eq!(0, stats.content_cache_hits);
+    }
+
     fn options(
         scroll_y: usize,
         panel_scroll: PanelScrollOffsets,
@@ -354,6 +339,7 @@ mod tests {
         StorybookRenderOptions {
             theme_id: "dark",
             selected_page: DEFAULT_STORYBOOK_PAGE,
+            selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
             preset_index: 0,
             preset_tab_scroll_x: 0,
             scroll_y,

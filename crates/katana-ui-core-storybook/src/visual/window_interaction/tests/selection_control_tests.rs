@@ -49,7 +49,7 @@ fn select_box_surface_opens_then_selects_option() {
         rect.y + TRIGGER_Y_OFFSET
     ));
     assert_eq!("select_open", state.screen_state.last_action);
-    assert_eq!("select_opened", state.screen_state.last_event);
+    assert_eq!("open", state.screen_state.last_event);
     assert_eq!("open=true", state.screen_state.state_label);
     let opened = render_state(&state);
     assert!(
@@ -63,7 +63,7 @@ fn select_box_surface_opens_then_selects_option() {
         rect.y + SELECT_DARK_OPTION_Y_OFFSET
     ));
     assert_eq!("select_option", state.screen_state.last_action);
-    assert_eq!("select_changed", state.screen_state.last_event);
+    assert_eq!("select_box_selected", state.screen_state.last_event);
     assert_eq!("selected=dark", state.screen_state.state_label);
     assert!(
         component_body_pixel_diff(SELECT_BOX_PAGE, &opened, &render_state(&state))
@@ -499,7 +499,7 @@ fn select_box_control_buttons_apply_expected_actions_and_state_changes() {
         open.y + CLICK_CENTER
     ));
     assert_eq!("select_open", state.screen_state.last_action);
-    assert_eq!("select_opened", state.screen_state.last_event);
+    assert_eq!("open", state.screen_state.last_event);
     assert_eq!("open=true", state.screen_state.state_label);
     assert!(state.screen_state.selection.select_open);
 
@@ -509,7 +509,7 @@ fn select_box_control_buttons_apply_expected_actions_and_state_changes() {
         close.y + CLICK_CENTER
     ));
     assert_eq!("select_close", state.screen_state.last_action);
-    assert_eq!("select_closed", state.screen_state.last_event);
+    assert_eq!("close", state.screen_state.last_event);
     assert_eq!("open=false", state.screen_state.state_label);
     assert!(!state.screen_state.selection.select_open);
 
@@ -592,7 +592,7 @@ fn select_box_hit_target_includes_trigger_option_and_control_buttons() {
     ));
     assert!(apply_click(&mut state, option_label_x, option_label_y));
     assert_eq!("select_option", state.screen_state.last_action);
-    assert_eq!("select_changed", state.screen_state.last_event);
+    assert_eq!("select_box_selected", state.screen_state.last_event);
     assert_eq!("selected=dark", state.screen_state.state_label);
 }
 
@@ -895,7 +895,7 @@ fn selection_list_row_click_updates_list_state_and_component_body() {
         state.screen_state.selection.selection_list_selected_index
     );
     assert_eq!("selection_list_select_row", state.screen_state.last_action);
-    assert_eq!("selection_list_changed", state.screen_state.last_event);
+    assert_eq!("select_box_selected", state.screen_state.last_event);
     assert_eq!(
         "single=1 multi=none focus=1",
         state.screen_state.state_label

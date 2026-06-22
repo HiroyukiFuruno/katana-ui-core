@@ -131,6 +131,9 @@ fn shimmer_width(scenario: ScenarioContext<'_>) -> usize {
 }
 
 fn primary_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.screen_state.runtime_structured.motion.focused {
+        return common::TOKEN;
+    }
     if scenario.screen_state.has_settings_override() || scenario.screen_state.has_widget_action() {
         return common::SUCCESS;
     }
@@ -141,6 +144,9 @@ fn primary_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
 }
 
 fn slide_track(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.screen_state.runtime_structured.motion.hovered {
+        return common::SUCCESS;
+    }
     if scenario.preset_index == REDUCED_PRESET {
         return palette.panel;
     }
@@ -148,6 +154,15 @@ fn slide_track(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
 }
 
 fn scale_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario
+        .screen_state
+        .runtime_structured
+        .motion
+        .keyboard_phase
+        > 0
+    {
+        return common::PURPLE;
+    }
     if scenario.preset_index == REDUCED_PRESET {
         return palette.panel;
     }

@@ -1,4 +1,5 @@
 mod action;
+mod action_accessors;
 mod action_builders;
 mod action_name;
 mod conversion;
@@ -7,6 +8,7 @@ mod molecule_action_builders;
 pub mod motion;
 pub mod placement;
 mod result;
+mod tab_action_builders;
 mod typed;
 mod typed_payload;
 mod typed_target;

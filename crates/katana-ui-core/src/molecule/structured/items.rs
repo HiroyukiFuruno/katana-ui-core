@@ -11,6 +11,7 @@ pub enum TreeNodeKind {
 pub struct TreeNode {
     pub id: String,
     pub label: String,
+    pub icon: String,
     pub depth: usize,
     pub kind: TreeNodeKind,
     pub expanded: bool,
@@ -24,6 +25,7 @@ impl TreeNode {
         Self {
             id: id.into(),
             label: label.into(),
+            icon: String::new(),
             depth,
             kind: TreeNodeKind::File,
             expanded: false,
@@ -35,6 +37,12 @@ impl TreeNode {
     #[must_use]
     pub fn active(mut self, value: bool) -> Self {
         self.active = value;
+        self
+    }
+
+    #[must_use]
+    pub fn icon(mut self, value: impl Into<String>) -> Self {
+        self.icon = value.into();
         self
     }
 
@@ -106,5 +114,17 @@ impl ArrayEditorItem {
             value: String::new(),
             removable: true,
         }
+    }
+
+    #[must_use]
+    pub fn value(mut self, value: impl Into<String>) -> Self {
+        self.value = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn removable(mut self, value: bool) -> Self {
+        self.removable = value;
+        self
     }
 }

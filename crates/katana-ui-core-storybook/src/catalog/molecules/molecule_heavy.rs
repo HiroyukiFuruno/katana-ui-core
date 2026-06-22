@@ -1,3 +1,5 @@
+#[path = "dynamic_array_editor_story.rs"]
+mod dynamic_array_editor_story;
 use super::super::{StoryCatalog, StoryExample};
 use super::molecule_virtualization;
 use katana_ui_core::component::ComponentAction;
@@ -10,7 +12,6 @@ use katana_ui_core::molecule::{
 };
 use katana_ui_core::{atom, molecule};
 
-const DYNAMIC_ARRAY_ITEM_COUNT: usize = 1;
 const DIAGNOSTIC_ERROR_LINE: u32 = 12;
 const DIAGNOSTIC_ERROR_DIFF_LINE: usize = 12;
 const DIAGNOSTIC_ERROR_COLUMN: u32 = 9;
@@ -28,13 +29,7 @@ const TREE_ITEM_COUNT: usize = 2;
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![
         diagnostics_list_story(),
-        StoryCatalog::story(
-            "dynamic-array-editor",
-            molecule::DynamicArrayEditor::new("Dynamic array")
-                .item_count(DYNAMIC_ARRAY_ITEM_COUNT)
-                .child(atom::Button::new("Add"))
-                .child(atom::Text::new("Item")),
-        ),
+        dynamic_array_editor_story::story(),
         tree_view_story(),
     ]
 }

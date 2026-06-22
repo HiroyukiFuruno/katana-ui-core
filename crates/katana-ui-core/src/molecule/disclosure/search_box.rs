@@ -4,7 +4,7 @@ use crate::molecule::state::MoleculeState;
 use crate::render_model::{UiClearActionSpec, UiNode, UiNodeKind, UiStateId, UiTextEntryProps};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct SearchBox {
     label: String,
     state: MoleculeState,
@@ -36,6 +36,12 @@ impl SearchBox {
     #[must_use]
     pub fn value(mut self, value: impl Into<String>) -> Self {
         self.state.value = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn stable_state_id(mut self, value: impl Into<UiStateId>) -> Self {
+        self.state.state_id = value.into();
         self
     }
 

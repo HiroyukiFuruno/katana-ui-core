@@ -106,6 +106,7 @@ impl UiScrollbarModel {
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiPanelProps {
+    pub active_panel: String,
     pub scroll_x: u32,
     pub scroll_y: u32,
     pub viewport_width: u32,
@@ -119,6 +120,12 @@ pub struct UiPanelProps {
 }
 
 impl UiPanelProps {
+    #[must_use]
+    pub fn active_panel(mut self, value: impl Into<String>) -> Self {
+        self.active_panel = value.into();
+        self
+    }
+
     #[must_use]
     pub fn vertical_scroll(
         scroll_y: u32,

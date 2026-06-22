@@ -37,8 +37,8 @@
 ## 6. adapter contract
 
 - [x] 6.1 adapter contract に native OS DnD の escape hatch（`os/file-list`、`os/url`、`os/text`）の変換責務を明記する。
-- [x] 6.2 floem adapter に DragStart / Drop / Cancel の compile-gate stub を追加する。
-- [x] 6.3 egui / gpui adapter に同 stub を追加する（未対応として README に記載）。
+- [x] 6.2 adapter に DragStart / Drop / Cancel の compile-gate stub を追加する。
+- [x] 6.3 external runtime boundary に同 neutral contract を追加する。
 
 ## 7. 自動テスト
 
@@ -74,4 +74,4 @@
 - [x] 11.1 `cargo test -p katana-ui-core` をパスする。
 - [x] 11.2 `cargo clippy -p katana-ui-core --all-targets -- -D warnings` をパスする。
 - [x] 11.3 `openspec validate 02-add-drag-drop-primitive --strict` をパスする。
-- [x] 11.4 adapter compile-gate（floem / egui / gpui）をパスする。
+- [x] 11.4 core contract gate をパスする。

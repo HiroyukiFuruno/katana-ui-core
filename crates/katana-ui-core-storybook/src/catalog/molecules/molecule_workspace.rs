@@ -1,28 +1,19 @@
+#[path = "drag_and_drop_story.rs"]
+mod drag_and_drop_story;
 use super::super::{StoryCatalog, StoryExample};
 use katana_ui_core::interaction::UiCallbackLog;
-use katana_ui_core::render_model::UiStateId;
-use katana_ui_core::{atom, molecule};
+use katana_ui_core::molecule;
+use katana_ui_core::render_model::{UiIconProps, UiStateId, UiSvgPaintPolicy};
 
 const CLOSEABLE_TAB_DRAG_TARGET_INDEX: usize = 2;
-const DRAG_AND_DROP_PRESET_COUNT: usize = 5;
+const STORYBOOK_TAB_ICON_SVG: &str = "<svg viewBox=\"0 0 16 16\"><path d=\"M3 3h10v10H3z\"/></svg>";
 
 pub(super) fn examples() -> Vec<StoryExample> {
     vec![drag_and_drop_story(), closeable_tab_strip_story()]
 }
 
 fn drag_and_drop_story() -> StoryExample {
-    let target = UiStateId::new("state:DragAndDrop:storybook");
-    let presets = drag_and_drop_presets();
-    let root = presets
-        .iter()
-        .fold(molecule::List::new("DragAndDrop"), |root, preset| {
-            root.child(atom::Badge::new(preset.preview_label()))
-        });
-    let logs = presets
-        .iter()
-        .map(|preset| preset.callback_log(&target))
-        .collect();
-    StoryCatalog::interactive_story("drag-and-drop", root, logs)
+    drag_and_drop_story::story()
 }
 
 fn closeable_tab_strip_story() -> StoryExample {
@@ -38,7 +29,10 @@ fn closeable_tab_strip_base() -> molecule::CloseableTabStrip {
         .group(molecule::TabGroup::new("preview", "Preview"))
         .tab(molecule::CloseableTab::new("works", "default"))
         .tab(molecule::CloseableTab::new("pinned", "pinned").pinned(true))
-        .tab(molecule::CloseableTab::new("overflow", "overflow").icon("more"))
+        .tab(
+            molecule::CloseableTab::new("overflow", "overflow")
+                .svg_icon(storybook_tab_icon("overflow")),
+        )
         .tab(
             molecule::CloseableTab::new("inbox", "groups")
                 .dirty(true)
@@ -51,7 +45,7 @@ fn closeable_tab_strip_base() -> molecule::CloseableTabStrip {
 
 fn closeable_tab_strip_logs(target: &UiStateId) -> Vec<UiCallbackLog> {
     vec![
-        closeable_action_log(target, "add_tab", "tabs=6", "tabs=7 event=tab_added"),
+        closeable_core_action_log(target, "add_tab", "tabs=6", add_events()),
         closeable_core_action_log(target, "delete_tab", "tabs=6", close_events()),
         closeable_core_action_log(target, "pin_tab", "pinned=false", pin_events()),
         closeable_action_log(
@@ -64,6 +58,20 @@ fn closeable_tab_strip_logs(target: &UiStateId) -> Vec<UiCallbackLog> {
         closeable_core_action_log(target, "drag_tab", "index=4", drag_events()),
         closeable_core_action_log(target, "overflow_open", "hidden=0", overflow_events()),
     ]
+}
+
+fn storybook_tab_icon(role: impl Into<String>) -> UiIconProps {
+    UiIconProps::new(STORYBOOK_TAB_ICON_SVG)
+        .role(role)
+        .paint_policy(UiSvgPaintPolicy::CurrentColor)
+}
+
+fn add_events() -> Vec<molecule::CloseableTabStripEvent> {
+    let mut bar = closeable_tab_strip_base();
+    bar.apply_action(molecule::CloseableTabStripAction::AddTab {
+        tab: molecule::CloseableTab::new("notes", "notes"),
+        activate: true,
+    })
 }
 
 fn close_events() -> Vec<molecule::CloseableTabStripEvent> {
@@ -142,106 +150,4 @@ fn log(
     after: impl Into<String>,
 ) -> UiCallbackLog {
     UiCallbackLog::new(target.clone(), action, before, after)
-}
-
-fn drag_and_drop_presets() -> [DragAndDropPreset; DRAG_AND_DROP_PRESET_COUNT] {
-    [
-        DragAndDropPreset {
-            name: "reorder list",
-            payload: "katana-ui-core/list-row:item-02",
-            target: "list:item-04",
-            accept: "Accept(move, indicator=after)",
-            autoscroll: "edge=24 speed=medium",
-            keyboard_draggable: true,
-            events: "DragStart > DragMove > DragEnter > Drop > DragEnd(committed=true)",
-            action: "reorder_list_drop",
-        },
-        DragAndDropPreset {
-            name: "file drop",
-            payload: "os/file-list:3 files",
-            target: "drop-zone:imports",
-            accept: "Accept(copy, indicator=outline)",
-            autoscroll: "off",
-            keyboard_draggable: false,
-            events: "DragEnter > DragMove > Drop > DragEnd(committed=true)",
-            action: "file_drop_accept",
-        },
-        DragAndDropPreset {
-            name: "tab reorder",
-            payload: molecule::CLOSEABLE_TAB_DRAG_TAG,
-            target: "tab:settings",
-            accept: "Accept(move, indicator=before)",
-            autoscroll: "edge=16 speed=slow",
-            keyboard_draggable: true,
-            events: "DragStart > DragMove > DragEnter > Drop > DragEnd(committed=true)",
-            action: "tab_reorder_drop",
-        },
-        DragAndDropPreset {
-            name: "attachment drop",
-            payload: "consumer/chat-attachment:image.png",
-            target: "composer:attachments",
-            accept: "Accept(copy, indicator=inside)",
-            autoscroll: "edge=32 speed=fast",
-            keyboard_draggable: false,
-            events: "DragEnter > DragMove > Drop > DragEnd(committed=true)",
-            action: "attachment_drop_accept",
-        },
-        DragAndDropPreset {
-            name: "keyboard drag",
-            payload: "katana-ui-core/list-row:item-01",
-            target: "list:item-03",
-            accept: "Accept(move, indicator=after)",
-            autoscroll: "edge=24 speed=keyboard",
-            keyboard_draggable: true,
-            events: "DragStart(Space) > DragMove(ArrowDown) > DragEnter > DragCancel(Esc) > DragEnd(committed=false)",
-            action: "keyboard_drag_cancel",
-        },
-    ]
-}
-
-struct DragAndDropPreset {
-    name: &'static str,
-    payload: &'static str,
-    target: &'static str,
-    accept: &'static str,
-    autoscroll: &'static str,
-    keyboard_draggable: bool,
-    events: &'static str,
-    action: &'static str,
-}
-
-impl DragAndDropPreset {
-    fn preview_label(&self) -> String {
-        format!(
-            "preset={} payload={} target={} accept={} autoscroll={} keyboard_draggable={} events={}",
-            self.name,
-            self.payload,
-            self.target,
-            self.accept,
-            self.autoscroll,
-            self.keyboard_draggable,
-            self.events
-        )
-    }
-
-    fn callback_log(&self, target: &UiStateId) -> UiCallbackLog {
-        log(
-            target,
-            self.action,
-            format!(
-                "preset={} accept=pending autoscroll={} keyboard_draggable={}",
-                self.name, self.autoscroll, self.keyboard_draggable
-            ),
-            format!(
-                "preset={} payload={} accept={} autoscroll={} keyboard_draggable={} events={} target={}",
-                self.name,
-                self.payload,
-                self.accept,
-                self.autoscroll,
-                self.keyboard_draggable,
-                self.events,
-                self.target
-            ),
-        )
-    }
 }

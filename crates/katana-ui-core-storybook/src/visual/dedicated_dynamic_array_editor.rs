@@ -4,9 +4,11 @@ use super::dedicated_dod_metrics as m;
 use super::dedicated_dynamic_array_editor_style::{
     control_fill, reorder_fill, row_fill, row_label, status_label,
 };
+use super::layout_metrics::LayoutRect;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::text::TextRenderer;
+use super::window_interaction::dynamic_array_editor_operation::DynamicArrayEditorAction;
 
 pub(super) const ARRAY_EDITOR_X: usize = 30;
 pub(super) const ARRAY_EDITOR_Y: usize = 30;
@@ -22,6 +24,8 @@ const DRAG_WIDTH: usize = 4;
 const ACTION_X: usize = 246;
 const ACTION_WIDTH: usize = 58;
 const ACTION_HEIGHT: usize = 20;
+const REMOVE_ACTION_Y: usize = 78;
+const REORDER_ACTION_Y: usize = 102;
 const STATUS_X: usize = 338;
 const STATUS_Y: usize = 92;
 const STATUS_WIDTH: usize = 140;
@@ -33,8 +37,8 @@ const SURFACE_TOKEN_HEIGHT: usize = 18;
 const TEXT_X_OFFSET: usize = 8;
 const TEXT_Y_OFFSET: usize = 5;
 const TOKEN_TEXT_Y_OFFSET: usize = 5;
-const BLOCK_COUNT: usize = 11;
-const LABEL_COUNT: usize = 7;
+const BLOCK_COUNT: usize = 13;
+const LABEL_COUNT: usize = 9;
 
 pub(super) fn dynamic_array_editor(
     canvas: &mut Canvas,
@@ -53,6 +57,24 @@ pub(super) fn dynamic_array_editor(
         &blocks(palette, scenario),
         &labels(palette, scenario),
     );
+}
+
+pub(super) fn action_at(
+    origin_x: usize,
+    origin_y: usize,
+    x: usize,
+    y: usize,
+) -> Option<DynamicArrayEditorAction> {
+    if action_rect(origin_x, origin_y, ROW_Y).contains(x, y) {
+        return Some(DynamicArrayEditorAction::Add);
+    }
+    if action_rect(origin_x, origin_y, REMOVE_ACTION_Y).contains(x, y) {
+        return Some(DynamicArrayEditorAction::Remove);
+    }
+    if action_rect(origin_x, origin_y, REORDER_ACTION_Y).contains(x, y) {
+        return Some(DynamicArrayEditorAction::Reorder);
+    }
+    None
 }
 
 fn blocks(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [Block; BLOCK_COUNT] {
@@ -76,6 +98,20 @@ fn blocks(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [Block; BLO
             ACTION_WIDTH,
             ACTION_HEIGHT,
             control_fill(palette, scenario),
+        ),
+        Block::outlined(
+            ACTION_X,
+            REMOVE_ACTION_Y,
+            ACTION_WIDTH,
+            ACTION_HEIGHT,
+            control_fill(palette, scenario),
+        ),
+        Block::outlined(
+            ACTION_X,
+            REORDER_ACTION_Y,
+            ACTION_WIDTH,
+            ACTION_HEIGHT,
+            reorder_fill(palette, scenario),
         ),
         Block::outlined(
             SURFACE_TOKEN_X,
@@ -112,6 +148,20 @@ fn labels(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [TextSpec; 
             m::FONT_7,
             palette.text,
             "add",
+        ),
+        TextSpec::new(
+            ACTION_X + TEXT_X_OFFSET,
+            REMOVE_ACTION_Y + TEXT_Y_OFFSET,
+            m::FONT_7,
+            palette.text,
+            "remove",
+        ),
+        TextSpec::new(
+            ACTION_X + TEXT_X_OFFSET,
+            REORDER_ACTION_Y + TEXT_Y_OFFSET,
+            m::FONT_7,
+            palette.text,
+            "move",
         ),
         TextSpec::new(
             SURFACE_TOKEN_X + TEXT_X_OFFSET,
@@ -169,4 +219,13 @@ fn row_text(palette: &VisualPalette, scenario: ScenarioContext<'_>, row: usize) 
 
 fn row_y(row: usize) -> usize {
     ROW_Y + (ROW_GAP * row)
+}
+
+fn action_rect(origin_x: usize, origin_y: usize, y: usize) -> LayoutRect {
+    LayoutRect::new(
+        origin_x + ACTION_X,
+        origin_y + y,
+        ACTION_WIDTH,
+        ACTION_HEIGHT,
+    )
 }

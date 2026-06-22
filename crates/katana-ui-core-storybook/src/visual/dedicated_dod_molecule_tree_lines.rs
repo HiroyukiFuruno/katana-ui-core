@@ -13,6 +13,7 @@ const DASHED_SEGMENT_GAP: usize = 6;
 #[derive(Clone, Copy)]
 pub(super) struct TreeRowLayout {
     pub(super) index: usize,
+    pub(super) visual_index: usize,
     pub(super) x: usize,
     pub(super) y: usize,
 }

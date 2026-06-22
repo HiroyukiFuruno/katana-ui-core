@@ -1,5 +1,5 @@
 use super::button_layout::UiButtonLayoutDto;
-use super::{UiTone, UiVariant};
+use super::{UiStateId, UiTone, UiVariant};
 use serde::{Deserialize, Serialize};
 
 #[path = "typed_color_picker.rs"]
@@ -24,6 +24,8 @@ mod typed_scroll_area;
 mod typed_search;
 #[path = "typed_split_pane.rs"]
 mod typed_split_pane;
+#[path = "typed_text.rs"]
+mod typed_text;
 #[path = "typed_text_entry.rs"]
 mod typed_text_entry;
 pub use typed_color_picker::{UiColorBlendingMode, UiColorPickerProps, UiColorPickerTriggerKind};
@@ -33,7 +35,9 @@ pub use typed_disclosure::{
 };
 pub use typed_drag::{UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps};
 pub use typed_icon::{UiIconProps, UiSvgPaintPolicy};
-pub use typed_modal::{UiModalParentInteraction, UiModalPresentation, UiModalProps, UiModalSize};
+pub use typed_modal::{
+    UiModalParentInteraction, UiModalPlacement, UiModalPresentation, UiModalProps, UiModalSize,
+};
 pub use typed_panel::{
     UiPanelProps, UiRect, UiScrollbarDragState, UiScrollbarModel, UiScrollbarPlacement,
     UiScrollbarVisibility,
@@ -44,6 +48,7 @@ pub use typed_search::{UiSearchControlProps, UiSearchReplaceMode};
 pub use typed_split_pane::{
     UiSplitPaneAxis, UiSplitPaneHandleProps, UiSplitPaneProps, UiSplitPaneResizeMode,
 };
+pub use typed_text::{UiTextProps, UiTextSpan, UiTextSpanStyle, UiTextWrapMode};
 pub use typed_text_entry::{
     UiClearActionSpec, UiSlotActionSpec, UiSlotPlacement, UiSlotSpec, UiTextEntryProps,
 };
@@ -56,15 +61,6 @@ const DEFAULT_SKELETON_LAST_LINE_PERCENT: u8 = 100;
 const DEFAULT_SKELETON_LINE_THICKNESS_PX: u16 = 12;
 const DEFAULT_SKELETON_ASPECT_RATIO_WIDTH: u16 = 0;
 const DEFAULT_SKELETON_ASPECT_RATIO_HEIGHT: u16 = 0;
-
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiTextProps {
-    pub role: String,
-    pub color_token: String,
-    pub line_height_px: u16,
-    pub baseline_offset_px: i16,
-    pub vertical_centered: bool,
-}
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiButtonProps {
@@ -84,6 +80,13 @@ pub struct UiColorSwatchProps {
 pub struct UiShortcutProps {
     pub platform: String,
     pub combo: String,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiFormFieldProps {
+    pub helper_text: String,
+    pub required: bool,
+    pub control_state_id: Option<UiStateId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

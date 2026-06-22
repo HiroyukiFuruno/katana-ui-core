@@ -3,6 +3,7 @@ use crate::visual::navigation_tree::TreeExpansionState;
 use crate::visual::{panel_layout, render};
 
 const INSPECTOR_EXTRA_SCROLL_Y: usize = 360;
+const SCROLL_AREA_EXTRA_SCROLL_Y: usize = 96;
 
 pub(crate) struct PanelScrollOverflowModel;
 
@@ -54,6 +55,14 @@ fn navigation_overflow(expansion: TreeExpansionState) -> PanelOverflow {
 
 fn preview_overflow(selected_page: &str) -> PanelOverflow {
     let viewport = panel_layout::region_layout(PanelScrollRegion::Preview).content_viewport;
+    if selected_page == "scroll-area" {
+        return preview_content_overflow(
+            viewport.width,
+            viewport.height,
+            viewport.width,
+            viewport.height + SCROLL_AREA_EXTRA_SCROLL_Y,
+        );
+    }
     if selected_page == "panel" {
         return preview_content_overflow(
             viewport.width,

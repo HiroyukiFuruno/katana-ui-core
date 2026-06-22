@@ -17,7 +17,7 @@ CORE_API_PATHS=(
 )
 
 violations="$(
-  rg -n "\\b(floem|gpui|egui)::|\\b(View|ViewId|Element)\\b|egui::Ui" \
+  rg -n "\\b(View|ViewId|Element)\\b" \
     "${CORE_API_PATHS[@]}" \
     --glob '*.rs'
 )" || true
@@ -37,5 +37,17 @@ platform_violations="$(
 if [ -n "$platform_violations" ]; then
   echo "core public API exposes OS-specific font paths or backend symbols"
   echo "$platform_violations"
+  exit 1
+fi
+
+app_specific_violations="$(
+  rg -n "\"viewer\\.|\\bVIEWER_" \
+    "${CORE_API_PATHS[@]}" \
+    --glob '*.rs'
+)" || true
+
+if [ -n "$app_specific_violations" ]; then
+  echo "core public API exposes app-specific viewer host action symbols"
+  echo "$app_specific_violations"
   exit 1
 fi

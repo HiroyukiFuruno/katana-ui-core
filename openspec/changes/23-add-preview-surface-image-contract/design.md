@@ -26,9 +26,9 @@ KUC は `UiImageSurfaceHighlight` で `rect`、`current`、`label` だけを保�
 
 ## Adapter boundary
 
-egui / floem / gpui の adapter plan は `UiImageSurfaceRenderPlan` を受け取る。
+external renderer は `UiImageSurfaceRenderPlan` を受け取る。
 この plan は RGBA bytes 本体を複製せず、fingerprint、extent、byte length、fit、accessibility label、highlight rect を持つ。
-実 adapter が texture 化するか、まだ skeleton のまま plan に保持するかは adapter crate の責務である。
+実 runtime が texture 化するか、plan に保持するかは external renderer の責務である。
 
 ## 非対象
 

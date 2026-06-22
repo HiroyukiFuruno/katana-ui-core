@@ -13,6 +13,9 @@ pub(super) struct TextInputRuntimeState {
     component: UiComponentState,
     uses_live_value: bool,
     caret_visible: bool,
+    caret: usize,
+    selection_start: usize,
+    selection_end: usize,
 }
 
 impl Default for TextInputRuntimeState {
@@ -21,6 +24,9 @@ impl Default for TextInputRuntimeState {
             component: default_text_input_state(),
             uses_live_value: false,
             caret_visible: false,
+            caret: DEFAULT_TEXT_INPUT_VALUE.chars().count(),
+            selection_start: DEFAULT_TEXT_INPUT_VALUE.chars().count(),
+            selection_end: DEFAULT_TEXT_INPUT_VALUE.chars().count(),
         }
     }
 }
@@ -48,6 +54,19 @@ impl TextInputStateStore {
         runtime.uses_live_value = true;
         runtime.caret_visible = true;
         runtime.component = apply_text_input_value_state(&runtime.component, value);
+        runtime.caret = value.chars().count();
+        runtime.selection_start = runtime.caret;
+        runtime.selection_end = runtime.caret;
+    }
+
+    pub(super) fn apply_interaction(&mut self, instance: &'static str, state: UiComponentState) {
+        let runtime = self.runtime_mut(instance);
+        runtime.uses_live_value = true;
+        runtime.caret_visible = true;
+        runtime.caret = state.interaction.cursor;
+        runtime.selection_start = state.interaction.selection_start;
+        runtime.selection_end = state.interaction.selection_end;
+        runtime.component = state;
     }
 
     pub(super) fn submit(&mut self, instance: &'static str) {
@@ -71,6 +90,22 @@ impl TextInputStateStore {
 
     pub(super) fn caret_visible(&self, instance: &'static str) -> bool {
         self.runtime(instance).caret_visible
+    }
+
+    pub(super) fn selection(&self, instance: &'static str) -> (usize, usize, usize) {
+        let runtime = self.runtime(instance);
+        (
+            runtime.caret,
+            runtime.selection_start,
+            runtime.selection_end,
+        )
+    }
+
+    pub(super) fn set_selection(&mut self, instance: &'static str, start: usize, end: usize) {
+        let runtime = self.runtime_mut(instance);
+        runtime.caret = end;
+        runtime.selection_start = start;
+        runtime.selection_end = end;
     }
 
     pub(super) fn set_caret_visibility(&mut self, instance: &'static str, visible: bool) -> bool {

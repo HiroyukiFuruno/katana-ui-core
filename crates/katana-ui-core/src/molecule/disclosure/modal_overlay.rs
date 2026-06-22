@@ -2,10 +2,10 @@ use super::modal_render::overlay_dialog_props;
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult, UiActionSource};
 use crate::molecule::state::MoleculeState;
-use crate::render_model::{UiNode, UiNodeKind, UiStateId};
+use crate::render_model::{UiModalPlacement, UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ModalOverlay {
     label: String,
     state: MoleculeState,
@@ -15,6 +15,7 @@ pub struct ModalOverlay {
     dismiss_policy: String,
     escape_dismiss: bool,
     outside_click_dismiss: bool,
+    placement: UiModalPlacement,
     children: Vec<UiNode>,
 }
 
@@ -30,6 +31,7 @@ impl ModalOverlay {
             dismiss_policy: String::new(),
             escape_dismiss: false,
             outside_click_dismiss: false,
+            placement: UiModalPlacement::Center,
             children: Vec::new(),
         }
     }
@@ -83,6 +85,12 @@ impl ModalOverlay {
     }
 
     #[must_use]
+    pub fn placement(mut self, value: UiModalPlacement) -> Self {
+        self.placement = value;
+        self
+    }
+
+    #[must_use]
     pub fn state_id(&self) -> &UiStateId {
         &self.state.state_id
     }
@@ -116,6 +124,11 @@ impl ModalOverlay {
     pub const fn dismisses_on_outside_click(&self) -> bool {
         self.outside_click_dismiss
     }
+
+    #[must_use]
+    pub const fn placement_model(&self) -> UiModalPlacement {
+        self.placement
+    }
 }
 
 impl ComponentAction for ModalOverlay {
@@ -148,6 +161,7 @@ impl From<ModalOverlay> for UiNode {
             &value.dismiss_policy,
             value.escape_dismiss,
             value.outside_click_dismiss,
+            value.placement,
         );
         let mut node = value
             .state

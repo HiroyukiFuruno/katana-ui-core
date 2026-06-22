@@ -9,11 +9,13 @@ use crate::theme::ThemeSnapshot;
 fn panel_carries_theme_setting_to_render_model() {
     let tree = UiTree::new(
         Panel::new("Preview", PanelRegion::Preview, ThemeSnapshot::dark())
+            .active_panel(PanelRegion::Details)
             .child(Text::new("Story")),
     );
 
     assert_eq!(UiNodeKind::Panel, tree.root().kind());
     assert_eq!("dark", tree.root().props().theme_id);
+    assert_eq!("details", tree.root().props().panel.active_panel);
     assert_eq!(1, tree.root().children().len());
 }
 

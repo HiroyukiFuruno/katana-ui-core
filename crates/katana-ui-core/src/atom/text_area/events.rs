@@ -29,6 +29,8 @@ impl TextAreaCompositionState {
 pub struct TextAreaResizeEvent {
     pub rows: u16,
     pub internal_scroll: bool,
+    pub width_delta: u16,
+    pub height_delta: u16,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

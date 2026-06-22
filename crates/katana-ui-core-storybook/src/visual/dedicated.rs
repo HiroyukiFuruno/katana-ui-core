@@ -1,16 +1,12 @@
 use super::canvas::Canvas;
-use super::coverage;
-use super::dedicated_atoms;
 use super::dedicated_attachment_chip;
 use super::dedicated_banner;
-use super::dedicated_basic;
 use super::dedicated_breadcrumb;
 use super::dedicated_chip;
 use super::dedicated_chip_group;
 use super::dedicated_closeable_tab_strip;
 use super::dedicated_collapsible_panel;
 use super::dedicated_command_palette;
-use super::dedicated_complex;
 use super::dedicated_context_menu;
 use super::dedicated_diagnostics_list;
 use super::dedicated_dod_atom_divider;
@@ -29,13 +25,12 @@ use super::dedicated_dod_runtime_motion;
 use super::dedicated_drag_and_drop;
 use super::dedicated_dynamic_array_editor;
 use super::dedicated_empty_state;
-use super::dedicated_feedback;
+use super::dedicated_fallback;
 use super::dedicated_foundation_panel;
 use super::dedicated_hover_card;
 use super::dedicated_list;
 use super::dedicated_menu_button;
 use super::dedicated_modal;
-use super::dedicated_node_labels;
 use super::dedicated_notification_toast;
 use super::dedicated_search_control_strip;
 use super::dedicated_settings_list;
@@ -54,7 +49,7 @@ use super::dedicated_window_control_button_group;
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
 use super::text::TextRenderer;
-use katana_ui_core::render_model::{UiNode, UiNodeKind};
+use katana_ui_core::render_model::UiNode;
 
 pub(super) struct DedicatedPageRequest<'a> {
     pub(super) text: &'a TextRenderer,
@@ -151,7 +146,22 @@ pub(super) fn draw_page(canvas: &mut Canvas, request: DedicatedPageRequest<'_>) 
             dedicated_settings_list::settings_list(canvas, text, palette, scenario, x, y);
         }
         "accordion" => dedicated_dod_molecules::accordion(canvas, text, palette, scenario, x, y),
-        "tree-view" => dedicated_dod_molecules::tree_view(canvas, text, node, palette, x, y),
+        "tree-view" => {
+            dedicated_dod_molecules::tree_view(
+                canvas,
+                text,
+                node,
+                palette,
+                dedicated_dod_molecules::TreeViewRenderState {
+                    scroll_offset_y: scenario.screen_state.tree_view_scroll_offset,
+                    selected_id: scenario.screen_state.tree_view_selected_id,
+                    focused_id: scenario.screen_state.tree_view_focused_id,
+                    keyboard_committed: scenario.screen_state.last_action == "tree_keyboard_select",
+                },
+                x,
+                y,
+            );
+        }
         "context-menu" => {
             dedicated_context_menu::context_menu(canvas, text, palette, scenario, x, y);
         }
@@ -239,60 +249,6 @@ pub(super) fn draw_page(canvas: &mut Canvas, request: DedicatedPageRequest<'_>) 
         "scroll-area" => {
             dedicated_dod_layout_scroll_area::scroll_area(canvas, text, palette, scenario, x, y);
         }
-        _ => draw(canvas, text, node, palette, x, y),
-    }
-}
-
-pub(super) fn draw(
-    canvas: &mut Canvas,
-    text: &TextRenderer,
-    node: &UiNode,
-    palette: &VisualPalette,
-    x: usize,
-    y: usize,
-) {
-    let label = dedicated_node_labels::label_for(node.kind());
-    match node.kind() {
-        UiNodeKind::Button | UiNodeKind::TextButton | UiNodeKind::IconTextButton => {
-            dedicated_basic::button(canvas, text, palette, x, y, label);
-        }
-        UiNodeKind::SvgButton => dedicated_atoms::icon_button(canvas, text, palette, x, y, label),
-        UiNodeKind::Badge | UiNodeKind::Chip | UiNodeKind::AttachmentChip => {
-            dedicated_feedback::badge(canvas, text, palette, x, y, label);
-        }
-        UiNodeKind::Input | UiNodeKind::TextArea | UiNodeKind::SelectBox => {
-            dedicated_basic::outlined_control(canvas, text, palette, x, y, label);
-        }
-        UiNodeKind::Checkbox | UiNodeKind::Radio => {
-            dedicated_atoms::selection_control(canvas, text, palette, x, y, label);
-        }
-        UiNodeKind::Toggle => dedicated_basic::toggle(canvas, text, palette, x, y, label),
-        UiNodeKind::Divider => dedicated_atoms::divider(canvas, text, palette, x, y, label),
-        UiNodeKind::Spacer => dedicated_atoms::spacer(canvas, text, palette, x, y, label),
-        UiNodeKind::KeyCap => dedicated_atoms::key_cap(canvas, text, palette, x, y, label),
-        UiNodeKind::LoadingDots => {
-            dedicated_atoms::loading_dots(canvas, text, palette, x, y, label)
-        }
-        UiNodeKind::Spinner => dedicated_atoms::spinner(canvas, text, palette, x, y, label),
-        UiNodeKind::ProgressBar => {
-            dedicated_feedback::progress(canvas, text, node, palette, x, y, label);
-        }
-        UiNodeKind::ColorSwatch => {
-            dedicated_atoms::color_swatch(canvas, text, palette, x, y, label);
-        }
-        UiNodeKind::SlideControl => {
-            dedicated_atoms::slide_control(canvas, text, palette, x, y, label)
-        }
-        UiNodeKind::CodeDiff => dedicated_complex::diff(canvas, text, palette, x, y, label),
-        UiNodeKind::ColorPicker => {
-            dedicated_complex::color_picker(canvas, text, palette, x, y, label);
-        }
-        UiNodeKind::Modal | UiNodeKind::ModalOverlay => {
-            dedicated_feedback::overlay(canvas, text, palette, x, y, label);
-        }
-        kind if coverage::has_dedicated_renderer(kind) => {
-            dedicated_basic::structured(canvas, text, palette, x, y, label);
-        }
-        _ => dedicated_basic::fallback(canvas, text, palette, x, y),
+        _ => dedicated_fallback::draw(canvas, text, node, palette, x, y),
     }
 }

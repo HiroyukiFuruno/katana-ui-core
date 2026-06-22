@@ -33,6 +33,7 @@ pub enum UiActionSource {
     ColorPickerOpen,
     CodeDiffMode,
     CodeDiffDirection,
+    CodeDiffLanguage,
     CodeDiffExpand,
     CodeDiffScrollSync,
 }

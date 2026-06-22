@@ -113,7 +113,7 @@ fn navigation_wheel_scroll_reaches_last_tree_row_without_fixed_cap() {
 #[test]
 fn non_overflowing_required_pages_ignore_preview_wheel_input() {
     for &page in StoryRequirements::required_pages() {
-        if page == "panel" {
+        if page == "panel" || preview_overflows(page) {
             continue;
         }
         let mut state = StorybookWindowState {
@@ -135,6 +135,19 @@ fn non_overflowing_required_pages_ignore_preview_wheel_input() {
         assert_eq!(0, state.panel_scroll.preview_y, "{page} preview y");
         assert_eq!(0, state.panel_scroll.preview_x, "{page} preview x");
     }
+}
+
+fn preview_overflows(page: &str) -> bool {
+    crate::visual::panel_scroll_state::PanelScrollOverflowModel::max_scroll_y_for(
+        PanelScrollRegion::Preview,
+        page,
+        Default::default(),
+    ) > 0
+        || crate::visual::panel_scroll_state::PanelScrollOverflowModel::max_scroll_x_for(
+            PanelScrollRegion::Preview,
+            page,
+            Default::default(),
+        ) > 0
 }
 
 #[test]

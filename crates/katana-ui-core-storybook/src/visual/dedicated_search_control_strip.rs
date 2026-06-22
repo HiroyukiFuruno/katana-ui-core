@@ -2,7 +2,7 @@ use super::canvas::Canvas;
 use super::dedicated_dod_common::{self as common, Block, Rect, TextSpec};
 use super::dedicated_dod_metrics as m;
 use super::dedicated_search_control_strip_style::{
-    navigation_fill, option_fill, query_fill, query_label, replace_fill, replace_label,
+    count_fill, navigation_fill, option_fill, query_fill, query_label, replace_fill, replace_label,
     result_label, status_label,
 };
 use super::palette::VisualPalette;
@@ -77,7 +77,13 @@ fn blocks(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [Block; BLO
             FIELD_HEIGHT,
             query_fill(palette, scenario),
         ),
-        Block::outlined(COUNT_X, QUERY_Y, COUNT_WIDTH, FIELD_HEIGHT, palette.surface),
+        Block::outlined(
+            COUNT_X,
+            QUERY_Y,
+            COUNT_WIDTH,
+            FIELD_HEIGHT,
+            count_fill(palette, scenario),
+        ),
         nav_block(palette, scenario, m::PX_0),
         nav_block(palette, scenario, m::PX_1),
         option_block(palette, scenario, m::PX_0),

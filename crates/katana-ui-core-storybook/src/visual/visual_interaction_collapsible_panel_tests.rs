@@ -3,7 +3,11 @@ use super::visual_interaction_test_support::{
     assert_clicked_page_changes_body, assert_settings_page_changes_body, component_body_pixel_diff,
     pixel_at,
 };
-use super::{StorybookVisual, palette, preview_detail, storybook_ui_option_contract};
+use super::window_interaction::{
+    StorybookWindowState, apply_click, apply_clickable_keyboard_activation_for_audit,
+    apply_context_click, apply_hover_at, focus_clickable_at_for_audit,
+};
+use super::{StorybookVisual, palette, preview_detail, render, storybook_ui_option_contract};
 use crate::catalog::StoryPresetLabels;
 use katana_ui_core::theme::ThemeSnapshot;
 
@@ -18,6 +22,7 @@ const ICON_ONLY_PRESET: usize = 4;
 const REQUIRED_PRESET_COUNT: usize = 4;
 const REQUIRED_OPTION_COUNT: usize = 4;
 const BODY_DIFF_THRESHOLD: usize = 80;
+const CLICK_OFFSET: usize = 4;
 const PANEL_X: usize = 34;
 const PANEL_Y: usize = 30;
 const PANEL_SAMPLE_X_OFFSET: usize = 226;
@@ -45,7 +50,7 @@ fn collapsible_panel_exposes_leaf_presets_options_and_panel_contract() {
     assert_eq!("collapsible_panel_width_changed", spec.event);
     assert_eq!("collapsible_panel.width", spec.option);
     assert_eq!("320", spec.after);
-    assert_eq!("mode=floating_overlay", spec.state);
+    assert_eq!("width=320", spec.state);
 }
 
 #[test]
@@ -78,6 +83,80 @@ fn collapsible_panel_light_and_dark_panel_uses_theme_surface() {
     assert_panel_token(LIGHT_THEME, ThemeSnapshot::light());
 }
 
+#[test]
+fn collapsible_panel_live_operations_use_core_panel_actions() {
+    let target = preview_detail::component_action_hit_rect(PAGE);
+
+    let mut pointer_state = panel_state();
+    assert!(apply_click(
+        &mut pointer_state,
+        target.x + CLICK_OFFSET,
+        target.y + CLICK_OFFSET
+    ));
+    assert_eq!(
+        "collapsible_panel_resize",
+        pointer_state.screen_state.last_action
+    );
+    assert_eq!(
+        "collapsible_panel_width_changed",
+        pointer_state.screen_state.last_event
+    );
+    assert_eq!("width=320", pointer_state.screen_state.state_label);
+
+    let mut hover_state = panel_state();
+    let before_hover = render_state(&hover_state);
+    assert!(apply_hover_at(
+        &mut hover_state,
+        target.x + CLICK_OFFSET,
+        target.y + CLICK_OFFSET
+    ));
+    let after_hover = render_state(&hover_state);
+    assert_eq!(
+        "collapsible_panel_hover",
+        hover_state.screen_state.last_action
+    );
+    assert_eq!(
+        "collapsible_panel_hover_expanded",
+        hover_state.screen_state.last_event
+    );
+    assert_eq!("hover=expanded", hover_state.screen_state.state_label);
+    assert!(component_body_pixel_diff(PAGE, &before_hover, &after_hover) > 0);
+
+    let mut keyboard_state = panel_state();
+    assert!(focus_clickable_at_for_audit(
+        &mut keyboard_state,
+        target.x + CLICK_OFFSET,
+        target.y + CLICK_OFFSET
+    ));
+    assert!(apply_clickable_keyboard_activation_for_audit(
+        &mut keyboard_state
+    ));
+    assert_eq!(
+        "collapsible_panel_keyboard_toggle",
+        keyboard_state.screen_state.last_action
+    );
+    assert_eq!(
+        "collapsible_panel_mode_changed",
+        keyboard_state.screen_state.last_event
+    );
+
+    let mut context_state = panel_state();
+    assert!(apply_context_click(
+        &mut context_state,
+        target.x + CLICK_OFFSET,
+        target.y + CLICK_OFFSET
+    ));
+    assert_eq!(
+        "collapsible_panel_context_pin",
+        context_state.screen_state.last_action
+    );
+    assert_eq!(
+        "collapsible_panel_pin_changed",
+        context_state.screen_state.last_event
+    );
+    assert_eq!("pinned=false", context_state.screen_state.state_label);
+}
+
 fn assert_panel_token(theme_id: &str, theme: ThemeSnapshot) {
     let canvas = StorybookVisual.render_preset(theme_id, PAGE, EXPLORER_PRESET, 0);
     let colors = palette::VisualPalette::from_theme(&theme);
@@ -91,4 +170,19 @@ fn assert_panel_token(theme_id: &str, theme: ThemeSnapshot) {
             component.y + PANEL_Y + PANEL_SAMPLE_Y_OFFSET
         )
     );
+}
+
+fn panel_state() -> StorybookWindowState {
+    let mut state = StorybookWindowState::default();
+    state.select_page(PAGE);
+    state
+}
+
+fn render_state(state: &StorybookWindowState) -> super::Canvas {
+    render::render_storybook_canvas_with_screen_state(
+        DARK_THEME,
+        PAGE,
+        state.preset_index,
+        state.screen_state.clone(),
+    )
 }

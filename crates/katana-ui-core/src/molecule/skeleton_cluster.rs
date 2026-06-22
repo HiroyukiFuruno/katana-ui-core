@@ -1,5 +1,5 @@
 use crate::atom::{Skeleton, SkeletonAnimation, SkeletonShape, SkeletonSize};
-use crate::render_model::{UiDimension, UiNode, UiNodeKind, UiStateId, UiTone};
+use crate::render_model::{UiDimension, UiLoadingProps, UiNode, UiNodeKind, UiStateId, UiTone};
 use serde::{Deserialize, Serialize};
 
 const CARD_MEDIA_WIDTH_PX: u16 = 280;
@@ -41,6 +41,7 @@ pub struct SkeletonCluster {
     preset: SkeletonClusterPreset,
     items: Vec<Skeleton>,
     live_region_label: String,
+    reduced_motion: bool,
 }
 
 impl SkeletonCluster {
@@ -52,6 +53,7 @@ impl SkeletonCluster {
             preset: SkeletonClusterPreset::ListRow,
             items: Vec::new(),
             live_region_label: String::from("loading"),
+            reduced_motion: false,
         }
     }
 
@@ -73,6 +75,18 @@ impl SkeletonCluster {
     }
 
     #[must_use]
+    pub fn live_region(mut self, label: impl Into<String>) -> Self {
+        self.live_region_label = label.into();
+        self
+    }
+
+    #[must_use]
+    pub fn reduced_motion(mut self, reduced_motion: bool) -> Self {
+        self.reduced_motion = reduced_motion;
+        self
+    }
+
+    #[must_use]
     pub fn live_region_label(&self) -> &str {
         &self.live_region_label
     }
@@ -81,17 +95,33 @@ impl SkeletonCluster {
 impl From<SkeletonCluster> for UiNode {
     fn from(value: SkeletonCluster) -> Self {
         let live_region = cluster_live_region(&value);
+        let reduced_motion = value.reduced_motion;
         let items = if value.items.is_empty() {
             preset_items(value.preset)
         } else {
             value.items
         };
-        items.into_iter().fold(
-            UiNode::from_state(UiNodeKind::SkeletonCluster, value.label, value.state_id)
-                .accessibility_label(live_region)
-                .style_class(format!("{:?}", value.preset)),
-            |node, item| node.child(UiNode::from(item).accessibility_label("")),
-        )
+        items
+            .into_iter()
+            .map(|item| reduced_item(item, reduced_motion))
+            .fold(
+                UiNode::from_state(UiNodeKind::SkeletonCluster, value.label, value.state_id)
+                    .accessibility_label(live_region)
+                    .loading_indicator(UiLoadingProps {
+                        reduced_motion,
+                        ..UiLoadingProps::default()
+                    })
+                    .style_class(format!("{:?}", value.preset)),
+                |node, item| node.child(UiNode::from(item).accessibility_label("")),
+            )
+    }
+}
+
+fn reduced_item(item: Skeleton, reduced_motion: bool) -> Skeleton {
+    if reduced_motion {
+        item.reduced_motion(true)
+    } else {
+        item
     }
 }
 

@@ -6,8 +6,11 @@ use crate::DEFAULT_STORYBOOK_PAGE;
 
 const DARK_THEME: &str = "dark";
 const BUTTON_PAGE: &str = "button";
+const CHECKBOX_PAGE: &str = "checkbox";
 const DEFAULT_PRESET: usize = 0;
+const DISABLED_PRESET: usize = 2;
 const SUMMARY_SETTING_INDEX: usize = 2;
+const SUMMARY_STATE_INDEX: usize = 1;
 const SUMMARY_TOOLTIP_DIFF_THRESHOLD: usize = 100;
 const SUMMARY_TOOLTIP_SCAN_HEIGHT: usize = 40;
 const SUMMARY_TOOLTIP_SCAN_WIDTH: usize = 360;
@@ -46,13 +49,32 @@ fn summary_ellipsis_exposes_full_value_with_tooltip_state() {
     assert!(summary_tooltip_pixel_diff(&hidden, &shown) > SUMMARY_TOOLTIP_DIFF_THRESHOLD);
 }
 
+#[test]
+fn checkbox_state_summary_keeps_disabled_state_fully_visible() {
+    let mut screen_state = StorybookScreenState::default();
+    screen_state.apply_checkbox_disabled_preset_default();
+    let scenario = summary_scenario_with_state(CHECKBOX_PAGE, DISABLED_PRESET, screen_state);
+    let visible = preview::summary_visible_samples_for_test(scenario);
+
+    assert_eq!("state disabled=true", visible[SUMMARY_STATE_INDEX]);
+}
+
 fn button_summary_scenario_with_state(
+    screen_state: StorybookScreenState,
+) -> super::render_context::ScenarioContext<'static> {
+    summary_scenario_with_state(BUTTON_PAGE, DEFAULT_PRESET, screen_state)
+}
+
+fn summary_scenario_with_state(
+    selected_page: &'static str,
+    preset_index: usize,
     screen_state: StorybookScreenState,
 ) -> super::render_context::ScenarioContext<'static> {
     let screen_state = Box::leak(Box::new(screen_state));
     super::render_context::ScenarioContext {
-        selected_page: BUTTON_PAGE,
-        preset_index: DEFAULT_PRESET,
+        selected_page,
+        selected_instance_id: crate::visual::window_interaction::DEFAULT_INSTANCE_ID,
+        preset_index,
         preset_tab_scroll_x: 0,
         tree_expansion: Default::default(),
         scrollbar_visible: true,

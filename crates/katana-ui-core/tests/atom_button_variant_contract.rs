@@ -1,7 +1,7 @@
 use katana_ui_core::atom::{Button, IconTextButton, SvgButton, TextButton};
 use katana_ui_core::render_model::{
-    UiButtonLayoutDto, UiButtonLayoutPatchDto, UiButtonLayoutPreset, UiButtonLayoutSpec, UiNode,
-    UiVariant, UiVisualRole,
+    UiButtonLayoutDto, UiButtonLayoutPatchDto, UiButtonLayoutPreset, UiButtonLayoutSpec, UiCursor,
+    UiNode, UiVariant, UiVisualRole,
 };
 
 const CUSTOM_WIDTH: u16 = 144;
@@ -25,6 +25,23 @@ fn specialized_button_atoms_render_as_controls_by_default() {
     assert_eq!(UiVariant::Icon, svg_button.props().variant);
     assert_eq!(UiVariant::Text, text_button.props().variant);
     assert_eq!(UiVariant::IconText, icon_text_button.props().variant);
+}
+
+#[test]
+fn button_atom_variants_default_to_pointer_cursor() {
+    let cases = [
+        ("button", UiNode::from(Button::new("Save"))),
+        ("text-button", UiNode::from(TextButton::new("Save"))),
+        ("svg-button", UiNode::from(SvgButton::new("Search"))),
+        (
+            "icon-text-button",
+            UiNode::from(IconTextButton::new("Search")),
+        ),
+    ];
+
+    for (name, node) in cases {
+        assert_eq!(UiCursor::Pointer, node.props().common.cursor, "{name}");
+    }
 }
 
 #[test]
@@ -92,6 +109,21 @@ fn button_layout_accepts_flexible_spec_entrypoints() {
         UiButtonLayoutPreset::Classic.to_dto().min_width,
         patch_shortcut.props().button.layout.min_width
     );
+}
+
+#[test]
+fn button_layout_label_align_center_is_part_of_core_dto_contract() {
+    let default_button = UiNode::from(Button::new("Save"));
+    let left_patch = UiNode::from(Button::new("Save").layout_patch(
+        UiButtonLayoutPreset::Modern,
+        UiButtonLayoutPatchDto::default().with_label_align("left"),
+    ));
+    let right_custom =
+        UiNode::from(Button::new("Save").layout(custom_layout().with_label_align("right")));
+
+    assert_eq!("center", default_button.props().button.layout.label_align);
+    assert_eq!("left", left_patch.props().button.layout.label_align);
+    assert_eq!("right", right_custom.props().button.layout.label_align);
 }
 
 #[test]

@@ -66,20 +66,27 @@ pub(super) fn toast_stack_manager_story() -> StoryExample {
         max_queued: 1,
     });
     let shown = stack.apply_action(ToastStackAction::Enqueue(toast_payload("save", "Saved")));
-    let queued = stack.apply_action(ToastStackAction::Enqueue(toast_payload(
+    let second = stack.apply_action(ToastStackAction::Enqueue(toast_payload(
         "lint",
         "Lint warning",
     )));
-    let overflow = stack.apply_action(ToastStackAction::Enqueue(toast_payload(
+    let queued = stack.apply_action(ToastStackAction::Enqueue(toast_payload(
         "build",
         "Build failed",
     )));
+    let overflow = stack.apply_action(ToastStackAction::Enqueue(toast_payload(
+        "docs",
+        "Docs ready",
+    )));
+    let story_stack = stack.clone();
     let paused = stack.apply_action(ToastStackAction::PauseHover(true));
     let tick = stack.apply_action(ToastStackAction::Tick(TOAST_TICK_MS));
     let dismissed = stack.apply_action(ToastStackAction::ActivateToastAction {
         toast_id: "save".to_string(),
         action_id: "undo".to_string(),
     });
+    let resumed = stack.apply_action(ToastStackAction::Resume);
+    let timed_out = stack.apply_action(ToastStackAction::Tick(TOAST_DURATION_MS));
     let target = UiStateId::new("state:ToastStackManager:storybook");
     let logs = vec![
         UiCallbackLog::new(
@@ -91,8 +98,8 @@ pub(super) fn toast_stack_manager_story() -> StoryExample {
         UiCallbackLog::new(
             target.clone(),
             "toast_queue_and_overflow",
-            "visible=1 queued=0",
-            format!("queued={queued:?} overflow={overflow:?}"),
+            "visible=2 queued=0",
+            format!("second={second:?} queued={queued:?} overflow={overflow:?}"),
         ),
         UiCallbackLog::new(
             target.clone(),
@@ -101,13 +108,19 @@ pub(super) fn toast_stack_manager_story() -> StoryExample {
             format!("events={paused:?} tick_while_paused={tick:?}"),
         ),
         UiCallbackLog::new(
-            target,
+            target.clone(),
             "toast_action_dismiss",
             "visible=2 queued=1",
             format!("events={dismissed:?}"),
         ),
+        UiCallbackLog::new(
+            target,
+            "toast_timeout",
+            "paused=true visible=2",
+            format!("resume={resumed:?} timed_out={timed_out:?}"),
+        ),
     ];
-    StoryCatalog::interactive_story("toast-stack-manager", stack, logs)
+    StoryCatalog::interactive_story("toast-stack-manager", story_stack, logs)
 }
 
 fn toast_payload(id: &str, message: &str) -> ToastPayload {

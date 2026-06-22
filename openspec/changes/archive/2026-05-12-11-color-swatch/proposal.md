@@ -1,6 +1,6 @@
 ## Why
 
-タグ色 / カテゴリ色 / アクセント色などを「事前定義された色パレットから 1 色選ぶ」ケースは多い。フル機能のカラーピッカー (HSV/RGB スライダ) ではなく、**指定パレットからの選択 swatch grid** を最小機能として提供する。`../katana/crates/katana-ui/src/widgets/color_picker/` の役割は egui の汎用 picker そのものだが、KUW では「事前定義パレット選択」のスコープに絞る（自由色入力は YAGNI）。
+タグ色 / カテゴリ色 / アクセント色などを「事前定義された色パレットから 1 色選ぶ」ケースは多い。フル機能のカラーピッカー (HSV/RGB スライダ) ではなく、**指定パレットからの選択 swatch grid** を最小機能として提供する。`../katana/crates/katana-ui/src/widgets/color_picker/` の役割は adapter の汎用 picker そのものだが、KUW では「事前定義パレット選択」のスコープに絞る（自由色入力は YAGNI）。
 
 ## What Changes
 

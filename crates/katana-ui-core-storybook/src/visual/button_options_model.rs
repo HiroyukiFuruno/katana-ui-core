@@ -2,7 +2,8 @@ use super::CONTROL_COUNT;
 #[path = "button_options_values.rs"]
 mod values;
 pub(in crate::visual) use values::{
-    StorybookButtonHeightMode, StorybookButtonTabIndex, StorybookButtonWidthMode,
+    StorybookButtonCommandMode, StorybookButtonHeightMode, StorybookButtonIconPosition,
+    StorybookButtonLayoutPreset, StorybookButtonTabIndex, StorybookButtonWidthMode,
     StorybookButtonZIndex,
 };
 
@@ -17,6 +18,12 @@ pub(in crate::visual) struct StorybookButtonOptions {
     pub(in crate::visual) height_mode: StorybookButtonHeightMode,
     pub(in crate::visual) tab_index: StorybookButtonTabIndex,
     pub(in crate::visual) z_index: StorybookButtonZIndex,
+    pub(in crate::visual) command_mode: StorybookButtonCommandMode,
+    pub(in crate::visual) keyboard_activation: bool,
+    pub(in crate::visual) icon_position: StorybookButtonIconPosition,
+    pub(in crate::visual) layout_preset: StorybookButtonLayoutPreset,
+    pub(in crate::visual) external_svg_source: bool,
+    pub(in crate::visual) aria_label: bool,
 }
 
 impl Default for StorybookButtonOptions {
@@ -31,31 +38,76 @@ impl Default for StorybookButtonOptions {
             height_mode: StorybookButtonHeightMode::Auto,
             tab_index: StorybookButtonTabIndex::Zero,
             z_index: StorybookButtonZIndex::Auto,
+            command_mode: StorybookButtonCommandMode::Save,
+            keyboard_activation: true,
+            icon_position: StorybookButtonIconPosition::Leading,
+            layout_preset: StorybookButtonLayoutPreset::Page,
+            external_svg_source: false,
+            aria_label: false,
         }
     }
 }
 
 impl StorybookButtonOptions {
-    pub(in crate::visual) fn toggle(&mut self, control: StorybookButtonOptionControl) {
+    pub(in crate::visual) fn apply_contract_after(
+        &mut self,
+        control: StorybookButtonOptionControl,
+    ) {
         match control {
-            StorybookButtonOptionControl::Visible => self.visible = !self.visible,
-            StorybookButtonOptionControl::Disabled => self.disabled = !self.disabled,
-            StorybookButtonOptionControl::Focusable => self.focusable = !self.focusable,
-            StorybookButtonOptionControl::Border => self.border = !self.border,
-            StorybookButtonOptionControl::Label => self.japanese_label = !self.japanese_label,
-            StorybookButtonOptionControl::Width => self.width_mode = self.width_mode.next(),
-            StorybookButtonOptionControl::Height => self.height_mode = self.height_mode.next(),
-            StorybookButtonOptionControl::TabIndex => self.tab_index = self.tab_index.next(),
-            StorybookButtonOptionControl::ZIndex => self.z_index = self.z_index.next(),
+            StorybookButtonOptionControl::Visible => self.visible = false,
+            StorybookButtonOptionControl::Disabled => self.disabled = true,
+            StorybookButtonOptionControl::Focusable => self.focusable = false,
+            StorybookButtonOptionControl::Border => self.border = false,
+            StorybookButtonOptionControl::Label => self.japanese_label = true,
+            StorybookButtonOptionControl::Width => {
+                self.width_mode = StorybookButtonWidthMode::Auto.next();
+            }
+            StorybookButtonOptionControl::Height => {
+                self.height_mode = StorybookButtonHeightMode::Auto.next();
+            }
+            StorybookButtonOptionControl::TabIndex => {
+                self.tab_index = StorybookButtonTabIndex::Zero.next();
+            }
+            StorybookButtonOptionControl::ZIndex => {
+                self.z_index = StorybookButtonZIndex::Auto.next();
+            }
+            StorybookButtonOptionControl::Command => {
+                self.command_mode = StorybookButtonCommandMode::Save.next();
+            }
+            StorybookButtonOptionControl::KeyboardActivation => {
+                self.keyboard_activation = false;
+            }
+            StorybookButtonOptionControl::IconPosition => {
+                self.icon_position = StorybookButtonIconPosition::Leading.next();
+            }
+            StorybookButtonOptionControl::LayoutPreset => {
+                self.layout_preset = StorybookButtonLayoutPreset::Page.next();
+            }
+            StorybookButtonOptionControl::SvgSource => {
+                self.external_svg_source = true;
+            }
+            StorybookButtonOptionControl::AriaLabel => {
+                self.aria_label = true;
+            }
         }
     }
 
     pub(in crate::visual) fn label(self, fallback: &'static str) -> &'static str {
         if self.japanese_label {
             "保存する"
+        } else if matches!(self.command_mode, StorybookButtonCommandMode::Open) {
+            "Open command"
         } else {
             fallback
         }
+    }
+
+    pub(in crate::visual) const fn icon_trailing(self) -> bool {
+        matches!(self.icon_position, StorybookButtonIconPosition::Trailing)
+    }
+
+    pub(in crate::visual) const fn effective_preset_index(self, fallback: usize) -> usize {
+        self.layout_preset.preset_index(fallback)
     }
 }
 
@@ -70,6 +122,12 @@ pub(in crate::visual) enum StorybookButtonOptionControl {
     Height,
     TabIndex,
     ZIndex,
+    Command,
+    KeyboardActivation,
+    IconPosition,
+    LayoutPreset,
+    SvgSource,
+    AriaLabel,
 }
 
 impl StorybookButtonOptionControl {
@@ -84,6 +142,12 @@ impl StorybookButtonOptionControl {
             Self::Label,
             Self::TabIndex,
             Self::ZIndex,
+            Self::Command,
+            Self::KeyboardActivation,
+            Self::IconPosition,
+            Self::LayoutPreset,
+            Self::SvgSource,
+            Self::AriaLabel,
         ]
     }
 
@@ -98,6 +162,12 @@ impl StorybookButtonOptionControl {
             Self::Height => "height",
             Self::TabIndex => "tab-index",
             Self::ZIndex => "z-index",
+            Self::Command => "button.command",
+            Self::KeyboardActivation => "button.keyboard_activation",
+            Self::IconPosition => "button.icon_position",
+            Self::LayoutPreset => "button.layout_preset",
+            Self::SvgSource => "button.svg_source",
+            Self::AriaLabel => "button.aria_label",
         }
     }
 
@@ -117,6 +187,15 @@ impl StorybookButtonOptionControl {
             Self::Height => options.height_mode.label(),
             Self::TabIndex => options.tab_index.label(),
             Self::ZIndex => options.z_index.label(),
+            Self::Command => options.command_mode.label(),
+            Self::KeyboardActivation if options.keyboard_activation => "true",
+            Self::KeyboardActivation => "false",
+            Self::IconPosition => options.icon_position.label(),
+            Self::LayoutPreset => options.layout_preset.label(),
+            Self::SvgSource if options.external_svg_source => "custom-svg",
+            Self::SvgSource => "default-svg",
+            Self::AriaLabel if options.aria_label => "Close panel",
+            Self::AriaLabel => "Svg action",
         }
     }
 
@@ -136,6 +215,15 @@ impl StorybookButtonOptionControl {
             Self::Height => height_state(options.height_mode),
             Self::TabIndex => tab_index_state(options.tab_index),
             Self::ZIndex => z_index_state(options.z_index),
+            Self::Command => command_state(options.command_mode),
+            Self::KeyboardActivation if options.keyboard_activation => "keyboard=true",
+            Self::KeyboardActivation => "keyboard=false",
+            Self::IconPosition => icon_position_state(options.icon_position),
+            Self::LayoutPreset => layout_preset_state(options.layout_preset),
+            Self::SvgSource if options.external_svg_source => "svg_source=custom",
+            Self::SvgSource => "svg_source=default",
+            Self::AriaLabel if options.aria_label => "aria_label=custom",
+            Self::AriaLabel => "aria_label=default",
         }
     }
 }
@@ -170,5 +258,26 @@ const fn z_index_state(z_index: StorybookButtonZIndex) -> &'static str {
         StorybookButtonZIndex::Auto => "z-index=auto",
         StorybookButtonZIndex::Raised => "z-index=10",
         StorybookButtonZIndex::Overlay => "z-index=100",
+    }
+}
+
+const fn command_state(command: StorybookButtonCommandMode) -> &'static str {
+    match command {
+        StorybookButtonCommandMode::Save => "command=save",
+        StorybookButtonCommandMode::Open => "command=open",
+    }
+}
+
+const fn icon_position_state(position: StorybookButtonIconPosition) -> &'static str {
+    match position {
+        StorybookButtonIconPosition::Leading => "icon=leading",
+        StorybookButtonIconPosition::Trailing => "icon=trailing",
+    }
+}
+
+const fn layout_preset_state(layout: StorybookButtonLayoutPreset) -> &'static str {
+    match layout {
+        StorybookButtonLayoutPreset::Page => "layout=page",
+        StorybookButtonLayoutPreset::Dense => "layout=dense",
     }
 }

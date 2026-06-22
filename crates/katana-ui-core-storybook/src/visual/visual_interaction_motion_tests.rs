@@ -3,7 +3,11 @@ use super::visual_interaction_test_support::{
     assert_clicked_page_changes_body, assert_settings_page_changes_body, component_body_pixel_diff,
     pixel_at,
 };
-use super::{StorybookVisual, preview_detail, storybook_ui_option_contract};
+use super::window_interaction::{
+    StorybookWindowState, apply_click, apply_clickable_keyboard_activation_for_audit,
+    apply_hover_at, focus_clickable_at_for_audit,
+};
+use super::{StorybookVisual, preview_detail, render, storybook_ui_option_contract};
 use crate::catalog::StoryPresetLabels;
 
 const DARK_THEME: &str = "dark";
@@ -16,6 +20,7 @@ const PER_MOLECULE_PRESET: usize = 3;
 const REQUIRED_PRESET_COUNT: usize = 4;
 const REQUIRED_OPTION_COUNT: usize = 4;
 const BODY_DIFF_THRESHOLD: usize = 80;
+const CLICK_OFFSET: usize = 4;
 const SAMPLE_X_OFFSET: usize = 26;
 const SAMPLE_Y_OFFSET: usize = 42;
 
@@ -68,4 +73,71 @@ fn motion_light_and_dark_surfaces_use_theme_tokens() {
         pixel_at(&dark, sample_x, sample_y),
         pixel_at(&light, sample_x, sample_y)
     );
+}
+
+#[test]
+fn motion_live_operations_use_core_motion_primitive_actions() {
+    let target = preview_detail::component_action_hit_rect(PAGE);
+
+    let mut pointer_state = motion_state();
+    assert!(apply_click(
+        &mut pointer_state,
+        target.x + CLICK_OFFSET,
+        target.y + CLICK_OFFSET
+    ));
+    assert_eq!("motion_reduce", pointer_state.screen_state.last_action);
+    assert_eq!(
+        "motion_snapshot_changed",
+        pointer_state.screen_state.last_event
+    );
+    assert_eq!("instant=true", pointer_state.screen_state.state_label);
+    assert!(pointer_state.screen_state.runtime_structured.motion.reduced);
+
+    let mut hover_state = motion_state();
+    let before_hover = render_state(&hover_state);
+    assert!(apply_hover_at(
+        &mut hover_state,
+        target.x + CLICK_OFFSET,
+        target.y + CLICK_OFFSET
+    ));
+    let after_hover = render_state(&hover_state);
+    assert_eq!("motion_hover", hover_state.screen_state.last_action);
+    assert_eq!("hover_start", hover_state.screen_state.last_event);
+    assert_eq!("hover=motion", hover_state.screen_state.state_label);
+    assert!(component_body_pixel_diff(PAGE, &before_hover, &after_hover) > 0);
+
+    let mut keyboard_state = motion_state();
+    assert!(focus_clickable_at_for_audit(
+        &mut keyboard_state,
+        target.x + CLICK_OFFSET,
+        target.y + CLICK_OFFSET
+    ));
+    assert_eq!("motion_focus", keyboard_state.screen_state.last_action);
+    assert!(apply_clickable_keyboard_activation_for_audit(
+        &mut keyboard_state
+    ));
+    assert_eq!(
+        "motion_keyboard_tick",
+        keyboard_state.screen_state.last_action
+    );
+    assert_eq!(
+        "motion_phase_changed",
+        keyboard_state.screen_state.last_event
+    );
+    assert_eq!("phase=3", keyboard_state.screen_state.state_label);
+}
+
+fn motion_state() -> StorybookWindowState {
+    let mut state = StorybookWindowState::default();
+    state.select_page(PAGE);
+    state
+}
+
+fn render_state(state: &StorybookWindowState) -> super::Canvas {
+    render::render_storybook_canvas_with_screen_state(
+        DARK_THEME,
+        PAGE,
+        state.preset_index,
+        state.screen_state.clone(),
+    )
 }

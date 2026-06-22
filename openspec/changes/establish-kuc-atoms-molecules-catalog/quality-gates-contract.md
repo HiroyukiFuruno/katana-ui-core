@@ -10,6 +10,21 @@ Storybook は利用者や開発者が実画面で触ってフィードバック�
 v0.1.0 の DoD は、`katana` と `katana-chat-ui` が `katana-ui-core` だけで app UI を構築できることを、公開 API 契約、自動テスト、数値化された layout / rendering contract、interaction / input / state / event tests、guard で検証できる状態にする。
 画像検証、画像証跡、目視補助、ユーザー検証は release readiness の完了根拠にしない。
 
+## KUC generic Rust app boundary
+
+KUC の DoD は、汎用 Rust app が KUC の公開 UI 契約だけで画面を構築できることである。
+KUC 本体は Katana を知ってはならない。
+Katana は参照実装として扱い、挙動や操作仕様を写す対象にはするが、KUC の型名、enum、asset path、preset、guard 条件へ Katana 固有の名前を混入させない。
+SVG icon は KUC が持つ icon pack から選ぶのではなく、呼び出し側から外部から渡される `svg_source` を `UiIconProps` として受け取る。
+KUC は framework 固有依存を排除した上で、Katana と同等の入力、タブ、ボタン、panel、state / event / action の契約を framework-neutral に提供する。
+
+## Completion evaluation correction
+
+`cargo test`、Storybook 全体テスト、guard、OpenSpec validation が通っただけでは「KUC を使って Rust app を構築できる」と評価してはならない。
+DoD は `examples/kuc-consumer-app` のような Storybook ではない consumer crate が、`katana-ui-core` の public API だけで app UI を構築し、layout、event、callback、動的 action、state 分離を自動テストで検証できることを必須条件にする。
+対象 UI 群は OpenSpec change を正本とし、既存の done 報告は原則として未検証扱いから再監査する。
+Storybook はハリボテではなく、対象 UI の全 option を Inspector で切り替えられ、設定値の違いを preset tab で動的に確認でき、state は UI ごと、かつ tab ごとに分離されている必要がある。
+
 ## Gate ownership
 
 | gate | 主な責務 | 実行入口 |
@@ -21,7 +36,7 @@ v0.1.0 の DoD は、`katana` と `katana-chat-ui` が `katana-ui-core` だけ�
 | interaction / state / event | theme、preset、navigation、settings、hit-target、scroll の操作後状態と履歴 | `just check` / `just storybook-regression` |
 | input regression | key、日本語入力（IME）、OS 絵文字 | `just check` または dedicated input gate |
 | guard | 依存混入、state 外部化、placeholder、網羅漏れ | `just ast-lint` / `just kuc-guardrails` |
-| consumer readiness | `katana` と `katana-chat-ui` が必要とする atoms / molecules / panel / event / state / layout 契約 | `just check` 内の公開 API / adapter 非依存 contract |
+| consumer readiness | `examples/kuc-consumer-app` を含む consumer crate が必要とする atoms / molecules / panel / event / callback / state / layout 契約 | `just check` 内の公開 API / adapter 非依存 contract |
 | requirement coverage | 要件行ごとの対応テスト有無 | `just release-readiness-check` |
 
 KUC 固有 guard はこの repository の `scripts/` 配下に置く。
@@ -109,6 +124,7 @@ molecules contract test は、`molecules-contract.md` の各 UI 行をテスト�
 要件に書いたことが自動テストで検証できていない場合、それは実装完了ではなくテストシナリオ漏れとして扱う。
 各 UI の option / action / event / state / preset / layout / rendering は、Storybook で触れるだけでは完了にしない。
 完了判定時は、要件行から対応する contract test、interaction regression、input regression、state/event test、rendering contract、guard のいずれかへ追跡できる必要がある。
+動的 action、callback、layout、state 分離は Storybook 表示だけで判定せず、UT、IT、E2E 相当の自動テストで検証する。
 
 ## 7.6 Static guards
 
@@ -116,7 +132,7 @@ molecules contract test は、`molecules-contract.md` の各 UI 行をテスト�
 
 | guard | 失敗条件 |
 | --- | --- |
-| framework leak | core crate に Floem / egui / GPUI / application domain が混入する。 |
+| framework leak | core crate に framework-specific UI / application domain が混入する。 |
 | state ownership | component state が外部 store / global mutable state に逃げる。 |
 | placeholder story | Storybook page が文字列や generic `node` だけで終わる。 |
 | static sample gallery | 中央本文が全件カード一覧だけで、選択中 UI の option / action / event / state / rendering を扱えない。 |

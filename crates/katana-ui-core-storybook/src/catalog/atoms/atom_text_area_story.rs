@@ -1,4 +1,5 @@
 use super::{StoryCatalog, StoryExample};
+use crate::storybook_svg_fixtures;
 use katana_ui_core::atom;
 use katana_ui_core::atom::{
     TextAreaAction, TextAreaCompositionPhase, TextAreaNewlineKey, TextAreaSubmitKey,
@@ -20,7 +21,13 @@ pub(super) fn text_area() -> StoryExample {
         .submit_key(TextAreaSubmitKey::Enter)
         .newline_key(TextAreaNewlineKey::ShiftEnter)
         .tab_behavior(TextAreaTabBehavior::MoveFocus)
-        .resize_enabled(false);
+        .resize_enabled(false)
+        .leading_svg_icon_slot("Search icon", storybook_svg_fixtures::SEARCH_SVG)
+        .trailing_svg_icon_button(
+            "Clear notes",
+            storybook_svg_fixtures::SEARCH_SVG,
+            "text_area.clear",
+        );
     let target = text_area.state_id().clone();
     let typed = text_area.apply_text_area_action(TextAreaAction::Type("\nemoji 👩‍💻".to_string()));
     let ime = text_area.apply_text_area_action(TextAreaAction::composition(

@@ -1,10 +1,8 @@
 [workspace]
 members = [
     "crates/katana-ui-core",
-    "crates/katana-ui-core-egui",
-    "crates/katana-ui-core-floem",
-    "crates/katana-ui-core-gpui",
     "crates/katana-ui-core-storybook",
+    "examples/kuc-consumer-app",
 ]
 resolver = "2"
 
@@ -17,15 +15,12 @@ rust-version = "1.95.0"
 authors = ["Hiroyuki Furuno"]
 
 [workspace.dependencies]
-floem = { version = "0.2.0", git = "https://github.com/lapce/floem.git", rev = "ec7ea2077cf867e58e9684209291881217023f74" }
-floem_reactive = { version = "0.2.0", git = "https://github.com/lapce/floem.git", rev = "ec7ea2077cf867e58e9684209291881217023f74" }
-floem_renderer = { version = "0.2.0", git = "https://github.com/lapce/floem.git", rev = "ec7ea2077cf867e58e9684209291881217023f74" }
 katana-ui-core = { version = "0.1.0", path = "crates/katana-ui-core" }
-katana-ui-core-egui = { version = "0.1.0", path = "crates/katana-ui-core-egui" }
-katana-ui-core-floem = { version = "0.1.0", path = "crates/katana-ui-core-floem" }
-katana-ui-core-gpui = { version = "0.1.0", path = "crates/katana-ui-core-gpui" }
 cosmic-text = "0.19.0"
 image = { version = "0.25.10", default-features = false, features = ["png"] }
 minifb = "0.28.0"
+resvg = "0.47"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
+tiny-skia = "0.12"
+unicode-segmentation = "1.12.0"

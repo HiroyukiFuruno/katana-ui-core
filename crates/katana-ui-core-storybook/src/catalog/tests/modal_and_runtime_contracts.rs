@@ -131,12 +131,17 @@ fn skeleton_stories_expose_presets_settings_and_logs() -> Result<(), &'static st
 
     assert_eq!(
         &[
+            "shape variant",
             "text lines",
-            "avatar circle",
-            "rect shimmer",
-            "line wave",
+            "last line ratio",
+            "line thickness",
+            "size fill",
+            "animation wave",
+            "tone accent",
+            "radius round",
             "reduced motion",
-            "tone/radius"
+            "a11y label",
+            "aspect ratio",
         ],
         StoryPresetLabels::for_page("skeleton")
     );
@@ -179,6 +184,7 @@ fn skeleton_stories_expose_presets_settings_and_logs() -> Result<(), &'static st
         "radius",
         "reduced_motion",
         "accessibility_label",
+        "aspect_ratio",
     ] {
         assert!(
             skeleton_details.settings.contains(setting),

@@ -121,3 +121,28 @@ fn popover_keep_open_on_inner_focus_blocks_dismiss_until_focus_leaves() {
     assert!(!blur.after.focused);
     assert!(!dismiss_after_blur.after.open);
 }
+
+#[test]
+fn popover_hover_focus_toggle_and_escape_are_core_actions() {
+    let mut popover = Popover::new("Actions")
+        .open(false)
+        .outside_click_dismiss(true)
+        .escape_dismiss(true)
+        .keep_open_on_inner_focus(true)
+        .focus_return_target(UiNodeId::new("toolbar-anchor"));
+
+    let opened = popover.apply_action(&UiAction::popover_toggle(popover.state_id().clone()));
+    let hovered = popover.apply_action(&UiAction::hover(popover.state_id().clone(), true));
+    let focused = popover.apply_action(&UiAction::focus(popover.state_id().clone()));
+    let escaped = popover.apply_action(&UiAction::modal_escape(popover.state_id().clone()));
+
+    assert!(opened.handled);
+    assert!(opened.after.open);
+    assert!(hovered.handled);
+    assert!(hovered.after.hovered);
+    assert!(focused.handled);
+    assert!(focused.after.focused);
+    assert!(escaped.handled);
+    assert!(!escaped.after.open);
+    assert_eq!("escape", escaped.after.dismiss_reason);
+}

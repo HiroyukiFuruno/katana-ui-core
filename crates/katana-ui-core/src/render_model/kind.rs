@@ -33,6 +33,7 @@ pub enum UiNodeKind {
     Modal,
     Tabs,
     CloseableTabStrip,
+    CloseableTabGroupHeader,
     CloseableTab,
     Toolbar,
     FormField,

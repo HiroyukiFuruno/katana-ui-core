@@ -115,13 +115,19 @@ fn color_picker_settings_report_covers_legacy_22_options() {
     let report = StorybookPanelInteractionReport::build(&examples);
 
     for option in [
-        "color_picker.mode",
-        "color_picker.red",
-        "color_picker.green",
-        "color_picker.blue",
+        "color_picker.rgba",
+        "color_picker.value",
+        "color_picker.open",
+        "color_picker.hue",
         "color_picker.alpha",
         "color_picker.blending",
-        "color_picker.eyedropper",
+        "color_picker.color_area",
+        "color_picker.trigger_size",
+        "color_picker.title",
+        "color_picker.rgba_mode",
+        "color_picker.panel_scale_percent",
+        "color_picker.trigger_border",
+        "color_picker.eyedropper_callback",
         "color_picker.readonly",
         "color_picker.disabled",
     ] {

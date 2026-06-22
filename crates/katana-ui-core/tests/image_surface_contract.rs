@@ -1,7 +1,7 @@
 use katana_ui_core::atom::ImageSurface;
 use katana_ui_core::render_model::{
     UiImageSurfaceFit, UiImageSurfaceHighlight, UiImageSurfaceProps, UiImageSurfaceValidationError,
-    UiNode, UiNodeKind, UiRect,
+    UiNode, UiNodeKind, UiRect, UiTree, UiTreeSemantics,
 };
 
 fn sample_rgba() -> Vec<u8> {
@@ -61,4 +61,45 @@ fn image_surface_rejects_rgba_payload_that_does_not_match_extent() -> Result<(),
         error
     );
     Ok(())
+}
+
+#[test]
+fn semantic_fingerprint_changes_when_image_surface_descriptor_changes()
+-> Result<(), UiImageSurfaceValidationError> {
+    let base = surface_fingerprint(ImageSurface::from_rgba(
+        "Preview",
+        "same-surface",
+        2,
+        1,
+        sample_rgba(),
+    )?);
+    let resized = surface_fingerprint(ImageSurface::from_rgba(
+        "Preview",
+        "same-surface",
+        1,
+        2,
+        sample_rgba(),
+    )?);
+    let scaled = surface_fingerprint(
+        ImageSurface::from_rgba("Preview", "same-surface", 2, 1, sample_rgba())?.content_scale(200),
+    );
+    let covered = surface_fingerprint(
+        ImageSurface::from_rgba("Preview", "same-surface", 2, 1, sample_rgba())?
+            .fit(UiImageSurfaceFit::Cover),
+    );
+    let highlighted = surface_fingerprint(
+        ImageSurface::from_rgba("Preview", "same-surface", 2, 1, sample_rgba())?.highlight_rect(
+            UiImageSurfaceHighlight::current_search_hit(UiRect::new(0, 0, 1, 1), "hit"),
+        ),
+    );
+
+    assert_ne!(base, resized);
+    assert_ne!(base, scaled);
+    assert_ne!(base, covered);
+    assert_ne!(base, highlighted);
+    Ok(())
+}
+
+fn surface_fingerprint(surface: ImageSurface) -> String {
+    UiTreeSemantics::fingerprint(&UiTree::new(surface))
 }

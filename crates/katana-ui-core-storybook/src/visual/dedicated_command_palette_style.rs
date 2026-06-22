@@ -6,10 +6,14 @@ const RESULTS_PRESET_INDEX: usize = 1;
 const SLASH_PRESET_INDEX: usize = 2;
 const DISABLED_PRESET_INDEX: usize = 3;
 const VIRTUAL_PRESET_INDEX: usize = 4;
+const VIRTUALIZATION_PRESET_INDEX: usize = 5;
 const ROW_HIGHLIGHT_INDEX: usize = 0;
 const ROW_DISABLED_INDEX: usize = 2;
 
 pub(super) fn search_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
+    if scenario.screen_state.last_action == "command_palette_keyboard_close" {
+        return common::DANGER;
+    }
     if scenario.screen_state.has_settings_override() {
         return common::TOKEN;
     }
@@ -17,6 +21,14 @@ pub(super) fn search_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>
 }
 
 pub(super) fn row_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>, row: usize) -> u32 {
+    if scenario.screen_state.last_action == "command_palette_keyboard_execute" && row == 1 {
+        return common::SUCCESS;
+    }
+    if scenario.screen_state.last_action == "command_palette_keyboard_close"
+        && row == ROW_HIGHLIGHT_INDEX
+    {
+        return common::DANGER;
+    }
     if row == ROW_HIGHLIGHT_INDEX
         && (scenario.screen_state.has_widget_action()
             || scenario.screen_state.has_settings_override()
@@ -31,7 +43,7 @@ pub(super) fn row_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>, r
 }
 
 pub(super) fn shortcut_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> u32 {
-    if scenario.preset_index == VIRTUAL_PRESET_INDEX {
+    if is_virtual_preset(scenario) {
         return common::WARN;
     }
     palette.panel
@@ -43,7 +55,7 @@ pub(super) fn query_label(scenario: ScenarioContext<'_>) -> &'static str {
     }
     match scenario.preset_index {
         SLASH_PRESET_INDEX => "/format",
-        VIRTUAL_PRESET_INDEX => "open 50",
+        VIRTUAL_PRESET_INDEX | VIRTUALIZATION_PRESET_INDEX => "open 50",
         _ => "open",
     }
 }
@@ -68,8 +80,16 @@ pub(super) fn status_label(scenario: ScenarioContext<'_>) -> &'static str {
         SLASH_PRESET_INDEX => "launcher=slash",
         DISABLED_PRESET_INDEX => "disabled=readonly",
         VIRTUAL_PRESET_INDEX => "rows=50",
+        VIRTUALIZATION_PRESET_INDEX => "virtual window",
         _ => "open=true",
     }
+}
+
+fn is_virtual_preset(scenario: ScenarioContext<'_>) -> bool {
+    matches!(
+        scenario.preset_index,
+        VIRTUAL_PRESET_INDEX | VIRTUALIZATION_PRESET_INDEX
+    )
 }
 
 fn slash_row_label(row: usize) -> &'static str {

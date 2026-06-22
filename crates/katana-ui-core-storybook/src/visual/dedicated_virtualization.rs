@@ -2,7 +2,7 @@ use super::canvas::Canvas;
 use super::dedicated_dod_common::{self as common, Block, Rect, TextSpec};
 use super::dedicated_dod_metrics as m;
 use super::dedicated_virtualization_style::{
-    correction_fill, row_fill, row_text, state_label, viewport_fill,
+    correction_fill, row_fill, row_text, state_label, thumb_fill, viewport_fill,
 };
 use super::palette::VisualPalette;
 use super::render_context::ScenarioContext;
@@ -76,7 +76,7 @@ fn blocks(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [Block; BLO
             FIRST_ROW_Y + m::PX_18,
             SCROLLBAR_WIDTH,
             THUMB_HEIGHT,
-            palette.accent,
+            thumb_fill(palette, scenario),
         ),
         Block::new(
             ROW_X + ROW_WIDTH - CORRECTION_WIDTH,

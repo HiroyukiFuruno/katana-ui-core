@@ -1,28 +1,49 @@
 use super::canvas::Canvas;
 use super::modal;
-use super::presentation;
 use super::render;
 use super::runtime::{StorybookRuntimeReport, StorybookVisualError, StorybookWindowRun};
 use super::types::StorybookVisual;
+use super::window_frame::{
+    apply_hover, present_for_window, render_frame_for_scale, render_frame_for_window_scale,
+    storybook_scale_factor, window_height_for_canvas, window_width_for_canvas,
+};
 use super::window_interaction::{StorybookWindowState, apply_mouse_click, apply_scroll};
 use super::window_keyboard::apply_keyboard;
 use super::window_modal_plan;
+use super::window_mouse_trace;
 use super::window_options::{main_window_options, modal_window_options};
-use minifb::{Key, Window};
-use std::env;
+use super::window_pair::run_window_pair;
+use super::window_text_caret::{show_active_text_caret, update_active_text_caret};
+use minifb::Window;
 use std::thread;
 use std::time::Duration;
 const MAIN_WINDOW_TITLE: &str = "katana-ui-core Storybook";
 const MODAL_WINDOW_TITLE: &str = "katana-ui-core Modal";
-const STORYBOOK_SCALE_ENV: &str = "KUC_STORYBOOK_SCALE";
 
 impl StorybookVisual {
     pub fn open_window(self, frames: usize) -> Result<(), minifb::Error> {
-        let state = StorybookWindowState::default();
+        self.open_window_for_page(frames, crate::DEFAULT_STORYBOOK_PAGE)
+    }
+
+    pub fn open_window_for_page(
+        self,
+        frames: usize,
+        selected_page: &'static str,
+    ) -> Result<(), minifb::Error> {
+        self.open_window_for_page_and_preset(frames, selected_page, None)
+    }
+
+    pub fn open_window_for_page_and_preset(
+        self,
+        frames: usize,
+        selected_page: &'static str,
+        preset_index: Option<usize>,
+    ) -> Result<(), minifb::Error> {
+        let state = window_state_for_selected_page_and_preset(selected_page, preset_index);
         let mut renderer = render::StorybookFrameRenderer::new();
         let frame = render_frame_for_scale(&mut renderer, &state, storybook_scale_factor());
         let mut window = create_main_window(MAIN_WINDOW_TITLE, &frame)?;
-        run_single_window(&mut window, &mut renderer, frame, frames)
+        run_single_window(&mut window, &mut renderer, frame, frames, state)
     }
 
     pub fn open_modal_window(
@@ -91,34 +112,38 @@ fn run_single_window(
     renderer: &mut render::StorybookFrameRenderer,
     mut frame: Canvas,
     frames: usize,
+    mut state: StorybookWindowState,
 ) -> Result<(), minifb::Error> {
     let mut frame_index = 0;
-    let mut state = StorybookWindowState::default();
     let mut left_mouse_was_down = false;
     let mut right_mouse_was_down = false;
     let mut text_caret_epoch_frame = 0;
     let mut presented = present_for_window(window, &frame);
     let mut presented_window_size = window.get_size();
     while frames == 0 || frame_index < frames {
-        if !window.is_open() || window.is_key_down(Key::Escape) {
+        if !window.is_open() {
             break;
         }
+        window_mouse_trace::record(window, &state, frame_index);
         let scrolled = apply_scroll(window, &mut state);
         let hovered = apply_hover(window, &mut state);
         let clicked = apply_mouse_click(
             window,
             &mut state,
+            &frame,
             &mut left_mouse_was_down,
             &mut right_mouse_was_down,
         );
-        let keyed = apply_keyboard(window, &mut state);
+        let keyed = apply_keyboard(window, &mut state, &frame);
         if clicked || keyed {
             text_caret_epoch_frame = frame_index;
             show_active_text_caret(&mut state);
         }
+        let runtime_tick = apply_runtime_tick_for_frame(&mut state, clicked || keyed);
         let caret_changed =
             update_active_text_caret(&mut state, frame_index, text_caret_epoch_frame);
-        let frame_changed = scrolled || hovered || clicked || keyed || caret_changed;
+        let frame_changed =
+            scrolled || hovered || clicked || keyed || runtime_tick || caret_changed;
         if frame_changed {
             frame = render_frame_for_window_scale(renderer, &state, window);
         }
@@ -134,164 +159,63 @@ fn run_single_window(
     Ok(())
 }
 
-fn show_active_text_caret(state: &mut StorybookWindowState) -> bool {
-    match state.selected_page {
-        "text-input" => state.screen_state.show_text_input_caret(),
-        "text-area" => state.screen_state.show_text_area_caret(),
-        _ => false,
+#[cfg(test)]
+fn window_state_for_selected_page(selected_page: &'static str) -> StorybookWindowState {
+    window_state_for_selected_page_and_preset(selected_page, None)
+}
+
+fn window_state_for_selected_page_and_preset(
+    selected_page: &'static str,
+    preset_index: Option<usize>,
+) -> StorybookWindowState {
+    StorybookWindowState {
+        selected_page,
+        preset_index: preset_index.unwrap_or_default(),
+        ..StorybookWindowState::default()
     }
 }
 
-fn update_active_text_caret(
+fn apply_runtime_tick(state: &mut StorybookWindowState) -> bool {
+    if state.selected_page != "progress-bar" {
+        return false;
+    }
+    let before = state.screen_state.progress_percent();
+    state
+        .screen_state
+        .register_progress_bar_timed_tick(render::FRAME_DELAY_MS as u16);
+    state.screen_state.progress_percent() != before
+}
+
+fn apply_runtime_tick_for_frame(
     state: &mut StorybookWindowState,
-    frame_index: usize,
-    text_caret_epoch_frame: usize,
+    user_activation_changed: bool,
 ) -> bool {
-    let elapsed_frames = frame_index.saturating_sub(text_caret_epoch_frame);
-    match state.selected_page {
-        "text-input" => state
-            .screen_state
-            .update_text_input_caret_visibility(elapsed_frames),
-        "text-area" => state
-            .screen_state
-            .update_text_area_caret_visibility(elapsed_frames),
-        _ => false,
+    if user_activation_changed {
+        return false;
     }
-}
-
-fn present_for_window(window: &Window, frame: &Canvas) -> Canvas {
-    let window_size = window.get_size();
-    if should_present_physical_frame_directly(frame, window_size) {
-        return frame.clone();
-    }
-    let (width, height) = window_size;
-    let fill = frame.pixels().first().copied().unwrap_or_default();
-    presentation::present_frame(frame, width, height, fill)
-}
-
-fn should_present_physical_frame_directly(frame: &Canvas, window_size: (usize, usize)) -> bool {
-    frame.scale_factor() > 1.0
-        && frame.logical_width() == window_size.0
-        && frame.logical_height() == window_size.1
-}
-
-fn apply_hover(window: &mut Window, state: &mut StorybookWindowState) -> bool {
-    let Some((x, y)) = window.get_unscaled_mouse_pos(minifb::MouseMode::Discard) else {
-        return clear_hover(state);
-    };
-    let (width, height) = window.get_size();
-    let Some(point) = super::window_coordinates::window_point_to_canvas_point(
-        super::window_coordinates::WindowPoint::new(x, y),
-        super::window_coordinates::SurfaceSize::new(width, height),
-        super::window_coordinates::SurfaceSize::new(render::WIDTH, render::HEIGHT),
-    ) else {
-        return clear_hover(state);
-    };
-    super::window_cursor::apply_cursor_style(
-        window,
-        super::window_interaction::cursor_style_at(state, point.x, point.y),
-    );
-    super::window_interaction::apply_hover_at(state, point.x, point.y)
+    apply_runtime_tick(state)
 }
 
 fn clear_hover(state: &mut StorybookWindowState) -> bool {
-    let preview_changed = state.screen_state.set_preview_hovered(false);
-    let icon_button_changed = state
-        .screen_state
-        .set_hovered_text_input_icon_button_index(None);
-    preview_changed || icon_button_changed
+    super::window_frame::clear_hover(state)
 }
 
-fn render_frame_for_window_scale(
-    renderer: &mut render::StorybookFrameRenderer,
-    state: &StorybookWindowState,
-    _window: &Window,
-) -> Canvas {
-    render_frame_for_scale(renderer, state, storybook_scale_factor())
-}
-
-fn render_frame_for_scale(
-    renderer: &mut render::StorybookFrameRenderer,
-    state: &StorybookWindowState,
-    scale_factor: f32,
-) -> Canvas {
-    renderer.render_for_scale(
-        render::StorybookRenderOptions {
-            theme_id: state.theme_id,
-            selected_page: state.selected_page,
-            preset_index: state.preset_index,
-            preset_tab_scroll_x: state.preset_tab_scroll_x,
-            scroll_y: state.scroll_y,
-            scrollbar_visible: state.scrollbar_visible,
-            panel_scroll: state.panel_scroll,
-            tree_expansion: state.tree_expansion,
-            show_navigation_lines: state.show_navigation_lines,
-            show_navigation_text_connectors: state.show_navigation_text_connectors,
-            screen_state: state.screen_state.clone(),
-        },
-        scale_factor,
-    )
-}
-
-fn storybook_scale_factor() -> f32 {
-    env::var(STORYBOOK_SCALE_ENV)
-        .ok()
-        .and_then(|value| parse_storybook_scale_factor(value.as_str()))
-        .unwrap_or_else(default_storybook_scale_factor)
-}
-
-fn parse_storybook_scale_factor(value: &str) -> Option<f32> {
-    let scale = value.parse::<u32>().ok()?;
-    match scale {
-        1 | 2 => Some(scale as f32),
-        _ => None,
-    }
-}
-
-fn default_storybook_scale_factor() -> f32 {
-    if cfg!(target_os = "macos") { 2.0 } else { 1.0 }
-}
-
-fn window_width_for_canvas(frame: &Canvas) -> usize {
-    frame.logical_width()
-}
-
-fn window_height_for_canvas(frame: &Canvas) -> usize {
-    frame.logical_height()
-}
-
-fn run_window_pair(
-    main: &mut Window,
-    main_frame: &Canvas,
-    modal_window: &mut Window,
-    modal_frame: &Canvas,
-    frames: usize,
-) -> Result<(), minifb::Error> {
-    let mut frame_index = 0;
-    while frames == 0 || frame_index < frames {
-        if !main.is_open() || !modal_window.is_open() || main.is_key_down(Key::Escape) {
-            break;
-        }
-        main.update_with_buffer(main_frame.pixels(), main_frame.width(), main_frame.height())?;
-        modal_window.update_with_buffer(
-            modal_frame.pixels(),
-            modal_frame.width(),
-            modal_frame.height(),
-        )?;
-        thread::sleep(Duration::from_millis(render::FRAME_DELAY_MS));
-        frame_index += 1;
-    }
-    Ok(())
+pub(in crate::visual) fn clear_hover_for_audit(state: &mut StorybookWindowState) -> bool {
+    clear_hover(state)
 }
 
 #[cfg(test)]
 mod tests {
     use super::StorybookVisual;
     use super::{
-        parse_storybook_scale_factor, should_present_physical_frame_directly,
-        window_height_for_canvas, window_width_for_canvas,
+        apply_runtime_tick, apply_runtime_tick_for_frame, render_frame_for_scale,
+        window_height_for_canvas, window_state_for_selected_page, window_width_for_canvas,
     };
+    use crate::test_assert::KucTestExpect;
     use crate::visual::canvas::Canvas;
+    use crate::visual::render::StorybookFrameRenderer;
+    use crate::visual::window_frame::parse_storybook_scale_factor;
+    use crate::visual::window_interaction::StorybookWindowState;
 
     #[test]
     fn runtime_report_requires_state_overlay_and_modal_plan() {
@@ -320,21 +244,152 @@ mod tests {
     }
 
     #[test]
-    fn should_present_physical_frame_directly_when_scale_2_and_window_matches_logical_size() {
-        let frame = Canvas::new_scaled(1440, 920, 2.0, 0x111111);
-        assert!(should_present_physical_frame_directly(&frame, (1440, 920)));
+    fn render_frame_draws_text_selection_highlight() {
+        let state = StorybookWindowState {
+            selected_page: "text",
+            ..StorybookWindowState::default()
+        };
+        let mut renderer = StorybookFrameRenderer::new();
+        let base = render_frame_for_scale(&mut renderer, &state, 1.0);
+        let run = base
+            .text_runs()
+            .iter()
+            .find(|run| run.text().contains("Heading"))
+            .kuc_expect("text story must expose Heading text run");
+        let rect = run.rect();
+        let selected_state = StorybookWindowState {
+            text_selection_start: Some((rect.x, rect.y)),
+            text_selection_end: Some((rect.right(), rect.bottom())),
+            ..state
+        };
+        let selected = render_frame_for_scale(&mut renderer, &selected_state, 1.0);
+
+        assert!(rect_pixel_diff(&base, &selected, rect.x, rect.y, rect.width, rect.height) > 0);
     }
 
     #[test]
-    fn should_not_present_physical_frame_directly_when_scale_2_and_window_differs_from_logical_size()
-     {
-        let frame = Canvas::new_scaled(1440, 920, 2.0, 0x111111);
-        assert!(!should_present_physical_frame_directly(&frame, (1440, 800)));
+    fn progress_bar_window_runtime_tick_repaints_meter_body() {
+        let mut state = window_state_for_selected_page("progress-bar");
+        let mut renderer = StorybookFrameRenderer::new();
+        let before = render_frame_for_scale(&mut renderer, &state, 1.0);
+
+        for _ in 0..15 {
+            assert!(!apply_runtime_tick(&mut state));
+        }
+        assert!(apply_runtime_tick(&mut state));
+
+        let after = render_frame_for_scale(&mut renderer, &state, 1.0);
+        assert_eq!("progress_tick", state.screen_state.last_action);
+        assert_eq!("progress_changed", state.screen_state.last_event);
+        assert!(rect_pixel_diff(&before, &after, 620, 330, 860, 300) > 0);
     }
 
     #[test]
-    fn should_not_present_physical_frame_directly_when_scale_is_1_even_if_sizes_match() {
-        let frame = Canvas::new_scaled(1440, 920, 1.0, 0x111111);
-        assert!(!should_present_physical_frame_directly(&frame, (1440, 920)));
+    fn progress_bar_window_runtime_tick_cycles_after_maximum() {
+        let mut state = window_state_for_selected_page("progress-bar");
+        let mut renderer = StorybookFrameRenderer::new();
+
+        advance_progress_runtime_boundary(&mut state);
+        advance_progress_runtime_boundary(&mut state);
+        let at_max = render_frame_for_scale(&mut renderer, &state, 1.0);
+
+        advance_progress_runtime_boundary(&mut state);
+        let cycled = render_frame_for_scale(&mut renderer, &state, 1.0);
+
+        assert_eq!(0, state.screen_state.progress_percent());
+        assert_eq!("percent=0", state.screen_state.state_label);
+        assert_eq!("progress_tick", state.screen_state.last_action);
+        assert_eq!("progress_changed", state.screen_state.last_event);
+        assert!(rect_pixel_diff(&at_max, &cycled, 620, 330, 860, 300) > 0);
+    }
+
+    #[test]
+    fn runtime_tick_does_not_mutate_non_progress_pages() {
+        let mut state = window_state_for_selected_page("button");
+
+        assert!(!apply_runtime_tick(&mut state));
+        assert_eq!(65, state.screen_state.progress_percent());
+        assert_eq!("none", state.screen_state.last_action);
+    }
+
+    #[test]
+    fn progress_runtime_tick_does_not_overwrite_user_activation_frame() {
+        let mut state = window_state_for_selected_page("progress-bar");
+        state.screen_state.register_progress_bar_change();
+        let percent_after_click = state.screen_state.progress_percent();
+
+        assert!(!apply_runtime_tick_for_frame(&mut state, true));
+        assert_eq!(percent_after_click, state.screen_state.progress_percent());
+        assert_eq!("progress_change", state.screen_state.last_action);
+        assert_eq!("progress_changed", state.screen_state.last_event);
+    }
+
+    #[test]
+    fn open_window_page_state_drives_progress_bar_runtime_tick() {
+        let mut state = window_state_for_selected_page("progress-bar");
+
+        assert_eq!("progress-bar", state.selected_page);
+        advance_progress_runtime_boundary(&mut state);
+
+        assert_eq!(82, state.screen_state.progress_percent());
+        assert_eq!("progress_tick", state.screen_state.last_action);
+        assert_eq!("progress_changed", state.screen_state.last_event);
+    }
+
+    #[test]
+    fn clear_hover_closes_open_tooltip_when_pointer_leaves_window() {
+        let mut state = window_state_for_selected_page("tooltip");
+        state.screen_state.register_tooltip_hover_open();
+
+        assert!(state.screen_state.is_tooltip_open());
+        assert!(super::clear_hover(&mut state));
+
+        assert!(!state.screen_state.is_tooltip_open());
+        assert_eq!("tooltip_hover", state.screen_state.last_action);
+        assert_eq!("tooltip_closed", state.screen_state.last_event);
+        assert_eq!("hover=false focus=false", state.screen_state.state_label);
+    }
+
+    #[test]
+    fn progress_bar_runtime_tick_starts_after_navigation_selection() {
+        let mut state = StorybookWindowState::default();
+
+        state.select_page("progress-bar");
+        advance_progress_runtime_boundary(&mut state);
+
+        assert_eq!("progress-bar", state.selected_page);
+        assert_eq!(82, state.screen_state.progress_percent());
+        assert_eq!("progress_tick", state.screen_state.last_action);
+        assert_eq!("progress_changed", state.screen_state.last_event);
+    }
+
+    fn advance_progress_runtime_boundary(state: &mut StorybookWindowState) {
+        for _ in 0..16 {
+            if apply_runtime_tick(state) {
+                return;
+            }
+        }
+        let reached = false;
+        assert!(reached, "progress runtime tick boundary was not reached");
+    }
+
+    fn rect_pixel_diff(
+        before: &Canvas,
+        after: &Canvas,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+    ) -> usize {
+        let mut diff = 0;
+        for current_y in y..y.saturating_add(height) {
+            for current_x in x..x.saturating_add(width) {
+                let index = current_y * before.width() + current_x;
+                if before.pixels()[index] != after.pixels()[index] {
+                    diff += 1;
+                }
+            }
+        }
+        diff
     }
 }

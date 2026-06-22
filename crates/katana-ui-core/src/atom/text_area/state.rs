@@ -41,6 +41,8 @@ pub struct TextAreaState {
     pub invalid: bool,
     pub measured_rows: u16,
     pub internal_scroll: bool,
+    pub resize_width_delta: u16,
+    pub resize_height_delta: u16,
 }
 
 impl TextAreaState {
@@ -65,6 +67,8 @@ impl TextAreaState {
             invalid: options.invalid,
             measured_rows: measurement.rows,
             internal_scroll: measurement.internal_scroll,
+            resize_width_delta: 0,
+            resize_height_delta: 0,
         }
     }
 
