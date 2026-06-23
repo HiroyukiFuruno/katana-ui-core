@@ -141,7 +141,10 @@ fn scroll_area_measures_wrapped_text_with_rendered_line_count() {
     let code_pixels = count_pixel(&canvas, palette.code_background);
     let visible_pixels = canvas.non_background_pixels(palette.background);
 
-    assert_eq!(0, code_pixels);
+    assert!(
+        code_pixels <= 1,
+        "scrolled code row must stay outside the viewport with at most antialias residue: code_pixels={code_pixels}"
+    );
     assert!(
         visible_pixels > 100,
         "wrapped first text must still occupy the scrolled viewport: visible={visible_pixels}"

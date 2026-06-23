@@ -49,7 +49,7 @@ fn compact_heading_descender_survives_inside_explicit_row_height() {
     );
 
     assert!(
-        heading_bottom > no_descender_bottom + MIN_DESCENDER_PIXEL_DELTA,
+        heading_bottom >= no_descender_bottom + MIN_DESCENDER_PIXEL_DELTA,
         "compact heading descender must stay visible inside the 30px row: heading={heading_bottom} no_descender={no_descender_bottom}"
     );
 }

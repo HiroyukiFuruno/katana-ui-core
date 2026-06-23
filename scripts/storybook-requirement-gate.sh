@@ -137,12 +137,16 @@ case "$runtime_output" in
   exit 1
   ;;
 esac
-modal_output="$("$binary" --open-modal-window 2)"
-case "$modal_output" in
-  *"modal_window_opened=true"*"same_display=true"*"frontmost=true"*"state_reflected=true"*"overlay_rendered=true"*) ;;
-  *)
-    echo "storybook modal window regression failed"
-    echo "$modal_output"
-    exit 1
-    ;;
-esac
+if [ -n "${CI:-}" ] && [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+  echo "storybook modal window regression skipped: headless CI has no display server"
+else
+  modal_output="$("$binary" --open-modal-window 2)"
+  case "$modal_output" in
+    *"modal_window_opened=true"*"same_display=true"*"frontmost=true"*"state_reflected=true"*"overlay_rendered=true"*) ;;
+    *)
+      echo "storybook modal window regression failed"
+      echo "$modal_output"
+      exit 1
+      ;;
+  esac
+fi

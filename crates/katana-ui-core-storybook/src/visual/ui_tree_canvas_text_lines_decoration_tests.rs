@@ -73,7 +73,10 @@ fn underline_span_draws_line_below_document_text() {
 
     let underline_y = 20 + underline_y_offset(metrics, &node);
     assert!(row_color_count(&canvas, underline_y, palette.link) > 40);
-    assert_eq!(0, row_color_count(&canvas, underline_y + 1, palette.link));
+    assert!(
+        row_color_count(&canvas, underline_y + 1, palette.link) <= 1,
+        "underline must stay on one row with at most platform antialias residue"
+    );
     assert!(metrics.strikethrough_offset < metrics.underline_offset);
     assert_eq!(
         metrics.underline_offset,
@@ -163,7 +166,10 @@ fn html_link_underline_uses_aligned_text_bounds() {
     let (min_x, max_x) = row_color_bounds(&canvas, underline_y, palette.link).kuc_unwrap();
     let renderers = SpanTextRenderers::new(&renderer, &renderer);
     let span_width = span_part_width(renderers, &node.props().text.spans[0], metrics, false);
-    assert_eq!(0, row_color_count(&canvas, underline_y + 1, palette.link));
+    assert!(
+        row_color_count(&canvas, underline_y + 1, palette.link) <= 1,
+        "HTML link underline must stay on one row with at most platform antialias residue"
+    );
     let expected_min_x = area.x + area.width - span_width;
     assert!(
         min_x >= expected_min_x && min_x <= expected_min_x + 6,

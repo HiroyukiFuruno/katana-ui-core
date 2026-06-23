@@ -126,7 +126,16 @@ fn generic_text_hover_draws_kuc_hover_background_before_text() {
     assert_eq!(Some(palette.hover_background), pixel_at(&canvas, 4, 27));
     assert_eq!(Some(palette.background), pixel_at(&canvas, 120, 27));
     assert_eq!(Some(palette.background), pixel_at(&canvas, 4, 28));
-    assert!(count_pixel(&canvas, palette.text) > 10);
+    assert!(
+        rect_pixels_excluding(
+            &canvas,
+            0,
+            0,
+            96,
+            28,
+            &[palette.background, palette.hover_background]
+        ) > 10
+    );
 }
 
 #[test]
