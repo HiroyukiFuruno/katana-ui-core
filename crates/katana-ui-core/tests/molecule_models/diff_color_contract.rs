@@ -12,6 +12,7 @@ const COLLAPSED_START_LINE: usize = 2;
 const COLLAPSED_LINE_COUNT: usize = 3;
 const LONG_LINE_COLUMN: usize = 80;
 const LONG_LINE_COLUMN_JSON: &str = "\"long_line_column\":80";
+const DIFF_LANGUAGE_JSON: &str = "\"language\":\"rust\"";
 const BRAND_RED: u8 = 64;
 const BRAND_GREEN: u8 = 128;
 const BRAND_BLUE: u8 = 255;
@@ -66,6 +67,7 @@ fn code_diff_snapshot_requires_typed_layout_whitespace_newline_and_collapse_deta
         })
         .mode(CodeDiffMode::Inline)
         .direction(CodeDiffDirection::Vertical)
+        .language("rust")
         .whitespace(CodeDiffWhitespace::visible("·", "→"))
         .long_line_column(LONG_LINE_COLUMN)
         .trailing_newline_difference(true)
@@ -85,11 +87,13 @@ fn code_diff_snapshot_requires_typed_layout_whitespace_newline_and_collapse_deta
 
     assert!(encoded.contains("\"mode\":\"Inline\""));
     assert!(encoded.contains("\"direction\":\"Vertical\""));
+    assert!(encoded.contains(DIFF_LANGUAGE_JSON));
     assert!(encoded.contains("\"space_symbol\":\"·\""));
     assert!(encoded.contains("\"tab_symbol\":\"→\""));
     assert!(encoded.contains(LONG_LINE_COLUMN_JSON));
     assert!(encoded.contains("\"trailing_newline_difference\":true"));
     assert_eq!(CodeDiffDirection::Vertical, diff.direction_model());
+    assert_eq!("rust", diff.language_model());
     assert_eq!(Some(LONG_LINE_COLUMN), diff.long_line_column_model());
     assert!(diff.has_trailing_newline_difference());
     assert!(diff.whitespace_model().is_some());
@@ -104,7 +108,8 @@ fn code_diff_is_not_complete_with_only_generic_value_or_item_count() {
     assert!(diff.lines().is_empty());
     assert!(diff.collapsed_blocks().is_empty());
     assert!(diff.whitespace_model().is_none());
-    assert_eq!(CodeDiffMode::Inline, diff.mode_model());
+    assert!(diff.language_model().is_empty());
+    assert_eq!(CodeDiffMode::Split, diff.mode_model());
     assert_eq!(CodeDiffDirection::Horizontal, diff.direction_model());
 }
 
@@ -121,23 +126,33 @@ fn color_picker_keeps_rgba_hue_alpha_and_blending_model() {
         .alpha(MODEL_ALPHA)
         .blending(ColorBlendingMode::Multiply)
         .color_area("saturation/value square")
-        .trigger_size(UiSize::Large)
+        .trigger_size(UiSize::XLarge)
         .title("Brand color")
+        .rgba_mode(true)
+        .trigger_border(false)
+        .eyedropper_callback("pick-screen-color")
         .readonly(true);
-    let result = picker.apply_action(&UiAction::set_value(
+    let result = picker.apply_action(&UiAction::color_drag(
         picker.state_id().clone(),
-        "rgba(0, 0, 0, 1)",
+        katana_ui_core::interaction::RgbaActionValue::new(0, 0, 0, 255),
+        BRAND_HUE,
+        true,
     ));
+    let open = picker.apply_action(&UiAction::set_open(picker.state_id().clone(), true));
 
     assert!(!result.handled);
+    assert!(open.handled);
     assert_eq!(MODEL_ALPHA, picker.color_value().alpha);
     assert_eq!(BRAND_HUE, picker.hue_value());
     assert_eq!(MODEL_ALPHA, picker.alpha_value());
     assert_eq!(ColorBlendingMode::Multiply, picker.blending_mode());
     assert!(picker.previews_color());
     assert_eq!("saturation/value square", picker.color_area_model());
-    assert_eq!(UiSize::Large, picker.trigger_size_model());
+    assert_eq!(UiSize::XLarge, picker.trigger_size_model());
     assert_eq!("Brand color", picker.title_model());
+    assert!(picker.uses_rgba_mode());
+    assert!(!picker.has_trigger_border());
+    assert_eq!("pick-screen-color", picker.eyedropper_callback_model());
 }
 
 #[test]

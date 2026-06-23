@@ -1,0 +1,136 @@
+use super::story_hierarchy::{StoryGroup, StoryPath};
+
+pub(crate) const PATHS: &[StoryPath] = &[
+    StoryPath {
+        page: "text",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "icon",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "chip",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "button",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "text-button",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "svg-button",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "icon-text-button",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "text-input",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "text-area",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "checkbox",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "radio",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "badge",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "divider",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "spacer",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "key-cap",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "skeleton",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "loading-dots",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "spinner",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "progress-bar",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "color-swatch",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "toggle",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+    StoryPath {
+        page: "slide-control",
+        group: StoryGroup::Atoms,
+        section: None,
+        path: "atoms/mod.rs",
+    },
+];

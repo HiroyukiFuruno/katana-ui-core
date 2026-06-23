@@ -19,7 +19,7 @@
   - [x] disabled
   - [x] サイズトークン違い
   - [x] light / dark 追従
-  - [x] ライブセル（Floem signal で実際にトグル動作確認）
+  - [x] ライブセル（Adapter signal で実際にトグル動作確認）
 
 ## 4. 完了確認
 

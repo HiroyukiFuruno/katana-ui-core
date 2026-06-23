@@ -1,6 +1,6 @@
 ## Why
 
-メニュー項目 / コマンドパレット / ヘルプダイアログなどでキーボードショートカットを表示する小要素。`../katana/crates/katana-ui/src/widgets/toggle/key_cap.rs` の役割（キー名 1 つを「キートップ風」に描く）を Floem に移植する。OS による修飾キー記号（macOS: `⌘ ⌥ ⌃ ⇧` / others: `Ctrl Alt Shift`）の表記分岐を内部で吸収する。
+メニュー項目 / コマンドパレット / ヘルプダイアログなどでキーボードショートカットを表示する小要素。`../katana/crates/katana-ui/src/widgets/toggle/key_cap.rs` の役割（キー名 1 つを「キートップ風」に描く）を Adapter に移植する。OS による修飾キー記号（macOS: `⌘ ⌥ ⌃ ⇧` / others: `Ctrl Alt Shift`）の表記分岐を内部で吸収する。
 
 ## What Changes
 

@@ -6,7 +6,7 @@
 
 - `primitive/spinner/` に `Spinner` widget を提供。
 - props: `size`（theme spacing トークン or 明示 pt）、`color`（theme color トークン）、`speed`（既定 1 周/sec）。
-- 実装は円周上の弧 or 点列を `requestAnimationFrame` 相当のティックで回転（Floem の animation API を利用）。
+- 実装は円周上の弧 or 点列を `requestAnimationFrame` 相当のティックで回転（Adapter の animation API を利用）。
 - インデターミネート専用。プログレス値表示は対象外（必要になったら別 change）。
 
 ## Capabilities

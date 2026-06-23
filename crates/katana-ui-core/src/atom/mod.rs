@@ -1,17 +1,49 @@
+mod action_policy;
+pub mod chip;
+mod defaults;
+mod drag_handle;
+mod drop_indicator;
+mod image_surface;
+mod input_boundary;
+mod options;
+pub mod shortcut_combo;
+pub mod skeleton;
 mod state;
+mod state_actions;
 #[cfg(test)]
 mod tests;
+pub mod text_area;
 mod typed;
 
-use crate::interaction::{UiAction, UiActionResult};
+use crate::interaction::{UiAction, UiActionResult, UiHoverTarget};
 use crate::render_model::{
-    UiNode, UiNodeKind, UiProgressMode, UiSize, UiStateId, UiTone, UiVariant, UiVisualRole,
+    UiCommonProps, UiCursor, UiDimension, UiDisplay, UiHostActionSpec, UiNode, UiNodeKind,
+    UiPointerEvents, UiPosition, UiProgressMode, UiSize, UiStateId, UiTone, UiVariant,
+    UiVisualRole, UiZIndex,
 };
+use crate::state::{UiComponentState, UiStateHandle};
+pub use chip::{Chip, ChipAction, ChipEvent, ChipKeyboardInput, ChipSize, ChipTone, ChipVariant};
+pub use drag_handle::DragHandle;
+pub use drop_indicator::DropIndicator;
+pub use image_surface::ImageSurface;
+pub use input_boundary::InputValidationError;
 use serde::{Deserialize, Serialize};
+pub use shortcut_combo::{
+    KeyCombo, KeyKind, KeyModifiers, NamedKey, RuntimePlatform, ShortcutCombo, ShortcutPlatform,
+    ShortcutPlatformProvider, ShortcutSeparator,
+};
+pub use skeleton::{Skeleton, SkeletonAnimation, SkeletonShape, SkeletonSize};
 use state::AtomState;
+pub use text_area::{
+    TextArea, TextAreaAction, TextAreaActionOutcome, TextAreaCaretMove, TextAreaCompositionPhase,
+    TextAreaCompositionState, TextAreaEvent, TextAreaKey, TextAreaKeyChord, TextAreaNewlineKey,
+    TextAreaOptions, TextAreaResizeDelta, TextAreaResizeEvent, TextAreaSelection, TextAreaState,
+    TextAreaSubmitKey, TextAreaTabBehavior, TextAreaValidationError, TextAreaWrapPolicy,
+};
 
 macro_rules! atom_model {
-    ($name:ident, $kind:expr) => {
+    ($(#[$meta:meta])* $name:ident, $kind:expr) => {
+        $(#[$meta])*
         #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
         pub struct $name {
             label: String,
@@ -30,18 +62,103 @@ macro_rules! atom_model {
             #[must_use]
             pub fn disabled(mut self, value: bool) -> Self {
                 self.state.disabled = value;
+                self.state.common.disabled = value;
                 self
             }
 
             #[must_use]
             pub fn focusable(mut self, value: bool) -> Self {
                 self.state.focusable = value;
+                self.state.common.focusable = value;
                 self
             }
 
             #[must_use]
             pub fn accessibility_label(mut self, value: impl Into<String>) -> Self {
-                self.state.accessibility_label = value.into();
+                let label = value.into();
+                self.state.accessibility_label = label.clone();
+                self.state.common.accessibility_label = label;
+                self
+            }
+
+            #[must_use]
+            pub fn theme_slot(mut self, value: impl Into<String>) -> Self {
+                self.state.common.theme_slot = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn common(mut self, value: UiCommonProps) -> Self {
+                self.state.disabled = value.disabled;
+                self.state.focusable = value.focusable;
+                self.state.accessibility_label = value.accessibility_label.clone();
+                self.state.common = value;
+                self
+            }
+
+            #[must_use]
+            pub fn visible(mut self, value: bool) -> Self {
+                self.state.common.visible = value;
+                self
+            }
+
+            #[must_use]
+            pub fn width(mut self, value: UiDimension) -> Self {
+                self.state.common.width = value;
+                self
+            }
+
+            #[must_use]
+            pub fn height(mut self, value: UiDimension) -> Self {
+                self.state.common.height = value;
+                self
+            }
+
+            #[must_use]
+            pub fn display(mut self, value: UiDisplay) -> Self {
+                self.state.common.display = value;
+                self
+            }
+
+            #[must_use]
+            pub fn position(mut self, value: UiPosition) -> Self {
+                self.state.common.position = value;
+                self
+            }
+
+            #[must_use]
+            pub fn tab_index(mut self, value: i16) -> Self {
+                self.state.common.tab_index = Some(value);
+                self
+            }
+
+            #[must_use]
+            pub fn z_index(mut self, value: UiZIndex) -> Self {
+                self.state.common.z_index = value;
+                self
+            }
+
+            #[must_use]
+            pub fn cursor(mut self, value: UiCursor) -> Self {
+                self.state.common.cursor = value;
+                self
+            }
+
+            #[must_use]
+            pub fn pointer_events(mut self, value: UiPointerEvents) -> Self {
+                self.state.common.pointer_events = value;
+                self
+            }
+
+            #[must_use]
+            pub fn host_action(mut self, value: UiHostActionSpec) -> Self {
+                self.state.common = self.state.common.host_action(value);
+                self
+            }
+
+            #[must_use]
+            pub fn selectable(mut self, value: bool) -> Self {
+                self.state.common.selectable = value;
                 self
             }
 
@@ -145,11 +262,57 @@ macro_rules! atom_model {
             pub fn state_id(&self) -> &UiStateId {
                 &self.state.state_id
             }
+
+            #[must_use]
+            pub fn stable_state_id(mut self, value: impl Into<UiStateId>) -> Self {
+                self.state.state_id = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn state_snapshot(&self) -> UiComponentState {
+                self.state.component_state()
+            }
+
+            #[must_use]
+            pub fn state_handle(&self) -> UiStateHandle<UiComponentState> {
+                UiStateHandle::new(self.state_snapshot())
+            }
+
+            #[must_use]
+            pub fn set_state(mut self, state: UiComponentState) -> Self {
+                self.state.sync_component_state(state);
+                self
+            }
+
+            #[must_use]
+            pub fn update_state(mut self, update_state: impl FnOnce(&mut UiComponentState)) -> Self {
+                let mut state = self.state_snapshot();
+                update_state(&mut state);
+                self.state.sync_component_state(state);
+                self
+            }
+
+            #[must_use]
+            pub fn sync_state(mut self, state_handle: &UiStateHandle<UiComponentState>) -> Self {
+                self.state.sync_component_state(state_handle.get());
+                self
+            }
         }
 
         impl crate::component::ComponentAction for $name {
             fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
-                self.state.apply_action(action)
+                self.state.apply_action_for_kind($kind, action)
+            }
+        }
+
+        impl crate::component::ComponentStateBinding for $name {
+            fn state_snapshot(&self) -> UiComponentState {
+                self.state.component_state()
+            }
+
+            fn set_state_snapshot(&mut self, state: UiComponentState) {
+                self.state.sync_component_state(state);
             }
         }
 
@@ -164,7 +327,11 @@ macro_rules! atom_model {
 atom_model!(Text, UiNodeKind::Text);
 atom_model!(Icon, UiNodeKind::Icon);
 atom_model!(Button, UiNodeKind::Button);
-atom_model!(Input, UiNodeKind::Input);
+atom_model!(
+    #[doc = "単一行の入力 atom。複数行入力、IME の複数行 preedit、自動行数調整は `TextArea` を使う。"]
+    Input,
+    UiNodeKind::Input
+);
 atom_model!(Checkbox, UiNodeKind::Checkbox);
 atom_model!(Radio, UiNodeKind::Radio);
 atom_model!(Badge, UiNodeKind::Badge);
@@ -180,3 +347,10 @@ atom_model!(SlideControl, UiNodeKind::SlideControl);
 atom_model!(SvgButton, UiNodeKind::SvgButton);
 atom_model!(TextButton, UiNodeKind::TextButton);
 atom_model!(IconTextButton, UiNodeKind::IconTextButton);
+
+impl Toggle {
+    #[must_use]
+    pub fn hover_target(&self, hovered: bool) -> UiHoverTarget {
+        UiHoverTarget::new(self.state_id().clone(), hovered)
+    }
+}

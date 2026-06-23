@@ -14,8 +14,14 @@ cosmic-text.workspace = true
 image.workspace = true
 katana-ui-core.workspace = true
 minifb.workspace = true
+resvg.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tiny-skia.workspace = true
+unicode-segmentation.workspace = true
+
+[dev-dependencies]
+katana-markdown-model = "0.2.1"
 
 [[bin]]
 name = "katana-ui-core-storybook"

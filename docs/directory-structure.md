@@ -1,7 +1,7 @@
 # Directory Structure
 
 作成日: 2026-05-17
-対象: `katana-ui-core` の中核 crate（core crate）と変換層 crate（adapter crate）
+対象: `katana-ui-core` の中核 crate（core crate）
 
 ## 目的
 
@@ -25,9 +25,7 @@ crates/
 │       ├── runtime/
 │       ├── window/
 │       └── surface/
-├── katana-ui-core-floem/
-├── katana-ui-core-egui/
-└── katana-ui-core-gpui/
+└── katana-ui-core-storybook/
 ```
 
 ## Core dependency direction
@@ -59,27 +57,20 @@ runtime / window / surface
 
 中核 crate（core crate）は次を直接依存に持たない。
 
-- `floem`
-- `floem_reactive`
-- `floem_renderer`
-- `egui`
-- `gpui`
+- framework-native view crate
+- framework runtime crate
+- framework renderer crate
 - KatanA application domain crate
 
 判定表は [`dependency-policy.md`](dependency-policy.md) に固定する。
 
-## Adapter crate responsibility
+## External runtime boundary
 
-変換層 crate（adapter crate）は、KUC の `render_model` / `runtime` / `window` / `surface` を受け取り、対象フレームワークの型へ変換する。
+repo 外の runtime / renderer は、KUC の `render_model` / `runtime` / `window` / `surface` を受け取り、任意の実行環境へ接続してよい。
+ただし、この repository の active workspace、release gate、公開 crate には含めない。
 
-| adapter crate | owns |
-| --- | --- |
-| `katana-ui-core-floem` | Floem view conversion, Floem runtime bridge |
-| `katana-ui-core-egui` | egui compatibility conversion, egui smoke rendering |
-| `katana-ui-core-gpui` | GPUI compatibility conversion, GPUI smoke rendering |
-
-adapter crate は framework-native 型を公開してよい。
-中核 crate（core crate）は framework-native 型を公開しない。
+KUC 中核 crate（core crate）は framework-native 型を公開しない。
+KUC が保証するのは、外部 runtime / renderer が消費できる中立 DTO / trait / action / event / state contract までとする。
 
 ## Module layout
 
@@ -105,7 +96,7 @@ adapter crate は framework-native 型を公開してよい。
 | `tests.rs` | model, event, render serialization tests |
 
 `view.rs` は中核 crate（core crate）では使わない。
-framework-native view construction は adapter crate に置く。
+framework-native view construction は KUC active workspace に置かない。
 
 ## Widget layer
 
@@ -123,16 +114,18 @@ Storybook 自身を構成する shell / navigation / inspector は内部構成�
 
 ## Storybook
 
-Storybook は KUC の部品カタログである。
+Storybook は KUC の部品を実画面で触ってフィードバックするための画面であり、静的見本帳ではない。
 左ペインは KUC TreeView、preset 切替は KUC Tabs、各部品ページは preview と settings を持つ。
-Storybook は操作確認と目視確認の場であり、部品の正しさは自動テストと guard で判定する。
+中央本文は全件カード一覧ではなく、選択中 UI の layout、option、action、event、state、rendering を扱う場にする。
+Navigation / Preview / Details は panel ごとに独立した縦スクロール state を持つ。
+Storybook は完了判定の根拠ではない。部品の正しさは自動テスト、数値化された layout / rendering contract、入力回帰、guard で判定する。
 
 ```bash
 just storybook
 just storybook-check
 ```
 
-Storybook は `floem` / `egui` / `gpui` を使わない。互換層ごとの検証は各互換 crate の compile / unit test に閉じる。
+Storybook は `adapter` / `adapter` / `adapter` を使わない。互換層ごとの検証は各互換 crate の compile / unit test に閉じる。
 中核 crate（core crate）の dependency tree に framework dependency が出たら失敗とする。
 
 ## Verification
@@ -144,4 +137,4 @@ cargo tree -p katana-ui-core --locked
 just check
 ```
 
-`cargo tree -p katana-ui-core --locked` に `floem` / `egui` / `gpui` / KatanA application domain crate が出てはいけない。
+`cargo tree -p katana-ui-core --locked` に `adapter` / `adapter` / `adapter` / KatanA application domain crate が出てはいけない。

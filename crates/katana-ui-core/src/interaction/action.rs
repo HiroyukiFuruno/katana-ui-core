@@ -1,11 +1,50 @@
-use crate::interaction::{ColorDragAction, ProgressAction, RgbaActionValue, UiActionSource};
-use crate::render_model::UiStateId;
+use crate::interaction::{ColorDragAction, ProgressAction, UiActionSource};
+use crate::layout::SplitPaneResizeSource;
+use crate::render_model::{UiRect, UiScrollbarVisibility, UiStateId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum UiAction {
     Press {
         target: UiStateId,
+        source: UiActionSource,
+    },
+    SetFocus {
+        target: UiStateId,
+        focused: bool,
+    },
+    SetHover {
+        target: UiStateId,
+        hovered: bool,
+    },
+    SetActive {
+        target: UiStateId,
+        active: bool,
+    },
+    SetDragging {
+        target: UiStateId,
+        dragging: bool,
+    },
+    AnimationTick {
+        target: UiStateId,
+        phase: u16,
+    },
+    SetReducedMotion {
+        target: UiStateId,
+        reduced_motion: bool,
+    },
+    SetCursorSelection {
+        target: UiStateId,
+        cursor: usize,
+        selection_start: usize,
+        selection_end: usize,
+    },
+    CopySelection {
+        target: UiStateId,
+    },
+    PasteText {
+        target: UiStateId,
+        text: String,
         source: UiActionSource,
     },
     SetOpen {
@@ -28,139 +67,127 @@ pub enum UiAction {
     ClearValue {
         target: UiStateId,
     },
+    InvokeCallback {
+        target: UiStateId,
+        callback: String,
+    },
     Dismiss {
         target: UiStateId,
     },
-}
-
-impl UiAction {
-    #[must_use]
-    pub fn press(target: UiStateId) -> Self {
-        Self::Press {
-            target,
-            source: UiActionSource::Generic,
-        }
-    }
-
-    #[must_use]
-    pub fn button_press(target: UiStateId) -> Self {
-        crate::interaction::ButtonAction::new(target).into()
-    }
-
-    #[must_use]
-    pub fn click(target: UiStateId) -> Self {
-        crate::interaction::ClickAction::new(target).into()
-    }
-
-    #[must_use]
-    pub fn set_open(target: UiStateId, open: bool) -> Self {
-        Self::SetOpen { target, open }
-    }
-
-    #[must_use]
-    pub fn set_selected_index(target: UiStateId, selected_index: usize) -> Self {
-        Self::SetSelectedIndex {
-            target,
-            selected_index,
-            selected: true,
-            source: UiActionSource::Generic,
-        }
-    }
-
-    #[must_use]
-    pub fn checkbox_checked(target: UiStateId, checked: bool) -> Self {
-        crate::interaction::CheckboxAction::new(target, checked).into()
-    }
-
-    #[must_use]
-    pub fn radio_selected(target: UiStateId) -> Self {
-        crate::interaction::RadioAction::new(target).into()
-    }
-
-    #[must_use]
-    pub fn toggle_checked(target: UiStateId, checked: bool) -> Self {
-        crate::interaction::ToggleAction::new(target, checked).into()
-    }
-
-    #[must_use]
-    pub fn set_value(target: UiStateId, value: impl Into<String>) -> Self {
-        Self::SetValue {
-            target,
-            value: value.into(),
-            source: UiActionSource::Generic,
-            progress: None,
-            color_drag: None,
-        }
-    }
-
-    #[must_use]
-    pub fn input_value(target: UiStateId, value: impl Into<String>) -> Self {
-        crate::interaction::InputAction::new(target, value).into()
-    }
-
-    #[must_use]
-    pub fn progress_changed(target: UiStateId, determinate: bool, percent: u8) -> Self {
-        ProgressAction::new(target, determinate, percent).into()
-    }
-
-    #[must_use]
-    pub fn color_drag(target: UiStateId, value: RgbaActionValue, hue: u16, preview: bool) -> Self {
-        ColorDragAction::new(target, value, hue, preview).into()
-    }
-
-    #[must_use]
-    pub fn clear_value(target: UiStateId) -> Self {
-        Self::ClearValue { target }
-    }
-
-    #[must_use]
-    pub fn dismiss(target: UiStateId) -> Self {
-        Self::Dismiss { target }
-    }
-
-    #[must_use]
-    pub fn target(&self) -> &UiStateId {
-        match self {
-            Self::Press { target, .. }
-            | Self::SetOpen { target, .. }
-            | Self::SetSelectedIndex { target, .. }
-            | Self::SetValue { target, .. }
-            | Self::ClearValue { target }
-            | Self::Dismiss { target } => target,
-        }
-    }
-
-    #[must_use]
-    pub fn name(&self) -> &'static str {
-        match self {
-            Self::Press { source, .. } => source.press_name(),
-            Self::SetSelectedIndex { source, .. } => source.selection_name(),
-            Self::SetValue {
-                source,
-                progress,
-                color_drag,
-                ..
-            } => value_name(*source, progress, color_drag),
-            Self::SetOpen { .. } => "set_open",
-            Self::ClearValue { .. } => "clear_value",
-            Self::Dismiss { .. } => "dismiss",
-        }
-    }
-}
-
-fn value_name(
-    source: UiActionSource,
-    progress: &Option<ProgressAction>,
-    color_drag: &Option<ColorDragAction>,
-) -> &'static str {
-    if progress.is_some() {
-        return "progress_changed";
-    }
-    if color_drag.is_some() {
-        return "color_drag";
-    }
-    match source {
-        UiActionSource::Input => "input_value",
-        _ => "set_value",
-    }
+    ScrollTo {
+        target: UiStateId,
+        x: u32,
+        y: u32,
+    },
+    ScrollBy {
+        target: UiStateId,
+        dx: i32,
+        dy: i32,
+    },
+    ScrollIntoView {
+        target: UiStateId,
+        target_rect: UiRect,
+    },
+    SetScrollbarVisibility {
+        target: UiStateId,
+        visibility: UiScrollbarVisibility,
+    },
+    SplitPaneSetRatio {
+        target: UiStateId,
+        ratio_percent: u8,
+    },
+    SplitPaneResizeBy {
+        target: UiStateId,
+        delta_percent: i8,
+        source: SplitPaneResizeSource,
+    },
+    SplitPaneResetRatio {
+        target: UiStateId,
+    },
+    SplitPaneStartResize {
+        target: UiStateId,
+    },
+    SplitPaneEndResize {
+        target: UiStateId,
+    },
+    TabSelect {
+        target: UiStateId,
+        tab_id: String,
+    },
+    TabAdd {
+        target: UiStateId,
+        tab_id: String,
+        label: String,
+        activate: bool,
+    },
+    TabClose {
+        target: UiStateId,
+        tab_id: String,
+    },
+    TabCloseOthers {
+        target: UiStateId,
+        tab_id: String,
+    },
+    TabCloseToRight {
+        target: UiStateId,
+        tab_id: String,
+    },
+    TabCloseToLeft {
+        target: UiStateId,
+        tab_id: String,
+    },
+    TabCloseAll {
+        target: UiStateId,
+    },
+    TabRestoreClosed {
+        target: UiStateId,
+    },
+    TabPin {
+        target: UiStateId,
+        tab_id: String,
+        pinned: bool,
+    },
+    TabMove {
+        target: UiStateId,
+        tab_id: String,
+        to_visual_index: usize,
+    },
+    TabMoveToGroup {
+        target: UiStateId,
+        tab_id: String,
+        group_id: Option<String>,
+    },
+    TabMoveToNewGroup {
+        target: UiStateId,
+        tab_id: String,
+        group_id: String,
+        group_label: String,
+    },
+    TabMoveGroup {
+        target: UiStateId,
+        group_id: String,
+        to_index: usize,
+    },
+    TabRenameGroup {
+        target: UiStateId,
+        group_id: String,
+        label: String,
+    },
+    TabSetGroupColor {
+        target: UiStateId,
+        group_id: String,
+        color: String,
+    },
+    TabUngroup {
+        target: UiStateId,
+        group_id: String,
+    },
+    TabCloseGroup {
+        target: UiStateId,
+        group_id: String,
+    },
+    TabToggleGroupCollapse {
+        target: UiStateId,
+        group_id: String,
+    },
 }

@@ -2,8 +2,8 @@ mod preset;
 mod tokens;
 
 pub use tokens::{
-    BorderToken, ColorToken, FontFamily, FontToken, RadiusToken, Rgba, ShadowToken, SpacingToken,
-    ThemeDiff, ThemeId, ZIndexToken,
+    BorderToken, ColorToken, FontFamily, FontToken, MotionToken, MotionTokenSet, RadiusToken, Rgba,
+    ShadowToken, SpacingToken, ThemeDiff, ThemeId, ZIndexToken,
 };
 
 use preset::ThemePreset;
@@ -19,6 +19,7 @@ pub struct ThemeSnapshot {
     pub shadows: Vec<ShadowToken>,
     pub borders: Vec<BorderToken>,
     pub z_indexes: Vec<ZIndexToken>,
+    pub motion: Vec<MotionToken>,
 }
 
 impl ThemeSnapshot {
@@ -57,7 +58,27 @@ impl ThemeSnapshot {
         if self.spacing != other.spacing {
             changed_sections.push("spacing".to_string());
         }
+        if self.motion != other.motion {
+            changed_sections.push("motion".to_string());
+        }
         ThemeDiff::new(changed_sections)
+    }
+
+    #[must_use]
+    pub fn motion_tokens(&self) -> MotionTokenSet {
+        let mut tokens = MotionTokenSet::default();
+        for token in &self.motion {
+            match token.name.as_str() {
+                "instant" => tokens.instant_ms = token.duration_ms,
+                "fast" => tokens.fast_ms = token.duration_ms,
+                "default" | "standard" => tokens.default_ms = token.duration_ms,
+                "slow" => tokens.slow_ms = token.duration_ms,
+                "compact" => tokens.compact_px = token.distance_px,
+                "spacious" => tokens.spacious_px = token.distance_px,
+                _ => {}
+            }
+        }
+        tokens
     }
 }
 
@@ -82,6 +103,7 @@ mod tests {
         let dark = ThemeSnapshot::dark();
 
         assert_eq!(Some([86, 156, 214, 255]), dark.color("accent"));
+        assert_eq!(Some([248, 250, 252, 255]), dark.color("accent-foreground"));
         assert_eq!(Some([37, 37, 38, 255]), dark.color("panel"));
         assert_eq!(
             Some(FontFamily::Proportional),
@@ -91,5 +113,6 @@ mod tests {
             Some(FontFamily::Monospace),
             dark.font("code").map(|it| it.family)
         );
+        assert!(dark.motion.iter().any(|it| it.name == "fast"));
     }
 }

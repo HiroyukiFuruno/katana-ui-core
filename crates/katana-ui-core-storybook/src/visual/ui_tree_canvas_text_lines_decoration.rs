@@ -1,0 +1,64 @@
+use super::{
+    SpanTextRenderers, UNDERLINE_HEIGHT_BOTTOM_PADDING, UiTreeTextMetrics, canvas_x,
+    span_visible_part_bounds,
+};
+use crate::visual::canvas::Canvas;
+use katana_ui_core::render_model::{UiDimension, UiNode, UiTextSpan};
+
+pub(super) struct TextDecorationLine {
+    pub(super) x: isize,
+    pub(super) y: usize,
+    pub(super) width: usize,
+    pub(super) color: u32,
+    pub(super) thickness: usize,
+}
+
+impl TextDecorationLine {
+    pub(super) fn draw(self, canvas: &mut Canvas) {
+        draw_decoration_line(
+            canvas,
+            self.x,
+            self.y,
+            self.width,
+            self.color,
+            self.thickness,
+        );
+    }
+}
+
+pub(in super::super) fn underline_y_offset(metrics: UiTreeTextMetrics, node: &UiNode) -> usize {
+    let underline = metrics.underline_offset;
+    if let UiDimension::Px(height) = node.props().common.height {
+        return underline.min(
+            usize::from(height)
+                .saturating_sub(metrics.top_margin)
+                .saturating_sub(UNDERLINE_HEIGHT_BOTTOM_PADDING),
+        );
+    }
+    underline
+}
+
+pub(super) fn underline_part_bounds(
+    renderers: SpanTextRenderers<'_>,
+    span: &UiTextSpan,
+    metrics: UiTreeTextMetrics,
+    preserve_whitespace: bool,
+    _node: &UiNode,
+    _full_width: usize,
+) -> (usize, usize) {
+    span_visible_part_bounds(renderers, span, metrics, preserve_whitespace)
+}
+
+fn draw_decoration_line(
+    canvas: &mut Canvas,
+    x: isize,
+    y: usize,
+    width: usize,
+    color: u32,
+    thickness: usize,
+) {
+    let Some(decoration_x) = canvas_x(x) else {
+        return;
+    };
+    canvas.fill_rect(decoration_x, y, width, thickness, color);
+}

@@ -2,8 +2,8 @@
 
 ### Requirement: KUC is a framework-neutral UI Core
 
-`katana-ui-core` MUST フレームワーク非依存（framework-neutral）な UI Core を提供し、Floem 専用の画面部品（widget）crate になってはならない。
-中核 crate（core crate）は中立 DTO / trait ベースの API を公開し、公開 API（public API）で Floem View、GPUI Element、egui Ui、その他の framework-native view type を公開してはならない。
+`katana-ui-core` MUST フレームワーク非依存（framework-neutral）な UI Core を提供し、Adapter 専用の画面部品（widget）crate になってはならない。
+中核 crate（core crate）は中立 DTO / trait ベースの API を公開し、公開 API（public API）で Adapter View、Adapter Element、adapter Ui、その他の framework-native view type を公開してはならない。
 
 #### Scenario: core API is inspected
 
@@ -13,8 +13,8 @@
 
 #### Scenario: core compiles without a framework dependency
 
-- **WHEN** 中核 crate（core crate）を変換層 crate（adapter crate）なしで compile する
-- **THEN** build は `floem`, `gpui`, or `egui` を link せずに成功する
+- **WHEN** 中核 crate（core crate）を external runtime / renderer crate なしで compile する
+- **THEN** build は `adapter`, `adapter`, or `adapter` を link せずに成功する
 
 ### Requirement: KUC owns the root UI modules
 
@@ -39,7 +39,7 @@
 
 ### Requirement: render model is the cross-adapter contract
 
-KUC MUST `UiTree`, `UiNode`, `UiNodeId`, `UiNodeKind`, `UiProps`, `UiTreeDiff`, `UiCommand`, and `RenderContext` を変換層（adapter）と利用側（consumer）の中立描画モデル（neutral render model）として使う。
+KUC MUST `UiTree`, `UiNode`, `UiNodeId`, `UiNodeKind`, `UiProps`, `UiTreeDiff`, `UiCommand`, and `RenderContext` を external runtime / renderer と利用側（consumer）の中立描画モデル（neutral render model）として使う。
 UI ごとの状態（state）MUST component 内部 model で管理する。
 同じ種類・同じラベルの UI が複数ある場合でも、それぞれの `UiNodeId` と `UiStateId` MUST 一意でなければならない。
 KUC MUST JSX / TSX 互換を目指さず、純 Rust の部品（component）合成 API として利用できなければならない。
@@ -48,13 +48,13 @@ KUC MUST JSX / TSX 互換を目指さず、純 Rust の部品（component）合�
 
 - **WHEN** atom または molecule が中核 API（core API）で作成される
 - **THEN** 中立 `UiTree` または `UiNode` として表現できる
-- **AND** 変換層 crate（adapter crate）は framework-specific core APIs を呼ばずにそのモデル（model）を消費できる
+- **AND** external runtime / renderer は framework-specific core APIs を呼ばずにそのモデル（model）を消費できる
 
 #### Scenario: duplicate buttons keep separate state
 
 - **WHEN** 同じ label の Button atom を同じ tree に複数作成する
 - **THEN** 各 Button は異なる `UiNodeId` と `UiStateId` を持つ
-- **AND** 変換層（adapter）は外部 state store を要求しない
+- **AND** external runtime / renderer は外部 state store を要求しない
 
 #### Scenario: pure Rust component composition is used
 
@@ -65,11 +65,11 @@ KUC MUST JSX / TSX 互換を目指さず、純 Rust の部品（component）合�
 ### Requirement: theme and accessibility are first-class
 
 KUC MUST color、font、spacing、radius、shadow、border、z-index の theme token と `ThemeSnapshot` を公開する。
-KUC MUST accessibility DTOs を中核モデル（core model）に含め、変換層（adapter）が別メタデータ（metadata）を作らず accessibility を描画できるようにする。
+KUC MUST accessibility DTOs を中核モデル（core model）に含め、external runtime / renderer が別メタデータ（metadata）を作らず accessibility を描画できるようにする。
 
-#### Scenario: theme is applied through an adapter
+#### Scenario: theme is applied through an external renderer
 
-- **WHEN** 変換層（adapter）が KUC UI tree を描画する
+- **WHEN** external renderer が KUC UI tree を描画する
 - **THEN** `ThemeSnapshot` から theme values を受け取る
 - **AND** 中立モデル（neutral model）から accessibility metadata を読める
 
@@ -77,7 +77,7 @@ KUC MUST accessibility DTOs を中核モデル（core model）に含め、変換
 
 KUC MUST component 構造、component 内部状態（state）、見た目設定（style）を分離する。
 見た目設定（style）は CSS のように class / rule / declaration として後付けで解決でき、同じ `UiTree` に別の `StyleSheet` を適用して見た目を変えられなければならない。
-この性質を満たせない場合、独自 UI core として継続せず GPUI など既存 UI framework を base にする方が合理的である。
+この性質を満たせない場合、独自 UI core として継続せず Adapter など既存 UI framework を base にする方が合理的である。
 
 #### Scenario: style sheet is replaced after UI creation
 

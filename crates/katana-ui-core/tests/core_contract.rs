@@ -1,4 +1,5 @@
 mod core_contract {
+    mod common_props_contract;
     mod runtime_tree_contract;
     mod theme_style_event_contract;
 

@@ -1,13 +1,28 @@
 use super::{StoryExample, StorybookOperationSequences};
+use crate::DEFAULT_STORYBOOK_PAGE;
 use crate::panel::StorybookPanel;
 use katana_ui_core::interaction::UiCallbackLog;
 use katana_ui_core::render_model::{UiNode, UiNodeKind};
 use katana_ui_core::theme::ThemeSnapshot;
 use serde::{Deserialize, Serialize};
 
-const SELECTED_PAGE: &str = "button";
+#[path = "panel_interaction/legacy_detail.rs"]
+mod legacy_detail;
+#[path = "panel_interaction/legacy_dod.rs"]
+mod legacy_dod;
+#[path = "panel_interaction/legacy_dod_options.rs"]
+mod legacy_dod_options;
+#[path = "panel_interaction/legacy_dod_specs.rs"]
+mod legacy_dod_specs;
+pub use legacy_detail::StoryDetailContent;
+pub(crate) use legacy_dod::LegacyDodReports;
+pub use legacy_dod::{LegacyUiMarkerReport, PresetDifferenceReport, SettingsMutationReport};
+
 const NAVIGATION_LABEL: &str = "Navigation";
 const PREVIEW_LABEL: &str = "Preview";
+
+#[cfg(test)]
+mod tests;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StorybookPanelInteractionReport {
@@ -17,6 +32,10 @@ pub struct StorybookPanelInteractionReport {
     pub selector_operations: Vec<OperationStepReport>,
     pub overlay_dismissals: Vec<OperationStepReport>,
     pub color_picker_updates: Vec<OperationStepReport>,
+    pub settings_mutations: Vec<SettingsMutationReport>,
+    pub legacy_ui_markers: Vec<LegacyUiMarkerReport>,
+    pub preset_differences: Vec<PresetDifferenceReport>,
+    pub tree_view_option_mutations: Vec<OperationStepReport>,
     pub callback_log: Vec<CallbackLogReport>,
 }
 
@@ -59,12 +78,13 @@ impl StorybookPanelInteractionReport {
     pub fn build(examples: &[StoryExample]) -> Self {
         let before_theme = ThemeSnapshot::light();
         let after_theme = ThemeSnapshot::dark();
-        let tree = StorybookPanel::new(after_theme.clone()).build_selected(examples, SELECTED_PAGE);
+        let tree = StorybookPanel::new(after_theme.clone())
+            .build_selected(examples, DEFAULT_STORYBOOK_PAGE);
         let root = tree.root();
         let preview = panel_child(root, PREVIEW_LABEL);
         let selected_story = examples
             .iter()
-            .find(|it| it.page == SELECTED_PAGE)
+            .find(|it| it.page == DEFAULT_STORYBOOK_PAGE)
             .or_else(|| examples.first());
         let selected_label = selected_story.map(|it| it.tree.root().props().label.as_str());
         let callback_log = selected_story
@@ -73,7 +93,7 @@ impl StorybookPanelInteractionReport {
 
         Self {
             story_selection: StorySelectionReport {
-                selected_page: SELECTED_PAGE.to_string(),
+                selected_page: DEFAULT_STORYBOOK_PAGE.to_string(),
                 preview_page: preview_page(preview, selected_label).unwrap_or_default(),
                 navigation_items: examples.len(),
             },
@@ -90,6 +110,10 @@ impl StorybookPanelInteractionReport {
             selector_operations: StorybookOperationSequences::selector_operations(examples),
             overlay_dismissals: StorybookOperationSequences::overlay_dismissals(examples),
             color_picker_updates: StorybookOperationSequences::color_picker_updates(examples),
+            settings_mutations: StorybookOperationSequences::settings_mutations(examples),
+            legacy_ui_markers: StorybookOperationSequences::legacy_ui_markers(examples),
+            preset_differences: StorybookOperationSequences::preset_differences(examples),
+            tree_view_option_mutations: StorybookOperationSequences::tree_view_option_mutations(),
             callback_log,
         }
     }
@@ -97,7 +121,7 @@ impl StorybookPanelInteractionReport {
     #[must_use]
     pub fn summary(&self) -> String {
         format!(
-            "story_selection={} theme_switch={}->{} theme_control={} operation_sequence={} selector_operations={} overlay_dismissals={} color_picker_updates={} callback_log={}",
+            "story_selection={} theme_switch={}->{} theme_control={} operation_sequence={} selector_operations={} overlay_dismissals={} color_picker_updates={} settings_mutations={} legacy_ui_markers={} legacy_settings_mutations={} legacy_preset_differences={} tree_view_option_mutations={} callback_log={}",
             self.story_selection.selected_page,
             self.theme_switch.before_theme_id,
             self.theme_switch.after_theme_id,
@@ -106,6 +130,14 @@ impl StorybookPanelInteractionReport {
             self.selector_operations.len(),
             self.overlay_dismissals.len(),
             self.color_picker_updates.len(),
+            self.settings_mutations.len(),
+            self.legacy_ui_markers.len(),
+            self.settings_mutations
+                .iter()
+                .filter(|it| it.ui_marker.starts_with("legacy-"))
+                .count(),
+            self.preset_differences.len(),
+            self.tree_view_option_mutations.len(),
             self.callback_log.len()
         )
     }
@@ -164,38 +196,4 @@ fn report_callback_logs(callback_logs: &[UiCallbackLog]) -> Vec<CallbackLogRepor
             after_summary: it.after.clone(),
         })
         .collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::StorybookPanelInteractionReport;
-    use crate::catalog::StoryCatalog;
-
-    #[test]
-    fn report_covers_selector_overlay_and_color_picker_sequences() {
-        let examples = StoryCatalog.examples();
-        let report = StorybookPanelInteractionReport::build(&examples);
-
-        assert_eq!(7, report.selector_operations.len());
-        assert_eq!(3, report.overlay_dismissals.len());
-        assert_eq!(3, report.color_picker_updates.len());
-        assert!(
-            report
-                .selector_operations
-                .iter()
-                .any(|it| it.action == "combo-box-arrow-down")
-        );
-        assert!(
-            report
-                .overlay_dismissals
-                .iter()
-                .any(|it| it.action == "modal-overlay-escape")
-        );
-        assert!(
-            report
-                .color_picker_updates
-                .iter()
-                .any(|it| it.action == "color-picker-drag-alpha")
-        );
-    }
 }

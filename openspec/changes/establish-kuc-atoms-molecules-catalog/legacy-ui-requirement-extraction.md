@@ -197,7 +197,7 @@
 
 ## 18 Accordion
 
-- source: `openspec/changes/18-accordion`
+- source: `openspec/changes/archive/2026-05-25-18-accordion`
 - option: header node、expanded、disabled、controlled / uncontrolled、indicator position、trigger area、multiple、tree mode、reduced motion、body border
 - action: toggle、group expand / collapse
 - event: toggle event、callback log、focus event
@@ -252,7 +252,7 @@
 
 ## 23 ColorPicker parity
 
-- source: `openspec/changes/23-color-picker-complete-parity`
+- source: `openspec/changes/archive/2026-05-25-23-color-picker-complete-parity`
 - option: overlay panel、close button、outside click、Esc、trigger border、trigger size xs / sm / mid / large / xlarge、title、RGB / RGBA mode
 - action: open overlay、close via outside / Esc / button、drag color plane、drag alpha、change trigger size
 - event: open / close event、color update、alpha update、callback log
@@ -263,7 +263,7 @@
 
 ## 24 CodeDiff
 
-- source: `openspec/changes/24-code-diff`
+- source: `openspec/changes/archive/2026-05-25-24-code-diff`
 - option: before / after source、first line number、line count、split / inline mode、split direction、show all unchanged、highlight ranges、theme
 - action: switch display mode、switch split direction、expand / collapse unchanged block、scroll sync
 - event: mode change、expand / collapse event、scroll sync event
@@ -275,6 +275,6 @@
 ## 移管結果
 
 - 01〜24 は全て current KUC target へ読み替え済み。
-- `katana-widget-parity-backlog` は追加 UI と旧 01〜24 要件の入力元として扱う。
-- `ui-core-interaction-visual-parity` は Storybook / visual / guard 要件の入力元として扱う。
-- active `18` / `23` / `24` は要件移管後の archive 候補として扱う。
+- `archive/2026-05-25-katana-widget-parity-backlog` は追加 UI と旧 01〜24 要件の入力元として扱う。
+- `archive/2026-05-25-ui-core-interaction-visual-parity` は Storybook / visual / guard 要件の入力元として扱う。
+- `archive/2026-05-25-18-accordion`、`archive/2026-05-25-23-color-picker-complete-parity`、`archive/2026-05-25-24-code-diff` は要件移管済みの履歴入力元として扱う。

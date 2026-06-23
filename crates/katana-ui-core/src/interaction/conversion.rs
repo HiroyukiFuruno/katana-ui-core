@@ -1,6 +1,6 @@
 use crate::interaction::{
     ButtonAction, CheckboxAction, ClickAction, ColorDragAction, InputAction, ProgressAction,
-    RadioAction, ToggleAction, UiAction, UiActionSource,
+    RadioAction, SlideAction, SplitPaneAction, ToggleAction, UiAction, UiActionSource,
 };
 
 impl From<ButtonAction> for UiAction {
@@ -27,6 +27,30 @@ impl From<InputAction> for UiAction {
             target: value.target,
             value: value.value,
             source: UiActionSource::Input,
+            progress: None,
+            color_drag: None,
+        }
+    }
+}
+
+impl From<SlideAction> for UiAction {
+    fn from(value: SlideAction) -> Self {
+        Self::SetValue {
+            target: value.target,
+            value: value.value,
+            source: UiActionSource::SlideControl,
+            progress: None,
+            color_drag: None,
+        }
+    }
+}
+
+impl From<SplitPaneAction> for UiAction {
+    fn from(value: SplitPaneAction) -> Self {
+        Self::SetValue {
+            target: value.target,
+            value: value.percent.to_string(),
+            source: UiActionSource::SplitPane,
             progress: None,
             color_drag: None,
         }

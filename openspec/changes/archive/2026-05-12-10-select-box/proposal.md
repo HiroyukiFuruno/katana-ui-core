@@ -1,6 +1,6 @@
 ## Why
 
-選択肢が多い (>5) 場合は SegmentedToggle ではなくドロップダウン (combo box) が必要。`../katana/crates/katana-ui/src/widgets/combo_box/` の役割を Floem に移植し、選択値表示 + 開閉動作 + 一覧表示の最小実装にする。検索フィルタは含めない（必要になったら別 change）。
+選択肢が多い (>5) 場合は SegmentedToggle ではなくドロップダウン (combo box) が必要。`../katana/crates/katana-ui/src/widgets/combo_box/` の役割を Adapter に移植し、選択値表示 + 開閉動作 + 一覧表示の最小実装にする。検索フィルタは含めない（必要になったら別 change）。
 
 ## What Changes
 

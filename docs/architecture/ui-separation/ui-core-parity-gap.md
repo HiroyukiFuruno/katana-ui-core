@@ -11,16 +11,19 @@
 | --- | --- |
 | root architecture | framework-neutral core、adapter 境界、runtime / window / surface の親設計 |
 | 最低構造 | 必須 story、最低 node 構造、state id 衝突の確認 |
-| Storybook visual | panel screenshot、light / dark、操作後差分、modal window 証跡 |
+| Storybook visual | 旧 panel screenshot、light / dark、操作後差分、modal window 証跡 |
 | interaction report | story selection、theme switch、operation sequence、callback log |
 | visual fallback | generic fallback を完了根拠にしない方針 |
 
-上記は有用な履歴だが、新基準では部品ごとの option / action / event / state / preset / preview / settings / 自動テスト / 画像回帰 / Storybook ページを満たす必要がある。
+現在の tracked 証跡名は `storybook-panel-interaction-report.json` とし、`story_selection`、`theme_switch`、`operation_sequence`、callback log、target state id、before / after summary を最低 marker にする。release readiness では `required_ui_fallbacks=0` を marker にする。generic `node` fallback は完了根拠にしない。
+
+上記は履歴としてだけ扱う。新基準では部品ごとの option / action / event / state / preset / preview / settings / 自動テスト / 数値化された layout / rendering contract / Storybook ページを満たす必要がある。
 
 ## 新基準で未完了扱いに戻す理由
 
-- Storybook は部品カタログであり、部品の正しさを単独で証明しない。
-- 自動テスト、layout regression、visual regression、input regression、guard を CI/CD 品質ゲートにする必要がある。
+- Storybook は静的見本帳ではなく、選択中 UI の layout / option / action / event / state / rendering / panel 独立 scroll を実画面で扱うフィードバック用の画面である。
+- Storybook は部品の正しさを単独で証明しない。
+- 自動テスト、数値化された layout / rendering contract、input regression、guard を CI/CD 品質ゲートにする必要がある。
 - 日本語入力（IME）、OS 絵文字、英日混在テキストの上下中央揃えは core 基盤の契約として検証する必要がある。
 - 旧個別 change の完了チェックは現在の KUC 公開 API 形状を保証しない。
 
@@ -40,10 +43,25 @@
 
 1. `openspec validate establish-kuc-atoms-molecules-catalog --strict`
 2. core / atoms / molecules の契約テスト
-3. layout regression
-4. visual regression
-5. input regression
+3. 数値化された layout / rendering contract
+4. input regression
+5. state / event / action contract
 6. guard
-7. Storybook 部品カタログの実画面確認
 
-Storybook のスクリーンショットは最後の補助証跡であり、1〜6 の代替にしない。
+Storybook は release readiness の根拠にしない。要件行から 1〜6 のいずれかの自動検査へ追跡できない場合は、テストシナリオ漏れとして扱う。
+
+## Storybook 未反映監査
+
+`just storybook-reflection-audit` は、required page が Storybook の固有画面へ反映されているかを監査する。
+この監査は、ページが存在するだけ、汎用 renderer へ落ちるだけ、汎用 preset / 汎用 interaction spec へ逃げるだけの状態を未反映として扱う。
+
+監査対象:
+
+- required page が `dedicated.rs` の page 固有 surface に接続されていること。
+- required page が page 固有 preset label を持つこと。
+- required page が option / action / event / state の明示 spec を持つこと。
+
+現在の用途:
+
+- `just check` の代替ではなく、Storybook 完成度の不足を一覧化するための明示監査とする。
+- v0.1.0 release readiness へ昇格する前に、この監査の `missing-*` を 0 にする。

@@ -1,8 +1,8 @@
-use katana_ui_core::atom::Input;
+use katana_ui_core::atom::{Button, Input};
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::{UiAction, UiActionResult};
 use katana_ui_core::molecule::{NotificationToast, StatusBar};
-use katana_ui_core::render_model::{UiDismissAction, UiTone, UiTree, UiVariant};
+use katana_ui_core::render_model::{UiDismissAction, UiNodeKind, UiTone, UiTree, UiVariant};
 
 #[test]
 fn notification_toast_dismiss_closes_owned_state() {
@@ -16,7 +16,8 @@ fn notification_toast_dismiss_closes_owned_state() {
         .open(true)
         .severity(UiTone::Success)
         .variant(UiVariant::Filled)
-        .dismiss_action(UiDismissAction::Available);
+        .dismiss_action(UiDismissAction::Available)
+        .child(Button::new("Undo"));
     let result = toast.apply_action(&UiAction::dismiss(toast.state_id().clone()));
     let toast_tree = UiTree::new(toast);
 
@@ -30,6 +31,34 @@ fn notification_toast_dismiss_closes_owned_state() {
     assert!(!toast_tree.root().props().interaction.open);
     assert_eq!(UiTone::Success, toast_tree.root().props().status.severity);
     assert_eq!(UiVariant::Filled, toast_tree.root().props().status.variant);
+    assert_eq!(UiNodeKind::Button, toast_tree.root().children()[0].kind());
+}
+
+#[test]
+fn notification_toast_focus_and_hover_are_core_actions() {
+    let mut toast = NotificationToast::new("Saved")
+        .open(true)
+        .severity(UiTone::Warning)
+        .variant(UiVariant::Outline)
+        .dismiss_action(UiDismissAction::Available)
+        .child(Button::new("Undo"));
+
+    let focused = toast.apply_action(&UiAction::focus(toast.state_id().clone()));
+    let hovered = toast.apply_action(&UiAction::hover(toast.state_id().clone(), true));
+    let toast_tree = UiTree::new(toast);
+
+    assert!(focused.handled);
+    assert!(focused.after.focused);
+    assert!(hovered.handled);
+    assert!(hovered.after.hovered);
+    assert!(toast_tree.root().props().interaction.focused);
+    assert!(toast_tree.root().props().interaction.hovered);
+    assert_eq!(UiTone::Warning, toast_tree.root().props().status.severity);
+    assert_eq!(UiVariant::Outline, toast_tree.root().props().status.variant);
+    assert_eq!(
+        UiDismissAction::Available,
+        toast_tree.root().props().status.dismiss_action
+    );
 }
 
 #[test]

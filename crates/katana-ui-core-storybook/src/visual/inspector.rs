@@ -1,8 +1,14 @@
+use super::button_options;
 use super::canvas::Canvas;
 use super::layout_metrics::{INSPECTOR_HEIGHT, INSPECTOR_WIDTH, INSPECTOR_X, INSPECTOR_Y};
 use super::palette::VisualPalette;
-use super::render_context::RenderContext;
+use super::panel_layout;
+use super::panel_options;
+use super::panel_scroll_state;
+use super::panel_scroll_state::PanelScrollRegion;
+use super::render_context::{RenderContext, ScenarioContext};
 use super::text::TextRenderer;
+use super::{inspector_rows, inspector_rows::settings_title};
 use crate::catalog::StoryExample;
 use katana_ui_core::render_model::UiNode;
 
@@ -22,12 +28,12 @@ const SECTION_HEADER_HEIGHT: usize = 38;
 const SECTION_ACCENT_WIDTH: usize = 4;
 const SECTION_TITLE_Y_OFFSET: usize = 12;
 const FIRST_ROW_Y_OFFSET: usize = 34;
-const HISTORY_ROW_LIMIT: usize = 3;
 
 pub(super) fn draw(
     canvas: &mut Canvas,
     render: RenderContext<'_>,
     selected: Option<(&UiNode, &StoryExample)>,
+    scenario: ScenarioContext<'_>,
 ) {
     let palette = render.palette;
     canvas.fill_rect(
@@ -61,16 +67,34 @@ pub(super) fn draw(
         palette.muted,
     );
 
-    let mut y = FIRST_SECTION_Y;
-    let Some((node, example)) = selected else {
-        draw_section(canvas, render.text, palette, "No selection", &[], y);
-        return;
-    };
+    let viewport = panel_layout::region_layout(PanelScrollRegion::Inspector).content_viewport;
+    canvas.with_clip(
+        viewport.x,
+        viewport.y,
+        viewport.width,
+        viewport.height,
+        |canvas| {
+            let max_inspector_y = panel_scroll_state::PanelScrollOverflowModel::max_scroll_y_for(
+                PanelScrollRegion::Inspector,
+                scenario.selected_page,
+                scenario.tree_expansion,
+            );
+            let mut y = FIRST_SECTION_Y.saturating_sub(
+                scenario
+                    .panel_scroll
+                    .offset_with_max(PanelScrollRegion::Inspector, max_inspector_y),
+            );
+            let Some((node, example)) = selected else {
+                draw_section(canvas, render.text, palette, "No selection", &[], y);
+                return;
+            };
 
-    y = draw_settings(canvas, render, node, example, y);
-    y = draw_state(canvas, render, node, y + SECTION_GAP);
-    y = draw_history(canvas, render, example, y + SECTION_GAP);
-    draw_quality(canvas, render.text, palette, y + SECTION_GAP);
+            y = draw_settings(canvas, render, node, example, scenario, y);
+            y = draw_state(canvas, render, node, scenario, y + SECTION_GAP);
+            y = draw_history(canvas, render, example, scenario, y + SECTION_GAP);
+            draw_quality(canvas, render.text, palette, scenario, y + SECTION_GAP);
+        },
+    );
 }
 
 fn draw_settings(
@@ -78,82 +102,74 @@ fn draw_settings(
     render: RenderContext<'_>,
     node: &UiNode,
     example: &StoryExample,
+    scenario: ScenarioContext<'_>,
     y: usize,
 ) -> usize {
-    if example.page == "tree-view" {
-        return draw_tree_view_settings(canvas, render, y);
+    if button_options::is_button_page(example.page) {
+        return button_options::draw_controls(canvas, render.text, render.palette, scenario, y);
     }
-    let props = node.props();
-    let rows = [
-        format!("variant: {:?}", props.variant),
-        format!("tone: {:?}", props.tone),
-        format!("size: {:?}", props.size),
-        format!("font: {}", props.font_role),
-    ];
+    if example.page == "panel" {
+        return panel_options::draw_controls(canvas, render.code_text, render.palette, scenario, y);
+    }
     draw_section(
         canvas,
         render.code_text,
         render.palette,
-        "Settings",
-        &rows,
+        settings_title(example),
+        &inspector_rows::settings_rows(node, example, scenario),
         y,
     )
 }
 
-fn draw_tree_view_settings(canvas: &mut Canvas, render: RenderContext<'_>, y: usize) -> usize {
-    let rows = [
-        "lines: solid / 1px".to_string(),
-        "icons: directory + file".to_string(),
-        "context menu: enabled".to_string(),
-        "default open: true".to_string(),
-        "trigger: icon + text".to_string(),
-    ];
+fn draw_state(
+    canvas: &mut Canvas,
+    render: RenderContext<'_>,
+    node: &UiNode,
+    scenario: ScenarioContext<'_>,
+    y: usize,
+) -> usize {
     draw_section(
         canvas,
         render.code_text,
         render.palette,
-        "Tree settings",
-        &rows,
+        "State",
+        &inspector_rows::state_rows(node, scenario),
         y,
     )
-}
-
-fn draw_state(canvas: &mut Canvas, render: RenderContext<'_>, node: &UiNode, y: usize) -> usize {
-    let props = node.props();
-    let rows = [
-        format!("state: {}", props.state_id.as_str()),
-        format!("open: {}", props.interaction.open),
-        format!("selected: {}", props.interaction.has_selection),
-        format!("value: {}", visible_value(props.interaction.value.as_str())),
-    ];
-    draw_section(canvas, render.code_text, render.palette, "State", &rows, y)
 }
 
 fn draw_history(
     canvas: &mut Canvas,
     render: RenderContext<'_>,
     example: &StoryExample,
+    scenario: ScenarioContext<'_>,
     y: usize,
 ) -> usize {
-    let rows = history_rows(example);
     draw_section(
         canvas,
         render.code_text,
         render.palette,
         "Event / Action",
-        &rows,
+        &inspector_rows::history_rows(example, scenario),
         y,
     )
 }
 
-fn draw_quality(canvas: &mut Canvas, text: &TextRenderer, palette: &VisualPalette, y: usize) {
-    let rows = [
-        "preview: rendered".to_string(),
-        "settings: visible".to_string(),
-        "preset: tabs".to_string(),
-        "visual gate: required".to_string(),
-    ];
-    draw_section(canvas, text, palette, "Quality", &rows, y);
+fn draw_quality(
+    canvas: &mut Canvas,
+    text: &TextRenderer,
+    palette: &VisualPalette,
+    scenario: ScenarioContext<'_>,
+    y: usize,
+) {
+    draw_section(
+        canvas,
+        text,
+        palette,
+        "Quality",
+        &inspector_rows::quality_rows(scenario),
+        y,
+    );
 }
 
 fn draw_section(
@@ -165,7 +181,7 @@ fn draw_section(
     y: usize,
 ) -> usize {
     let height = SECTION_HEADER_HEIGHT + rows.len() * ROW_HEIGHT;
-    canvas.fill_rect(SECTION_X, y, SECTION_WIDTH, height, palette.panel);
+    canvas.fill_rect(SECTION_X, y, SECTION_WIDTH, height, palette.code_background);
     canvas.stroke_rect(SECTION_X, y, SECTION_WIDTH, height, palette.border);
     canvas.fill_rect(SECTION_X, y, SECTION_ACCENT_WIDTH, height, palette.accent);
     text.draw(
@@ -182,27 +198,4 @@ fn draw_section(
         row_y += ROW_HEIGHT;
     }
     y + height
-}
-
-fn history_rows(example: &StoryExample) -> Vec<String> {
-    if example.callback_logs.is_empty() {
-        return vec![
-            "action: none".to_string(),
-            "event: passive component".to_string(),
-            "log: visible".to_string(),
-        ];
-    }
-    example
-        .callback_logs
-        .iter()
-        .take(HISTORY_ROW_LIMIT)
-        .map(|it| format!("{} -> {}", it.action, it.target.as_str()))
-        .collect()
-}
-
-fn visible_value(value: &str) -> &str {
-    if value.is_empty() {
-        return "-";
-    }
-    value
 }

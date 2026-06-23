@@ -1,16 +1,15 @@
 use super::{ColorBlendingMode, RgbaColor};
-use crate::component::ComponentAction;
-use crate::interaction::{UiAction, UiActionResult};
 use crate::molecule::state::MoleculeState;
 use crate::render_model::{UiNode, UiNodeKind, UiSize};
 use serde::{Deserialize, Serialize};
 
 const RGBA_ALPHA_MAX: u8 = 255;
 const DEFAULT_COLOR_CHANNEL: u8 = 0;
+const DEFAULT_PANEL_SCALE_PERCENT: u16 = 75;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ColorPicker {
-    label: String,
+    pub(super) label: String,
     pub(super) state: MoleculeState,
     pub(super) value: RgbaColor,
     pub(super) hue: u16,
@@ -20,7 +19,11 @@ pub struct ColorPicker {
     pub(super) color_area: String,
     pub(super) trigger_size: UiSize,
     pub(super) title: String,
-    children: Vec<UiNode>,
+    pub(super) rgba_mode: bool,
+    pub(super) trigger_border: bool,
+    pub(super) eyedropper_callback: String,
+    pub(super) panel_scale_percent: u16,
+    pub(super) children: Vec<UiNode>,
 }
 
 impl ColorPicker {
@@ -28,7 +31,7 @@ impl ColorPicker {
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
-            state: MoleculeState::new(UiNodeKind::ColorPicker),
+            state: default_state(),
             value: RgbaColor::new(
                 DEFAULT_COLOR_CHANNEL,
                 DEFAULT_COLOR_CHANNEL,
@@ -42,14 +45,19 @@ impl ColorPicker {
             color_area: String::new(),
             trigger_size: UiSize::Medium,
             title: String::new(),
+            rgba_mode: true,
+            trigger_border: true,
+            eyedropper_callback: String::new(),
+            panel_scale_percent: DEFAULT_PANEL_SCALE_PERCENT,
             children: Vec::new(),
         }
     }
 
     #[must_use]
     pub fn rgba(mut self, value: RgbaColor) -> Self {
-        self.value = value;
-        self.state.value = value.css_rgba();
+        self.value = self.color_for_mode(value);
+        self.alpha = self.value.alpha;
+        self.state.value = self.value.css_rgba();
         self
     }
 
@@ -74,8 +82,8 @@ impl ColorPicker {
 
     #[must_use]
     pub fn alpha(mut self, value: u8) -> Self {
-        self.alpha = value;
-        self.value.alpha = value;
+        self.alpha = self.alpha_for_mode(value);
+        self.value.alpha = self.alpha;
         self.state.value = self.value.css_rgba();
         self
     }
@@ -105,6 +113,35 @@ impl ColorPicker {
     }
 
     #[must_use]
+    pub fn rgba_mode(mut self, value: bool) -> Self {
+        self.rgba_mode = value;
+        if !value {
+            self.value = self.value.opaque();
+            self.alpha = RGBA_ALPHA_MAX;
+            self.state.value = self.value.css_rgba();
+        }
+        self
+    }
+
+    #[must_use]
+    pub fn trigger_border(mut self, value: bool) -> Self {
+        self.trigger_border = value;
+        self
+    }
+
+    #[must_use]
+    pub fn eyedropper_callback(mut self, value: impl Into<String>) -> Self {
+        self.eyedropper_callback = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn panel_scale_percent(mut self, value: u16) -> Self {
+        self.panel_scale_percent = value;
+        self
+    }
+
+    #[must_use]
     pub fn readonly(mut self, value: bool) -> Self {
         self.state.readonly = value;
         self
@@ -121,41 +158,32 @@ impl ColorPicker {
         self.children.push(child.into());
         self
     }
-}
 
-impl ComponentAction for ColorPicker {
-    fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
-        let before = self.state.interaction();
-        if action.target() != &self.state.state_id || self.state.disabled || self.state.readonly {
-            return UiActionResult::ignored(self.state.state_id.clone(), before);
+    pub(super) fn color_for_mode(&self, value: RgbaColor) -> RgbaColor {
+        if self.rgba_mode {
+            value
+        } else {
+            value.opaque()
         }
-        if let UiAction::SetValue {
-            color_drag: Some(drag),
-            ..
-        } = action
-        {
-            self.value = drag.value.into();
-            self.hue = drag.hue;
-            self.alpha = drag.value.alpha;
-            self.preview = drag.preview;
-            self.state.value = self.value.css_rgba();
-            return UiActionResult::handled(
-                self.state.state_id.clone(),
-                action,
-                before,
-                self.state.interaction(),
-            );
+    }
+
+    const fn alpha_for_mode(&self, value: u8) -> u8 {
+        if self.rgba_mode {
+            value
+        } else {
+            RGBA_ALPHA_MAX
         }
-        self.state.apply_action(action, false)
     }
 }
 
-impl From<ColorPicker> for UiNode {
-    fn from(value: ColorPicker) -> Self {
-        let mut node = value.state.node(UiNodeKind::ColorPicker, value.label);
-        for child in value.children {
-            node = node.child(child);
-        }
-        node
-    }
+fn default_state() -> MoleculeState {
+    let mut state = MoleculeState::new(UiNodeKind::ColorPicker);
+    state.value = RgbaColor::new(
+        DEFAULT_COLOR_CHANNEL,
+        DEFAULT_COLOR_CHANNEL,
+        DEFAULT_COLOR_CHANNEL,
+        RGBA_ALPHA_MAX,
+    )
+    .css_rgba();
+    state
 }

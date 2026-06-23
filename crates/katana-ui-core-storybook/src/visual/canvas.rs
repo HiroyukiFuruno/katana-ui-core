@@ -1,28 +1,49 @@
-use image::{ImageBuffer, Rgba};
-use std::path::Path;
-
-const RED_SHIFT: u32 = 16;
-const GREEN_SHIFT: u32 = 8;
-const CHANNEL_MASK: u32 = 0xff;
-const ALPHA_MAX: u32 = 255;
-const OPAQUE_ALPHA: u8 = 255;
+use super::canvas_clip::CanvasClip;
+use super::canvas_color::blend_color;
+pub use super::canvas_model::Canvas;
+use super::canvas_model::CanvasImageSurfaceExtentMode;
+use super::canvas_scale::{normalized_scale, physical_size};
 const RECT_BORDER_WIDTH: usize = 1;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Canvas {
-    width: usize,
-    height: usize,
-    pixels: Vec<u32>,
-}
 
 impl Canvas {
     #[must_use]
     pub fn new(width: usize, height: usize, color: u32) -> Self {
+        Self::new_scaled(width, height, 1.0, color)
+    }
+
+    #[must_use]
+    pub fn new_scaled(width: usize, height: usize, scale: f32, color: u32) -> Self {
+        Self::new_scaled_with_raster_scale(width, height, scale, scale, color)
+    }
+
+    #[must_use]
+    pub fn new_scaled_with_raster_scale(
+        width: usize,
+        height: usize,
+        scale: f32,
+        raster_scale: f32,
+        color: u32,
+    ) -> Self {
+        let scale = normalized_scale(scale);
+        let raster_scale = normalized_scale(raster_scale);
         Self {
-            width,
-            height,
-            pixels: vec![color; width * height],
+            width: physical_size(width, scale),
+            height: physical_size(height, scale),
+            logical_width: width,
+            logical_height: height,
+            scale_factor: scale,
+            raster_scale_factor: raster_scale,
+            image_surface_extent_mode: CanvasImageSurfaceExtentMode::LogicalDisplay,
+            pixels: vec![color; physical_size(width, scale) * physical_size(height, scale)],
+            clip: None,
+            text_runs: Vec::new(),
         }
+    }
+
+    #[must_use]
+    pub fn with_reference_capture_image_surface_extents(mut self) -> Self {
+        self.image_surface_extent_mode = CanvasImageSurfaceExtentMode::RasterPresentation;
+        self
     }
 
     #[must_use]
@@ -36,6 +57,30 @@ impl Canvas {
     }
 
     #[must_use]
+    pub fn logical_width(&self) -> usize {
+        self.logical_width
+    }
+
+    #[must_use]
+    pub fn logical_height(&self) -> usize {
+        self.logical_height
+    }
+
+    #[must_use]
+    pub fn scale_factor(&self) -> f32 {
+        self.scale_factor
+    }
+
+    #[must_use]
+    pub fn raster_scale_factor(&self) -> f32 {
+        self.raster_scale_factor
+    }
+
+    pub(super) fn uses_reference_capture_image_surface_extents(&self) -> bool {
+        self.image_surface_extent_mode == CanvasImageSurfaceExtentMode::RasterPresentation
+    }
+
+    #[must_use]
     pub fn pixels(&self) -> &[u32] {
         &self.pixels
     }
@@ -46,12 +91,46 @@ impl Canvas {
     }
 
     pub fn fill_rect(&mut self, x: usize, y: usize, width: usize, height: usize, color: u32) {
-        let right = x.saturating_add(width).min(self.width);
-        let bottom = y.saturating_add(height).min(self.height);
-        for current_y in y..bottom {
-            for current_x in x..right {
-                self.set(current_x, current_y, color);
-            }
+        let Some(rect) = self.visible_rect(x, y, width, height) else {
+            return;
+        };
+        for current_y in rect.y..rect.bottom() {
+            let start = current_y * self.width + rect.x;
+            let end = current_y * self.width + rect.right();
+            self.pixels[start..end].fill(color);
+        }
+    }
+
+    pub(crate) fn with_clip<F>(&mut self, x: usize, y: usize, width: usize, height: usize, draw: F)
+    where
+        F: FnOnce(&mut Self),
+    {
+        let Some(next) = self.to_physical_clip(x, y, width, height) else {
+            return;
+        };
+        let previous = self.clip;
+        self.clip = match previous {
+            Some(current) => current.intersect(next),
+            None => Some(next),
+        };
+        if self.clip.is_some() {
+            draw(self);
+        }
+        self.clip = previous;
+    }
+
+    #[must_use]
+    pub(super) fn visible_rect(
+        &self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+    ) -> Option<CanvasClip> {
+        let rect = self.to_physical_clip(x, y, width, height)?;
+        match self.clip {
+            Some(clip) => rect.intersect(clip),
+            None => Some(rect),
         }
     }
 
@@ -78,61 +157,72 @@ impl Canvas {
     }
 
     pub fn set(&mut self, x: usize, y: usize, color: u32) {
-        if x < self.width && y < self.height {
-            self.pixels[y * self.width + x] = color;
-        }
-    }
-
-    #[must_use]
-    pub fn viewport_y(&self, offset_y: usize, height: usize, fill: u32) -> Self {
-        let mut viewport = Self::new(self.width, height, fill);
-        for target_y in 0..height {
-            let source_y = offset_y + target_y;
-            if source_y >= self.height {
-                break;
+        let Some((left, right)) = self.physical_span_x(x) else {
+            return;
+        };
+        let Some((top, bottom)) = self.physical_span_y(y) else {
+            return;
+        };
+        for current_y in top..bottom {
+            for current_x in left..right {
+                self.set_physical(current_x, current_y, color);
             }
-            let source_start = source_y * self.width;
-            let target_start = target_y * self.width;
-            viewport.pixels[target_start..target_start + self.width]
-                .copy_from_slice(&self.pixels[source_start..source_start + self.width]);
         }
-        viewport
     }
 
     pub fn blend(&mut self, x: usize, y: usize, color: u32, alpha: u8) {
-        if x >= self.width || y >= self.height {
+        let Some((left, right)) = self.physical_span_x(x) else {
+            return;
+        };
+        let Some((top, bottom)) = self.physical_span_y(y) else {
+            return;
+        };
+        for current_y in top..bottom {
+            for current_x in left..right {
+                self.blend_physical(current_x, current_y, color, alpha)
+            }
+        }
+    }
+
+    pub(crate) fn blend_physical(&mut self, x: usize, y: usize, color: u32, alpha: u8) {
+        if x >= self.width || y >= self.height || !self.clip.is_none_or(|clip| clip.contains(x, y))
+        {
             return;
         }
         let index = y * self.width + x;
         self.pixels[index] = blend_color(self.pixels[index], color, alpha);
     }
 
-    pub fn save_png(&self, path: &Path) -> image::ImageResult<()> {
-        let mut image =
-            ImageBuffer::<Rgba<u8>, Vec<u8>>::new(self.width as u32, self.height as u32);
-        for (index, pixel) in self.pixels.iter().enumerate() {
-            let x = (index % self.width) as u32;
-            let y = (index / self.width) as u32;
-            let red = ((pixel >> RED_SHIFT) & CHANNEL_MASK) as u8;
-            let green = ((pixel >> GREEN_SHIFT) & CHANNEL_MASK) as u8;
-            let blue = (pixel & CHANNEL_MASK) as u8;
-            image.put_pixel(x, y, Rgba([red, green, blue, OPAQUE_ALPHA]));
+    pub(crate) fn set_physical(&mut self, x: usize, y: usize, color: u32) {
+        if x >= self.width || y >= self.height || !self.clip.is_none_or(|clip| clip.contains(x, y))
+        {
+            return;
         }
-        image.save(path)
+        self.pixels[y * self.width + x] = color;
+    }
+
+    pub fn blend_rect(
+        &mut self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        color: u32,
+        alpha: u8,
+    ) {
+        let Some(rect) = self.visible_rect(x, y, width, height) else {
+            return;
+        };
+        for current_y in rect.y..rect.bottom() {
+            let left = current_y * self.width + rect.x;
+            let right = current_y * self.width + rect.right();
+            for index in left..right {
+                let destination = self.pixels[index];
+                self.pixels[index] = blend_color(destination, color, alpha);
+            }
+        }
     }
 }
 
-fn blend_color(destination: u32, source: u32, alpha: u8) -> u32 {
-    let alpha = u32::from(alpha);
-    let inverse = ALPHA_MAX - alpha;
-    let red = blend_channel(destination, source, alpha, inverse, RED_SHIFT);
-    let green = blend_channel(destination, source, alpha, inverse, GREEN_SHIFT);
-    let blue = blend_channel(destination, source, alpha, inverse, 0);
-    (red << RED_SHIFT) | (green << GREEN_SHIFT) | blue
-}
-
-fn blend_channel(destination: u32, source: u32, alpha: u32, inverse: u32, shift: u32) -> u32 {
-    let destination_channel = (destination >> shift) & CHANNEL_MASK;
-    let source_channel = (source >> shift) & CHANNEL_MASK;
-    (source_channel * alpha + destination_channel * inverse) / ALPHA_MAX
-}
+#[cfg(test)]
+mod tests;

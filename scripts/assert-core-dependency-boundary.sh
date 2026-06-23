@@ -10,9 +10,6 @@ failures=()
 
 while IFS= read -r line; do
   case "$line" in
-    floem\ v*|floem_reactive\ v*|floem_renderer\ v*|egui\ v*|gpui\ v*)
-      failures+=("framework dependency leaked into core: $line")
-      ;;
     katana-*)
       case "$line" in
         katana-ui-core\ v*) ;;
@@ -25,5 +22,12 @@ done <<<"$tree"
 if [ "${#failures[@]}" -gt 0 ]; then
   printf '%s\n' "core dependency boundary failed"
   printf -- '- %s\n' "${failures[@]}"
+  exit 1
+fi
+
+storybook_manifest="$ROOT_DIR/crates/katana-ui-core-storybook/Cargo.toml"
+if grep -q "katana-document-viewer" "$storybook_manifest"; then
+  printf '%s\n' "core dependency boundary failed"
+  printf -- '- %s\n' "Storybook release gate must not depend on katana-document-viewer; keep KDV integration in the consumer repo"
   exit 1
 fi

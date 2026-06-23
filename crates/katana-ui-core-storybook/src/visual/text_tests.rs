@@ -1,17 +1,13 @@
 use super::canvas::Canvas;
 use super::text::{TextRenderer, TextVerticalBox};
+use super::text_test_support::{
+    ALIGN_BOX_HEIGHT, BACKGROUND, CANVAS_HEIGHT, CANVAS_WIDTH, MAX_CENTER_DELTA,
+    MAX_CODE_GLYPH_CENTER_DELTA, SMALL_CODE_BOX_HEIGHT, SMALL_CODE_TEXT_SIZE, TEXT, TEXT_SIZE,
+    TEXT_X, TEXT_Y, WIDGET_LABEL_BOX_HEIGHT, WIDGET_LABEL_TEXT_SIZE, centered_text_delta,
+    centered_text_delta_with_size,
+};
 use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::theme::FontFamily;
-
-const BACKGROUND: u32 = 0x1e1e1e;
-const TEXT: u32 = 0xd4d4d4;
-const CANVAS_WIDTH: usize = 360;
-const CANVAS_HEIGHT: usize = 80;
-const TEXT_X: usize = 12;
-const TEXT_Y: usize = 12;
-const TEXT_SIZE: f32 = 18.0;
-const ALIGN_BOX_HEIGHT: f32 = 32.0;
-const MAX_CENTER_DELTA: f32 = 2.0;
 
 #[test]
 fn draws_japanese_and_emoji_text() {
@@ -22,6 +18,42 @@ fn draws_japanese_and_emoji_text() {
     renderer.draw(&mut canvas, "日本語 UI 🔷", TEXT_X, TEXT_Y, TEXT_SIZE, TEXT);
 
     assert!(canvas.non_background_pixels(BACKGROUND) > 500);
+}
+
+#[test]
+fn measured_width_matches_drawn_ink_right_edge() -> Result<(), String> {
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+    let samples = ["abcdefb", "typed 日本語", "emoji 🔷"];
+
+    for sample in samples {
+        let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
+        renderer.draw(&mut canvas, sample, TEXT_X, TEXT_Y, TEXT_SIZE, TEXT);
+        let measured_width = renderer.measure_width(sample, TEXT_SIZE);
+        let right =
+            ink_right_edge(&canvas).ok_or_else(|| "text should render pixels".to_string())?;
+
+        assert_eq!(
+            TEXT_X + measured_width - 1,
+            right,
+            "{sample} measured width should match ink edge"
+        );
+    }
+    Ok(())
+}
+
+#[test]
+fn text_space_advances_latin_words() {
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+
+    let collapsed = renderer.measure_width("H1Heading", TEXT_SIZE);
+    let spaced = renderer.measure_width("H1 Heading", TEXT_SIZE);
+
+    assert!(
+        spaced > collapsed,
+        "space must advance text width: collapsed={collapsed} spaced={spaced}"
+    );
 }
 
 #[test]
@@ -58,37 +90,108 @@ fn mixed_japanese_english_and_emoji_are_vertically_centered() {
     }
 }
 
-fn centered_text_delta(renderer: &TextRenderer, sample: &str) -> f32 {
+fn ink_right_edge(canvas: &Canvas) -> Option<usize> {
+    canvas
+        .pixels()
+        .iter()
+        .enumerate()
+        .filter_map(|(index, pixel)| {
+            if *pixel == BACKGROUND {
+                return None;
+            }
+            Some(index % canvas.width())
+        })
+        .max()
+}
+
+#[test]
+fn latin_lowercase_glyphs_keep_the_same_vertical_center() {
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+    let samples = ["e", "a", "c", "o", "x", "m", "n", "s"];
+
+    for sample in samples {
+        let center_delta = centered_text_delta(&renderer, sample);
+        assert!(
+            center_delta <= MAX_CENTER_DELTA,
+            "{sample} center delta was {center_delta}"
+        );
+    }
+}
+
+#[test]
+fn code_role_draws_mixed_japanese_status_text() {
+    let facade = UiCoreFacade::default();
+    let code_renderer = TextRenderer::load(&facade, "code");
     let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
-    renderer.draw_centered(
+
+    code_renderer.draw_centered(
         &mut canvas,
-        sample,
+        "preset 編集器右クリック",
         TEXT_X,
         TextVerticalBox::new(TEXT_Y, ALIGN_BOX_HEIGHT),
-        TEXT_SIZE,
+        SMALL_CODE_TEXT_SIZE,
         TEXT,
     );
-    let bounds = ink_vertical_bounds(&canvas);
-    let ink_center = (bounds.top + bounds.bottom) as f32 / 2.0;
-    let box_center = TEXT_Y as f32 + ALIGN_BOX_HEIGHT / 2.0;
-    (ink_center - box_center).abs()
+
+    assert!(canvas.non_background_pixels(BACKGROUND) > 200);
 }
 
-struct VerticalBounds {
-    top: usize,
-    bottom: usize,
-}
+#[test]
+fn code_role_digits_and_lowercase_glyphs_share_vertical_center_at_small_size() {
+    let facade = UiCoreFacade::default();
+    let code_renderer = TextRenderer::load(&facade, "code");
+    let samples = ["e", "0", "preset horizontal", "count 0", "state idle"];
 
-fn ink_vertical_bounds(canvas: &Canvas) -> VerticalBounds {
-    let mut top = canvas.height();
-    let mut bottom = 0;
-    for (index, pixel) in canvas.pixels().iter().enumerate() {
-        if *pixel == BACKGROUND {
-            continue;
-        }
-        let y = index / canvas.width();
-        top = top.min(y);
-        bottom = bottom.max(y);
+    for sample in samples {
+        let center_delta = centered_text_delta_with_size(
+            &code_renderer,
+            sample,
+            SMALL_CODE_TEXT_SIZE,
+            SMALL_CODE_BOX_HEIGHT,
+        );
+        assert!(
+            center_delta <= MAX_CODE_GLYPH_CENTER_DELTA,
+            "{sample} center delta was {center_delta}"
+        );
     }
-    VerticalBounds { top, bottom }
+}
+
+#[test]
+fn completed_widget_preview_text_boxes_keep_vertical_alignment() {
+    let facade = UiCoreFacade::default();
+    let body_renderer = TextRenderer::load(&facade, "body");
+    let code_renderer = TextRenderer::load(&facade, "code");
+    let body_samples = ["Button", "Theme tokens", "保存する", "日本語 UI", "UI 🔷"];
+    let code_samples = [
+        "preset modern",
+        "state idle",
+        "setting layout=basic",
+        "count 0",
+    ];
+
+    for sample in body_samples {
+        let center_delta = centered_text_delta_with_size(
+            &body_renderer,
+            sample,
+            WIDGET_LABEL_TEXT_SIZE,
+            WIDGET_LABEL_BOX_HEIGHT,
+        );
+        assert!(
+            center_delta <= MAX_CENTER_DELTA,
+            "{sample} body center delta was {center_delta}"
+        );
+    }
+    for sample in code_samples {
+        let center_delta = centered_text_delta_with_size(
+            &code_renderer,
+            sample,
+            SMALL_CODE_TEXT_SIZE,
+            SMALL_CODE_BOX_HEIGHT,
+        );
+        assert!(
+            center_delta <= MAX_CODE_GLYPH_CENTER_DELTA,
+            "{sample} code center delta was {center_delta}"
+        );
+    }
 }

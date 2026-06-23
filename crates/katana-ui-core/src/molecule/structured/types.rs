@@ -1,4 +1,6 @@
 use super::CommandItem;
+use super::command_launcher_results::CommandResultRow;
+use crate::interaction::VirtualizationConfig;
 use crate::molecule::disclosure_foundation::DisclosureTriggerArea;
 use serde::{Deserialize, Serialize};
 
@@ -13,6 +15,7 @@ pub enum TreeLineStyle {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct StructuredTypedModel {
     pub active_id: String,
+    pub hovered_id: String,
     pub line_display: bool,
     pub line_style: TreeLineStyle,
     pub line_width: u8,
@@ -28,6 +31,10 @@ pub(super) struct StructuredTypedModel {
     pub query: String,
     pub filtered_actions: Vec<CommandItem>,
     pub keyboard_action: String,
+    pub command_result_rows: Vec<CommandResultRow>,
+    pub command_highlighted_index: Option<usize>,
+    pub command_virtualization: Option<VirtualizationConfig>,
+    pub virtualization: Option<VirtualizationConfig>,
     pub add_action: String,
     pub delete_action: String,
     pub reorder_action: String,

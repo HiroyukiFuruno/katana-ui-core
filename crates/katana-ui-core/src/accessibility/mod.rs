@@ -36,6 +36,29 @@ pub struct AccessibilityNode {
     pub label: AccessibilityLabel,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReducedMotionPreference {
+    NoPreference,
+    Reduce,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReducedMotionQuery {
+    preference: ReducedMotionPreference,
+}
+
+impl ReducedMotionQuery {
+    #[must_use]
+    pub const fn new(preference: ReducedMotionPreference) -> Self {
+        Self { preference }
+    }
+
+    #[must_use]
+    pub const fn prefers_reduced_motion(self) -> bool {
+        matches!(self.preference, ReducedMotionPreference::Reduce)
+    }
+}
+
 impl AccessibilityNode {
     #[must_use]
     pub fn new(target: UiNodeId, role: AccessibilityRole, label: AccessibilityLabel) -> Self {

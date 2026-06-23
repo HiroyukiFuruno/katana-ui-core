@@ -1,50 +1,54 @@
 mod atoms;
-mod layouts;
+#[cfg(test)]
+mod color_picker_story_tests;
+mod data_structured;
+mod feedback_overlay;
+mod forms_selection;
+mod foundation_theme;
+mod layout;
 mod molecules;
+#[cfg(test)]
+mod motion_story_tests;
+mod navigation;
 mod panel_interaction;
 mod panel_operations;
 mod panel_report;
-
+mod preset_label_extra;
+mod preset_label_extra_feedback;
+mod preset_labels;
+mod runtime_app_primitives;
+#[cfg(test)]
+mod scroll_area_story_tests;
+#[cfg(test)]
+mod search_box_story_tests;
+#[cfg(test)]
+mod search_control_strip_story_tests;
+#[cfg(test)]
+mod split_pane_story_tests;
+mod story_hierarchy;
+pub(crate) mod story_map;
+mod story_paths_atoms;
+mod story_paths_data;
+mod story_paths_feedback;
+mod story_paths_forms;
+mod story_paths_foundation;
+mod story_paths_layout;
+mod story_paths_navigation;
+mod story_paths_runtime;
+#[cfg(test)]
+mod tests;
+mod types;
 use crate::requirements::StoryRequirements;
 use katana_ui_core::interaction::UiCallbackLog;
 use katana_ui_core::render_model::{UiNode, UiStateId, UiTree};
-use std::collections::BTreeSet;
-
+pub use panel_interaction::StoryDetailContent;
 pub use panel_interaction::StorybookPanelInteractionReport;
 pub(crate) use panel_operations::StorybookOperationSequences;
 pub(crate) use panel_report::StorybookPanelReportFields;
 pub use panel_report::{StorybookPanelReport, StorybookStyleSheet};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StoryExample {
-    pub page: &'static str,
-    pub tree: UiTree,
-    pub minimum_nodes: usize,
-    pub callback_logs: Vec<UiCallbackLog>,
-    pub contract: StoryPageContract,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct StoryPageContract {
-    pub preview: bool,
-    pub settings: bool,
-    pub state_summary: bool,
-    pub event_history: bool,
-    pub action_history: bool,
-    pub preset_tabs: bool,
-    pub requirement_status: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct StoryCatalogReport {
-    pub stories: usize,
-    pub validated: usize,
-    pub state_conflicts: usize,
-    pub structure_failures: usize,
-    pub missing_required_pages: usize,
-    pub page_contract_failures: usize,
-    pub nodes: usize,
-}
+pub(crate) use preset_labels::StoryPresetLabels;
+use std::collections::BTreeSet;
+pub use types::{StoryCatalogReport, StoryExample, StoryPageContract};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct StoryCatalog;
@@ -53,9 +57,14 @@ impl StoryCatalog {
     #[must_use]
     pub fn examples(self) -> Vec<StoryExample> {
         let mut examples = Vec::new();
+        examples.extend(foundation_theme::examples());
         examples.extend(atoms::examples());
-        examples.extend(molecules::examples());
-        examples.extend(layouts::examples());
+        examples.extend(forms_selection::examples());
+        examples.extend(layout::examples());
+        examples.extend(navigation::examples());
+        examples.extend(feedback_overlay::examples());
+        examples.extend(data_structured::examples());
+        examples.extend(runtime_app_primitives::examples());
         examples
     }
 
@@ -67,6 +76,13 @@ impl StoryCatalog {
 
     #[must_use]
     pub fn verify_examples(self, examples: &[StoryExample]) -> StoryCatalogReport {
+        let _ = story_map::STORY_GROUPS
+            .iter()
+            .all(|category| !category.label().is_empty());
+        let _ = examples
+            .iter()
+            .all(|it| story_map::StoryPath::path_for_page(it.page).is_some());
+
         let state_conflicts = examples
             .iter()
             .filter(|it| Self::has_state_conflict(&it.tree))
@@ -102,12 +118,17 @@ impl StoryCatalog {
     }
 
     pub(super) fn story(page: &'static str, root: impl Into<UiNode>) -> StoryExample {
+        let tree = UiTree::new(root);
+        let minimum_nodes = StoryRequirements::minimum_nodes_for(page);
+        let callback_logs = Vec::new();
+        let contract =
+            StoryPageContract::from_tree(page, &tree, minimum_nodes, callback_logs.as_slice());
         StoryExample {
             page,
-            tree: UiTree::new(root),
-            minimum_nodes: StoryRequirements::minimum_nodes_for(page),
-            callback_logs: Vec::new(),
-            contract: StoryPageContract::complete(),
+            tree,
+            minimum_nodes,
+            callback_logs,
+            contract,
         }
     }
 
@@ -116,12 +137,16 @@ impl StoryCatalog {
         root: impl Into<UiNode>,
         callback_logs: Vec<UiCallbackLog>,
     ) -> StoryExample {
+        let tree = UiTree::new(root);
+        let minimum_nodes = StoryRequirements::minimum_nodes_for(page);
+        let contract =
+            StoryPageContract::from_tree(page, &tree, minimum_nodes, callback_logs.as_slice());
         StoryExample {
             page,
-            tree: UiTree::new(root),
-            minimum_nodes: StoryRequirements::minimum_nodes_for(page),
+            tree,
+            minimum_nodes,
             callback_logs,
-            contract: StoryPageContract::complete(),
+            contract,
         }
     }
 
@@ -141,110 +166,5 @@ impl StoryCatalog {
 
     fn node_count(node: &UiNode) -> usize {
         1 + node.children().iter().map(Self::node_count).sum::<usize>()
-    }
-}
-
-impl StoryCatalogReport {
-    #[must_use]
-    pub fn summary(&self) -> String {
-        format!(
-            "stories={} validated={} state_conflicts={} structure_failures={} missing_required_pages={} page_contract_failures={} nodes={}",
-            self.stories,
-            self.validated,
-            self.state_conflicts,
-            self.structure_failures,
-            self.missing_required_pages,
-            self.page_contract_failures,
-            self.nodes
-        )
-    }
-}
-
-impl StoryPageContract {
-    #[must_use]
-    pub fn complete() -> Self {
-        Self {
-            preview: true,
-            settings: true,
-            state_summary: true,
-            event_history: true,
-            action_history: true,
-            preset_tabs: true,
-            requirement_status: true,
-        }
-    }
-
-    #[must_use]
-    pub fn is_complete(self) -> bool {
-        self.preview
-            && self.settings
-            && self.state_summary
-            && self.event_history
-            && self.action_history
-            && self.preset_tabs
-            && self.requirement_status
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::StoryCatalog;
-    use katana_ui_core::render_model::{UiNodeKind, UiVisualRole};
-
-    #[test]
-    fn atom_examples_use_typed_props_without_type_classes() {
-        let examples = StoryCatalog.examples();
-        let atoms = examples.iter().filter(|it| {
-            matches!(
-                it.tree.root().kind(),
-                UiNodeKind::Text
-                    | UiNodeKind::Icon
-                    | UiNodeKind::Button
-                    | UiNodeKind::Input
-                    | UiNodeKind::Checkbox
-                    | UiNodeKind::Radio
-                    | UiNodeKind::Badge
-                    | UiNodeKind::Divider
-                    | UiNodeKind::Spacer
-                    | UiNodeKind::KeyCap
-                    | UiNodeKind::LoadingDots
-                    | UiNodeKind::Spinner
-                    | UiNodeKind::ProgressBar
-                    | UiNodeKind::ColorSwatch
-                    | UiNodeKind::Toggle
-                    | UiNodeKind::SlideControl
-                    | UiNodeKind::SvgButton
-                    | UiNodeKind::TextButton
-                    | UiNodeKind::IconTextButton
-            )
-        });
-
-        for example in atoms {
-            let props = example.tree.root().props();
-            assert!(props.style_classes.is_empty(), "{}", example.page);
-        }
-        let key_cap = examples.iter().find(|it| it.page == "key-cap");
-        assert!(key_cap.is_some(), "key-cap story is required");
-        let key_cap_props = key_cap.map(|it| it.tree.root().props());
-        assert_eq!(
-            Some(UiVisualRole::Shortcut),
-            key_cap_props.map(|it| it.visual_role)
-        );
-        assert_eq!(Some("code"), key_cap_props.map(|it| it.font_role.as_str()));
-    }
-
-    #[test]
-    fn interactive_atom_examples_expose_callback_logs() {
-        let examples = StoryCatalog.examples();
-        let log_pages: Vec<&str> = examples
-            .iter()
-            .filter(|it| !it.callback_logs.is_empty())
-            .map(|it| it.page)
-            .collect();
-
-        assert!(log_pages.contains(&"button"));
-        assert!(log_pages.contains(&"text-input"));
-        assert!(log_pages.contains(&"checkbox"));
-        assert!(log_pages.contains(&"toggle"));
     }
 }

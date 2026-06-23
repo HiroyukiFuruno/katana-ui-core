@@ -177,11 +177,8 @@ def latest_stable_version(target: StableVersion, args: argparse.Namespace) -> St
     try:
         payload = github_release_payload(args)
     except NoStableReleaseError:
-        fallback = latest_stable_version_from_tags(target, args.remote)
-        if fallback is None:
-            print("No previous stable release found; accepting first release.", file=sys.stderr)
-            return None
-        return fallback
+        print("No previous stable release found; accepting first release.", file=sys.stderr)
+        return None
     except RuntimeError as error_from_api:
         fallback = latest_stable_version_from_tags(target, args.remote)
         if fallback is None:

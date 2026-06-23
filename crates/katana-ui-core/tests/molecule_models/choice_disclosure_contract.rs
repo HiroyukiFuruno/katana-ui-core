@@ -1,8 +1,9 @@
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::molecule::{
-    Accordion, Breadcrumb, ChoiceItem, ComboBox, DisclosureTriggerArea, MenuButton, ModalOverlay,
-    Popover, SelectBox, SelectionList, SideMenu, SlideControl, Tabs, Tooltip,
+    Accordion, AccordionGroup, AccordionGroupItem, Breadcrumb, ChoiceItem, ComboBox,
+    DisclosureTriggerArea, MenuButton, ModalOverlay, Popover, SelectBox, SelectionList, SideMenu,
+    SlideControl, Tabs, Tooltip,
 };
 use katana_ui_core::render_model::UiTree;
 
@@ -40,6 +41,7 @@ fn choice_molecules_keep_typed_items_and_apply_selection_actions() {
 
     let combo = ComboBox::new("Command")
         .input_value("for")
+        .invalid(true)
         .free_input(true)
         .keyboard_navigation("arrow-down selects next filtered command")
         .filter_result(ChoiceItem::new("format", "Format"))
@@ -52,10 +54,20 @@ fn choice_molecules_keep_typed_items_and_apply_selection_actions() {
         .item(ChoiceItem::new("open", "Open"));
     let tabs = Tabs::new("Tabs")
         .icon_action("pin-tab")
-        .item(ChoiceItem::new("preview", "Preview"))
+        .item(
+            ChoiceItem::new("preview", "Preview")
+                .pinned(true)
+                .closeable(true)
+                .dirty(true)
+                .group("work")
+                .svg_icon("<svg data-icon=\"markdown\"/>"),
+        )
         .selected_index(0);
     let breadcrumb = Breadcrumb::new("Path")
         .crumb_action("navigate-root")
+        .long_list(true)
+        .open(true)
+        .placement("bottom-start")
         .item(ChoiceItem::new("/", "Root"));
     let side = SideMenu::new("Side")
         .hover_expansion(true)
@@ -68,6 +80,7 @@ fn choice_molecules_keep_typed_items_and_apply_selection_actions() {
         .item(ChoiceItem::new("one", "One"));
 
     assert_eq!("format", combo.items()[0].value);
+    assert!(UiTree::new(combo.clone()).root().props().invalid);
     assert_eq!("for", combo.input_model());
     assert_eq!("format", combo.filter_results()[0].value);
     assert!(combo.allows_free_input());
@@ -86,9 +99,23 @@ fn choice_molecules_keep_typed_items_and_apply_selection_actions() {
     assert_eq!("icon button trigger", menu.trigger_model());
     assert_eq!("open", menu.select_action_model());
     assert_eq!("preview", tabs.items()[0].value);
+    assert!(tabs.items()[0].pinned);
+    assert!(tabs.items()[0].closeable);
+    assert!(tabs.items()[0].dirty);
+    assert_eq!("work", tabs.items()[0].group);
+    assert_eq!("<svg data-icon=\"markdown\"/>", tabs.items()[0].svg_icon);
     assert_eq!("pin-tab", tabs.icon_action_model());
     assert_eq!("/", breadcrumb.items()[0].value);
     assert_eq!("navigate-root", breadcrumb.crumb_action_model());
+    assert!(breadcrumb.is_long_list());
+    assert_eq!("bottom-start", breadcrumb.placement_model());
+    assert!(
+        UiTree::new(breadcrumb.clone())
+            .root()
+            .props()
+            .interaction
+            .open
+    );
     assert_eq!("files", side.items()[0].value);
     assert!(side.hover_expansion_model());
     assert_eq!("one", list.items()[0].value);
@@ -184,4 +211,59 @@ fn disclosure_molecules_update_open_value_and_dismiss_state() {
             .interaction
             .value
     );
+}
+
+#[test]
+fn accordion_blocks_disabled_toggle_and_supports_multiple_group_open_items() {
+    let mut disabled = Accordion::new("Disabled").open(false).disabled(true);
+    let disabled_target = disabled.state_id().clone();
+    let disabled_result = disabled.apply_action(&UiAction::accordion_toggle(disabled_target));
+
+    assert!(!disabled_result.handled);
+    assert!(!disabled_result.after.open);
+
+    let mut group = AccordionGroup::new("Group")
+        .multiple(true)
+        .item(AccordionGroupItem::new("item-a", "Item A").open(true))
+        .item(AccordionGroupItem::new("item-b", "Item B"));
+    let group_target = group.state_id().clone();
+    let group_result = group.apply_action(&UiAction::set_selected_index(group_target, 1));
+    let tree = UiTree::new(group);
+
+    assert!(group_result.handled);
+    assert_eq!("opened=item-b closed=", group_result.after.value);
+    assert_eq!("item-a,item-b", tree.root().props().interaction.value);
+    assert!(tree.root().props().disclosure.multiple);
+}
+
+#[test]
+fn selection_list_accepts_typed_select_actions_and_syncs_state() {
+    let mut list = SelectionList::new("Selection")
+        .item(ChoiceItem::new("first", "First"))
+        .item(ChoiceItem::new("second", "Second"))
+        .item(ChoiceItem::new("third", "Third"));
+    let target = list.state_id().clone();
+    let selected = list.apply_action(&UiAction::select_box_selected(target.clone(), 1));
+    let moved = list.apply_action(&UiAction::set_selected_index(target, 2));
+    let tree = UiTree::new(list);
+    let interaction = &tree.root().props().interaction;
+
+    assert!(selected.handled);
+    assert!(
+        selected
+            .callback_log
+            .iter()
+            .any(|it| it.action == "select_box_selected")
+    );
+    assert!(moved.handled);
+    assert!(
+        moved
+            .callback_log
+            .iter()
+            .any(|it| it.action == "set_selected_index")
+    );
+    assert_eq!(2, interaction.selected_index);
+    assert!(interaction.has_selection);
+    assert_eq!("third", interaction.value);
+    assert!(!interaction.open);
 }

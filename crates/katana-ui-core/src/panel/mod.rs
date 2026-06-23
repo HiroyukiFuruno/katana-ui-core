@@ -1,4 +1,6 @@
-use crate::render_model::{UiNode, UiNodeKind, UiStateId};
+use crate::render_model::{
+    UiCommonProps, UiNode, UiNodeKind, UiPanelProps, UiScrollbarModel, UiStateId,
+};
 use crate::theme::ThemeSnapshot;
 use serde::{Deserialize, Serialize};
 
@@ -13,16 +15,20 @@ pub enum PanelRegion {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 struct PanelState {
     state_id: UiStateId,
+    common: UiCommonProps,
     theme: ThemeSnapshot,
     region: PanelRegion,
+    scroll: UiPanelProps,
 }
 
 impl PanelState {
     fn new(region: PanelRegion, theme: ThemeSnapshot) -> Self {
         Self {
             state_id: UiStateId::next_for(UiNodeKind::Panel),
+            common: UiCommonProps::default(),
             theme,
             region,
+            scroll: UiPanelProps::default(),
         }
     }
 }
@@ -51,6 +57,70 @@ impl Panel {
     }
 
     #[must_use]
+    pub fn active_panel(mut self, value: PanelRegion) -> Self {
+        self.state.scroll = self.state.scroll.active_panel(panel_region_key(value));
+        self
+    }
+
+    #[must_use]
+    pub fn vertical_scroll(
+        mut self,
+        scroll_y: u32,
+        viewport_height: u32,
+        content_height: u32,
+        visible: bool,
+    ) -> Self {
+        self.state.scroll = self.state.scroll.with_vertical_scroll(
+            scroll_y,
+            viewport_height,
+            content_height,
+            visible,
+        );
+        self
+    }
+
+    #[must_use]
+    pub fn horizontal_scroll(
+        mut self,
+        scroll_x: u32,
+        viewport_width: u32,
+        content_width: u32,
+        visible: bool,
+    ) -> Self {
+        self.state.scroll = self.state.scroll.with_horizontal_scroll(
+            scroll_x,
+            viewport_width,
+            content_width,
+            visible,
+        );
+        self
+    }
+
+    #[must_use]
+    pub fn common(mut self, value: UiCommonProps) -> Self {
+        self.state.common = value;
+        self
+    }
+
+    #[must_use]
+    pub fn stable_state_id(mut self, value: impl Into<UiStateId>) -> Self {
+        self.state.state_id = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn scrollbar(mut self, value: UiScrollbarModel) -> Self {
+        self.state.scroll = self.state.scroll.scrollbar(value);
+        self
+    }
+
+    #[must_use]
+    pub fn horizontal_scrollbar(mut self, value: UiScrollbarModel) -> Self {
+        self.state.scroll = self.state.scroll.horizontal_scrollbar(value);
+        self
+    }
+
+    #[must_use]
     pub fn theme(&self) -> &ThemeSnapshot {
         &self.state.theme
     }
@@ -61,11 +131,22 @@ impl Panel {
     }
 }
 
+const fn panel_region_key(value: PanelRegion) -> &'static str {
+    match value {
+        PanelRegion::Root => "root",
+        PanelRegion::Navigation => "navigation",
+        PanelRegion::Preview => "preview",
+        PanelRegion::Details => "details",
+    }
+}
+
 impl From<Panel> for UiNode {
     fn from(value: Panel) -> Self {
         let theme = value.state.theme;
-        let mut node =
-            UiNode::from_state(UiNodeKind::Panel, value.title, value.state.state_id).theme(&theme);
+        let mut node = UiNode::from_state(UiNodeKind::Panel, value.title, value.state.state_id)
+            .common(value.state.common)
+            .theme(&theme)
+            .panel(value.state.scroll);
         for child in value.children {
             node = node.child(child);
         }
@@ -74,21 +155,4 @@ impl From<Panel> for UiNode {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{Panel, PanelRegion};
-    use crate::atom::Text;
-    use crate::render_model::{UiNodeKind, UiTree};
-    use crate::theme::ThemeSnapshot;
-
-    #[test]
-    fn panel_carries_theme_setting_to_render_model() {
-        let tree = UiTree::new(
-            Panel::new("Preview", PanelRegion::Preview, ThemeSnapshot::dark())
-                .child(Text::new("Story")),
-        );
-
-        assert_eq!(UiNodeKind::Panel, tree.root().kind());
-        assert_eq!("dark", tree.root().props().theme_id);
-        assert_eq!(1, tree.root().children().len());
-    }
-}
+mod tests;

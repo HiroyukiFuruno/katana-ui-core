@@ -6,7 +6,7 @@
 ## 結論
 
 KUC の部品実装は、見た目設定（theme）、文字設定（font）、文字描画、入力、イベント、状態、配置の基盤契約が固定された後に開始する。
-この契約は中核 crate（core crate）に閉じ、Floem / egui / GPUI の型や OS 固有の font path を前提にしない。
+この契約は中核 crate（core crate）に閉じ、framework-specific UI の型や OS 固有の font path を前提にしない。
 
 ## 3.1 外部入口（facade）
 
@@ -23,6 +23,9 @@ KUC は外側から UI 全体の設定を渡す入口として `UiCoreFacade` �
 
 部品ごとの値や開閉状態、入力値は `UiCoreFacade` の global state に寄せない。
 各部品は自身の状態 ID を持ち、外側は action / event と facade 設定を通じて観測・制御する。
+利用側が通信中、保存中、外部選択中のような app 側の状態から UI を制御したい場合は、global state に部品固有 state を直接置かない。
+外側は `UiStateHandle` の `get` / `with` で短命に読み取り、`set/update` で部品内部状態へ反映する。
+部品は `sync_state` でその snapshot を取り込み、描画可否や action 可否を自身の状態として判定する。
 
 ## 3.2 Katana 既定 theme
 
@@ -57,7 +60,7 @@ font role は `body` を Proportional、`code` を Monospace とする。
 | 英日混在 | `Katana 設定 Panel` |
 | 絵文字混在 | `保存 ✅` |
 
-自動テストは screenshot だけに頼らず、line box、baseline、ascent、descent、visual center を計測する。
+自動テストは line box、baseline、ascent、descent、visual center を計測する。
 既定 theme / 既定 font role の text center 差は 1px 以内を目標値にする。
 環境差で 1px を超える場合は、font resolver の差分として記録し、しきい値の引き下げで通さない。
 
@@ -87,6 +90,7 @@ TextInput 系部品は、利用側に文字列 state を外出ししなくても
 | molecule | 子部品の state id を失わず、親の state と区別して追跡できる。 |
 | Storybook | action / event / state 履歴に target state id を表示する。 |
 | global state | focus、overlay、modal など全体制御だけを扱う。部品固有 state の置き場にしない。 |
+| 外部制御 state | 利用側の app state から `UiStateHandle` を通じて部品内部状態へ `set/update` する。state の所有は部品に残す。 |
 
 state ID の生成は決定的な外部 key だけに依存しない。
 重複 label による accidental sharing を品質ゲートで失敗扱いにする。
@@ -106,5 +110,20 @@ state ID の生成は決定的な外部 key だけに依存しない。
 | overlay | anchor、placement、z-index、viewport 内収まり |
 | overlap | 意図しない text / control の重なり |
 
-Storybook の screenshot は目視補助に限定する。
-完了判定は layout report、画像回帰、入力回帰、guard の通過を主根拠にする。
+完了判定は layout report、数値化された rendering contract、入力回帰、guard の通過を主根拠にする。
+
+## 3.7 Panel scroll と drag
+
+Panel は画面全体のスクロールに従うだけではなく、Panel ごとに独立した scroll state を持つ。
+Navigation、Preview、Details、TreeView preview のように入れ子になった panel でも、どの panel を操作したかを state と event で区別できる必要がある。
+
+| 対象 | 契約 |
+| --- | --- |
+| panel scroll state | panel id、axis、offset、visible range、content size、viewport size を持つ。 |
+| scrollbar model | thumb bounds、track bounds、visibility、overlay / reserved、always / auto / hidden を持つ。 |
+| drag | drag start、drag move、drag end、cancel、pointer capture target を event として記録する。 |
+| nested panel | 子 panel の scroll / drag が親 panel の scroll state を変えない。 |
+| rendering contract | scrollbar の表示方式、thumb 位置、drag 後の差分、panel 間の独立性を数値化して検査する。 |
+
+scrollbar は表示飾りではなく拡張可能な model として扱う。
+将来の overlay scrollbar、常時表示 scrollbar、細幅 scrollbar、preview 用の強制表示を同じ contract で扱えるようにする。

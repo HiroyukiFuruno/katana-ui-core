@@ -1,8 +1,11 @@
+use katana_ui_core::component::ComponentAction;
+use katana_ui_core::interaction::UiAction;
 use katana_ui_core::molecule::{
     ArrayEditorItem, CommandItem, CommandPalette, DisclosureTriggerArea, DynamicArrayEditor,
     TreeLineStyle, TreeNode, TreeNodeKind, TreeView,
 };
 use katana_ui_core::render_model::UiTree;
+use katana_ui_core::render_model::{UiTreeLineStyle, UiTreeNodeKind, UiTreeToggleTriggerArea};
 
 const ITEM_COUNT: usize = 1;
 
@@ -74,15 +77,33 @@ fn tree_command_palette_and_array_editor_have_dedicated_item_models() {
     assert_eq!("edit-value", editor.edit_action_model());
     assert_eq!("No rows", editor.empty_state_model());
 
-    assert_eq!(
-        ITEM_COUNT,
-        UiTree::new(tree.clone())
-            .root()
-            .props()
-            .interaction
-            .item_count
-    );
+    let tree_model = UiTree::new(tree.clone());
+    let tree_props = &tree_model.root().props().tree;
+
+    assert_eq!(ITEM_COUNT, tree_model.root().props().interaction.item_count);
     assert!(UiTree::new(tree).root().props().interaction.open);
+    assert_eq!("root", tree_props.active_id);
+    assert!(tree_props.line_display);
+    assert_eq!(UiTreeLineStyle::Dashed, tree_props.line_style);
+    assert_eq!(2, tree_props.line_width);
+    assert!(tree_props.icons_visible);
+    assert_eq!("<svg data-icon=\"folder\"/>", tree_props.directory_icon);
+    assert_eq!("<svg data-icon=\"file\"/>", tree_props.file_icon);
+    assert_eq!("body", tree_props.font_role);
+    assert_eq!("katana-dark", tree_props.theme_id);
+    assert!(tree_props.empty_area_context_menu);
+    assert!(tree_props.default_open);
+    assert_eq!("<svg data-icon=\"chevron\"/>", tree_props.toggle_icon);
+    assert_eq!(
+        UiTreeToggleTriggerArea::IconAndText,
+        tree_props.toggle_trigger_area
+    );
+    assert_eq!(ITEM_COUNT, tree_props.nodes.len());
+    assert_eq!("root", tree_props.nodes[0].id);
+    assert_eq!(UiTreeNodeKind::Directory, tree_props.nodes[0].kind);
+    assert!(tree_props.nodes[0].expanded);
+    assert!(tree_props.nodes[0].selected);
+    assert!(tree_props.nodes[0].active);
     assert_eq!(
         ITEM_COUNT,
         UiTree::new(palette).root().props().interaction.item_count
@@ -90,5 +111,29 @@ fn tree_command_palette_and_array_editor_have_dedicated_item_models() {
     assert_eq!(
         ITEM_COUNT,
         UiTree::new(editor).root().props().interaction.item_count
+    );
+}
+
+#[test]
+fn tree_view_click_toggles_directory_open_state_and_logs_click() {
+    let mut tree = TreeView::new("Tree")
+        .default_open(true)
+        .toggle_trigger_area(DisclosureTriggerArea::IconAndText)
+        .item(TreeNode::new("root", "Root", 0).directory().expanded(true));
+    let target = tree.state_id().clone();
+
+    let close_result = tree.apply_action(&UiAction::click(target.clone()));
+    let open_result = tree.apply_action(&UiAction::click(target));
+
+    assert!(close_result.handled);
+    assert!(close_result.before.open);
+    assert!(!close_result.after.open);
+    assert_eq!("click", close_result.callback_log[0].action);
+    assert!(open_result.handled);
+    assert!(!open_result.before.open);
+    assert!(open_result.after.open);
+    assert_eq!(
+        DisclosureTriggerArea::IconAndText,
+        tree.toggle_trigger_area_model()
     );
 }

@@ -3,7 +3,7 @@
 ## 1. 実装
 
 - [x] 1.1 `primitive/icon/types.rs` に `IconSource` / `IconSize` / `IconProps` を定義
-- [x] 1.2 `primitive/icon/mod.rs` に `Icon` builder + `ResolvedIcon` を実装（floem の svg() ビューに委譲）
+- [x] 1.2 `primitive/icon/mod.rs` に `Icon` builder + `ResolvedIcon` を実装（adapter の svg() ビューに委譲）
 - [x] 1.3 公開 API を整理
 - [x] 1.4 サイズは `theme/spacing` トークン or 明示 pt の双方を受けられるようにする
 

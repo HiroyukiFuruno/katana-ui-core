@@ -1,6 +1,6 @@
 ## Why
 
-単行テキスト入力（フォームフィールド / 設定値編集 / 検索の前提）は最頻出。Floem の生 input view を直に使うと placeholder / clear / disabled / readonly / error 表示が呼び出し側ごとにバラつくため、統一 widget として固定する。
+単行テキスト入力（フォームフィールド / 設定値編集 / 検索の前提）は最頻出。Adapter の生 input view を直に使うと placeholder / clear / disabled / readonly / error 表示が呼び出し側ごとにバラつくため、統一 widget として固定する。
 
 ## What Changes
 

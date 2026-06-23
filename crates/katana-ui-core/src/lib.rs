@@ -12,9 +12,12 @@ pub mod molecule;
 pub mod panel;
 pub mod render_model;
 pub mod runtime;
+pub mod state;
 pub mod style;
 pub mod surface;
+pub mod text_selection;
 pub mod theme;
+pub mod widget;
 pub mod window;
 
 /// Registry marker for KUC-owned neutral UI capabilities.

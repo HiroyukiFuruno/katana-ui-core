@@ -1,6 +1,6 @@
 ## Why
 
-3〜5択の排他選択（表示モード / レイアウト切替 / フィルタ）には、Tab とは別の「セグメント化トグル」が適切。`../katana/crates/katana-ui/src/widgets/toggle/segmented_toggle.rs` の egui 実装を Floem 向けに再構成する。
+3〜5択の排他選択（表示モード / レイアウト切替 / フィルタ）には、Tab とは別の「セグメント化トグル」が適切。`../katana/crates/katana-ui/src/widgets/toggle/segmented_toggle.rs` の adapter 実装を Adapter 向けに再構成する。
 
 ## What Changes
 

@@ -1,9 +1,35 @@
 mod accessors;
+mod actions;
+mod banner;
+mod banner_render;
+mod banner_types;
+mod group;
+mod hover_card;
+mod hover_card_render;
+mod hover_card_slots;
+mod modal_overlay;
+mod modal_render;
+mod modal_types;
 mod model;
+mod options;
+mod placement;
+mod popover;
+mod popover_render;
+mod rich_content;
+mod search_box;
 mod toast;
 mod types;
 
-pub use model::{
-    Accordion, Modal, ModalOverlay, NotificationToast, Popover, SearchBox, SegmentedToggle,
-    SlideControl, Tooltip,
+pub use banner::Banner;
+pub use banner_types::{
+    BannerAccessibilityRole, BannerAction, BannerActionKind, BannerCommand, BannerDensity,
+    BannerEvent, BannerLiveRegion, BannerPlacementHint, BannerSeverity, BannerState,
+    BannerVisualContract,
 };
+pub use group::{AccordionGroup, AccordionGroupItem};
+pub use hover_card::{HoverCard, HoverCardAction, HoverCardDelayState, HoverCardEvent};
+pub use modal_overlay::ModalOverlay;
+pub use modal_types::ModalParentInteraction;
+pub use model::{Accordion, Modal, NotificationToast, Popover, SlideControl, Tooltip};
+pub use rich_content::{PopoverActionSlot, PopoverArrowSpec, PopoverFocusManagement, PopoverSlots};
+pub use search_box::SearchBox;

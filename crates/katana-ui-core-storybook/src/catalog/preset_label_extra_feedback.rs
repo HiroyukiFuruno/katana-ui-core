@@ -1,0 +1,46 @@
+pub(super) fn for_page(page: &str) -> Option<&'static [&'static str]> {
+    Some(match page {
+        "attachment-chip" => &[
+            "file attachment",
+            "image attachment",
+            "url attachment",
+            "uploading",
+            "error retry",
+            "name",
+            "meta",
+            "thumbnail",
+        ],
+        "chip-group" => &[
+            "wrap",
+            "overflow menu",
+            "horizontal scroll",
+            "reorder",
+            "label",
+            "chip count",
+            "gap",
+            "available width",
+            "trigger width",
+        ],
+        "diagnostics-list" => &[
+            "lint result",
+            "editor inline",
+            "tool result",
+            "empty",
+            "loading",
+            "bulk fix",
+            "Virtualization",
+        ],
+        "empty-state" => &[
+            "explorer empty",
+            "search no result",
+            "diagnostics clean",
+            "history empty",
+            "error fallback",
+            "heading",
+            "body",
+            "icon",
+            "illustration",
+        ],
+        _ => return None,
+    })
+}

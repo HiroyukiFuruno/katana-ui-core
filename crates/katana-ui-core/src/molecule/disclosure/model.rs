@@ -1,14 +1,20 @@
+use super::actions::apply_disclosure_action;
+use super::modal_render::native_modal_props;
+use super::popover_render::popover_props;
 use super::types::DisclosureTypedModel;
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult};
 use crate::molecule::DisclosureTriggerArea;
 use crate::molecule::state::MoleculeState;
-use crate::render_model::{UiNode, UiNodeKind, UiStateId};
+use crate::render_model::{
+    UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea, UiInteractivePreset,
+    UiNode, UiNodeKind, UiStateId,
+};
 use serde::{Deserialize, Serialize};
 
 macro_rules! disclosure_molecule {
     ($name:ident, $kind:expr) => {
-        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
         pub struct $name {
             label: String,
             pub(super) state: MoleculeState,
@@ -174,13 +180,23 @@ macro_rules! disclosure_molecule {
 
         impl ComponentAction for $name {
             fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
-                self.state.apply_action(action, false)
+                apply_disclosure_action(&mut self.state, &self.model, $kind, action)
             }
         }
 
         impl From<$name> for UiNode {
             fn from(value: $name) -> Self {
-                let mut node = value.state.node($kind, value.label);
+                let mut node = value
+                    .state
+                    .node($kind, value.label)
+                    .disclosure(disclosure_props(&value.model))
+                    .modal(modal_props($kind, &value.model))
+                    .popover(render_popover_props($kind, &value.model));
+                if $kind == UiNodeKind::Accordion {
+                    let common = UiInteractivePreset::control()
+                        .apply_to_common_defaults(node.props().common.clone());
+                    node = node.common(common);
+                }
                 for child in value.children {
                     node = node.child(child);
                 }
@@ -190,12 +206,62 @@ macro_rules! disclosure_molecule {
     };
 }
 
+fn disclosure_props(model: &DisclosureTypedModel) -> UiDisclosureProps {
+    UiDisclosureProps {
+        controlled: model.controlled,
+        multiple: model.multiple,
+        indicator_position: indicator_position(&model.indicator_position),
+        trigger_area: trigger_area(model.trigger_area),
+        toggle_icon: model.toggle_icon.clone(),
+        tree_mode: model.tree_mode,
+        reduced_motion: model.reduced_motion,
+        body_border: model.body_border,
+        selected: model.selected,
+        depth: model.depth,
+        show_lines: model.show_lines,
+    }
+}
+
+fn modal_props(
+    kind: UiNodeKind,
+    model: &DisclosureTypedModel,
+) -> crate::render_model::UiModalProps {
+    if kind == UiNodeKind::Modal {
+        return native_modal_props(model);
+    }
+    crate::render_model::UiModalProps::default()
+}
+
+fn render_popover_props(
+    kind: UiNodeKind,
+    model: &DisclosureTypedModel,
+) -> crate::render_model::UiPopoverProps {
+    if kind == UiNodeKind::Popover {
+        return popover_props(model);
+    }
+    crate::render_model::UiPopoverProps::default()
+}
+
+fn indicator_position(value: &str) -> UiDisclosureIndicatorPosition {
+    match value {
+        "leading" | "start" => UiDisclosureIndicatorPosition::Leading,
+        "none" => UiDisclosureIndicatorPosition::None,
+        _ => UiDisclosureIndicatorPosition::Trailing,
+    }
+}
+
+fn trigger_area(value: DisclosureTriggerArea) -> UiDisclosureTriggerArea {
+    match value {
+        DisclosureTriggerArea::IconOnly => UiDisclosureTriggerArea::IconOnly,
+        DisclosureTriggerArea::IconAndText => UiDisclosureTriggerArea::IconAndText,
+        DisclosureTriggerArea::WholeElement => UiDisclosureTriggerArea::WholeElement,
+        DisclosureTriggerArea::TextOnly => UiDisclosureTriggerArea::TextOnly,
+    }
+}
+
 disclosure_molecule!(Accordion, UiNodeKind::Accordion);
 disclosure_molecule!(Modal, UiNodeKind::Modal);
-disclosure_molecule!(ModalOverlay, UiNodeKind::ModalOverlay);
 disclosure_molecule!(Popover, UiNodeKind::Popover);
 disclosure_molecule!(Tooltip, UiNodeKind::Tooltip);
 disclosure_molecule!(NotificationToast, UiNodeKind::NotificationToast);
-disclosure_molecule!(SearchBox, UiNodeKind::SearchBox);
-disclosure_molecule!(SegmentedToggle, UiNodeKind::SegmentedToggle);
 disclosure_molecule!(SlideControl, UiNodeKind::SlideControl);

@@ -55,6 +55,11 @@ impl PaintRequest {
     pub fn tree(&self) -> &UiTree {
         &self.tree
     }
+
+    #[must_use]
+    pub fn into_tree(self) -> UiTree {
+        self.tree
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

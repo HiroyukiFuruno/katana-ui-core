@@ -1,136 +1,171 @@
 use super::StoryExample;
-use super::panel_interaction::OperationStepReport;
+use super::panel_interaction::{
+    LegacyDodReports, LegacyUiMarkerReport, OperationStepReport, PresetDifferenceReport,
+    SettingsMutationReport,
+};
+use katana_ui_core::component::ComponentAction;
+use katana_ui_core::interaction::UiAction;
+use katana_ui_core::interaction::UiCallbackLog;
+use katana_ui_core::molecule::{DisclosureTriggerArea, TreeLineStyle, TreeNode, TreeView};
 
-type OperationCase = (&'static str, &'static str, &'static str, &'static str);
-
-const SELECTOR_CASES: &[OperationCase] = &[
-    (
-        "select-box",
-        "select-box-open",
-        "open=false selected=true index=0 count=2 value=",
-        "open=true selected=true index=0 count=2 value=options-visible",
-    ),
-    (
-        "select-box",
-        "select-box-select",
-        "open=true selected=true index=0 count=2 value=options-visible",
-        "open=true selected=true index=1 count=2 value=second-option",
-    ),
-    (
-        "select-box",
-        "select-box-close",
-        "open=true selected=true index=1 count=2 value=second-option",
-        "open=false selected=true index=1 count=2 value=second-option",
-    ),
-    (
-        "combo-box",
-        "combo-box-arrow-down",
-        "open=true selected=true index=0 count=1 value=Search",
-        "open=true selected=true index=1 count=2 value=Option",
-    ),
-    (
-        "combo-box",
-        "combo-box-enter",
-        "open=true selected=true index=1 count=2 value=Option",
-        "open=false selected=true index=1 count=2 value=Option",
-    ),
-    (
-        "menu",
-        "menu-open",
-        "open=false selected=false index=0 count=2 value=closed",
-        "open=true selected=false index=0 count=2 value=opened",
-    ),
-    (
-        "menu",
-        "menu-select",
-        "open=true selected=false index=0 count=2 value=opened",
-        "open=false selected=true index=1 count=2 value=Close",
-    ),
+const SELECTOR_PAGES: &[&str] = &["select-box", "combo-box", "menu-button", "segmented-toggle"];
+const OVERLAY_PAGES: &[&str] = &[
+    "popover",
+    "tooltip",
+    "modal",
+    "modal-overlay",
+    "notification-toast",
 ];
-
-const OVERLAY_CASES: &[OperationCase] = &[
-    (
-        "popover",
-        "popover-outside-click",
-        "open=true selected=false index=0 count=2 value=anchored",
-        "open=false selected=false index=0 count=2 value=dismissed",
-    ),
-    (
-        "tooltip",
-        "tooltip-escape",
-        "open=true selected=false index=0 count=2 value=hint-visible",
-        "open=false selected=false index=0 count=2 value=escape",
-    ),
-    (
-        "modal-overlay",
-        "modal-overlay-escape",
-        "open=true selected=false index=0 count=2 value=focus-trapped",
-        "open=false selected=false index=0 count=2 value=focus-returned",
-    ),
-];
-
-const COLOR_PICKER_CASES: &[OperationCase] = &[
-    (
-        "color-picker-rgba",
-        "color-picker-drag-surface",
-        "open=true selected=false index=0 count=2 value=rgba(64,128,255,204)",
-        "open=true selected=false index=0 count=2 value=rgba(96,144,240,204)",
-    ),
-    (
-        "color-picker-rgba",
-        "color-picker-drag-hue",
-        "open=true selected=false index=0 count=2 value=hue=214",
-        "open=true selected=false index=0 count=2 value=hue=228",
-    ),
-    (
-        "color-picker-rgba",
-        "color-picker-drag-alpha",
-        "open=true selected=false index=0 count=2 value=alpha=204",
-        "open=true selected=false index=0 count=2 value=alpha=180",
-    ),
-];
+const COLOR_PICKER_PAGES: &[&str] = &["color-picker-rgba"];
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct StorybookOperationSequences;
 
 impl StorybookOperationSequences {
     pub(crate) fn selector_operations(examples: &[StoryExample]) -> Vec<OperationStepReport> {
-        Self::operations_from_cases(examples, SELECTOR_CASES)
+        Self::operations_from_pages(examples, SELECTOR_PAGES)
     }
 
     pub(crate) fn overlay_dismissals(examples: &[StoryExample]) -> Vec<OperationStepReport> {
-        Self::operations_from_cases(examples, OVERLAY_CASES)
+        Self::primary_operations_from_pages(examples, OVERLAY_PAGES)
     }
 
     pub(crate) fn color_picker_updates(examples: &[StoryExample]) -> Vec<OperationStepReport> {
-        Self::operations_from_cases(examples, COLOR_PICKER_CASES)
+        Self::operations_from_pages(examples, COLOR_PICKER_PAGES)
     }
 
-    fn operations_from_cases(
+    pub(crate) fn settings_mutations(examples: &[StoryExample]) -> Vec<SettingsMutationReport> {
+        LegacyDodReports::settings_mutations(examples)
+    }
+
+    pub(crate) fn legacy_ui_markers(examples: &[StoryExample]) -> Vec<LegacyUiMarkerReport> {
+        LegacyDodReports::ui_markers(examples)
+    }
+
+    pub(crate) fn preset_differences(examples: &[StoryExample]) -> Vec<PresetDifferenceReport> {
+        LegacyDodReports::preset_differences(examples)
+    }
+
+    pub(crate) fn tree_view_option_mutations() -> Vec<OperationStepReport> {
+        let mut tree = TreeView::new("Tree settings")
+            .item(TreeNode::new("root", "Root", 0).directory())
+            .line_display(false)
+            .icons_visible(false)
+            .default_open(false);
+        let target = tree.state_id().clone();
+        let mut steps = Vec::new();
+
+        let before = tree_options_summary(&tree);
+        tree = tree.line_display(true);
+        push_step(&mut steps, "tree_line_display", &target, before, &tree);
+        let before = tree_options_summary(&tree);
+        tree = tree.line_style(TreeLineStyle::Dashed);
+        push_step(&mut steps, "tree_line_style", &target, before, &tree);
+        let before = tree_options_summary(&tree);
+        tree = tree.line_width(2);
+        push_step(&mut steps, "tree_line_width", &target, before, &tree);
+        let before = tree_options_summary(&tree);
+        tree = tree.icons_visible(true);
+        push_step(&mut steps, "tree_icons_visible", &target, before, &tree);
+        let before = tree_options_summary(&tree);
+        tree = tree.directory_icon("<svg data-icon=\"branch\"/>");
+        push_step(
+            &mut steps,
+            "tree_branch_marker_icon",
+            &target,
+            before,
+            &tree,
+        );
+        let before = tree_options_summary(&tree);
+        tree = tree.file_icon("<svg data-icon=\"leaf\"/>");
+        push_step(&mut steps, "tree_leaf_marker_icon", &target, before, &tree);
+        let before = tree_options_summary(&tree);
+        tree = tree.tree_font_role("body").tree_theme_id("dark");
+        push_step(&mut steps, "tree_font_theme", &target, before, &tree);
+        let before = tree_options_summary(&tree);
+        tree = tree.empty_area_context_menu(true);
+        push_step(&mut steps, "tree_context_menu", &target, before, &tree);
+        let before = tree_options_summary(&tree);
+        tree = tree.default_open(true);
+        push_step(&mut steps, "tree_default_open", &target, before, &tree);
+        let before = tree_options_summary(&tree);
+        tree = tree.toggle_icon("<svg data-icon=\"chevron\"/>");
+        push_step(&mut steps, "tree_toggle_icon", &target, before, &tree);
+        let before = tree_options_summary(&tree);
+        tree = tree.toggle_trigger_area(DisclosureTriggerArea::IconAndText);
+        push_step(&mut steps, "tree_toggle_trigger", &target, before, &tree);
+
+        let result = tree.apply_action(&UiAction::click(target));
+        steps.push(OperationStepReport {
+            action: "tree_click_toggle".to_string(),
+            target_state_id: result.target.as_str().to_string(),
+            before_summary: result.before.summary(),
+            after_summary: result.after.summary(),
+        });
+        steps
+    }
+
+    fn operations_from_pages(
         examples: &[StoryExample],
-        cases: &[OperationCase],
+        pages: &[&str],
     ) -> Vec<OperationStepReport> {
-        cases
+        examples
             .iter()
-            .filter_map(|(page, action, before, after)| {
-                Self::operation_from_page(examples, page, action, before, after)
-            })
+            .filter(|example| pages.contains(&example.page))
+            .flat_map(|example| example.callback_logs.iter().map(Self::operation_from_log))
             .collect()
     }
 
-    fn operation_from_page(
+    fn primary_operations_from_pages(
         examples: &[StoryExample],
-        page: &str,
-        action: &str,
-        before_summary: &str,
-        after_summary: &str,
-    ) -> Option<OperationStepReport> {
-        let example = examples.iter().find(|it| it.page == page)?;
-        Some(OperationStepReport {
-            action: action.to_string(),
-            target_state_id: example.tree.root().props().state_id.as_str().to_string(),
-            before_summary: before_summary.to_string(),
-            after_summary: after_summary.to_string(),
-        })
+        pages: &[&str],
+    ) -> Vec<OperationStepReport> {
+        examples
+            .iter()
+            .filter(|example| pages.contains(&example.page))
+            .filter_map(|example| example.callback_logs.first().map(Self::operation_from_log))
+            .collect()
     }
+
+    fn operation_from_log(log: &UiCallbackLog) -> OperationStepReport {
+        OperationStepReport {
+            action: log.action.clone(),
+            target_state_id: log.target.as_str().to_string(),
+            before_summary: log.before.clone(),
+            after_summary: log.after.clone(),
+        }
+    }
+}
+
+fn push_step(
+    steps: &mut Vec<OperationStepReport>,
+    action: &str,
+    target: &katana_ui_core::render_model::UiStateId,
+    before_summary: String,
+    tree: &TreeView,
+) {
+    steps.push(OperationStepReport {
+        action: action.to_string(),
+        target_state_id: target.as_str().to_string(),
+        before_summary,
+        after_summary: tree_options_summary(tree),
+    });
+}
+
+fn tree_options_summary(tree: &TreeView) -> String {
+    format!(
+        "lines={} style={:?} width={} icons={} branch_marker={} leaf_marker={} font={} theme={} context_menu={} default_open={} toggle_icon={} trigger={:?}",
+        tree.line_display_model(),
+        tree.line_style_model(),
+        tree.line_width_model(),
+        tree.icons_visible_model(),
+        tree.directory_icon_model(),
+        tree.file_icon_model(),
+        tree.tree_font_role_model(),
+        tree.tree_theme_id_model(),
+        tree.empty_area_context_menu_model(),
+        tree.default_open_model(),
+        tree.toggle_icon_model(),
+        tree.toggle_trigger_area_model()
+    )
 }

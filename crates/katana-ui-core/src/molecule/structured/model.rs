@@ -1,21 +1,26 @@
-use super::items::{ArrayEditorItem, CommandItem, TreeNode};
+use super::command_launcher_results::CommandPaletteRenderer;
+use super::items::{ArrayEditorItem, CommandItem, TreeNode, TreeNodeKind};
 use super::types::{StructuredTypedModel, TreeLineStyle};
 use crate::component::ComponentAction;
-use crate::interaction::{UiAction, UiActionResult};
+use crate::interaction::{UiAction, UiActionResult, VirtualRange, VirtualizationConfig};
 use crate::molecule::DisclosureTriggerArea;
 use crate::molecule::state::MoleculeState;
-use crate::render_model::{UiNode, UiNodeKind, UiStateId};
+use crate::molecule::virtualization::MoleculeVirtualization;
+use crate::render_model::{
+    UiCommonProps, UiInteractivePreset, UiNode, UiNodeKind, UiTreeLineStyle, UiTreeNodeKind,
+    UiTreeNodeProps, UiTreeProps, UiTreeToggleTriggerArea,
+};
 use serde::{Deserialize, Serialize};
 
 macro_rules! structured_molecule {
     ($name:ident, $item:ty, $kind:expr) => {
-        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
         pub struct $name {
-            label: String,
-            state: MoleculeState,
-            items: Vec<$item>,
+            pub(super) label: String,
+            pub(super) state: MoleculeState,
+            pub(super) items: Vec<$item>,
             pub(super) model: StructuredTypedModel,
-            children: Vec<UiNode>,
+            pub(super) children: Vec<UiNode>,
         }
 
         impl $name {
@@ -68,167 +73,6 @@ macro_rules! structured_molecule {
                 self
             }
         }
-
-        impl $name {
-            #[must_use]
-            pub fn active(mut self, value: impl Into<String>) -> Self {
-                self.model.active_id = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn line_display(mut self, value: bool) -> Self {
-                self.model.line_display = value;
-                self
-            }
-
-            #[must_use]
-            pub fn line_style(mut self, value: TreeLineStyle) -> Self {
-                self.model.line_style = value;
-                self
-            }
-
-            #[must_use]
-            pub fn line_width(mut self, value: u8) -> Self {
-                self.model.line_width = value;
-                self
-            }
-
-            #[must_use]
-            pub fn icons_visible(mut self, value: bool) -> Self {
-                self.model.icons_visible = value;
-                self
-            }
-
-            #[must_use]
-            pub fn directory_icon(mut self, value: impl Into<String>) -> Self {
-                self.model.directory_icon = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn file_icon(mut self, value: impl Into<String>) -> Self {
-                self.model.file_icon = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn tree_font_role(mut self, value: impl Into<String>) -> Self {
-                self.model.font_role = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn tree_theme_id(mut self, value: impl Into<String>) -> Self {
-                self.model.theme_id = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn empty_area_context_menu(mut self, value: bool) -> Self {
-                self.model.empty_area_context_menu = value;
-                self
-            }
-
-            #[must_use]
-            pub fn default_open(mut self, value: bool) -> Self {
-                self.model.default_open = value;
-                self.state.open = value;
-                self
-            }
-
-            #[must_use]
-            pub fn toggle_icon(mut self, value: impl Into<String>) -> Self {
-                self.model.toggle_icon = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn toggle_trigger_area(mut self, value: DisclosureTriggerArea) -> Self {
-                self.model.toggle_trigger_area = value;
-                self
-            }
-
-            #[must_use]
-            pub fn query(mut self, value: impl Into<String>) -> Self {
-                self.model.query = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn filtered_action(mut self, value: CommandItem) -> Self {
-                self.model.filtered_actions.push(value);
-                self
-            }
-
-            #[must_use]
-            pub fn keyboard_action(mut self, value: impl Into<String>) -> Self {
-                self.model.keyboard_action = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn add_action(mut self, value: impl Into<String>) -> Self {
-                self.model.add_action = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn delete_action(mut self, value: impl Into<String>) -> Self {
-                self.model.delete_action = value.into();
-                self
-            }
-        }
-
-        impl $name {
-            #[must_use]
-            pub fn reorder_action(mut self, value: impl Into<String>) -> Self {
-                self.model.reorder_action = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn edit_action(mut self, value: impl Into<String>) -> Self {
-                self.model.edit_action = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn empty_state(mut self, value: impl Into<String>) -> Self {
-                self.model.empty_state = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn items(&self) -> &[$item] {
-                &self.items
-            }
-
-            #[must_use]
-            pub fn state_id(&self) -> &UiStateId {
-                &self.state.state_id
-            }
-        }
-
-        impl ComponentAction for $name {
-            fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
-                self.state.apply_action(action, false)
-            }
-        }
-
-        impl From<$name> for UiNode {
-            fn from(value: $name) -> Self {
-                let font_role = value.model.font_role.clone();
-                let mut node = value.state.node($kind, value.label);
-                if !font_role.is_empty() {
-                    node = node.font_role(font_role);
-                }
-                for child in value.children {
-                    node = node.child(child);
-                }
-                node
-            }
-        }
     };
 }
 
@@ -239,3 +83,172 @@ structured_molecule!(
     ArrayEditorItem,
     UiNodeKind::DynamicArrayEditor
 );
+
+impl From<TreeView> for UiNode {
+    fn from(value: TreeView) -> Self {
+        let model = value.model.clone();
+        let range = value.virtual_range_model();
+        let interactive = tree_row_interactive_common();
+        let mut node = value
+            .state
+            .node(UiNodeKind::TreeView, value.label)
+            .common(interactive.clone())
+            .interaction(MoleculeVirtualization::interaction(
+                value.state.interaction(),
+                range.as_ref(),
+            ))
+            .tree(tree_props(model, value.items, range.as_ref(), interactive));
+        if !value.model.font_role.is_empty() {
+            node = node.font_role(value.model.font_role);
+        }
+        if !value.model.theme_id.is_empty() {
+            node = node.theme_id(value.model.theme_id);
+        }
+        for child in value.children {
+            node = node.child(child);
+        }
+        node
+    }
+}
+
+impl From<CommandPalette> for UiNode {
+    fn from(value: CommandPalette) -> Self {
+        CommandPaletteRenderer::render(value)
+    }
+}
+
+impl From<DynamicArrayEditor> for UiNode {
+    fn from(value: DynamicArrayEditor) -> Self {
+        structured_node(
+            value
+                .state
+                .node(UiNodeKind::DynamicArrayEditor, value.label),
+            value.children,
+        )
+    }
+}
+
+fn structured_node(mut node: UiNode, children: Vec<UiNode>) -> UiNode {
+    for child in children {
+        node = node.child(child);
+    }
+    node
+}
+
+fn tree_props(
+    model: StructuredTypedModel,
+    items: Vec<TreeNode>,
+    range: Option<&VirtualRange>,
+    interactive: UiCommonProps,
+) -> UiTreeProps {
+    UiTreeProps {
+        active_id: model.active_id,
+        hovered_id: model.hovered_id,
+        line_display: model.line_display,
+        line_style: tree_line_style(model.line_style),
+        line_width: model.line_width,
+        icons_visible: model.icons_visible,
+        directory_icon: model.directory_icon,
+        file_icon: model.file_icon,
+        font_role: model.font_role,
+        theme_id: model.theme_id,
+        empty_area_context_menu: model.empty_area_context_menu,
+        default_open: model.default_open,
+        toggle_icon: model.toggle_icon,
+        toggle_trigger_area: trigger_area(model.toggle_trigger_area),
+        row_cursor: interactive.cursor,
+        row_hover_border: interactive.hover_border,
+        nodes: MoleculeVirtualization::slice_by_range(items, range)
+            .into_iter()
+            .map(tree_node_props)
+            .collect(),
+    }
+}
+
+fn tree_row_interactive_common() -> UiCommonProps {
+    UiInteractivePreset::control().apply_to_common_defaults(UiCommonProps::default())
+}
+
+fn tree_node_props(node: TreeNode) -> UiTreeNodeProps {
+    UiTreeNodeProps::new(
+        node.id,
+        node.label,
+        node.depth,
+        match node.kind {
+            TreeNodeKind::File => UiTreeNodeKind::File,
+            TreeNodeKind::Directory => UiTreeNodeKind::Directory,
+        },
+    )
+    .expanded(node.expanded)
+    .selected(node.selected)
+    .active(node.active)
+    .icon(node.icon)
+}
+
+fn tree_line_style(value: TreeLineStyle) -> UiTreeLineStyle {
+    match value {
+        TreeLineStyle::Solid => UiTreeLineStyle::Solid,
+        TreeLineStyle::Dotted => UiTreeLineStyle::Dotted,
+        TreeLineStyle::Dashed => UiTreeLineStyle::Dashed,
+    }
+}
+
+fn trigger_area(value: DisclosureTriggerArea) -> UiTreeToggleTriggerArea {
+    match value {
+        DisclosureTriggerArea::IconOnly => UiTreeToggleTriggerArea::IconOnly,
+        DisclosureTriggerArea::IconAndText => UiTreeToggleTriggerArea::IconAndText,
+        DisclosureTriggerArea::WholeElement => UiTreeToggleTriggerArea::WholeElement,
+        DisclosureTriggerArea::TextOnly => UiTreeToggleTriggerArea::TextOnly,
+    }
+}
+
+impl ComponentAction for TreeView {
+    fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
+        if !matches!(action, UiAction::Press { .. }) {
+            return self.state.apply_action(action, false);
+        }
+        let before = self.state.interaction();
+        if action.target() != &self.state.state_id || self.state.disabled {
+            return UiActionResult::ignored(self.state.state_id.clone(), before);
+        }
+        self.state.open = !self.state.open;
+        UiActionResult::handled(
+            self.state.state_id.clone(),
+            action,
+            before,
+            self.state.interaction(),
+        )
+    }
+}
+
+impl TreeView {
+    #[must_use]
+    pub fn virtualization(mut self, value: VirtualizationConfig) -> Self {
+        self.model.virtualization = Some(value);
+        self
+    }
+
+    #[must_use]
+    pub fn virtual_range_model(&self) -> Option<VirtualRange> {
+        MoleculeVirtualization::range(&self.model.virtualization, self.items.len())
+    }
+}
+
+impl CommandPalette {
+    #[must_use]
+    pub fn virtual_range_model(&self) -> Option<VirtualRange> {
+        self.command_virtual_range_model()
+    }
+}
+
+impl ComponentAction for CommandPalette {
+    fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
+        self.state.apply_action(action, false)
+    }
+}
+
+impl ComponentAction for DynamicArrayEditor {
+    fn apply_action(&mut self, action: &UiAction) -> UiActionResult {
+        self.state.apply_action(action, false)
+    }
+}

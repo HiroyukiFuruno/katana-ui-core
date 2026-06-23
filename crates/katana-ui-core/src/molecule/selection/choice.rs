@@ -1,15 +1,15 @@
 use super::types::{ChoiceItem, SelectionTypedModel};
 use crate::molecule::state::MoleculeState;
-use crate::render_model::{UiNode, UiNodeKind, UiStateId};
+use crate::render_model::{UiNode, UiNodeKind};
 use serde::{Deserialize, Serialize};
 
 macro_rules! choice_molecule {
     ($name:ident, $kind:expr, $close_on_select:expr) => {
-        #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+        #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
         pub struct $name {
             pub(super) label: String,
             pub(super) state: MoleculeState,
-            items: Vec<ChoiceItem>,
+            pub(super) items: Vec<ChoiceItem>,
             pub(super) model: SelectionTypedModel,
             pub(super) children: Vec<UiNode>,
         }
@@ -86,26 +86,32 @@ macro_rules! choice_molecule {
             }
 
             #[must_use]
-            pub fn input_value(mut self, value: impl Into<String>) -> Self {
-                self.model.input_value = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn filter_result(mut self, item: ChoiceItem) -> Self {
-                self.model.filter_results.push(item);
-                self
-            }
-
-            #[must_use]
-            pub fn free_input(mut self, value: bool) -> Self {
-                self.model.free_input = value;
-                self
-            }
-
-            #[must_use]
             pub fn keyboard_navigation(mut self, value: impl Into<String>) -> Self {
                 self.model.keyboard_navigation_summary = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn placement(mut self, value: impl Into<String>) -> Self {
+                self.model.placement = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn highlighted_index(mut self, value: usize) -> Self {
+                self.model.highlighted_index = value;
+                self
+            }
+
+            #[must_use]
+            pub fn long_list(mut self, value: bool) -> Self {
+                self.model.long_list = value;
+                self
+            }
+
+            #[must_use]
+            pub fn outside_click_dismiss(mut self, value: bool) -> Self {
+                self.model.outside_click_dismiss = value;
                 self
             }
 
@@ -126,54 +132,6 @@ macro_rules! choice_molecule {
                 self.model.select_action = value.into();
                 self
             }
-
-            #[must_use]
-            pub fn crumb_action(mut self, value: impl Into<String>) -> Self {
-                self.model.crumb_action = value.into();
-                self
-            }
-        }
-
-        impl $name {
-            #[must_use]
-            pub fn icon_action(mut self, value: impl Into<String>) -> Self {
-                self.model.icon_action = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn hover_expansion(mut self, value: bool) -> Self {
-                self.model.hover_expansion = value;
-                self
-            }
-
-            #[must_use]
-            pub fn section(mut self, value: impl Into<String>) -> Self {
-                self.model.section = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn marker(mut self, value: impl Into<String>) -> Self {
-                self.model.marker = value.into();
-                self
-            }
-
-            #[must_use]
-            pub fn more_row(mut self, value: bool) -> Self {
-                self.model.more_row = value;
-                self
-            }
-
-            #[must_use]
-            pub fn state_id(&self) -> &UiStateId {
-                &self.state.state_id
-            }
-
-            #[must_use]
-            pub fn items(&self) -> &[ChoiceItem] {
-                &self.items
-            }
         }
     };
 }
@@ -185,3 +143,37 @@ choice_molecule!(SelectionList, UiNodeKind::SelectionList, false);
 choice_molecule!(SideMenu, UiNodeKind::SideMenu, false);
 choice_molecule!(Tabs, UiNodeKind::Tabs, false);
 choice_molecule!(Breadcrumb, UiNodeKind::Breadcrumb, false);
+
+impl ComboBox {
+    #[must_use]
+    pub fn input_value(mut self, value: impl Into<String>) -> Self {
+        self.model.input_value = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn filter_result(mut self, item: ChoiceItem) -> Self {
+        self.model.filter_results.push(item);
+        self
+    }
+
+    #[must_use]
+    pub fn free_input(mut self, value: bool) -> Self {
+        self.model.free_input = value;
+        self
+    }
+
+    #[must_use]
+    pub fn invalid(mut self, value: bool) -> Self {
+        self.state.invalid = value;
+        self
+    }
+}
+
+impl Breadcrumb {
+    #[must_use]
+    pub fn crumb_action(mut self, value: impl Into<String>) -> Self {
+        self.model.crumb_action = value.into();
+        self
+    }
+}

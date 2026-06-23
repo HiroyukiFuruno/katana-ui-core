@@ -1,28 +1,34 @@
 use super::canvas::Canvas;
-use super::card;
-use super::layout_metrics::{
-    PREVIEW_FIRST_CARD_Y, PREVIEW_VISIBLE_STORIES, PREVIEW_X, STORY_CARD_COLUMNS,
-    STORY_CARD_STEP_X, STORY_CARD_STEP_Y,
-};
-use super::palette::VisualPalette;
+use super::layout_metrics::{LayoutRect, PREVIEW_X};
 use super::preset_tabs;
-use super::preview_contract::PreviewContract;
 use super::preview_detail;
-use super::render_context::{PreviewContext, RenderContext, ScenarioContext};
-use super::text::{TextRenderer, TextVerticalBox};
+use super::render_context::{RenderContext, ScenarioContext};
+use super::text::TextVerticalBox;
+use crate::catalog::StoryPresetLabels;
 use katana_ui_core::render_model::{UiNode, UiNodeKind};
 
 const PREVIEW_TITLE_Y: usize = 24;
 const PREVIEW_META_Y: usize = 54;
-const FONT_SAMPLE_Y: usize = 72;
-const GRID_TITLE_Y: usize = 424;
+const SUMMARY_Y: usize = 72;
 const PREVIEW_TITLE_SIZE: f32 = 22.0;
 const PREVIEW_META_SIZE: f32 = 13.0;
-const FONT_SAMPLE_HEIGHT: usize = 24;
-const FONT_SAMPLE_WIDTH: usize = 132;
-const FONT_SAMPLE_GAP: usize = 10;
-const FONT_SAMPLE_PADDING_X: usize = 8;
-const FONT_SAMPLE_SIZE: f32 = 12.0;
+const SUMMARY_HEIGHT: usize = 24;
+const SUMMARY_WIDTH: usize = 168;
+const SUMMARY_GAP: usize = 10;
+const SUMMARY_PADDING_X: usize = 8;
+const SUMMARY_SIZE: f32 = 10.0;
+const SUMMARY_COUNT: usize = 4;
+const SUMMARY_TOOLTIP_Y_GAP: usize = 6;
+const SUMMARY_TOOLTIP_HEIGHT: usize = 28;
+const SUMMARY_TOOLTIP_PADDING_X: usize = 10;
+const SUMMARY_TOOLTIP_MIN_WIDTH: usize = 160;
+const SUMMARY_TOOLTIP_MAX_WIDTH: usize = 360;
+const SUMMARY_TOOLTIP_CHAR_WIDTH: usize = 8;
+
+struct SummarySample {
+    full: String,
+    visible: String,
+}
 
 pub(super) fn draw(
     canvas: &mut Canvas,
@@ -31,20 +37,20 @@ pub(super) fn draw(
     scenario: ScenarioContext<'_>,
 ) {
     draw_header(canvas, render, scenario);
-    draw_font_alignment_samples(canvas, render.text, render.code_text, render.palette);
+    draw_summary_controls(canvas, render, scenario);
     if let Some(preview) = panel_child(root, "Preview") {
         preset_tabs::draw(canvas, render, scenario);
         preview_detail::draw_selected_hero(canvas, render, preview, scenario);
-        draw_preview_stories(
-            canvas,
-            PreviewContext {
-                preview,
-                render,
-                selected_page: scenario.selected_page,
-            },
-        );
-        PreviewContract::draw(canvas, preview, render, scenario);
     }
+}
+
+pub(super) fn draw_overlay(
+    canvas: &mut Canvas,
+    render: RenderContext<'_>,
+    scenario: ScenarioContext<'_>,
+) {
+    let samples = summary_samples(scenario);
+    draw_summary_tooltip(canvas, render, scenario, &samples);
 }
 
 fn draw_header(canvas: &mut Canvas, render: RenderContext<'_>, scenario: ScenarioContext<'_>) {
@@ -67,91 +73,182 @@ fn draw_header(canvas: &mut Canvas, render: RenderContext<'_>, scenario: Scenari
 }
 
 fn preview_meta(scenario: ScenarioContext<'_>) -> &'static str {
-    if scenario.preset_index > 0 {
+    if scenario.screen_state.action_count > 0 || scenario.screen_state.last_action != "none" {
         return "operation after / callback log visible";
+    }
+    if scenario.preset_index > 0 {
+        return "preset state / public API visible";
     }
     "core-only / pure Rust / late-bound style"
 }
 
-fn draw_font_alignment_samples(
+fn draw_summary_controls(
     canvas: &mut Canvas,
-    text: &TextRenderer,
-    code_text: &TextRenderer,
-    palette: &VisualPalette,
+    render: RenderContext<'_>,
+    scenario: ScenarioContext<'_>,
 ) {
-    let samples = [
-        ("English UI", text),
-        ("日本語 UI", text),
-        ("Text 日本語", text),
-        ("⌘ K", code_text),
-    ];
-    let mut x = PREVIEW_X;
-    for (sample, renderer) in samples {
+    let samples = summary_samples(scenario);
+    for (index, sample) in samples.iter().enumerate().take(SUMMARY_COUNT) {
+        let rect = summary_control_rect(index);
         canvas.stroke_rect(
-            x,
-            FONT_SAMPLE_Y,
-            FONT_SAMPLE_WIDTH,
-            FONT_SAMPLE_HEIGHT,
-            palette.border,
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height,
+            render.palette.border,
         );
-        renderer.draw_centered(
+        render.text.draw_centered(
             canvas,
-            sample,
-            x + FONT_SAMPLE_PADDING_X,
-            TextVerticalBox::new(FONT_SAMPLE_Y, FONT_SAMPLE_HEIGHT as f32),
-            FONT_SAMPLE_SIZE,
-            palette.muted,
+            &sample.visible,
+            rect.x + SUMMARY_PADDING_X,
+            TextVerticalBox::new(SUMMARY_Y, SUMMARY_HEIGHT as f32),
+            SUMMARY_SIZE,
+            render.palette.muted,
         );
-        x += FONT_SAMPLE_WIDTH + FONT_SAMPLE_GAP;
     }
 }
 
-fn draw_preview_stories(canvas: &mut Canvas, context: PreviewContext<'_>) {
-    context.render.text.draw(
-        canvas,
-        "All components",
-        PREVIEW_X,
-        GRID_TITLE_Y,
-        PREVIEW_META_SIZE,
-        context.render.palette.text,
+fn short_value(value: &str) -> String {
+    const MAX_CHARS: usize = 20;
+    const SUFFIX: &str = "...";
+    if value.chars().count() <= MAX_CHARS {
+        return value.to_string();
+    }
+    let keep = MAX_CHARS - SUFFIX.len();
+    let prefix: String = value.chars().take(keep).collect();
+    format!("{prefix}{SUFFIX}")
+}
+
+fn summary_samples(scenario: ScenarioContext<'_>) -> [SummarySample; SUMMARY_COUNT] {
+    let preset = preset_label(scenario);
+    let values = [
+        format!("preset {preset}"),
+        format!("state {}", scenario.screen_state.state_label),
+        format!("setting {}", setting_summary(scenario, preset)),
+        format!("count {}", scenario.screen_state.action_count),
+    ];
+    values.map(|full| SummarySample {
+        visible: short_value(&full),
+        full,
+    })
+}
+
+fn preset_label(scenario: ScenarioContext<'_>) -> &'static str {
+    let labels = StoryPresetLabels::for_page(scenario.selected_page);
+    labels
+        .get(scenario.preset_index)
+        .copied()
+        .unwrap_or(labels[0])
+}
+
+fn setting_summary(scenario: ScenarioContext<'_>, preset: &str) -> String {
+    if scenario.screen_state.last_setting != "none" {
+        return format!(
+            "{}={}",
+            scenario.screen_state.last_setting, scenario.screen_state.last_setting_value
+        );
+    }
+    if is_button_page(scenario.selected_page) {
+        return format!("layout={preset}");
+    }
+    "none".to_string()
+}
+
+fn is_button_page(page: &str) -> bool {
+    matches!(
+        page,
+        "button" | "text-button" | "svg-button" | "icon-text-button"
+    )
+}
+
+fn draw_summary_tooltip(
+    canvas: &mut Canvas,
+    render: RenderContext<'_>,
+    scenario: ScenarioContext<'_>,
+    samples: &[SummarySample; SUMMARY_COUNT],
+) {
+    let Some(index) = scenario.screen_state.hovered_summary_index else {
+        return;
+    };
+    let Some(sample) = samples.get(index) else {
+        return;
+    };
+    if sample.visible == sample.full {
+        return;
+    }
+    let source = summary_control_rect(index);
+    let width = tooltip_width(&sample.full);
+    let y = source.bottom() + SUMMARY_TOOLTIP_Y_GAP;
+    canvas.fill_rect(
+        source.x,
+        y,
+        width,
+        SUMMARY_TOOLTIP_HEIGHT,
+        render.palette.surface,
     );
-    let mut x = PREVIEW_X;
-    let mut y = PREVIEW_FIRST_CARD_Y;
-    let mut column = 0;
-    for (child, example) in ordered_stories(&context).take(PREVIEW_VISIBLE_STORIES) {
-        let context = card::StoryCardContext {
-            text: context.render.text,
-            code_text: context.render.code_text,
-            style_sheet: context.render.style_sheet,
-            palette: context.render.palette,
-        };
-        let frame = card::StoryCardFrame { x, y };
-        card::draw_story_card(canvas, &context, child, &example.callback_logs, frame);
-        column += 1;
-        if column == STORY_CARD_COLUMNS {
-            column = 0;
-            x = PREVIEW_X;
-            y += STORY_CARD_STEP_Y;
-        } else {
-            x += STORY_CARD_STEP_X;
-        }
-    }
+    canvas.stroke_rect(
+        source.x,
+        y,
+        width,
+        SUMMARY_TOOLTIP_HEIGHT,
+        render.palette.accent,
+    );
+    render.text.draw_centered(
+        canvas,
+        &sample.full,
+        source.x + SUMMARY_TOOLTIP_PADDING_X,
+        TextVerticalBox::new(y, SUMMARY_TOOLTIP_HEIGHT as f32),
+        SUMMARY_SIZE,
+        render.palette.text,
+    );
 }
 
-fn ordered_stories<'a>(
-    context: &PreviewContext<'a>,
-) -> impl Iterator<Item = (&'a UiNode, &'a crate::catalog::StoryExample)> {
-    let pairs = context
-        .preview
-        .children()
-        .iter()
-        .zip(context.render.examples.iter());
-    let selected = pairs
-        .clone()
-        .find(|(_, example)| example.page == context.selected_page);
-    selected
-        .into_iter()
-        .chain(pairs.filter(move |(_, example)| example.page != context.selected_page))
+fn tooltip_width(value: &str) -> usize {
+    let content_width = value.chars().count() * SUMMARY_TOOLTIP_CHAR_WIDTH;
+    (content_width + SUMMARY_TOOLTIP_PADDING_X * 2)
+        .clamp(SUMMARY_TOOLTIP_MIN_WIDTH, SUMMARY_TOOLTIP_MAX_WIDTH)
+}
+
+pub(super) fn summary_control_index_at(x: usize, y: usize) -> Option<usize> {
+    (0..SUMMARY_COUNT).find(|index| summary_control_rect(*index).contains(x, y))
+}
+
+fn summary_control_rect(index: usize) -> LayoutRect {
+    LayoutRect::new(
+        PREVIEW_X + index * (SUMMARY_WIDTH + SUMMARY_GAP),
+        SUMMARY_Y,
+        SUMMARY_WIDTH,
+        SUMMARY_HEIGHT,
+    )
+}
+
+#[cfg(test)]
+pub(super) const fn summary_controls_right_edge() -> usize {
+    PREVIEW_X + SUMMARY_COUNT * SUMMARY_WIDTH + (SUMMARY_COUNT - 1) * SUMMARY_GAP
+}
+
+#[cfg(test)]
+pub(super) const fn summary_control_height() -> usize {
+    SUMMARY_HEIGHT
+}
+
+#[cfg(test)]
+pub(super) fn summary_visible_samples_for_test(
+    scenario: ScenarioContext<'_>,
+) -> [String; SUMMARY_COUNT] {
+    summary_samples(scenario).map(|sample| sample.visible)
+}
+
+#[cfg(test)]
+pub(super) fn summary_full_samples_for_test(
+    scenario: ScenarioContext<'_>,
+) -> [String; SUMMARY_COUNT] {
+    summary_samples(scenario).map(|sample| sample.full)
+}
+
+#[cfg(test)]
+pub(super) fn summary_control_rect_for_test(index: usize) -> LayoutRect {
+    summary_control_rect(index)
 }
 
 fn panel_child<'a>(root: &'a UiNode, label: &str) -> Option<&'a UiNode> {

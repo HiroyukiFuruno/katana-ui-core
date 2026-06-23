@@ -1,6 +1,6 @@
 use super::{
-    BorderToken, ColorToken, FontFamily, FontToken, RadiusToken, Rgba, ShadowToken, SpacingToken,
-    ThemeId, ThemeSnapshot, ZIndexToken,
+    BorderToken, ColorToken, FontFamily, FontToken, MotionToken, RadiusToken, Rgba, ShadowToken,
+    SpacingToken, ThemeId, ThemeSnapshot, ZIndexToken,
 };
 
 const LIGHT_BACKGROUND: Rgba = [255, 255, 255, 255];
@@ -10,6 +10,7 @@ const LIGHT_CODE_BACKGROUND: Rgba = [243, 243, 243, 255];
 const LIGHT_TEXT: Rgba = [36, 36, 36, 255];
 const LIGHT_MUTED: Rgba = [106, 106, 106, 255];
 const LIGHT_ACCENT: Rgba = [0, 120, 212, 255];
+const LIGHT_ACCENT_FOREGROUND: Rgba = [248, 250, 252, 255];
 const LIGHT_BORDER: Rgba = [220, 220, 220, 255];
 const LIGHT_SELECTION: Rgba = [173, 214, 255, 255];
 const DARK_BACKGROUND: Rgba = [30, 30, 30, 255];
@@ -19,6 +20,7 @@ const DARK_CODE_BACKGROUND: Rgba = [40, 40, 40, 255];
 const DARK_TEXT: Rgba = [212, 212, 212, 255];
 const DARK_MUTED: Rgba = [142, 142, 142, 255];
 const DARK_ACCENT: Rgba = [86, 156, 214, 255];
+const DARK_ACCENT_FOREGROUND: Rgba = [248, 250, 252, 255];
 const DARK_BORDER: Rgba = [60, 60, 60, 255];
 const DARK_SELECTION: Rgba = [38, 79, 120, 255];
 const BODY_FONT_SIZE: f32 = 14.0;
@@ -29,6 +31,13 @@ const RADIUS_SM: f32 = 4.0;
 const SHADOW_NONE: f32 = 0.0;
 const BORDER_THIN: f32 = 1.0;
 const Z_INDEX_OVERLAY: i32 = 100;
+const MOTION_INSTANT_MS: u16 = 0;
+const MOTION_FAST_MS: u16 = 120;
+const MOTION_DEFAULT_MS: u16 = 200;
+const MOTION_SLOW_MS: u16 = 320;
+const MOTION_DISTANCE_COMPACT: u16 = 4;
+const MOTION_DISTANCE_DEFAULT: u16 = 8;
+const MOTION_DISTANCE_SPACIOUS: u16 = 16;
 
 pub(super) struct ThemePreset {
     id: &'static str,
@@ -39,6 +48,7 @@ pub(super) struct ThemePreset {
     text: Rgba,
     muted: Rgba,
     accent: Rgba,
+    accent_foreground: Rgba,
     border: Rgba,
     selection: Rgba,
 }
@@ -54,6 +64,7 @@ impl ThemePreset {
             text: LIGHT_TEXT,
             muted: LIGHT_MUTED,
             accent: LIGHT_ACCENT,
+            accent_foreground: LIGHT_ACCENT_FOREGROUND,
             border: LIGHT_BORDER,
             selection: LIGHT_SELECTION,
         }
@@ -69,6 +80,7 @@ impl ThemePreset {
             text: DARK_TEXT,
             muted: DARK_MUTED,
             accent: DARK_ACCENT,
+            accent_foreground: DARK_ACCENT_FOREGROUND,
             border: DARK_BORDER,
             selection: DARK_SELECTION,
         }
@@ -100,6 +112,7 @@ impl ThemePreset {
                 name: "overlay".to_string(),
                 value: Z_INDEX_OVERLAY,
             }],
+            motion: motion_tokens(),
         }
     }
 
@@ -112,10 +125,40 @@ impl ThemePreset {
             color_token("text", self.text),
             color_token("muted", self.muted),
             color_token("accent", self.accent),
+            color_token("accent-foreground", self.accent_foreground),
             color_token("border", self.border),
             color_token("selection", self.selection),
         ]
     }
+}
+
+fn motion_tokens() -> Vec<MotionToken> {
+    vec![
+        MotionToken {
+            name: "instant".to_string(),
+            duration_ms: MOTION_INSTANT_MS,
+            easing: "linear".to_string(),
+            distance_px: 0,
+        },
+        MotionToken {
+            name: "fast".to_string(),
+            duration_ms: MOTION_FAST_MS,
+            easing: "standard".to_string(),
+            distance_px: MOTION_DISTANCE_COMPACT,
+        },
+        MotionToken {
+            name: "default".to_string(),
+            duration_ms: MOTION_DEFAULT_MS,
+            easing: "emphasized".to_string(),
+            distance_px: MOTION_DISTANCE_DEFAULT,
+        },
+        MotionToken {
+            name: "slow".to_string(),
+            duration_ms: MOTION_SLOW_MS,
+            easing: "decelerate".to_string(),
+            distance_px: MOTION_DISTANCE_SPACIOUS,
+        },
+    ]
 }
 
 fn color_token(name: &str, rgba: Rgba) -> ColorToken {

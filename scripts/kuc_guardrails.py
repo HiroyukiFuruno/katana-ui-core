@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
+import json
 from pathlib import Path
 import re
 import sys
 
 from kuc_openspec_guardrails import KucOpenSpecGuardrails
+from kuc_workspace_tab_guardrails import WorkspaceTabGuardrails
 
 RUNTIME_KEYWORDS = (
     "drag",
@@ -44,10 +46,27 @@ class KucGuardrails:
         failures.extend(self.callback_failures())
         failures.extend(self.storybook_leak_failures())
         failures.extend(self.helper_only_view_failures())
+        failures.extend(self.component_state_ownership_failures())
         failures.extend(self.typed_action_model_failures())
         failures.extend(self.storybook_panel_evidence_failures())
+        failures.extend(self.storybook_live_harness_dor_failures())
+        failures.extend(self.storybook_next_change_scope_failures())
+        failures.extend(self.storybook_remaining_handoff_failures())
         failures.extend(self.visual_fallback_policy_failures())
+        failures.extend(self.storybook_reflection_audit_policy_failures())
         failures.extend(self.repo_local_guardrail_policy_failures())
+        failures.extend(self.generic_rust_ui_boundary_failures())
+        failures.extend(self.adapter_svg_render_plan_failures())
+        failures.extend(self.host_action_render_plan_failures())
+        failures.extend(self.adapter_coverage_plan_failures())
+        failures.extend(self.storybook_live_component_contract_failures())
+        failures.extend(self.choice_api_boundary_failures())
+        failures.extend(WorkspaceTabGuardrails(self.root).failures())
+        failures.extend(self.agent_stop_policy_failures())
+        failures.extend(self.agent_hook_policy_failures())
+        failures.extend(self.release_readiness_recipe_failures())
+        failures.extend(self.storybook_regression_recipe_failures())
+        failures.extend(self.public_app_shell_failures())
         failures.extend(self.openspec_evidence_failures())
         failures.extend(self.file_length_review_failures())
         return failures
@@ -175,10 +194,10 @@ class KucGuardrails:
     def repo_local_guardrail_policy_failures(self) -> list[str]:
         required_files = (
             self.root / "docs/architecture/ui-separation/owned-ui-task-map.md",
-            self.root / "openspec/changes/ui-core-interaction-visual-parity/tasks.md",
             self.root
-            / "openspec/changes/ui-core-interaction-visual-parity/specs/ui-core-interaction-visual-parity/spec.md",
-            self.root / "tmp/reports/2026-05-17-overnight-residual-scope.md",
+            / "openspec/changes/establish-kuc-atoms-molecules-catalog/quality-gates-contract.md",
+            self.root
+            / "openspec/changes/establish-kuc-atoms-molecules-catalog/specs/kuc-quality-gates/spec.md",
         )
         missing_files = [path for path in required_files if not path.exists()]
         if missing_files:
@@ -192,8 +211,8 @@ class KucGuardrails:
             "KUC repo",
             "`scripts/`",
             "`kal` 側",
-            "no `kal` repository changes are required",
-            "KUC-specific UI ownership and Storybook rules MUST be implemented inside this repository",
+            "KUC-specific guards MUST live in this repository",
+            "Storybook is an interactive feedback surface",
         )
         failures = [
             f"KUC repo-local guardrail policy missing token: {token}"
@@ -214,6 +233,957 @@ class KucGuardrails:
         )
         return failures
 
+    def generic_rust_ui_boundary_failures(self) -> list[str]:
+        failures: list[str] = []
+        core_src = self.root / "crates/katana-ui-core/src"
+        forbidden_tokens = (
+            "KatanaSvgIcon",
+            "katana_icons",
+            "katana-icons",
+            "assets/icons/katana",
+            "../katana",
+            "/works/private/katana/",
+            "crates/katana-ui",
+        )
+        for path in self.rust_files(core_src):
+            source = self.read(path)
+            for token in forbidden_tokens:
+                if token in source:
+                    failures.append(
+                        f"{self.relative(path)}: KUC core must stay generic; forbidden Katana-specific token `{token}`"
+                    )
+
+        typed_icon = self.root / "crates/katana-ui-core/src/render_model/typed_icon.rs"
+        atom_typed = self.root / "crates/katana-ui-core/src/atom/typed.rs"
+        workspace_tab_options = (
+            self.root
+            / "crates/katana-ui-core/src/molecule/structured/workspace_tab_bar/options.rs"
+        )
+        generic_app_contract = (
+            self.root / "crates/katana-ui-core/tests/generic_rust_app_contract.rs"
+        )
+        generic_layout_contract = (
+            self.root / "crates/katana-ui-core/tests/generic_rust_app_layout_contract.rs"
+        )
+        generic_action_contract = (
+            self.root / "crates/katana-ui-core/tests/generic_rust_app_action_contract.rs"
+        )
+        required_sources = (
+            (typed_icon, ("pub svg_source: String", "pub struct UiIconProps")),
+            (
+                atom_typed,
+                (
+                    "leading_svg_icon_slot",
+                    "trailing_svg_icon_button",
+                    "UiIconProps::new(svg_source)",
+                ),
+            ),
+            (
+                workspace_tab_options,
+                (
+                    "pub icon: Option<UiIconProps>",
+                    "pub fn svg_icon(mut self, value: UiIconProps) -> Self",
+                    "UiIconProps::new(value)",
+                ),
+            ),
+            (
+                generic_app_contract,
+                (
+                    "generic_rust_app_can_compose_shell_from_public_kuc_api",
+                    "generic_app_inputs_keep_internal_state_per_instance",
+                    "generic_app_readonly_input_rejects_write_actions",
+                    "generic_app_readonly_input_allows_selection_without_write_mutation",
+                    "generic_app_readonly_text_area_allows_selection_and_submit_without_write_mutation",
+                    "generic_app_tabs_support_add_close_move_group_and_pin_contracts",
+                ),
+            ),
+            (
+                generic_layout_contract,
+                (
+                    "generic_app_can_build_resizable_scrollable_layout_from_public_kuc_api",
+                    "generic_app_scroll_area_uses_typed_public_action_and_state",
+                    "generic_app_split_pane_uses_typed_public_action_and_state",
+                    "generic_app_facade_exposes_theme_state_and_render_context",
+                ),
+            ),
+            (
+                generic_action_contract,
+                (
+                    "generic_app_input_icon_button_invokes_callback_without_mutating_text",
+                    "generic_app_disabled_input_blocks_icon_button_callback",
+                    "generic_adapter_dispatch_targets_stable_state_id_after_redraw",
+                    "generic_adapter_dispatches_closeable_tab_typed_actions",
+                    "generic_adapter_dispatches_closeable_tab_context_bulk_actions",
+                    "generic_adapter_dispatches_closeable_tab_add_and_group_actions",
+                    "generic_adapter_dispatches_closeable_tab_typed_event_log",
+                    "generic_adapter_dispatches_closeable_tab_visual_index_selection",
+                    "generic_app_tabs_support_bulk_context_actions_from_public_api",
+                    "generic_app_tabs_context_commands_map_to_typed_actions",
+                    "CloseableTabContextMenu::menu",
+                    "CloseableTabContextCommand::from_id",
+                    "CloseableTabGroupContextCommand::from_id",
+                    "to_group_action",
+                    "ContextMenuItem::action",
+                    "generic_app_tabs_emit_typed_events_for_pin_and_group_changes",
+                ),
+            ),
+            (
+                self.root / "examples/kuc-consumer-app/src/lib.rs",
+                (
+                    "quick_search: SearchBox",
+                    "workspace_select: SelectBox",
+                    "symbol_combo: ComboBox",
+                ),
+            ),
+            (
+                self.root / "examples/kuc-consumer-app/src/fixtures.rs",
+                (
+                    "SearchBox::new",
+                    "SelectBox::new",
+                    "ComboBox::new",
+                    ".submit_on_enter(true)",
+                    ".free_input(true)",
+                ),
+            ),
+            (
+                self.root / "examples/kuc-consumer-app/src/actions.rs",
+                (
+                    "set_quick_search",
+                    "UiAction::search_submitted",
+                    "select_workspace",
+                    "UiAction::select_box_selected",
+                    "select_symbol",
+                ),
+            ),
+            (
+                self.root / "examples/kuc-consumer-app/src/queries.rs",
+                (
+                    "quick_search_query",
+                    "workspace_value",
+                    "symbol_value",
+                ),
+            ),
+            (
+                self.root / "examples/kuc-consumer-app/src/tests.rs",
+                (
+                    "UiNodeKind::SearchBox",
+                    "UiNodeKind::SelectBox",
+                    "UiNodeKind::ComboBox",
+                    "quick_search_log[0].action",
+                    "workspace_value",
+                    "symbol_value",
+                ),
+            ),
+        )
+        for path, tokens in required_sources:
+            if not path.exists():
+                failures.append(f"{self.relative(path)}: generic Rust UI boundary file is missing")
+                continue
+            source = self.read(path)
+            failures.extend(
+                f"{self.relative(path)}: generic Rust UI boundary missing token: {token}"
+                for token in tokens
+                if token not in source
+            )
+
+        docs = self.guard_docs_source() + "\n" + self.generic_contract_docs_source()
+        required_doc_tokens = (
+            "汎用 Rust app",
+            "KUC 本体は Katana を知ってはならない",
+            "Katana は参照実装",
+            "外部から渡される `svg_source`",
+            "framework 固有依存を排除",
+        )
+        failures.extend(
+            f"generic Rust UI boundary docs missing token: {token}"
+            for token in required_doc_tokens
+            if token not in docs
+        )
+        return failures
+
+    def adapter_svg_render_plan_failures(self) -> list[str]:
+        core_plan = self.root / "crates/katana-ui-core/src/render_model/svg_icon_render_plan.rs"
+        core_pixel_plan = self.root / "crates/katana-ui-core/src/render_model/svg_icon_pixel_plan.rs"
+        render_model_mod = self.root / "crates/katana-ui-core/src/render_model/mod.rs"
+        core_test = self.root / "crates/katana-ui-core/tests/svg_icon_render_plan_contract.rs"
+        required_sources = (
+            (
+                core_plan,
+                (
+                    "pub struct UiSvgIconRenderPlan",
+                    "pub svg_source: String",
+                    "pub view_box: String",
+                    "pub path_summary: String",
+                    "pub paint_policy: super::UiSvgPaintPolicy",
+                    "pub theme_token: String",
+                    "pub callback: String",
+                    "pub fn collect_from_tree",
+                    "leading_slot",
+                    "trailing_icon_buttons",
+                ),
+            ),
+            (
+                core_pixel_plan,
+                (
+                    "pub struct UiSvgIconPixelPlan",
+                    "pub struct UiSvgIconViewBox",
+                    "pub viewport: UiRect",
+                    "pub scale_x_milli: u32",
+                    "pub scale_y_milli: u32",
+                    "pub pixel_ready: bool",
+                    "UiSvgIconRenderPlan::collect_from_tree",
+                    "DEFAULT_SVG_ICON_BOX_PX",
+                ),
+            ),
+            (
+                render_model_mod,
+                (
+                    "pub use svg_icon_pixel_plan",
+                    "UiSvgIconPixelPlan",
+                    "UiSvgIconViewBox",
+                    "pub use svg_icon_render_plan::UiSvgIconRenderPlan",
+                ),
+            ),
+            (
+                core_test,
+                (
+                    "CALLER_SEARCH_SVG",
+                    "CALLER_CLEAR_SVG",
+                    "UiSvgIconRenderPlan::collect_from_tree",
+                    "UiSvgIconPixelPlan::collect_from_tree",
+                    "svg_icon_pixel_plan_preserves_viewbox_scale_and_paint_contract",
+                    "semantic_fingerprint_changes_when_text_entry_svg_or_callback_changes",
+                    "svg_icon_render_plan_preserves_external_svg_metadata_for_adapters",
+                    "UiSvgPaintPolicy::StrokeOnly",
+                ),
+            ),
+        )
+        failures: list[str] = []
+        for path, tokens in required_sources:
+            if not path.exists():
+                failures.append(f"{self.relative(path)}: SVG icon render plan contract file is missing")
+                continue
+            source = self.read(path)
+            failures.extend(
+                f"{self.relative(path)}: SVG icon render plan contract missing token: {token}"
+                for token in tokens
+                if token not in source
+            )
+
+        return failures
+
+    def host_action_render_plan_failures(self) -> list[str]:
+        core_plan = self.root / "crates/katana-ui-core/src/render_model/host_action_plan.rs"
+        core_types = self.root / "crates/katana-ui-core/src/render_model/host_action_types.rs"
+        common = self.root / "crates/katana-ui-core/src/render_model/common.rs"
+        render_model_mod = self.root / "crates/katana-ui-core/src/render_model/mod.rs"
+        core_test = self.root / "crates/katana-ui-core/tests/host_action_plan_contract.rs"
+        required_sources = (
+            (
+                core_types,
+                (
+                    "pub struct UiHostActionPlan",
+                    "pub action_id: String",
+                    "pub enabled: bool",
+                    "ui.link.open",
+                    "ui.disclosure.",
+                    "ui.image.highlight",
+                ),
+            ),
+            (core_plan, ("pub fn collect_from_tree", "push_context_menu_item_plans")),
+            (common, ("pub host_actions: Vec<UiHostActionSpec>",)),
+            (render_model_mod, ("UiHostActionPlan", "UiHostActionSpec")),
+            (
+                core_test,
+                (
+                    "generic_host_action_plan_collects_action_ids_and_enabled_state",
+                    "app.toolbar.",
+                    "ui.surface.",
+                    "UI_IMAGE_HIGHLIGHT_ACTION_ID",
+                ),
+            ),
+        )
+        failures: list[str] = []
+        for path, tokens in required_sources:
+            if not path.exists():
+                failures.append(f"{self.relative(path)}: host action render plan contract file is missing")
+                continue
+            source = self.read(path)
+            failures.extend(
+                f"{self.relative(path)}: host action render plan missing token: {token}"
+                for token in tokens
+                if token not in source
+            )
+
+        return failures
+
+    def adapter_coverage_plan_failures(self) -> list[str]:
+        core_plan = self.root / "crates/katana-ui-core/src/render_model/adapter_coverage_plan.rs"
+        render_model_mod = self.root / "crates/katana-ui-core/src/render_model/mod.rs"
+        action_bridge = self.root / "crates/katana-ui-core/src/adapter_contract/action_bridge.rs"
+        host_action_bridge = (
+            self.root / "crates/katana-ui-core/src/adapter_contract/host_action_bridge.rs"
+        )
+        adapter_contract_mod = self.root / "crates/katana-ui-core/src/adapter_contract/mod.rs"
+        core_test = self.root / "crates/katana-ui-core/tests/adapter_coverage_plan_contract.rs"
+        host_action_test = (
+            self.root / "crates/katana-ui-core/tests/adapter_host_action_bridge_contract.rs"
+        )
+        docs = self.root / "docs/dependency-policy.md"
+        required_sources = (
+            (
+                core_plan,
+                (
+                    "pub struct UiAdapterCoveragePlan",
+                    "pub input_count: usize",
+                    "pub text_area_count: usize",
+                    "pub tab_container_count: usize",
+                    "pub selection_count: usize",
+                    "pub split_pane_count: usize",
+                    "pub scroll_area_count: usize",
+                    "pub modal_count: usize",
+                    "pub required_consumer_node_kind_count: usize",
+                    "pub missing_required_consumer_node_kinds: Vec<UiNodeKind>",
+                    "pub unsupported_node_count: usize",
+                    "pub fn collect_from_tree",
+                    "pub fn consumer_shell_ready",
+                    "UiNodeKind::ImageSurface",
+                ),
+            ),
+            (render_model_mod, ("pub use adapter_coverage_plan::UiAdapterCoveragePlan",)),
+            (
+                action_bridge,
+                (
+                    "pub struct AdapterActionBridge",
+                    "ComponentAction",
+                    "UiActionResult",
+                    "component.apply_action(action)",
+                ),
+            ),
+            (
+                host_action_bridge,
+                (
+                    "pub struct AdapterHostActionBridge",
+                    "UiHostActionPlan::collect_from_root",
+                    "action.enabled",
+                    "action.action_id == action_id",
+                ),
+            ),
+            (
+                adapter_contract_mod,
+                (
+                    "pub use action_bridge::AdapterActionBridge",
+                    "pub use host_action_bridge::AdapterHostActionBridge",
+                ),
+            ),
+            (
+                core_test,
+                (
+                    "adapter_coverage_plan_reports_consumer_shell_surfaces",
+                    "adapter_coverage_plan_blocks_consumer_ready_when_unsupported_nodes_exist",
+                    "adapter_coverage_plan_requires_image_surface_for_native_raster_parity",
+                    "ImageSurface::from_rgba",
+                    "modal_count",
+                    "consumer_shell_ready",
+                ),
+            ),
+            (
+                host_action_test,
+                (
+                    "adapter_host_action_bridge_triggers_enabled_button_command",
+                    "adapter_host_action_bridge_triggers_text_entry_icon_callback",
+                    "adapter_host_action_bridge_triggers_text_area_icon_callback",
+                    "adapter_host_action_bridge_rejects_disabled_action",
+                ),
+            ),
+            (
+                docs,
+                (
+                    "UiAdapterCoveragePlan",
+                    "AdapterActionBridge",
+                    "AdapterHostActionBridge",
+                    "core crate",
+                    "outside core",
+                ),
+            ),
+        )
+        failures: list[str] = []
+        for path, tokens in required_sources:
+            if not path.exists():
+                failures.append(f"{self.relative(path)}: adapter coverage plan contract file is missing")
+                continue
+            source = self.read(path)
+            failures.extend(
+                f"{self.relative(path)}: adapter coverage plan contract missing token: {token}"
+                for token in tokens
+                if token not in source
+            )
+
+        return failures
+
+    def storybook_live_component_contract_failures(self) -> list[str]:
+        failures: list[str] = []
+        storybook_src = self.root / "crates/katana-ui-core-storybook/src"
+        forbidden_tokens = (
+            "KatanaSvgIcon",
+            "katana_icons",
+            "katana_svg_icons",
+            "katana-icons",
+        )
+        for path in self.rust_files(storybook_src):
+            source = self.read(path)
+            for token in forbidden_tokens:
+                if token in source:
+                    failures.append(
+                        f"{self.relative(path)}: Storybook must pass generic props into live KUC components; forbidden token `{token}`"
+                    )
+
+        asset_dir = self.root / "crates/katana-ui-core-storybook/assets/katana-icons"
+        if asset_dir.exists() and any(asset_dir.rglob("*.svg")):
+            failures.append(
+                "crates/katana-ui-core-storybook/assets/katana-icons: Storybook fixtures must not create a Katana-namespaced icon pack"
+            )
+        failures.extend(self.storybook_tabs_core_bridge_failures(storybook_src))
+        failures.extend(self.storybook_tabs_layout_order_failures(storybook_src))
+        failures.extend(
+            self.storybook_closeable_tab_strip_core_bridge_failures(storybook_src)
+        )
+        failures.extend(self.storybook_input_core_bridge_failures(storybook_src))
+        failures.extend(self.storybook_search_core_bridge_failures(storybook_src))
+        failures.extend(self.storybook_selection_core_bridge_failures(storybook_src))
+
+        docs = self.generic_contract_docs_source()
+        required_doc_tokens = (
+            "Storybook は絵ではない",
+            "KUC の実部品",
+            "props / state / event / action / callback",
+            "replay surface",
+        )
+        failures.extend(
+            f"storybook live component contract docs missing token: {token}"
+            for token in required_doc_tokens
+            if token not in docs
+        )
+        return failures
+
+    def storybook_closeable_tab_strip_core_bridge_failures(
+        self, storybook_src: Path
+    ) -> list[str]:
+        dedicated = storybook_src / "visual/dedicated_closeable_tab_strip.rs"
+        tests = (
+            storybook_src / "visual/visual_interaction_closeable_tab_strip_tests.rs"
+        )
+        if not dedicated.exists() and not tests.exists():
+            return []
+
+        sources = (
+            dedicated,
+            storybook_src / "visual/screen_state_tabs_bridge.rs",
+            storybook_src / "visual/window_interaction/button_operation.rs",
+            storybook_src / "visual/window_interaction/button_operation/tabs_operation.rs",
+            storybook_src / "visual/window_interaction/context_click.rs",
+            tests,
+            storybook_src / "visual/visual_interaction_closeable_tab_strip_context_tests.rs",
+        )
+        combined = "\n".join(self.read(path) for path in sources if path.exists())
+        required_tokens = (
+            "dedicated_closeable_tab_strip::tab_hit_at",
+            "register_closeable_tab_strip_select",
+            "CloseableTabStripAction::SelectTab",
+            "CloseableTabStripSelect",
+            "context_menu_command_at",
+            "closeable_tab_strip_context_target",
+            "closeable_tab_strip_component_click_selects_real_core_tab",
+            "closeable_tab_strip_context_menu_uses_real_core_commands",
+            "closeable_tab_strip_tab_context_menu_applies_workspace_tab_commands",
+            "closeable_tab_strip_context_menu_keeps_pinned_tabs_fixed_until_unpinned",
+            "CLOSE_OTHERS_INDEX",
+            "CLOSE_RIGHT_INDEX",
+            "MOVE_TO_GROUP_INDEX",
+        )
+        return [
+            "crates/katana-ui-core-storybook/src/visual: "
+            f"closeable-tab-strip live core bridge missing token `{token}`"
+            for token in required_tokens
+            if token not in combined
+        ]
+
+    def storybook_tabs_core_bridge_failures(self, storybook_src: Path) -> list[str]:
+        tabs_state = storybook_src / "visual/screen_state_tabs.rs"
+        tabs_context = storybook_src / "visual/screen_state_tabs_context.rs"
+        if not tabs_state.exists() and not tabs_context.exists():
+            return []
+        tabs_core = storybook_src / "visual/screen_state_tabs_core.rs"
+        if not tabs_core.exists():
+            return [
+                "crates/katana-ui-core-storybook/src/visual/screen_state_tabs_core.rs: Storybook tabs must route through core CloseableTabStrip actions"
+            ]
+        source = self.read(tabs_core)
+        required_tokens = (
+            "CloseableTabStripAction",
+            "CloseableTabStripEvent",
+            "apply_core_tab_action",
+            "apply_core_tab_action_confirming_dirty",
+            "CloseableTabStripEvent::name",
+        )
+        failures = [
+            f"{self.relative(tabs_core)}: Storybook tabs core bridge missing token `{token}`"
+            for token in required_tokens
+            if token not in source
+        ]
+        if tabs_context.exists():
+            context_source = self.read(tabs_context)
+            tabs_group_context = storybook_src / "visual/screen_state_tabs_group_context.rs"
+            if tabs_group_context.exists():
+                context_source = f"{context_source}\n{self.read(tabs_group_context)}"
+            tabs_context_types = (
+                storybook_src / "visual/screen_state_tabs_context_menu_types.rs"
+            )
+            if tabs_context_types.exists():
+                context_source = f"{context_source}\n{self.read(tabs_context_types)}"
+            required_context_tokens = (
+                "CloseableTabContextMenu::menu",
+                "TabsContextMenuCommand::for_group",
+                "ContextMenuAnchor::Pointer",
+                "context_node.props().context_menu.items",
+                "CloseableTabContextCommand::from_id",
+                "CloseableTabGroupContextCommand::from_id",
+                "from_item_id",
+                "open_context_menu_for_group",
+            )
+            failures.extend(
+                f"{self.relative(tabs_context)}: Storybook tabs context menu bridge missing token `{token}`"
+                for token in required_context_tokens
+                if token not in context_source
+            )
+        failures.extend(self.storybook_tabs_direct_pin_icon_failures(storybook_src))
+        return failures
+
+    def storybook_tabs_direct_pin_icon_failures(
+        self, storybook_src: Path
+    ) -> list[str]:
+        dedicated_tabs = storybook_src / "visual/dedicated_tabs.rs"
+        if not dedicated_tabs.exists():
+            return []
+
+        sources = (
+            storybook_src / "visual/dedicated_tabs.rs",
+            storybook_src / "visual/dedicated_tabs_layout.rs",
+            storybook_src / "visual/screen_state_tabs.rs",
+            storybook_src / "visual/screen_state_tabs_bridge.rs",
+            storybook_src / "visual/window_interaction/button_operation.rs",
+            storybook_src / "visual/window_interaction/button_operation/tabs_operation.rs",
+            storybook_src / "visual/visual_interaction_tabs_tests.rs",
+            storybook_src / "visual/visual_interaction_tabs_parity_tests.rs",
+        )
+        combined = "\n".join(self.read(path) for path in sources if path.exists())
+        required_tokens = (
+            "pin_icon_hit_at",
+            "pin_icon_rect_for_test",
+            "TabsPinIcon",
+            "register_tabs_pin_icon_unpin",
+            "unpin_tab_by_icon",
+            "CloseableTabStripAction::UnpinTab",
+            "tab_pin_icon_unpin",
+            "direct-icon",
+            "tabs_pinned_icon_click_directly_unpins_tab",
+        )
+        return [
+            f"{self.relative(dedicated_tabs)}: Storybook tabs direct pin icon contract missing token `{token}`"
+            for token in required_tokens
+            if token not in combined
+        ]
+
+    def storybook_tabs_layout_order_failures(self, storybook_src: Path) -> list[str]:
+        layout = storybook_src / "visual/dedicated_tabs_layout.rs"
+        core_bar = (
+            self.root
+            / "crates/katana-ui-core/src/molecule/structured/workspace_tab_bar/bar.rs"
+        )
+        if not layout.exists() and not core_bar.exists():
+            return []
+
+        failures: list[str] = []
+        order_contract_active = False
+        if layout.exists():
+            source = self.read(layout)
+            group_index = source.find("push_grouped_tabs(&mut items")
+            pinned_index = source.find("push_pinned_tabs(&mut items")
+            order_contract_active = group_index >= 0 or pinned_index >= 0
+            if order_contract_active and (
+                group_index < 0 or pinned_index < 0 or pinned_index > group_index
+            ):
+                failures.append(
+                    f"{self.relative(layout)}: Storybook tabs must render pinned tabs before group blocks"
+                )
+
+        if core_bar.exists():
+            source = self.read(core_bar)
+            group_index = source.find("for group in &options.groups")
+            pinned_index = source.find("for tab in options.tabs.iter().filter(|tab| tab.pinned)")
+            order_contract_active = order_contract_active or group_index >= 0 or pinned_index >= 0
+            if group_index < 0 or pinned_index < 0 or pinned_index > group_index:
+                failures.append(
+                    f"{self.relative(core_bar)}: CloseableTabStrip render tree must expose pinned tabs before group blocks"
+                )
+
+        if not order_contract_active:
+            return failures
+
+        storybook_tests = (
+            storybook_src / "visual/visual_interaction_tabs_tests.rs",
+            storybook_src / "visual/visual_interaction_tabs_parity_tests.rs",
+        )
+        if any(path.exists() for path in storybook_tests) and not any(
+            "tabs_pinned_tabs_render_before_group_block" in self.read(path)
+            for path in storybook_tests
+            if path.exists()
+        ):
+            failures.append(
+                "crates/katana-ui-core-storybook/src/visual: Storybook tabs pinned-before-group interaction test is missing"
+            )
+
+        core_tests = self.root / "crates/katana-ui-core/tests/closeable_tab_strip_rendering_contract.rs"
+        if core_tests.exists() and (
+            "closeable_tab_strip_renders_pinned_tabs_before_group_blocks"
+            not in self.read(core_tests)
+        ):
+            failures.append(
+                f"{self.relative(core_tests)}: CloseableTabStrip pinned-before-group render contract test is missing"
+            )
+        return failures
+
+    def storybook_input_core_bridge_failures(self, storybook_src: Path) -> list[str]:
+        failures: list[str] = []
+        text_input = storybook_src / "visual/screen_state_text_input.rs"
+        if text_input.exists():
+            source = self.read(text_input)
+            required_tokens = (
+                "Input::new",
+                "UiAction::input_value",
+                "ComponentAction",
+                "apply_core_text_input_value",
+            )
+            failures.extend(
+                f"{self.relative(text_input)}: Storybook text-input core bridge missing token `{token}`"
+                for token in required_tokens
+                if token not in source
+            )
+        text_area = storybook_src / "visual/screen_state_text_area_core.rs"
+        text_area_state = storybook_src / "visual/screen_state_text_area.rs"
+        if text_area_state.exists() and not text_area.exists():
+            failures.append(
+                "crates/katana-ui-core-storybook/src/visual/screen_state_text_area_core.rs: Storybook text-area must route through core TextAreaAction"
+            )
+        if text_area.exists():
+            source = self.read(text_area)
+            required_tokens = (
+                "TextArea::new",
+                "TextAreaAction",
+                "TextAreaActionOutcome",
+                "apply_text_area_action",
+            )
+            failures.extend(
+                f"{self.relative(text_area)}: Storybook text-area core bridge missing token `{token}`"
+                for token in required_tokens
+                if token not in source
+            )
+        return failures
+
+    def storybook_search_core_bridge_failures(self, storybook_src: Path) -> list[str]:
+        search_box = storybook_src / "visual/search_box_screen_state.rs"
+        if not search_box.exists():
+            return []
+        source = self.read(search_box)
+        required_tokens = (
+            "SearchBox::new",
+            "UiAction::input_value",
+            "UiAction::search_submitted",
+            "UiAction::clear_value",
+            "ComponentAction",
+        )
+        return [
+            f"{self.relative(search_box)}: Storybook search-box core bridge missing token `{token}`"
+            for token in required_tokens
+            if token not in source
+        ]
+
+    def storybook_selection_core_bridge_failures(
+        self, storybook_src: Path
+    ) -> list[str]:
+        selection_state = storybook_src / "visual/selection_screen_state.rs"
+        selection_core = storybook_src / "visual/selection_screen_state_core.rs"
+        if not selection_state.exists():
+            return []
+        if not selection_core.exists():
+            return [
+                "crates/katana-ui-core-storybook/src/visual/selection_screen_state_core.rs: Storybook selection controls must route through core select actions"
+            ]
+        source = self.read(selection_core)
+        required_tokens = (
+            "SelectBox::new",
+            "ComboBox::new",
+            "SelectionList::new",
+            "UiAction::select_box_selected",
+            "UiAction::set_selected_index",
+            "ComponentAction",
+        )
+        return [
+            f"{self.relative(selection_core)}: Storybook selection core bridge missing token `{token}`"
+            for token in required_tokens
+            if token not in source
+        ]
+
+    def choice_api_boundary_failures(self) -> list[str]:
+        choice = self.root / "crates/katana-ui-core/src/molecule/selection/choice.rs"
+        accessors = self.root / "crates/katana-ui-core/src/molecule/selection/accessors.rs"
+        options = self.root / "crates/katana-ui-core/src/molecule/selection/options.rs"
+        failures: list[str] = []
+        if choice.exists():
+            source = self.read(choice)
+            macro_body = source.split("choice_molecule!(SelectBox", maxsplit=1)[0]
+            combo_only_builders = (
+                "pub fn input_value",
+                "pub fn filter_result",
+                "pub fn free_input",
+            )
+            failures.extend(
+                f"{self.relative(choice)}: combo-only builder `{token}` must not be inside choice_molecule macro"
+                for token in combo_only_builders
+                if token in macro_body
+            )
+            combo_impl = source.split("impl ComboBox", maxsplit=1)[-1]
+            failures.extend(
+                f"{self.relative(choice)}: ComboBox is missing combo-only builder `{token}`"
+                for token in combo_only_builders
+                if token not in combo_impl
+            )
+            breadcrumb_only_builders = ("pub fn crumb_action",)
+            failures.extend(
+                f"{self.relative(choice)}: breadcrumb-only builder `{token}` must not be inside choice_molecule macro"
+                for token in breadcrumb_only_builders
+                if token in macro_body
+            )
+            breadcrumb_impl = source.split("impl Breadcrumb", maxsplit=1)[-1]
+            failures.extend(
+                f"{self.relative(choice)}: Breadcrumb is missing breadcrumb-only builder `{token}`"
+                for token in breadcrumb_only_builders
+                if token not in breadcrumb_impl
+            )
+        if options.exists():
+            source = self.read(options)
+            macro_body = source.split("selection_options!(Breadcrumb)", maxsplit=1)[0]
+            specialized_builders = (
+                ("Tabs", "tabs-only builder", "pub fn icon_action"),
+                ("SideMenu", "side-menu-only builder", "pub fn hover_expansion"),
+                ("SelectionList", "selection-list-only builder", "pub fn section"),
+                ("SelectionList", "selection-list-only builder", "pub fn marker"),
+                ("SelectionList", "selection-list-only builder", "pub fn more_row"),
+            )
+            failures.extend(
+                f"{self.relative(options)}: {label} `{token}` must not be inside selection_options macro"
+                for _, label, token in specialized_builders
+                if token in macro_body
+            )
+            for target, label, token in specialized_builders:
+                target_impl = source.split(f"impl {target}", maxsplit=1)[-1]
+                if token not in target_impl:
+                    failures.append(
+                        f"{self.relative(options)}: {target} is missing {label} `{token}`"
+                    )
+        if accessors.exists():
+            source = self.read(accessors)
+            macro_body = source.split("selection_accessors!(Breadcrumb)", maxsplit=1)[0]
+            combo_only_accessors = (
+                "pub fn input_model",
+                "pub fn filter_results",
+                "pub fn allows_free_input",
+            )
+            failures.extend(
+                f"{self.relative(accessors)}: combo-only accessor `{token}` must not be inside selection_accessors macro"
+                for token in combo_only_accessors
+                if token in macro_body
+            )
+            combo_impl = source.split("impl ComboBox", maxsplit=1)[-1]
+            failures.extend(
+                f"{self.relative(accessors)}: ComboBox is missing combo-only accessor `{token}`"
+                for token in combo_only_accessors
+                if token not in combo_impl
+            )
+            specialized_accessors = (
+                ("Breadcrumb", "breadcrumb-only accessor", "pub fn crumb_action_model"),
+                ("Tabs", "tabs-only accessor", "pub fn icon_action_model"),
+                ("SideMenu", "side-menu-only accessor", "pub fn hover_expansion_model"),
+                ("SelectionList", "selection-list-only accessor", "pub fn section_model"),
+                ("SelectionList", "selection-list-only accessor", "pub fn marker_model"),
+                ("SelectionList", "selection-list-only accessor", "pub fn has_more_row"),
+            )
+            failures.extend(
+                f"{self.relative(accessors)}: {label} `{token}` must not be inside selection_accessors macro"
+                for _, label, token in specialized_accessors
+                if token in macro_body
+            )
+            for target, label, token in specialized_accessors:
+                target_impl = source.split(f"impl {target}", maxsplit=1)[-1]
+                if token not in target_impl:
+                    failures.append(
+                        f"{self.relative(accessors)}: {target} is missing {label} `{token}`"
+                    )
+        return failures
+
+    def generic_contract_docs_source(self) -> str:
+        paths = (
+            self.root
+            / "openspec/changes/establish-kuc-atoms-molecules-catalog/quality-gates-contract.md",
+            self.root
+            / "openspec/changes/establish-kuc-atoms-molecules-catalog/storybook-catalog-contract.md",
+            self.root
+            / "openspec/changes/establish-kuc-atoms-molecules-catalog/specs/kuc-quality-gates/spec.md",
+            self.root
+            / "openspec/changes/establish-kuc-atoms-molecules-catalog/specs/kuc-storybook-catalog/spec.md",
+        )
+        return "\n".join(self.read(path) for path in paths if path.exists())
+
+    def agent_stop_policy_failures(self) -> list[str]:
+        agents = self.root / "AGENTS.md"
+        if not agents.exists():
+            return ["AGENTS.md: runner stop policy is missing"]
+
+        source = self.read(agents)
+        required_tokens = (
+            "## runner 停止条件",
+            "v0.1.0 release readiness が未達",
+            "ローカル保存（commit）",
+            "停止理由にしない",
+            "push confirmation required",
+            "release confirmation required",
+            "destructive operation confirmation required",
+            "次の未完了タスク",
+        )
+        return [
+            f"agent runner stop policy missing token: {token}"
+            for token in required_tokens
+            if token not in source
+        ]
+
+    def agent_hook_policy_failures(self) -> list[str]:
+        hook = self.root / ".githooks/pre-commit"
+        push_hook = self.root / ".githooks/pre-push"
+        installer = self.root / "scripts/install-git-hooks.sh"
+        agents = self.root / "AGENTS.md"
+        missing_files = [
+            path for path in (hook, push_hook, installer, agents) if not path.exists()
+        ]
+        if missing_files:
+            return [
+                f"{self.relative(path)}: agent stop hook policy file is missing"
+                for path in missing_files
+            ]
+
+        combined = "\n".join(
+            self.read(path) for path in (hook, push_hook, installer, agents)
+        )
+        required_tokens = (
+            "core.hooksPath .githooks",
+            "just kuc-guardrails",
+            "fix-and-continue",
+            "KUC_PUSH_CONFIRMED",
+            "push confirmation required",
+            "release confirmation required",
+            "destructive operation confirmation required",
+            "ユーザー確認で止まらず",
+        )
+        failures = [
+            f"agent stop hook policy missing token: {token}"
+            for token in required_tokens
+            if token not in combined
+        ]
+        forbidden_tokens = ("commit confirmation required",)
+        failures.extend(
+            f"local commit must not be a stop reason: {token}"
+            for token in forbidden_tokens
+            if token in combined
+        )
+        return failures
+
+    def release_readiness_recipe_failures(self) -> list[str]:
+        justfile = self.root / "Justfile"
+        if not justfile.exists():
+            return ["Justfile: kuc-guardrails release readiness recipe is missing"]
+
+        source = self.read(justfile)
+        if "kuc-guardrails:" not in source:
+            return ["Justfile: kuc-guardrails recipe is missing"]
+
+        lines = [line.strip() for line in source.splitlines()]
+        has_consumer_contract_recipe = "consumer-app-contract:" in source
+        has_integration_recipe = "integration-test: consumer-app-contract" in source
+        has_e2e_recipe = "e2e-test:" in source and "storybook-requirement-gate.sh" in source
+        has_smoke_recipe = "smoke-test: storybook-smoke storybook-interaction-smoke" in source
+        has_consumer_app_test = any("test -p kuc-consumer-app --locked" in line for line in lines)
+        generic_app_tests = (
+            "--test generic_rust_app_contract --locked",
+            "--test generic_rust_app_layout_contract --locked",
+            "--test generic_rust_app_action_contract --locked",
+        )
+        missing_generic_app_tests = [
+            target
+            for target in generic_app_tests
+            if not any(f"test -p katana-ui-core {target}" in line for line in lines)
+        ]
+        has_consumer_guardrail_dependency = any(
+            line.startswith("kuc-guardrails:") and "consumer-app-contract" in line
+            for line in lines
+        )
+        has_consumer_release_dependency = any(
+            line.startswith("release-readiness-check:")
+            and "integration-test" in line
+            and "e2e-test" in line
+            and "smoke-test" in line
+            for line in lines
+        )
+        has_self_test = any(
+            "scripts/assert-kuc-release-readiness.py --self-test" in line
+            for line in lines
+        )
+        has_runtime_check = any(
+            line.endswith("scripts/assert-kuc-release-readiness.py")
+            and "--self-test" not in line
+            for line in lines
+        )
+        failures: list[str] = []
+        if not has_consumer_contract_recipe:
+            failures.append("Justfile: consumer app contract recipe is missing")
+        if not has_integration_recipe:
+            failures.append("Justfile: integration-test must depend on consumer-app-contract")
+        if not has_e2e_recipe:
+            failures.append("Justfile: e2e-test must run storybook-requirement-gate")
+        if not has_smoke_recipe:
+            failures.append(
+                "Justfile: smoke-test must cover storybook-smoke and storybook-interaction-smoke"
+            )
+        if not has_consumer_app_test:
+            failures.append("Justfile: consumer app contract must run kuc-consumer-app tests")
+        failures.extend(
+            f"Justfile: consumer app contract must run generic_app tests {target}"
+            for target in missing_generic_app_tests
+        )
+        if not has_consumer_guardrail_dependency:
+            failures.append("Justfile: kuc-guardrails must depend on consumer-app-contract")
+        if not has_consumer_release_dependency:
+            failures.append(
+                "Justfile: release-readiness-check must depend on integration-test, e2e-test, and smoke-test"
+            )
+        if not has_self_test:
+            failures.append(
+                "Justfile: kuc-guardrails must run release readiness guard self-test"
+            )
+        if not has_runtime_check:
+            failures.append(
+                "Justfile: kuc-guardrails must run release readiness guard runtime check"
+            )
+        return failures
+
     def storybook_panel_evidence_failures(self) -> list[str]:
         docs = self.guard_docs_source()
         required_tokens = (
@@ -231,6 +1201,289 @@ class KucGuardrails:
             if token not in docs
         ]
 
+    def storybook_regression_recipe_failures(self) -> list[str]:
+        justfile = self.root / "Justfile"
+        if not justfile.exists():
+            return ["Justfile: storybook-regression recipe is missing"]
+        source = self.read(justfile)
+        failures: list[str] = []
+        if "storybook-manual-acceptance-smoke:" not in source:
+            failures.append("Justfile: storybook-manual-acceptance-smoke recipe is missing")
+        if "scripts/storybook_manual_acceptance_smoke.py" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-smoke must run the smoke script"
+            )
+        if "storybook-manual-acceptance-approval-template:" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-approval-template recipe is missing"
+            )
+        if "scripts/storybook_manual_acceptance_approval_template.py" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-approval-template must run the approval template script"
+            )
+        if "storybook-manual-acceptance-next:" not in source:
+            failures.append("Justfile: storybook-manual-acceptance-next recipe is missing")
+        if "scripts/storybook_manual_acceptance_next.py" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-next must run the next script"
+            )
+        if "storybook-manual-acceptance-status:" not in source:
+            failures.append("Justfile: storybook-manual-acceptance-status recipe is missing")
+        if "scripts/storybook_manual_acceptance_status.py" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-status must run the status script"
+            )
+        if "storybook-manual-acceptance-complete-next" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-complete-next recipe is missing"
+            )
+        if "scripts/storybook_manual_acceptance_complete_next.py" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-complete-next must run the complete-next script"
+            )
+        if "storybook-manual-acceptance-mark-approved" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-mark-approved recipe is missing"
+            )
+        if "scripts/storybook_manual_acceptance_mark_approved.py" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-mark-approved must run the mark-approved script"
+            )
+        if "storybook-manual-acceptance-approve page" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-approve recipe is missing"
+            )
+        if "scripts/storybook_manual_acceptance_approve.py" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-approve must run the approve script"
+            )
+        required_kuc_guardrail_tests = (
+            "python3 scripts/test_next_storybook_page_change.py",
+            "python3 scripts/test_storybook_manual_acceptance_queue.py",
+            "python3 scripts/test_storybook_manual_acceptance_review.py",
+            "python3 scripts/test_storybook_manual_acceptance_status.py",
+            "python3 scripts/test_storybook_manual_acceptance_next.py",
+            "python3 scripts/test_storybook_manual_acceptance_approval_template.py",
+            "python3 scripts/test_storybook_manual_acceptance_complete_next.py",
+            "python3 scripts/test_storybook_manual_acceptance_mark_approved.py",
+            "python3 scripts/test_storybook_manual_acceptance_approve.py",
+            "python3 scripts/test_storybook_manual_acceptance_smoke.py",
+            "python3 scripts/test_storybook_manual_acceptance_final_gate.py",
+            "python3 scripts/test_storybook_interaction_pending_only.py",
+        )
+        for command in required_kuc_guardrail_tests:
+            if command not in source:
+                failures.append(f"Justfile: kuc-guardrails must run {command}")
+        if "storybook-manual-acceptance-final-gate:" not in source:
+            failures.append("Justfile: storybook-manual-acceptance-final-gate recipe is missing")
+        if "scripts/storybook_manual_acceptance_final_gate.py" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-final-gate must run the final gate"
+            )
+        if "storybook-kuc-dod-final:" not in source:
+            failures.append("Justfile: storybook-kuc-dod-final recipe is missing")
+        if not re.search(
+            r"storybook-kuc-dod-final:.*storybook-manual-acceptance-final-gate.*storybook-interaction-smoke",
+            source,
+        ):
+            failures.append(
+                "Justfile: storybook-kuc-dod-final must require final gate and interaction smoke"
+            )
+        if "storybook-interaction-pending-only:" not in source:
+            failures.append("Justfile: storybook-interaction-pending-only recipe is missing")
+        if "scripts/storybook_interaction_pending_only.py" not in source:
+            failures.append(
+                "Justfile: storybook-interaction-pending-only must run the pending-only verifier"
+            )
+        pending_script = self.root / "scripts/storybook_interaction_pending_only.py"
+        pending_test = self.root / "scripts/test_storybook_interaction_pending_only.py"
+        if not pending_script.exists():
+            failures.append(
+                "scripts/storybook_interaction_pending_only.py: pending-only verifier is missing"
+            )
+        if not pending_test.exists():
+            failures.append(
+                "scripts/test_storybook_interaction_pending_only.py: pending-only verifier test is missing"
+            )
+        final_script = self.root / "scripts/storybook_manual_acceptance_final_gate.py"
+        final_test = self.root / "scripts/test_storybook_manual_acceptance_final_gate.py"
+        metadata_script = self.root / "scripts/storybook_manual_acceptance_metadata.py"
+        if not final_script.exists():
+            failures.append(
+                "scripts/storybook_manual_acceptance_final_gate.py: manual acceptance final gate is missing"
+            )
+        if not final_test.exists():
+            failures.append(
+                "scripts/test_storybook_manual_acceptance_final_gate.py: manual acceptance final gate test is missing"
+            )
+        if not metadata_script.exists():
+            failures.append(
+                "scripts/storybook_manual_acceptance_metadata.py: manual acceptance metadata validator is missing"
+            )
+        if "--headless-interaction-audit" not in source:
+            failures.append(
+                "Justfile: storybook-manual-acceptance-smoke must regenerate live interaction audit"
+            )
+        regression_lines = [
+            line.strip()
+            for line in source.splitlines()
+            if line.strip().startswith("storybook-regression:")
+        ]
+        if not regression_lines:
+            failures.append("Justfile: storybook-regression recipe is missing")
+        elif not any("storybook-manual-acceptance-smoke" in line for line in regression_lines):
+            failures.append(
+                "Justfile: storybook-regression must include storybook-manual-acceptance-smoke"
+            )
+        elif not any("storybook-interaction-pending-only" in line for line in regression_lines):
+            failures.append(
+                "Justfile: storybook-regression must include storybook-interaction-pending-only"
+            )
+        return failures
+
+    def storybook_next_change_scope_failures(self) -> list[str]:
+        script = self.root / "scripts/next-storybook-page-change.py"
+        test = self.root / "scripts/test_next_storybook_page_change.py"
+        required_sources = (
+            (
+                script,
+                (
+                    '"completion_scope": "storybook_page_leaf_changes"',
+                    '"complete": kuc_dod_complete',
+                    '"kuc_dod_complete": kuc_dod_complete',
+                    "remaining_handoff_items = self.remaining_handoff_items()",
+                    "kuc_dod_complete = not remaining_handoff_items",
+                    "manual_acceptance_queue(manifest)",
+                    '"pending_reason": "manual_acceptance_pending"',
+                    '"next_manual_acceptance_page": next_page',
+                    '"pending_manual_acceptance_pages": pending_pages',
+                    "audit remaining P0/P1 handoff items",
+                ),
+            ),
+            (
+                test,
+                (
+                    "test_complete_payload_is_false_when_leaf_queue_is_done_but_kuc_dod_has_handoff_items",
+                    "test_complete_payload_is_true_only_when_leaf_queue_and_kuc_dod_are_done",
+                    "self.assertEqual(\"storybook_page_leaf_changes\", payload[\"completion_scope\"])",
+                    "self.assertFalse(payload[\"kuc_dod_complete\"])",
+                    "self.assertFalse(payload[\"complete\"])",
+                    "self.assertTrue(payload[\"kuc_dod_complete\"])",
+                    "test_payload_names_next_manual_acceptance_page_when_leaf_queue_is_done",
+                    "payload[\"next_manual_acceptance_page\"]",
+                    "payload[\"next_command\"]",
+                    "remaining_handoff_items",
+                ),
+            ),
+        )
+        failures: list[str] = []
+        for path, tokens in required_sources:
+            if not path.exists():
+                failures.append(f"{self.relative(path)}: Storybook next-change scope guard is missing")
+                continue
+            source = self.read(path)
+            failures.extend(
+                f"{self.relative(path)}: Storybook next-change scope guard missing token: {token}"
+                for token in tokens
+                if token not in source
+            )
+        return failures
+
+    def storybook_remaining_handoff_failures(self) -> list[str]:
+        candidates = sorted((self.root / "docs/reviews").glob("*kuc-remaining-work-handoff.md"))
+        if not candidates:
+            return ["docs/reviews/*kuc-remaining-work-handoff.md: KUC remaining work handoff is missing"]
+        handoff = candidates[-1]
+        source = self.read(handoff)
+        required_tokens = (
+            "P0",
+            "P1",
+            "manual_acceptance_pending",
+            "text manual acceptance",
+            "text_drag_selection",
+            "text_keyboard_copy",
+            "text_zero_distance_drag_no_selection",
+            "progress-bar manual acceptance",
+            "progress_timed_tick",
+            "progress_timed_cycle",
+            "progress_indeterminate_segment_motion",
+            "storybook-interaction-smoke",
+            "audit_status=verified",
+        )
+        failures = [
+            f"{self.relative(handoff)}: remaining work handoff missing token `{token}`"
+            for token in required_tokens
+            if token not in source
+        ]
+        failures.extend(self.storybook_remaining_handoff_manifest_sync_failures(handoff, source))
+        return failures
+
+    def storybook_remaining_handoff_manifest_sync_failures(
+        self,
+        handoff: Path,
+        handoff_source: str,
+    ) -> list[str]:
+        manifest = self.root / "docs/storybook-77ui-interaction-manifest.json"
+        if not manifest.exists():
+            return []
+        payload = json.loads(self.read(manifest))
+        entries = payload.get("ui", [])
+        if not isinstance(entries, list):
+            return []
+        pending_pages = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            page = entry.get("page")
+            gaps = entry.get("gaps", [])
+            if not isinstance(page, str) or not isinstance(gaps, list):
+                continue
+            if any("manual_acceptance_pending" in gap for gap in gaps if isinstance(gap, str)):
+                pending_pages.append(page)
+        return [
+            f"{self.relative(handoff)}: manual pending page `{page}` missing from remaining work handoff"
+            for page in pending_pages
+            if page not in handoff_source
+        ]
+
+    def storybook_live_harness_dor_failures(self) -> list[str]:
+        doc = self.root / "docs/storybook-live-harness-dor.md"
+        if not doc.exists():
+            return ["docs/storybook-live-harness-dor.md: Storybook live harness DoR is missing"]
+        smoke = self.root / "scripts/storybook-interaction-smoke.sh"
+        source = self.read(doc)
+        required_tokens = (
+            "解析レーン",
+            "実作業レーン",
+            "`storybook-interaction-smoke`",
+            "interaction smoke として未成立",
+            "checkbox / radio",
+            "native window 経路",
+            "screenshot を完了根拠にする",
+        )
+        return [
+            f"{self.relative(doc)}: missing DoR token `{token}`"
+            for token in required_tokens
+            if token not in source
+        ]
+        if not smoke.exists():
+            failures.append("scripts/storybook-interaction-smoke.sh: interaction smoke is missing")
+            return failures
+        smoke_source = self.read(smoke)
+        smoke_tokens = (
+            "--headless-interaction-audit",
+            "storybook-live-interaction-audit.json",
+            "checkbox_changed=true",
+            "radio_changed=true",
+            "body_pixel_diff",
+        )
+        failures.extend(
+            f"{self.relative(smoke)}: missing live interaction smoke token `{token}`"
+            for token in smoke_tokens
+            if token not in smoke_source
+        )
+        return failures
+
     def visual_fallback_policy_failures(self) -> list[str]:
         docs = self.guard_docs_source()
         required_tokens = (
@@ -244,11 +1497,38 @@ class KucGuardrails:
             if token not in docs
         ]
 
+    def storybook_reflection_audit_policy_failures(self) -> list[str]:
+        justfile = self.root / "Justfile"
+        docs = self.guard_docs_source()
+        if not justfile.exists():
+            return ["Justfile: storybook reflection audit recipe is missing"]
+        justfile_source = self.read(justfile)
+        checks = (
+            (justfile_source, "storybook-reflection-audit:", "Justfile"),
+            (
+                justfile_source,
+                "scripts/assert-storybook-reflection-audit.py --strict",
+                "Justfile",
+            ),
+            (
+                justfile_source,
+                "scripts/test_storybook_reflection_audit.py",
+                "Justfile",
+            ),
+            (docs, "just storybook-reflection-audit", "guard docs"),
+            (docs, "missing-*", "guard docs"),
+            (docs, "page 固有 surface", "guard docs"),
+        )
+        return [
+            f"{label}: storybook reflection audit missing token: {token}"
+            for source, token, label in checks
+            if token not in source
+        ]
+
     def guard_docs_source(self) -> str:
         paths = (
             self.root / "docs/architecture/ui-separation/ui-core-parity-gap.md",
             self.root / "docs/architecture/ui-separation/owned-ui-task-map.md",
-            self.root / "tmp/reports/2026-05-17-overnight-residual-scope.md",
         )
         return "\n".join(self.read(path) for path in paths if path.exists())
 
@@ -257,6 +1537,8 @@ class KucGuardrails:
             self.root / "crates/katana-ui-core/src/interaction/mod.rs",
             self.root / "crates/katana-ui-core/src/component.rs",
             self.root / "crates/katana-ui-core/tests/interaction_contract.rs",
+            self.root
+            / "crates/katana-ui-core/tests/interaction_contract/callback_action_contract.rs",
         )
         missing_files = [path for path in required_files if not path.exists()]
         if missing_files:
@@ -270,6 +1552,10 @@ class KucGuardrails:
                 self.read_rust_dir(self.root / "crates/katana-ui-core/src/interaction"),
                 self.read(self.root / "crates/katana-ui-core/src/component.rs"),
                 self.read(self.root / "crates/katana-ui-core/tests/interaction_contract.rs"),
+                self.read(
+                    self.root
+                    / "crates/katana-ui-core/tests/interaction_contract/callback_action_contract.rs"
+                ),
             )
         )
         required_tokens = (
@@ -280,6 +1566,7 @@ class KucGuardrails:
             "apply_action",
             "action_targets_only_the_matching_component_state",
             "action_result_is_serializable_snapshot",
+            "callback_action_invokes_named_callback_without_mutating_value",
         )
         failures = [
             f"typed action model missing token: {token}"
@@ -299,6 +1586,109 @@ class KucGuardrails:
             for token in forbidden_tokens
             if token in combined
         )
+        return failures
+
+    def component_state_ownership_failures(self) -> list[str]:
+        required_files = (
+            self.root / "crates/katana-ui-core/src/state.rs",
+            self.root / "crates/katana-ui-core/src/component.rs",
+            self.root / "crates/katana-ui-core/src/atom/mod.rs",
+            self.root
+            / "crates/katana-ui-core-storybook/src/visual/window_interaction/state_store.rs",
+            self.root / "crates/katana-ui-core-storybook/src/visual/window_interaction.rs",
+            self.root
+            / "crates/katana-ui-core-storybook/src/visual/window_interaction/tests/navigation_tests.rs",
+            self.root / "crates/katana-ui-core/tests/interaction_contract.rs",
+            self.root
+            / "openspec/changes/establish-kuc-atoms-molecules-catalog/core-foundation-contract.md",
+        )
+        missing_files = [path for path in required_files if not path.exists()]
+        if missing_files:
+            return [
+                f"{self.relative(path)}: component state ownership file is missing"
+                for path in missing_files
+            ]
+
+        state_model = self.read(required_files[0])
+        component_model = self.read(required_files[1])
+        atom_model = self.read(required_files[2])
+        state_store = self.read(required_files[3])
+        window_state = self.read(required_files[4])
+        navigation_tests = self.read(required_files[5])
+        core_contract = "\n".join(
+            (
+                self.read(required_files[6]),
+                self.read_rust_dir(self.root / "crates/katana-ui-core/tests/interaction_contract"),
+                self.read_rust_dir(self.root / "crates/katana-ui-core/tests/core_contract"),
+            )
+        )
+        foundation_contract = self.read(required_files[7])
+        combined = "\n".join(
+            (
+                state_model,
+                component_model,
+                atom_model,
+                state_store,
+                window_state,
+                navigation_tests,
+                core_contract,
+                foundation_contract,
+            )
+        )
+        required_tokens = (
+            "UiStateHandle",
+            "UiComponentState",
+            "ComponentStateBinding",
+            "state_snapshot",
+            "sync_state",
+            "set/update",
+            "component_id",
+            "selected_component_presets",
+            "preset_tab_selection_is_owned_by_component",
+            "action_targets_only_the_matching_component_state",
+            "complex_ui_state_is_owned_by_the_component_model",
+            "app_global_state_updates_component_owned_state_via_handle",
+            "state_handle_supports_react_like_get_set_and_update_without_global_store",
+        )
+        failures = [
+            f"component state ownership missing token: {token}"
+            for token in required_tokens
+            if token not in combined
+        ]
+        forbidden_patterns = (
+            (state_store, r"\bpage\s*:\s*&'static str", "storybook state key must not be page-owned"),
+            (
+                window_state,
+                r"\bselected_presets\b",
+                "storybook preset state must be component-owned",
+            ),
+            (
+                window_state,
+                r"\bglobal_(state|store)\b",
+                "component state must not use global state/store",
+            ),
+        )
+        for source, pattern, message in forbidden_patterns:
+            if re.search(pattern, source):
+                failures.append(message)
+        return failures
+
+    def public_app_shell_failures(self) -> list[str]:
+        checked_paths = (
+            self.root / "crates/katana-ui-core/src/molecule/mod.rs",
+            self.root / "crates/katana-ui-core/src/widget/molecules.rs",
+            self.root / "crates/katana-ui-core/src/render_model/kind.rs",
+            self.root / "crates/katana-ui-core-storybook/src/catalog/preset_labels.rs",
+        )
+        failures: list[str] = []
+        for path in checked_paths:
+            if not path.exists():
+                continue
+            source = self.read(path)
+            if "AppShell" in source or "app-shell" in source:
+                failures.append(
+                    f"{self.relative(path)}: AppShell is outside the public KUC molecule scope"
+                )
         return failures
 
 

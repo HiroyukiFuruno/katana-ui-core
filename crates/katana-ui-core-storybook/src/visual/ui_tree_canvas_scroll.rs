@@ -1,0 +1,188 @@
+use super::canvas::Canvas;
+use super::ui_tree_canvas::UiTreeCanvasRenderer;
+use super::ui_tree_canvas_hit_metrics::child_container_x;
+use super::ui_tree_canvas_hit_metrics::dimension_px;
+use super::ui_tree_canvas_palette::UiTreeCanvasPalette;
+use super::ui_tree_canvas_scroll_measure::{
+    ContainerPadding, can_render_children_incrementally, child_render_area, container_gap,
+};
+use super::ui_tree_canvas_scroll_partial::draw_partially_visible_node;
+use super::ui_tree_canvas_text::UiTreeTextContext;
+use super::ui_tree_canvas_types::UiTreeRenderArea;
+use katana_ui_core::render_model::{UiNode, UiScrollAreaProps};
+
+pub(super) fn draw_scroll_area(
+    renderer: &UiTreeCanvasRenderer,
+    canvas: &mut Canvas,
+    node: &UiNode,
+    x: usize,
+    y: &mut usize,
+    area: UiTreeRenderArea,
+    palette: UiTreeCanvasPalette,
+) {
+    let scroll_area = &node.props().scroll_area;
+    let viewport = scroll_viewport(scroll_area, x, *y, area);
+    let scroll_y = scroll_area.offset_y as f32 + area.scroll_y.max(0.0);
+    draw_offset_scroll_area(renderer, canvas, node, viewport, palette, scroll_y);
+    *y = y.saturating_add(viewport.height);
+}
+
+fn scroll_viewport(
+    scroll_area: &UiScrollAreaProps,
+    x: usize,
+    y: usize,
+    area: UiTreeRenderArea,
+) -> UiTreeRenderArea {
+    let height = (scroll_area.viewport_height as usize)
+        .min(area.height.saturating_sub(y.saturating_sub(area.y)))
+        .max(1);
+    let width = (scroll_area.viewport_width as usize)
+        .min(area.width.saturating_sub(x.saturating_sub(area.x)))
+        .max(1);
+    UiTreeRenderArea {
+        x,
+        y,
+        width,
+        height,
+        scroll_y: scroll_area.offset_y as f32,
+    }
+}
+
+fn draw_offset_scroll_area(
+    renderer: &UiTreeCanvasRenderer,
+    canvas: &mut Canvas,
+    node: &UiNode,
+    viewport: UiTreeRenderArea,
+    palette: UiTreeCanvasPalette,
+    scroll_y: f32,
+) {
+    let source_y = scroll_y.round().max(0.0) as usize;
+    let text_context = renderer.text_context(palette);
+    let mut logical_y = 0;
+    canvas.with_clip(
+        viewport.x,
+        viewport.y,
+        viewport.width,
+        viewport.height,
+        |canvas| {
+            for child in node.children() {
+                if logical_y >= source_y.saturating_add(viewport.height) {
+                    break;
+                }
+                draw_visible_node(
+                    renderer,
+                    canvas,
+                    child,
+                    viewport.x,
+                    &mut logical_y,
+                    source_y,
+                    viewport,
+                    palette,
+                    text_context,
+                );
+            }
+        },
+    );
+}
+
+fn draw_visible_node(
+    renderer: &UiTreeCanvasRenderer,
+    canvas: &mut Canvas,
+    node: &UiNode,
+    x: usize,
+    logical_y: &mut usize,
+    source_y: usize,
+    area: UiTreeRenderArea,
+    palette: UiTreeCanvasPalette,
+    text_context: UiTreeTextContext<'_>,
+) {
+    if can_render_children_incrementally(node) {
+        let node_top = *logical_y;
+        let node_height = renderer
+            .measured_scroll_node_height(node, text_context, x, area)
+            .max(1);
+        let node_bottom = node_top.saturating_add(node_height);
+        if node_bottom <= source_y || node_top >= source_y.saturating_add(area.height) {
+            *logical_y = node_bottom;
+            return;
+        }
+        draw_visible_children(
+            renderer,
+            canvas,
+            node,
+            x,
+            logical_y,
+            source_y,
+            area,
+            palette,
+            text_context,
+        );
+        let requested_height = dimension_px(&node.props().common.height);
+        if requested_height > 0 {
+            *logical_y = (*logical_y).max(node_top.saturating_add(requested_height));
+        }
+        return;
+    }
+    let node_top = *logical_y;
+    let node_height = renderer
+        .measured_scroll_node_height(node, text_context, x, area)
+        .max(1);
+    let node_bottom = node_top.saturating_add(node_height);
+    *logical_y = node_bottom;
+    if node_bottom <= source_y || node_top >= source_y.saturating_add(area.height) {
+        return;
+    }
+    if node_top >= source_y {
+        let mut draw_y = area.y.saturating_add(node_top.saturating_sub(source_y));
+        renderer.render_node(canvas, node, x, &mut draw_y, area, palette);
+        return;
+    }
+    draw_partially_visible_node(
+        renderer,
+        canvas,
+        node,
+        x,
+        node_height,
+        source_y.saturating_sub(node_top),
+        area,
+        palette,
+    );
+}
+
+fn draw_visible_children(
+    renderer: &UiTreeCanvasRenderer,
+    canvas: &mut Canvas,
+    node: &UiNode,
+    x: usize,
+    logical_y: &mut usize,
+    source_y: usize,
+    area: UiTreeRenderArea,
+    palette: UiTreeCanvasPalette,
+    text_context: UiTreeTextContext<'_>,
+) {
+    let padding = ContainerPadding::from_node(node);
+    *logical_y = logical_y.saturating_add(padding.top);
+    let child_x = child_container_x(node, x).saturating_add(padding.left);
+    let child_area = child_render_area(area, node, child_x, padding);
+    let gap = container_gap(node);
+    for (index, child) in node.children().iter().enumerate() {
+        if index > 0 {
+            *logical_y = logical_y.saturating_add(gap);
+        }
+        if *logical_y >= source_y.saturating_add(area.height) {
+            break;
+        }
+        draw_visible_node(
+            renderer,
+            canvas,
+            child,
+            child_x,
+            logical_y,
+            source_y,
+            child_area,
+            palette,
+            text_context,
+        );
+    }
+    *logical_y = logical_y.saturating_add(padding.bottom);
+}

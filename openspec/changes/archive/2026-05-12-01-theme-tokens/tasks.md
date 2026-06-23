@@ -7,7 +7,7 @@
 - [x] 1.3 `theme/spacing/mod.rs` に `SpacingTokens` を定義（`xxs`〜`xxl`）
 - [x] 1.4 `theme/typography/mod.rs` に `TypographyTokens` と役割別 `TextStyle` を定義
 - [x] 1.5 `theme/mod.rs` に `Theme` をまとめ、`Theme::default_light()` / `Theme::default_dark()` を実装
-- [x] 1.6 Floem の reactive context に Theme を注入するヘルパ `Theme::provide()` / `Theme::current()` を提供
+- [x] 1.6 Adapter の reactive context に Theme を注入するヘルパ `Theme::provide()` / `Theme::current()` を提供
 
 ## 2. テスト
 

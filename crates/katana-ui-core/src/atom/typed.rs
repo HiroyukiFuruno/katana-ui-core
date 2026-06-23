@@ -1,6 +1,6 @@
 use super::{Badge, Icon, Input, LoadingDots, ProgressBar, Spinner, SvgButton};
 use crate::render_model::{
-    UiAnimationState, UiClearActionSpec, UiDismissAction, UiIconProps, UiSlotPlacement, UiSlotSpec,
+    UiAnimationState, UiClearActionSpec, UiIconProps, UiSlotPlacement, UiSlotSpec, UiSvgPaintPolicy,
 };
 
 impl Input {
@@ -11,6 +11,27 @@ impl Input {
     }
 
     #[must_use]
+    pub fn leading_slot_reserved(self, label: impl Into<String>) -> Self {
+        self.leading_slot(label)
+    }
+
+    #[must_use]
+    pub fn leading_icon_slot(mut self, label: impl Into<String>, icon: UiIconProps) -> Self {
+        self.state.text_entry.leading_slot =
+            Some(UiSlotSpec::icon(UiSlotPlacement::Leading, label, icon));
+        self
+    }
+
+    #[must_use]
+    pub fn leading_svg_icon_slot(
+        self,
+        label: impl Into<String>,
+        svg_source: impl Into<String>,
+    ) -> Self {
+        self.leading_icon_slot(label, text_entry_icon(svg_source, "leading"))
+    }
+
+    #[must_use]
     pub fn trailing_slot(mut self, label: impl Into<String>) -> Self {
         self.state.text_entry.trailing_slot =
             Some(UiSlotSpec::new(UiSlotPlacement::Trailing, label));
@@ -18,16 +39,77 @@ impl Input {
     }
 
     #[must_use]
+    pub fn trailing_icon_button(
+        mut self,
+        label: impl Into<String>,
+        icon: UiIconProps,
+        callback: impl Into<String>,
+    ) -> Self {
+        let button = UiSlotSpec::icon_button(UiSlotPlacement::Trailing, label, icon, callback);
+        if self.state.text_entry.trailing_slot.is_none() {
+            self.state.text_entry.trailing_slot = Some(button.clone());
+        }
+        self.state.text_entry.trailing_icon_buttons.push(button);
+        self
+    }
+
+    #[must_use]
+    pub fn trailing_svg_icon_button(
+        self,
+        label: impl Into<String>,
+        svg_source: impl Into<String>,
+        callback: impl Into<String>,
+    ) -> Self {
+        self.trailing_icon_button(
+            label,
+            text_entry_icon(svg_source, "trailing-action"),
+            callback,
+        )
+    }
+
+    #[must_use]
     pub fn clear_action(mut self, label: impl Into<String>) -> Self {
         self.state.text_entry.clear_action = Some(UiClearActionSpec::new(label));
         self
     }
+
+    #[must_use]
+    pub fn input_background_token(mut self, value: impl Into<String>) -> Self {
+        self.state.text_entry.background_token = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn submit_on_enter(mut self, value: bool) -> Self {
+        self.state.text_entry.submit_on_enter = value;
+        self
+    }
+
+    #[must_use]
+    pub fn ime_enabled(mut self, value: bool) -> Self {
+        self.state.text_entry.ime_enabled = value;
+        self
+    }
+
+    #[must_use]
+    pub fn emoji_enabled(mut self, value: bool) -> Self {
+        self.state.text_entry.emoji_enabled = value;
+        self
+    }
+}
+
+fn text_entry_icon(svg_source: impl Into<String>, role: impl Into<String>) -> UiIconProps {
+    UiIconProps::new(svg_source)
+        .role(role)
+        .color_token("text")
+        .theme_token("text")
+        .paint_policy(UiSvgPaintPolicy::CurrentColor)
 }
 
 impl Badge {
     #[must_use]
-    pub fn dismiss_action(mut self, value: UiDismissAction) -> Self {
-        self.state.status.dismiss_action = value;
+    pub fn leading_icon(mut self, value: impl Into<String>) -> Self {
+        self.state.status.leading_icon = value.into();
         self
     }
 }
@@ -48,6 +130,24 @@ macro_rules! svg_icon_atom {
             }
 
             #[must_use]
+            pub fn icon_view_box(mut self, value: impl Into<String>) -> Self {
+                self.state.icon.view_box = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn icon_path_summary(mut self, value: impl Into<String>) -> Self {
+                self.state.icon.path_summary = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn icon_paint_policy(mut self, value: UiSvgPaintPolicy) -> Self {
+                self.state.icon.paint_policy = value;
+                self
+            }
+
+            #[must_use]
             pub fn icon_role(mut self, value: impl Into<String>) -> Self {
                 self.state.icon.role = value.into();
                 self
@@ -56,6 +156,12 @@ macro_rules! svg_icon_atom {
             #[must_use]
             pub fn icon_color_token(mut self, value: impl Into<String>) -> Self {
                 self.state.icon.color_token = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn icon_theme_token(mut self, value: impl Into<String>) -> Self {
+                self.state.icon.theme_token = value.into();
                 self
             }
         }
@@ -77,6 +183,25 @@ macro_rules! loading_atom {
             #[must_use]
             pub fn loading_label(mut self, value: impl Into<String>) -> Self {
                 self.state.loading_indicator.label = value.into();
+                self
+            }
+
+            #[must_use]
+            pub fn speed_ms(mut self, value: u16) -> Self {
+                self.state.loading_indicator.speed_ms = value;
+                self
+            }
+
+            #[must_use]
+            pub fn dot_count(mut self, value: u8) -> Self {
+                self.state.loading_indicator.dot_count = value;
+                self
+            }
+
+            #[must_use]
+            pub fn reduced_motion(mut self, value: bool) -> Self {
+                self.state.loading_indicator.reduced_motion = value;
+                self.state.interaction.reduced_motion = value;
                 self
             }
         }

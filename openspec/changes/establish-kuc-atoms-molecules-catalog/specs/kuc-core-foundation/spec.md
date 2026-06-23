@@ -3,7 +3,7 @@
 ### Requirement: Core foundation is established before component work
 
 KUC MUST establish theme, font, text rendering, input, event routing, state ownership, and layout contracts before marking atoms or molecules as complete.
-The foundation MUST be framework-neutral and MUST NOT depend on Floem, egui, or gpui.
+The foundation MUST be framework-neutral and MUST NOT depend on Adapter, adapter, or adapter.
 
 #### Scenario: foundation contract is inspected
 
@@ -19,6 +19,8 @@ Font configuration MUST use abstract font roles such as proportional and monospa
 The external entry point MUST be a KUC facade that owns the active `ThemeSnapshot`, style sheet, global UI state, and default font role.
 The facade MUST allow replacing theme and style sheet without rebuilding component-local state.
 Global UI state MUST be limited to cross-component concerns such as focus target, active overlay, and modal stack; component-local state MUST remain owned by each component instance.
+When a consumer needs app-level control such as loading, saving, or remote data completion, KUC MUST expose a short-lived state handle API that reads component state by snapshot and writes it back through `set` or `update`.
+The handle MUST NOT require moving component-local state into the facade global state.
 
 #### Scenario: consumer replaces theme and font
 
@@ -31,6 +33,13 @@ Global UI state MUST be limited to cross-component concerns such as focus target
 - **WHEN** a consumer creates a KUC facade with a theme, style sheet, global state, and default font role
 - **THEN** render context, font resolution, and panel theme resolution read those values through the facade
 - **AND** duplicate component instances do not share state because of facade-level configuration
+
+#### Scenario: app global state updates a component-owned loading state
+
+- **WHEN** a consumer keeps an app-level loading flag for a Button
+- **THEN** the consumer updates the component-owned state through a `UiStateHandle`
+- **AND** the Button accepts press actions again after the handle writes `loading=false`
+- **AND** the facade global state does not become the storage location for that Button state
 
 ### Requirement: Default theme uses Katana accent colors
 
@@ -57,7 +66,7 @@ The regression MUST measure line box, baseline, ascent, descent, and visual cent
 
 - **WHEN** text samples for English, Japanese, mixed English/Japanese, and emoji are rendered in equal-height boxes
 - **THEN** their visual centers align within the accepted regression threshold
-- **AND** the test records line metrics, not only screenshots
+- **AND** the test records line metrics directly
 
 ### Requirement: Input supports key, IME, and emoji text
 
@@ -88,13 +97,13 @@ Storybook state, event, and action logs MUST include the target state identifier
 
 KUC MUST expose layout results for size, spacing, alignment, scroll bounds, and overlay placement so automated tests can verify layout correctness.
 Layout regression MUST verify dimensions, padding, gap, border width, vertical and horizontal centering, baseline placement, scroll bounds, overflow, overlay anchor, overlay z-index, and unintended overlap.
-Storybook screenshots MUST remain supporting evidence and MUST NOT replace layout regression.
+Storybook output MUST NOT replace layout regression.
 
 #### Scenario: layout regression is executed
 
 - **WHEN** layout regression tests run for required components
 - **THEN** the tests verify dimensions, alignment, overflow, and overlay bounds
-- **AND** Storybook screenshots are not the only layout evidence
+- **AND** Storybook output is not accepted as layout evidence
 
 ### Requirement: Core action model supports generic click events
 

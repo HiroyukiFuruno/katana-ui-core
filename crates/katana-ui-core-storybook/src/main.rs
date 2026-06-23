@@ -1,31 +1,35 @@
+mod snapshot_command;
 mod snapshot_output;
 
-use katana_ui_core_storybook::{StoryCatalog, StorybookPanel, StorybookSummary, StorybookVisual};
-use snapshot_output::SnapshotOutput;
+use katana_ui_core_storybook::{
+    DEFAULT_STORYBOOK_PAGE, StoryCatalog, StorybookPanel, StorybookRoutes, StorybookSummary,
+    StorybookVisual,
+};
+use snapshot_command::SnapshotCommand;
 use std::path::Path;
 use std::{env, fs, process};
 
 const DEFAULT_WINDOW_FRAMES: usize = 0;
-const SNAPSHOT_PAGE_ARG: usize = 3;
-const SNAPSHOT_THEME_ARG: usize = 4;
-const SNAPSHOT_OPERATION_ARG: usize = 5;
-const SNAPSHOT_SCROLL_ARG: usize = 6;
-const SNAPSHOT_SCROLLBAR_ARG: usize = 7;
-const DEFAULT_PRESET_INDEX: usize = 0;
-const DEFAULT_SCROLL_Y: usize = 0;
-const INTERACTIVE_PRESET_INDEX: usize = 1;
-const EDGE_PRESET_INDEX: usize = 2;
-const THEME_PRESET_INDEX: usize = 3;
+const WINDOW_FIRST_ARG_INDEX: usize = 2;
+const PRESET_ARG: &str = "--preset";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct OpenWindowRequest {
+    frames: usize,
+    page: Option<&'static str>,
+    preset_index: Option<usize>,
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     if let Some(command) = args.get(1).map(String::as_str) {
         match command {
-            "--visual-snapshot" => save_snapshot(&args),
+            "--visual-snapshot" => SnapshotCommand::save_snapshot(&args),
             "--open-window" => open_window(&args),
             "--open-modal-window" => open_modal_window(&args),
             "--runtime-regression" => print_runtime_regression(),
             "--headless-scenario" => run_headless_scenario(),
+            "--headless-interaction-audit" => run_headless_interaction_audit(),
             _ => print_summary(),
         }
         return;
@@ -37,81 +41,90 @@ fn print_summary() {
     println!("katana-ui-core-storybook: {}", StorybookSummary.render());
 }
 
-fn snapshot_preset_index(value: &str) -> usize {
-    match value {
-        "operation" | "interactive" | "preset-1" => INTERACTIVE_PRESET_INDEX,
-        "edge" | "preset-2" => EDGE_PRESET_INDEX,
-        "theme" | "preset-3" => THEME_PRESET_INDEX,
-        _ => DEFAULT_PRESET_INDEX,
-    }
-}
-
-fn snapshot_scroll_y(value: &str) -> usize {
-    value.parse::<usize>().ok().unwrap_or(DEFAULT_SCROLL_Y)
-}
-
-fn snapshot_scrollbar_visible(value: &str) -> bool {
-    !matches!(
-        value,
-        "false" | "hidden" | "hide-scrollbar" | "scrollbar-off" | "off"
-    )
-}
-
-fn save_snapshot(args: &[String]) {
-    let output = args
-        .get(2)
-        .map(String::as_str)
-        .unwrap_or("target/storybook-panel.png");
-    let selected_page = args
-        .get(SNAPSHOT_PAGE_ARG)
-        .map(String::as_str)
-        .unwrap_or("button");
-    let theme_id = args
-        .get(SNAPSHOT_THEME_ARG)
-        .map(String::as_str)
-        .unwrap_or("dark");
-    let preset_index = args
-        .get(SNAPSHOT_OPERATION_ARG)
-        .map(String::as_str)
-        .map(snapshot_preset_index)
-        .unwrap_or(DEFAULT_PRESET_INDEX);
-    let scroll_y = args
-        .get(SNAPSHOT_SCROLL_ARG)
-        .map(String::as_str)
-        .map(snapshot_scroll_y)
-        .unwrap_or(DEFAULT_SCROLL_Y);
-    let scrollbar_visible = args
-        .get(SNAPSHOT_SCROLLBAR_ARG)
-        .map(String::as_str)
-        .map(snapshot_scrollbar_visible)
-        .unwrap_or(true);
-    let output_path = Path::new(output);
-    prepare_or_exit(output_path, "failed to prepare visual snapshot");
-    if let Err(error) = StorybookVisual.save_preset_scrolled_png_with_scrollbar(
-        output_path,
-        theme_id,
-        selected_page,
-        preset_index,
-        scroll_y,
-        scrollbar_visible,
-    ) {
-        eprintln!("failed to write visual snapshot: {error}");
-        process::exit(2);
-    }
-    let evidence = snapshot_evidence_or_exit(output_path, "failed to inspect visual snapshot");
-    println!("katana-ui-core-storybook-snapshot: {output} {evidence}");
-}
-
 fn open_window(args: &[String]) {
-    let frames = args
-        .get(2)
-        .and_then(|value| value.parse::<usize>().ok())
-        .unwrap_or(DEFAULT_WINDOW_FRAMES);
-    if let Err(error) = StorybookVisual.open_window(frames) {
+    let request = open_window_request(args);
+    let page = request.page.unwrap_or(DEFAULT_STORYBOOK_PAGE);
+    let result =
+        StorybookVisual.open_window_for_page_and_preset(request.frames, page, request.preset_index);
+    if let Err(error) = result {
         eprintln!("failed to open storybook window: {error}");
         process::exit(2);
     }
-    println!("katana-ui-core-storybook-window: frames={frames}");
+    println!(
+        "katana-ui-core-storybook-window: frames={} page={}",
+        request.frames, page
+    );
+}
+
+fn open_window_request(args: &[String]) -> OpenWindowRequest {
+    let mut preset_index = None;
+    let mut position = WINDOW_FIRST_ARG_INDEX;
+    let Some(first_arg) = args.get(WINDOW_FIRST_ARG_INDEX) else {
+        return OpenWindowRequest {
+            frames: DEFAULT_WINDOW_FRAMES,
+            page: None,
+            preset_index: None,
+        };
+    };
+    let (frames, mut page) = match first_arg.parse::<usize>() {
+        Ok(frames) => {
+            position += 1;
+            (frames, None)
+        }
+        Err(_) if first_arg == PRESET_ARG => (DEFAULT_WINDOW_FRAMES, None),
+        Err(_) => {
+            position += 1;
+            (
+                DEFAULT_WINDOW_FRAMES,
+                Some(resolve_storybook_page_or_exit(first_arg)),
+            )
+        }
+    };
+    while let Some(arg) = args.get(position) {
+        if arg == PRESET_ARG {
+            let Some(value) = args.get(position + 1) else {
+                eprintln!("missing value for --preset");
+                process::exit(2);
+            };
+            preset_index = Some(parse_preset_index_or_exit(value));
+            position += 2;
+            continue;
+        }
+        if page.is_none() {
+            page = Some(resolve_storybook_page_or_exit(arg));
+            position += 1;
+            continue;
+        }
+        eprintln!("unexpected --open-window argument: {arg}");
+        process::exit(2);
+    }
+    OpenWindowRequest {
+        frames,
+        page,
+        preset_index,
+    }
+}
+
+fn resolve_storybook_page_or_exit(value: &str) -> &'static str {
+    resolve_storybook_page(value).unwrap_or_else(|| {
+        eprintln!("unknown Storybook page for --open-window: {value}");
+        process::exit(2);
+    })
+}
+
+fn resolve_storybook_page(value: &str) -> Option<&'static str> {
+    StorybookRoutes
+        .default_routes()
+        .into_iter()
+        .find(|route| route.page == value)
+        .map(|route| route.page)
+}
+
+fn parse_preset_index_or_exit(value: &str) -> usize {
+    value.parse::<usize>().unwrap_or_else(|_| {
+        eprintln!("invalid --preset value: {value}");
+        process::exit(2);
+    })
 }
 
 fn open_modal_window(args: &[String]) {
@@ -153,12 +166,22 @@ fn run_headless_scenario() {
         &visual_report,
         "failed to write visual coverage report",
     );
-    save_scenario_png("target/storybook-panel-light.png", "light", "button", false);
-    save_scenario_png("target/storybook-panel-dark.png", "dark", "button", false);
+    save_scenario_png(
+        "target/storybook-panel-light.png",
+        "light",
+        DEFAULT_STORYBOOK_PAGE,
+        false,
+    );
+    save_scenario_png(
+        "target/storybook-panel-dark.png",
+        "dark",
+        DEFAULT_STORYBOOK_PAGE,
+        false,
+    );
     save_scenario_png(
         "target/storybook-panel-after-operation.png",
         "dark",
-        "button",
+        DEFAULT_STORYBOOK_PAGE,
         true,
     );
     save_modal_png("target/storybook-panel-modal-window.png");
@@ -167,6 +190,19 @@ fn run_headless_scenario() {
         StorybookSummary.render(),
         panel_report.summary(),
         visual_report.summary()
+    );
+}
+
+fn run_headless_interaction_audit() {
+    let report = StorybookVisual.live_interaction_audit_report();
+    write_json(
+        Path::new("target/storybook-live-interaction-audit.json"),
+        &report,
+        "failed to write live interaction audit report",
+    );
+    println!(
+        "katana-ui-core-storybook-live-interaction: {}",
+        report.summary()
     );
 }
 
@@ -194,7 +230,7 @@ fn write_json<T: serde::Serialize>(path: &Path, value: &T, failure: &str) {
 
 fn save_modal_png(path: &str) {
     let output_path = Path::new(path);
-    prepare_or_exit(output_path, "failed to prepare modal snapshot");
+    SnapshotCommand::prepare_or_exit(output_path, "failed to prepare modal snapshot");
     if let Err(error) = StorybookVisual.save_modal_png(output_path) {
         eprintln!("failed to write modal snapshot: {error}");
         process::exit(2);
@@ -203,7 +239,7 @@ fn save_modal_png(path: &str) {
 
 fn save_scenario_png(path: &str, theme_id: &str, selected_page: &str, operation: bool) {
     let output_path = Path::new(path);
-    prepare_or_exit(output_path, "failed to prepare scenario snapshot");
+    SnapshotCommand::prepare_or_exit(output_path, "failed to prepare scenario snapshot");
     if let Err(error) =
         StorybookVisual.save_scenario_png(output_path, theme_id, selected_page, operation)
     {
@@ -212,19 +248,74 @@ fn save_scenario_png(path: &str, theme_id: &str, selected_page: &str, operation:
     }
 }
 
-fn prepare_or_exit(path: &Path, failure: &str) {
-    if let Err(error) = SnapshotOutput::prepare(path) {
-        eprintln!("{failure}: {error}");
-        process::exit(2);
-    }
-}
+#[cfg(test)]
+mod tests {
+    use super::{DEFAULT_WINDOW_FRAMES, open_window_request, resolve_storybook_page};
 
-fn snapshot_evidence_or_exit(path: &Path, failure: &str) -> String {
-    match SnapshotOutput::evidence(path) {
-        Ok(evidence) => evidence,
-        Err(error) => {
-            eprintln!("{failure}: {error}");
-            process::exit(2);
-        }
+    #[test]
+    fn open_window_request_accepts_frame_count_and_page() {
+        let args = args(&["bin", "--open-window", "12", "progress-bar"]);
+        let request = open_window_request(&args);
+
+        assert_eq!(12, request.frames);
+        assert_eq!(Some("progress-bar"), request.page);
+        assert_eq!(None, request.preset_index);
+    }
+
+    #[test]
+    fn open_window_request_accepts_page_without_frame_count() {
+        let args = args(&["bin", "--open-window", "progress-bar"]);
+        let request = open_window_request(&args);
+
+        assert_eq!(DEFAULT_WINDOW_FRAMES, request.frames);
+        assert_eq!(Some("progress-bar"), request.page);
+        assert_eq!(None, request.preset_index);
+    }
+
+    #[test]
+    fn open_window_request_accepts_page_frame_count_and_preset() {
+        let args = args(&[
+            "bin",
+            "--open-window",
+            "12",
+            "progress-bar",
+            "--preset",
+            "4",
+        ]);
+        let request = open_window_request(&args);
+
+        assert_eq!(12, request.frames);
+        assert_eq!(Some("progress-bar"), request.page);
+        assert_eq!(Some(4), request.preset_index);
+    }
+
+    #[test]
+    fn open_window_request_accepts_preset_without_frame_count() {
+        let args = args(&["bin", "--open-window", "progress-bar", "--preset", "4"]);
+        let request = open_window_request(&args);
+
+        assert_eq!(DEFAULT_WINDOW_FRAMES, request.frames);
+        assert_eq!(Some("progress-bar"), request.page);
+        assert_eq!(Some(4), request.preset_index);
+    }
+
+    #[test]
+    fn open_window_request_keeps_default_frames_without_page() {
+        let args = args(&["bin", "--open-window"]);
+        let request = open_window_request(&args);
+
+        assert_eq!(DEFAULT_WINDOW_FRAMES, request.frames);
+        assert_eq!(None, request.page);
+        assert_eq!(None, request.preset_index);
+    }
+
+    #[test]
+    fn resolve_storybook_page_rejects_unknown_page_without_defaulting() {
+        assert_eq!(Some("progress-bar"), resolve_storybook_page("progress-bar"));
+        assert_eq!(None, resolve_storybook_page("progress"));
+    }
+
+    fn args(values: &[&str]) -> Vec<String> {
+        values.iter().map(|value| (*value).to_string()).collect()
     }
 }

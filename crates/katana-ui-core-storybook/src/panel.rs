@@ -1,13 +1,25 @@
 mod panel_build;
 mod panel_verify;
 
-use crate::catalog::{StoryExample, StorybookPanelInteractionReport, StorybookStyleSheet};
+use crate::catalog::{
+    StoryDetailContent, StoryExample, StoryPresetLabels, StorybookPanelInteractionReport,
+    StorybookStyleSheet,
+};
 use katana_ui_core::atom::Text;
 use katana_ui_core::molecule::{Card, Tabs};
 use katana_ui_core::panel::{Panel, PanelRegion};
 use katana_ui_core::render_model::UiNode;
 use katana_ui_core::style::StyleSheet;
 use katana_ui_core::theme::ThemeSnapshot;
+
+const ROOT_SCROLL_VIEWPORT: u32 = 920;
+const ROOT_SCROLL_CONTENT: u32 = 3840;
+const NAV_SCROLL_VIEWPORT: u32 = 760;
+const NAV_SCROLL_CONTENT: u32 = 1480;
+const PREVIEW_SCROLL_VIEWPORT: u32 = 520;
+const PREVIEW_SCROLL_CONTENT: u32 = 1260;
+const DETAILS_SCROLL_VIEWPORT: u32 = 760;
+const DETAILS_SCROLL_CONTENT: u32 = 1320;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct StorybookPanel {
@@ -28,7 +40,8 @@ impl StorybookPanel {
     }
 
     fn navigation_panel(&self, examples: &[StoryExample]) -> Panel {
-        let mut panel = Panel::new("Navigation", PanelRegion::Navigation, self.theme.clone());
+        let mut panel = Panel::new("Navigation", PanelRegion::Navigation, self.theme.clone())
+            .vertical_scroll(0, NAV_SCROLL_VIEWPORT, NAV_SCROLL_CONTENT, true);
         for example in examples {
             panel = panel.child(Text::new(example.page));
         }
@@ -36,32 +49,43 @@ impl StorybookPanel {
     }
 
     fn preview_panel(&self, examples: &[StoryExample], selected_page: &str) -> Panel {
-        let mut panel = Panel::new("Preview", PanelRegion::Preview, self.theme.clone());
-        for example in examples {
+        let mut panel = Panel::new("Preview", PanelRegion::Preview, self.theme.clone())
+            .vertical_scroll(0, PREVIEW_SCROLL_VIEWPORT, PREVIEW_SCROLL_CONTENT, true);
+        if let Some(example) = selected_example(examples, selected_page) {
             panel = panel.child(story_root(example, &self.theme));
         }
-        let _ = selected_page;
         panel
     }
 
     fn details_panel(&self, examples: &[StoryExample], selected_page: &str) -> Panel {
-        let mut panel = Panel::new("Details", PanelRegion::Details, self.theme.clone());
+        let mut panel = Panel::new("Details", PanelRegion::Details, self.theme.clone())
+            .vertical_scroll(0, DETAILS_SCROLL_VIEWPORT, DETAILS_SCROLL_CONTENT, true);
         if let Some(example) = examples.iter().find(|it| it.page == selected_page) {
+            let content = StoryDetailContent::from_example(example);
+            let mut preset_tabs = Tabs::new("Preset tabs");
+            for label in StoryPresetLabels::for_page(example.page).iter().copied() {
+                preset_tabs = preset_tabs.child(Text::new(label));
+            }
             panel = panel
-                .child(
-                    Tabs::new("Preset tabs")
-                        .child(Text::new("default"))
-                        .child(Text::new("interactive"))
-                        .child(Text::new("edge")),
-                )
-                .child(Card::new("Settings").child(Text::new(settings_summary(example))))
-                .child(Card::new("State").child(Text::new(state_summary(example))))
-                .child(Card::new("Event history").child(Text::new(event_summary(example))))
-                .child(Card::new("Action history").child(Text::new(action_summary(example))))
-                .child(Card::new("Requirement status").child(Text::new("complete")));
+                .child(preset_tabs)
+                .child(Card::new("Settings").child(Text::new(content.settings)))
+                .child(Card::new("State").child(Text::new(content.state)))
+                .child(Card::new("Event history").child(Text::new(content.event)))
+                .child(Card::new("Action history").child(Text::new(content.action)))
+                .child(Card::new("Requirement status").child(Text::new(content.quality)));
         }
         panel
     }
+}
+
+fn selected_example<'a>(
+    examples: &'a [StoryExample],
+    selected_page: &str,
+) -> Option<&'a StoryExample> {
+    examples
+        .iter()
+        .find(|it| it.page == selected_page)
+        .or_else(|| examples.first())
 }
 
 fn story_root(example: &StoryExample, theme: &ThemeSnapshot) -> UiNode {
@@ -72,29 +96,6 @@ fn story_root(example: &StoryExample, theme: &ThemeSnapshot) -> UiNode {
         .theme(theme)
         .style_class("story-root")
         .style_class(format!("story-{}", example.page))
-}
-
-fn settings_summary(example: &StoryExample) -> String {
-    format!("page={} settings=visible", example.page)
-}
-
-fn state_summary(example: &StoryExample) -> String {
-    let state_id = example.tree.root().props().state_id.as_str();
-    format!("state_id={state_id}")
-}
-
-fn event_summary(example: &StoryExample) -> String {
-    if example.callback_logs.is_empty() {
-        return "event=passive".to_string();
-    }
-    format!("event={}", example.callback_logs[0].action)
-}
-
-fn action_summary(example: &StoryExample) -> String {
-    if example.callback_logs.is_empty() {
-        return "action=none".to_string();
-    }
-    format!("action={}", example.callback_logs[0].action)
 }
 
 #[cfg(test)]
@@ -112,9 +113,11 @@ mod tests {
         assert!(report.panel_theme_configured);
         assert!(report.details_panel_configured);
         assert_eq!(6, report.detail_sections);
+        assert!(report.panel_scroll_configured);
+        assert_eq!(4, report.independent_panel_scrolls);
         assert_eq!(1, report.panel_theme_variants);
-        assert_eq!(examples.len(), report.themed_story_roots);
-        assert_eq!(examples.len(), report.styled_story_roots);
+        assert_eq!(1, report.themed_story_roots);
+        assert_eq!(1, report.styled_story_roots);
     }
 
     #[test]
@@ -129,8 +132,10 @@ mod tests {
         assert!(report.panel_theme_configured);
         assert!(report.details_panel_configured);
         assert_eq!(2, report.panel_theme_variants);
-        assert_eq!(examples.len(), report.themed_story_roots);
-        assert_eq!(examples.len(), report.styled_story_roots);
+        assert!(report.panel_scroll_configured);
+        assert_eq!(4, report.independent_panel_scrolls);
+        assert_eq!(1, report.themed_story_roots);
+        assert_eq!(1, report.styled_story_roots);
     }
 
     #[test]
@@ -138,8 +143,8 @@ mod tests {
         let examples = StoryCatalog.examples();
         let report = StorybookPanel::interaction_report(&examples);
 
-        assert_eq!("button", report.story_selection.selected_page);
-        assert_eq!("Button", report.story_selection.preview_page);
+        assert_eq!("text-input", report.story_selection.selected_page);
+        assert_eq!("Text input", report.story_selection.preview_page);
         assert_eq!("light", report.theme_switch.before_theme_id);
         assert_eq!("dark", report.theme_switch.after_theme_id);
         assert!(report.theme_switch.theme_control);

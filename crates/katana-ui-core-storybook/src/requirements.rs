@@ -1,17 +1,20 @@
 const REQUIRED_PAGES: &[&str] = &[
     "text",
     "icon",
+    "chip",
     "button",
     "text-button",
     "svg-button",
     "icon-text-button",
     "text-input",
+    "text-area",
     "checkbox",
     "radio",
     "badge",
     "divider",
     "spacer",
     "key-cap",
+    "skeleton",
     "loading-dots",
     "spinner",
     "progress-bar",
@@ -21,6 +24,9 @@ const REQUIRED_PAGES: &[&str] = &[
     "card",
     "list",
     "menu",
+    "context-menu",
+    "banner",
+    "toast-stack-manager",
     "tooltip",
     "modal",
     "tabs",
@@ -37,13 +43,31 @@ const REQUIRED_PAGES: &[&str] = &[
     "modal-overlay",
     "notification-toast",
     "popover",
+    "hover-card",
     "search-box",
+    "search-control-strip",
     "segmented-toggle",
     "select-box",
     "selection-list",
     "side-menu",
     "status-bar",
+    "shortcut-combo",
+    "shortcut-cheatsheet",
+    "settings-list",
+    "collapsible-panel",
+    "virtualization",
+    "skeleton-cluster",
+    "motion",
+    "window-control-button-group",
+    "startup-state-panel",
+    "attachment-chip",
+    "chip-group",
+    "diagnostics-list",
+    "empty-state",
     "tree-view",
+    "drag-and-drop",
+    "closeable-tab-strip",
+    "panel",
     "row",
     "column",
     "stack",
@@ -70,13 +94,31 @@ impl StoryRequirements {
     pub(crate) fn minimum_nodes_for(page: &str) -> usize {
         match page {
             "text" | "icon" | "divider" | "spacer" | "key-cap" | "loading-dots" | "spinner"
-            | "progress-bar" | "color-swatch" | "toggle" | "slide-control" => MIN_SINGLE_NODE,
+            | "progress-bar" | "color-swatch" | "toggle" | "slide-control" | "chip"
+            | "shortcut-combo" | "skeleton" | "virtualization" | "motion" => MIN_SINGLE_NODE,
             "button" | "text-button" | "svg-button" | "icon-text-button" | "text-input"
-            | "checkbox" | "radio" | "badge" => MIN_SINGLE_NODE,
-            "card" | "tooltip" | "modal" | "popover" | "row" | "column" | "stack" | "grid"
-            | "scroll-area" | "split-pane" | "align-center" => MIN_CHILDREN_NODE,
+            | "text-area" | "checkbox" | "radio" | "badge" => MIN_SINGLE_NODE,
+            "card"
+            | "tooltip"
+            | "modal"
+            | "popover"
+            | "hover-card"
+            | "empty-state"
+            | "row"
+            | "column"
+            | "stack"
+            | "grid"
+            | "scroll-area"
+            | "split-pane"
+            | "align-center"
+            | "banner"
+            | "shortcut-cheatsheet"
+            | "skeleton-cluster"
+            | "collapsible-panel"
+            | "startup-state-panel" => MIN_CHILDREN_NODE,
             "list"
             | "menu"
+            | "context-menu"
             | "tabs"
             | "toolbar"
             | "form-field"
@@ -90,12 +132,22 @@ impl StoryRequirements {
             | "modal-overlay"
             | "notification-toast"
             | "search-box"
+            | "search-control-strip"
             | "segmented-toggle"
             | "select-box"
             | "selection-list"
             | "side-menu"
             | "status-bar"
+            | "toast-stack-manager"
+            | "settings-list"
+            | "window-control-button-group"
+            | "attachment-chip"
+            | "chip-group"
+            | "diagnostics-list"
             | "tree-view"
+            | "drag-and-drop"
+            | "closeable-tab-strip"
+            | "panel"
             | "theme-tokens" => MIN_COMPOSITE_NODE,
             "command-palette" => MIN_COMMAND_PALETTE_NODE,
             _ => MIN_CHILDREN_NODE,

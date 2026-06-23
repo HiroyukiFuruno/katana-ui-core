@@ -1,6 +1,8 @@
 use crate::interaction::RgbaActionValue;
 use serde::{Deserialize, Serialize};
 
+const OPAQUE_ALPHA: u8 = 255;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RgbaColor {
     pub red: u8,
@@ -27,6 +29,16 @@ impl RgbaColor {
             self.red, self.green, self.blue, self.alpha
         )
     }
+
+    #[must_use]
+    pub const fn opaque(self) -> Self {
+        Self {
+            red: self.red,
+            green: self.green,
+            blue: self.blue,
+            alpha: OPAQUE_ALPHA,
+        }
+    }
 }
 
 impl From<RgbaActionValue> for RgbaColor {
@@ -37,7 +49,23 @@ impl From<RgbaActionValue> for RgbaColor {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ColorBlendingMode {
+    Normal,
+    Additive,
     Replace,
     Multiply,
     Screen,
+}
+
+impl ColorBlendingMode {
+    #[must_use]
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "normal" | "Normal" => Some(Self::Normal),
+            "additive" | "Additive" => Some(Self::Additive),
+            "replace" | "Replace" => Some(Self::Replace),
+            "multiply" | "Multiply" => Some(Self::Multiply),
+            "screen" | "Screen" => Some(Self::Screen),
+            _ => None,
+        }
+    }
 }
