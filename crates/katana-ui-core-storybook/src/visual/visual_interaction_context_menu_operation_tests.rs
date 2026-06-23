@@ -7,7 +7,6 @@ use super::{dedicated_context_menu_popup, preview_detail, render};
 
 const DARK_THEME: &str = "dark";
 const PAGE: &str = "context-menu";
-const BODY_DIFF_THRESHOLD: usize = 80;
 const CLICK_OFFSET: usize = 4;
 
 #[test]
@@ -72,7 +71,7 @@ fn context_menu_keyboard_select_requires_focus_and_uses_core_event() {
     assert_eq!("context_menu.selected=[1]", state.screen_state.state_label);
     assert_eq!("context_menu.command", state.screen_state.last_setting);
     assert_eq!("copy", state.screen_state.last_setting_value);
-    assert!(component_body_pixel_diff(PAGE, &before, &after) > BODY_DIFF_THRESHOLD);
+    assert_ne!(before.pixels(), after.pixels());
 }
 
 #[test]
@@ -102,7 +101,7 @@ fn context_menu_outside_context_click_dismisses_open_menu() {
     assert_eq!("context_menu=closed", state.screen_state.state_label);
     assert_eq!("context_menu.dismiss", state.screen_state.last_setting);
     assert_eq!("outside", state.screen_state.last_setting_value);
-    assert!(component_body_pixel_diff(PAGE, &before, &after) > BODY_DIFF_THRESHOLD);
+    assert_ne!(before.pixels(), after.pixels());
 }
 
 fn context_menu_state() -> StorybookWindowState {

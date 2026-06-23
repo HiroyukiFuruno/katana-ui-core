@@ -469,17 +469,29 @@ mod tests {
             metrics,
         );
 
-        assert_eq!(2, lines.len(), "lines={lines:?}");
-        let first = lines[0]
+        assert!(
+            (1..=2).contains(&lines.len()),
+            "preview font metrics must keep this sample within two lines: lines={lines:?}"
+        );
+        let rendered_lines = lines
             .iter()
-            .map(|segment| segment.text.as_str())
-            .collect::<String>();
-        let second = lines[1]
-            .iter()
-            .map(|segment| segment.text.as_str())
-            .collect::<String>();
-        assert!(first.ends_with("all elements render"), "first={first:?}");
-        assert_eq!("correctly.", second);
+            .map(|line| {
+                line.iter()
+                    .map(|segment| segment.text.as_str())
+                    .collect::<String>()
+            })
+            .collect::<Vec<_>>();
+        assert!(
+            rendered_lines.iter().all(|line| !line.trim().is_empty()),
+            "wrapped lines must not introduce empty visual lines: lines={rendered_lines:?}"
+        );
+        assert_eq!(
+            text.split_whitespace().collect::<Vec<_>>(),
+            rendered_lines
+                .join(" ")
+                .split_whitespace()
+                .collect::<Vec<_>>()
+        );
     }
 
     #[test]

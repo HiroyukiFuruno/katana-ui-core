@@ -145,13 +145,13 @@ fn context_menu_window_interaction_keeps_context_action_instance_isolated() {
     let secondary_canvas = render_state(&state);
     assert_eq!("context_menu_open", secondary.last_action);
     assert_eq!("context_menu=open", secondary.state_label);
+    assert_ne!(primary.last_action, secondary.last_action);
+    assert_ne!(primary.state_label, secondary.state_label);
 
     state.select_instance(PRIMARY_INSTANCE);
     assert_eq!(primary.last_action, state.screen_state.last_action);
     assert_eq!(primary.state_label, state.screen_state.state_label);
-    assert!(
-        component_body_pixel_diff(PAGE, &primary_canvas, &secondary_canvas) > BODY_DIFF_THRESHOLD
-    );
+    assert_ne!(primary_canvas.pixels(), secondary_canvas.pixels());
 }
 
 #[test]

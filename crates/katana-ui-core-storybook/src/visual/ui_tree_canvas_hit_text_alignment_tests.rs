@@ -17,12 +17,12 @@ fn right_aligned_link_text_action_rect_trims_whitespace_without_losing_ink() {
     let area = UiTreeRenderArea {
         x: 7,
         y: 11,
-        width: 240,
+        width: 420,
         height: 120,
         scroll_y: 0.0,
     };
-    let expected_x = UiTreeTextRoleRenderer::aligned_x(&root, area.x, area, full_width) as usize
-        + leading_space_width;
+    let aligned_x = UiTreeTextRoleRenderer::aligned_x(&root, area.x, area, full_width);
+    let expected_x = (aligned_x + leading_space_width as isize).max(0) as usize;
 
     let hits = UiTreeHostActionHitCollector::collect(&root, area);
 
