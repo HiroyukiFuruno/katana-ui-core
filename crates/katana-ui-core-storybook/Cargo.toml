@@ -13,7 +13,6 @@ publish = false
 cosmic-text.workspace = true
 image.workspace = true
 katana-ui-core.workspace = true
-katana-document-viewer = { path = "../../../katana-document-viewer/crates/katana-document-viewer", version = "0.2.0" }
 minifb.workspace = true
 resvg.workspace = true
 serde.workspace = true

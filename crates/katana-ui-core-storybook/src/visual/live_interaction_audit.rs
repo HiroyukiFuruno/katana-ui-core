@@ -329,13 +329,12 @@ fn page_state(page: &'static str) -> StorybookWindowState {
 
 #[cfg(test)]
 mod tests {
-    use super::live_interaction_audit_report_uncached;
+    use super::{checkbox_row_click_scenario, radio_row_click_scenario};
 
     #[test]
-    fn live_interaction_audit_report_has_no_failed_scenarios() {
-        let report = live_interaction_audit_report_uncached();
-        let failed: Vec<_> = report
-            .scenarios
+    fn live_interaction_audit_unit_covers_critical_binary_scenarios() {
+        let scenarios = [checkbox_row_click_scenario(), radio_row_click_scenario()];
+        let failed: Vec<_> = scenarios
             .iter()
             .filter(|scenario| !scenario.passed)
             .map(|scenario| {

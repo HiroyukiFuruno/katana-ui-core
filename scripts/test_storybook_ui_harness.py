@@ -1729,7 +1729,7 @@ def write_minimal_repo(root: Path, option_arm: str) -> None:
         root / "crates/katana-ui-core-storybook/src/visual/visual_inspector_option_contract_tests.rs",
             "fn inspector_settings_rows_include_every_option_contract_for_each_story() {"
             "fn inspector_setting_rows_apply_each_clicked_option_contract() {"
-            "fn inspector_setting_rows_repaint_preview_for_each_clicked_option_contract() {"
+            "fn inspector_setting_rows_repaint_representative_preview_contracts() {"
             "fn button_option_controls_match_storybook_option_contract() {"
         "StorybookButtonOptionControl::all();"
         "control.setting_name();"

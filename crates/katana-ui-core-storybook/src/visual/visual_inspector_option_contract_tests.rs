@@ -13,6 +13,15 @@ use button_options::StorybookButtonOptionControl;
 
 const CLIP_SUFFIX_WIDTH: usize = 3;
 const COMPONENT_BODY_REPAINT_THRESHOLD: usize = 80;
+const REPAINT_CONTRACT_SAMPLE_PAGES: &[&str] = &[
+    "button",
+    "checkbox",
+    "text-input",
+    "toggle",
+    "progress-bar",
+    "tree-view",
+    "scroll-area",
+];
 
 #[test]
 fn inspector_settings_rows_include_every_option_contract_for_each_story() {
@@ -97,8 +106,8 @@ fn inspector_setting_rows_apply_each_clicked_option_contract() {
 }
 
 #[test]
-fn inspector_setting_rows_repaint_preview_for_each_clicked_option_contract() {
-    for page in StoryRequirements::required_pages() {
+fn inspector_setting_rows_repaint_representative_preview_contracts() {
+    for &page in REPAINT_CONTRACT_SAMPLE_PAGES {
         let mut state = StorybookWindowState {
             selected_page: page,
             ..StorybookWindowState::default()

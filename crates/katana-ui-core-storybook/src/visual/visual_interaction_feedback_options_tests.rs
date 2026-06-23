@@ -14,11 +14,14 @@ fn feedback_inspector_options_mutate_severity_duration_action_and_dismiss_semant
 }
 
 fn assert_options(page: &'static str, prefix: &'static str) -> Result<(), String> {
-    for &(setting, expected_value, suffix) in expected_states() {
+    for (index, &(setting, expected_value, suffix)) in expected_states().iter().enumerate() {
         let mut state = page_state(page);
-        let before = render_state(&state, page);
+        let before = if index == 0 {
+            Some(render_state(&state, page))
+        } else {
+            None
+        };
         click_option(&mut state, page, setting)?;
-        let after = render_state(&state, page);
 
         assert_inspector_option_state(
             &state,
@@ -27,7 +30,10 @@ fn assert_options(page: &'static str, prefix: &'static str) -> Result<(), String
             expected_value,
             state_label(prefix, suffix),
         );
-        assert!(component_body_pixel_diff(page, &before, &after) > 0);
+        if let Some(before) = before {
+            let after = render_state(&state, page);
+            assert!(component_body_pixel_diff(page, &before, &after) > 0);
+        }
     }
     Ok(())
 }

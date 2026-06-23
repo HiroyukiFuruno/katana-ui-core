@@ -1,4 +1,3 @@
-use katana_document_viewer::ViewerCodeBlockMetrics;
 use katana_ui_core::render_model::UiNode;
 
 const UI_FONT_SIZE: f32 = 14.0;
@@ -35,7 +34,7 @@ const HTML_EXPORT_SURFACE_TOP_MARGIN: usize = 5;
 const ALERT_TOP_MARGIN: usize = 16;
 
 const CODE_FONT_SIZE: f32 = 22.0;
-const CODE_LINE_HEIGHT: usize = ViewerCodeBlockMetrics::BASE_LINE_HEIGHT_PX as usize;
+const CODE_LINE_HEIGHT: usize = 34;
 const CODE_TOP_MARGIN: usize = 0;
 const TABLE_FONT_SIZE: f32 = 22.0;
 const TABLE_LINE_HEIGHT: usize = 34;

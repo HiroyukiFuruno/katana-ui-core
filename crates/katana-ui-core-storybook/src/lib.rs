@@ -1,7 +1,6 @@
 //! Core-only Storybook model for KUC verification.
 
 mod catalog;
-mod document_viewer;
 mod panel;
 mod requirements;
 mod storybook_svg_fixtures;
@@ -14,11 +13,6 @@ mod visual;
 pub use catalog::{
     StoryCatalog, StoryCatalogReport, StoryDetailContent, StoryExample,
     StorybookPanelInteractionReport, StorybookPanelReport, StorybookStyleSheet,
-};
-pub use document_viewer::media_control_icons::KucMediaControlIconSet;
-pub use document_viewer::{
-    DocumentViewerStorybookHost, KucDiagramControlResolver, KucViewerAdapter, KucViewerConfig,
-    KucViewerError, KucViewerPlan,
 };
 use katana_ui_core::theme::ThemeSnapshot;
 pub use panel::StorybookPanel;

@@ -1741,7 +1741,7 @@ class StorybookUiInteractionHarness:
         return (
             "inspector_settings_rows_include_every_option_contract_for_each_story",
             "inspector_setting_rows_apply_each_clicked_option_contract",
-            "inspector_setting_rows_repaint_preview_for_each_clicked_option_contract",
+            "inspector_setting_rows_repaint_representative_preview_contracts",
             "button_option_controls_match_storybook_option_contract",
             "button_inspector_controls_apply_each_button_option_contract",
             "button_inspector_rows_select_matching_preset_tabs",
