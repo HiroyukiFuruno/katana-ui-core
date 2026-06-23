@@ -1,7 +1,7 @@
 use super::KucNodeFactory;
 use katana_document_viewer::{
-    ViewerMediaControlAction, ViewerMediaControlKind, ViewerMediaControlSpec, ViewerNode,
-    ViewerNodeKind,
+    ViewerMediaControlAction, ViewerMediaControlKind, ViewerMediaControlSet,
+    ViewerMediaControlSpec, ViewerNode, ViewerNodeKind,
 };
 use katana_ui_core::atom::Button;
 use katana_ui_core::layout::Stack;
@@ -63,6 +63,7 @@ impl<'a> KucNodeFactory<'a> {
     }
 
     fn diagram_fullscreen_backdrop(&self, node: &ViewerNode, container_height: u16) -> UiNode {
+        let spec = ViewerMediaControlSet::diagram_fullscreen_control();
         UiNode::new(UiNodeKind::Stack, "")
             .stable_node_id(format!("viewer-diagram-backdrop:{}", node.node_id.0))
             .width(UiDimension::px(
@@ -73,8 +74,8 @@ impl<'a> KucNodeFactory<'a> {
             .position(UiPosition::Absolute)
             .z_index(UiZIndex::value(0))
             .host_action(Self::media_host_action(
-                ViewerMediaControlKind::Diagram,
-                "fullscreen",
+                spec.kind,
+                spec.command,
                 &node.node_id.0,
             ))
     }

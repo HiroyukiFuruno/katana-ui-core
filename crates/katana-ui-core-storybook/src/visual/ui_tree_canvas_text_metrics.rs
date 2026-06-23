@@ -56,9 +56,8 @@ pub(in crate::visual) use document_typography::UiTreeDocumentTypography;
 use metric_roles::{
     compact_heading_font_size, compact_heading_line_height, html_body_font_size,
     is_document_body_role, is_export_heading_1_role, is_export_heading_2_role,
-    is_export_heading_3_role, is_export_surface_html_body_role, is_heading_1_role,
-    is_heading_2_role, is_heading_3_role, is_heading_role, is_html_role, is_long_heading_2_role,
-    is_preview_html_body_role,
+    is_export_heading_3_role, is_heading_1_role, is_heading_2_role, is_heading_3_role,
+    is_heading_role, is_html_role, is_long_heading_2_role, is_preview_html_body_role,
 };
 use metric_scaling::{
     dimension_px, scale_usize, scaled_document_text_line_height, strikethrough_offset,
@@ -185,9 +184,6 @@ impl UiTreeTextMetrics {
                         typography.body_font_size,
                         COMPACT_BODY_LINE_HEIGHT,
                     );
-                    if is_export_surface_html_body_role(role) {
-                        self.add_scaled_top_margin(typography.body_font_size);
-                    }
                 }
             }
             _ => {}
@@ -387,7 +383,7 @@ mod tests {
     }
 
     #[test]
-    fn compact_html_body_metrics_keep_export_surface_origin() {
+    fn compact_html_body_metrics_match_export_surface_origin() {
         let mut theme = ThemeSnapshot::dark();
         theme.fonts.push(FontToken {
             name: "document-body".to_string(),
@@ -401,7 +397,7 @@ mod tests {
 
         assert_eq!(14.0, metrics.font_size);
         assert_eq!(23, metrics.line_height);
-        assert_eq!(3, metrics.top_margin);
+        assert_eq!(0, metrics.top_margin);
     }
 
     #[test]

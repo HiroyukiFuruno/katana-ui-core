@@ -16,12 +16,12 @@ const COMPACT_FONT_SIZE: u16 = 14;
 const FULL_FONT_SIZE: u16 = 24;
 const COMPACT_BADGE_METRICS: BadgeRenderMetrics = BadgeRenderMetrics {
     height: 19,
-    vertical_margin: 15,
+    vertical_margin: 13,
     horizontal_gap: 10,
     horizontal_padding: 4,
     char_width: 7,
     text_font_size: 12,
-    text_y: 27,
+    text_y: 25,
 };
 const FULL_BADGE_METRICS: BadgeRenderMetrics = BadgeRenderMetrics {
     height: 26,
@@ -297,8 +297,8 @@ mod tests {
         let metrics = BadgeRenderMetrics::from_preview_font_size(14);
 
         assert_eq!(19, metrics.height);
-        assert_eq!(15, metrics.vertical_margin);
-        assert_eq!(27, metrics.text_y);
+        assert_eq!(13, metrics.vertical_margin);
+        assert_eq!(25, metrics.text_y);
     }
 
     #[test]
