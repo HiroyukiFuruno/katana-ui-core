@@ -18,4 +18,4 @@ if [[ "$packages" != "$expected" ]]; then
   exit 1
 fi
 
-echo "core release scope verified: active workspace publishes core only."
+echo "core release scope verified: active workspace contains core, storybook, and consumer app."

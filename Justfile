@@ -200,7 +200,9 @@ release-readiness-check: integration-test e2e-test smoke-test
 release-verify: check coverage
     bash scripts/release/verify-version.sh "{{VERSION}}"
     {{CARGO}} package -p katana-ui-core --locked --allow-dirty
+    {{CARGO}} package -p katana-ui-core-storybook --locked --allow-dirty
     {{CARGO}} publish -p katana-ui-core --dry-run --locked --allow-dirty
+    {{CARGO}} publish -p katana-ui-core-storybook --dry-run --locked --allow-dirty
     bash scripts/release/verify-core-release-scope.sh "{{VERSION}}"
 
 # Verify release branch readiness before merging
