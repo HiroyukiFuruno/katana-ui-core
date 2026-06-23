@@ -262,6 +262,9 @@ mod action_contract_tests;
 #[path = "hit_contract_tests.rs"]
 mod hit_contract_tests;
 #[cfg(test)]
+#[path = "hover_contract_tests.rs"]
+mod hover_contract_tests;
+#[cfg(test)]
 #[path = "render_tests.rs"]
 mod render_tests;
 #[cfg(test)]

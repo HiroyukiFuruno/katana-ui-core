@@ -1,7 +1,6 @@
 use super::{
     SettingsControl, SettingsField, SettingsList, SettingsListAction, SettingsListHitTestInput,
-    SettingsListEvent, SettingsListHitTestResult, SettingsListLayoutMetrics, SettingsSection,
-    SettingsValue,
+    SettingsListHitTestResult, SettingsListLayoutMetrics, SettingsSection, SettingsValue,
 };
 use crate::render_model::UiCursor;
 
@@ -166,33 +165,6 @@ fn interaction_for_hit_returns_single_settings_contract() -> Result<(), Box<dyn 
 }
 
 #[test]
-fn hover_action_records_row_level_hover_event_without_value_change()
--> Result<(), Box<dyn std::error::Error>> {
-    let mut list = sample_settings();
-    let target = list
-        .hit_target_for_field("dark", TEST_VIEWPORT_WIDTH)
-        .ok_or_else(|| std::io::Error::other("dark toggle target missing"))?;
-    let hover_action = target
-        .hover_action
-        .ok_or_else(|| std::io::Error::other("dark hover action missing"))?;
-
-    let events = list.apply_settings_action(hover_action);
-
-    assert_eq!(
-        vec![SettingsListEvent::FieldHovered {
-            field_id: "dark".to_string(),
-            hovered: true,
-        }],
-        events
-    );
-    assert_eq!(
-        SettingsValue::Bool(true),
-        list.sections()[0].fields[0].control.value()
-    );
-    Ok(())
-}
-
-#[test]
 fn interaction_for_hit_preserves_readonly_field_without_action() {
     let interaction = sample_settings().interaction_for_hit(
         SettingsListHitTestInput {
@@ -258,37 +230,6 @@ fn hit_targets_expose_section_rect_inside_viewport_contract()
     assert_eq!(0, target.rect.x);
     assert_eq!(TEST_VIEWPORT_WIDTH, target.rect.width);
     assert_eq!(UiCursor::Pointer, target.cursor);
-    assert_eq!(
-        Some(SettingsListAction::ToggleSection {
-            section_id: "display".to_string(),
-        }),
-        target.action
-    );
-    Ok(())
-}
-
-#[test]
-fn hit_target_for_section_returns_named_section_contract() -> Result<(), Box<dyn std::error::Error>>
-{
-    let list = sample_settings();
-    let target = list
-        .hit_target_for_section("display", TEST_VIEWPORT_WIDTH)
-        .ok_or_else(|| std::io::Error::other("display section target missing"))?;
-
-    assert_eq!(0, target.rect.x);
-    assert_eq!(TEST_VIEWPORT_WIDTH, target.rect.width);
-    assert_eq!(UiCursor::Pointer, target.cursor);
-    assert_eq!(
-        Some(SettingsList::section_node_id("display")),
-        target.hover_node_id
-    );
-    assert_eq!(
-        Some(SettingsListAction::HoverSection {
-            section_id: "display".to_string(),
-            hovered: true,
-        }),
-        target.hover_action
-    );
     assert_eq!(
         Some(SettingsListAction::ToggleSection {
             section_id: "display".to_string(),

@@ -77,7 +77,10 @@ fn toggle_exposes_default_hover_target_for_host_consumers() {
     let hover = toggle.hover_target(true);
 
     assert_eq!(toggle.state_id(), &hover.target);
-    assert_eq!(UiAction::hover(toggle.state_id().clone(), true), hover.action());
+    assert_eq!(
+        UiAction::hover(toggle.state_id().clone(), true),
+        hover.action()
+    );
 
     let result = toggle.apply_action(&hover.action());
 

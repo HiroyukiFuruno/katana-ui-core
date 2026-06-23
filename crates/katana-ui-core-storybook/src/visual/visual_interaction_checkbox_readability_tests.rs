@@ -10,6 +10,11 @@ const DISABLED_PRESET: usize = 2;
 const MIN_READABLE_TEXT_RUN_HEIGHT: usize = 16;
 const MIN_CONTROL_BOTTOM_PADDING: usize = 8;
 const MIN_FOCUS_BORDER_PIXELS: usize = 8;
+const DISABLED_TEXT_TOLERANCE: u32 = 64;
+const RGB_RED_SHIFT: u32 = 16;
+const RGB_GREEN_SHIFT: u32 = 8;
+const RGB_BLUE_SHIFT: u32 = 0;
+const RGB_CHANNEL_MASK: u32 = 0xff;
 
 #[test]
 fn checkbox_labels_controls_and_status_use_readable_text_runs() {
@@ -122,7 +127,7 @@ fn checkbox_disabled_preset_mutes_control_button_labels() {
             "disabled checkbox controls must not render enabled text color"
         );
         assert!(
-            count_near_color_in_rect(&disabled, rect, palette.muted, 64) > 0,
+            count_near_color_in_rect(&disabled, rect, palette.muted, DISABLED_TEXT_TOLERANCE) > 0,
             "disabled checkbox controls must render muted text color"
         );
     }
@@ -137,21 +142,20 @@ fn count_near_color_in_rect(
     (rect.y..rect.bottom())
         .flat_map(|y| (rect.x..rect.right()).map(move |x| (x, y)))
         .filter(|(x, y)| {
-            pixel_at(canvas, *x, *y)
-                .is_some_and(|pixel| color_distance(pixel, color) <= tolerance)
+            pixel_at(canvas, *x, *y).is_some_and(|pixel| color_distance(pixel, color) <= tolerance)
         })
         .count()
 }
 
 fn color_distance(left: u32, right: u32) -> u32 {
-    let red = channel(left, 16).abs_diff(channel(right, 16));
-    let green = channel(left, 8).abs_diff(channel(right, 8));
-    let blue = channel(left, 0).abs_diff(channel(right, 0));
+    let red = channel(left, RGB_RED_SHIFT).abs_diff(channel(right, RGB_RED_SHIFT));
+    let green = channel(left, RGB_GREEN_SHIFT).abs_diff(channel(right, RGB_GREEN_SHIFT));
+    let blue = channel(left, RGB_BLUE_SHIFT).abs_diff(channel(right, RGB_BLUE_SHIFT));
     red + green + blue
 }
 
 fn channel(color: u32, shift: u32) -> u32 {
-    (color >> shift) & 0xff
+    (color >> shift) & RGB_CHANNEL_MASK
 }
 
 fn count_color_in_rect(

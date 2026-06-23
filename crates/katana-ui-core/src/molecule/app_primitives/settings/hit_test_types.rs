@@ -77,7 +77,9 @@ impl SettingsListInteraction {
             hover_node_id: target
                 .as_ref()
                 .and_then(|target| target.hover_node_id.clone()),
-            hover_action: target.as_ref().and_then(|target| target.hover_action.clone()),
+            hover_action: target
+                .as_ref()
+                .and_then(|target| target.hover_action.clone()),
             action: target.as_ref().and_then(|target| target.action.clone()),
             target,
         }

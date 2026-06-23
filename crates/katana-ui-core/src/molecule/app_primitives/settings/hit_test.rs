@@ -4,11 +4,11 @@ use crate::render_model::UiCursor;
 #[path = "hit_test_types.rs"]
 mod hit_test_types;
 
-use hit_test_types::{action_for_result, hover_action_for_result};
 pub use hit_test_types::{
     SettingsListHitRect, SettingsListHitTarget, SettingsListHitTestInput,
     SettingsListHitTestResult, SettingsListInteraction,
 };
+use hit_test_types::{action_for_result, hover_action_for_result};
 
 pub(super) fn hit_test(
     list: &SettingsList,
