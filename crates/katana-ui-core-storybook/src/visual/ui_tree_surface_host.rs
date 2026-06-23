@@ -114,6 +114,15 @@ impl UiTreeSurfaceHost {
     }
 
     #[must_use]
+    pub fn context_menu_host_action_at(
+        root: &UiNode,
+        x: f32,
+        y: f32,
+    ) -> Option<katana_ui_core::render_model::UiHostActionPlan> {
+        UiTreeStorybookHost::context_menu_host_action_at(root, x, y)
+    }
+
+    #[must_use]
     pub fn context_menu_item_center_for_id(root: &UiNode, item_id: &str) -> Option<(f32, f32)> {
         UiTreeStorybookHost::context_menu_item_center_for_id(root, item_id)
     }

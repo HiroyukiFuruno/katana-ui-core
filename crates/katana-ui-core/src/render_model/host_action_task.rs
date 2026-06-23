@@ -1,5 +1,6 @@
 use super::{
-    UI_TASK_TOGGLE_ACTION_ID, UiContextMenuItem, UiHostActionPayload, UiHostActionPlan, UiNode,
+    UI_TASK_SET_STATE_ACTION_ID, UI_TASK_TOGGLE_ACTION_ID, UiContextMenuItem, UiHostActionPayload,
+    UiHostActionPlan, UiHostActionSpec, UiNode,
 };
 use serde::{Deserialize, Serialize};
 
@@ -79,6 +80,15 @@ pub struct UiTaskControlMenuItem {
     pub marker: UiTaskMarker,
     pub label: String,
     pub checked: bool,
+    pub host_action: Option<UiHostActionSpec>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiTaskControlStateAction {
+    pub node_id: String,
+    pub row_index: usize,
+    pub state_id: String,
+    pub marker: UiTaskMarker,
 }
 
 impl UiHostActionPlan {
@@ -95,6 +105,11 @@ impl UiHostActionPlan {
     #[must_use]
     pub fn task_control_action_from_root(&self, root: &UiNode) -> Option<UiTaskControlAction> {
         UiTaskControlAction::from_plan_root(self, root)
+    }
+
+    #[must_use]
+    pub fn task_control_state_action(&self) -> Option<UiTaskControlStateAction> {
+        UiTaskControlStateAction::from_plan(self)
     }
 }
 
@@ -143,19 +158,53 @@ impl UiTaskControlAction {
     }
 }
 
+impl UiTaskControlStateAction {
+    fn from_plan(plan: &UiHostActionPlan) -> Option<Self> {
+        if plan.action_id != UI_TASK_SET_STATE_ACTION_ID {
+            return None;
+        }
+        let UiHostActionPayload::TaskControlState(payload) = &plan.typed_payload else {
+            return None;
+        };
+        Some(Self {
+            node_id: payload.node_id.clone(),
+            row_index: payload.row_index,
+            state_id: payload.state_id.clone(),
+            marker: UiTaskMarker::from_marker(&payload.marker)?,
+        })
+    }
+}
+
 fn task_menu_items(items: &[UiContextMenuItem]) -> Vec<UiTaskControlMenuItem> {
     items
         .iter()
         .filter_map(|item| {
-            let marker = UiTaskMarker::from_context_menu_item_id(&item.id)?;
+            let (marker, host_action) = task_marker_from_host_action(item).map_or_else(
+                || UiTaskMarker::from_context_menu_item_id(&item.id).map(|marker| (marker, None)),
+                |(marker, action)| Some((marker, Some(action))),
+            )?;
             Some(UiTaskControlMenuItem {
                 item_id: item.id.clone(),
                 marker,
                 label: item.label.clone(),
                 checked: item.checked,
+                host_action,
             })
         })
         .collect()
+}
+
+fn task_marker_from_host_action(
+    item: &UiContextMenuItem,
+) -> Option<(UiTaskMarker, UiHostActionSpec)> {
+    let action = item.host_action.as_ref()?;
+    if action.action_id != UI_TASK_SET_STATE_ACTION_ID {
+        return None;
+    }
+    let UiHostActionPayload::TaskControlState(payload) = &action.typed_payload else {
+        return None;
+    };
+    Some((UiTaskMarker::from_marker(&payload.marker)?, action.clone()))
 }
 
 fn task_marker_value(node: &UiNode) -> Option<&str> {

@@ -1,13 +1,39 @@
 use super::{
     UI_DISCLOSURE_TOGGLE_ACTION_ID, UI_IMAGE_HIGHLIGHT_ACTION_ID, UI_LINK_OPEN_ACTION_ID,
-    UiHostActionKind, UiHostActionPayload, UiHostActionPlan, UiHostActionSpec, UiTreeNodeKind,
-    UiTreeRowActionKind,
+    UiHostActionKind, UiHostActionPayload, UiHostActionPlan, UiHostActionSpec, UiNodeId,
+    UiTreeNodeKind, UiTreeRowActionKind,
 };
 use super::{
     UiContextMenuItem, UiContextMenuItemKind, UiImageSurfaceHighlight, UiNode, UiNodeKind, UiTree,
 };
 
 impl UiHostActionPlan {
+    #[must_use]
+    pub fn from_context_menu_item(
+        target: UiNodeId,
+        item: &UiContextMenuItem,
+        item_enabled: bool,
+        path: &[usize],
+    ) -> Option<Self> {
+        if !context_menu_item_dispatches_host_action(item.kind) {
+            return None;
+        }
+        if let Some(action) = &item.host_action {
+            let mut spec = action.clone();
+            spec.enabled = spec.enabled && item_enabled;
+            return Some(Self::new(target, spec));
+        }
+        Some(Self {
+            target,
+            action_id: item.id.clone(),
+            label: item.label.clone(),
+            kind: context_menu_host_action_kind(item.kind),
+            enabled: item_enabled,
+            payload: context_menu_item_payload(path, item.kind),
+            typed_payload: UiHostActionPayload::None,
+        })
+    }
+
     #[must_use]
     pub fn collect_from_tree(tree: &UiTree) -> Vec<Self> {
         Self::collect_from_root(tree.root())
@@ -203,16 +229,10 @@ fn push_context_menu_item_plans(
     for (index, item) in items.iter().enumerate() {
         let path = child_path(parent_path, index);
         let item_enabled = parent_enabled && !item.disabled;
-        if context_menu_item_dispatches_host_action(item.kind) {
-            plans.push(UiHostActionPlan {
-                target: node.id().clone(),
-                action_id: item.id.clone(),
-                label: item.label.clone(),
-                kind: context_menu_host_action_kind(item.kind),
-                enabled: item_enabled,
-                payload: context_menu_item_payload(&path, item.kind),
-                typed_payload: UiHostActionPayload::None,
-            });
+        if let Some(plan) =
+            UiHostActionPlan::from_context_menu_item(node.id().clone(), item, item_enabled, &path)
+        {
+            plans.push(plan);
         }
         if context_menu_item_allows_child_dispatch(item.kind) {
             push_context_menu_item_plans(node, &item.children, item_enabled, &path, plans);
@@ -272,4 +292,117 @@ fn child_path(parent_path: &[usize], child_index: usize) -> Vec<usize> {
     let mut path = parent_path.to_vec();
     path.push(child_index);
     path
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render_model::{
+        UI_TASK_SET_STATE_ACTION_ID, UiContextMenuProps, UiHostActionPayload, UiNodeKind,
+    };
+
+    #[test]
+    fn context_menu_item_typed_host_action_is_preserved_in_plan() {
+        let menu = UiNode::new(UiNodeKind::ContextMenu, "task-context-menu").context_menu(
+            UiContextMenuProps {
+                items: vec![
+                    UiContextMenuItem::new("legacy-item-id", "完了", UiContextMenuItemKind::Radio)
+                        .host_action(UiHostActionSpec::task_control_state(
+                            "完了", "list", 2, "[x]",
+                        )),
+                ],
+                ..UiContextMenuProps::default()
+            },
+        );
+
+        let plans = UiHostActionPlan::collect_from_root(&menu);
+        assert_eq!(1, plans.len());
+        let plan = &plans[0];
+        assert_eq!(UI_TASK_SET_STATE_ACTION_ID, plan.action_id);
+        assert_eq!("完了", plan.label);
+        assert!(plan.payload.is_empty());
+        assert!(matches!(
+            &plan.typed_payload,
+            UiHostActionPayload::TaskControlState(_)
+        ));
+        let UiHostActionPayload::TaskControlState(payload) = &plan.typed_payload else {
+            return;
+        };
+        assert_eq!("list", payload.node_id);
+        assert_eq!(2, payload.row_index);
+        assert_eq!("ui-task-state:list:2", payload.state_id);
+        assert_eq!("[x]", payload.marker);
+    }
+
+    #[test]
+    fn context_menu_item_without_typed_action_keeps_legacy_id_path_payload() {
+        let menu = UiNode::new(UiNodeKind::ContextMenu, "editor-context-menu").context_menu(
+            UiContextMenuProps {
+                items: vec![UiContextMenuItem::action("copy", "Copy")],
+                ..UiContextMenuProps::default()
+            },
+        );
+
+        let plans = UiHostActionPlan::collect_from_root(&menu);
+        assert_eq!(1, plans.len());
+        let plan = &plans[0];
+        assert_eq!("copy", plan.action_id);
+        assert_eq!("Copy", plan.label);
+        assert_eq!(UiHostActionKind::Command, plan.kind);
+        assert!(plan.enabled);
+        assert_eq!("path=0 kind=action", plan.payload);
+        assert_eq!(UiHostActionPayload::None, plan.typed_payload);
+    }
+
+    #[test]
+    fn disabled_context_menu_item_keeps_plan_disabled() {
+        let menu = UiNode::new(UiNodeKind::ContextMenu, "editor-context-menu").context_menu(
+            UiContextMenuProps {
+                items: vec![
+                    UiContextMenuItem::action("copy", "Copy")
+                        .host_action(UiHostActionSpec::command("copy.explicit", "Copy"))
+                        .disabled(true),
+                ],
+                ..UiContextMenuProps::default()
+            },
+        );
+
+        let plans = UiHostActionPlan::collect_from_root(&menu);
+        assert_eq!(1, plans.len());
+        let plan = &plans[0];
+        assert_eq!("copy.explicit", plan.action_id);
+        assert!(!plan.enabled);
+    }
+
+    #[test]
+    fn disabled_context_menu_parent_keeps_item_plans_disabled() {
+        let menu = UiNode::new(UiNodeKind::ContextMenu, "editor-context-menu")
+            .context_menu(UiContextMenuProps {
+                items: vec![UiContextMenuItem::action("copy", "Copy")],
+                ..UiContextMenuProps::default()
+            })
+            .disabled(true);
+
+        let plans = UiHostActionPlan::collect_from_root(&menu);
+        assert_eq!(1, plans.len());
+        assert!(!plans[0].enabled);
+    }
+
+    #[test]
+    fn task_context_menu_state_action_accessor_returns_target_identity() {
+        let plan = UiHostActionPlan::new(
+            UiNodeId::new("task-context-menu"),
+            UiHostActionSpec::task_control_state("完了", "list", 3, "[x]"),
+        );
+
+        let action = plan.task_control_state_action();
+        assert!(action.is_some());
+        let Some(action) = action else {
+            return;
+        };
+        assert_eq!("list", action.node_id);
+        assert_eq!(3, action.row_index);
+        assert_eq!("ui-task-state:list:3", action.state_id);
+        assert_eq!(crate::render_model::UiTaskMarker::Done, action.marker);
+    }
 }

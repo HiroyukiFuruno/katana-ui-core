@@ -210,6 +210,44 @@ fn tree_canvas_renders_context_menu_node_and_returns_item_hit() {
 }
 
 #[test]
+fn tree_canvas_returns_context_menu_typed_action_hit() {
+    let root = UiNode::new(UiNodeKind::ContextMenu, "task-context-menu").context_menu(
+        UiContextMenuProps {
+            anchor: UiContextMenuAnchor::Pointer { x: 20, y: 24 },
+            min_width: 160,
+            items: vec![
+                UiContextMenuItem::new("legacy-empty", "未実施", UiContextMenuItemKind::Radio)
+                    .host_action(UiHostActionSpec::task_control_state(
+                        "未実施",
+                        "list",
+                        1,
+                        "[ ]",
+                    )),
+                UiContextMenuItem::new("legacy-done", "完了", UiContextMenuItemKind::Radio)
+                    .host_action(UiHostActionSpec::task_control_state(
+                        "完了", "list", 1, "[x]",
+                    )),
+            ],
+            ..UiContextMenuProps::default()
+        },
+    );
+
+    let action = UiTreeCanvasRenderer::context_menu_host_action_at(&root, 48.0, 60.0)
+        .kuc_expect("typed context menu action");
+    assert_eq!(UI_TASK_SET_STATE_ACTION_ID, action.action_id);
+    assert!(matches!(
+        &action.typed_payload,
+        UiHostActionPayload::TaskControlState(_)
+    ));
+    let UiHostActionPayload::TaskControlState(payload) = &action.typed_payload else {
+        return;
+    };
+    assert_eq!("list", payload.node_id);
+    assert_eq!(1, payload.row_index);
+    assert_eq!("[x]", payload.marker);
+}
+
+#[test]
 fn tree_canvas_draws_hover_row_background_from_tree_hovered_id() {
     let theme = ThemeSnapshot::dark();
     let palette = UiTreeCanvasPalette::from_theme(&theme);
