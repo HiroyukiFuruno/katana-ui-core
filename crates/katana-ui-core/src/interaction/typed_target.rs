@@ -1,3 +1,4 @@
+use super::action::UiAction;
 use crate::render_model::UiStateId;
 use serde::{Deserialize, Serialize};
 
@@ -85,3 +86,21 @@ macro_rules! checked_action {
 
 checked_action!(CheckboxAction);
 checked_action!(ToggleAction);
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiHoverTarget {
+    pub target: UiStateId,
+    pub hovered: bool,
+}
+
+impl UiHoverTarget {
+    #[must_use]
+    pub const fn new(target: UiStateId, hovered: bool) -> Self {
+        Self { target, hovered }
+    }
+
+    #[must_use]
+    pub fn action(&self) -> UiAction {
+        UiAction::hover(self.target.clone(), self.hovered)
+    }
+}

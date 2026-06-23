@@ -4,7 +4,7 @@ use crate::render_model::UiCursor;
 #[path = "hit_test_types.rs"]
 mod hit_test_types;
 
-use hit_test_types::action_for_result;
+use hit_test_types::{action_for_result, hover_action_for_result};
 pub use hit_test_types::{
     SettingsListHitRect, SettingsListHitTarget, SettingsListHitTestInput,
     SettingsListHitTestResult, SettingsListInteraction,
@@ -202,6 +202,7 @@ impl SettingsHitRow {
                     result: self.result.clone(),
                     cursor: UiCursor::Pointer,
                     hover_node_id: Some(SettingsList::field_node_id(field_id)),
+                    hover_action: hover_action_for_result(&self.result),
                     action: Some(action),
                 })
             }
@@ -216,6 +217,7 @@ impl SettingsHitRow {
                     result: self.result.clone(),
                     cursor: UiCursor::Pointer,
                     hover_node_id: Some(SettingsList::section_node_id(section_id)),
+                    hover_action: hover_action_for_result(&self.result),
                     action: action_for_result(&self.result),
                 })
             }

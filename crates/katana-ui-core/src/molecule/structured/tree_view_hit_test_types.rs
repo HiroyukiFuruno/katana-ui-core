@@ -10,6 +10,7 @@ pub enum TreeViewAction {
     SelectNode { node_id: String },
     ToggleNode { node_id: String },
     FocusNode { node_id: String },
+    HoverNode { node_id: String, hovered: bool },
     None,
 }
 
@@ -26,4 +27,5 @@ pub struct TreeViewHitTarget {
     pub node_id: String,
     pub rect: TreeViewHitRect,
     pub action: TreeViewAction,
+    pub hover_action: TreeViewAction,
 }

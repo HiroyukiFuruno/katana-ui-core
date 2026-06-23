@@ -17,6 +17,16 @@ pub(super) fn apply(list: &mut SettingsList, action: SettingsListAction) -> Vec<
             return keyboard_field(list, field_id, input);
         }
         SettingsListAction::FocusField { field_id } => focus_field(list, field_id),
+        SettingsListAction::HoverField { field_id, hovered } => {
+            SettingsListEvent::FieldHovered { field_id, hovered }
+        }
+        SettingsListAction::HoverSection {
+            section_id,
+            hovered,
+        } => SettingsListEvent::SectionHovered {
+            section_id,
+            hovered,
+        },
         SettingsListAction::UpdateField { field_id, value } => update_field(list, field_id, value),
         SettingsListAction::ResetField { field_id } => reset_field(list, field_id),
         SettingsListAction::RouteChildEvent { field_id, event } => {

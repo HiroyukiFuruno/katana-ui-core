@@ -29,6 +29,7 @@ pub struct SettingsListHitTarget {
     pub result: SettingsListHitTestResult,
     pub cursor: UiCursor,
     pub hover_node_id: Option<UiNodeId>,
+    pub hover_action: Option<SettingsListAction>,
     pub action: Option<SettingsListAction>,
 }
 
@@ -38,6 +39,7 @@ pub struct SettingsListInteraction {
     pub target: Option<SettingsListHitTarget>,
     pub cursor: UiCursor,
     pub hover_node_id: Option<UiNodeId>,
+    pub hover_action: Option<SettingsListAction>,
     pub action: Option<SettingsListAction>,
 }
 
@@ -57,6 +59,7 @@ impl SettingsListInteraction {
             target: None,
             cursor: UiCursor::Default,
             hover_node_id: None,
+            hover_action: None,
             action: None,
         }
     }
@@ -74,9 +77,28 @@ impl SettingsListInteraction {
             hover_node_id: target
                 .as_ref()
                 .and_then(|target| target.hover_node_id.clone()),
+            hover_action: target.as_ref().and_then(|target| target.hover_action.clone()),
             action: target.as_ref().and_then(|target| target.action.clone()),
             target,
         }
+    }
+}
+
+pub(super) fn hover_action_for_result(
+    result: &SettingsListHitTestResult,
+) -> Option<SettingsListAction> {
+    match result {
+        SettingsListHitTestResult::Field { field_id } => Some(SettingsListAction::HoverField {
+            field_id: field_id.clone(),
+            hovered: true,
+        }),
+        SettingsListHitTestResult::ToggleSection { section_id } => {
+            Some(SettingsListAction::HoverSection {
+                section_id: section_id.clone(),
+                hovered: true,
+            })
+        }
+        SettingsListHitTestResult::None => None,
     }
 }
 

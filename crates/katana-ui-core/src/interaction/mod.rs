@@ -25,7 +25,7 @@ pub use typed::UiActionSource;
 pub use typed_payload::{ColorDragAction, ProgressAction, RgbaActionValue};
 pub use typed_target::{
     ButtonAction, CheckboxAction, ClickAction, InputAction, RadioAction, SlideAction,
-    SplitPaneAction, ToggleAction,
+    SplitPaneAction, ToggleAction, UiHoverTarget,
 };
 pub use virtualization::{
     RowHeightOverride, RowHeightProvider, ScrollOffsetCorrection, VirtualRange, VirtualRow,

@@ -2,6 +2,8 @@ use super::{
     Button, Checkbox, ColorSwatch, IconTextButton, Radio, SlideControl, SvgButton, Text,
     TextButton, Toggle,
 };
+use crate::component::ComponentAction;
+use crate::interaction::UiAction;
 use crate::render_model::{UiHostActionPlan, UiHostActionSpec, UiNode, UiNodeKind, UiTree};
 
 #[test]
@@ -67,6 +69,20 @@ fn interactive_atoms_accept_explicit_host_action() {
 
         assert!(plan.is_some());
     }
+}
+
+#[test]
+fn toggle_exposes_default_hover_target_for_host_consumers() {
+    let mut toggle = Toggle::new("Markdown Linter").stable_state_id("toggle.markdown");
+    let hover = toggle.hover_target(true);
+
+    assert_eq!(toggle.state_id(), &hover.target);
+    assert_eq!(UiAction::hover(toggle.state_id().clone(), true), hover.action());
+
+    let result = toggle.apply_action(&hover.action());
+
+    assert!(result.handled);
+    assert!(result.after.hovered);
 }
 
 fn interactive_atom_nodes_without_action() -> Vec<UiNode> {

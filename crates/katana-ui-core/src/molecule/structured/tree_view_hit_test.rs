@@ -72,6 +72,10 @@ impl TreeView {
             node_id: node.id.clone(),
             rect: self.row_rect(row_index, input.scroll_offset_y, viewport_width),
             action,
+            hover_action: TreeViewAction::HoverNode {
+                node_id: node.id.clone(),
+                hovered: true,
+            },
         })
     }
 
@@ -229,6 +233,13 @@ mod tests {
                 node_id: "src/lib.rs".to_string()
             },
             target.action
+        );
+        assert_eq!(
+            TreeViewAction::HoverNode {
+                node_id: "src/lib.rs".to_string(),
+                hovered: true,
+            },
+            target.hover_action
         );
         assert_eq!(0, target.rect.x);
         assert_eq!(44, target.rect.y);

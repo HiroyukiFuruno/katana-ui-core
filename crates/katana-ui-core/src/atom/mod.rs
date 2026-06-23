@@ -15,7 +15,7 @@ mod tests;
 pub mod text_area;
 mod typed;
 
-use crate::interaction::{UiAction, UiActionResult};
+use crate::interaction::{UiAction, UiActionResult, UiHoverTarget};
 use crate::render_model::{
     UiCommonProps, UiCursor, UiDimension, UiDisplay, UiHostActionSpec, UiNode, UiNodeKind,
     UiPointerEvents, UiPosition, UiProgressMode, UiSize, UiStateId, UiTone, UiVariant,
@@ -347,3 +347,10 @@ atom_model!(SlideControl, UiNodeKind::SlideControl);
 atom_model!(SvgButton, UiNodeKind::SvgButton);
 atom_model!(TextButton, UiNodeKind::TextButton);
 atom_model!(IconTextButton, UiNodeKind::IconTextButton);
+
+impl Toggle {
+    #[must_use]
+    pub fn hover_target(&self, hovered: bool) -> UiHoverTarget {
+        UiHoverTarget::new(self.state_id().clone(), hovered)
+    }
+}

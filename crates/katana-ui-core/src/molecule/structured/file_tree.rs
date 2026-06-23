@@ -192,6 +192,7 @@ fn file_tree_action_from_tree_action(action: TreeViewAction) -> FileTreeAction {
             directory_id: node_id,
         },
         TreeViewAction::FocusNode { node_id } => FileTreeAction::FocusItem { item_id: node_id },
+        TreeViewAction::HoverNode { .. } => FileTreeAction::None,
         TreeViewAction::None => FileTreeAction::None,
     }
 }
