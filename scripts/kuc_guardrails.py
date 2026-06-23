@@ -198,7 +198,6 @@ class KucGuardrails:
             / "openspec/changes/establish-kuc-atoms-molecules-catalog/quality-gates-contract.md",
             self.root
             / "openspec/changes/establish-kuc-atoms-molecules-catalog/specs/kuc-quality-gates/spec.md",
-            self.root / "tmp/reports/2026-05-17-overnight-residual-scope.md",
         )
         missing_files = [path for path in required_files if not path.exists()]
         if missing_files:
@@ -1530,7 +1529,6 @@ class KucGuardrails:
         paths = (
             self.root / "docs/architecture/ui-separation/ui-core-parity-gap.md",
             self.root / "docs/architecture/ui-separation/owned-ui-task-map.md",
-            self.root / "tmp/reports/2026-05-17-overnight-residual-scope.md",
         )
         return "\n".join(self.read(path) for path in paths if path.exists())
 

@@ -120,11 +120,10 @@ fn os_monospace_font_family() -> Family<'static> {
     Family::Monospace
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn proportional_text_uses_export_surface_default_family() {
         assert_eq!(
@@ -133,7 +132,6 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn document_body_text_uses_katana_preview_family() {
         let font = FontToken {
@@ -149,7 +147,6 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn document_body_text_uses_katana_preview_light_weight() {
         let font = FontToken {
@@ -165,7 +162,6 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn document_body_bold_text_keeps_bold_weight() {
         let font = FontToken {
@@ -178,7 +174,6 @@ mod tests {
         assert_eq!(700, weight_for_font(&font, false));
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn monospace_ascii_uses_export_surface_monospace_family() {
         assert_eq!(
@@ -187,7 +182,6 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn document_code_text_uses_katana_preview_monospace_family() {
         let font = FontToken {
@@ -203,7 +197,6 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn emoji_text_uses_os_emoji_family() {
         assert_eq!(

@@ -124,7 +124,6 @@ STORYBOOK_FILES = (
 DOC_FILES = (
     Path("docs/architecture/ui-separation/ui-core-parity-gap.md"),
     Path("docs/architecture/ui-separation/owned-ui-task-map.md"),
-    Path("tmp/reports/2026-05-17-overnight-residual-scope.md"),
 )
 
 

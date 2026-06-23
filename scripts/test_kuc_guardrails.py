@@ -23,7 +23,6 @@ def write_repo_policy(root: Path, spec_extra: str = "") -> None:
     paths = (
         "docs/architecture/ui-separation/owned-ui-task-map.md",
         "openspec/changes/establish-kuc-atoms-molecules-catalog/quality-gates-contract.md",
-        "tmp/reports/2026-05-17-overnight-residual-scope.md",
     )
     for path in paths:
         write_text(root / path, baseline)
@@ -1654,7 +1653,7 @@ class KucGuardrailsTest(unittest.TestCase):
 
             failures = KucGuardrails(root).repo_local_guardrail_policy_failures()
 
-            self.assertEqual(4, len(failures))
+            self.assertEqual(3, len(failures))
 
     def test_accepts_repo_local_guardrail_policy(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

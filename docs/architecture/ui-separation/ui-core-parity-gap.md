@@ -15,6 +15,8 @@
 | interaction report | story selection、theme switch、operation sequence、callback log |
 | visual fallback | generic fallback を完了根拠にしない方針 |
 
+現在の tracked 証跡名は `storybook-panel-interaction-report.json` とし、`story_selection`、`theme_switch`、`operation_sequence`、callback log、target state id、before / after summary を最低 marker にする。release readiness では `required_ui_fallbacks=0` を marker にする。generic `node` fallback は完了根拠にしない。
+
 上記は履歴としてだけ扱う。新基準では部品ごとの option / action / event / state / preset / preview / settings / 自動テスト / 数値化された layout / rendering contract / Storybook ページを満たす必要がある。
 
 ## 新基準で未完了扱いに戻す理由

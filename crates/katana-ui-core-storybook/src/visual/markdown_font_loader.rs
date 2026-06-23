@@ -37,11 +37,10 @@ pub(super) fn font_system_with_markdown_fonts() -> FontSystem {
     font_system
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn loads_markdown_primary_font_family() {
         let font_system = font_system_with_markdown_fonts();
@@ -56,7 +55,6 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn loads_katana_markdown_monospace_family() {
         let font_system = font_system_with_markdown_fonts();
@@ -71,7 +69,6 @@ mod tests {
         );
     }
 
-    #[cfg(target_os = "macos")]
     #[test]
     fn loads_katana_markdown_emoji_family() {
         let font_system = font_system_with_markdown_fonts();
