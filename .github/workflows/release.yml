@@ -57,6 +57,9 @@ jobs:
       - name: Install just
         uses: taiki-e/install-action@just
 
+      - name: Install ast-lint
+        run: just ast-lint-install
+
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
 
