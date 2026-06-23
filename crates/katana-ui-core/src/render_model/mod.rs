@@ -50,10 +50,11 @@ pub use host_action_tree::UiTreeRowActionTarget;
 pub use host_action_types::{
     UI_CODE_COPY_ACTION_ID, UI_DISCLOSURE_TOGGLE_ACTION_ID, UI_IMAGE_HIGHLIGHT_ACTION_ID,
     UI_LINK_OPEN_ACTION_ID, UI_SETTINGS_FIELD_ACTIVATE_ACTION_ID,
-    UI_SETTINGS_SECTION_TOGGLE_ACTION_ID, UI_TASK_STATE_ID_PREFIX, UI_TASK_TOGGLE_ACTION_ID,
-    UI_TREE_ROW_ACTION_ID, UiHostActionKind, UiHostActionPayload, UiHostActionPlan,
-    UiHostActionSpec, UiSettingsFieldControlActionPayload, UiSettingsSectionToggleActionPayload,
-    UiSurfaceControlActionPayload, UiTaskControlActionPayload, UiTreeRowActionKind,
+    UI_SETTINGS_SECTION_TOGGLE_ACTION_ID, UI_TASK_SET_STATE_ACTION_ID, UI_TASK_STATE_ID_PREFIX,
+    UI_TASK_TOGGLE_ACTION_ID, UI_TREE_ROW_ACTION_ID, UiHostActionKind, UiHostActionPayload,
+    UiHostActionPlan, UiHostActionSpec, UiSettingsFieldControlActionPayload,
+    UiSettingsSectionToggleActionPayload, UiSurfaceControlActionPayload,
+    UiTaskControlActionPayload, UiTaskControlStateActionPayload, UiTreeRowActionKind,
     UiTreeRowActionPayload,
 };
 pub use identity::{UiNodeId, UiStateId};

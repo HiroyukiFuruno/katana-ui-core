@@ -6,6 +6,7 @@ pub const UI_DISCLOSURE_TOGGLE_ACTION_ID: &str = "ui.disclosure.toggle";
 pub const UI_IMAGE_HIGHLIGHT_ACTION_ID: &str = "ui.image.highlight";
 pub const UI_CODE_COPY_ACTION_ID: &str = "ui.code.copy";
 pub const UI_TASK_TOGGLE_ACTION_ID: &str = "ui.task.toggle";
+pub const UI_TASK_SET_STATE_ACTION_ID: &str = "ui.task.set_state";
 pub const UI_TASK_STATE_ID_PREFIX: &str = "ui-task-state:";
 pub const UI_SETTINGS_FIELD_ACTIVATE_ACTION_ID: &str = "ui.settings.field.activate";
 pub const UI_SETTINGS_SECTION_TOGGLE_ACTION_ID: &str = "ui.settings.section.toggle";
@@ -88,6 +89,20 @@ impl UiHostActionSpec {
     }
 
     #[must_use]
+    pub fn task_control_state(
+        label: impl Into<String>,
+        node_id: impl Into<String>,
+        row_index: usize,
+        marker: impl Into<String>,
+    ) -> Self {
+        Self::command(UI_TASK_SET_STATE_ACTION_ID, label).typed_payload(
+            UiHostActionPayload::TaskControlState(UiTaskControlStateActionPayload::new(
+                node_id, row_index, marker,
+            )),
+        )
+    }
+
+    #[must_use]
     pub fn settings_field_control(label: impl Into<String>, field_id: impl Into<String>) -> Self {
         Self::new(
             UiHostActionKind::Custom,
@@ -132,6 +147,7 @@ pub enum UiHostActionPayload {
     None,
     SurfaceControl(UiSurfaceControlActionPayload),
     TaskControl(UiTaskControlActionPayload),
+    TaskControlState(UiTaskControlStateActionPayload),
     SettingsFieldControl(UiSettingsFieldControlActionPayload),
     SettingsSectionToggle(UiSettingsSectionToggleActionPayload),
     TreeRow(UiTreeRowActionPayload),
@@ -182,6 +198,14 @@ pub struct UiTaskControlActionPayload {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiTaskControlStateActionPayload {
+    pub node_id: String,
+    pub row_index: usize,
+    pub state_id: String,
+    pub marker: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiSettingsFieldControlActionPayload {
     pub field_id: String,
 }
@@ -217,6 +241,19 @@ impl UiTaskControlActionPayload {
             state_id: format!("{UI_TASK_STATE_ID_PREFIX}{node_id}:{row_index}"),
             node_id,
             row_index,
+        }
+    }
+}
+
+impl UiTaskControlStateActionPayload {
+    #[must_use]
+    pub fn new(node_id: impl Into<String>, row_index: usize, marker: impl Into<String>) -> Self {
+        let node_id = node_id.into();
+        Self {
+            state_id: format!("{UI_TASK_STATE_ID_PREFIX}{node_id}:{row_index}"),
+            node_id,
+            row_index,
+            marker: marker.into(),
         }
     }
 }

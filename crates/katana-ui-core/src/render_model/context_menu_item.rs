@@ -1,3 +1,4 @@
+use super::host_action_types::UiHostActionSpec;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -30,6 +31,8 @@ pub struct UiContextMenuItem {
     pub accessibility_label: String,
     pub divider_tone: UiContextMenuDividerTone,
     pub children: Vec<UiContextMenuItem>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub host_action: Option<UiHostActionSpec>,
 }
 
 impl UiContextMenuItem {
@@ -57,6 +60,7 @@ impl UiContextMenuItem {
             accessibility_label: String::new(),
             divider_tone: UiContextMenuDividerTone::Neutral,
             children: Vec::new(),
+            host_action: None,
         }
     }
 
@@ -111,6 +115,12 @@ impl UiContextMenuItem {
     #[must_use]
     pub fn child(mut self, value: UiContextMenuItem) -> Self {
         self.children.push(value);
+        self
+    }
+
+    #[must_use]
+    pub fn host_action(mut self, value: UiHostActionSpec) -> Self {
+        self.host_action = Some(value);
         self
     }
 }

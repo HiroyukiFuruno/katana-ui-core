@@ -2,7 +2,8 @@ use super::canvas::Canvas;
 use super::text::TextRenderer;
 use super::ui_tree_canvas_palette::UiTreeCanvasPalette;
 use katana_ui_core::render_model::{
-    UiContextMenuAnchor, UiContextMenuItem, UiContextMenuItemKind, UiNode, UiNodeKind,
+    UiContextMenuAnchor, UiContextMenuItem, UiContextMenuItemKind, UiHostActionPlan, UiNode,
+    UiNodeKind,
 };
 
 const ITEM_HEIGHT: usize = 24;
@@ -49,6 +50,35 @@ impl UiTreeContextMenuRenderer {
     }
 
     pub(super) fn item_id_at(node: &UiNode, x: f32, y: f32) -> Option<String> {
+        let (_, _, item) = Self::item_at(node, x, y)?;
+        Some(item.id.clone())
+    }
+
+    pub(super) fn host_action_at(node: &UiNode, x: f32, y: f32) -> Option<UiHostActionPlan> {
+        let (context_node, index, item) = Self::item_at(node, x, y)?;
+        UiHostActionPlan::from_context_menu_item(
+            context_node.id().clone(),
+            item,
+            node_enabled(context_node),
+            &[index],
+        )
+    }
+
+    pub(super) fn item_center_for_id(node: &UiNode, item_id: &str) -> Option<(f32, f32)> {
+        let context_node = find_context_menu(node)?;
+        let rect = ContextMenuRect::from_node(context_node);
+        let index = context_node
+            .props()
+            .context_menu
+            .items
+            .iter()
+            .position(|item| item.id == item_id)?;
+        let x = rect.x + rect.width / 2;
+        let y = rect.y + index * ITEM_HEIGHT + ITEM_HEIGHT / 2;
+        Some((x as f32, y as f32))
+    }
+
+    fn item_at(node: &UiNode, x: f32, y: f32) -> Option<(&UiNode, usize, &UiContextMenuItem)> {
         let context_node = find_context_menu(node)?;
         let rect = ContextMenuRect::from_node(context_node);
         if !rect.contains(x, y) {
@@ -64,21 +94,7 @@ impl UiTreeContextMenuRenderer {
         {
             return None;
         }
-        Some(item.id.clone())
-    }
-
-    pub(super) fn item_center_for_id(node: &UiNode, item_id: &str) -> Option<(f32, f32)> {
-        let context_node = find_context_menu(node)?;
-        let rect = ContextMenuRect::from_node(context_node);
-        let index = context_node
-            .props()
-            .context_menu
-            .items
-            .iter()
-            .position(|item| item.id == item_id)?;
-        let x = rect.x + rect.width / 2;
-        let y = rect.y + index * ITEM_HEIGHT + ITEM_HEIGHT / 2;
-        Some((x as f32, y as f32))
+        Some((context_node, index, item))
     }
 
     fn draw_item(
@@ -187,6 +203,10 @@ fn find_context_menu(node: &UiNode) -> Option<&UiNode> {
         return Some(node);
     }
     node.children().iter().find_map(find_context_menu)
+}
+
+fn node_enabled(node: &UiNode) -> bool {
+    !node.props().disabled && !node.props().common.disabled
 }
 
 fn highlighted(node: &UiNode, index: usize) -> bool {

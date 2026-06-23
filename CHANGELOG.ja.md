@@ -9,4 +9,15 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-24
+
+### 追加
+
+- `UiContextMenuItem` に typed host action と task state payload を追加し、host が item id 文字列を解析せず context menu 選択を扱えるようにした。
+- Storybook host query から、描画済み context menu item hit を `UiHostActionPlan` として解決できるようにした。
+
+### 修正
+
+- Storybook crate を内部用のままに戻し、release publish 対象を公開 crate の `katana-ui-core` のみに戻した。
+
 <!-- next-url -->
