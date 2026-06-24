@@ -113,6 +113,72 @@ impl UiTreeNodeHit {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct UiTreeInteractionTarget {
+    pub node_id: UiNodeId,
+    pub semantic_node_id: Option<UiNodeId>,
+    pub action: Option<UiHostActionPlan>,
+    pub rect: UiTreeHitRect,
+    pub cursor: UiCursor,
+}
+
+impl UiTreeInteractionTarget {
+    #[must_use]
+    pub fn from_hits_at(
+        hits: &[UiTreeHostActionHit],
+        node_hits: &[UiTreeNodeHit],
+        x: f32,
+        y: f32,
+    ) -> Option<Self> {
+        UiTreeHostActionHitQuery::new(hits)
+            .cloned_hits_at(x, y)
+            .next()
+            .map(Self::from_action_hit)
+            .or_else(|| {
+                node_hits
+                    .iter()
+                    .filter(|hit| hit.contains_point(x, y))
+                    .min_by_key(|hit| hit.rect.area())
+                    .cloned()
+                    .map(Self::from_node_hit)
+            })
+    }
+
+    #[must_use]
+    pub fn from_action_hit(hit: UiTreeHostActionHit) -> Self {
+        Self {
+            node_id: hit.action.target.clone(),
+            semantic_node_id: None,
+            action: Some(hit.action),
+            rect: hit.rect,
+            cursor: hit.cursor,
+        }
+    }
+
+    #[must_use]
+    pub fn from_node_hit(hit: UiTreeNodeHit) -> Self {
+        Self {
+            node_id: hit.node_id,
+            semantic_node_id: hit.semantic_node_id,
+            action: None,
+            rect: hit.rect,
+            cursor: hit.cursor,
+        }
+    }
+
+    #[must_use]
+    pub fn hover_node_id(&self) -> UiNodeId {
+        self.semantic_node_id
+            .clone()
+            .unwrap_or_else(|| self.node_id.clone())
+    }
+
+    #[must_use]
+    pub fn contains_point(&self, x: f32, y: f32) -> bool {
+        self.rect.contains_point(x, y)
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct UiTreeHostActionHitQuery<'a> {
     hits: &'a [UiTreeHostActionHit],

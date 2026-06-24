@@ -1,6 +1,7 @@
 use super::ui_tree_canvas::UiTreeCanvasRenderer;
 use super::ui_tree_canvas_types::{
-    UiTreeHostActionHit, UiTreeHostActionHitQuery, UiTreeRenderArea,
+    UiTreeHostActionHit, UiTreeHostActionHitQuery, UiTreeInteractionTarget, UiTreeNodeHit,
+    UiTreeRenderArea,
 };
 use katana_ui_core::render_model::{UiCursor, UiNode, UiNodeId};
 use katana_ui_core::theme::ThemeSnapshot;
@@ -8,23 +9,38 @@ use katana_ui_core::theme::ThemeSnapshot;
 #[derive(Debug, Clone)]
 pub struct UiTreeInteractionSurface {
     hits: Vec<UiTreeHostActionHit>,
+    node_hits: Vec<UiTreeNodeHit>,
 }
 
 impl UiTreeInteractionSurface {
     #[must_use]
     pub fn from_rendered_tree(root: &UiNode, area: UiTreeRenderArea, theme: ThemeSnapshot) -> Self {
         let renderer = UiTreeCanvasRenderer::new(theme);
-        Self::from_hits(renderer.host_action_hit_rects(root, area))
+        let (hits, node_hits) = renderer.viewport_interaction_hit_rects(root, area);
+        Self::from_interaction_hits(hits, node_hits)
     }
 
     #[must_use]
     pub fn from_hits(hits: Vec<UiTreeHostActionHit>) -> Self {
-        Self { hits }
+        Self::from_interaction_hits(hits, Vec::new())
+    }
+
+    #[must_use]
+    pub fn from_interaction_hits(
+        hits: Vec<UiTreeHostActionHit>,
+        node_hits: Vec<UiTreeNodeHit>,
+    ) -> Self {
+        Self { hits, node_hits }
     }
 
     #[must_use]
     pub fn hits(&self) -> &[UiTreeHostActionHit] {
         &self.hits
+    }
+
+    #[must_use]
+    pub fn node_hits(&self) -> &[UiTreeNodeHit] {
+        &self.node_hits
     }
 
     pub fn hits_at(&self, x: f32, y: f32) -> impl Iterator<Item = &UiTreeHostActionHit> {
@@ -36,9 +52,14 @@ impl UiTreeInteractionSurface {
     }
 
     #[must_use]
+    pub fn target_at(&self, x: f32, y: f32) -> Option<UiTreeInteractionTarget> {
+        UiTreeInteractionTarget::from_hits_at(&self.hits, &self.node_hits, x, y)
+    }
+
+    #[must_use]
     pub fn cursor_at(&self, x: f32, y: f32) -> UiCursor {
-        self.hits_at(x, y)
-            .find_map(|hit| (hit.cursor != UiCursor::Default).then_some(hit.cursor))
+        self.target_at(x, y)
+            .and_then(|target| (target.cursor != UiCursor::Default).then_some(target.cursor))
             .unwrap_or(UiCursor::Default)
     }
 
@@ -48,12 +69,18 @@ impl UiTreeInteractionSurface {
             .next()
             .map(|hit| hit.action.target.clone())
     }
+
+    #[must_use]
+    pub fn hovered_node_id_at(&self, x: f32, y: f32) -> Option<UiNodeId> {
+        self.target_at(x, y).map(|target| target.hover_node_id())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::UiTreeInteractionSurface;
-    use crate::visual::UiTreeHitRect;
+    use crate::test_assert::KucTestExpect;
+    use crate::visual::{UiTreeHitRect, UiTreeNodeHit};
     use katana_ui_core::render_model::{UiCursor, UiHostActionPlan, UiHostActionSpec, UiNodeId};
 
     #[test]
@@ -71,6 +98,58 @@ mod tests {
         assert_eq!(
             Some(UiNodeId::new("target")),
             surface.hovered_action_node_id_at(20.0, 30.0)
+        );
+    }
+
+    #[test]
+    fn interaction_surface_returns_node_target_when_no_action_hit_exists() {
+        let surface = UiTreeInteractionSurface::from_interaction_hits(
+            Vec::new(),
+            vec![node_hit(
+                "generated-text",
+                Some("viewer-block"),
+                10,
+                20,
+                30,
+                40,
+            )],
+        );
+        let target = surface
+            .target_at(20.0, 30.0)
+            .kuc_expect("node interaction target");
+
+        assert!(target.action.is_none());
+        assert_eq!(UiNodeId::new("generated-text"), target.node_id);
+        assert_eq!(UiNodeId::new("viewer-block"), target.hover_node_id());
+        assert_eq!(
+            Some(UiNodeId::new("viewer-block")),
+            surface.hovered_node_id_at(20.0, 30.0)
+        );
+    }
+
+    #[test]
+    fn interaction_surface_prefers_action_target_over_overlapping_node_hit() {
+        let surface = UiTreeInteractionSurface::from_interaction_hits(
+            vec![hit("action-target", 10, 20, 30, 40)],
+            vec![node_hit(
+                "generated-text",
+                Some("viewer-block"),
+                10,
+                20,
+                30,
+                40,
+            )],
+        );
+        let target = surface
+            .target_at(20.0, 30.0)
+            .kuc_expect("action interaction target");
+
+        assert!(target.action.is_some());
+        assert_eq!(UiNodeId::new("action-target"), target.node_id);
+        assert_eq!(UiCursor::Pointer, target.cursor);
+        assert_eq!(
+            Some(UiNodeId::new("action-target")),
+            surface.hovered_node_id_at(20.0, 30.0)
         );
     }
 
@@ -93,6 +172,27 @@ mod tests {
                 height,
             },
             cursor: UiCursor::Pointer,
+        }
+    }
+
+    fn node_hit(
+        node_id: &str,
+        semantic_node_id: Option<&str>,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+    ) -> UiTreeNodeHit {
+        UiTreeNodeHit {
+            node_id: UiNodeId::new(node_id),
+            semantic_node_id: semantic_node_id.map(UiNodeId::new),
+            rect: UiTreeHitRect {
+                x,
+                y,
+                width,
+                height,
+            },
+            cursor: UiCursor::Default,
         }
     }
 }

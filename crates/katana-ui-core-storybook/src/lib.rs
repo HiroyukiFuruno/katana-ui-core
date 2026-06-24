@@ -20,8 +20,8 @@ pub use visual::{
     Canvas, CanvasBlitRequest, RgbaBlitRequest, SelectableTextRun, StorybookPresentation,
     StorybookRuntimeReport, StorybookVisual, StorybookVisualError, StorybookWindowRun,
     TextRenderer, UiTreeCanvasRenderer, UiTreeHitRect, UiTreeHostActionHit,
-    UiTreeHostActionHitQuery, UiTreeInteractionSurface, UiTreeNodeHit, UiTreeRenderArea,
-    UiTreeStorybookHost, UiTreeSurfaceHost,
+    UiTreeHostActionHitQuery, UiTreeInteractionSurface, UiTreeInteractionTarget, UiTreeNodeHit,
+    UiTreeRenderArea, UiTreeStorybookHost, UiTreeSurfaceHost,
 };
 
 /// 起動直後に Storybook の操作性が見える代表ページを開く。

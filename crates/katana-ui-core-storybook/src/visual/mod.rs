@@ -399,6 +399,8 @@ mod ui_tree_canvas_tree_parts;
 mod ui_tree_canvas_types;
 mod ui_tree_interaction_surface;
 mod ui_tree_storybook_host;
+#[cfg(test)]
+mod ui_tree_storybook_host_tests;
 mod ui_tree_surface_host;
 #[cfg(test)]
 mod ui_tree_surface_host_tests;
@@ -802,7 +804,7 @@ pub use types::StorybookVisual;
 pub use ui_tree_canvas::UiTreeCanvasRenderer;
 pub use ui_tree_canvas_types::{
     CanvasBlitRequest, RgbaBlitRequest, UiTreeHitRect, UiTreeHostActionHit,
-    UiTreeHostActionHitQuery, UiTreeNodeHit, UiTreeRenderArea,
+    UiTreeHostActionHitQuery, UiTreeInteractionTarget, UiTreeNodeHit, UiTreeRenderArea,
 };
 pub use ui_tree_interaction_surface::UiTreeInteractionSurface;
 pub use ui_tree_storybook_host::UiTreeStorybookHost;

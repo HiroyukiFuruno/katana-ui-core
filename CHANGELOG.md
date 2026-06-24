@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-06-24
+
+### Added
+
+- Added a unified `UiTreeInteractionTarget` contract for host action, hover node, cursor, and node hit resolution.
+- Extended the Storybook interaction surface so hosts can consume rendered KUC targets without reconstructing row or control geometry.
+
 ## [0.1.1] - 2026-06-24
 
 ### Added

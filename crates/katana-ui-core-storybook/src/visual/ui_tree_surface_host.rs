@@ -1,5 +1,7 @@
 use super::canvas::Canvas;
-use super::ui_tree_canvas_types::{UiTreeHostActionHit, UiTreeNodeHit, UiTreeRenderArea};
+use super::ui_tree_canvas_types::{
+    UiTreeHostActionHit, UiTreeInteractionTarget, UiTreeNodeHit, UiTreeRenderArea,
+};
 use super::ui_tree_storybook_host::UiTreeStorybookHost;
 use katana_ui_core::render_model::{UiCursor, UiNode, UiNodeId};
 use katana_ui_core::theme::ThemeSnapshot;
@@ -45,6 +47,27 @@ impl UiTreeSurfaceHost {
         area: UiTreeRenderArea,
     ) -> (Vec<UiTreeHostActionHit>, Vec<UiTreeNodeHit>) {
         self.host.viewport_interaction_hits(root, area)
+    }
+
+    #[must_use]
+    pub fn interaction_target_at(
+        &self,
+        root: &UiNode,
+        area: UiTreeRenderArea,
+        x: f32,
+        y: f32,
+    ) -> Option<UiTreeInteractionTarget> {
+        self.host.interaction_target_at(root, area, x, y)
+    }
+
+    #[must_use]
+    pub fn interaction_target_for_hits_at(
+        hits: &[UiTreeHostActionHit],
+        node_hits: &[UiTreeNodeHit],
+        x: f32,
+        y: f32,
+    ) -> Option<UiTreeInteractionTarget> {
+        UiTreeStorybookHost::interaction_target_for_hits_at(hits, node_hits, x, y)
     }
 
     #[must_use]
