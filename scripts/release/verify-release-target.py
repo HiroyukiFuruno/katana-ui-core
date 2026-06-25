@@ -41,6 +41,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--target-version", required=True, help="Release version such as v0.1.1")
     parser.add_argument("--latest-version", help="Override latest stable version for tests")
     parser.add_argument(
+        "--release-notes-root",
+        default=str(Path(__file__).resolve().parents[2]),
+        help="Repository root used to find documented corrective release notes",
+    )
+    parser.add_argument(
         "--repo",
         default="HiroyukiFuruno/katana-ui-core",
         help="GitHub repository used to resolve published stable releases",
@@ -210,13 +215,31 @@ def fail(message: str) -> int:
     print(f"Release target sanity check failed: {message}", file=sys.stderr)
     print(
         "If this is an intentional corrective release, stop and get explicit user confirmation. "
-        "Then rerun with KUC_RELEASE_ALLOW_VERSION_LINE_OVERRIDE=1 and document the reason.",
+        "Then rerun with KUC_RELEASE_ALLOW_VERSION_LINE_OVERRIDE=1 or add docs/release/vX.Y.Z.md "
+        "that documents the corrective release reason.",
         file=sys.stderr,
     )
     return 1
 
 
-def verify(target: StableVersion, latest: StableVersion | None) -> int:
+def corrective_release_note_path(root: Path, target: StableVersion) -> Path:
+    return root / "docs" / "release" / f"{target.tag()}.md"
+
+
+def has_documented_corrective_release(root: Path, target: StableVersion) -> bool:
+    path = corrective_release_note_path(root, target)
+    if not path.is_file():
+        return False
+    text = path.read_text(encoding="utf-8")
+    required_tokens = (
+        target.tag(),
+        "corrective release",
+        "KUC_RELEASE_ALLOW_VERSION_LINE_OVERRIDE=1",
+    )
+    return all(token in text for token in required_tokens)
+
+
+def verify(target: StableVersion, latest: StableVersion | None, root: Path) -> int:
     if os.environ.get("KUC_RELEASE_ALLOW_VERSION_LINE_OVERRIDE") == "1":
         print("Release target sanity check override is enabled.")
         return 0
@@ -225,6 +248,12 @@ def verify(target: StableVersion, latest: StableVersion | None) -> int:
         return 0
     if target <= latest:
         return fail(f"{target.tag()} is not newer than latest stable release {latest.tag()}.")
+    if has_documented_corrective_release(root, target):
+        print(
+            "Release target sanity check documented corrective release "
+            f"is enabled: {corrective_release_note_path(root, target)}."
+        )
+        return 0
     if target.major == latest.major and target.minor == latest.minor:
         expected = StableVersion(latest.major, latest.minor, latest.patch + 1)
         if target == expected:
@@ -260,7 +289,7 @@ def main() -> int:
     try:
         target = StableVersion.parse(args.target_version)
         latest = latest_stable_version(target, args)
-        return verify(target, latest)
+        return verify(target, latest, Path(args.release_notes_root))
     except (RuntimeError, ValueError) as release_error:
         print(f"Release target sanity check failed: {release_error}", file=sys.stderr)
         return 1

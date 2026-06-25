@@ -60,6 +60,17 @@ impl UiHostActionSpec {
     }
 
     #[must_use]
+    pub fn surface_control_for(
+        action_id: impl Into<String>,
+        label: impl Into<String>,
+        node_id: impl Into<String>,
+    ) -> Self {
+        Self::surface_control(action_id, label).typed_payload(UiHostActionPayload::SurfaceControl(
+            UiSurfaceControlActionPayload::new(node_id),
+        ))
+    }
+
+    #[must_use]
     pub fn enabled(mut self, value: bool) -> Self {
         self.enabled = value;
         self

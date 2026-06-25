@@ -157,6 +157,55 @@ macro_rules! atom_model {
             }
 
             #[must_use]
+            pub fn command_action(
+                mut self,
+                action_id: impl Into<String>,
+                label: impl Into<String>,
+            ) -> Self {
+                self.state.common = self
+                    .state
+                    .common
+                    .host_action(UiHostActionSpec::command(action_id, label));
+                self
+            }
+
+            #[must_use]
+            pub fn surface_control_action(
+                mut self,
+                action_id: impl Into<String>,
+                label: impl Into<String>,
+                node_id: impl Into<String>,
+            ) -> Self {
+                self.state.common = self
+                    .state
+                    .common
+                    .host_action(UiHostActionSpec::surface_control_for(
+                        action_id,
+                        label,
+                        node_id,
+                    ));
+                self
+            }
+
+            #[must_use]
+            pub fn task_control_action(
+                mut self,
+                label: impl Into<String>,
+                node_id: impl Into<String>,
+                row_index: usize,
+            ) -> Self {
+                self.state.common = self
+                    .state
+                    .common
+                    .host_action(UiHostActionSpec::task_control(
+                        label,
+                        node_id,
+                        row_index,
+                    ));
+                self
+            }
+
+            #[must_use]
             pub fn selectable(mut self, value: bool) -> Self {
                 self.state.common.selectable = value;
                 self

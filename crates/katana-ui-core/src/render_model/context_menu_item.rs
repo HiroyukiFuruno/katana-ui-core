@@ -123,4 +123,17 @@ impl UiContextMenuItem {
         self.host_action = Some(value);
         self
     }
+
+    #[must_use]
+    pub fn task_control_state_action(
+        self,
+        label: impl Into<String>,
+        node_id: impl Into<String>,
+        row_index: usize,
+        marker: impl Into<String>,
+    ) -> Self {
+        self.host_action(UiHostActionSpec::task_control_state(
+            label, node_id, row_index, marker,
+        ))
+    }
 }
