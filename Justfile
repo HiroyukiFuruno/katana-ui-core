@@ -82,6 +82,7 @@ kuc-guardrails: consumer-app-contract
     python3 scripts/test_storybook_manual_acceptance_smoke.py
     python3 scripts/test_storybook_manual_acceptance_final_gate.py
     python3 scripts/test_storybook_interaction_pending_only.py
+    python3 scripts/test_verify_release_target.py
     python3 scripts/storybook_native_window_probe.py --self-test
     python3 scripts/assert-kuc-release-readiness.py --self-test
     python3 scripts/assert-kuc-release-readiness.py

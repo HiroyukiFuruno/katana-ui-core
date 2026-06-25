@@ -4,7 +4,10 @@ use super::{
 };
 use crate::component::ComponentAction;
 use crate::interaction::UiAction;
-use crate::render_model::{UiHostActionPlan, UiHostActionSpec, UiNode, UiNodeKind, UiTree};
+use crate::render_model::{
+    UI_TASK_TOGGLE_ACTION_ID, UiHostActionPayload, UiHostActionPlan, UiHostActionSpec, UiNode,
+    UiNodeKind, UiTree,
+};
 
 #[test]
 fn atom_snapshot_uses_neutral_node_kind() {
@@ -69,6 +72,74 @@ fn interactive_atoms_accept_explicit_host_action() {
 
         assert!(plan.is_some());
     }
+}
+
+#[test]
+fn button_accepts_command_action_with_explicit_host_label() {
+    let node = UiNode::from(Button::new("x").command_action("slideshow.close", "Close slideshow"));
+
+    let plan = UiHostActionPlan::collect_from_root(&node)
+        .into_iter()
+        .find(|plan| plan.action_id == "slideshow.close");
+
+    assert!(plan.is_some(), "missing command action");
+    let Some(plan) = plan else {
+        return;
+    };
+    assert_eq!("Close slideshow", plan.label);
+    assert_eq!(UiHostActionPayload::None, plan.typed_payload);
+}
+
+#[test]
+fn button_accepts_typed_surface_control_action_without_custom_spec_at_call_site() {
+    let node = UiNode::from(Button::new("Zoom").surface_control_action(
+        "surface.zoom",
+        "Zoom",
+        "diagram-1",
+    ));
+
+    let plan = UiHostActionPlan::collect_from_root(&node)
+        .into_iter()
+        .find(|plan| plan.action_id == "surface.zoom");
+
+    assert!(plan.is_some(), "missing typed surface control action");
+    let Some(plan) = plan else {
+        return;
+    };
+    assert_eq!("Zoom", plan.label);
+    assert!(
+        matches!(plan.typed_payload, UiHostActionPayload::SurfaceControl(_)),
+        "expected typed surface control payload"
+    );
+    let UiHostActionPayload::SurfaceControl(payload) = plan.typed_payload else {
+        return;
+    };
+    assert_eq!("diagram-1", payload.node_id);
+}
+
+#[test]
+fn checkbox_accepts_typed_task_control_action_without_custom_spec_at_call_site() {
+    let node = UiNode::from(Checkbox::new("").task_control_action("Toggle task", "list", 3));
+
+    let plan = UiHostActionPlan::collect_from_root(&node)
+        .into_iter()
+        .find(|plan| plan.action_id == UI_TASK_TOGGLE_ACTION_ID);
+
+    assert!(plan.is_some(), "missing typed task control action");
+    let Some(plan) = plan else {
+        return;
+    };
+    assert_eq!("Toggle task", plan.label);
+    assert!(
+        matches!(plan.typed_payload, UiHostActionPayload::TaskControl(_)),
+        "expected typed task control payload"
+    );
+    let UiHostActionPayload::TaskControl(payload) = plan.typed_payload else {
+        return;
+    };
+    assert_eq!("list", payload.node_id);
+    assert_eq!(3, payload.row_index);
+    assert_eq!("ui-task-state:list:3", payload.state_id);
 }
 
 #[test]

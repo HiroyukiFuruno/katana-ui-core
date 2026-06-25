@@ -307,9 +307,7 @@ mod tests {
             UiContextMenuProps {
                 items: vec![
                     UiContextMenuItem::new("legacy-item-id", "完了", UiContextMenuItemKind::Radio)
-                        .host_action(UiHostActionSpec::task_control_state(
-                            "完了", "list", 2, "[x]",
-                        )),
+                        .task_control_state_action("完了", "list", 2, "[x]"),
                 ],
                 ..UiContextMenuProps::default()
             },
