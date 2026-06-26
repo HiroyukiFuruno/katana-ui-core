@@ -148,19 +148,18 @@ pub(in crate::visual) fn selected_text_run_rects(
 }
 
 fn text_run_is_selected(run: &SelectableTextRun, selection: TextSelection) -> bool {
-    selection_intersects_run(run, selection)
-        && !core_selection_for_run(run, selection).is_collapsed()
+    core_selection_for_run(run, selection).is_some()
 }
 
 fn selected_text_run_rects_for_run(
     run: &SelectableTextRun,
     selection: TextSelection,
 ) -> Vec<LayoutRect> {
-    if !selection_intersects_run(run, selection) {
+    let Some(selection) = core_selection_for_run(run, selection) else {
         return Vec::new();
-    }
+    };
     run.model()
-        .highlight_rects(core_selection_for_run(run, selection))
+        .highlight_rects(selection)
         .iter()
         .map(ui_rect_to_layout)
         .collect()
@@ -172,28 +171,45 @@ fn selected_text_for_run(run: &SelectableTextRun, selection: TextSelection) -> O
     }
     let selected = run
         .model()
-        .selected_text(core_selection_for_run(run, selection));
+        .selected_text(core_selection_for_run(run, selection)?);
     (!selected.is_empty()).then_some(selected)
-}
-
-fn selection_intersects_run(run: &SelectableTextRun, selection: TextSelection) -> bool {
-    let (start_x, start_y) = selection.start();
-    let (end_x, end_y) = selection.end();
-    let min_x = start_x.min(end_x);
-    let max_x = start_x.max(end_x);
-    let min_y = start_y.min(end_y);
-    let max_y = start_y.max(end_y);
-    max_x >= run.x() && min_x <= run.right() && max_y >= run.y() && min_y <= run.bottom()
 }
 
 fn core_selection_for_run(
     run: &SelectableTextRun,
     selection: TextSelection,
-) -> UiTextSelectionRange {
-    run.model.drag_range(
-        (selection.start().0 as i32, selection.start().1 as i32),
-        (selection.end().0 as i32, selection.end().1 as i32),
-    )
+) -> Option<UiTextSelectionRange> {
+    let (anchor, focus) = ordered_selection_points(selection);
+    if focus.1 < run.y() || anchor.1 > run.bottom() {
+        return None;
+    }
+    let anchor_on_run = point_y_is_inside_run(anchor.1, run);
+    let focus_on_run = point_y_is_inside_run(focus.1, run);
+    let (start, end) = match (anchor_on_run, focus_on_run) {
+        (true, true) => (anchor, focus),
+        (true, false) => (anchor, (run.right(), anchor.1)),
+        (false, true) => ((run.x(), focus.1), focus),
+        (false, false) => ((run.x(), run.y()), (run.right(), run.y())),
+    };
+    let selection = run.model.drag_range(
+        (start.0 as i32, start.1 as i32),
+        (end.0 as i32, end.1 as i32),
+    );
+    (!selection.is_collapsed()).then_some(selection)
+}
+
+fn ordered_selection_points(selection: TextSelection) -> ((usize, usize), (usize, usize)) {
+    let start = selection.start();
+    let end = selection.end();
+    if start.1 < end.1 || (start.1 == end.1 && start.0 <= end.0) {
+        (start, end)
+    } else {
+        (end, start)
+    }
+}
+
+fn point_y_is_inside_run(y: usize, run: &SelectableTextRun) -> bool {
+    y >= run.y() && y <= run.bottom()
 }
 
 fn ui_rect_to_layout(rect: &UiRect) -> LayoutRect {
@@ -263,6 +279,37 @@ mod tests {
         assert_eq!(
             "Markdown",
             copy_payload_for_selection(&runs, TextSelection::drag((100, 100), (180, 120)))
+        );
+    }
+
+    #[test]
+    fn multiline_selection_uses_text_flow_not_repeated_horizontal_slice() {
+        let runs = [
+            SelectableTextRun::with_glyph_widths("abc", 100, 100, 30, 20, &[10, 10, 10]),
+            SelectableTextRun::with_glyph_widths("defgh", 100, 130, 50, 20, &[10, 10, 10, 10, 10]),
+            SelectableTextRun::with_glyph_widths("ijk", 100, 160, 30, 20, &[10, 10, 10]),
+        ];
+
+        let selection = TextSelection::drag((105, 110), (125, 165));
+
+        assert_eq!(
+            "bc\ndefgh\nijk",
+            copy_payload_for_selection(&runs, selection)
+        );
+        assert_eq!(
+            vec![
+                super::LayoutRect::new(110, 100, 10, 20),
+                super::LayoutRect::new(120, 100, 10, 20),
+                super::LayoutRect::new(100, 130, 10, 20),
+                super::LayoutRect::new(110, 130, 10, 20),
+                super::LayoutRect::new(120, 130, 10, 20),
+                super::LayoutRect::new(130, 130, 10, 20),
+                super::LayoutRect::new(140, 130, 10, 20),
+                super::LayoutRect::new(100, 160, 10, 20),
+                super::LayoutRect::new(110, 160, 10, 20),
+                super::LayoutRect::new(120, 160, 10, 20),
+            ],
+            selected_text_run_rects(&runs, selection)
         );
     }
 }
