@@ -49,6 +49,10 @@
   by the GitHub Actions cache. The strict gate now rebuilds that dedicated
   instrumentation target before every measurement, preventing old object maps
   from changing the function or line denominator on a cache hit.
+- The next Linux rerun proved Rust 1.97.1 changed optimized test-profile
+  coverage attribution even though all 2,629 tests passed. Strict coverage now
+  uses an unoptimized test profile and the local container matches CI Rust
+  1.97.1, preserving 100% / zero-uncovered semantics across LLVM upgrades.
 
 ## Conclusion
 

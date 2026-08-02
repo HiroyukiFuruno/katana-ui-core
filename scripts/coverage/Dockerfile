@@ -1,4 +1,4 @@
-FROM rust:1.95-bookworm
+FROM rust:1.97.1-bookworm
 
 ARG CARGO_LLVM_COV_VERSION=0.8.7
 

@@ -19,7 +19,7 @@ KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-
 VERSION := env_var_or_default("VERSION", `awk -F '"' '/^version = / { print $2; exit }' Cargo.toml`)
 VERSION_BARE := replace(VERSION, "v", "")
 COVERAGE_MIN_LINES := "100"
-COVERAGE_IMAGE := "katana-ui-core-coverage:rust-1.95"
+COVERAGE_IMAGE := "katana-ui-core-coverage:rust-1.97.1"
 RELEASE_REPO := env_var_or_default("RELEASE_REPO", "HiroyukiFuruno/katana-ui-core")
 KAL_VERSION := env_var_or_default("KAL_VERSION", "0.5.1")
 
