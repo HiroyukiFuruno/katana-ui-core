@@ -78,6 +78,7 @@ impl GenericGrid {
             },
             selection: self.selection,
             active_cell: self.active_coordinate(),
+            show_grid_lines: self.show_grid_lines,
             cells,
         }
     }

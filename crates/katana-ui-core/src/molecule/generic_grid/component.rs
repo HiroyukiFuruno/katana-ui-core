@@ -22,6 +22,7 @@ impl GenericGrid {
             column_overscan: 0,
             frozen_rows: 0,
             frozen_columns: 0,
+            show_grid_lines: true,
             selection: None,
             cell_spans: Vec::new(),
             visible_cells: Vec::new(),
@@ -63,6 +64,12 @@ impl GenericGrid {
     pub const fn frozen(mut self, rows: usize, columns: usize) -> Self {
         self.frozen_rows = rows;
         self.frozen_columns = columns;
+        self
+    }
+
+    #[must_use]
+    pub const fn show_grid_lines(mut self, value: bool) -> Self {
+        self.show_grid_lines = value;
         self
     }
 

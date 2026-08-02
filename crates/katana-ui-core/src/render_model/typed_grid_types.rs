@@ -160,7 +160,7 @@ impl Default for UiGridCell {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiGridProps {
     pub row_count: usize,
     pub column_count: usize,
@@ -170,7 +170,26 @@ pub struct UiGridProps {
     pub visible_range: UiGridVisibleRange,
     pub selection: Option<UiGridSelection>,
     pub active_cell: Option<UiGridCoordinate>,
+    #[serde(default = "default_show_grid_lines")]
+    pub show_grid_lines: bool,
     pub cells: Vec<UiGridCell>,
+}
+
+impl Default for UiGridProps {
+    fn default() -> Self {
+        Self {
+            row_count: 0,
+            column_count: 0,
+            total_width: 0,
+            total_height: 0,
+            viewport: UiGridViewport::default(),
+            visible_range: UiGridVisibleRange::default(),
+            selection: None,
+            active_cell: None,
+            show_grid_lines: true,
+            cells: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -202,4 +221,8 @@ pub enum UiGridValidationError {
 
 const fn default_grid_span() -> usize {
     1
+}
+
+const fn default_show_grid_lines() -> bool {
+    true
 }

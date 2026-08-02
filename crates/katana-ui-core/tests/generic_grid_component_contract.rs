@@ -53,9 +53,32 @@ fn visible_content_becomes_typed_grid_props_with_accessibility_indexes() -> Test
     assert_eq!(UiNodeKind::Grid, node.kind());
     assert_eq!(1_000, node.props().grid.row_count);
     assert_eq!(100, node.props().grid.column_count);
+    assert!(node.props().grid.show_grid_lines);
     assert_eq!("Header", cell.text);
     assert_eq!(coordinate.row + 1, cell.accessibility_row_index);
     assert_eq!(coordinate.column + 1, cell.accessibility_column_index);
+    Ok(())
+}
+
+#[test]
+fn grid_line_visibility_is_preserved_in_typed_render_props() {
+    let node = UiNode::from(GenericGrid::new("Grid", 1, 1).show_grid_lines(false));
+
+    assert!(!node.props().grid.show_grid_lines);
+}
+
+#[test]
+fn legacy_generic_grid_defaults_to_visible_grid_lines() -> TestResult {
+    let mut value = serde_json::to_value(GenericGrid::new("Legacy", 1, 1).show_grid_lines(false))?;
+    let removed = value
+        .as_object_mut()
+        .and_then(|object| object.remove("show_grid_lines"));
+    assert_eq!(Some(serde_json::Value::Bool(false)), removed);
+
+    let grid: GenericGrid = serde_json::from_value(value)?;
+    let node = UiNode::from(grid);
+
+    assert!(node.props().grid.show_grid_lines);
     Ok(())
 }
 

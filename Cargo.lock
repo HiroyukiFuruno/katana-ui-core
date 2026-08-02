@@ -515,7 +515,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -524,7 +524,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core-storybook"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "cosmic-text",
  "image",
