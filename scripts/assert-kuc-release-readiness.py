@@ -758,6 +758,8 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "-p katana-ui-core",
         "-p katana-ui-core-storybook",
         "-p kuc-consumer-app",
+        "--all-targets",
+        "--include-ignored",
         "run_cargo llvm-cov report",
         "--fail-under-functions 100",
         "--fail-under-lines 100",
@@ -1585,7 +1587,8 @@ def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bo
         "  -p katana-ui-core \\\n"
         "  -p katana-ui-core-storybook \\\n"
         "  -p kuc-consumer-app \\\n"
-        "  --all-features --locked --no-report\n"
+        "  --all-targets --all-features --locked --no-report \\\n"
+        "  -- --include-ignored\n"
         "run_cargo llvm-cov report \\\n"
         "  --summary-only \\\n"
         "  --fail-under-functions 100 \\\n"

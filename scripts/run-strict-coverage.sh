@@ -23,15 +23,6 @@ run_cargo() {
   "${cargo_command[@]}" "$@"
 }
 
-run_cargo llvm-cov clean --workspace
-run_cargo llvm-cov \
-  -p katana-ui-core \
-  -p katana-ui-core-storybook \
-  -p kuc-consumer-app \
-  --all-features \
-  --locked \
-  --no-report
-
 display_number=99
 while [[ -e "/tmp/.X${display_number}-lock" || -S "/tmp/.X11-unix/X${display_number}" ]]; do
   display_number=$((display_number + 1))
@@ -65,33 +56,17 @@ fi
 export DISPLAY=":${display_number}"
 export KUC_STORYBOOK_MOUSE_TRACE="${CARGO_TARGET_DIR:-target}/kuc-storybook-mouse-trace.jsonl"
 
+run_cargo llvm-cov clean --workspace
 run_cargo llvm-cov \
-  --no-clean \
+  -p katana-ui-core \
   -p katana-ui-core-storybook \
-  --lib \
+  -p kuc-consumer-app \
+  --all-targets \
   --all-features \
   --locked \
+  --no-report \
   -- \
-  --ignored \
-  native_xvfb
-run_cargo llvm-cov \
-  --no-clean \
-  -p katana-ui-core-storybook \
-  --test native_window_contract \
-  --all-features \
-  --locked \
-  -- \
-  --ignored \
-  native_xvfb
-run_cargo llvm-cov \
-  --no-clean \
-  -p katana-ui-core-storybook \
-  --bin katana-ui-core-storybook \
-  --all-features \
-  --locked \
-  -- \
-  --ignored \
-  native_xvfb
+  --include-ignored
 run_cargo llvm-cov report \
   --summary-only \
   --fail-under-functions 100 \
