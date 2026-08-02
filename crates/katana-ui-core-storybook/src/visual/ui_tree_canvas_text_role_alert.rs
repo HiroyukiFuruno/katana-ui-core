@@ -192,3 +192,30 @@ use primitives::{
     draw_filled_circle, draw_outline, draw_stroked_circle, draw_stroked_circle_arc,
     draw_stroked_line,
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn important_icon_and_remaining_tone_fallbacks_are_drawn() {
+        let palette = UiTreeCanvasPalette::from_theme(&ThemeSnapshot::light());
+        assert_eq!(
+            palette.alert_tip_accent,
+            alert_accent_from_tone(UiTone::Success, palette)
+        );
+        assert_eq!(
+            palette.alert_note_accent,
+            alert_accent_from_tone(UiTone::Accent, palette)
+        );
+
+        let mut canvas = Canvas::new(48, 48, palette.background);
+        draw_important_icon(&mut canvas, 4, 4, palette.alert_important_accent);
+
+        assert!(
+            canvas.non_background_pixels(palette.background) > 20,
+            "important icon must paint its outline, stem, and dot"
+        );
+    }
+}

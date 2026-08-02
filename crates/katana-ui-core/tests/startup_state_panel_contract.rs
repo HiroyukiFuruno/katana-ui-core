@@ -1,3 +1,4 @@
+use katana_ui_core::interaction::{MotionPrimitiveKind, MotionSpec, ReducedMotionPolicy};
 use katana_ui_core::molecule::structured::startup_state_panel::{
     StartupState, StartupStatePanel, StartupStatePanelAction, StartupStatePanelEvent,
     StartupStatePanelOptions,
@@ -168,6 +169,25 @@ fn set_state_retry_and_cancel_emit_typed_events() {
         canceled.as_slice(),
         &[StartupStatePanelEvent::StartupCanceled]
     );
+    assert!(
+        panel
+            .apply_action(StartupStatePanelAction::SetState(StartupState::Idle))
+            .is_empty()
+    );
+    assert!(
+        panel
+            .apply_action(StartupStatePanelAction::SetReducedMotion(true))
+            .is_empty()
+    );
+
+    let custom_motion = MotionSpec::new(
+        MotionPrimitiveKind::Fade,
+        50,
+        0,
+        ReducedMotionPolicy::Respect,
+    );
+    let options = StartupStatePanelOptions::default().motion(custom_motion.clone());
+    assert_eq!(custom_motion, options.motion);
 }
 
 #[test]

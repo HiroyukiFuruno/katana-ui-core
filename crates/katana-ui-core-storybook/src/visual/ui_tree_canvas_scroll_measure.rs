@@ -184,3 +184,73 @@ fn is_layout_container(node: &UiNode) -> bool {
             | UiNodeKind::Stack
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::text::TextRenderer;
+    use crate::visual::ui_tree_canvas_palette::UiTreeCanvasPalette;
+    use crate::visual::ui_tree_canvas_text_metrics::UiTreeDocumentTypography;
+    use katana_ui_core::atom::Text;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::molecule::Accordion;
+    use katana_ui_core::render_model::UiDimension;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn measured_height_covers_accordion_tree_label_and_explicit_child_width() {
+        let context = text_context();
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 120,
+            height: 160,
+            scroll_y: 0.0,
+        };
+        let accordion: UiNode = Accordion::new("Details")
+            .open(true)
+            .child(Text::new("Body"))
+            .into();
+        assert!(measured_node_height(&accordion, context, 0, area) > TEXT_HEIGHT);
+
+        let tree = UiNode::new(UiNodeKind::TreeView, "Tree");
+        assert_eq!(
+            ui_tree_canvas_tree_parts::ROW_HEIGHT + NODE_GAP,
+            measured_node_height(&tree, context, 0, area)
+        );
+
+        let card = UiNode::new(UiNodeKind::Card, "Card");
+        assert_eq!(TEXT_HEIGHT, measured_node_height(&card, context, 0, area));
+
+        let child = UiNode::new(UiNodeKind::Text, "child").width(UiDimension::Px(200));
+        let child_area = child_render_area(
+            area,
+            &child,
+            8,
+            ContainerPadding {
+                left: 10,
+                right: 20,
+                top: 0,
+                bottom: 0,
+            },
+        );
+        assert_eq!(90, child_area.width);
+        assert_eq!(8, child_area.x);
+    }
+
+    fn text_context() -> UiTreeTextContext<'static> {
+        let theme = ThemeSnapshot::dark();
+        UiTreeTextContext {
+            text: text_renderer("body"),
+            export_text: text_renderer("body"),
+            code_text: text_renderer("code"),
+            palette: UiTreeCanvasPalette::from_theme(&theme),
+            typography: UiTreeDocumentTypography::default(),
+        }
+    }
+
+    fn text_renderer(role: &str) -> &'static TextRenderer {
+        let facade = Box::leak(Box::new(UiCoreFacade::default()));
+        Box::leak(Box::new(TextRenderer::load(facade, role)))
+    }
+}

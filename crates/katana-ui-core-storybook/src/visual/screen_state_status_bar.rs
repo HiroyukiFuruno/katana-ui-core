@@ -136,3 +136,35 @@ fn status_bar_event_label(events: &[StatusBarEvent]) -> &'static str {
     }
     "status_bar_segment_pressed"
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{StatusBarEvent, StorybookScreenState, status_bar_event_label};
+
+    #[test]
+    fn status_bar_covers_all_segment_labels_and_keyboard_focus_guard() {
+        let mut state = StorybookScreenState::default();
+        state.register_status_bar_keyboard_activate();
+        assert_eq!("status_bar_keyboard_without_focus", state.last_action);
+
+        for index in 0..=2 {
+            state.register_status_bar_segment_click(index);
+            assert_eq!(Some(index), state.status_bar_open_segment_index);
+            state.register_status_bar_segment_hover(index);
+            assert_eq!(Some(index), state.status_bar_hovered_segment_index);
+            state.register_status_bar_segment_focus(index);
+            assert_eq!(Some(index), state.status_bar_focused_segment_index);
+            state.register_status_bar_keyboard_activate();
+            assert_eq!("status_bar_keyboard_activate", state.last_action);
+        }
+    }
+
+    #[test]
+    fn status_bar_event_labels_cover_dismissed_and_fallback_events() {
+        assert_eq!(
+            "status_bar_dismissed",
+            status_bar_event_label(&[StatusBarEvent::Dismissed])
+        );
+        assert_eq!("status_bar_segment_pressed", status_bar_event_label(&[]));
+    }
+}

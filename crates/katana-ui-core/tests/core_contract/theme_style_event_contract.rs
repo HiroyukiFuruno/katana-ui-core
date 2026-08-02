@@ -1,15 +1,20 @@
-use katana_ui_core::adapter_contract::{AdapterExtension, EventSink, HostHandle};
+use katana_ui_core::adapter_contract::{
+    AdapterExtension, EventSink, HostHandle, ImeRequest, ImeRequestPhase, NativeDragDropBridge,
+};
 use katana_ui_core::atom::{Button, Text};
 use katana_ui_core::component::{Component, ComponentTree};
-use katana_ui_core::event::{CommandEvent, EventRoute, PointerEvent, PointerEventKind, UiEvent};
+use katana_ui_core::event::{
+    CommandEvent, DragEvent, EventRoute, PointerEvent, PointerEventKind, UiEvent,
+};
+use katana_ui_core::interaction::drag_and_drop::{DragData, DropEffect, OS_TEXT_TAG};
 use katana_ui_core::layout::{AlignCenter, Alignment, Column, Length, Row};
 use katana_ui_core::molecule::Card;
 use katana_ui_core::panel::{Panel, PanelRegion};
 use katana_ui_core::render_model::{RenderContext, UiNodeId, UiNodeKind, UiTree};
 use katana_ui_core::style::{StyleDeclaration, StyleProperty, StyleRule, StyleSheet, StyleValue};
-use katana_ui_core::surface::{PaintRequest, SurfaceMetrics};
+use katana_ui_core::surface::{FrameHandle, PaintRequest, SurfaceMetrics};
 use katana_ui_core::theme::{ThemeId, ThemeSnapshot};
-use katana_ui_core::window::{WindowCommand, WindowId};
+use katana_ui_core::window::{WindowCommand, WindowConfig, WindowId, WindowManager, WindowSize};
 
 #[test]
 fn runtime_window_surface_values_are_kuc_owned() {
@@ -23,6 +28,31 @@ fn runtime_window_surface_values_are_kuc_owned() {
 
     assert_eq!(Some("KUC"), command.title());
     assert_eq!(1600.0, request.metrics().physical_width());
+}
+
+#[test]
+fn window_manager_and_surface_requests_cover_public_lifecycle_accessors() {
+    let mut manager = WindowManager::default();
+    let config = WindowConfig::new("Preview");
+    let id = manager.create(config);
+    assert_eq!("window:Preview", id.as_str());
+    assert_eq!(1, manager.windows().len());
+    assert_eq!("Preview", manager.windows()[0].title);
+
+    let set_size = WindowCommand::SetSize {
+        window_id: id.clone(),
+        size: WindowSize::new(640.0, 480.0),
+    };
+    assert_eq!(None, set_size.title());
+
+    let metrics = SurfaceMetrics::new(640.0, 480.0, 1.5, 144.0);
+    let tree = UiTree::new(Text::new("surface"));
+    let request = PaintRequest::new(id.clone(), metrics).with_tree(tree.clone());
+    assert_eq!(&id, request.window_id());
+    assert_eq!(&tree, request.tree());
+    assert_eq!(tree, request.into_tree());
+
+    assert_eq!(FrameHandle::new("frame-1"), FrameHandle::new("frame-1"));
 }
 
 #[test]
@@ -149,4 +179,53 @@ fn event_serialization_and_ordering_are_neutral() -> serde_json::Result<()> {
     assert_eq!("button", route.order()[0].as_str());
     assert_eq!("root", route.order()[1].as_str());
     Ok(())
+}
+
+#[test]
+fn adapter_boundary_records_events_and_native_drag_lifecycle() {
+    let mut sink = EventSink::default();
+    let command = UiEvent::Command(CommandEvent {
+        target: UiNodeId::new("save-button"),
+        command: "save".to_string(),
+    });
+    sink.emit(command.clone());
+
+    let handle = HostHandle::new("main-window");
+    let target = UiNodeId::new("editor");
+    let ime = ImeRequest::multiline_commit(target.clone(), "確定", 2);
+    let data = DragData::new(OS_TEXT_TAG, serde_json::json!("payload"));
+    let start = NativeDragDropBridge::drag_start(target.clone(), data.clone());
+    let dropped = NativeDragDropBridge::drop(target.clone(), data, DropEffect::Copy);
+    let cancelled = NativeDragDropBridge::cancel(target.clone());
+
+    assert_eq!(&[command], sink.events());
+    assert_eq!("main-window", handle.id());
+    assert_eq!(ImeRequestPhase::Commit, ime.phase);
+    assert_eq!("確定", ime.commit_text);
+    assert!(NativeDragDropBridge::is_native_tag(OS_TEXT_TAG));
+    assert!(!NativeDragDropBridge::is_native_tag("application/custom"));
+    assert!(matches!(
+        start,
+        UiEvent::Drag(DragEvent::DragStart { source, .. }) if source == target
+    ));
+    assert!(matches!(
+        dropped,
+        UiEvent::Drag(DragEvent::Drop {
+            effect: DropEffect::Copy,
+            ..
+        })
+    ));
+    assert_eq!(2, cancelled.len());
+    assert!(matches!(
+        &cancelled[0],
+        UiEvent::Drag(DragEvent::DragCancel { reason, .. })
+            if reason == "keyboard_escape"
+    ));
+    assert!(matches!(
+        &cancelled[1],
+        UiEvent::Drag(DragEvent::DragEnd {
+            committed: false,
+            ..
+        })
+    ));
 }

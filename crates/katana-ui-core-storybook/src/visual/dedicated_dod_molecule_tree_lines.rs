@@ -226,12 +226,35 @@ fn draw_segment_part(canvas: &mut Canvas, spec: TreeSegmentSpec, offset: usize, 
 }
 
 fn draw_segment_tail(canvas: &mut Canvas, spec: TreeSegmentSpec, pitch: usize) {
-    if spec.length == 0 || spec.on_length == 0 {
+    if spec.length == 0 {
         return;
     }
     let tail_offset = (spec.length / pitch) * pitch;
     let tail = spec.length.saturating_sub(tail_offset);
     if tail_offset < spec.length && tail > 0 && tail <= spec.on_length {
         draw_segment_part(canvas, spec, tail_offset, tail);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Canvas, TreeSegmentSpec, draw_segment_tail};
+
+    #[test]
+    fn zero_length_pattern_has_no_tail() {
+        let mut canvas = Canvas::new(4, 4, 0);
+        let spec = TreeSegmentSpec {
+            x: 0,
+            y: 0,
+            length: 0,
+            width: 1,
+            on_length: 1,
+            off_length: 1,
+            vertical: false,
+            color: 1,
+        };
+
+        draw_segment_tail(&mut canvas, spec, 2);
+        assert!(canvas.pixels().iter().all(|pixel| *pixel == 0));
     }
 }

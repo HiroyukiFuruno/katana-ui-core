@@ -156,3 +156,17 @@ pub(super) fn draw_stroked_point(canvas: &mut Canvas, x: isize, y: isize, color:
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn circle_and_stroke_primitives_clip_negative_coordinates() {
+        let mut canvas = Canvas::new(8, 8, 0);
+        draw_stroked_circle(&mut canvas, 0, 0, 3, 1);
+        draw_filled_circle(&mut canvas, 0, 0, 3, 2);
+        draw_stroked_point(&mut canvas, 0, 0, 3);
+        assert!(canvas.non_background_pixels(0) > 0);
+    }
+}

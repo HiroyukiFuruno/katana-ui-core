@@ -78,7 +78,7 @@ impl UiTreeCanvasRenderer {
             max_width,
             container_height,
         ) {
-            canvas.with_clip(x, *y, max_width, container_height, |canvas| {
+            canvas.with_clip(x, *y, max_width, container_height, &mut |canvas| {
                 if !try_blit_cached_image(canvas, image, request, draw_width, draw_height) {
                     canvas.blit_rgba(request);
                 }
@@ -143,5 +143,17 @@ fn normalized_scale_factor(scale_factor: f32) -> f32 {
         scale_factor
     } else {
         1.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn image_geometry_helpers_cover_negative_scroll_and_scale_boundaries() {
+        assert_eq!(0, scrolled_text_y(-1));
+        assert_eq!(8, raster_scaled_extent(8, 2.0, 1.0, false));
+        assert_eq!(1.0, normalized_scale_factor(f32::NAN));
     }
 }

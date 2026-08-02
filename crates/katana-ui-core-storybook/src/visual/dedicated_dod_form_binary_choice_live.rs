@@ -276,3 +276,18 @@ fn draw_radio_controls(
         radio_state_log_label(scenario),
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn checked_radio_without_explicit_selection_uses_the_first_item() {
+        let mut state = StorybookScreenState::default();
+        state.radio_state.checked = true;
+        let scenario = ScenarioContext::for_test("radio", 0, &state);
+
+        assert_eq!(Some(0), radio_selected_index(scenario));
+    }
+}

@@ -88,6 +88,19 @@ fn draw_track_fill(
     );
 }
 
+#[cfg(test)]
+mod edge_tests {
+    use super::{Canvas, draw_track_fill};
+
+    #[test]
+    fn zero_inner_track_is_not_drawn() {
+        let mut canvas = Canvas::new(2, 2, 7);
+        draw_track_fill(&mut canvas, 0, 0, 1, 1, 0, 9);
+
+        assert!(canvas.pixels().iter().all(|pixel| *pixel == 7));
+    }
+}
+
 fn switch_track_fill(palette: &VisualPalette, enabled: bool, disabled: bool) -> u32 {
     if disabled {
         return mix_color(palette.surface, palette.muted, COLOR_ALPHA_MAX / 2);

@@ -1,3 +1,4 @@
+use katana_ui_core::atom::Text;
 use katana_ui_core::molecule::{
     CommandPalette, CommandResultRow, ReplaceMode, SearchControlStrip, SearchControlStripAction,
     SearchControlStripEvent, SearchNavigationDirection, SearchOptionKind, SearchOptions,
@@ -39,6 +40,43 @@ fn option_toggle_updates_typed_options_and_event() {
 }
 
 #[test]
+fn every_search_option_and_result_summary_branch_is_typed() {
+    let mut strip = SearchControlStrip::new("Search controls");
+    for option in [
+        SearchOptionKind::MatchCase,
+        SearchOptionKind::WholeWord,
+        SearchOptionKind::UseRegex,
+    ] {
+        assert!(matches!(
+            strip
+                .apply_action(SearchControlStripAction::ToggleSearchOption(option))
+                .as_slice(),
+            [SearchControlStripEvent::SearchOptionChanged { enabled: true, .. }]
+        ));
+    }
+    assert!(strip.options_model().match_case);
+    assert!(strip.options_model().whole_word);
+    assert!(strip.options_model().use_regex);
+
+    assert_eq!(
+        "1 / 1",
+        SearchControlStrip::new("One")
+            .result_position(1, None)
+            .result_summary_model()
+    );
+    assert_eq!(
+        "4 results",
+        SearchControlStrip::new("Many")
+            .result_position(4, None)
+            .result_summary_model()
+    );
+    assert_eq!(
+        "",
+        SearchControlStrip::new("Unknown").result_summary_model()
+    );
+}
+
+#[test]
 fn navigation_emits_request_without_computing_result() {
     let mut strip = SearchControlStrip::new("Search controls").result_position(10, Some(2));
     let events = strip.apply_action(SearchControlStripAction::Navigate(
@@ -75,6 +113,47 @@ fn replace_hidden_ignores_replace_action_and_visible_emits_request() {
         }],
         visible.apply_action(SearchControlStripAction::Replace(SearchReplaceScope::All))
     );
+}
+
+#[test]
+fn replace_configuration_and_result_position_emit_typed_state_changes() {
+    let mut strip = SearchControlStrip::new("Search controls");
+
+    assert_eq!(
+        vec![SearchControlStripEvent::ReplaceModeChanged(
+            ReplaceMode::Visible
+        )],
+        strip.apply_action(SearchControlStripAction::SetReplaceMode(
+            ReplaceMode::Visible
+        ))
+    );
+    assert_eq!(
+        vec![SearchControlStripEvent::ReplaceValueChanged(
+            "replacement".to_string()
+        )],
+        strip.apply_action(SearchControlStripAction::SetReplaceValue(
+            "replacement".to_string()
+        ))
+    );
+    assert_eq!(
+        vec![SearchControlStripEvent::SearchResultPositionChanged {
+            result_count: 4,
+            active_index: Some(3)
+        }],
+        strip.apply_action(SearchControlStripAction::SetResultPosition {
+            result_count: 4,
+            active_index: Some(3)
+        })
+    );
+    assert_eq!(
+        vec![SearchControlStripEvent::SearchNavigationRequested {
+            direction: SearchNavigationDirection::Previous
+        }],
+        strip.apply_action(SearchControlStripAction::Navigate(
+            SearchNavigationDirection::Previous
+        ))
+    );
+    assert_eq!("4 / 4", strip.result_summary_model());
 }
 
 #[test]
@@ -139,5 +218,28 @@ fn search_control_and_command_palette_state_ids_are_independent() {
     assert_ne!(
         search.root().props().state_id,
         command.root().props().state_id
+    );
+}
+
+#[test]
+fn search_control_accessors_and_custom_child_preserve_owned_state() {
+    let strip = SearchControlStrip::new("Search controls")
+        .query("needle")
+        .replace_mode(ReplaceMode::Visible)
+        .replace_value("replacement")
+        .child(Text::new("Consumer status"));
+    let state_id = strip.state_id().clone();
+
+    assert_eq!("needle", strip.query_model());
+    assert_eq!(ReplaceMode::Visible, strip.replace_mode_model());
+    assert_eq!("replacement", strip.replace_value_model());
+
+    let tree = UiTree::new(strip);
+    assert_eq!(state_id, tree.root().props().state_id);
+    assert!(
+        tree.root()
+            .children()
+            .iter()
+            .any(|child| child.props().label == "Consumer status")
     );
 }

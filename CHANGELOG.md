@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-30
+
+### Added
+
+- Added a format-neutral, two-dimensional virtualized grid with fixed and variable tracks, frozen rows and columns, bounded visible-cell materialization, merged-cell spans, and typed cell appearance.
+- Added typed pointer hit-testing, keyboard navigation, active-cell state, and range selection through the public KUC API.
+- Added a public consumer contract for KDV `v0.4.0` without document-format semantics or framework-specific dependencies.
+
+### Changed
+
+- Updated compatible direct and transitive dependencies before the release gate.
+
 ## [0.1.2] - 2026-06-24
 
 ### Added

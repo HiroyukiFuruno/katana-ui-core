@@ -230,3 +230,20 @@ fn format_namespaced_setting_action(option: &str) -> Option<&'static str> {
     };
     Some(action)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{format_setting_action, format_setting_event};
+
+    #[test]
+    fn unknown_page_and_namespace_use_component_fallbacks() {
+        assert_eq!(
+            "component_settings_changed",
+            format_setting_event("unknown")
+        );
+        assert_eq!(
+            "settings_option_changed",
+            format_setting_action("unknown.option")
+        );
+    }
+}

@@ -37,3 +37,20 @@ fn tab_hit_at(
 fn is_tabs_focus_page(page: &str) -> bool {
     page == "tabs" || page == "closeable-tab-strip"
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tabs_focus_rejects_other_pages_and_coordinates_without_a_tab() {
+        let mut wrong_page = StorybookWindowState::default();
+        assert!(!focus_at(&mut wrong_page, 0, 0));
+
+        let mut state = StorybookWindowState {
+            selected_page: "tabs",
+            ..StorybookWindowState::default()
+        };
+        assert!(!focus_at(&mut state, usize::MAX, usize::MAX));
+    }
+}

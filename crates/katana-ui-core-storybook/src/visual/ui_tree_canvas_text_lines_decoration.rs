@@ -62,3 +62,17 @@ fn draw_decoration_line(
     };
     canvas.fill_rect(decoration_x, y, width, thickness, color);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Canvas, draw_decoration_line};
+
+    #[test]
+    fn decoration_line_ignores_negative_horizontal_positions() {
+        let mut canvas = Canvas::new(2, 2, 0);
+
+        draw_decoration_line(&mut canvas, -1, 0, 1, 1, 1);
+
+        assert!(canvas.pixels().iter().all(|pixel| *pixel == 0));
+    }
+}

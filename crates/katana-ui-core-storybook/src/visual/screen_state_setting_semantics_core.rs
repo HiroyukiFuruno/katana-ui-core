@@ -105,3 +105,26 @@ pub(in crate::visual) fn status_bar_state(setting: &'static str) -> &'static str
         _ => setting,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        color_picker_state, search_control_state, settings_list_state, status_bar_state,
+        toolbar_state, virtualization_state,
+    };
+
+    #[test]
+    fn core_setting_semantics_preserve_unknown_setting_keys() {
+        const UNKNOWN: &str = "unknown.setting";
+        for mapper in [
+            toolbar_state,
+            settings_list_state,
+            color_picker_state,
+            virtualization_state,
+            search_control_state,
+            status_bar_state,
+        ] {
+            assert_eq!(UNKNOWN, mapper(UNKNOWN));
+        }
+    }
+}

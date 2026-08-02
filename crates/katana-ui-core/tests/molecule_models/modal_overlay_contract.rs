@@ -25,7 +25,10 @@ fn modal_overlay_owns_focus_and_dismiss_policies() {
 
 #[test]
 fn modal_overlay_escape_and_backdrop_actions_follow_policy() {
-    let mut escape_overlay = ModalOverlay::new("Overlay").open(true).escape_dismiss(true);
+    let mut escape_overlay = ModalOverlay::new("Overlay")
+        .open(true)
+        .escape_dismiss(true)
+        .focus_return("settings-button");
     let escape_result =
         escape_overlay.apply_action(&UiAction::modal_escape(escape_overlay.state_id().clone()));
 
@@ -39,6 +42,7 @@ fn modal_overlay_escape_and_backdrop_actions_follow_policy() {
     assert!(escape_result.handled);
     assert_eq!("modal_escape", escape_result.callback_log[0].action);
     assert!(!escape_result.after.open);
+    assert_eq!("focus_return=settings-button", escape_result.after.value);
     assert!(!backdrop_result.handled);
     assert!(backdrop_result.after.open);
 }
@@ -68,4 +72,15 @@ fn modal_overlay_backdrop_close_focus_and_hover_are_core_actions() {
     assert!(focus_result.after.focused);
     assert!(hover_result.handled);
     assert!(hover_result.after.hovered);
+}
+
+#[test]
+fn modal_overlay_rejects_foreign_actions_before_lifecycle_dispatch() {
+    let mut overlay = ModalOverlay::new("Overlay").open(true).escape_dismiss(true);
+    let foreign = overlay.apply_action(&UiAction::modal_escape(
+        katana_ui_core::render_model::UiStateId::new("other-overlay"),
+    ));
+
+    assert!(!foreign.handled);
+    assert!(foreign.after.open);
 }

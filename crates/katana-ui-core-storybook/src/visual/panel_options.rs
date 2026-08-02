@@ -27,3 +27,39 @@ pub(super) fn control_at(x: usize, y: usize) -> Option<PanelOptionControl> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn panel_option_hit_testing_covers_every_control() {
+        let cases = [
+            (
+                panel_active_nav_rect(),
+                PanelOptionControl::ActivePanel(PanelChildKey::Navigation),
+            ),
+            (
+                panel_active_preview_rect(),
+                PanelOptionControl::ActivePanel(PanelChildKey::Preview),
+            ),
+            (
+                panel_active_details_rect(),
+                PanelOptionControl::ActivePanel(PanelChildKey::Details),
+            ),
+            (
+                panel_scrollbar_on_rect(),
+                PanelOptionControl::ScrollbarVisible(true),
+            ),
+            (
+                panel_scrollbar_off_rect(),
+                PanelOptionControl::ScrollbarVisible(false),
+            ),
+        ];
+
+        for (rect, expected) in cases {
+            assert_eq!(Some(expected), control_at(rect.x, rect.y));
+        }
+        assert_eq!(None, control_at(usize::MAX, usize::MAX));
+    }
+}

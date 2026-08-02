@@ -38,7 +38,7 @@ fn draw_slot_content(
         rect.width - m::PX_24,
         rect.height - m::PX_48,
     );
-    canvas.with_clip(clip.x, clip.y, clip.width, clip.height, |canvas| {
+    canvas.with_clip(clip.x, clip.y, clip.width, clip.height, &mut |canvas| {
         body_content::draw(canvas, text, palette, scenario, slot.key, clip);
     });
 }

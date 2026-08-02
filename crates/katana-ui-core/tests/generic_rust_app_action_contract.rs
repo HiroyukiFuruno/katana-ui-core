@@ -1,6 +1,7 @@
 use katana_ui_core::adapter_contract::AdapterActionBridge;
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
+use katana_ui_core::render_model::UiStateId;
 use katana_ui_core::widget::atoms::Input;
 use katana_ui_core::widget::molecules::{
     CloseableTab, CloseableTabContextCommand, CloseableTabContextMenu, CloseableTabGroup,
@@ -201,6 +202,93 @@ fn generic_adapter_dispatches_closeable_tab_add_and_group_actions() {
             .iter()
             .all(|group| group.id.as_str() != "notes")
     );
+}
+
+#[test]
+fn tab_action_builders_cover_restore_ungrouped_and_close_group_contracts() {
+    let target = UiStateId::new("tabs");
+
+    assert!(matches!(
+        UiAction::tab_restore_closed(target.clone()),
+        UiAction::TabRestoreClosed { target: actual } if actual == target
+    ));
+    assert!(matches!(
+        UiAction::tab_move_to_ungrouped(target.clone(), "preview"),
+        UiAction::TabMoveToGroup {
+            target: actual,
+            tab_id,
+            group_id: None
+        } if actual == target && tab_id == "preview"
+    ));
+    assert!(matches!(
+        UiAction::tab_close_group(target.clone(), "docs"),
+        UiAction::TabCloseGroup {
+            target: actual,
+            group_id
+        } if actual == target && group_id == "docs"
+    ));
+}
+
+#[test]
+fn closeable_tab_component_action_handles_restore_group_close_unpin_and_noops() {
+    let mut tabs = CloseableTabStrip::new("workspace")
+        .stable_state_id("generic.tabs.component")
+        .group(CloseableTabGroup::new("docs", "Docs"))
+        .tab(
+            CloseableTab::new("editor", "Editor")
+                .group_id("docs")
+                .pinned(true),
+        )
+        .tab(CloseableTab::new("preview", "Preview").group_id("docs"));
+    let target = tabs.state().state_id.clone();
+
+    let wrong_target = ComponentAction::apply_action(
+        &mut tabs,
+        &UiAction::tab_select(UiStateId::new("other-tabs"), "preview"),
+    );
+    let unsupported =
+        ComponentAction::apply_action(&mut tabs, &UiAction::set_value(target.clone(), "ignored"));
+    let out_of_range =
+        ComponentAction::apply_action(&mut tabs, &UiAction::set_selected_index(target.clone(), 99));
+    let unpinned = ComponentAction::apply_action(
+        &mut tabs,
+        &UiAction::tab_pin(target.clone(), "editor", false),
+    );
+    let closed =
+        ComponentAction::apply_action(&mut tabs, &UiAction::tab_close(target.clone(), "preview"));
+    let restored =
+        ComponentAction::apply_action(&mut tabs, &UiAction::tab_restore_closed(target.clone()));
+    let group_closed =
+        ComponentAction::apply_action(&mut tabs, &UiAction::tab_close_group(target, "docs"));
+
+    assert!(!wrong_target.handled);
+    assert!(!unsupported.handled);
+    assert!(!out_of_range.handled);
+    assert!(unpinned.handled);
+    assert!(closed.handled);
+    assert!(restored.handled);
+    assert!(group_closed.handled);
+    assert!(tabs.options().tabs.is_empty());
+}
+
+#[test]
+fn disclosure_action_builders_keep_row_and_tooltip_sources() {
+    let target = UiStateId::new("disclosure");
+
+    assert!(matches!(
+        UiAction::accordion_row_toggle(target.clone()),
+        UiAction::Press {
+            target: actual,
+            source: katana_ui_core::interaction::UiActionSource::AccordionRow
+        } if actual == target
+    ));
+    assert!(matches!(
+        UiAction::tooltip_toggle(target.clone()),
+        UiAction::Press {
+            target: actual,
+            source: katana_ui_core::interaction::UiActionSource::Tooltip
+        } if actual == target
+    ));
 }
 
 #[test]

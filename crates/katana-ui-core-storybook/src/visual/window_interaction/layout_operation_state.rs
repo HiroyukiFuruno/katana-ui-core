@@ -288,3 +288,16 @@ impl LayoutStoryState {
         LayoutStoryUpdate::new("layout_option_changed", "layout_option_changed", state)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn layout_options_reject_non_layout_pages_and_unknown_settings() {
+        let mut state = LayoutStoryState::default();
+
+        assert_eq!(None, state.apply_option("button", "axis"));
+        assert_eq!(None, state.apply_option(ROW_PAGE, "unknown"));
+    }
+}

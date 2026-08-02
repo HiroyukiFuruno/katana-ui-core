@@ -170,3 +170,39 @@ impl SearchBoxScreenUpdate {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn state_summary_covers_submit_case_and_regex_combinations() {
+        let summary = |typed, submitted, case_sensitive, regex| {
+            SearchBoxScreenState {
+                typed,
+                submitted,
+                case_sensitive,
+                regex,
+                ..Default::default()
+            }
+            .state_summary()
+        };
+
+        assert_eq!(
+            "value=query submitted=true",
+            summary(false, true, false, false)
+        );
+        assert_eq!(
+            "value=typed query case=true regex=false",
+            summary(true, false, true, false)
+        );
+        assert_eq!(
+            "value=typed query case=true regex=true",
+            summary(true, false, true, true)
+        );
+        assert_eq!(
+            "value=typed query case=false regex=true",
+            summary(true, false, false, true)
+        );
+    }
+}

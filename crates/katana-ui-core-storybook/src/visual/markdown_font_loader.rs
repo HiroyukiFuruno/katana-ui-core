@@ -16,13 +16,25 @@ const MARKDOWN_MONOSPACE_FONT_CANDIDATES: &[&str] = &[
 #[cfg(target_os = "macos")]
 const MARKDOWN_EMOJI_FONT_CANDIDATES: &[&str] = &["/System/Library/Fonts/Apple Color Emoji.ttc"];
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
+const MARKDOWN_PROPORTIONAL_FONT_CANDIDATES: &[&str] =
+    &["/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"];
+
+#[cfg(target_os = "linux")]
+const MARKDOWN_MONOSPACE_FONT_CANDIDATES: &[&str] =
+    &["/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"];
+
+#[cfg(target_os = "linux")]
+const MARKDOWN_EMOJI_FONT_CANDIDATES: &[&str] =
+    &["/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"];
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 const MARKDOWN_PROPORTIONAL_FONT_CANDIDATES: &[&str] = &[];
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 const MARKDOWN_MONOSPACE_FONT_CANDIDATES: &[&str] = &[];
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 const MARKDOWN_EMOJI_FONT_CANDIDATES: &[&str] = &[];
 
 pub(super) fn font_system_with_markdown_fonts() -> FontSystem {

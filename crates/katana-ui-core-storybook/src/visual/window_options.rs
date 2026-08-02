@@ -14,7 +14,7 @@ pub(super) fn modal_window_options() -> WindowOptions {
 
 #[cfg(test)]
 mod tests {
-    use super::main_window_options;
+    use super::{main_window_options, modal_window_options};
     use minifb::ScaleMode;
 
     #[test]
@@ -25,5 +25,9 @@ mod tests {
         assert!(options.title);
         assert!(!options.borderless);
         assert_eq!(ScaleMode::AspectRatioStretch, options.scale_mode);
+
+        let modal = modal_window_options();
+        assert!(!modal.resize);
+        assert!(modal.title);
     }
 }

@@ -265,3 +265,26 @@ fn status_state(scenario: ScenarioContext<'_>) -> &'static str {
     }
     scenario.screen_state.state_label
 }
+
+#[cfg(test)]
+mod tests {
+    use super::select_value;
+    use crate::visual::render_context::ScenarioContext;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn live_select_values_cover_dark_and_system_options() {
+        let mut state = StorybookScreenState::default();
+        state.selection.select_selected_index = Some(2);
+        assert_eq!(
+            "Dark",
+            select_value(ScenarioContext::for_test("select", usize::MAX, &state))
+        );
+
+        state.selection.select_selected_index = Some(3);
+        assert_eq!(
+            "System",
+            select_value(ScenarioContext::for_test("select", usize::MAX, &state))
+        );
+    }
+}

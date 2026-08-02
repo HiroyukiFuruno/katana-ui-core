@@ -44,3 +44,63 @@ fn code_diff_updates_mode_direction_collapse_and_scroll_sync_from_actions() {
     assert!(diff.scroll_sync_enabled());
     assert!(sync.after.active);
 }
+
+#[test]
+fn code_diff_rejects_wrong_target_invalid_values_and_empty_expand() {
+    let mut diff = CodeDiff::new("Diff");
+    let other = CodeDiff::new("Other");
+
+    assert!(
+        !diff
+            .apply_action(&UiAction::code_diff_mode(
+                other.state_id().clone(),
+                "Inline",
+            ))
+            .handled
+    );
+    assert!(
+        !diff
+            .apply_action(&UiAction::code_diff_mode(
+                diff.state_id().clone(),
+                "invalid",
+            ))
+            .handled
+    );
+    assert!(
+        !diff
+            .apply_action(&UiAction::code_diff_direction(
+                diff.state_id().clone(),
+                "invalid",
+            ))
+            .handled
+    );
+    assert!(
+        !diff
+            .apply_action(&UiAction::code_diff_expand(diff.state_id().clone()))
+            .handled
+    );
+    let focus = diff.apply_action(&UiAction::focus(diff.state_id().clone()));
+    assert!(focus.handled);
+    assert!(focus.after.focused);
+}
+
+#[test]
+fn code_diff_accepts_lowercase_mode_and_direction_aliases() {
+    let mut diff = CodeDiff::new("Diff");
+
+    for mode in ["inline", "split"] {
+        assert!(
+            diff.apply_action(&UiAction::code_diff_mode(diff.state_id().clone(), mode))
+                .handled
+        );
+    }
+    for direction in ["horizontal", "vertical"] {
+        assert!(
+            diff.apply_action(&UiAction::code_diff_direction(
+                diff.state_id().clone(),
+                direction,
+            ))
+            .handled
+        );
+    }
+}

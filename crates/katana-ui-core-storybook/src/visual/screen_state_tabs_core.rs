@@ -218,3 +218,45 @@ fn color_for_group(group_id: &str, color: &str) -> u32 {
     }
     FALLBACK_GROUP_COLOR
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tab_core_round_trip_preserves_optional_fields_tones_and_group_colors() {
+        let tab = TabsScreenTab {
+            id: "rich".to_string(),
+            title: "Rich".to_string(),
+            icon_visible: true,
+            pinned: true,
+            dirty: true,
+            closeable: false,
+            groupable: false,
+            tone: "accent",
+            tooltip: Some("Tooltip".to_string()),
+            group_id: Some("docs".to_string()),
+            accessibility_label: Some("Accessible tab".to_string()),
+        };
+        let core = core_tab(&tab);
+        let round_trip = screen_tab(&core);
+        assert_eq!(tab, round_trip);
+
+        for (tone, expected) in [
+            ("accent", "accent"),
+            ("warning", "warning"),
+            ("danger", "danger"),
+            ("muted", "muted"),
+            ("unknown", "default"),
+        ] {
+            assert_eq!(expected, tone_label(tab_tone(tone)));
+        }
+
+        assert_eq!(0x12abef, color_for_group("custom", "#12abef"));
+        assert_eq!(
+            crate::visual::screen_state_tabs_types::DOCS_GROUP_COLOR,
+            color_for_group("docs", "invalid")
+        );
+        assert_eq!(FALLBACK_GROUP_COLOR, color_for_group("custom", "invalid"));
+    }
+}

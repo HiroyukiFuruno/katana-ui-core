@@ -27,3 +27,15 @@ pub(in crate::visual) fn motion_state(setting: &'static str) -> &'static str {
         _ => setting,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn foundation_semantics_preserve_unknown_settings() {
+        assert_eq!("unknown.theme", theme_state("unknown.theme"));
+        assert_eq!("unknown.key_cap", key_cap_state("unknown.key_cap"));
+        assert_eq!("unknown.motion", motion_state("unknown.motion"));
+    }
+}

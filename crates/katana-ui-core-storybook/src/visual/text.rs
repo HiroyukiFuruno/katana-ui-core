@@ -513,3 +513,24 @@ fn resolve_font(facade: &UiCoreFacade, role: &str) -> FontToken {
         weight: REGULAR_WEIGHT,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn scale_and_font_resolution_cover_invalid_and_empty_theme_fallbacks() {
+        assert_eq!(1.0, normalized_scale_factor(f32::NAN));
+        assert_eq!(1.0, normalized_scale_factor(0.5));
+        assert_eq!(2.0, normalized_scale_factor(2.0));
+
+        let mut theme = ThemeSnapshot::dark();
+        theme.fonts.clear();
+        let font = resolve_font(&UiCoreFacade::new(theme), "missing");
+        assert_eq!(FALLBACK_FONT_NAME, font.name);
+        assert_eq!(FontFamily::Proportional, font.family);
+        assert_eq!(FALLBACK_FONT_SIZE, font.size);
+        assert_eq!(REGULAR_WEIGHT, font.weight);
+    }
+}

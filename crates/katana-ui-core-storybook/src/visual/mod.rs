@@ -228,6 +228,7 @@ mod render_cache;
 mod render_context;
 mod render_preset_defaults;
 mod runtime;
+mod runtime_dependency;
 mod screen_state;
 mod screen_state_accordion;
 mod screen_state_action_bridge;
@@ -404,6 +405,12 @@ mod ui_tree_storybook_host_tests;
 mod ui_tree_surface_host;
 #[cfg(test)]
 mod ui_tree_surface_host_tests;
+#[cfg(test)]
+mod visual_coverage_edge_tests;
+#[cfg(test)]
+mod visual_dedicated_fallback_tests;
+#[cfg(test)]
+mod visual_exhaustive_render_contract_tests;
 #[cfg(test)]
 mod visual_inspector_button_preset_tests;
 #[cfg(test)]
@@ -749,6 +756,8 @@ mod visual_interaction_virtualization_tests;
 #[cfg(test)]
 mod visual_interaction_window_control_button_group_tests;
 #[cfg(test)]
+mod visual_kuc_dependency_edge_tests;
+#[cfg(test)]
 mod visual_layout_align_center_tests;
 #[cfg(test)]
 mod visual_layout_live_stack_grid_tests;
@@ -796,7 +805,11 @@ pub use canvas::Canvas;
 pub use coverage::StorybookVisualCoverageReport;
 pub use live_interaction_audit::StorybookLiveInteractionAuditReport;
 pub use presentation::StorybookPresentation;
-pub use runtime::{StorybookRuntimeReport, StorybookVisualError, StorybookWindowRun};
+pub use runtime::{
+    StorybookDependencyRuntimeReport, StorybookKeyboardRuntimeReport,
+    StorybookMouseTraceRuntimeReport, StorybookRuntimeReport, StorybookVisualError,
+    StorybookWindowRun,
+};
 use std::path::Path;
 pub use text::TextRenderer;
 pub use text_selection::SelectableTextRun;
@@ -811,6 +824,21 @@ pub use ui_tree_storybook_host::UiTreeStorybookHost;
 pub use ui_tree_surface_host::UiTreeSurfaceHost;
 
 impl StorybookVisual {
+    #[must_use]
+    pub fn dependency_runtime_report(self) -> StorybookDependencyRuntimeReport {
+        runtime_dependency::runtime_report()
+    }
+
+    #[must_use]
+    pub fn keyboard_runtime_report(self) -> StorybookKeyboardRuntimeReport {
+        window_keyboard::runtime_report()
+    }
+
+    #[must_use]
+    pub fn mouse_trace_runtime_report(self) -> StorybookMouseTraceRuntimeReport {
+        window_mouse_trace::runtime_report()
+    }
+
     #[must_use]
     pub fn render(self) -> Canvas {
         render::render_storybook_canvas()

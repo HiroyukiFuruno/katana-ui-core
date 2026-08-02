@@ -66,4 +66,12 @@ mod tests {
         fs::remove_dir_all(&directory)?;
         Ok(())
     }
+
+    #[test]
+    fn snapshot_prepare_accepts_a_bare_relative_output_name() -> Result<(), Box<dyn Error>> {
+        SnapshotOutput::prepare(std::path::Path::new(
+            "kuc-storybook-intentionally-missing-output.png",
+        ))?;
+        Ok(())
+    }
 }

@@ -299,6 +299,7 @@ mod tests {
     use super::*;
     use crate::render_model::{
         UI_TASK_SET_STATE_ACTION_ID, UiContextMenuProps, UiHostActionPayload, UiNodeKind,
+        UiSlotActionSpec, UiSlotPlacement, UiSlotSpec, UiTextEntryProps,
     };
 
     #[test]
@@ -319,17 +320,15 @@ mod tests {
         assert_eq!(UI_TASK_SET_STATE_ACTION_ID, plan.action_id);
         assert_eq!("完了", plan.label);
         assert!(plan.payload.is_empty());
+        let payload = plan.task_control_state_action();
         assert!(matches!(
-            &plan.typed_payload,
-            UiHostActionPayload::TaskControlState(_)
+            payload,
+            Some(payload)
+                if payload.node_id == "list"
+                    && payload.row_index == 2
+                    && payload.state_id == "ui-task-state:list:2"
+                    && payload.marker == crate::render_model::UiTaskMarker::Done
         ));
-        let UiHostActionPayload::TaskControlState(payload) = &plan.typed_payload else {
-            return;
-        };
-        assert_eq!("list", payload.node_id);
-        assert_eq!(2, payload.row_index);
-        assert_eq!("ui-task-state:list:2", payload.state_id);
-        assert_eq!("[x]", payload.marker);
     }
 
     #[test]
@@ -394,13 +393,77 @@ mod tests {
         );
 
         let action = plan.task_control_state_action();
-        assert!(action.is_some());
-        let Some(action) = action else {
-            return;
-        };
-        assert_eq!("list", action.node_id);
-        assert_eq!(3, action.row_index);
-        assert_eq!("ui-task-state:list:3", action.state_id);
-        assert_eq!(crate::render_model::UiTaskMarker::Done, action.marker);
+        assert!(matches!(
+            action,
+            Some(action)
+                if action.node_id == "list"
+                    && action.row_index == 3
+                    && action.state_id == "ui-task-state:list:3"
+                    && action.marker == crate::render_model::UiTaskMarker::Done
+        ));
+    }
+
+    #[test]
+    fn text_entry_ignores_slots_without_a_callback() {
+        let no_action = UiSlotSpec::new(UiSlotPlacement::Trailing, "plain");
+        let mut empty_callback = UiSlotSpec::new(UiSlotPlacement::Trailing, "empty");
+        empty_callback.action = Some(UiSlotActionSpec::new("empty", ""));
+        let node = UiNode::new(UiNodeKind::Input, "input").text_entry(UiTextEntryProps {
+            trailing_icon_buttons: vec![no_action, empty_callback],
+            ..UiTextEntryProps::default()
+        });
+
+        assert!(UiHostActionPlan::collect_from_node(&node).is_empty());
+    }
+
+    #[test]
+    fn submenu_recurses_and_context_menu_kind_helpers_cover_all_variants() {
+        let menu = UiNode::new(UiNodeKind::ContextMenu, "menu").context_menu(UiContextMenuProps {
+            items: vec![
+                UiContextMenuItem::new("submenu", "Submenu", UiContextMenuItemKind::Submenu)
+                    .child(UiContextMenuItem::action("copy", "Copy")),
+            ],
+            ..UiContextMenuProps::default()
+        });
+
+        let plans = UiHostActionPlan::collect_from_node(&menu);
+        assert_eq!(1, plans.len());
+        assert_eq!("path=0/0 kind=action", plans[0].payload);
+
+        for (kind, action_kind, name) in [
+            (
+                UiContextMenuItemKind::Action,
+                UiHostActionKind::Command,
+                "action",
+            ),
+            (
+                UiContextMenuItemKind::Toggle,
+                UiHostActionKind::Custom,
+                "toggle",
+            ),
+            (
+                UiContextMenuItemKind::Radio,
+                UiHostActionKind::Custom,
+                "radio",
+            ),
+            (
+                UiContextMenuItemKind::Submenu,
+                UiHostActionKind::Custom,
+                "submenu",
+            ),
+            (
+                UiContextMenuItemKind::Section,
+                UiHostActionKind::Custom,
+                "section",
+            ),
+            (
+                UiContextMenuItemKind::Divider,
+                UiHostActionKind::Custom,
+                "divider",
+            ),
+        ] {
+            assert_eq!(action_kind, context_menu_host_action_kind(kind));
+            assert_eq!(name, context_menu_kind_name(kind));
+        }
     }
 }

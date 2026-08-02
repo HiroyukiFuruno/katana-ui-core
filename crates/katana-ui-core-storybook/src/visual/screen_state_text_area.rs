@@ -59,11 +59,12 @@ impl StorybookScreenState {
         if handled {
             return true;
         }
-        if self.text_area_readonly_for(instance) || self.text_area_disabled_for(instance) {
-            self.register_text_area_mutation_block_for(instance);
-            return true;
-        }
-        false
+        debug_assert!(
+            self.text_area_readonly_for(instance) || self.text_area_disabled_for(instance),
+            "focused editable text-area actions must be handled by KUC"
+        );
+        self.register_text_area_mutation_block_for(instance);
+        true
     }
 
     pub(in crate::visual) fn show_text_area_caret_for(&mut self, instance: &'static str) -> bool {
@@ -177,9 +178,10 @@ impl StorybookScreenState {
 
     fn register_text_area_submit_for(&mut self, instance: &'static str) -> bool {
         let outcome = self.apply_core_text_area_action_for(instance, TextAreaAction::Submit);
-        if !outcome.handled {
-            return false;
-        }
+        debug_assert!(
+            outcome.handled,
+            "focused text-area submit must be handled by KUC"
+        );
         self.sync_text_area_runtime_for(instance, outcome);
         self.apply_text_area_value_for(
             instance,
@@ -285,5 +287,45 @@ impl StorybookScreenState {
         self.last_setting = "text_area.readonly";
         self.last_setting_value = "true";
         self.state_label = "readonly=true";
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{StorybookScreenState, TextAreaInputKey};
+    use crate::visual::storybook_ui_option_contract::StorybookUiOptionContract;
+    use crate::visual::text_area_screen_state::DEFAULT_TEXT_AREA_INSTANCE;
+
+    #[test]
+    fn text_area_keys_cover_newline_submit_blocking_caret_and_resize_paths() {
+        let instance = DEFAULT_TEXT_AREA_INSTANCE;
+        let mut state = StorybookScreenState::default();
+        assert!(!state.update_text_area_caret_visibility_for(instance, 30));
+        assert!(!state.register_text_area_resize_drag_for(instance, 0, 0));
+
+        state.register_text_area_focus_for(instance, false, false);
+        assert!(state.register_text_area_key_for(instance, TextAreaInputKey::Newline));
+        assert!(state.register_text_area_key_for(instance, TextAreaInputKey::Submit));
+        assert!(state.register_text_area_resize_drag_for(instance, 12, 8));
+        assert!(!state.register_text_area_resize_drag_for(instance, 12, 8));
+
+        let mut readonly = StorybookScreenState::default();
+        readonly.register_text_area_focus_for(instance, true, false);
+        assert!(readonly.register_text_area_key_for(instance, TextAreaInputKey::Newline));
+        assert_eq!("text_area_readonly_blocked", readonly.last_action);
+        assert!(readonly.register_text_area_key_for(instance, TextAreaInputKey::Submit));
+        assert_eq!("text_area_submit", readonly.last_action);
+    }
+
+    #[test]
+    fn text_area_value_update_covers_vertical_scroll_enabled_runtime() {
+        let instance = DEFAULT_TEXT_AREA_INSTANCE;
+        let mut state = StorybookScreenState::default();
+        state.apply_text_area_contract_option_for(
+            instance,
+            StorybookUiOptionContract::new("text_area.vertical_scroll_enabled", "false", "true"),
+        );
+        state.register_text_area_focus_for(instance, false, false);
+        assert!(state.register_text_area_key_for(instance, TextAreaInputKey::Character('x')));
     }
 }

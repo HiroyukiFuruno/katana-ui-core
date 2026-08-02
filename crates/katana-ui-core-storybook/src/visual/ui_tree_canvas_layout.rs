@@ -42,7 +42,7 @@ impl UiTreeLayoutRenderer {
                 start_y,
                 area.width.saturating_sub(x.saturating_sub(area.x)),
                 requested_height,
-                |canvas| {
+                &mut |canvas| {
                     let _ = draw_children(canvas);
                 },
             );

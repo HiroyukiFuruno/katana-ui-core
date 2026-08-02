@@ -133,10 +133,7 @@ impl<'a> DiffBuilder<'a> {
         let Some(paired_text) = paired else {
             return;
         };
-        let Some((start_character, end_character)) = changed_character_range(text, paired_text)
-        else {
-            return;
-        };
+        let (start_character, end_character) = changed_character_range(text, paired_text);
         self.local_highlights.push(CodeDiffLineHighlight {
             line_index,
             start_character,
@@ -152,5 +149,28 @@ impl<'a> DiffBuilder<'a> {
             summary: self.summary,
             trailing_newline_difference,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn equal_paired_text_creates_an_empty_local_highlight_range() {
+        let before = CodeDiffTextSource::new("same", 1, 1);
+        let after = CodeDiffTextSource::new("same", 1, 1);
+        let mut builder = DiffBuilder::new(&before, &after, None);
+
+        builder.push_highlight(0, "same", Some("same"));
+
+        assert_eq!(
+            vec![CodeDiffLineHighlight {
+                line_index: 0,
+                start_character: 4,
+                end_character: 4,
+            }],
+            builder.local_highlights
+        );
     }
 }

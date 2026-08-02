@@ -18,6 +18,7 @@ fn heading_is_required_and_media_is_exclusive() {
             .illustration("empty-folder")
             .validate()
     );
+    assert_eq!(Ok(()), EmptyState::new("No files").validate());
 }
 
 #[test]
@@ -109,6 +110,10 @@ fn size_alignment_and_actions_are_reflected_in_layout_snapshot() {
     assert_eq!(EmptyStateAlignment::Leading, large.alignment);
     assert!(large.has_body);
     assert_eq!(2, large.action_count);
+
+    let default = EmptyState::new("Default").layout_snapshot();
+    assert_eq!(EmptyStateSize::Default, default.size);
+    assert_eq!(360, default.heading_rect.width + 80);
 }
 
 #[test]
@@ -120,6 +125,82 @@ fn live_region_payload_is_exposed_as_accessibility_label() {
     assert_eq!(
         "Warning: No results",
         tree.root().props().accessibility_label
+    );
+}
+
+#[test]
+fn all_empty_state_tone_and_size_conversions_are_total() {
+    assert_eq!(
+        ["Neutral", "Subtle", "Accent", "Warning", "Danger"],
+        [
+            EmptyStateTone::Neutral,
+            EmptyStateTone::Subtle,
+            EmptyStateTone::Accent,
+            EmptyStateTone::Warning,
+            EmptyStateTone::Danger,
+        ]
+        .map(EmptyStateTone::announce_label)
+    );
+    assert_eq!(
+        [
+            UiTone::Neutral,
+            UiTone::Accent,
+            UiTone::Accent,
+            UiTone::Warning,
+            UiTone::Danger,
+        ],
+        [
+            EmptyStateTone::Neutral,
+            EmptyStateTone::Subtle,
+            EmptyStateTone::Accent,
+            EmptyStateTone::Warning,
+            EmptyStateTone::Danger,
+        ]
+        .map(UiTone::from)
+    );
+    assert_eq!(
+        [
+            katana_ui_core::render_model::UiSize::Small,
+            katana_ui_core::render_model::UiSize::Medium,
+            katana_ui_core::render_model::UiSize::Large,
+        ],
+        [
+            EmptyStateSize::Compact,
+            EmptyStateSize::Default,
+            EmptyStateSize::Large,
+        ]
+        .map(katana_ui_core::render_model::UiSize::from)
+    );
+}
+
+#[test]
+fn icon_illustration_leading_alignment_and_state_id_render_independently() {
+    let icon = EmptyState::new("Icon")
+        .icon("folder")
+        .alignment(EmptyStateAlignment::Leading);
+    let icon_id = icon.state_id().clone();
+    let icon_tree = UiTree::new(icon);
+    assert_eq!(icon_id, icon_tree.root().props().state_id);
+    assert!(
+        icon_tree
+            .root()
+            .children()
+            .iter()
+            .any(|node| node.kind() == UiNodeKind::Icon && node.props().label == "folder")
+    );
+    assert_eq!(
+        katana_ui_core::render_model::UiJustifyContent::Start,
+        icon_tree.root().props().common.justify_content
+    );
+
+    let illustration_tree =
+        UiTree::new(EmptyState::new("Illustration").illustration("empty-folder"));
+    assert!(
+        illustration_tree
+            .root()
+            .children()
+            .iter()
+            .any(|node| node.kind() == UiNodeKind::Icon && node.props().label == "empty-folder")
     );
 }
 
@@ -138,30 +219,34 @@ fn empty_state_embeds_without_parent_state_conflict() {
 }
 
 #[test]
-fn empty_state_embeds_in_required_empty_hosts_with_distinct_state() -> Result<(), String> {
+fn empty_state_embeds_in_required_empty_hosts_with_distinct_state() {
     assert_embedded_empty_state(UiTree::new(
         DiagnosticsList::new("Diagnostics").empty_slot(EmptyState::new("No diagnostics")),
-    ))?;
+    ));
     assert_embedded_empty_state(UiTree::new(
         TreeView::new("Tree").child(EmptyState::new("No files")),
-    ))?;
+    ));
     assert_embedded_empty_state(UiTree::new(
         CommandPalette::new("Commands").child(EmptyState::new("No commands")),
-    ))?;
+    ));
     assert_embedded_empty_state(UiTree::new(
         SearchBox::new("Search").child(EmptyState::new("No results")),
-    ))?;
-    Ok(())
+    ));
 }
 
-fn assert_embedded_empty_state(tree: UiTree) -> Result<(), String> {
+fn assert_embedded_empty_state(tree: UiTree) {
     let empty = tree
         .root()
         .children()
         .iter()
-        .find(|it| it.kind() == UiNodeKind::EmptyState)
-        .ok_or_else(|| "required host must render EmptyState child".to_string())?;
+        .find(|it| it.kind() == UiNodeKind::EmptyState);
+    assert!(
+        empty.is_some(),
+        "required host must render EmptyState child"
+    );
+    let Some(empty) = empty else {
+        return;
+    };
 
     assert_ne!(tree.root().props().state_id, empty.props().state_id);
-    Ok(())
 }

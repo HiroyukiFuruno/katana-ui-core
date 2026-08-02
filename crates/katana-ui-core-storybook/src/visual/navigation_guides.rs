@@ -229,3 +229,14 @@ fn text_x(depth: NavigationDepth) -> usize {
         NavigationDepth::Page => PAGE_TEXT_X,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{NavigationDepth, PAGE_LINE_X, PAGE_TEXT_X, disclosure_x, text_x};
+
+    #[test]
+    fn page_depth_uses_page_guide_and_text_columns() {
+        assert!(disclosure_x(NavigationDepth::Page) <= PAGE_LINE_X);
+        assert_eq!(PAGE_TEXT_X, text_x(NavigationDepth::Page));
+    }
+}

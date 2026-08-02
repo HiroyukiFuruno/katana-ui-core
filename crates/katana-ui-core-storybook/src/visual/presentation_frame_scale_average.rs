@@ -199,3 +199,52 @@ fn average_source_block(source: &Canvas, x: usize, y: usize, scale: usize) -> u3
         | (((green + half) / count) << GREEN_SHIFT)
         | (((blue + half) / count) << BLUE_SHIFT)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn source_canvas(width: usize, height: usize) -> Canvas {
+        let mut canvas = Canvas::new(width, height, 0);
+        for (index, pixel) in canvas.pixels.iter_mut().enumerate() {
+            let value = u32::try_from(index).unwrap_or_default();
+            *pixel = ((value * 17) << RED_SHIFT) | ((value * 11) << GREEN_SHIFT) | (value * 7);
+        }
+        canvas
+    }
+
+    #[test]
+    fn two_x_scaling_and_region_updates_share_the_same_average() {
+        let source = source_canvas(4, 4);
+        let expected = scale_down_average(&source, 2, 2, 2);
+        let mut target = Canvas::new(2, 2, 0x00ff_ffff);
+
+        scale_down_average_into(&source, &mut target, 2, 2, 2);
+        assert_eq!(target.pixels(), expected.pixels());
+
+        let mut region_target = Canvas::new(2, 2, 0);
+        scale_down_average_2x_region_into(&source, &mut region_target, 0, 0, 2, 2);
+        assert_eq!(region_target.pixels(), expected.pixels());
+
+        let mut resized_target = Canvas::new(1, 1, 0);
+        resized_target.scale_factor = 2.0;
+        scale_down_average_into(&source, &mut resized_target, 2, 2, 2);
+        assert_eq!(resized_target.pixels(), expected.pixels());
+        assert_eq!(resized_target.scale_factor, 1.0);
+    }
+
+    #[test]
+    fn generic_scaling_and_region_updates_share_the_same_average() {
+        let source = source_canvas(6, 6);
+        let expected = scale_down_average(&source, 2, 2, 3);
+        let mut target = Canvas::new(2, 2, 0);
+
+        scale_down_average_region_into(&source, &mut target, 0, 0, 2, 2, 3);
+        assert_eq!(target.pixels(), expected.pixels());
+
+        let mut replaced_target = Canvas::new(2, 2, 0);
+        scale_down_average_into(&source, &mut replaced_target, 2, 2, 3);
+        assert_eq!(replaced_target.pixels(), expected.pixels());
+        assert_eq!(expected.pixels()[0], average_source_block(&source, 0, 0, 3));
+    }
+}

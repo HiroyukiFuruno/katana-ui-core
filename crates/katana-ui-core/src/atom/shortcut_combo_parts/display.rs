@@ -6,6 +6,15 @@ pub(super) enum RenderPurpose {
     Accessible,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Modifier {
+    Command,
+    Control,
+    Alt,
+    Shift,
+    Meta,
+}
+
 pub(super) fn default_separator(platform: RuntimePlatform) -> ShortcutSeparator {
     match platform {
         RuntimePlatform::MacOS => ShortcutSeparator::None,
@@ -35,18 +44,36 @@ fn modifier_sequence(
         modifiers.command,
         platform,
         purpose,
-        "command",
+        Modifier::Command,
     );
     push_modifier(
         &mut sequence,
         modifiers.control,
         platform,
         purpose,
-        "control",
+        Modifier::Control,
     );
-    push_modifier(&mut sequence, modifiers.alt, platform, purpose, "alt");
-    push_modifier(&mut sequence, modifiers.shift, platform, purpose, "shift");
-    push_modifier(&mut sequence, modifiers.meta, platform, purpose, "meta");
+    push_modifier(
+        &mut sequence,
+        modifiers.alt,
+        platform,
+        purpose,
+        Modifier::Alt,
+    );
+    push_modifier(
+        &mut sequence,
+        modifiers.shift,
+        platform,
+        purpose,
+        Modifier::Shift,
+    );
+    push_modifier(
+        &mut sequence,
+        modifiers.meta,
+        platform,
+        purpose,
+        Modifier::Meta,
+    );
     sequence
 }
 
@@ -55,33 +82,32 @@ fn push_modifier(
     enabled: bool,
     platform: RuntimePlatform,
     purpose: RenderPurpose,
-    modifier: &str,
+    modifier: Modifier,
 ) {
     if enabled {
         sequence.push(modifier_text(platform, purpose, modifier));
     }
 }
 
-fn modifier_text(platform: RuntimePlatform, purpose: RenderPurpose, modifier: &str) -> String {
+fn modifier_text(platform: RuntimePlatform, purpose: RenderPurpose, modifier: Modifier) -> String {
     match (platform, purpose, modifier) {
-        (_, RenderPurpose::Accessible, "command") => "Command".into(),
-        (_, RenderPurpose::Accessible, "control") => "Control".into(),
-        (_, RenderPurpose::Accessible, "alt") => "Alt".into(),
-        (_, RenderPurpose::Accessible, "shift") => "Shift".into(),
-        (_, RenderPurpose::Accessible, "meta") => "Meta".into(),
-        (RuntimePlatform::MacOS, RenderPurpose::Visual, "command") => "⌘".into(),
-        (RuntimePlatform::MacOS, RenderPurpose::Visual, "control") => "⌃".into(),
-        (RuntimePlatform::MacOS, RenderPurpose::Visual, "alt") => "⌥".into(),
-        (RuntimePlatform::MacOS, RenderPurpose::Visual, "shift") => "⇧".into(),
-        (RuntimePlatform::MacOS, RenderPurpose::Visual, "meta") => "⌘".into(),
-        (RuntimePlatform::Windows, RenderPurpose::Visual, "command") => "Ctrl".into(),
-        (RuntimePlatform::Windows, RenderPurpose::Visual, "meta") => "Win".into(),
-        (RuntimePlatform::Linux, RenderPurpose::Visual, "command") => "Ctrl".into(),
-        (RuntimePlatform::Linux, RenderPurpose::Visual, "meta") => "Super".into(),
-        (_, RenderPurpose::Visual, "control") => "Ctrl".into(),
-        (_, RenderPurpose::Visual, "alt") => "Alt".into(),
-        (_, RenderPurpose::Visual, "shift") => "Shift".into(),
-        _ => modifier.into(),
+        (_, RenderPurpose::Accessible, Modifier::Command) => "Command".into(),
+        (_, RenderPurpose::Accessible, Modifier::Control) => "Control".into(),
+        (_, RenderPurpose::Accessible, Modifier::Alt) => "Alt".into(),
+        (_, RenderPurpose::Accessible, Modifier::Shift) => "Shift".into(),
+        (_, RenderPurpose::Accessible, Modifier::Meta) => "Meta".into(),
+        (RuntimePlatform::MacOS, RenderPurpose::Visual, Modifier::Command) => "⌘".into(),
+        (RuntimePlatform::MacOS, RenderPurpose::Visual, Modifier::Control) => "⌃".into(),
+        (RuntimePlatform::MacOS, RenderPurpose::Visual, Modifier::Alt) => "⌥".into(),
+        (RuntimePlatform::MacOS, RenderPurpose::Visual, Modifier::Shift) => "⇧".into(),
+        (RuntimePlatform::MacOS, RenderPurpose::Visual, Modifier::Meta) => "⌘".into(),
+        (RuntimePlatform::Windows, RenderPurpose::Visual, Modifier::Command) => "Ctrl".into(),
+        (RuntimePlatform::Windows, RenderPurpose::Visual, Modifier::Meta) => "Win".into(),
+        (RuntimePlatform::Linux, RenderPurpose::Visual, Modifier::Command) => "Ctrl".into(),
+        (RuntimePlatform::Linux, RenderPurpose::Visual, Modifier::Meta) => "Super".into(),
+        (_, RenderPurpose::Visual, Modifier::Control) => "Ctrl".into(),
+        (_, RenderPurpose::Visual, Modifier::Alt) => "Alt".into(),
+        (_, RenderPurpose::Visual, Modifier::Shift) => "Shift".into(),
     }
 }
 

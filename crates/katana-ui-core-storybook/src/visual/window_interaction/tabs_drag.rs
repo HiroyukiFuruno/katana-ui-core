@@ -119,3 +119,43 @@ fn drop_visual_index(
         (false, false) => target,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{StorybookWindowState, TabsDragTarget, apply_drag_at, drop_visual_index, start_at};
+    use crate::test_assert::KucTestExpect;
+    use crate::visual::{dedicated_tabs, preview_detail};
+
+    #[test]
+    fn tabs_drag_rejects_empty_same_and_missing_targets_and_maps_all_drop_sides() {
+        let mut state = StorybookWindowState {
+            selected_page: "tabs",
+            ..StorybookWindowState::default()
+        };
+        assert!(!start_at(&mut state, 0, 0));
+        assert!(!apply_drag_at(&mut state, 0, 0));
+
+        let tab_id = state.screen_state.tabs.core_visual_tab_ids()[0].clone();
+        let rect = dedicated_tabs::tab_rect_for_test(&state.screen_state.tabs, &tab_id)
+            .kuc_expect("default tabs must expose their first visual tab");
+        let component = preview_detail::component_action_hit_rect("tabs");
+        let x = component.x + rect.x + rect.width / 2;
+        let y = component.y + rect.y + rect.height / 2;
+        assert!(start_at(&mut state, x, y));
+        assert!(!apply_drag_at(&mut state, x, y));
+
+        state.tabs_drag_target = Some(TabsDragTarget {
+            tab_id: "missing".to_string(),
+            committed: false,
+        });
+        assert!(!apply_drag_at(&mut state, x, y));
+
+        let ids = vec!["a".to_string(), "b".to_string(), "c".to_string()];
+        assert_eq!(Some(2), drop_visual_index(&ids, "a", "c", 10, 10));
+        assert_eq!(Some(1), drop_visual_index(&ids, "a", "c", 9, 10));
+        assert_eq!(Some(1), drop_visual_index(&ids, "c", "a", 10, 10));
+        assert_eq!(Some(0), drop_visual_index(&ids, "c", "a", 9, 10));
+        assert_eq!(None, drop_visual_index(&ids, "missing", "a", 9, 10));
+        assert_eq!(None, drop_visual_index(&ids, "a", "missing", 9, 10));
+    }
+}

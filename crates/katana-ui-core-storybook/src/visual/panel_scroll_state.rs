@@ -44,6 +44,7 @@ impl PanelOverflow {
         self.content_height.saturating_sub(self.viewport_height)
     }
 
+    #[cfg(test)]
     pub(super) fn overflows_x(self) -> bool {
         self.max_x() > 0
     }
@@ -99,6 +100,7 @@ impl PanelScrollOffsets {
         before != next
     }
 
+    #[cfg(test)]
     pub(super) fn scroll_delta_x_with_max(
         &mut self,
         region: PanelScrollRegion,
@@ -160,6 +162,7 @@ impl PanelScrollOffsets {
         self.offset(region).min(max_offset)
     }
 
+    #[cfg(test)]
     pub(super) fn offset_x_with_max(self, region: PanelScrollRegion, max_offset: usize) -> usize {
         self.offset_x(region).min(max_offset)
     }

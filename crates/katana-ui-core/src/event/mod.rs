@@ -143,19 +143,15 @@ mod tests {
 
     #[test]
     fn click_event_is_component_agnostic() {
-        let event = UiEvent::Click(ClickEvent::new(
+        let click = ClickEvent::new(
             UiNodeId::new("any-clickable"),
             12.0,
             24.0,
             ClickEventSource::Pointer,
-        ));
+        );
+        let event = UiEvent::Click(click.clone());
 
         assert!(matches!(&event, UiEvent::Click(_)));
-        let click = if let UiEvent::Click(click) = event {
-            click
-        } else {
-            return;
-        };
         assert_eq!("any-clickable", click.target.as_str());
         assert_eq!(ClickEventSource::Pointer, click.source);
     }

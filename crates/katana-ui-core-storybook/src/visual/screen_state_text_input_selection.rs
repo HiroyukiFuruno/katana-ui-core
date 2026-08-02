@@ -47,9 +47,10 @@ impl StorybookScreenState {
             selection_start,
             selection_end,
         ));
-        if !selection.handled {
-            return None;
-        }
+        assert!(
+            selection.handled,
+            "the Storybook selection action must target its own input"
+        );
         let result = input.apply_action(&UiAction::paste_text(state_id, text));
         result.handled.then(|| input.state_snapshot())
     }

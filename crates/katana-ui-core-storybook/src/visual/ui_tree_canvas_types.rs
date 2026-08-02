@@ -218,7 +218,9 @@ fn hit_priority(hit: &UiTreeHostActionHit) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::{UiTreeHitRect, UiTreeHostActionHit, UiTreeHostActionHitQuery};
+    use super::{
+        UiTreeHitRect, UiTreeHostActionHit, UiTreeHostActionHitQuery, UiTreeInteractionTarget,
+    };
     use katana_ui_core::render_model::{UiCursor, UiHostActionPlan, UiHostActionSpec, UiNodeId};
 
     #[test]
@@ -276,6 +278,42 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_eq!(vec!["checkbox", "row"], ids);
+    }
+
+    #[test]
+    fn settings_row_action_precedes_nested_control_and_target_contains_point() {
+        let rect = UiTreeHitRect {
+            x: 0,
+            y: 0,
+            width: 120,
+            height: 32,
+        };
+        let row = UiTreeHostActionHit {
+            action: UiHostActionPlan::new(
+                UiNodeId::new("settings-field:theme"),
+                UiHostActionSpec::settings_field_control("Theme", "theme"),
+            ),
+            rect,
+            cursor: UiCursor::Pointer,
+        };
+        let control = UiTreeHostActionHit {
+            action: UiHostActionPlan::new(
+                UiNodeId::new("settings-control:theme"),
+                UiHostActionSpec::settings_field_control("Theme", "theme"),
+            ),
+            rect,
+            cursor: UiCursor::Pointer,
+        };
+        let hits = [control, row.clone()];
+
+        let ordered = UiTreeHostActionHitQuery::new(&hits)
+            .cloned_hits_at(10.0, 10.0)
+            .collect::<Vec<_>>();
+        assert_eq!("settings-field:theme", ordered[0].action.target.as_str());
+
+        let target = UiTreeInteractionTarget::from_action_hit(row);
+        assert!(target.contains_point(10.0, 10.0));
+        assert!(!target.contains_point(120.0, 10.0));
     }
 
     fn host_action_hit(

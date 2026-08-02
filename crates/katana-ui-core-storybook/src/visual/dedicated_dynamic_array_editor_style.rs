@@ -6,7 +6,6 @@ const ADD_REMOVE_PRESET_INDEX: usize = 1;
 const REORDER_PRESET_INDEX: usize = 2;
 const THEME_PRESET_INDEX: usize = 3;
 const ACTIVE_ROW_INDEX: usize = 1;
-const DEFAULT_ITEM_COUNT: usize = 3;
 
 pub(super) fn row_fill(palette: &VisualPalette, scenario: ScenarioContext<'_>, row: usize) -> u32 {
     if scenario.screen_state.last_action == "array_keyboard_edit" {
@@ -57,12 +56,6 @@ pub(super) fn status_label(scenario: ScenarioContext<'_>) -> &'static str {
     if scenario.screen_state.state_label != "idle" {
         return scenario.screen_state.state_label;
     }
-    if scenario.screen_state.dynamic_array_editor.item_count() != DEFAULT_ITEM_COUNT {
-        return "rows=changed";
-    }
-    if scenario.screen_state.dynamic_array_editor.order_label() != "order=1,2,3" {
-        return scenario.screen_state.dynamic_array_editor.order_label();
-    }
     match scenario.preset_index {
         ADD_REMOVE_PRESET_INDEX => "add/remove",
         REORDER_PRESET_INDEX => "reorder=true",
@@ -77,5 +70,21 @@ fn active_label(scenario: ScenarioContext<'_>) -> &'static str {
         REORDER_PRESET_INDEX => "Drag item",
         THEME_PRESET_INDEX => "Accent row",
         _ => "Item 2",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn settings_override_updates_idle_array_row_label() {
+        let state = StorybookScreenState {
+            settings_revision: 1,
+            ..StorybookScreenState::default()
+        };
+        let scenario = ScenarioContext::for_test("dynamic-array-editor", 0, &state);
+        assert_eq!("array item updated", row_label(scenario, 0));
     }
 }

@@ -77,6 +77,15 @@ impl CodeDiff {
         )
     }
 
+    pub fn from_source(
+        label: impl Into<String>,
+        source: CodeDiffSource,
+    ) -> Result<Self, CodeDiffBuildError> {
+        let mut diff = Self::new(label);
+        diff.rebuild_from_source(source)?;
+        Ok(diff)
+    }
+
     pub fn source_contract(
         mut self,
         before: CodeDiffTextSource,

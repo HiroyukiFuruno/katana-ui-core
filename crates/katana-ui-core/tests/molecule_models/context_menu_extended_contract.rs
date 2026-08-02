@@ -46,6 +46,20 @@ fn open_action_accepts_all_anchor_kinds_and_defaults_focus_for_node_anchor() {
         "caller-button",
         node.props().context_menu.focus_return_target
     );
+
+    let mut configured = ContextMenu::new("context")
+        .focus_return_target("caller-button")
+        .item(ContextMenuItem::action("copy", "Copy"));
+    configured.apply_context_action(&ContextMenuAction::Open {
+        anchor: ContextMenuAnchor::NodeId("editor-row".to_string()),
+    });
+    assert_eq!(
+        "caller-button",
+        UiNode::from(configured)
+            .props()
+            .context_menu
+            .focus_return_target
+    );
 }
 
 #[test]

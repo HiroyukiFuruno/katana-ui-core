@@ -113,3 +113,26 @@ pub(in crate::visual) fn code_diff_state(setting: &'static str) -> &'static str 
         _ => setting,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn specialized_setting_mappers_preserve_unknown_keys() {
+        for actual in [
+            command_palette_state("unknown"),
+            diagnostics_list_state("unknown"),
+            shortcut_cheatsheet_state("unknown"),
+            shortcut_combo_state("unknown"),
+            skeleton_cluster_state("unknown"),
+            window_control_state("unknown"),
+            accordion_state("unknown"),
+            context_menu_state("unknown"),
+            startup_state("unknown"),
+            code_diff_state("unknown"),
+        ] {
+            assert_eq!("unknown", actual);
+        }
+    }
+}

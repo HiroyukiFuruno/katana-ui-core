@@ -1,6 +1,7 @@
 use katana_ui_core::atom::Text;
 use katana_ui_core::molecule::structured::collapsible_panel::{
-    CollapsiblePanel, CollapsiblePanelAction, CollapsiblePanelEvent, PanelMode, ResizableWidth,
+    CollapsiblePanel, CollapsiblePanelAction, CollapsiblePanelEvent, PanelMode, PanelSide,
+    ResizableWidth,
 };
 use katana_ui_core::render_model::{UiDimension, UiNodeKind, UiTree, UiZIndex};
 
@@ -150,6 +151,94 @@ fn content_slot_keeps_child_state_separate() {
 
     assert_eq!(1, root.children().len());
     assert_ne!(root.props().state_id, root.children()[0].props().state_id);
+}
+
+#[test]
+fn panel_identity_side_noops_and_pin_transitions_are_explicit() {
+    let mut fixed_panel = panel()
+        .side(PanelSide::Trailing)
+        .mode(PanelMode::Expanded)
+        .resize_handle(false)
+        .pinned(false);
+    let state_id = fixed_panel.state_id().clone();
+    let tree = UiTree::new(fixed_panel.clone());
+    assert_eq!(state_id, tree.root().props().state_id);
+
+    assert!(
+        fixed_panel
+            .apply_action(CollapsiblePanelAction::SetMode(PanelMode::Expanded))
+            .is_empty()
+    );
+    assert!(
+        fixed_panel
+            .apply_action(CollapsiblePanelAction::Resize(WIDTH_CURRENT))
+            .is_empty()
+    );
+    assert!(
+        fixed_panel
+            .apply_action(CollapsiblePanelAction::ResetWidth)
+            .is_empty()
+    );
+    assert!(
+        fixed_panel
+            .apply_action(CollapsiblePanelAction::LeaveTrigger)
+            .is_empty()
+    );
+    assert!(
+        fixed_panel
+            .apply_action(CollapsiblePanelAction::Unpin)
+            .is_empty()
+    );
+    assert_eq!(
+        vec![CollapsiblePanelEvent::PinChanged { pinned: true }],
+        fixed_panel.apply_action(CollapsiblePanelAction::Pin)
+    );
+
+    let mut resizable = panel().resize_handle(true);
+    assert!(
+        resizable
+            .apply_action(CollapsiblePanelAction::Resize(WIDTH_CURRENT))
+            .is_empty()
+    );
+    assert!(
+        fixed_panel
+            .apply_action(CollapsiblePanelAction::Pin)
+            .is_empty()
+    );
+}
+
+#[test]
+fn expanded_toggle_and_unpinned_hover_policy_cover_remaining_state_paths() {
+    let mut expanded_panel = panel().mode(PanelMode::Expanded).pinned(false);
+    assert!(matches!(
+        expanded_panel
+            .apply_action(CollapsiblePanelAction::ToggleExpand)
+            .as_slice(),
+        [CollapsiblePanelEvent::ModeChanged {
+            from: PanelMode::Expanded,
+            to: PanelMode::Collapsed,
+        }]
+    ));
+    assert!(
+        expanded_panel
+            .apply_action(CollapsiblePanelAction::HoverTrigger)
+            .is_empty()
+    );
+
+    let mut hover = panel()
+        .mode(PanelMode::IconOnly)
+        .pinned(false)
+        .expand_on_hover(true);
+    assert!(
+        !hover
+            .apply_action(CollapsiblePanelAction::HoverTrigger)
+            .is_empty()
+    );
+    assert!(
+        hover
+            .apply_action(CollapsiblePanelAction::HoverTrigger)
+            .is_empty()
+    );
 }
 
 fn panel() -> CollapsiblePanel {

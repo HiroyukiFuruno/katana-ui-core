@@ -1,16 +1,8 @@
 use super::{
     UI_TASK_SET_STATE_ACTION_ID, UI_TASK_TOGGLE_ACTION_ID, UiContextMenuItem, UiHostActionPayload,
-    UiHostActionPlan, UiHostActionSpec, UiNode,
+    UiHostActionPlan, UiHostActionSpec, UiNode, UiTaskControlAction, UiTaskControlMenuItem,
+    UiTaskControlStateAction, UiTaskControlTarget, UiTaskMarker,
 };
-use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum UiTaskMarker {
-    Empty,
-    Done,
-    Progress,
-    Blocked,
-}
 
 impl UiTaskMarker {
     pub const ALL: [Self; 4] = [Self::Empty, Self::Done, Self::Progress, Self::Blocked];
@@ -56,39 +48,6 @@ impl UiTaskMarker {
             _ => None,
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiTaskControlTarget {
-    pub node_id: String,
-    pub row_index: usize,
-    pub state_id: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiTaskControlAction {
-    pub node_id: String,
-    pub row_index: usize,
-    pub current_marker: UiTaskMarker,
-    pub state_id: String,
-    pub menu_items: Vec<UiTaskControlMenuItem>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiTaskControlMenuItem {
-    pub item_id: String,
-    pub marker: UiTaskMarker,
-    pub label: String,
-    pub checked: bool,
-    pub host_action: Option<UiHostActionSpec>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct UiTaskControlStateAction {
-    pub node_id: String,
-    pub row_index: usize,
-    pub state_id: String,
-    pub marker: UiTaskMarker,
 }
 
 impl UiHostActionPlan {
@@ -236,4 +195,142 @@ fn find_node<'a>(node: &'a UiNode, node_id: &str) -> Option<&'a UiNode> {
     node.children()
         .iter()
         .find_map(|child| find_node(child, node_id))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render_model::{
+        UiContextMenuItemKind, UiContextMenuProps, UiHostActionPayload, UiInteractionState,
+        UiNodeId, UiNodeKind,
+    };
+
+    #[test]
+    fn marker_parsing_covers_blocked_and_invalid_identifiers() {
+        assert_eq!(
+            Some(UiTaskMarker::Blocked),
+            UiTaskMarker::from_marker("[-]")
+        );
+        assert_eq!(
+            Some(UiTaskMarker::Blocked),
+            UiTaskMarker::from_context_menu_item_id("ui.task.state.blocked")
+        );
+        assert_eq!(
+            None,
+            UiTaskMarker::from_context_menu_item_id("ui.task.state.unknown")
+        );
+    }
+
+    #[test]
+    fn task_accessors_reject_wrong_actions_payloads_and_markers() {
+        let unrelated = UiHostActionPlan::new(
+            UiNodeId::new("target"),
+            UiHostActionSpec::command("other", "Other"),
+        );
+        assert!(unrelated.task_control_target().is_none());
+        assert!(unrelated.task_control_state_action().is_none());
+
+        let wrong_toggle_payload = UiHostActionPlan::new(
+            UiNodeId::new("target"),
+            UiHostActionSpec::command(UI_TASK_TOGGLE_ACTION_ID, "Toggle"),
+        );
+        assert!(wrong_toggle_payload.task_control_target().is_none());
+
+        let wrong_state_payload = UiHostActionPlan::new(
+            UiNodeId::new("target"),
+            UiHostActionSpec::command(UI_TASK_SET_STATE_ACTION_ID, "State"),
+        );
+        assert!(wrong_state_payload.task_control_state_action().is_none());
+
+        let toggle = UiHostActionPlan::new(
+            UiNodeId::new("target"),
+            UiHostActionSpec::task_control("Toggle", "list", 1),
+        );
+        assert!(toggle.task_control_action("invalid").is_none());
+
+        let invalid_state = UiHostActionPlan::new(
+            UiNodeId::new("target"),
+            UiHostActionSpec::task_control_state("State", "list", 1, "invalid"),
+        );
+        assert!(invalid_state.task_control_state_action().is_none());
+    }
+
+    #[test]
+    fn task_root_lookup_rejects_missing_or_invalid_markers_and_finds_nested_target() {
+        let plan = UiHostActionPlan::new(
+            UiNodeId::new("target"),
+            UiHostActionSpec::task_control("Toggle", "list", 1),
+        );
+        let missing = UiNode::new(UiNodeKind::Column, "root");
+        assert!(plan.task_control_action_from_root(&missing).is_none());
+
+        let invalid = UiNode::new(UiNodeKind::Column, "root").child(
+            UiNode::new(UiNodeKind::Row, "target")
+                .stable_node_id("target")
+                .interaction(UiInteractionState {
+                    value: "invalid".to_string(),
+                    ..UiInteractionState::default()
+                }),
+        );
+        assert!(plan.task_control_action_from_root(&invalid).is_none());
+
+        let nested = UiNode::new(UiNodeKind::Column, "root").child(
+            UiNode::new(UiNodeKind::Row, "wrapper").child(
+                UiNode::new(UiNodeKind::Checkbox, "target")
+                    .stable_node_id("target")
+                    .interaction(UiInteractionState {
+                        value: "[x]".to_string(),
+                        ..UiInteractionState::default()
+                    }),
+            ),
+        );
+        assert_eq!(
+            Some(UiTaskMarker::Done),
+            plan.task_control_action_from_root(&nested)
+                .map(|action| action.current_marker)
+        );
+    }
+
+    #[test]
+    fn task_menu_items_support_typed_legacy_and_recursive_fallbacks() {
+        let valid_action = UiHostActionSpec::task_control_state("Done", "list", 1, "[x]");
+        let wrong_action = UiHostActionSpec::command("other", "Other");
+        let wrong_payload = UiHostActionSpec::command(UI_TASK_SET_STATE_ACTION_ID, "State")
+            .typed_payload(UiHostActionPayload::None);
+        let items = vec![
+            UiContextMenuItem::new("typed", "Done", UiContextMenuItemKind::Radio)
+                .host_action(valid_action),
+            UiContextMenuItem::new("ui.task.state.empty", "Empty", UiContextMenuItemKind::Radio),
+            UiContextMenuItem::new(
+                "ui.task.state.blocked",
+                "Blocked",
+                UiContextMenuItemKind::Radio,
+            )
+            .host_action(wrong_action),
+            UiContextMenuItem::new(
+                "ui.task.state.progress",
+                "Progress",
+                UiContextMenuItemKind::Radio,
+            )
+            .host_action(wrong_payload),
+            UiContextMenuItem::new("ignored", "Ignored", UiContextMenuItemKind::Action)
+                .host_action(UiHostActionSpec::task_control_state(
+                    "Invalid", "list", 1, "invalid",
+                )),
+        ];
+
+        let converted = task_menu_items(&items);
+        assert_eq!(4, converted.len());
+        assert!(converted[0].host_action.is_some());
+        assert!(converted[1].host_action.is_none());
+        assert_eq!(UiTaskMarker::Blocked, converted[2].marker);
+        assert_eq!(UiTaskMarker::Progress, converted[3].marker);
+
+        let child = UiNode::new(UiNodeKind::ContextMenu, "menu").context_menu(UiContextMenuProps {
+            items,
+            ..UiContextMenuProps::default()
+        });
+        let root = UiNode::new(UiNodeKind::Column, "root").child(child);
+        assert_eq!(4, task_menu_items_from_node(&root).len());
+    }
 }

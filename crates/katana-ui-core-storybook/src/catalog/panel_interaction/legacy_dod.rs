@@ -240,3 +240,15 @@ fn ui_marker_name(spec: Option<&LegacyDodSpec>, page: &str) -> String {
         |it| format!("legacy-{}", it.marker),
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_optional_legacy_settings_report_accepts_an_empty_catalog() {
+        let examples: Vec<StoryExample> = Vec::new();
+
+        assert!(LegacyDodReports::settings_mutations(std::hint::black_box(&examples)).is_empty());
+    }
+}

@@ -2,7 +2,7 @@ use super::visual_navigation_support::{
     navigation_expandable_sample_rows, navigation_horizontal_connector_sample_x, navigation_line_x,
     navigation_row_y_and_depth_for_page, navigation_row_y_for_group, navigation_row_y_for_section,
     navigation_sample_rows, navigation_text_connector_sample_x, render_navigation_canvas,
-    require_navigation_value, row_y_and_depth_in_navigation,
+    require_navigation_value,
 };
 use super::{StorybookVisual, layout_metrics, palette};
 use crate::catalog::story_map::StoryGroup;
@@ -16,10 +16,11 @@ fn navigation_tree_lines_obey_show_navigation_lines_option() -> Result<(), Strin
     let without_lines = render_navigation_canvas(false, true, "button");
     let palette = palette::VisualPalette::from_theme(&ThemeSnapshot::dark());
 
-    let (row_y, row_depth) = require_navigation_value(
-        row_y_and_depth_in_navigation("tree-view", expansion),
-        "target row should be visible",
+    let row_y = require_navigation_value(
+        navigation_row_y_for_group(expansion, StoryGroup::Foundation),
+        "foundation group row should be visible",
     )?;
+    let row_depth = 0;
     let line_x = navigation_line_x(row_depth);
     let text_connector_x = navigation_text_connector_sample_x(row_depth);
     let row_center_y = row_y + layout_metrics::NAV_ROW_HEIGHT / 2;

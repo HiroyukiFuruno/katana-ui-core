@@ -141,5 +141,6 @@ mod tests {
         let palette = UiTreeCanvasPalette::from_theme(&theme);
 
         assert_eq!(0xd0d7de, palette.document_rule_border);
+        assert_eq!(palette.muted_border, palette.border_color("unknown"));
     }
 }

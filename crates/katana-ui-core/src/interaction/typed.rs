@@ -71,3 +71,17 @@ impl UiActionSource {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::UiActionSource;
+
+    #[test]
+    fn action_names_cover_specialized_press_sources() {
+        assert_eq!(
+            "color_picker_toggle",
+            UiActionSource::ColorPickerOpen.press_name()
+        );
+        assert_eq!("scroll_area_press", UiActionSource::ScrollArea.press_name());
+    }
+}

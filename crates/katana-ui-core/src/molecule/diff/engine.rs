@@ -85,3 +85,32 @@ fn collect_pairs(before: &[&str], after: &[&str], lengths: &[Vec<usize>]) -> Vec
     }
     pairs
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn split_and_unified_sources_cover_engine_boundary() {
+        let split = build(
+            &CodeDiffSource::Split {
+                before: "before".to_string(),
+                after: "after".to_string(),
+            },
+            None,
+        );
+        assert!(matches!(
+            split,
+            Ok(split) if split.summary.additions == 1 && split.summary.removals == 1
+        ));
+
+        let error = build(
+            &CodeDiffSource::Unified {
+                text: "@@".to_string(),
+            },
+            None,
+        )
+        .err();
+        assert_eq!(Some(CodeDiffBuildError::UnsupportedUnifiedSource), error);
+    }
+}

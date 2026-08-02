@@ -65,6 +65,37 @@ fn modal_same_display_plan_fails_when_parent_is_not_on_display() {
     assert_eq!(ModalWindowPlacementError::ParentOutsideDisplay, error);
 }
 
+#[test]
+fn modal_same_display_rejects_oversized_and_non_finite_modal_geometry() {
+    let parent = WindowRect::new(
+        WindowPoint::new(PARENT_X, PARENT_Y),
+        WindowSize::new(PARENT_WIDTH, PARENT_HEIGHT),
+    );
+    let oversized = ModalWindowPlacement::same_display(
+        WindowId::new("parent"),
+        WindowId::new("oversized"),
+        parent,
+        WindowSize::new(DISPLAY_WIDTH + 1.0, MODAL_HEIGHT),
+        main_display(),
+    );
+    assert_eq!(
+        Err(ModalWindowPlacementError::ModalLargerThanDisplay),
+        oversized.resolve()
+    );
+
+    let non_finite = ModalWindowPlacement::same_display(
+        WindowId::new("parent"),
+        WindowId::new("non-finite"),
+        parent,
+        WindowSize::new(f32::NAN, MODAL_HEIGHT),
+        main_display(),
+    );
+    assert_eq!(
+        Err(ModalWindowPlacementError::ModalOutsideDisplay),
+        non_finite.resolve()
+    );
+}
+
 fn main_display() -> DisplayBounds {
     DisplayBounds::new(
         "main",

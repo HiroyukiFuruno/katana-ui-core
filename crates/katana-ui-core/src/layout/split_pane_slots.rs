@@ -15,9 +15,9 @@ impl SplitPane {
     }
 
     fn set_slot(&mut self, index: usize, child: UiNode) {
-        if self.children.len() <= index {
+        while self.children.len() <= index {
             self.children
-                .resize_with(index + 1, || UiNode::new(UiNodeKind::Spacer, "EmptyPane"));
+                .push(UiNode::new(UiNodeKind::Spacer, "EmptyPane"));
         }
         self.children[index] = child;
     }

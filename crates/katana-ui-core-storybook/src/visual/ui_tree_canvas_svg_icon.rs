@@ -27,9 +27,7 @@ impl SvgIconRaster {
         };
         for y in 0..physical_size {
             for x in 0..physical_size {
-                let Some(pixel) = pixmap.pixel(x as u32, y as u32) else {
-                    continue;
-                };
+                let pixel = pixmap.pixels()[y * physical_size + x];
                 let alpha = pixel.alpha();
                 if alpha == 0 {
                     continue;
@@ -143,6 +141,15 @@ mod tests {
             anti_aliased_pixel_count(&canvas, BACKGROUND, TEXT) > 0,
             "2x icon should keep SVG antialias pixels instead of blocky logical expansion"
         );
+    }
+
+    #[test]
+    fn invalid_svg_returns_false_without_mutating_the_canvas() {
+        let icon = UiIconProps::new("<svg");
+        let mut canvas = Canvas::new(8, 8, BACKGROUND);
+
+        assert!(!SvgIconRaster::draw(&mut canvas, &icon, 0, 0, 8, TEXT));
+        assert!(canvas.pixels().iter().all(|pixel| *pixel == BACKGROUND));
     }
 
     #[derive(Debug)]

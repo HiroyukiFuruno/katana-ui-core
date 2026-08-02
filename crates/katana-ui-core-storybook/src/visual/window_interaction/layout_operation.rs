@@ -88,14 +88,17 @@ pub(super) fn operation_at(
         return None;
     }
     if resize_hit(component, x, y) {
-        return match state.selected_page {
-            ROW_PAGE => Some(LayoutStoryAction::RowResize),
-            COLUMN_PAGE => Some(LayoutStoryAction::ColumnResize),
-            STACK_PAGE => Some(LayoutStoryAction::StackResize),
-            GRID_PAGE => Some(LayoutStoryAction::GridResize),
-            ALIGN_CENTER_PAGE => Some(LayoutStoryAction::AlignCenterResize),
-            _ => None,
+        let action = match state.selected_page {
+            ROW_PAGE => LayoutStoryAction::RowResize,
+            COLUMN_PAGE => LayoutStoryAction::ColumnResize,
+            STACK_PAGE => LayoutStoryAction::StackResize,
+            GRID_PAGE => LayoutStoryAction::GridResize,
+            page => {
+                debug_assert_eq!(page, ALIGN_CENTER_PAGE);
+                LayoutStoryAction::AlignCenterResize
+            }
         };
+        return Some(action);
     }
     match state.selected_page {
         ROW_PAGE => Some(LayoutStoryAction::RowAlign),
@@ -156,8 +159,32 @@ fn align_center_contract() -> &'static str {
         .align(layout::Alignment::Center)
         .child(atom::Text::new("A"))
         .into();
-    if node.props().common.align_items == UiAlignItems::Center {
-        return "alignment=center";
+    assert_eq!(
+        UiAlignItems::Center,
+        node.props().common.align_items,
+        "AlignCenter must project center alignment"
+    );
+    "alignment=center"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn layout_helpers_cover_align_center_body_and_unknown_fallbacks() {
+        let state = StorybookWindowState {
+            selected_page: ALIGN_CENTER_PAGE,
+            ..StorybookWindowState::default()
+        };
+        let component = preview_detail::component_action_hit_rect(ALIGN_CENTER_PAGE);
+        assert_eq!(
+            Some(LayoutStoryAction::AlignCenterResize),
+            operation_at(&state, component.right() - 1, component.bottom() - 1)
+        );
+
+        assert_eq!("alignment=start", layout_alignment_for("unknown"));
+        assert_eq!("none", layout_page("unknown"));
+        assert_eq!("alignment=center", align_center_contract());
     }
-    "alignment=start"
 }

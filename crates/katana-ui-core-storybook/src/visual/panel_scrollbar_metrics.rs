@@ -32,6 +32,7 @@ pub(super) fn vertical_region_scrollable_for(
     .overflows_y()
 }
 
+#[cfg(test)]
 pub(super) fn horizontal_bar_visible_for(
     region: PanelScrollRegion,
     selected_page: &str,
@@ -41,6 +42,7 @@ pub(super) fn horizontal_bar_visible_for(
     scrollbar_visible && horizontal_region_scrollable_for(region, selected_page, tree_expansion)
 }
 
+#[cfg(test)]
 pub(super) fn horizontal_region_scrollable_for(
     region: PanelScrollRegion,
     selected_page: &str,
@@ -76,6 +78,7 @@ pub(super) fn horizontal_thumb_rect_for(
     horizontal_thumb_rect_for_state(region, offsets, "", Default::default())
 }
 
+#[cfg(test)]
 pub(super) fn horizontal_thumb_rect_for_state(
     region: PanelScrollRegion,
     offsets: PanelScrollOffsets,
@@ -95,6 +98,7 @@ pub(super) fn offset_from_drag_for(
     vertical_model_for(region, selected_page, tree_expansion).offset_from_thumb_y(y)
 }
 
+#[cfg(test)]
 pub(super) fn horizontal_offset_from_drag_for(
     region: PanelScrollRegion,
     x: usize,
@@ -118,6 +122,7 @@ pub(super) fn vertical_track_rect(region: PanelScrollRegion) -> LayoutRect {
     panel_layout::region_layout(region).vertical_track
 }
 
+#[cfg(test)]
 pub(super) fn horizontal_track_rect(region: PanelScrollRegion) -> LayoutRect {
     panel_layout::region_layout(region).horizontal_track
 }
@@ -140,6 +145,7 @@ fn vertical_model_for(
     )
 }
 
+#[cfg(test)]
 fn horizontal_model_for(
     region: PanelScrollRegion,
     selected_page: &str,

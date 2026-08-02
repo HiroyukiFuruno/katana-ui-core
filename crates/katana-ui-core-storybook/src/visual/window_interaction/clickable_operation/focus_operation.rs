@@ -212,3 +212,43 @@ pub(super) fn focus_at(state: &mut StorybookWindowState, x: usize, y: usize) -> 
     state.screen_state.register_button_focus();
     true
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn component_focus_rejects_points_outside_every_specialized_surface() {
+        for page in [
+            "checkbox",
+            "radio",
+            "toggle",
+            "slide-control",
+            "card",
+            "list",
+            "breadcrumb",
+            "context-menu",
+            "menu",
+            "menu-button",
+            "toast-stack-manager",
+            "tooltip",
+            "modal",
+            "modal-overlay",
+            "toolbar",
+            "form-field",
+            "accordion",
+            "code-diff",
+            "color-picker-rgba",
+            "combo-box",
+            "chip",
+            "button",
+            "badge",
+        ] {
+            let mut state = StorybookWindowState {
+                selected_page: page,
+                ..StorybookWindowState::default()
+            };
+            assert!(!focus_at(&mut state, 0, 0), "{page}");
+        }
+    }
+}

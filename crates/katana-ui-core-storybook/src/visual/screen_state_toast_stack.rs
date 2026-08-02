@@ -13,9 +13,10 @@ const STORYBOOK_TOAST_ID: &str = "save";
 impl StorybookScreenState {
     pub(in crate::visual) fn register_notification_toast_dismiss(&mut self) {
         let result = notification_toast_action_result(UiAction::dismiss);
-        if !result.handled || result.after.open {
-            return;
-        }
+        assert!(
+            result.handled && !result.after.open,
+            "the toast dismiss action must close the fixture"
+        );
         self.action_count += 1;
         self.last_action = "toast_dismiss";
         self.last_event = "toast_dismissed";
@@ -26,9 +27,10 @@ impl StorybookScreenState {
 
     pub(in crate::visual) fn register_notification_toast_hover(&mut self) {
         let result = notification_toast_action_result(|target| UiAction::hover(target, true));
-        if !result.handled || !result.after.hovered {
-            return;
-        }
+        assert!(
+            result.handled && result.after.hovered,
+            "the toast hover action must update hover state"
+        );
         self.action_count += 1;
         self.preview_hovered = true;
         self.last_action = "toast_hover";
@@ -40,9 +42,10 @@ impl StorybookScreenState {
 
     pub(in crate::visual) fn register_notification_toast_focus(&mut self) {
         let result = notification_toast_action_result(UiAction::focus);
-        if !result.handled || !result.after.focused {
-            return;
-        }
+        assert!(
+            result.handled && result.after.focused,
+            "the toast focus action must update focus state"
+        );
         self.action_count += 1;
         self.button_focused = true;
         self.last_action = "toast_focus";
@@ -60,9 +63,10 @@ impl StorybookScreenState {
             return;
         }
         let result = notification_toast_action_result(UiAction::dismiss);
-        if !result.handled || result.after.open {
-            return;
-        }
+        assert!(
+            result.handled && !result.after.open,
+            "the focused toast dismiss action must close the fixture"
+        );
         self.action_count += 1;
         self.last_action = "toast_keyboard_dismiss";
         self.last_event = "toast_dismissed";
@@ -139,5 +143,26 @@ fn toast_stack_event_name(event: Option<&ToastStackEvent>) -> &'static str {
         Some(ToastStackEvent::ToastPaused) => "toast_paused",
         Some(ToastStackEvent::ToastResumed) => "toast_resumed",
         _ => "toast_noop",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn toast_keyboard_and_stack_event_boundaries_are_explicit() {
+        let mut state = StorybookScreenState::default();
+        state.register_notification_toast_keyboard_dismiss();
+        assert_eq!("toast_keyboard_ignored", state.last_event);
+        state.register_notification_toast_focus();
+        state.register_notification_toast_keyboard_dismiss();
+        assert_eq!("toast_dismissed", state.last_event);
+
+        assert_eq!(
+            "toast_resumed",
+            toast_stack_event_name(Some(&ToastStackEvent::ToastResumed))
+        );
+        assert_eq!("toast_noop", toast_stack_event_name(None));
     }
 }

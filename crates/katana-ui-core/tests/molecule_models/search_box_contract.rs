@@ -6,6 +6,7 @@ use katana_ui_core::render_model::UiTree;
 #[test]
 fn search_box_owns_input_options_and_clear_affordance() {
     let search = SearchBox::new("Search")
+        .stable_state_id("stable-search")
         .placeholder("Find file")
         .value("katana")
         .clear_action("Clear query")
@@ -14,6 +15,7 @@ fn search_box_owns_input_options_and_clear_affordance() {
 
     assert!(search.submits_on_enter());
     assert!(search.is_case_sensitive());
+    assert_eq!("stable-search", search.state_id().as_str());
 
     let tree = UiTree::new(search);
 

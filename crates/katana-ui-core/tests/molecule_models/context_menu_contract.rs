@@ -1,3 +1,4 @@
+use katana_ui_core::atom::Text;
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::{UiAction, UiActionSource};
 use katana_ui_core::molecule::{
@@ -31,6 +32,31 @@ fn context_menu_renders_typed_anchor_items_and_state() {
         ContextMenuAnchor::Pointer { x: 120, y: 64 },
         root.props().context_menu.anchor
     );
+}
+
+#[test]
+fn context_menu_projects_sizing_delay_items_and_consumer_children() {
+    let tree = UiTree::new(
+        ContextMenu::new("Editor menu")
+            .placement_priority(vec![
+                ContextMenuPlacement::AboveStart,
+                ContextMenuPlacement::BelowStart,
+            ])
+            .min_width(240)
+            .max_height(320)
+            .submenu_open_delay_ms(175)
+            .highlighted_path(vec![0])
+            .items(vec![ContextMenuItem::action("copy", "Copy")])
+            .child(Text::new("Consumer footer")),
+    );
+    let props = &tree.root().props().context_menu;
+
+    assert_eq!(240, props.min_width);
+    assert_eq!(320, props.max_height);
+    assert_eq!(175, props.submenu_open_delay_ms);
+    assert_eq!(vec![0], props.highlighted_path);
+    assert_eq!(1, props.items.len());
+    assert_eq!("Consumer footer", tree.root().children()[0].props().label);
 }
 
 #[test]
@@ -206,4 +232,21 @@ fn choice_item_converts_to_context_menu_action_item() {
     assert_eq!("Open", item.label);
     assert!(item.disabled);
     assert_eq!(ContextMenuItemKind::Action, item.kind);
+}
+
+#[test]
+fn keyboard_navigation_returns_none_when_no_item_is_selectable() {
+    let items = vec![
+        ContextMenuItem::new("section", "Section", ContextMenuItemKind::Section),
+        ContextMenuItem::action("disabled", "Disabled").disabled(true),
+    ];
+
+    assert_eq!(
+        None,
+        ContextMenuKeyboardNavigator::move_highlight(
+            &items,
+            None,
+            &ContextMenuKeyboardInput::ArrowDown,
+        )
+    );
 }

@@ -212,3 +212,43 @@ pub(super) fn focus_settings_list(state: &mut StorybookWindowState, x: usize, y:
         .register_settings_list_action(SettingsListStoryAction::FocusField);
     true
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::focus_dispatch;
+    use super::*;
+
+    #[test]
+    fn secondary_focus_surfaces_reject_points_outside_the_component() {
+        for page in [
+            "split-pane",
+            "theme-tokens",
+            "dynamic-array-editor",
+            "notification-toast",
+            "popover",
+            "hover-card",
+            "search-box",
+            "search-control-strip",
+            "segmented-toggle",
+            "shortcut-combo",
+            "shortcut-cheatsheet",
+            "skeleton-cluster",
+            "motion",
+            "window-control-button-group",
+            "startup-state-panel",
+            "attachment-chip",
+            "chip-group",
+            "status-bar",
+            "side-menu",
+            "select-box",
+            "selection-list",
+            "settings-list",
+        ] {
+            let mut state = StorybookWindowState {
+                selected_page: page,
+                ..StorybookWindowState::default()
+            };
+            assert!(!focus_dispatch::focus_at(&mut state, 0, 0), "{page}");
+        }
+    }
+}

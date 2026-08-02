@@ -154,17 +154,19 @@ pub(super) fn max_scroll_y(expansion: TreeExpansionState) -> usize {
 #[cfg(test)]
 pub(super) fn last_row_bottom_at_scroll(expansion: TreeExpansionState, scroll_y: usize) -> usize {
     let row_count = visible_rows(expansion).len();
-    if row_count == 0 {
-        return NAV_FIRST_ROW_Y;
-    }
+    debug_assert!(
+        row_count > 0,
+        "the navigation root always contributes a row"
+    );
     NAV_FIRST_ROW_Y + (row_count - 1) * NAV_ROW_STEP + NAV_ROW_HEIGHT - scroll_y
 }
 
 fn navigation_content_height(expansion: TreeExpansionState) -> usize {
     let row_count = visible_rows(expansion).len();
-    if row_count == 0 {
-        return 0;
-    }
+    debug_assert!(
+        row_count > 0,
+        "the navigation root always contributes a row"
+    );
     (row_count - 1) * NAV_ROW_STEP + NAV_ROW_HEIGHT
 }
 

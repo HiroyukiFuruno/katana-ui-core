@@ -35,9 +35,8 @@ impl ToastStackManager {
         let Some(index) = self.state.visible.iter().position(|it| it.payload.id == id) else {
             return Vec::new();
         };
-        let Some(removed) = self.state.visible.remove(index) else {
-            return Vec::new();
-        };
+        let removed = self.state.visible[index].clone();
+        let _ = self.state.visible.remove(index);
         let mut events = self.record(ToastStackEvent::ToastDismissed {
             id: removed.payload.id,
             reason,

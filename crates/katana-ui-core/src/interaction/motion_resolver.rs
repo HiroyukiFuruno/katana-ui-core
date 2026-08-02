@@ -71,7 +71,11 @@ impl MotionResolver {
                 distance_px: 0,
                 easing: tokens.easing(spec.easing).to_string(),
                 instant: true,
-                diagnostics: downgrade_reason(spec.policy, disabled_by_context, context),
+                diagnostics: downgrade_reason(
+                    spec.policy == ReducedMotionPolicy::ForceReduced,
+                    disabled_by_context,
+                    context,
+                ),
             };
         }
         MotionSnapshot {
@@ -86,17 +90,17 @@ impl MotionResolver {
 }
 
 fn downgrade_reason(
-    policy: ReducedMotionPolicy,
+    force_reduced: bool,
     disabled_by_context: bool,
     context: MotionContext,
 ) -> String {
     if disabled_by_context {
         return format!("context={:?}", context.surface);
     }
-    match policy {
-        ReducedMotionPolicy::ForceReduced => "policy=ForceReduced".to_string(),
-        ReducedMotionPolicy::Respect => "prefers_reduced_motion=true".to_string(),
-        ReducedMotionPolicy::Ignore => String::new(),
+    if force_reduced {
+        "policy=ForceReduced".to_string()
+    } else {
+        "prefers_reduced_motion=true".to_string()
     }
 }
 

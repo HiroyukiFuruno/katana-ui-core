@@ -66,3 +66,14 @@ fn breadcrumb_state_label(index: usize) -> &'static str {
         _ => "route=2",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::breadcrumb_state_label;
+
+    #[test]
+    fn later_breadcrumb_routes_use_the_terminal_label() {
+        assert_eq!("route=2", breadcrumb_state_label(2));
+        assert_eq!("route=2", breadcrumb_state_label(usize::MAX));
+    }
+}

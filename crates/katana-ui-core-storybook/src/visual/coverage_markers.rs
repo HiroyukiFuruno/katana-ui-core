@@ -80,12 +80,10 @@ fn panel_scrollbars_visible() -> bool {
         &canvas,
         accent,
         panel_scroll_state::PanelScrollRegion::Navigation,
-        false,
     ) && panel_scrollbar_center_is_accent(
         &canvas,
         accent,
         panel_scroll_state::PanelScrollRegion::Inspector,
-        false,
     ) && internal_panel_preview_scrollbar_visible(&canvas, accent, false)
         && internal_panel_preview_scrollbar_visible(&canvas, accent, true)
 }
@@ -94,23 +92,13 @@ fn panel_scrollbar_center_is_accent(
     canvas: &super::Canvas,
     accent: u32,
     region: panel_scroll_state::PanelScrollRegion,
-    horizontal: bool,
 ) -> bool {
-    let thumb = if horizontal {
-        panel_scrollbars::horizontal_thumb_rect_for_state(
-            region,
-            panel_scroll_state::PanelScrollOffsets::default(),
-            "panel",
-            Default::default(),
-        )
-    } else {
-        panel_scrollbars::thumb_rect_for_state(
-            region,
-            panel_scroll_state::PanelScrollOffsets::default(),
-            "panel",
-            Default::default(),
-        )
-    };
+    let thumb = panel_scrollbars::thumb_rect_for_state(
+        region,
+        panel_scroll_state::PanelScrollOffsets::default(),
+        "panel",
+        Default::default(),
+    );
     pixel_at(
         canvas,
         thumb.x + thumb.width / 2,
@@ -231,10 +219,15 @@ fn navigation_collapsed_pixels_changed() -> usize {
         screen_state: StorybookScreenState::default(),
     });
     let diff = pixel_difference(open.pixels(), closed.pixels());
+    navigation_diff_above_minimum(diff)
+}
+
+fn navigation_diff_above_minimum(diff: usize) -> usize {
     if diff > MIN_NAV_COLLAPSE_DIFF {
-        return diff;
+        diff
+    } else {
+        0
     }
-    0
 }
 
 fn pixel_difference(left: &[u32], right: &[u32]) -> usize {
@@ -242,4 +235,18 @@ fn pixel_difference(left: &[u32], right: &[u32]) -> usize {
         .zip(right.iter())
         .filter(|(left, right)| left != right)
         .count()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MIN_NAV_COLLAPSE_DIFF, navigation_diff_above_minimum};
+
+    #[test]
+    fn navigation_diff_requires_more_than_the_minimum_pixel_count() {
+        assert_eq!(0, navigation_diff_above_minimum(MIN_NAV_COLLAPSE_DIFF));
+        assert_eq!(
+            MIN_NAV_COLLAPSE_DIFF + 1,
+            navigation_diff_above_minimum(MIN_NAV_COLLAPSE_DIFF + 1)
+        );
+    }
 }

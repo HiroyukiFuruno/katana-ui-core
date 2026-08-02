@@ -77,3 +77,40 @@ fn item_kind(value: &str) -> UiContextMenuItemKind {
         _ => UiContextMenuItemKind::Action,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::render_model::{UiContextMenuRect, UiStateId};
+
+    #[test]
+    fn context_menu_option_conversions_cover_every_anchor_and_item_kind() {
+        assert_eq!(
+            UiContextMenuAnchor::Pointer {
+                x: POINTER_X,
+                y: POINTER_Y,
+            },
+            anchor(POINTER_VALUE)
+        );
+        assert_eq!(
+            "VirtualRect(1,2,3,4)",
+            anchor_value(&UiContextMenuAnchor::VirtualRect(UiContextMenuRect::new(
+                1, 2, 3, 4
+            )))
+        );
+        assert_eq!(
+            "NodeId(trigger)",
+            anchor_value(&UiContextMenuAnchor::NodeId("trigger".to_string()))
+        );
+
+        assert_eq!(UiContextMenuItemKind::Radio, item_kind("Radio"));
+        assert_eq!(UiContextMenuItemKind::Submenu, item_kind("Submenu"));
+        assert_eq!(UiContextMenuItemKind::Section, item_kind("Section"));
+        assert_eq!(UiContextMenuItemKind::Divider, item_kind("Divider"));
+        assert_eq!(UiContextMenuItemKind::Action, item_kind("unknown"));
+        assert_eq!(
+            "Action",
+            item_kind_value(&UiProps::new("Menu", UiStateId::new("menu")))
+        );
+    }
+}

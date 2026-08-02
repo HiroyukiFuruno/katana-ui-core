@@ -148,3 +148,41 @@ impl UiTreeViewRenderer {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dotted_and_dashed_line_visibility_cover_visible_and_gap_pixels() {
+        assert!(UiTreeViewRenderer::line_pixel_visible(
+            UiTreeLineStyle::Dotted,
+            4
+        ));
+        assert!(!UiTreeViewRenderer::line_pixel_visible(
+            UiTreeLineStyle::Dotted,
+            3
+        ));
+        assert!(UiTreeViewRenderer::line_pixel_visible(
+            UiTreeLineStyle::Dashed,
+            4
+        ));
+        assert!(!UiTreeViewRenderer::line_pixel_visible(
+            UiTreeLineStyle::Dashed,
+            5
+        ));
+
+        let mut canvas = Canvas::new(8, 12, 0);
+        UiTreeViewRenderer::draw_vertical_line(
+            &mut canvas,
+            2,
+            0,
+            1,
+            12,
+            UiTreeLineStyle::Dotted,
+            0xffffff,
+        );
+        assert_eq!(0xffffff, canvas.pixels()[2]);
+        assert_eq!(0, canvas.pixels()[8 + 2]);
+    }
+}

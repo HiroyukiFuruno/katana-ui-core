@@ -58,21 +58,30 @@ impl ContextMenuPlacementResolver {
         priority: &[ContextMenuPlacement],
     ) -> ContextMenuPlacementResult {
         let fit_size = fit_size(menu_size, viewport);
-        let preferred = priority
-            .first()
-            .copied()
-            .unwrap_or(ContextMenuPlacement::BelowStart);
+        let effective_priority = if priority.is_empty() {
+            vec![
+                ContextMenuPlacement::BelowStart,
+                ContextMenuPlacement::AboveStart,
+            ]
+        } else {
+            priority.to_vec()
+        };
+        let preferred = effective_priority[0];
         let request = PlacementRequest::new(
             anchor_kind(anchor),
             to_common_placement(preferred),
             Size::new(fit_size.width, fit_size.height),
             Rect::new(0, 0, viewport.width, viewport.height),
         )
-        .priority(priority.iter().copied().map(to_common_placement))
+        .priority(effective_priority.iter().copied().map(to_common_placement))
         .clamp_margin(viewport.margin as i32);
         let result = PlacementEngine::resolve_for(PlacementConsumer::ContextMenu, &request);
         ContextMenuPlacementResult {
-            placement: from_common_placement(result.placement_used),
+            placement: effective_priority
+                .iter()
+                .copied()
+                .find(|placement| to_common_placement(*placement) == result.placement_used)
+                .unwrap_or(preferred),
             x: result.position.x,
             y: result.position.y,
             render_height: fit_size.height,
@@ -103,21 +112,6 @@ fn to_common_placement(placement: ContextMenuPlacement) -> Placement {
         ContextMenuPlacement::AboveEnd => Placement::TopEnd,
         ContextMenuPlacement::RightStart => Placement::RightStart,
         ContextMenuPlacement::LeftStart => Placement::LeftStart,
-    }
-}
-
-fn from_common_placement(placement: Placement) -> ContextMenuPlacement {
-    match placement {
-        Placement::Bottom | Placement::BottomStart => ContextMenuPlacement::BelowStart,
-        Placement::BottomEnd => ContextMenuPlacement::BelowEnd,
-        Placement::Top | Placement::TopStart => ContextMenuPlacement::AboveStart,
-        Placement::TopEnd => ContextMenuPlacement::AboveEnd,
-        Placement::Right | Placement::RightStart | Placement::RightEnd => {
-            ContextMenuPlacement::RightStart
-        }
-        Placement::Left | Placement::LeftStart | Placement::LeftEnd => {
-            ContextMenuPlacement::LeftStart
-        }
     }
 }
 

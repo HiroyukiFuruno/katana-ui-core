@@ -94,16 +94,18 @@ impl UiTreeHostActionHitCollector<'_> {
                         rect: hit.rect,
                         cursor: hit.cursor,
                     };
-                    let clipped = clip_scroll_hit(
+                    clip_scroll_hit(
                         action_hit,
                         viewport_x,
                         viewport_y,
                         viewport_width,
                         viewport_height,
                         source_y,
-                    )?;
-                    hit.rect = clipped.rect;
-                    Some(hit)
+                    )
+                    .map(|clipped| {
+                        hit.rect = clipped.rect;
+                        hit
+                    })
                 }),
         );
     }

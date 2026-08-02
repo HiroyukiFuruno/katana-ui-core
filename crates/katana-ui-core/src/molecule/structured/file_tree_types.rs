@@ -100,3 +100,15 @@ impl FileTreeState {
         self.hovered_item_id.as_deref()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::FileTreeState;
+
+    #[test]
+    fn hovered_builder_sets_the_initial_hovered_item() {
+        let state = FileTreeState::default().hovered("readme");
+
+        assert_eq!(Some("readme"), state.hovered_item_id());
+    }
+}

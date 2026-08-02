@@ -135,3 +135,27 @@ fn option_index_at(
     }
     Some((y - panel.y) / option_height)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        LayoutRect, SelectionScreenAction, combo_action_at, select_action_at, trigger_rect,
+    };
+
+    #[test]
+    fn open_selection_triggers_close_or_filter_actions() {
+        let component = LayoutRect::new(0, 0, 320, 240);
+        let trigger = trigger_rect(component);
+        let x = trigger.x;
+        let y = trigger.y;
+
+        assert_eq!(
+            Some(SelectionScreenAction::SelectClose),
+            select_action_at(component, true, x, y)
+        );
+        assert_eq!(
+            Some(SelectionScreenAction::ComboFilter),
+            combo_action_at(component, true, false, x, y)
+        );
+    }
+}

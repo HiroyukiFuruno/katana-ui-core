@@ -189,4 +189,37 @@ mod tests {
             red.resolve(&node).value(StyleProperty::Background)
         );
     }
+
+    #[test]
+    fn matching_rules_replace_prior_declarations_and_expose_ordered_values() {
+        let node = UiNode::from(Button::new("Save")).style_class("primary");
+        let sheet = StyleSheet::new()
+            .rule(StyleRule::class(
+                "primary",
+                vec![StyleDeclaration::new(
+                    StyleProperty::Background,
+                    StyleValue::ColorToken("before".to_string()),
+                )],
+            ))
+            .rule(StyleRule::class(
+                "primary",
+                vec![
+                    StyleDeclaration::new(
+                        StyleProperty::Background,
+                        StyleValue::ColorToken("after".to_string()),
+                    ),
+                    StyleDeclaration::new(
+                        StyleProperty::Foreground,
+                        StyleValue::ColorToken("text".to_string()),
+                    ),
+                ],
+            ));
+
+        let resolved = sheet.resolve(&node);
+        assert_eq!(2, resolved.declarations().len());
+        assert_eq!(
+            Some(&StyleValue::ColorToken("after".to_string())),
+            resolved.value(StyleProperty::Background)
+        );
+    }
 }

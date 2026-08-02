@@ -71,12 +71,10 @@ impl SearchControlScreenState {
         let events = strip.apply_action(SearchControlStripAction::Navigate(
             SearchNavigationDirection::Next,
         ));
-        self.navigated_next = matches!(
-            events.first(),
-            Some(SearchControlStripEvent::SearchNavigationRequested {
-                direction: SearchNavigationDirection::Next
-            })
-        );
+        self.navigated_next =
+            events.contains(&SearchControlStripEvent::SearchNavigationRequested {
+                direction: SearchNavigationDirection::Next,
+            });
         SearchControlScreenUpdate::new(
             "search_control_keyboard_next",
             event_name(&events),
@@ -113,5 +111,80 @@ impl SearchControlScreenUpdate {
             event,
             state,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        SearchControlScreenAction, SearchControlScreenState, SearchControlStripEvent, event_name,
+    };
+    use katana_ui_core::molecule::{
+        ReplaceMode, SearchNavigationDirection, SearchOptionKind, SearchReplaceScope,
+    };
+
+    #[test]
+    fn search_control_actions_and_event_names_cover_every_state_and_event_variant() {
+        let mut state = SearchControlScreenState::default();
+        for action in [
+            SearchControlScreenAction::Query,
+            SearchControlScreenAction::ToggleRegex,
+            SearchControlScreenAction::Focus,
+            SearchControlScreenAction::Hover,
+            SearchControlScreenAction::KeyboardNext,
+        ] {
+            state.apply(action);
+        }
+        assert!(state.query_changed);
+        assert!(state.regex_enabled);
+        assert!(state.focused);
+        assert!(state.hovered);
+        assert!(state.navigated_next);
+
+        let cases = [
+            (
+                SearchControlStripEvent::SearchQueryChanged("query".to_string()),
+                "search_query_changed",
+            ),
+            (
+                SearchControlStripEvent::SearchOptionChanged {
+                    option: SearchOptionKind::MatchCase,
+                    enabled: true,
+                },
+                "search_option_changed",
+            ),
+            (
+                SearchControlStripEvent::SearchNavigationRequested {
+                    direction: SearchNavigationDirection::Previous,
+                },
+                "search_navigation_requested",
+            ),
+            (
+                SearchControlStripEvent::ReplaceModeChanged(ReplaceMode::Visible),
+                "replace_mode_changed",
+            ),
+            (
+                SearchControlStripEvent::ReplaceValueChanged("replacement".to_string()),
+                "replace_value_changed",
+            ),
+            (
+                SearchControlStripEvent::ReplaceRequested {
+                    scope: SearchReplaceScope::One,
+                    value: "replacement".to_string(),
+                },
+                "replace_requested",
+            ),
+            (
+                SearchControlStripEvent::SearchResultPositionChanged {
+                    result_count: 3,
+                    active_index: Some(1),
+                },
+                "search_result_position_changed",
+            ),
+        ];
+        for (event, expected) in cases {
+            assert_eq!(expected, event_name(&[event]));
+        }
+        assert_eq!("none", event_name(&[]));
     }
 }

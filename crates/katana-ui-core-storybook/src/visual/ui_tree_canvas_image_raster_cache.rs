@@ -96,3 +96,32 @@ fn sample_position(target_index: usize, source_extent: f32, target_extent: usize
         - PIXEL_CENTER_OFFSET)
         .max(0.0)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_assert::KucTestExpect;
+
+    #[test]
+    fn transparent_pixel_closes_opaque_and_translucent_spans() {
+        let image = UiImageSurfaceProps::new(
+            "mixed-alpha",
+            3,
+            1,
+            vec![255, 0, 0, 255, 0, 255, 0, 128, 0, 0, 255, 0],
+        )
+        .kuc_expect("valid mixed-alpha image");
+
+        let cached = rasterize_cached_surface(&image, 3, 1, 1.0);
+
+        assert_eq!(vec![(0, 1)], cached.opaque_spans[0]);
+        assert_eq!(vec![(1, 2)], cached.translucent_spans[0]);
+        assert!(!cached.opaque_rows[0]);
+
+        let opaque_then_transparent =
+            UiImageSurfaceProps::new("opaque-gap", 2, 1, vec![255, 0, 0, 255, 0, 0, 0, 0])
+                .kuc_expect("valid opaque-gap image");
+        let cached = rasterize_cached_surface(&opaque_then_transparent, 2, 1, 1.0);
+        assert_eq!(vec![(0, 1)], cached.opaque_spans[0]);
+    }
+}

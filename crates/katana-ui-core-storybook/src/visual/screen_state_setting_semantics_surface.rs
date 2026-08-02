@@ -68,3 +68,17 @@ pub(in crate::visual) fn feedback_state(
         _ => setting,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{badge_state, banner_state, card_state, empty_state_state, feedback_state};
+
+    #[test]
+    fn surface_setting_semantics_preserve_unknown_setting_keys() {
+        const UNKNOWN: &str = "unknown.setting";
+        for mapper in [badge_state, banner_state, card_state, empty_state_state] {
+            assert_eq!(UNKNOWN, mapper(UNKNOWN));
+        }
+        assert_eq!(UNKNOWN, feedback_state("unknown", UNKNOWN));
+    }
+}

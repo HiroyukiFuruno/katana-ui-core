@@ -6,8 +6,8 @@ use crate::visual::dedicated_drag_and_drop;
 use crate::visual::preview_detail;
 use katana_ui_core::event::DragEvent;
 use katana_ui_core::interaction::drag_and_drop::{
-    AutoScrollEngine, AutoScrollPolicy, DndPoint, DndRect, DropEffect, KeyboardDragContext,
-    KeyboardDragKey, KeyboardDragState,
+    AutoScrollEngine, AutoScrollPolicy, DndPoint, DndRect, DropEffect, DropTarget,
+    KeyboardDragContext, KeyboardDragKey, KeyboardDragState,
 };
 
 const AUTOSCROLL_VIEWPORT_WIDTH: f32 = 320.0;
@@ -126,8 +126,11 @@ impl DragAndDropScreenState {
     }
 
     fn drop_pointer_drag(&mut self) -> DragAndDropUpdate {
+        self.drop_pointer_drag_on(&drop_target())
+    }
+
+    fn drop_pointer_drag_on(&mut self, target: &DropTarget) -> DragAndDropUpdate {
         let source = drag_source(false);
-        let target = drop_target();
         let acceptance = target.accept(&source.payload, target_point(), target_rect());
         if acceptance.effect() == DropEffect::None {
             self.dragging = false;
@@ -274,4 +277,22 @@ pub(super) fn operation_at(
     }
     let base = preview_detail::component_action_hit_rect(state.selected_page);
     dedicated_drag_and_drop::action_at(base.x, base.y, x, y)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::render_model::UiNodeId;
+
+    #[test]
+    fn drag_options_and_pointer_drop_report_unknown_and_rejected_boundaries() {
+        let mut state = DragAndDropScreenState::default();
+        let unknown = state.apply_option("unknown");
+        assert_eq!("drag_option_unknown", unknown.action);
+
+        let rejected = state.drop_pointer_drag_on(&DropTarget::new(UiNodeId::new("reject")));
+        assert_eq!("drag_drop_reject", rejected.action);
+        assert!(!state.is_dragging());
+        assert!(!state.committed());
+    }
 }

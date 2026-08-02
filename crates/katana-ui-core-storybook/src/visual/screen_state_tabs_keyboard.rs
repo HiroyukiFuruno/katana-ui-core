@@ -62,3 +62,23 @@ fn keyboard_metadata(input: &CloseableTabKeyboardInput) -> KeyboardUpdateMetadat
         },
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keyboard_metadata_covers_last_visible_and_drag_cancel_contracts() {
+        let last = keyboard_metadata(&CloseableTabKeyboardInput::SelectLastVisible);
+        assert_eq!("tab_keyboard_select_last", last.action);
+        assert_eq!("last", last.value);
+        assert_eq!("keyboard=select", last.state);
+        assert_eq!("closeable_tab_select_missing", last.fallback_event);
+
+        let cancel = keyboard_metadata(&CloseableTabKeyboardInput::CancelDrag);
+        assert_eq!("tab_keyboard_cancel_drag", cancel.action);
+        assert_eq!("cancel", cancel.value);
+        assert_eq!("keyboard=cancel", cancel.state);
+        assert_eq!("closeable_tab_drag_missing", cancel.fallback_event);
+    }
+}

@@ -20,9 +20,6 @@ pub(super) fn max_scroll_x_for_page(page: &str) -> usize {
 
 pub(super) fn ensure_index_visible(page: &str, index: usize, current: usize) -> usize {
     let labels = StoryPresetLabels::for_page(page);
-    if labels.is_empty() {
-        return 0;
-    }
     let target = index.min(labels.len() - 1);
     let offset = clamp_offset(page, current);
     let tab_left = target * tab_step();
@@ -114,9 +111,6 @@ fn clamp_offset(page: &str, offset: usize) -> usize {
 
 fn content_width_for_page(page: &str) -> usize {
     let len = StoryPresetLabels::for_page(page).len();
-    if len == 0 {
-        return 0;
-    }
     len * PRESET_WIDTH + (len - 1) * PRESET_GAP
 }
 

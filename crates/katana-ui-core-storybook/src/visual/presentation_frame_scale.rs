@@ -99,23 +99,23 @@ fn scale_nearest(source: &Canvas, width: usize, height: usize) -> Canvas {
     if source.width() == width && source.height() == height {
         return source.clone();
     }
+    debug_assert!(width >= source.width());
+    debug_assert!(height >= source.height());
     let mut target = Canvas::new(width, height, source.pixels()[0]);
-    if width >= source.width() {
-        let scale_x = width / source.width();
-        let scale_y = height / source.height();
-        for y in 0..source.height() {
-            for x in 0..source.width() {
-                let color = source.pixels()[y * source.width() + x];
-                for offset_y in 0..scale_y {
-                    let target_y = y * scale_y + offset_y;
-                    let row_start = target_y * target.width() + x * scale_x;
-                    target
-                        .pixels_mut_for_presentation()
-                        .iter_mut()
-                        .skip(row_start)
-                        .take(scale_x)
-                        .for_each(|it| *it = color);
-                }
+    let scale_x = width / source.width();
+    let scale_y = height / source.height();
+    for y in 0..source.height() {
+        for x in 0..source.width() {
+            let color = source.pixels()[y * source.width() + x];
+            for offset_y in 0..scale_y {
+                let target_y = y * scale_y + offset_y;
+                let row_start = target_y * target.width() + x * scale_x;
+                target
+                    .pixels_mut_for_presentation()
+                    .iter_mut()
+                    .skip(row_start)
+                    .take(scale_x)
+                    .for_each(|it| *it = color);
             }
         }
     }
@@ -125,5 +125,105 @@ fn scale_nearest(source: &Canvas, width: usize, height: usize) -> Canvas {
 impl Canvas {
     fn pixels_mut_for_presentation(&mut self) -> &mut [u32] {
         self.pixels.as_mut_slice()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exact_integer_presentation_covers_up_down_equal_and_invalid_scales() {
+        let source = patterned_canvas(4, 4);
+        assert!(try_present_exact_integer_scale(&source, 2, 2).is_some());
+        assert!(try_present_exact_integer_scale(&source, 8, 8).is_some());
+        assert!(try_present_exact_integer_scale(&source, 4, 4).is_some());
+        assert!(try_present_exact_integer_scale(&source, 3, 3).is_none());
+        assert_eq!(None, exact_integer_scale(0, 4, 2, 2));
+        assert_eq!(None, exact_integer_scale(4, 4, 2, 4));
+
+        let mut target = Canvas::new(1, 1, 0);
+        assert!(try_present_exact_integer_scale_into(
+            &source,
+            &mut target,
+            2,
+            2
+        ));
+        assert!(try_present_exact_integer_scale_into(
+            &source,
+            &mut target,
+            8,
+            8
+        ));
+        assert!(!try_present_exact_integer_scale_into(
+            &source,
+            &mut target,
+            3,
+            3
+        ));
+    }
+
+    #[test]
+    fn exact_integer_region_presentation_covers_all_guards_and_scale_paths() {
+        let source = patterned_canvas(6, 6);
+        let mut empty = Canvas::new(0, 0, 0);
+        assert!(!try_present_exact_integer_scale_region_into(
+            &source, &mut empty, 0, 0, 1, 1
+        ));
+
+        let mut incompatible = Canvas::new(4, 4, 0);
+        assert!(!try_present_exact_integer_scale_region_into(
+            &source,
+            &mut incompatible,
+            0,
+            0,
+            1,
+            1
+        ));
+
+        let small = patterned_canvas(2, 2);
+        let mut large = Canvas::new(4, 4, 0);
+        assert!(!try_present_exact_integer_scale_region_into(
+            &small, &mut large, 0, 0, 1, 1
+        ));
+
+        let source_2x = patterned_canvas(4, 4);
+        let mut target_2x = Canvas::new(2, 2, 0);
+        assert!(try_present_exact_integer_scale_region_into(
+            &source_2x,
+            &mut target_2x,
+            2,
+            2,
+            0,
+            0
+        ));
+        assert!(try_present_exact_integer_scale_region_into(
+            &source_2x,
+            &mut target_2x,
+            0,
+            0,
+            2,
+            2
+        ));
+
+        let mut target_3x = Canvas::new(2, 2, 0);
+        assert!(try_present_exact_integer_scale_region_into(
+            &source,
+            &mut target_3x,
+            0,
+            0,
+            2,
+            2
+        ));
+    }
+
+    fn patterned_canvas(width: usize, height: usize) -> Canvas {
+        let mut canvas = Canvas::new(width, height, 0);
+        for y in 0..height {
+            for x in 0..width {
+                canvas.fill_rect(x, y, 1, 1, (y * width + x + 1) as u32);
+            }
+        }
+        canvas
     }
 }

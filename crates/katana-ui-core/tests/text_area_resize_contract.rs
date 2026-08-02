@@ -107,3 +107,16 @@ fn resize_action_requires_option_and_updates_state_event_and_props() {
     assert_eq!(24, node.props().text_area.resize_width_delta);
     assert_eq!(6, node.props().text_area.resize_height_delta);
 }
+
+#[test]
+fn resize_action_rejects_repeated_delta_without_duplicate_event() {
+    let mut text_area = TextArea::new("Resizable").resize_enabled(true);
+    assert!(
+        text_area
+            .apply_text_area_action(TextAreaAction::resize(12, 4))
+            .handled
+    );
+    let repeated = text_area.apply_text_area_action(TextAreaAction::resize(12, 4));
+    assert!(!repeated.handled);
+    assert!(repeated.events.is_empty());
+}

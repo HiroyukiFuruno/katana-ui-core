@@ -209,7 +209,7 @@ mod tests {
     }
 
     #[test]
-    fn form_field_accepts_explicit_host_action() -> Result<(), String> {
+    fn form_field_accepts_explicit_host_action() {
         let node = UiNode::from(
             FormField::new("Dark")
                 .host_action(UiHostActionSpec::settings_field_control("Dark", "dark")),
@@ -219,10 +219,8 @@ mod tests {
             .find_map(|plan| plan.settings_field_control_target());
 
         assert_eq!(
-            "dark",
-            plan.ok_or_else(|| "field action missing".to_string())?
-                .field_id
+            Some("dark"),
+            plan.as_ref().map(|target| target.field_id.as_str())
         );
-        Ok(())
     }
 }

@@ -72,9 +72,10 @@ impl StorybookScreenState {
             ProgressBar::new("Progress").progress(self.progress_changed, self.progress_percent);
         let target = progress.state_id().clone();
         let result = progress.apply_action(&UiAction::progress_changed(target, true, percent));
-        if !result.handled {
-            return;
-        }
+        assert!(
+            result.handled,
+            "the Storybook progress action must target its own state"
+        );
         let node: UiNode = progress.into();
         self.progress_changed = node.props().determinate;
         self.progress_percent = node.props().progress_percent;
@@ -115,5 +116,41 @@ const fn progress_bar_percent_state_label(percent: u8) -> &'static str {
         PROGRESS_MAX_PERCENT => "progress_bar.percent=99",
         PROGRESS_FULL_PERCENT => "progress_bar.percent=100",
         _ => "progress_bar.percent=changed",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn progress_boundaries_cover_invalid_settings_wrap_and_all_labels() {
+        let mut state = StorybookScreenState::default();
+        assert!(
+            !state.register_progress_bar_contract_setting(StorybookUiOptionContract {
+                setting: "progress.percent",
+                before: "65",
+                after: "invalid",
+            })
+        );
+        assert_eq!(
+            PROGRESS_EMPTY_PERCENT,
+            next_progress_percent(PROGRESS_MAX_PERCENT)
+        );
+        assert_eq!("percent=65", progress_state_label(PROGRESS_DEFAULT_PERCENT));
+        assert_eq!("percent=changed", progress_state_label(1));
+        assert_eq!(Some(PROGRESS_FULL_PERCENT), parse_progress_percent("255"));
+        assert_eq!(None, parse_progress_percent("invalid"));
+
+        for (percent, expected) in [
+            (PROGRESS_EMPTY_PERCENT, "progress_bar.percent=0"),
+            (PROGRESS_DEFAULT_PERCENT, "progress_bar.percent=65"),
+            (PROGRESS_TICK_TARGET_PERCENT, "progress_bar.percent=82"),
+            (PROGRESS_MAX_PERCENT, "progress_bar.percent=99"),
+            (PROGRESS_FULL_PERCENT, "progress_bar.percent=100"),
+            (1, "progress_bar.percent=changed"),
+        ] {
+            assert_eq!(expected, progress_bar_percent_state_label(percent));
+        }
     }
 }

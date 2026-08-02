@@ -33,3 +33,22 @@ pub(super) fn apply_menu_shortcut(state: &mut StorybookWindowState) {
     state.screen_state.last_event = "menu_item_selected";
     state.screen_state.state_label = "shortcut=Cmd+O selected=open";
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{StorybookWindowState, apply_menu_close};
+
+    #[test]
+    fn menu_close_updates_the_complete_selection_event_contract() {
+        let mut state = StorybookWindowState::default();
+        state.screen_state.selection.select_open = true;
+
+        apply_menu_close(&mut state);
+
+        assert_eq!(1, state.screen_state.action_count);
+        assert!(!state.screen_state.selection.select_open);
+        assert_eq!("menu_close", state.screen_state.last_action);
+        assert_eq!("menu_closed", state.screen_state.last_event);
+        assert_eq!("open=false", state.screen_state.state_label);
+    }
+}

@@ -167,3 +167,64 @@ pub(super) fn draw_media_error(
         palette.danger_accent,
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::render_model::{UiInteractionState, UiNodeKind};
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    const WIDTH: usize = 120;
+    const HEIGHT: usize = 80;
+
+    #[test]
+    fn table_placeholder_is_a_rendering_noop() {
+        let mut canvas = Canvas::new(WIDTH, HEIGHT, 0x101010);
+        let before = canvas.pixels().to_vec();
+        let node = UiNode::new(UiNodeKind::Text, "table");
+
+        draw_table(
+            &mut canvas,
+            8,
+            8,
+            area(),
+            palette(),
+            UiTreeTextMetrics::for_node(&node),
+        );
+
+        assert_eq!(before, canvas.pixels());
+    }
+
+    #[test]
+    fn hovered_quote_and_media_error_use_semantic_backgrounds() {
+        let palette = palette();
+        let node = UiNode::new(UiNodeKind::Text, "quote").interaction(UiInteractionState {
+            hovered: true,
+            ..UiInteractionState::default()
+        });
+        let metrics = UiTreeTextMetrics::for_node(&node);
+        let mut quote = Canvas::new(WIDTH, HEIGHT, palette.background);
+        let mut error = Canvas::new(WIDTH, HEIGHT, palette.background);
+
+        draw_quote(&mut quote, &node, 8, 8, area(), palette, metrics);
+        draw_media_error(&mut error, 8, 8, area(), palette, metrics);
+
+        assert_eq!(palette.hover_background, quote.pixels()[8 * WIDTH + 12]);
+        assert_eq!(palette.danger_accent, error.pixels()[8 * WIDTH + 8]);
+        assert_eq!(palette.alert_background, error.pixels()[8 * WIDTH + 20]);
+    }
+
+    fn palette() -> UiTreeCanvasPalette {
+        UiTreeCanvasPalette::from_theme(&ThemeSnapshot::dark())
+    }
+
+    fn area() -> UiTreeRenderArea {
+        UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: WIDTH,
+            height: HEIGHT,
+            scroll_y: 0.0,
+        }
+    }
+}
