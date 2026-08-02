@@ -55,6 +55,8 @@ if [[ ! -S "/tmp/.X11-unix/X${display_number}" ]]; then
 fi
 export DISPLAY=":${display_number}"
 export KUC_STORYBOOK_MOUSE_TRACE="${CARGO_TARGET_DIR:-target}/kuc-storybook-mouse-trace.jsonl"
+# LLVM更新で実行済みgeneric関数が未到達の最適化instanceとして集計されないようにする。
+export CARGO_PROFILE_TEST_OPT_LEVEL=0
 
 coverage_target_dir="${CARGO_TARGET_DIR:-target}/llvm-cov-target"
 run_cargo clean --target-dir "$coverage_target_dir"
