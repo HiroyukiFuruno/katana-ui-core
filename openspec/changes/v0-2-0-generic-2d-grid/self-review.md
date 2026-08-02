@@ -45,6 +45,10 @@
   its display first and runs normal plus ignored native tests in one
   instrumentation pass. The container pins the same 0.8.7 tool as CI, and the
   unchanged strict thresholds pass with zero uncovered functions and lines.
+- The release PR rerun then exposed stale `llvm-cov-target` binaries restored
+  by the GitHub Actions cache. The strict gate now rebuilds that dedicated
+  instrumentation target before every measurement, preventing old object maps
+  from changing the function or line denominator on a cache hit.
 
 ## Conclusion
 

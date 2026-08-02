@@ -56,6 +56,8 @@ fi
 export DISPLAY=":${display_number}"
 export KUC_STORYBOOK_MOUSE_TRACE="${CARGO_TARGET_DIR:-target}/kuc-storybook-mouse-trace.jsonl"
 
+coverage_target_dir="${CARGO_TARGET_DIR:-target}/llvm-cov-target"
+run_cargo clean --target-dir "$coverage_target_dir"
 run_cargo llvm-cov clean --workspace
 run_cargo llvm-cov \
   -p katana-ui-core \
