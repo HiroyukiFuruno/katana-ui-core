@@ -760,6 +760,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "-p kuc-consumer-app",
         "--all-targets",
         "--include-ignored",
+        'run_cargo clean --target-dir "$coverage_target_dir"',
         "run_cargo llvm-cov report",
         "--fail-under-functions 100",
         "--fail-under-lines 100",
@@ -1583,6 +1584,8 @@ def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bo
     scripts = root / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
     coverage_source = (
+        'coverage_target_dir="${CARGO_TARGET_DIR:-target}/llvm-cov-target"\n'
+        'run_cargo clean --target-dir "$coverage_target_dir"\n'
         "run_cargo llvm-cov \\\n"
         "  -p katana-ui-core \\\n"
         "  -p katana-ui-core-storybook \\\n"
