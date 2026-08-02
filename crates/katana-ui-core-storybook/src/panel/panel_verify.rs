@@ -99,6 +99,19 @@ impl StorybookPanel {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn malformed_panels_fail_theme_and_scroll_configuration_checks() {
+        let panel = UiNode::new(UiNodeKind::Panel, "invalid");
+
+        assert!(!StorybookPanel::panel_theme_is_configured(&panel));
+        assert!(!StorybookPanel::panel_scroll_is_configured(&panel));
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct PanelVerificationSummary {
     panel_nodes: usize,

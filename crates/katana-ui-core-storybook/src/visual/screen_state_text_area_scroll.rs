@@ -83,3 +83,23 @@ impl StorybookScreenState {
 fn text_area_line_count(value: &str) -> usize {
     value.split('\n').count().max(1)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn text_area_scroll_supports_reverse_direction_and_clamped_boundaries() {
+        let mut state = StorybookScreenState::default();
+        let instance = "textarea.scroll-boundary";
+
+        assert!(!state.scroll_text_area_vertical_for(instance, -1.0, true, 3));
+        assert!(!state.scroll_text_area_horizontal_for(instance, -1.0, true, 24));
+        assert!(state.scroll_text_area_vertical_for(instance, 1.0, true, 3));
+        assert!(state.scroll_text_area_horizontal_for(instance, 1.0, true, 24));
+        assert!(state.scroll_text_area_vertical_for(instance, -1.0, true, 3));
+        assert!(state.scroll_text_area_horizontal_for(instance, -1.0, true, 24));
+        assert!(!state.scroll_text_area_vertical_for(instance, -1.0, true, 3));
+        assert!(!state.scroll_text_area_horizontal_for(instance, -1.0, true, 24));
+    }
+}

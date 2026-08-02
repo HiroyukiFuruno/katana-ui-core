@@ -9,11 +9,7 @@ impl AttachmentChipRuntimeState {
         RuntimeStructuredUpdate::new(
             "attachment_status",
             "attachment_status_changed",
-            if self.status_error {
-                "status=error"
-            } else {
-                "status=unknown"
-            },
+            attachment_status_label(self.status_error),
         )
     }
 
@@ -32,11 +28,7 @@ impl AttachmentChipRuntimeState {
         RuntimeStructuredUpdate::new(
             "attachment_keyboard_retry",
             "attachment_retry",
-            if self.retried {
-                "retry=requested"
-            } else {
-                "retry=ignored"
-            },
+            attachment_retry_label(self.retried),
         )
     }
 
@@ -100,11 +92,7 @@ impl ChipGroupRuntimeState {
         RuntimeStructuredUpdate::new(
             "chip_group_overflow",
             "chip_group_overflow_opened",
-            if self.overflow_open {
-                "overflow=open"
-            } else {
-                "overflow=closed"
-            },
+            chip_group_overflow_label(self.overflow_open),
         )
     }
 
@@ -123,11 +111,7 @@ impl ChipGroupRuntimeState {
         RuntimeStructuredUpdate::new(
             "chip_group_keyboard_dismiss",
             "chip_group_chip_dismissed",
-            if self.keyboard_dismissed {
-                "dismissed=focused"
-            } else {
-                "dismissed=ignored"
-            },
+            chip_group_dismiss_label(self.keyboard_dismissed),
         )
     }
 
@@ -144,6 +128,38 @@ impl ChipGroupRuntimeState {
             "chip_group.hidden_count" => self.hidden_count_two = true,
             _ => {}
         }
+    }
+}
+
+const fn attachment_status_label(status_error: bool) -> &'static str {
+    if status_error {
+        "status=error"
+    } else {
+        "status=unknown"
+    }
+}
+
+const fn attachment_retry_label(retried: bool) -> &'static str {
+    if retried {
+        "retry=requested"
+    } else {
+        "retry=ignored"
+    }
+}
+
+const fn chip_group_overflow_label(open: bool) -> &'static str {
+    if open {
+        "overflow=open"
+    } else {
+        "overflow=closed"
+    }
+}
+
+const fn chip_group_dismiss_label(dismissed: bool) -> &'static str {
+    if dismissed {
+        "dismissed=focused"
+    } else {
+        "dismissed=ignored"
     }
 }
 
@@ -189,4 +205,32 @@ fn chip_group_keyboard_dismiss_event() -> bool {
             chip_id: second_id,
             focus_target: ChipGroupFocusTarget::Chip(first_id),
         }]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        AttachmentChipRuntimeState, ChipGroupRuntimeState, attachment_retry_label,
+        attachment_status_label, chip_group_dismiss_label, chip_group_overflow_label,
+    };
+
+    #[test]
+    fn runtime_labels_and_unknown_options_cover_success_failure_and_noop_contracts() {
+        assert_eq!("status=error", attachment_status_label(true));
+        assert_eq!("status=unknown", attachment_status_label(false));
+        assert_eq!("retry=requested", attachment_retry_label(true));
+        assert_eq!("retry=ignored", attachment_retry_label(false));
+        assert_eq!("overflow=open", chip_group_overflow_label(true));
+        assert_eq!("overflow=closed", chip_group_overflow_label(false));
+        assert_eq!("dismissed=focused", chip_group_dismiss_label(true));
+        assert_eq!("dismissed=ignored", chip_group_dismiss_label(false));
+
+        let mut attachment = AttachmentChipRuntimeState::default();
+        attachment.apply_option("unknown.setting");
+        assert_eq!(AttachmentChipRuntimeState::default(), attachment);
+
+        let mut group = ChipGroupRuntimeState::default();
+        group.apply_option("unknown.setting");
+        assert_eq!(ChipGroupRuntimeState::default(), group);
+    }
 }

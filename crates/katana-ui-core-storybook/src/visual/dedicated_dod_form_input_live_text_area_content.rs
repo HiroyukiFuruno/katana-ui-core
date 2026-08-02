@@ -192,3 +192,19 @@ fn static_rows(preset_index: usize) -> &'static [&'static str] {
         _ => &["chat composer", "English", "日本語 🔷", "Cmd+Enter"],
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn line_count_uses_the_selected_instance_live_value() {
+        let mut state = StorybookScreenState::default();
+        state.set_text_area_value_for_test("textarea.secondary", "one\ntwo\nthree");
+
+        assert_eq!(3, line_count(0, &state, "textarea.secondary"));
+        state.set_text_area_value_for_test("textarea.secondary", "");
+        assert_eq!(1, line_count(0, &state, "textarea.secondary"));
+    }
+}

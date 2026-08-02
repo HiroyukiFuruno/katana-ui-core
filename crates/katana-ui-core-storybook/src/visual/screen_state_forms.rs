@@ -67,6 +67,12 @@ pub(in crate::visual) fn apply_binary_choice_option(
     Some(next)
 }
 
+pub(in crate::visual) fn apply_binary_choice_focus(before: &UiComponentState) -> UiComponentState {
+    let mut next = before.clone();
+    focus_binary_choice(&mut next);
+    next
+}
+
 fn select_binary_choice(state: &mut UiComponentState) {
     state.checked = true;
     state.interaction.has_selection = true;
@@ -99,5 +105,21 @@ pub(in crate::visual) fn radio_state_label(before: bool, after: bool) -> &'stati
         (true, false) => "before=true after=false",
         (true, true) => "before=true after=true",
         (false, false) => "before=false after=false",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        apply_radio_selected_state, checkbox_state_label, default_radio_state, radio_state_label,
+    };
+
+    #[test]
+    fn selected_radio_and_unchanged_true_labels_are_preserved() {
+        let selected = apply_radio_selected_state(&default_radio_state(), true);
+
+        assert!(selected.interaction.has_selection);
+        assert_eq!("before=true after=true", checkbox_state_label(true, true));
+        assert_eq!("before=true after=true", radio_state_label(true, true));
     }
 }

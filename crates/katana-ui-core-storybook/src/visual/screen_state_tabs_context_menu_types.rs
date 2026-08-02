@@ -182,3 +182,22 @@ impl TabsContextMenuCommand {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{ContextMenuItemKind, TabsContextMenuCommand};
+
+    #[test]
+    fn move_to_group_builds_a_submenu_and_existing_group_ids_round_trip() {
+        let item = TabsContextMenuCommand::MoveToGroup.to_context_menu_item(&[]);
+        assert_eq!(ContextMenuItemKind::Submenu, item.kind);
+        assert_eq!(1, item.children.len());
+
+        let command = TabsContextMenuCommand::MoveToExistingGroup("docs".to_string());
+        let id = command.id();
+        assert_eq!(
+            Some(command),
+            TabsContextMenuCommand::from_item_id(id.as_str(), false)
+        );
+    }
+}

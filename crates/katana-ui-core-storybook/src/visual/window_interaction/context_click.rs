@@ -56,20 +56,22 @@ pub(super) fn apply_context_click(state: &mut StorybookWindowState, x: usize, y:
         );
         return true;
     }
-    if matches!(state.selected_page, "tree-view" | "context-menu")
-        && preview_detail::component_action_hit_rect(state.selected_page).contains(x, y)
-    {
-        state
-            .screen_state
-            .register_context_menu(state.selected_page);
-        return true;
-    }
-    if state.selected_page == "context-menu" && context_menu_is_open(state) {
+    if state.selected_page == "context-menu" {
         let component = preview_detail::component_action_hit_rect("context-menu");
-        if !component.contains(x, y) {
+        if component.contains(x, y) {
+            state.screen_state.register_context_menu("context-menu");
+            return true;
+        }
+        if context_menu_is_open(state) {
             state.screen_state.register_context_menu_outside_dismiss();
             return true;
         }
+    }
+    if state.selected_page == "tree-view"
+        && preview_detail::component_action_hit_rect("tree-view").contains(x, y)
+    {
+        state.screen_state.register_context_menu("tree-view");
+        return true;
     }
     if state.selected_page == "menu" && state.screen_state.selection.select_open {
         let component = preview_detail::component_action_hit_rect("menu");
@@ -210,4 +212,59 @@ fn tabs_context_target(
         return None;
     }
     dedicated_tabs::tab_hit_at(component.x, component.y, x, y, &state.screen_state.tabs)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        StorybookWindowState, apply_context_click, closeable_tab_strip_context_target,
+        closeable_tab_strip_group_context_target, tabs_context_target, tabs_group_context_target,
+    };
+    use crate::visual::preview_detail;
+
+    #[test]
+    fn context_helpers_and_menu_surfaces_reject_points_outside_their_targets() {
+        let tabs = StorybookWindowState {
+            selected_page: "tabs",
+            ..StorybookWindowState::default()
+        };
+        assert!(tabs_context_target(&tabs, 0, 0).is_none());
+        assert!(tabs_group_context_target(&tabs, 0, 0).is_none());
+
+        let closeable = StorybookWindowState {
+            selected_page: "closeable-tab-strip",
+            ..StorybookWindowState::default()
+        };
+        assert!(closeable_tab_strip_context_target(&closeable, 0, 0).is_none());
+        assert!(closeable_tab_strip_group_context_target(&closeable, 0, 0).is_none());
+
+        let mut context_menu = StorybookWindowState {
+            selected_page: "context-menu",
+            ..StorybookWindowState::default()
+        };
+        assert!(!apply_context_click(&mut context_menu, 0, 0));
+
+        let mut menu = StorybookWindowState {
+            selected_page: "menu",
+            ..StorybookWindowState::default()
+        };
+        menu.screen_state.selection.select_open = true;
+        let menu_component = preview_detail::component_action_hit_rect("menu");
+        assert!(!apply_context_click(
+            &mut menu,
+            menu_component.x + 1,
+            menu_component.y + 1
+        ));
+
+        let mut menu_button = StorybookWindowState {
+            selected_page: "menu-button",
+            ..StorybookWindowState::default()
+        };
+        let button_component = preview_detail::component_action_hit_rect("menu-button");
+        assert!(!apply_context_click(
+            &mut menu_button,
+            button_component.right() - 1,
+            button_component.bottom() - 1
+        ));
+    }
 }

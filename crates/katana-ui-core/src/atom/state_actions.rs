@@ -47,7 +47,6 @@ impl AtomState {
             } => self.cursor_selection(*cursor, *selection_start, *selection_end),
             UiAction::CopySelection { .. } => {}
             UiAction::PasteText { text, .. } => self.paste_text(text),
-            UiAction::SetOpen { open, .. } => self.interaction.open = *open,
             UiAction::SetSelectedIndex {
                 selected_index,
                 selected,
@@ -61,35 +60,7 @@ impl AtomState {
                 ..
             } => self.apply_value_action(value, progress.as_ref(), color_drag.as_ref()),
             UiAction::ClearValue { .. } => self.interaction.value.clear(),
-            UiAction::Dismiss { .. } => self.interaction.open = false,
-            UiAction::InvokeCallback { .. }
-            | UiAction::ScrollTo { .. }
-            | UiAction::ScrollBy { .. }
-            | UiAction::ScrollIntoView { .. }
-            | UiAction::SetScrollbarVisibility { .. }
-            | UiAction::SplitPaneSetRatio { .. }
-            | UiAction::SplitPaneResizeBy { .. }
-            | UiAction::SplitPaneResetRatio { .. }
-            | UiAction::SplitPaneStartResize { .. }
-            | UiAction::SplitPaneEndResize { .. }
-            | UiAction::TabSelect { .. }
-            | UiAction::TabAdd { .. }
-            | UiAction::TabClose { .. }
-            | UiAction::TabCloseOthers { .. }
-            | UiAction::TabCloseToRight { .. }
-            | UiAction::TabCloseToLeft { .. }
-            | UiAction::TabCloseAll { .. }
-            | UiAction::TabRestoreClosed { .. }
-            | UiAction::TabPin { .. }
-            | UiAction::TabMove { .. }
-            | UiAction::TabMoveToGroup { .. }
-            | UiAction::TabMoveToNewGroup { .. }
-            | UiAction::TabMoveGroup { .. }
-            | UiAction::TabRenameGroup { .. }
-            | UiAction::TabSetGroupColor { .. }
-            | UiAction::TabUngroup { .. }
-            | UiAction::TabCloseGroup { .. }
-            | UiAction::TabToggleGroupCollapse { .. } => {}
+            _ => {}
         }
     }
 
@@ -159,5 +130,31 @@ impl AtomState {
         let value = color_drag.value.css_rgba();
         self.color_swatch.selected_color.clone_from(&value);
         self.interaction.value = value;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render_model::UiStateId;
+
+    #[test]
+    fn internal_interaction_dispatch_ignores_non_atom_action() {
+        let mut state = AtomState::enabled(UiNodeKind::Text);
+        let before = state.interaction.clone();
+
+        state.apply_interaction_action(&UiAction::dismiss(UiStateId::new("other")));
+
+        assert_eq!(before, state.interaction);
+    }
+
+    #[test]
+    fn non_checkable_selection_source_preserves_checked_state() {
+        let mut state = AtomState::enabled(UiNodeKind::Text);
+        state.checked = true;
+
+        state.apply_checked_selection(UiActionSource::SelectBox, false);
+
+        assert!(state.checked);
     }
 }

@@ -154,3 +154,149 @@ fn symbol_for_key(key: Key, shifted: bool) -> Option<char> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tab_shortcuts_cover_every_supported_key_family() {
+        let keys = [
+            Key::Tab,
+            Key::W,
+            Key::Escape,
+            Key::Key0,
+            Key::Key1,
+            Key::Key2,
+            Key::Key3,
+            Key::Key4,
+            Key::Key5,
+            Key::Key6,
+            Key::Key7,
+            Key::Key8,
+            Key::Key9,
+            Key::NumPad0,
+            Key::NumPad1,
+            Key::NumPad2,
+            Key::NumPad3,
+            Key::NumPad4,
+            Key::NumPad5,
+            Key::NumPad6,
+            Key::NumPad7,
+            Key::NumPad8,
+            Key::NumPad9,
+        ];
+
+        for key in keys {
+            assert!(tabs_keyboard_shortcut(key, false, false).is_some());
+            assert!(tabs_keyboard_shortcut(key, true, true).is_some());
+        }
+        assert!(tabs_keyboard_shortcut(Key::F1, false, false).is_none());
+    }
+
+    #[test]
+    fn text_entry_keys_cover_letters_digits_symbols_and_commands() {
+        let letters = [
+            (Key::A, 'a'),
+            (Key::B, 'b'),
+            (Key::C, 'c'),
+            (Key::D, 'd'),
+            (Key::E, 'e'),
+            (Key::F, 'f'),
+            (Key::G, 'g'),
+            (Key::H, 'h'),
+            (Key::I, 'i'),
+            (Key::J, 'j'),
+            (Key::K, 'k'),
+            (Key::L, 'l'),
+            (Key::M, 'm'),
+            (Key::N, 'n'),
+            (Key::O, 'o'),
+            (Key::P, 'p'),
+            (Key::Q, 'q'),
+            (Key::R, 'r'),
+            (Key::S, 's'),
+            (Key::T, 't'),
+            (Key::U, 'u'),
+            (Key::V, 'v'),
+            (Key::W, 'w'),
+            (Key::X, 'x'),
+            (Key::Y, 'y'),
+            (Key::Z, 'z'),
+        ];
+        for (key, character) in letters {
+            assert_eq!(character_for_key(key, false), Some(character));
+            assert_eq!(
+                character_for_key(key, true),
+                Some(character.to_ascii_uppercase())
+            );
+        }
+
+        let digits = [
+            (Key::Key0, Key::NumPad0, '0', ')'),
+            (Key::Key1, Key::NumPad1, '1', '!'),
+            (Key::Key2, Key::NumPad2, '2', '@'),
+            (Key::Key3, Key::NumPad3, '3', '#'),
+            (Key::Key4, Key::NumPad4, '4', '$'),
+            (Key::Key5, Key::NumPad5, '5', '%'),
+            (Key::Key6, Key::NumPad6, '6', '^'),
+            (Key::Key7, Key::NumPad7, '7', '&'),
+            (Key::Key8, Key::NumPad8, '8', '*'),
+            (Key::Key9, Key::NumPad9, '9', '('),
+        ];
+        for (key, numpad, plain, shifted) in digits {
+            assert_eq!(character_for_key(key, false), Some(plain));
+            assert_eq!(character_for_key(numpad, false), Some(plain));
+            assert_eq!(character_for_key(key, true), Some(shifted));
+            assert_eq!(character_for_key(numpad, true), None);
+        }
+
+        let symbols = [
+            (Key::Minus, '-', '_'),
+            (Key::Equal, '=', '+'),
+            (Key::Comma, ',', '<'),
+            (Key::Period, '.', '>'),
+            (Key::Slash, '/', '?'),
+            (Key::Semicolon, ';', ':'),
+            (Key::Apostrophe, '\'', '"'),
+        ];
+        for (key, plain, shifted) in symbols {
+            assert_eq!(character_for_key(key, false), Some(plain));
+            assert_eq!(character_for_key(key, true), Some(shifted));
+        }
+        assert_eq!(character_for_key(Key::Space, false), Some(' '));
+        assert_eq!(character_for_key(Key::Space, true), Some(' '));
+        assert_eq!(character_for_key(Key::NumPadMinus, false), Some('-'));
+        assert_eq!(character_for_key(Key::NumPadPlus, false), Some('='));
+        assert_eq!(character_for_key(Key::NumPadDot, false), Some('.'));
+        assert_eq!(character_for_key(Key::NumPadSlash, false), Some('/'));
+        assert_eq!(character_for_key(Key::F1, false), None);
+
+        assert!(matches!(
+            text_area_key(Key::Backspace, false),
+            Some(TextAreaKey::Backspace)
+        ));
+        assert!(matches!(
+            text_area_key(Key::Enter, false),
+            Some(TextAreaKey::Submit)
+        ));
+        assert!(matches!(
+            text_area_key(Key::NumPadEnter, true),
+            Some(TextAreaKey::Newline)
+        ));
+        assert!(matches!(
+            text_area_key(Key::A, false),
+            Some(TextAreaKey::Character('a'))
+        ));
+        assert_eq!(
+            text_input_key(Key::Backspace, false),
+            Some(TextInputKey::Backspace)
+        );
+        assert_eq!(text_input_key(Key::Enter, true), Some(TextInputKey::Submit));
+        assert_eq!(
+            text_input_key(Key::A, false),
+            Some(TextInputKey::Character('a'))
+        );
+        assert_eq!(text_input_key(Key::F1, false), None);
+    }
+}

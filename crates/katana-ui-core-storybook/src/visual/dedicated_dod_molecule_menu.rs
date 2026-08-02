@@ -18,7 +18,6 @@ const ROW_GAP: usize = 8;
 const ROW_TEXT_X_OFFSET: usize = 10;
 const ROW_TEXT_Y_OFFSET: usize = 7;
 const MENU_BLOCK_COUNT: usize = 3;
-const MENU_ITEMS_PRESET_INDEX: usize = 0;
 const SHORTCUT_PRESET_INDEX: usize = 1;
 const DISABLED_PRESET_INDEX: usize = 2;
 const THEME_PRESET_INDEX: usize = 3;
@@ -159,10 +158,7 @@ fn first_row_label(scenario: ScenarioContext<'_>) -> &'static str {
     if scenario.preset_index == SHORTCUT_PRESET_INDEX {
         return "Open Cmd+O";
     }
-    match scenario.preset_index {
-        MENU_ITEMS_PRESET_INDEX | DISABLED_PRESET_INDEX | THEME_PRESET_INDEX => "Open",
-        _ => "Open",
-    }
+    "Open"
 }
 
 fn second_row_label(scenario: ScenarioContext<'_>) -> &'static str {
@@ -201,4 +197,22 @@ pub(super) fn second_row_rect(component: LayoutRect) -> LayoutRect {
         ROW_WIDTH,
         ROW_HEIGHT,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::menu_status_label;
+    use crate::visual::render_context::ScenarioContext;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn selected_first_menu_row_reports_open_callback() {
+        let mut state = StorybookScreenState::default();
+        state.selection.select_selected_index = Some(0);
+
+        assert_eq!(
+            "callback: open",
+            menu_status_label(ScenarioContext::for_test("menu", 0, &state))
+        );
+    }
 }

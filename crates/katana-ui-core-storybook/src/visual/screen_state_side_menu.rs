@@ -84,15 +84,8 @@ impl SideMenuScreenState {
     fn hover(&mut self) -> SideMenuScreenUpdate {
         let result = self.apply_core_hover();
         self.hovered = result.handled && result.after.hovered;
-        SideMenuScreenUpdate::new(
-            "side_menu_hover",
-            "hover_start",
-            if self.hovered {
-                "hover=true"
-            } else {
-                "hover=false"
-            },
-        )
+        debug_assert!(self.hovered);
+        SideMenuScreenUpdate::new("side_menu_hover", "hover_start", "hover=true")
     }
 
     fn keyboard_next(&mut self) -> SideMenuScreenUpdate {
@@ -122,14 +115,11 @@ impl SideMenuScreenState {
 
     fn apply_hover_expansion(&mut self) -> SideMenuScreenUpdate {
         self.hover_expansion = self.core_side_menu().hover_expansion_model();
+        debug_assert!(self.hover_expansion);
         SideMenuScreenUpdate::new(
             "side_menu_hover_expansion",
             "side_menu_option_applied",
-            if self.hover_expansion {
-                "hover_expansion=true"
-            } else {
-                "hover_expansion=false"
-            },
+            "hover_expansion=true",
         )
     }
 
@@ -216,4 +206,74 @@ fn side_menu_items() -> [ChoiceItem; SIDE_MENU_ITEM_COUNT] {
         ChoiceItem::new("extensions", "Extensions"),
         ChoiceItem::new("accounts", "Accounts"),
     ]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn side_menu_labels_cover_every_route_focus_and_scroll_boundary() {
+        for (selected, focused, expected) in [
+            (Some(0), Some(0), "route=0 focus=0"),
+            (Some(1), Some(1), "route=1 focus=1"),
+            (Some(2), Some(2), "route=2 focus=2"),
+            (Some(3), Some(3), "route=3 focus=3"),
+            (Some(4), Some(4), "route=4 focus=4"),
+            (None, Some(0), "route=none focus=0"),
+            (None, Some(1), "route=none focus=1"),
+            (None, Some(2), "route=none focus=2"),
+            (None, Some(3), "route=none focus=3"),
+            (None, Some(4), "route=none focus=4"),
+            (Some(0), None, "route=0 focus=none"),
+            (Some(1), None, "route=1 focus=none"),
+            (Some(2), None, "route=2 focus=none"),
+            (Some(3), None, "route=3 focus=none"),
+            (Some(4), None, "route=4 focus=none"),
+            (None, None, "route=none focus=none"),
+        ] {
+            let state = SideMenuScreenState {
+                selected_index: selected,
+                focus_index: focused,
+                ..SideMenuScreenState::default()
+            };
+            assert_eq!(expected, state.state_label());
+        }
+
+        for (offset, expected) in [
+            (0, "scroll=0"),
+            (1, "scroll=1"),
+            (2, "scroll=2"),
+            (3, "scroll=3"),
+        ] {
+            let state = SideMenuScreenState {
+                scroll_offset: offset,
+                ..SideMenuScreenState::default()
+            };
+            assert_eq!(expected, state.scroll_label());
+        }
+    }
+
+    #[test]
+    fn side_menu_wraps_keyboard_focus_and_preserves_selected_core_state() {
+        let mut state = SideMenuScreenState {
+            selected_index: Some(LAST_SIDE_MENU_INDEX),
+            focus_index: Some(LAST_SIDE_MENU_INDEX),
+            ..SideMenuScreenState::default()
+        };
+
+        let wrapped = state.apply(SideMenuScreenAction::KeyboardNext);
+        assert_eq!(Some(0), state.selected_index);
+        assert_eq!("route=0 focus=0", wrapped.state);
+
+        let selected = state.apply(SideMenuScreenAction::Select(usize::MAX));
+        assert_eq!(Some(LAST_SIDE_MENU_INDEX), state.selected_index);
+        assert_eq!("route=4 focus=4", selected.state);
+
+        for _ in 0..MAX_SIDE_MENU_SCROLL_OFFSET + 2 {
+            state.apply(SideMenuScreenAction::Scroll);
+        }
+        assert_eq!(MAX_SIDE_MENU_SCROLL_OFFSET, state.scroll_offset);
+        assert_eq!("scroll=3", state.scroll_label());
+    }
 }

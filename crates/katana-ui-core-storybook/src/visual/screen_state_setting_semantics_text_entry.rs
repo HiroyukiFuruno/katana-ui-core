@@ -48,3 +48,14 @@ pub(in crate::visual) fn text_area_state(setting: &'static str) -> &'static str 
         _ => setting,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{text_area_state, text_input_state};
+
+    #[test]
+    fn unknown_text_entry_settings_are_preserved() {
+        assert_eq!("custom.input", text_input_state("custom.input"));
+        assert_eq!("custom.area", text_area_state("custom.area"));
+    }
+}

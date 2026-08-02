@@ -1,4 +1,6 @@
 use super::Canvas;
+use crate::visual::canvas_clip::CanvasClip;
+use crate::visual::ui_tree_canvas_types::CanvasBlitRequest;
 
 const BACKGROUND: u32 = 0x000000;
 const FILL: u32 = 0xffffff;
@@ -9,10 +11,44 @@ const ROW2: u32 = 0x333333;
 const ROW3: u32 = 0x444444;
 
 #[test]
+fn canvas_edge_contracts_cover_empty_clip_blit_selection_and_viewport() {
+    assert!(CanvasClip::from_rect(4, 4, 0, 0, 4, 4).is_none());
+
+    let source = Canvas::new(2, 2, FILL);
+    let mut target = Canvas::new(2, 2, BACKGROUND);
+    let request = CanvasBlitRequest {
+        dest_x: 0,
+        dest_y: 3,
+        width: 2,
+        height: 1,
+        source_y: 0,
+    };
+    assert!(target.copy_unclipped_canvas_row(&source, request, 0, 0));
+    let zero_width = CanvasBlitRequest {
+        dest_y: 0,
+        width: 0,
+        ..request
+    };
+    assert!(target.copy_unclipped_canvas_row(&source, zero_width, 0, 0));
+
+    assert_eq!(
+        None,
+        target.copy_text_in_selection(Some((0, 0)), Some((1, 1)))
+    );
+    target.record_text_run("", 0, 0, 1, 1);
+    assert!(target.text_runs().is_empty());
+
+    let empty = Canvas::new(0, 2, BACKGROUND);
+    let viewport = empty.viewport_y(0, 1, FILL);
+    assert_eq!(0, viewport.width());
+    assert_eq!(1, viewport.logical_height());
+}
+
+#[test]
 fn clip_prevents_children_from_painting_outside_parent_bounds() {
     let mut canvas = Canvas::new(12, 8, BACKGROUND);
 
-    canvas.with_clip(3, 2, 5, 4, |canvas| {
+    canvas.with_clip(3, 2, 5, 4, &mut |canvas| {
         canvas.fill_rect(0, 0, 12, 8, FILL);
         canvas.set(1, 1, FILL);
     });
@@ -28,8 +64,8 @@ fn clip_prevents_children_from_painting_outside_parent_bounds() {
 fn nested_clips_use_the_intersection_of_parent_and_child_bounds() {
     let mut canvas = Canvas::new(12, 8, BACKGROUND);
 
-    canvas.with_clip(2, 1, 7, 5, |canvas| {
-        canvas.with_clip(5, 3, 6, 4, |canvas| {
+    canvas.with_clip(2, 1, 7, 5, &mut |canvas| {
+        canvas.with_clip(5, 3, 6, 4, &mut |canvas| {
             canvas.fill_rect(0, 0, 12, 8, FILL);
         });
     });
@@ -44,7 +80,7 @@ fn nested_clips_use_the_intersection_of_parent_and_child_bounds() {
 fn clip_applies_to_alpha_blending() {
     let mut canvas = Canvas::new(6, 4, BACKGROUND);
 
-    canvas.with_clip(2, 1, 2, 2, |canvas| {
+    canvas.with_clip(2, 1, 2, 2, &mut |canvas| {
         canvas.blend_rect(0, 0, 6, 4, BLEND, 255);
     });
 
@@ -83,6 +119,22 @@ fn logical_blend_paints_full_logical_pixel_on_high_dpi_canvas() {
 }
 
 #[test]
+fn point_and_rect_drawing_ignore_coordinates_outside_the_canvas() {
+    let mut canvas = Canvas::new(2, 2, BACKGROUND);
+
+    canvas.set(2, 0, FILL);
+    canvas.set(0, 2, FILL);
+    canvas.blend(2, 0, BLEND, 255);
+    canvas.blend(0, 2, BLEND, 255);
+    canvas.blend_rect(3, 3, 1, 1, BLEND, 255);
+
+    assert!(canvas.pixels().iter().all(|pixel| *pixel == BACKGROUND));
+    assert_eq!(None, canvas.physical_span_x(2));
+    assert_eq!(None, canvas.physical_span_y(2));
+    assert_eq!(None, canvas.to_physical_clip(2, 2, 1, 1));
+}
+
+#[test]
 fn logical_stroke_rect_uses_logical_border_width() {
     let mut canvas = Canvas::new_scaled(4, 4, 2.0, BACKGROUND);
 
@@ -97,7 +149,7 @@ fn logical_stroke_rect_uses_logical_border_width() {
 fn with_clip_keeps_logical_coordinates_for_scaled_canvas() {
     let mut canvas = Canvas::new_scaled(4, 4, 2.0, BACKGROUND);
 
-    canvas.with_clip(1, 1, 1, 1, |canvas| {
+    canvas.with_clip(1, 1, 1, 1, &mut |canvas| {
         canvas.fill_rect(0, 0, 4, 4, FILL);
     });
 
@@ -111,7 +163,7 @@ fn with_clip_keeps_logical_coordinates_for_scaled_canvas() {
 fn with_clip_limits_round_rect_draw_to_clip_area_on_scaled_canvas() {
     let mut canvas = Canvas::new_scaled(4, 4, 2.0, BACKGROUND);
 
-    canvas.with_clip(1, 1, 2, 2, |canvas| {
+    canvas.with_clip(1, 1, 2, 2, &mut |canvas| {
         canvas.fill_round_rect(0, 0, 4, 4, 0, FILL);
     });
 

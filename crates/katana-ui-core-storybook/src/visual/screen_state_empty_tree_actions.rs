@@ -89,19 +89,18 @@ impl StorybookScreenState {
 
     pub(in crate::visual) fn register_tree_view_focus(&mut self) {
         self.action_count += 1;
-        let Some(target) = FileTree::hit_target_for_item_with_state(
+        let target = FileTree::hit_target_for_item_with_state(
             &tree_items(),
             &FileTreeState::default(),
             TREE_FILE_ID,
             0,
             TREE_VIEWPORT_WIDTH,
-        ) else {
-            self.last_action = "tree_focus_miss";
-            self.last_event = "tree_focus_ignored";
-            self.state_label = "focus=miss";
-            return;
-        };
-        assert_eq!(TREE_FILE_ID, target.item_id);
+        );
+        assert_eq!(
+            Some(TREE_FILE_ID),
+            target.as_ref().map(|target| target.item_id.as_str()),
+            "the fixed Storybook tree item must have a focus target"
+        );
         self.button_focused = true;
         self.tree_view_focused_id = TREE_FILE_ID;
         self.last_action = "tree_focus_item";
@@ -154,7 +153,11 @@ impl StorybookScreenState {
             return;
         };
         self.action_count += 1;
-        match target.action {
+        self.apply_tree_view_action(target.action);
+    }
+
+    fn apply_tree_view_action(&mut self, action: FileTreeAction) {
+        match action {
             FileTreeAction::SelectFile { file_id } => {
                 self.tree_view_selected_id = tree_static_id(&file_id);
                 self.last_action = "tree_select_file";
@@ -189,7 +192,7 @@ impl StorybookScreenState {
     pub(in crate::visual) fn register_tree_view_scroll_retention(&mut self) {
         self.action_count += 1;
         self.tree_view_scroll_offset = TREE_SCROLL_OFFSET;
-        let Some(target) = FileTree::hit_target_with_state(
+        let target = FileTree::hit_target_with_state(
             &tree_items(),
             &FileTreeState::default(),
             FileTreeHitTestInput {
@@ -198,19 +201,19 @@ impl StorybookScreenState {
                 scroll_offset_y: TREE_SCROLL_OFFSET,
             },
             TREE_VIEWPORT_WIDTH,
-        ) else {
-            self.last_action = "tree_scroll_miss";
-            self.last_event = "tree_scroll_ignored";
-            self.state_label = "scroll=miss";
-            return;
-        };
-        assert_eq!(
-            FileTreeAction::SelectFile {
-                file_id: TREE_NESTED_FILE_ID.to_string(),
-            },
-            target.action
         );
-        assert_eq!(0, target.rect.y);
+        assert_eq!(
+            Some((
+                &FileTreeAction::SelectFile {
+                    file_id: TREE_NESTED_FILE_ID.to_string(),
+                },
+                0
+            )),
+            target
+                .as_ref()
+                .map(|target| (&target.action, target.rect.y)),
+            "the retained tree scroll offset must expose the nested file at the top"
+        );
         self.last_action = "tree_scroll_retained";
         self.last_event = "tree_scroll_offset_kept";
         self.last_setting = "tree.scroll";
@@ -232,7 +235,7 @@ impl StorybookScreenState {
             return false;
         }
         self.action_count += 1;
-        let Some(target) = FileTree::hit_target_with_state(
+        let target = FileTree::hit_target_with_state(
             &tree_items(),
             &FileTreeState::default(),
             FileTreeHitTestInput {
@@ -241,13 +244,13 @@ impl StorybookScreenState {
                 scroll_offset_y: self.tree_view_scroll_offset,
             },
             TREE_VIEWPORT_WIDTH,
-        ) else {
-            self.last_action = "tree_scroll_miss";
-            self.last_event = "tree_scroll_ignored";
-            self.state_label = "scroll=miss";
-            return true;
-        };
-        assert_ne!(FileTreeAction::None, target.action);
+        );
+        assert!(
+            target
+                .as_ref()
+                .is_some_and(|target| target.action != FileTreeAction::None),
+            "a changed Storybook tree scroll offset must retain a visible action target"
+        );
         self.last_action = "tree_scroll_retained";
         self.last_event = "tree_scroll_offset_kept";
         self.last_setting = "tree.scroll";
@@ -289,4 +292,60 @@ fn tree_core_pointer_y(visual_pointer_y: usize, scroll_offset_y: u32) -> u32 {
             .saturating_add(row_offset);
     }
     row_offset.saturating_add(1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_state_actions_cover_pointer_hover_focus_and_keyboard_contracts() {
+        let mut state = StorybookScreenState::default();
+        state.register_empty_state_keyboard_action();
+        assert_eq!(state.last_event, "empty_state_keyboard_ignored");
+        state.register_empty_state_primary_action();
+        state.register_empty_state_hover();
+        state.register_empty_state_focus();
+        state.register_empty_state_keyboard_action();
+
+        assert!(state.preview_hovered);
+        assert!(state.button_focused);
+        assert_eq!(state.last_setting_value, "reload");
+    }
+
+    #[test]
+    fn tree_actions_cover_hit_testing_typed_results_and_scroll_retention() {
+        let mut state = StorybookScreenState::default();
+        state.register_tree_view_keyboard_select();
+        assert_eq!(state.last_event, "tree_keyboard_ignored");
+        state.register_tree_view_hover();
+        state.register_tree_view_focus();
+        state.register_tree_view_keyboard_select();
+        state.register_tree_view_pointer_click(24, 6);
+        state.register_tree_view_pointer_click(usize::MAX, usize::MAX);
+        state.register_tree_view_scroll_retention();
+        assert!(state.scroll_tree_view(1.0));
+        assert!(state.scroll_tree_view(-1.0));
+        while state.scroll_tree_view(-1.0) {}
+        assert!(!state.scroll_tree_view(-1.0));
+
+        state.apply_tree_view_action(FileTreeAction::SelectFile {
+            file_id: TREE_FILE_ID.to_string(),
+        });
+        state.apply_tree_view_action(FileTreeAction::ToggleDirectory {
+            directory_id: "katana".to_string(),
+        });
+        state.apply_tree_view_action(FileTreeAction::FocusItem {
+            item_id: TREE_FILE_ID.to_string(),
+        });
+        state.apply_tree_view_action(FileTreeAction::None);
+
+        assert_eq!(state.last_event, "tree_click_ignored");
+        let second_row_hit_y = katana_ui_core::molecule::TreeView::row_height() + 1;
+        assert_eq!(tree_core_pointer_y(6, 0), second_row_hit_y);
+        assert_eq!(
+            tree_core_pointer_y(30, TREE_SCROLL_OFFSET),
+            second_row_hit_y
+        );
+    }
 }

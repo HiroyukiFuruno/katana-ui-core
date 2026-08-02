@@ -122,3 +122,11 @@ fn collapsed_group_renders_header_and_hides_grouped_tabs() {
     );
     assert_eq!("Docs group collapsed", group.props().accessibility_label);
 }
+
+#[test]
+fn group_without_tabs_does_not_render_an_empty_header() {
+    let node =
+        UiNode::from(CloseableTabStrip::new("Workspace").group(TabGroup::new("empty", "Empty")));
+
+    assert!(node.children().is_empty());
+}

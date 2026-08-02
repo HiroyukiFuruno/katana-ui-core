@@ -1,5 +1,5 @@
 use katana_ui_core::atom::shortcut_combo::{
-    KeyCombo, KeyKind, KeyModifiers, RuntimePlatform, ShortcutCombo, ShortcutPlatform,
+    KeyCombo, KeyKind, KeyModifiers, NamedKey, RuntimePlatform, ShortcutCombo, ShortcutPlatform,
     ShortcutPlatformProvider, ShortcutSeparator,
 };
 use katana_ui_core::molecule::shortcut_cheatsheet::{
@@ -37,6 +37,61 @@ fn shortcut_combo_supports_separator_override_and_runtime_auto() {
     assert_eq!("⌃+⇧+P", mac.visual_text(RuntimePlatform::MacOS));
     assert_eq!("Ctrl+Shift+P", auto.visual_text(RuntimePlatform::Windows));
     assert_eq!("Ctrl+Shift+P", auto.visual_text(RuntimePlatform::Linux));
+    assert_eq!(
+        "Ctrl -> Shift -> P",
+        ShortcutCombo::new(
+            "Arrow",
+            KeyCombo::new(KeyModifiers::control_shift(), KeyKind::Char('p')),
+        )
+        .separator(ShortcutSeparator::Arrow)
+        .visual_text(RuntimePlatform::Windows)
+    );
+}
+
+#[test]
+fn shortcut_combo_covers_all_modifier_platform_and_named_key_labels() {
+    let all_modifiers = KeyModifiers {
+        command: true,
+        control: true,
+        alt: true,
+        shift: true,
+        meta: true,
+    };
+    let combo = ShortcutCombo::new(
+        "All modifiers",
+        KeyCombo::new(all_modifiers, KeyKind::Char('k')),
+    );
+    assert_eq!(
+        "Command + Control + Alt + Shift + Meta + K",
+        combo.accessibility_text(RuntimePlatform::Linux)
+    );
+    assert_eq!("⌘⌃⌥⇧⌘K", combo.visual_text(RuntimePlatform::MacOS));
+    assert_eq!(
+        "Ctrl+Ctrl+Alt+Shift+Win+K",
+        combo.visual_text(RuntimePlatform::Windows)
+    );
+    assert_eq!(
+        "Ctrl+Ctrl+Alt+Shift+Super+K",
+        combo.visual_text(RuntimePlatform::Linux)
+    );
+
+    for (key, visual, accessible) in [
+        (NamedKey::Escape, "Esc", "Escape"),
+        (NamedKey::ArrowUp, "Arrow Up", "Arrow Up"),
+        (NamedKey::ArrowDown, "Arrow Down", "Arrow Down"),
+        (NamedKey::ArrowLeft, "Arrow Left", "Arrow Left"),
+        (NamedKey::ArrowRight, "Arrow Right", "Arrow Right"),
+        (NamedKey::PageUp, "Page Up", "Page Up"),
+        (NamedKey::PageDown, "Page Down", "Page Down"),
+        (NamedKey::Function(12), "F12", "F12"),
+    ] {
+        let named = ShortcutCombo::new(
+            "Named key",
+            KeyCombo::new(KeyModifiers::default(), KeyKind::Named(key)),
+        );
+        assert_eq!(visual, named.visual_text(RuntimePlatform::MacOS));
+        assert_eq!(accessible, named.accessibility_text(RuntimePlatform::MacOS));
+    }
 }
 
 #[test]
@@ -56,6 +111,24 @@ fn shortcut_combo_uses_adapter_platform_callback_and_renders_props() {
     assert_eq!("Command + Shift + P", node.props().accessibility_label);
     assert_eq!(UiSize::Large, node.props().size);
     assert_eq!(UiTone::Accent, node.props().tone);
+}
+
+#[test]
+fn shortcut_combo_explicit_platform_accessibility_and_combo_accessors_are_stable() {
+    let key_combo = KeyCombo::new(KeyModifiers::command_shift(), KeyKind::Char('p'));
+    let windows = ShortcutCombo::new("Windows", key_combo.clone())
+        .platform_display(ShortcutPlatform::Windows)
+        .accessibility_label("Open palette");
+    let linux =
+        ShortcutCombo::new("Linux", key_combo.clone()).platform_display(ShortcutPlatform::Linux);
+
+    assert_eq!(&key_combo, windows.combo());
+    assert_eq!("Ctrl+Shift+P", windows.visual_text(RuntimePlatform::MacOS));
+    assert_eq!(
+        "Open palette",
+        windows.accessibility_text(RuntimePlatform::Linux)
+    );
+    assert_eq!("Ctrl+Shift+P", linux.visual_text(RuntimePlatform::MacOS));
 }
 
 #[test]
@@ -102,15 +175,18 @@ fn shortcut_cheatsheet_filters_groups_and_emits_selection_event() {
 
 #[test]
 fn shortcut_cheatsheet_layout_is_typed_and_rendered() {
+    let item = ShortcutCheatsheetItem::new(
+        "open",
+        "Open file",
+        KeyCombo::new(KeyModifiers::command_shift(), KeyKind::Char('o')),
+    );
+    assert_eq!(
+        &KeyCombo::new(KeyModifiers::command_shift(), KeyKind::Char('o')),
+        item.combo()
+    );
     let sheet = ShortcutCheatsheet::new("Shortcuts")
         .group_layout(ShortcutCheatsheetLayout::OneColumn)
-        .group(
-            ShortcutCheatsheetGroup::new("File").item(ShortcutCheatsheetItem::new(
-                "open",
-                "Open file",
-                KeyCombo::new(KeyModifiers::command_shift(), KeyKind::Char('o')),
-            )),
-        );
+        .group(ShortcutCheatsheetGroup::new("File").item(item));
     let node = UiNode::from(sheet);
 
     assert_eq!("OneColumn", node.props().interaction.value);

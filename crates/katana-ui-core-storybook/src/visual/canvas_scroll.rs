@@ -17,9 +17,10 @@ impl Canvas {
             return false;
         };
         let physical_delta = (logical_delta_y as f64 * f64::from(self.scale_factor)).round();
-        if physical_delta == 0.0 {
-            return true;
-        }
+        debug_assert_ne!(
+            0.0, physical_delta,
+            "non-zero logical deltas scale to at least one pixel"
+        );
         let physical_delta = physical_delta as isize;
         let rect_height = rect.height as isize;
         if physical_delta.abs() >= rect_height {
@@ -88,5 +89,56 @@ impl Canvas {
                 len,
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Canvas, CanvasClip};
+
+    #[test]
+    fn vertical_scroll_covers_noop_clipping_full_width_and_partial_width() {
+        let mut canvas = Canvas::new(4, 4, 0);
+        canvas.fill_rect(0, 0, 4, 1, 1);
+        canvas.fill_rect(0, 1, 4, 1, 2);
+        canvas.fill_rect(0, 2, 4, 1, 3);
+        canvas.fill_rect(0, 3, 4, 1, 4);
+
+        assert!(canvas.scroll_rect_vertically(0, 0, 4, 4, 0));
+        assert!(!canvas.scroll_rect_vertically(10, 10, 2, 2, 1));
+        assert!(!canvas.scroll_rect_vertically(0, 0, 4, 4, 4));
+        assert!(canvas.scroll_rect_vertically(0, 0, 4, 4, 1));
+        assert!(canvas.scroll_rect_vertically(0, 0, 4, 4, -1));
+        assert!(canvas.scroll_rect_vertically(1, 0, 2, 4, 1));
+        assert!(canvas.scroll_rect_vertically(1, 0, 2, 4, -1));
+
+        let mut fractional = Canvas::new_scaled(10, 10, 0.1, 0);
+        assert!(fractional.scroll_rect_vertically(0, 0, 10, 10, 1));
+    }
+
+    #[test]
+    fn row_copy_rejects_out_of_bounds_ranges() {
+        let mut canvas = Canvas::new(2, 2, 0);
+        canvas.copy_rect_row(
+            CanvasClip {
+                x: 3,
+                y: 0,
+                width: 2,
+                height: 2,
+            },
+            0,
+            1,
+        );
+        canvas.copy_rect_row(
+            CanvasClip {
+                x: 0,
+                y: 3,
+                width: 3,
+                height: 2,
+            },
+            3,
+            0,
+        );
+        assert_eq!(&[0, 0, 0, 0], canvas.pixels());
     }
 }

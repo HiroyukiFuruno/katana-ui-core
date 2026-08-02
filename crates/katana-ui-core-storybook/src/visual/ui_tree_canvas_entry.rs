@@ -109,3 +109,50 @@ fn entry_value(node: &UiNode) -> String {
     }
     node.props().label.clone()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::render_model::{UiInteractionState, UiNodeKind};
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn entry_text_prefers_value_then_placeholder_then_label() {
+        let interaction = UiInteractionState {
+            value: "typed".to_string(),
+            ..UiInteractionState::default()
+        };
+        let value = UiNode::new(UiNodeKind::Input, "Label")
+            .placeholder("Placeholder")
+            .interaction(interaction);
+        let placeholder = UiNode::new(UiNodeKind::Input, "Label").placeholder("Placeholder");
+        let label = UiNode::new(UiNodeKind::Input, "Label");
+
+        assert_eq!("typed", entry_value(&value));
+        assert_eq!("Placeholder", entry_value(&placeholder));
+        assert_eq!("Label", entry_value(&label));
+    }
+
+    #[test]
+    fn labeled_entry_reserves_the_label_column() {
+        let theme = ThemeSnapshot::light();
+        let facade = UiCoreFacade::new(theme.clone());
+        let text = TextRenderer::load(&facade, "body");
+        let node = UiNode::new(UiNodeKind::Input, "Label");
+        let mut canvas = Canvas::new(320, 80, 0);
+
+        assert_eq!(
+            12 + LABEL_COLUMN_WIDTH,
+            input_x(
+                &mut canvas,
+                &text,
+                &node,
+                12,
+                8,
+                UiTreeCanvasPalette::from_theme(&theme),
+                true,
+            )
+        );
+    }
+}

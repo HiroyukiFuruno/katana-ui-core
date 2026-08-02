@@ -37,9 +37,7 @@ pub(super) fn draw_filled_bullet(canvas: &mut Canvas, x: usize, center_y: usize,
             continue;
         }
         let start_x = center_x - span;
-        if start_x < 0 {
-            continue;
-        }
+        debug_assert!(start_x >= 0, "list marker x offset must contain its radius");
         canvas.fill_rect(
             start_x as usize,
             row_y as usize,
@@ -63,7 +61,8 @@ pub(super) fn draw_hollow_bullet(canvas: &mut Canvas, x: usize, center_y: usize,
             }
             let point_x = center_x + dx;
             let point_y = center_y + dy;
-            if point_x < 0 || point_y < 0 {
+            debug_assert!(point_x >= 0, "list marker x offset must contain its radius");
+            if point_y < 0 {
                 continue;
             }
             canvas.set(point_x as usize, point_y as usize, color);
@@ -86,5 +85,20 @@ pub(super) fn circle_span(dy: isize) -> isize {
         0..=CIRCLE_SPAN_WIDE_MAX_DY => CIRCLE_SPAN_WIDE,
         CIRCLE_SPAN_MID_DY => CIRCLE_SPAN_MID,
         _ => CIRCLE_SPAN_NARROW,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn list_markers_clip_rows_above_the_canvas() {
+        let mut canvas = Canvas::new(32, 16, 0);
+
+        draw_filled_bullet(&mut canvas, 0, 0, 0xffffff);
+        draw_hollow_bullet(&mut canvas, 0, 0, 0xffffff);
+
+        assert!(canvas.pixels().contains(&0xffffff));
     }
 }

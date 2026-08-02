@@ -205,3 +205,35 @@ mod tests {
         );
     }
 }
+
+#[cfg(all(test, not(target_os = "macos")))]
+mod non_macos_tests {
+    use super::*;
+
+    #[test]
+    fn document_code_text_uses_generic_monospace_family() {
+        let font = FontToken {
+            name: DOCUMENT_CODE_FONT_ROLE.to_string(),
+            family: FontFamily::Monospace,
+            size: 12.0,
+            weight: 400,
+        };
+
+        assert_eq!(
+            Family::Monospace,
+            family_for_font(&font, "fn main() {}", false)
+        );
+    }
+
+    #[test]
+    fn document_body_bold_text_keeps_bold_weight() {
+        let font = FontToken {
+            name: DOCUMENT_BODY_FONT_ROLE.to_string(),
+            family: FontFamily::Proportional,
+            size: 14.0,
+            weight: 700,
+        };
+
+        assert_eq!(700, weight_for_font(&font, false));
+    }
+}

@@ -141,3 +141,35 @@ pub(super) fn focus_scroll_area(state: &mut StorybookWindowState, x: usize, y: u
         .register_scroll_area_action(ScrollAreaStoryAction::Focus);
     true
 }
+
+#[cfg(test)]
+mod tests {
+    use super::super::focus_dispatch;
+    use super::*;
+
+    #[test]
+    fn primary_focus_surfaces_reject_points_outside_the_component() {
+        for page in [
+            "command-palette",
+            "collapsible-panel",
+            "virtualization",
+            "diagnostics-list",
+            "empty-state",
+            "tree-view",
+            "drag-and-drop",
+            "panel",
+            "row",
+            "column",
+            "stack",
+            "grid",
+            "align-center",
+            "scroll-area",
+        ] {
+            let mut state = StorybookWindowState {
+                selected_page: page,
+                ..StorybookWindowState::default()
+            };
+            assert!(!focus_dispatch::focus_at(&mut state, 0, 0), "{page}");
+        }
+    }
+}

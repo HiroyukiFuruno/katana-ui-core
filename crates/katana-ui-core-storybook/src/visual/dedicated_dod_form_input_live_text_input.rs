@@ -190,7 +190,7 @@ fn draw_field_value(
         field.y + FIELD_Y,
         clip_width,
         FIELD_HEIGHT,
-        |canvas| {
+        &mut |canvas| {
             text.draw_centered(
                 canvas,
                 label,

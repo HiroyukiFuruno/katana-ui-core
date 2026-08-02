@@ -26,6 +26,66 @@ fn accordion_trigger_area_limits_which_click_source_toggles() {
 }
 
 #[test]
+fn accordion_whole_text_and_nontrigger_sources_follow_trigger_area_contract() {
+    let mut whole = Accordion::new("Whole").trigger_area(DisclosureTriggerArea::WholeElement);
+    assert!(
+        whole
+            .apply_action(&UiAction::accordion_row_toggle(whole.state_id().clone()))
+            .handled
+    );
+
+    let mut text = Accordion::new("Text").trigger_area(DisclosureTriggerArea::TextOnly);
+    assert!(
+        text.apply_action(&UiAction::accordion_text_toggle(text.state_id().clone()))
+            .handled
+    );
+    assert!(
+        !text
+            .apply_action(&UiAction::accordion_icon_toggle(text.state_id().clone()))
+            .handled
+    );
+    let generic = text.apply_action(&UiAction::set_value(text.state_id().clone(), "value"));
+    assert!(generic.handled);
+    assert_eq!("value", generic.after.value);
+    assert!(
+        text.apply_action(&UiAction::tooltip_toggle(text.state_id().clone()))
+            .handled
+    );
+}
+
+#[test]
+fn accordion_none_indicator_and_text_only_render_mapping_are_typed() {
+    let tree = UiTree::new(
+        Accordion::new("Section")
+            .indicator_position(DisclosureIndicatorPosition::None)
+            .trigger_area(DisclosureTriggerArea::TextOnly),
+    );
+    assert_eq!(
+        UiDisclosureIndicatorPosition::None,
+        tree.root().props().disclosure.indicator_position
+    );
+    assert_eq!(
+        UiDisclosureTriggerArea::TextOnly,
+        tree.root().props().disclosure.trigger_area
+    );
+
+    let icon_only =
+        UiTree::new(Accordion::new("Icon").trigger_area(DisclosureTriggerArea::IconOnly));
+    assert_eq!(
+        UiDisclosureTriggerArea::IconOnly,
+        icon_only.root().props().disclosure.trigger_area
+    );
+}
+
+#[test]
+fn trailing_disclosure_indicator_has_stable_serialized_name() {
+    assert_eq!(
+        "trailing",
+        String::from(DisclosureIndicatorPosition::Trailing)
+    );
+}
+
+#[test]
 fn controlled_accordion_emits_request_without_mutating_internal_open_state() {
     let mut accordion = Accordion::new("Section").controlled(true).open(false);
 
@@ -101,4 +161,25 @@ fn accordion_group_multiple_mode_keeps_existing_items_open() {
     assert!(result.handled);
     assert_eq!(vec!["one", "two"], group.open_item_ids());
     assert_eq!(2, UiTree::new(group).root().children().len());
+}
+
+#[test]
+fn accordion_group_rejects_wrong_target_action_and_index() {
+    let mut group = AccordionGroup::new("Sections").item(AccordionGroupItem::new("one", "One"));
+    let target = group.state_id().clone();
+
+    assert!(
+        !group
+            .apply_action(&UiAction::set_selected_index(
+                katana_ui_core::render_model::UiStateId::new("other"),
+                0,
+            ))
+            .handled
+    );
+    assert!(!group.apply_action(&UiAction::focus(target.clone())).handled);
+    assert!(
+        !group
+            .apply_action(&UiAction::set_selected_index(target, 9))
+            .handled
+    );
 }

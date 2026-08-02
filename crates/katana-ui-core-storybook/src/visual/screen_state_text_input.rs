@@ -259,3 +259,28 @@ impl StorybookScreenState {
         self.text_inputs.set_caret_visibility(instance, visible)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::StorybookScreenState;
+
+    const INSTANCE: &str = "text-input.boundary";
+
+    #[test]
+    fn text_input_rejects_unfocused_empty_and_readonly_keyboard_operations() {
+        let mut state = StorybookScreenState::default();
+        assert!(!state.register_text_input_backspace_for(INSTANCE, false));
+        assert!(!state.register_text_input_paste_for(INSTANCE, "paste", false));
+        assert!(!state.register_text_input_submit_for(INSTANCE));
+
+        state.register_text_input_focus_for(INSTANCE, "", false);
+        assert!(!state.register_text_input_backspace_for(INSTANCE, false));
+
+        let mut readonly = StorybookScreenState::default();
+        readonly.register_text_input_focus_for(INSTANCE, "value", true);
+        assert!(readonly.register_text_input_paste_for(INSTANCE, "paste", true));
+        assert_eq!("value", readonly.text_input_value_for(INSTANCE));
+        assert_eq!("text_input_readonly_blocked", readonly.last_action);
+        assert_eq!("text_input_readonly_ignored", readonly.last_event);
+    }
+}

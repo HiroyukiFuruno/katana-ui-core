@@ -56,6 +56,7 @@ class KucGuardrails:
         failures.extend(self.storybook_reflection_audit_policy_failures())
         failures.extend(self.repo_local_guardrail_policy_failures())
         failures.extend(self.generic_rust_ui_boundary_failures())
+        failures.extend(self.generic_grid_boundary_failures())
         failures.extend(self.adapter_svg_render_plan_failures())
         failures.extend(self.host_action_render_plan_failures())
         failures.extend(self.adapter_coverage_plan_failures())
@@ -399,6 +400,79 @@ class KucGuardrails:
             for token in required_doc_tokens
             if token not in docs
         )
+        return failures
+
+    def generic_grid_boundary_failures(self) -> list[str]:
+        grid_dir = self.root / "crates/katana-ui-core/src/molecule/generic_grid"
+        grid_props = self.root / "crates/katana-ui-core/src/render_model/typed_grid.rs"
+        grid_prop_types = (
+            self.root / "crates/katana-ui-core/src/render_model/typed_grid_types.rs"
+        )
+        change = self.root / "openspec/changes/v0-2-0-generic-2d-grid"
+        if not grid_dir.exists() and not grid_props.exists() and not change.exists():
+            return []
+
+        failures: list[str] = []
+        required = (
+            grid_dir / "mod.rs",
+            grid_dir / "axis.rs",
+            grid_dir / "axis_types.rs",
+            grid_dir / "component.rs",
+            grid_dir / "component_types.rs",
+            grid_dir / "geometry.rs",
+            grid_dir / "selection.rs",
+            grid_props,
+            grid_prop_types,
+            self.root / "crates/katana-ui-core/tests/generic_grid_axis_contract.rs",
+            self.root / "crates/katana-ui-core/tests/generic_grid_component_contract.rs",
+            self.root / "examples/kuc-consumer-app/tests/generic_public_contract.rs",
+        )
+        for path in required:
+            if not path.exists():
+                failures.append(f"{self.relative(path)}: generic grid contract file is missing")
+
+        forbidden_tokens = (
+            "xlsx",
+            "docx",
+            "pptx",
+            "spreadsheet",
+            "formula",
+            "pivot",
+            "katana-document-viewer",
+            "katana_document_viewer",
+            "egui",
+            "gpui",
+            "iced",
+            "tauri",
+            "winit",
+            "gtk",
+        )
+        sources = [
+            *self.rust_files(grid_dir),
+            *([grid_props] if grid_props.exists() else []),
+            *([grid_prop_types] if grid_prop_types.exists() else []),
+        ]
+        for path in sources:
+            source = self.read(path).lower()
+            for token in forbidden_tokens:
+                if token in source:
+                    failures.append(
+                        f"{self.relative(path)}: generic grid contains forbidden format or framework token `{token}`"
+                    )
+
+        dependency_files = (
+            self.root / "Cargo.toml",
+            self.root / "crates/katana-ui-core/Cargo.toml",
+        )
+        for path in dependency_files:
+            if not path.exists():
+                continue
+            source = self.read(path).lower()
+            for token in forbidden_tokens:
+                if re.search(rf"(?m)^\s*{re.escape(token)}\s*=", source):
+                    failures.append(
+                        f"{self.relative(path)}: generic grid must not add dependency `{token}`"
+                    )
         return failures
 
     def adapter_svg_render_plan_failures(self) -> list[str]:

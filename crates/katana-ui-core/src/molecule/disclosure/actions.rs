@@ -16,10 +16,10 @@ pub(super) fn apply_disclosure_action(
     if apply_kind_action(state, model, kind, action) {
         return handled(state.state_id.clone(), action, before, state.interaction());
     }
-    if matches!(kind, UiNodeKind::Accordion) && is_accordion_trigger_action(action) {
+    if kind == UiNodeKind::Accordion && is_accordion_trigger_action(action) {
         return UiActionResult::ignored(state.state_id.clone(), before);
     }
-    if matches!(kind, UiNodeKind::Modal) && is_modal_lifecycle_action(action) {
+    if kind == UiNodeKind::Modal && is_modal_lifecycle_action(action) {
         return UiActionResult::ignored(state.state_id.clone(), before);
     }
     state.apply_action(action, false)
@@ -83,7 +83,10 @@ fn apply_toggle_action(
 }
 
 pub(super) fn is_accordion_trigger_action(action: &UiAction) -> bool {
-    matches!(action, UiAction::Press { source, .. } if is_accordion_trigger_source(*source))
+    matches!(
+        action,
+        UiAction::Press { source, .. } if is_accordion_trigger_source(*source)
+    )
 }
 
 fn is_modal_lifecycle_action(action: &UiAction) -> bool {
@@ -112,23 +115,20 @@ fn accepts_accordion_trigger(model: &DisclosureTypedModel, source: UiActionSourc
     match source {
         UiActionSource::Accordion => true,
         UiActionSource::Click | UiActionSource::Generic | UiActionSource::AccordionRow => {
-            matches!(
-                model.trigger_area,
-                crate::molecule::DisclosureTriggerArea::WholeElement
-            )
+            model.trigger_area == crate::molecule::DisclosureTriggerArea::WholeElement
         }
-        UiActionSource::AccordionIcon => matches!(
-            model.trigger_area,
+        UiActionSource::AccordionIcon => match model.trigger_area {
             crate::molecule::DisclosureTriggerArea::IconOnly
-                | crate::molecule::DisclosureTriggerArea::IconAndText
-                | crate::molecule::DisclosureTriggerArea::WholeElement
-        ),
-        UiActionSource::AccordionText => matches!(
-            model.trigger_area,
+            | crate::molecule::DisclosureTriggerArea::IconAndText
+            | crate::molecule::DisclosureTriggerArea::WholeElement => true,
+            crate::molecule::DisclosureTriggerArea::TextOnly => false,
+        },
+        UiActionSource::AccordionText => match model.trigger_area {
             crate::molecule::DisclosureTriggerArea::IconAndText
-                | crate::molecule::DisclosureTriggerArea::WholeElement
-                | crate::molecule::DisclosureTriggerArea::TextOnly
-        ),
+            | crate::molecule::DisclosureTriggerArea::WholeElement
+            | crate::molecule::DisclosureTriggerArea::TextOnly => true,
+            crate::molecule::DisclosureTriggerArea::IconOnly => false,
+        },
         _ => false,
     }
 }
@@ -247,4 +247,21 @@ fn handled(
     after: crate::render_model::UiInteractionState,
 ) -> UiActionResult {
     UiActionResult::handled(state_id, action, before, after)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unrelated_actions_and_sources_are_not_disclosure_triggers() {
+        let mut state = MoleculeState::new(UiNodeKind::Tooltip);
+        let action = UiAction::set_value(state.state_id.clone(), "value");
+        let model = DisclosureTypedModel::default();
+
+        assert!(!apply_tooltip_action(&mut state, &model, &action));
+        assert!(!is_modal_lifecycle_action(&action));
+        assert!(!is_accordion_trigger_source(UiActionSource::Tooltip));
+        assert!(!accepts_accordion_trigger(&model, UiActionSource::Tooltip));
+    }
 }

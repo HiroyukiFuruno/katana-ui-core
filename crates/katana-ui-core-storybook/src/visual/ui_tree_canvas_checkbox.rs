@@ -273,6 +273,33 @@ mod tests {
     }
 
     #[test]
+    fn task_progress_and_blocked_marks_have_visible_distinct_strokes() {
+        let mut progress = Canvas::new(24, 24, BACKGROUND);
+        let mut blocked = Canvas::new(24, 24, BACKGROUND);
+
+        draw_mark(
+            &mut progress,
+            2,
+            2,
+            CHECKBOX_SIZE,
+            CheckboxMark::Progress,
+            checkbox_mark_color(),
+        );
+        draw_mark(
+            &mut blocked,
+            2,
+            2,
+            CHECKBOX_SIZE,
+            CheckboxMark::Blocked,
+            checkbox_mark_color(),
+        );
+
+        assert!(count_color(&progress, checkbox_mark_color()) > 0);
+        assert!(count_color(&blocked, checkbox_mark_color()) > 0);
+        assert_ne!(progress.pixels(), blocked.pixels());
+    }
+
+    #[test]
     fn empty_task_checkbox_keeps_empty_box() {
         let mut canvas = Canvas::new(24, 24, BACKGROUND);
         draw_box(&mut canvas, 2, 2, CHECKBOX_SIZE, false, palette());

@@ -10,6 +10,9 @@ impl ComponentAction for CodeDiff {
             return UiActionResult::ignored(self.state.state_id.clone(), before);
         }
         if !self.apply_diff_action(action) {
+            if is_code_diff_action(action) {
+                return UiActionResult::ignored(self.state.state_id.clone(), before);
+            }
             return self.state.apply_action(action, false);
         }
         UiActionResult::handled(
@@ -94,6 +97,21 @@ impl CodeDiff {
         self.state.transient.active = self.scroll_sync_enabled;
         true
     }
+}
+
+fn is_code_diff_action(action: &UiAction) -> bool {
+    matches!(
+        action,
+        UiAction::SetValue {
+            source: UiActionSource::CodeDiffMode
+                | UiActionSource::CodeDiffDirection
+                | UiActionSource::CodeDiffLanguage,
+            ..
+        } | UiAction::Press {
+            source: UiActionSource::CodeDiffExpand | UiActionSource::CodeDiffScrollSync,
+            ..
+        }
+    )
 }
 
 fn parse_mode(value: &str) -> Option<CodeDiffMode> {

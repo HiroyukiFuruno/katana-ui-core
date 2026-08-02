@@ -170,3 +170,34 @@ pub(in crate::visual) fn binary_choice_state(
         _ => setting,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn foundation_setting_mappers_preserve_unknown_keys_and_cover_align_center() {
+        for actual in [
+            icon_state("unknown"),
+            text_state("unknown"),
+            skeleton_state("unknown"),
+            loading_indicator_state("unknown", "unknown"),
+            progress_bar_state("unknown"),
+            split_pane_state("unknown"),
+            layout_state("unknown", "unknown"),
+            primitive_state("unknown", "unknown"),
+            binary_choice_state("unknown", "unknown"),
+        ] {
+            assert_eq!("unknown", actual);
+        }
+
+        for (setting, expected) in [
+            ("axis", "align_center.axis=y"),
+            ("gap", "align_center.gap=large"),
+            ("alignment", "align_center.alignment=center"),
+            ("overflow", "align_center.overflow=scroll"),
+        ] {
+            assert_eq!(expected, layout_state("align_center", setting));
+        }
+    }
+}

@@ -55,9 +55,10 @@ impl StorybookScreenState {
         action_builder: impl FnOnce(katana_ui_core::render_model::UiStateId, bool) -> UiAction,
     ) {
         let result = tooltip_open_result(action_builder, true);
-        if !result.handled || !result.after.open {
-            return;
-        }
+        assert!(
+            result.handled && result.after.open,
+            "the tooltip trigger action must open the fixture"
+        );
         if self.last_action == action
             && self.last_event == event
             && self.state_label == "hover=true focus=true"
@@ -84,4 +85,20 @@ fn tooltip_open_result(
         .max_width(TOOLTIP_MAX_WIDTH);
     let target = tooltip.state_id().clone();
     tooltip.apply_action(&action_builder(target, active))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn repeated_tooltip_open_is_idempotent() {
+        let mut state = StorybookScreenState::default();
+        state.register_tooltip_hover_open();
+        let action_count = state.action_count;
+        state.register_tooltip_hover_open();
+
+        assert_eq!(action_count, state.action_count);
+        assert!(state.is_tooltip_open());
+    }
 }

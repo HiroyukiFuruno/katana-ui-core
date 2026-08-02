@@ -7,7 +7,9 @@ use katana_ui_core::molecule::{
     StatusBarDensity, StatusBarEvent, StatusBarMode, StatusBarPopoverSpec, StatusBarSegment,
     StatusBarSegmentAlignment,
 };
-use katana_ui_core::render_model::{UiNodeId, UiNodeKind, UiSize, UiTone, UiTree};
+use katana_ui_core::render_model::{
+    UiCommonProps, UiDismissAction, UiNodeId, UiNodeKind, UiSize, UiTone, UiTree,
+};
 
 #[test]
 fn status_bar_keeps_single_message_compatible_and_rejects_mode_conflict() {
@@ -157,6 +159,10 @@ fn status_bar_progress_meter_clamps_and_renders_progress_child() {
         .find_map(StatusBarSegment::progress_spec);
 
     assert_eq!(Some(100), progress.map(ProgressMeterSpec::percent));
+    assert_eq!(
+        Some(ProgressMeterShape::Ring),
+        progress.map(ProgressMeterSpec::shape)
+    );
 
     let tree = UiTree::new(bar);
     let segment_nodes = tree.root().children();
@@ -166,6 +172,48 @@ fn status_bar_progress_meter_clamps_and_renders_progress_child() {
         segment_nodes[0].children()[0].kind()
     );
     assert_eq!(100, segment_nodes[0].children()[0].props().progress_percent);
+}
+
+#[test]
+fn status_bar_tooltip_popover_close_and_linear_meter_are_typed() {
+    let mut bar = StatusBar::new("Usage")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(
+            StatusBarSegment::new("tokens", "75%")
+                .interactive(true)
+                .progress(ProgressMeterSpec::new(ProgressMeterShape::Linear, 75))
+                .popover(StatusBarPopoverSpec::new("Usage", "Token budget")),
+        );
+    let _opened = bar.apply_action(&StatusBarAction::PressSegment {
+        id: "tokens".to_string(),
+    });
+
+    assert_eq!(
+        vec![StatusBarEvent::SegmentTooltipShown {
+            id: "tokens".to_string()
+        }],
+        bar.apply_action(&StatusBarAction::ShowTooltip {
+            id: "tokens".to_string()
+        })
+    );
+    assert_eq!(
+        vec![StatusBarEvent::SegmentPopoverClosed {
+            id: "tokens".to_string()
+        }],
+        bar.apply_action(&StatusBarAction::ClosePopover {
+            id: "tokens".to_string()
+        })
+    );
+    assert_eq!(None, bar.state().open_popover());
+
+    let tree = UiTree::new(bar);
+    assert_eq!(
+        "Linear",
+        tree.root().children()[0].children()[0]
+            .props()
+            .interaction
+            .value
+    );
 }
 
 #[test]
@@ -197,6 +245,52 @@ fn status_bar_density_icon_tooltip_and_progress_shape_are_rendered() {
     assert_eq!("Pie", progress.props().interaction.value);
     assert_eq!("75% used", progress.props().placeholder);
     assert_eq!(75, progress.props().progress_percent);
+}
+
+#[test]
+fn status_bar_covers_common_validation_dismiss_and_noninteractive_press_paths() {
+    let invalid = StatusBar::new("Invalid")
+        .common(UiCommonProps {
+            disabled: true,
+            ..UiCommonProps::default()
+        })
+        .dismiss_action(UiDismissAction::Available)
+        .segment(StatusBarSegment::new("message", "Message"));
+    assert_eq!(
+        vec![StatusBarContractViolation::SingleMessageHasSegments],
+        invalid.validate()
+    );
+    let node = UiTree::new(invalid);
+    assert!(node.root().props().disabled);
+
+    let mut bar = StatusBar::new("Status")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(StatusBarSegment::new("passive", "Passive"))
+        .segment(StatusBarSegment::new("active", "Active").interactive(true));
+    assert!(
+        bar.apply_action(&StatusBarAction::PressSegment {
+            id: "missing".to_string()
+        })
+        .is_empty()
+    );
+    assert!(
+        bar.apply_action(&StatusBarAction::PressSegment {
+            id: "passive".to_string()
+        })
+        .is_empty()
+    );
+    assert_eq!(
+        vec![StatusBarEvent::SegmentPressed {
+            id: "active".to_string()
+        }],
+        bar.apply_action(&StatusBarAction::PressSegment {
+            id: "active".to_string()
+        })
+    );
+    assert_eq!(
+        vec![StatusBarEvent::Dismissed],
+        bar.apply_action(&StatusBarAction::Dismiss)
+    );
 }
 
 fn segment_ids(bar: &StatusBar, alignment: StatusBarSegmentAlignment) -> Vec<&str> {

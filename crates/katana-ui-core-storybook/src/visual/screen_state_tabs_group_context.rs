@@ -62,9 +62,12 @@ impl TabsScreenState {
         group_id: &str,
         command: TabsContextMenuCommand,
     ) -> TabsScreenUpdate {
-        match &command {
-            TabsContextMenuCommand::GroupCollapse | TabsContextMenuCommand::GroupExpand => {
-                self.toggle_group_from_context(group_id, command)
+        match command {
+            TabsContextMenuCommand::GroupCollapse => {
+                self.toggle_group_from_context(group_id, CloseableTabGroupContextCommand::Collapse)
+            }
+            TabsContextMenuCommand::GroupExpand => {
+                self.toggle_group_from_context(group_id, CloseableTabGroupContextCommand::Expand)
             }
             TabsContextMenuCommand::GroupRename => self.rename_group_from_context(group_id),
             TabsContextMenuCommand::GroupSetColor => self.set_group_color_from_context(group_id),
@@ -83,7 +86,7 @@ impl TabsScreenState {
     fn toggle_group_from_context(
         &mut self,
         group_id: &str,
-        command: TabsContextMenuCommand,
+        group_command: CloseableTabGroupContextCommand,
     ) -> TabsScreenUpdate {
         let Some(group) = self.groups.iter().find(|it| it.id == group_id).cloned() else {
             return group_context_update(
@@ -91,16 +94,6 @@ impl TabsScreenState {
                 "closeable_tab_group_context_command_missing",
                 "none",
                 "tabs.group=missing",
-            );
-        };
-        let command_id = command.id();
-        let Some(group_command) = CloseableTabGroupContextCommand::from_id(command_id.as_str())
-        else {
-            return group_context_update(
-                "group_context_toggle",
-                "closeable_tab_group_context_command_missing",
-                "none",
-                "tabs.command=missing",
             );
         };
         let Some(action) = group_command.to_group_action(&group.to_core_group()) else {
@@ -187,12 +180,11 @@ impl TabsScreenState {
         let Some(group) = self.groups.iter().find(|it| it.id == group_id).cloned() else {
             return missing_group_update("group_context_ungroup");
         };
-        let Some(action) =
-            CloseableTabGroupContextCommand::Ungroup.to_group_action(&group.to_core_group())
-        else {
-            return noop_group_update("group_context_ungroup");
-        };
-        let events = self.apply_core_tab_action(action);
+        let events = CloseableTabGroupContextCommand::Ungroup
+            .to_group_action(&group.to_core_group())
+            .into_iter()
+            .flat_map(|action| self.apply_core_tab_action(action))
+            .collect::<Vec<_>>();
         group_context_update(
             "group_context_ungroup",
             core_event_name(&events, "closeable_tab_group_context_command_missing"),
@@ -205,12 +197,11 @@ impl TabsScreenState {
         let Some(group) = self.groups.iter().find(|it| it.id == group_id).cloned() else {
             return missing_group_update("group_context_close_group");
         };
-        let Some(action) =
-            CloseableTabGroupContextCommand::Close.to_group_action(&group.to_core_group())
-        else {
-            return noop_group_update("group_context_close_group");
-        };
-        let events = self.apply_core_tab_action_confirming_dirty(action);
+        let events = CloseableTabGroupContextCommand::Close
+            .to_group_action(&group.to_core_group())
+            .into_iter()
+            .flat_map(|action| self.apply_core_tab_action_confirming_dirty(action))
+            .collect::<Vec<_>>();
         group_context_update(
             "group_context_close_group",
             core_event_name(&events, "closeable_tab_group_context_command_missing"),
@@ -254,11 +245,49 @@ fn missing_group_update(action: &'static str) -> TabsScreenUpdate {
     )
 }
 
-fn noop_group_update(action: &'static str) -> TabsScreenUpdate {
-    group_context_update(
-        action,
-        "closeable_tab_group_context_noop",
-        "none",
-        "tabs.context=noop",
-    )
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn group_context_rejects_missing_groups_and_tab_commands() {
+        let mut state = TabsScreenState::default();
+
+        let missing_menu = state.open_context_menu_for_group("missing", 10, 20);
+        let missing_toggle =
+            state.apply_group_context_command("missing", TabsContextMenuCommand::GroupCollapse);
+        let invalid_command =
+            state.apply_group_context_command("docs", TabsContextMenuCommand::Close);
+        let missing_move =
+            state.apply_group_context_command("missing", TabsContextMenuCommand::GroupMove);
+        let missing_ungroup =
+            state.apply_group_context_command("missing", TabsContextMenuCommand::GroupUngroup);
+        let missing_close =
+            state.apply_group_context_command("missing", TabsContextMenuCommand::GroupClose);
+
+        assert_eq!("tabs.group=missing", missing_menu.state);
+        assert_eq!("tabs.group=missing", missing_toggle.state);
+        assert_eq!("tabs.command=invalid", invalid_command.state);
+        assert_eq!("tabs.group=missing", missing_move.state);
+        assert_eq!("tabs.group=missing", missing_ungroup.state);
+        assert_eq!("tabs.group=missing", missing_close.state);
+        assert!(state.context_menu.is_none());
+    }
+
+    #[test]
+    fn redundant_group_expand_reports_noop_and_overflow_labels_are_stable() {
+        let mut state = TabsScreenState::default();
+
+        let expand = state.apply_group_context_command("docs", TabsContextMenuCommand::GroupExpand);
+        let move_single =
+            state.apply_group_context_command("docs", TabsContextMenuCommand::GroupMove);
+
+        assert_eq!("tabs.context=noop", expand.state);
+        assert_eq!("tabs.context=noop", move_single.state);
+        assert_eq!("target_index=overflow", group_move_value(usize::MAX));
+        assert_eq!(
+            "tabs.context=applied target_index=overflow",
+            group_move_state(usize::MAX)
+        );
+    }
 }

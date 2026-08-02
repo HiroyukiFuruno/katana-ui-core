@@ -75,7 +75,7 @@ impl UiTreeTextRenderer {
                 *y,
                 text_clip_width(node, area, content_x),
                 advance_height,
-                |canvas| {
+                &mut |canvas| {
                     UiTreeTextTable::draw(
                         canvas,
                         UiTreeTextTableContext {
@@ -123,7 +123,7 @@ impl UiTreeTextRenderer {
         );
         let text_y = y.saturating_add(metrics.top_margin);
         if node.props().text.spans.is_empty() {
-            canvas.with_clip(content_x, *y, clip_width, clip_height, |canvas| {
+            canvas.with_clip(content_x, *y, clip_width, clip_height, &mut |canvas| {
                 UiTreeTextLines::draw_plain(
                     canvas,
                     UiTreeTextLineContext {
@@ -142,7 +142,7 @@ impl UiTreeTextRenderer {
             *y = y.saturating_add(text_advance_height(requested_height, line_count, metrics));
             return;
         }
-        canvas.with_clip(content_x, *y, clip_width, clip_height, |canvas| {
+        canvas.with_clip(content_x, *y, clip_width, clip_height, &mut |canvas| {
             UiTreeTextLines::draw_spans(
                 canvas,
                 UiTreeTextLineContext {
@@ -258,7 +258,7 @@ fn renderer_for_role<'a>(
 mod tests {
     use super::{
         UiTreeRenderArea, UiTreeTextContext, UiTreeTextMetrics, UiTreeTextRenderer,
-        text_clip_height,
+        renderer_for_role, text_clip_height,
     };
     use crate::test_assert::KucTestExpect;
     use crate::visual::canvas::Canvas;
@@ -346,6 +346,31 @@ mod tests {
             min_x >= 96,
             "text ink must start after the 40px left margin: min_x={min_x}"
         );
+    }
+
+    #[test]
+    fn text_role_selects_body_export_and_code_renderers() {
+        let context = text_context();
+
+        assert!(std::ptr::eq(
+            context.text,
+            renderer_for_role(context.text, context.export_text, context.code_text, "body")
+        ));
+        assert!(std::ptr::eq(
+            context.export_text,
+            renderer_for_role(
+                context.text,
+                context.export_text,
+                context.code_text,
+                "document-export-body"
+            )
+        ));
+        for role in ["code", "document-code"] {
+            assert!(std::ptr::eq(
+                context.code_text,
+                renderer_for_role(context.text, context.export_text, context.code_text, role)
+            ));
+        }
     }
 
     fn text_context() -> UiTreeTextContext<'static> {

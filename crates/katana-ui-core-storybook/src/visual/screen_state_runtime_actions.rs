@@ -254,3 +254,27 @@ impl StorybookScreenState {
         self.state_label = update.state;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::StorybookScreenState;
+
+    #[test]
+    fn runtime_keyboard_actions_reject_input_before_focus() {
+        let mut state = StorybookScreenState::default();
+
+        state.register_chip_group_keyboard_dismiss();
+        assert_eq!("chip_group_keyboard_without_focus", state.last_action);
+        state.register_attachment_chip_keyboard_retry();
+        assert_eq!("attachment_keyboard_without_focus", state.last_action);
+        state.register_startup_state_keyboard_retry();
+        assert_eq!("startup_state_keyboard_without_focus", state.last_action);
+        state.register_window_control_keyboard_restore();
+        assert_eq!("window_control_keyboard_without_focus", state.last_action);
+        state.register_motion_keyboard_tick();
+        assert_eq!("motion_keyboard_without_focus", state.last_action);
+        state.register_skeleton_cluster_keyboard_reduce_motion();
+        assert_eq!("skeleton_cluster_keyboard_without_focus", state.last_action);
+        assert_eq!(0, state.action_count);
+    }
+}

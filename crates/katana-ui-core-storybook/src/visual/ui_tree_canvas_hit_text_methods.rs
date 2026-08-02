@@ -106,3 +106,57 @@ impl UiTreeHostActionHitCollector<'_> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::ui_tree_canvas_hit::ScrollHitClip;
+    use crate::visual::ui_tree_canvas_text_metrics::UiTreeDocumentTypography;
+    use crate::visual::ui_tree_canvas_types::UiTreeRenderArea;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::render_model::{UiNodeKind, UiTextProps};
+
+    #[test]
+    fn text_width_contract_handles_whitespace_empty_and_font_roles() {
+        let facade = UiCoreFacade::default();
+        let text = TextRenderer::load(&facade, facade.default_font_role());
+        let export_text = TextRenderer::load(&facade, facade.default_font_role());
+        let code_text = TextRenderer::load(&facade, "code");
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 320,
+            height: 200,
+            scroll_y: 0.0,
+        };
+        let root = UiNode::new(UiNodeKind::Text, "root");
+        let collector = UiTreeHostActionHitCollector::collector(
+            &root,
+            area,
+            &text,
+            &export_text,
+            &code_text,
+            UiTreeDocumentTypography::default(),
+            ScrollHitClip::Document,
+        );
+        let plain = UiNode::new(UiNodeKind::Text, "alpha beta");
+        let code = UiNode::new(UiNodeKind::Text, "alpha beta")
+            .font_role("code")
+            .text(UiTextProps {
+                role: "code".to_string(),
+                ..UiTextProps::default()
+            });
+        let export = UiNode::new(UiNodeKind::Text, "export").font_role("document-export-body");
+        let metrics = UiTreeTextMetrics::for_node(&plain);
+
+        assert!(collector.text_span_hit_width(&plain, "alpha beta") > 1);
+        assert!(collector.text_span_hit_width(&code, "alpha  beta") > 1);
+        assert_eq!(0, collector.measured_text_width(&plain, "", metrics));
+        assert!(std::ptr::eq(collector.text_renderer(&code), &code_text));
+        assert!(std::ptr::eq(collector.text_renderer(&export), &export_text));
+        assert_eq!(
+            collector.text_span_hit_width(&plain, "alpha beta"),
+            collector.text_hit_width(&plain)
+        );
+    }
+}

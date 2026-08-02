@@ -110,3 +110,22 @@ impl TabsScreenState {
         self.core_visual_tab_ids()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::TabsScreenState;
+
+    #[test]
+    fn close_to_side_rejects_missing_tab_ids() {
+        let mut state = TabsScreenState::default();
+
+        assert_eq!(
+            "closeable_tab_context_command_missing",
+            state.close_menu_tabs_to_right("missing").event
+        );
+        assert_eq!(
+            "closeable_tab_context_command_missing",
+            state.close_menu_tabs_to_left("missing").event
+        );
+    }
+}

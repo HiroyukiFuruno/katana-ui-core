@@ -220,3 +220,101 @@ fn highlighted(node: &UiNode, index: usize) -> bool {
 fn non_negative(value: i32) -> usize {
     value.max(0) as usize
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::render_model::{UiContextMenuProps, UiContextMenuRect, UiHostActionSpec};
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn context_menu_draws_highlight_divider_shortcut_and_semantic_item_tones() {
+        let palette = UiTreeCanvasPalette::from_theme(&ThemeSnapshot::dark());
+        let node = menu_node(UiContextMenuAnchor::VirtualRect(UiContextMenuRect::new(
+            4, 6, 160, 96,
+        )));
+        let text = TextRenderer::load(&UiCoreFacade::default(), "body");
+        let mut canvas = Canvas::new(200, 140, palette.background);
+        let mut y = 0;
+
+        UiTreeContextMenuRenderer::draw(&mut canvas, &text, &node, &mut y, palette);
+
+        assert_eq!(102, y);
+        assert!(count_color(&canvas, palette.hover_background) > 0);
+        assert!(count_color(&canvas, palette.muted_border) > 0);
+        assert!(count_color(&canvas, palette.selection) > 0);
+        assert!(count_color(&canvas, palette.danger_accent) > 0);
+    }
+
+    #[test]
+    fn context_menu_hit_test_rejects_outside_disabled_and_divider_rows() {
+        let node = menu_node(UiContextMenuAnchor::Pointer { x: 4, y: 6 });
+
+        assert_eq!(None, UiTreeContextMenuRenderer::item_id_at(&node, 3.0, 7.0));
+        assert_eq!(
+            None,
+            UiTreeContextMenuRenderer::item_id_at(&node, 10.0, 42.0)
+        );
+        assert_eq!(
+            None,
+            UiTreeContextMenuRenderer::item_id_at(&node, 10.0, 90.0)
+        );
+        assert_eq!(
+            Some("open".to_string()),
+            UiTreeContextMenuRenderer::item_id_at(&node, 10.0, 18.0)
+        );
+        assert!(UiTreeContextMenuRenderer::host_action_at(&node, 10.0, 18.0).is_some());
+        assert_eq!(
+            Some((84.0, 18.0)),
+            UiTreeContextMenuRenderer::item_center_for_id(&node, "open")
+        );
+        assert_eq!(
+            None,
+            UiTreeContextMenuRenderer::item_center_for_id(&node, "missing")
+        );
+    }
+
+    #[test]
+    fn node_anchor_defaults_to_origin_and_nested_lookup_finds_context_menu() {
+        let menu = menu_node(UiContextMenuAnchor::NodeId("trigger".to_string()));
+        let root = UiNode::new(UiNodeKind::Panel, "root").child(menu);
+
+        assert_eq!(
+            Some("open".to_string()),
+            UiTreeContextMenuRenderer::item_id_at(&root, 10.0, 10.0)
+        );
+        assert_eq!(
+            None,
+            UiTreeContextMenuRenderer::item_id_at(&root, 181.0, 10.0)
+        );
+    }
+
+    fn menu_node(anchor: UiContextMenuAnchor) -> UiNode {
+        let items = vec![
+            UiContextMenuItem::action("open", "Open")
+                .checked(true)
+                .shortcut("Cmd+O")
+                .host_action(UiHostActionSpec::command("open", "Open")),
+            UiContextMenuItem::new("divider", "", UiContextMenuItemKind::Divider),
+            UiContextMenuItem::action("delete", "Delete").destructive(true),
+            UiContextMenuItem::action("disabled", "Disabled").disabled(true),
+        ];
+        UiNode::new(UiNodeKind::ContextMenu, "menu").context_menu(UiContextMenuProps {
+            anchor,
+            min_width: 160,
+            max_height: 120,
+            highlighted_path: vec![0],
+            items,
+            ..UiContextMenuProps::default()
+        })
+    }
+
+    fn count_color(canvas: &Canvas, color: u32) -> usize {
+        canvas
+            .pixels()
+            .iter()
+            .filter(|pixel| **pixel == color)
+            .count()
+    }
+}

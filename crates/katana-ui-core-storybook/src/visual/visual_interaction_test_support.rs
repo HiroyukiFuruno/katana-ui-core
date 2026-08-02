@@ -138,3 +138,20 @@ pub(super) fn assert_settings_page_changes_body(page: &'static str) {
 
     assert!(component_body_pixel_diff(page, &before, &after) > COMPONENT_BODY_DIFF_THRESHOLD);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{StorybookWindowState, assert_inspector_option_contract_state};
+
+    #[test]
+    fn option_contract_assertion_reports_missing_settings() {
+        let result = assert_inspector_option_contract_state(
+            &StorybookWindowState::default(),
+            "unknown",
+            "missing",
+            "idle",
+        );
+
+        assert_eq!(Err("missing unknown option `missing`".to_string()), result);
+    }
+}

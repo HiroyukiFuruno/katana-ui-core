@@ -36,3 +36,28 @@ pub(super) fn operation_at(
         _ => SettingsListStoryAction::UpdateField,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn operation_maps_query_reset_and_collapsed_presets() {
+        let rect = preview_detail::component_action_hit_rect(PAGE);
+        for (preset_index, expected) in [
+            (QUERY_PRESET_INDEX, SettingsListStoryAction::SetQuery),
+            (RESET_PRESET_INDEX, SettingsListStoryAction::ResetField),
+            (
+                DEFAULT_COLLAPSED_PRESET_INDEX,
+                SettingsListStoryAction::ToggleSection,
+            ),
+        ] {
+            let state = StorybookWindowState {
+                selected_page: PAGE,
+                preset_index,
+                ..StorybookWindowState::default()
+            };
+            assert_eq!(Some(expected), operation_at(&state, rect.x, rect.y));
+        }
+    }
+}

@@ -26,6 +26,7 @@ pub(super) fn region_from_thumb_for(
     })
 }
 
+#[cfg(test)]
 pub(super) fn horizontal_region_from_thumb_for(
     x: usize,
     y: usize,

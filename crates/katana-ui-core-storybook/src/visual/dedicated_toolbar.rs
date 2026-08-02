@@ -253,3 +253,14 @@ fn labels(palette: &VisualPalette, scenario: ScenarioContext<'_>) -> [TextSpec; 
         ),
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{action_rect, action_rect_for_test};
+
+    #[test]
+    fn out_of_range_actions_are_rejected_or_use_safe_geometry() {
+        assert_eq!(None, action_rect_for_test(usize::MAX));
+        assert_eq!(action_rect(0), action_rect(usize::MAX));
+    }
+}

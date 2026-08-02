@@ -110,3 +110,76 @@ pub(super) fn child_render_area(
         scroll_y: area.scroll_y,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_assert::KucTestExpect;
+    use katana_ui_core::render_model::{UiCursor, UiHostActionPlan, UiHostActionSpec, UiNodeId};
+
+    #[test]
+    fn hit_geometry_covers_whitespace_duplicate_scroll_clip_and_requested_width() {
+        assert!(whitespace_width(14.0, true) > whitespace_width(14.0, false));
+
+        let parent = UiNode::new(UiNodeKind::Panel, "same");
+        let child = UiNode::new(UiNodeKind::Text, "same");
+        assert!(duplicate_panel_label(&parent, &child));
+        assert!(!duplicate_panel_label(
+            &parent,
+            &UiNode::new(UiNodeKind::Button, "same")
+        ));
+
+        let node = UiNode::new(UiNodeKind::ScrollArea, "");
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 40,
+            scroll_y: 3.5,
+        };
+        assert_eq!(4, scroll_source_y(&node, area));
+
+        let hit = UiTreeHostActionHit {
+            action: UiHostActionPlan::new(
+                UiNodeId::new("target"),
+                UiHostActionSpec::command("test", "Test"),
+            ),
+            rect: UiTreeHitRect {
+                x: 2,
+                y: 5,
+                width: 20,
+                height: 20,
+            },
+            cursor: UiCursor::Pointer,
+        };
+        let clipped = clip_scroll_hit(hit.clone(), 10, 20, 16, 10, 8).kuc_unwrap();
+        assert_eq!(
+            (12, 20, 14, 10),
+            (
+                clipped.rect.x,
+                clipped.rect.y,
+                clipped.rect.width,
+                clipped.rect.height
+            )
+        );
+        assert!(clip_scroll_hit(hit, 0, 0, 1, 1, 100).is_none());
+
+        let requested = UiNode::new(UiNodeKind::Column, "")
+            .width(katana_ui_core::render_model::UiDimension::px(30));
+        assert_eq!(
+            30,
+            child_render_area(
+                area,
+                &requested,
+                5,
+                ContainerPadding {
+                    left: 2,
+                    right: 2,
+                    top: 0,
+                    bottom: 0,
+                },
+            )
+            .width
+        );
+    }
+}

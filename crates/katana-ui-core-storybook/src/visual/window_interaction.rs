@@ -11,6 +11,8 @@ pub(super) mod color_picker_update;
 pub(super) mod command_palette_state;
 mod content_position;
 mod context_click;
+#[cfg(test)]
+mod coverage_edge_tests;
 mod cursor_operation;
 pub(super) mod diagnostics_list_event_assertions;
 pub(super) mod diagnostics_list_fixture;
@@ -64,9 +66,11 @@ pub(super) use content_position::click_content_y;
 pub(super) use cursor_operation::{StorybookCursorStyle, cursor_style_at};
 use panel_scroll_drag::PanelScrollDragTarget;
 use panel_scroll_state_store::StorybookPanelScrollStateStore;
+#[cfg(test)]
+use scroll_operation::apply_horizontal_scrollbar_drag;
 use scroll_operation::{
-    apply_horizontal_scrollbar_drag, apply_scroll_delta, apply_scroll_delta_at,
-    apply_scroll_delta_x_at, apply_scrollbar_drag, apply_scrollbar_drag_target,
+    apply_scroll_delta, apply_scroll_delta_at, apply_scroll_delta_x_at, apply_scrollbar_drag,
+    apply_scrollbar_drag_target,
 };
 pub(in crate::visual) use state_store::DEFAULT_INSTANCE_ID;
 use state_store::StorybookScreenStateStore;
@@ -135,14 +139,42 @@ impl Default for StorybookWindowState {
     }
 }
 
-pub(super) fn apply_scroll(window: &Window, state: &mut StorybookWindowState) -> bool {
-    let Some((delta_x, delta_y)) = window.get_scroll_wheel() else {
+pub(super) trait StorybookWindowInput {
+    fn scroll_wheel(&self) -> Option<(f32, f32)>;
+    fn mouse_position(&self) -> Option<(f32, f32)>;
+    fn mouse_down(&self, button: MouseButton) -> bool;
+    fn surface_size(&self) -> (usize, usize);
+}
+
+impl StorybookWindowInput for Window {
+    fn scroll_wheel(&self) -> Option<(f32, f32)> {
+        self.get_scroll_wheel()
+    }
+
+    fn mouse_position(&self) -> Option<(f32, f32)> {
+        self.get_unscaled_mouse_pos(MouseMode::Discard)
+    }
+
+    fn mouse_down(&self, button: MouseButton) -> bool {
+        self.get_mouse_down(button)
+    }
+
+    fn surface_size(&self) -> (usize, usize) {
+        self.get_size()
+    }
+}
+
+pub(super) fn apply_scroll(
+    window: &impl StorybookWindowInput,
+    state: &mut StorybookWindowState,
+) -> bool {
+    let Some((delta_x, delta_y)) = window.scroll_wheel() else {
         return false;
     };
     if delta_x == 0.0 && delta_y == 0.0 {
         return false;
     }
-    let Some((x, y)) = window.get_unscaled_mouse_pos(MouseMode::Discard) else {
+    let Some((x, y)) = window.mouse_position() else {
         return apply_scroll_delta(state, delta_y);
     };
     let Some(point) = normalize_mouse_point(window, x, y) else {
@@ -168,7 +200,7 @@ pub(in crate::visual) fn component_instance_id_for_page(
 }
 
 pub(super) fn apply_mouse_click(
-    window: &Window,
+    window: &impl StorybookWindowInput,
     state: &mut StorybookWindowState,
     frame: &Canvas,
     left_mouse_was_down: &mut bool,
@@ -176,7 +208,7 @@ pub(super) fn apply_mouse_click(
 ) -> bool {
     let left_started = click_started(window, MouseButton::Left, left_mouse_was_down);
     let right_started = click_started(window, MouseButton::Right, right_mouse_was_down);
-    if !window.get_mouse_down(MouseButton::Left) {
+    if !window.mouse_down(MouseButton::Left) {
         state.drag_scroll_target = None;
         state.text_area_resize_dragging = false;
         clear_pending_text_selection(state);
@@ -187,7 +219,7 @@ pub(super) fn apply_mouse_click(
             return true;
         }
     }
-    let Some((mouse_x, mouse_y)) = window.get_unscaled_mouse_pos(MouseMode::Discard) else {
+    let Some((mouse_x, mouse_y)) = window.mouse_position() else {
         return false;
     };
     let Some(point) = normalize_mouse_point(window, mouse_x, mouse_y) else {
@@ -199,23 +231,23 @@ pub(super) fn apply_mouse_click(
         state,
         frame,
         left_started,
-        window.get_mouse_down(MouseButton::Left),
+        window.mouse_down(MouseButton::Left),
         x,
         raw_y,
     );
     if text_selection_changed {
         return true;
     }
-    if window.get_mouse_down(MouseButton::Left)
+    if window.mouse_down(MouseButton::Left)
         && let Some(target) = state.drag_scroll_target
     {
         return apply_scrollbar_drag_target(state, target, x, raw_y);
     }
     let y = click_content_y(state, x, raw_y);
-    if window.get_mouse_down(MouseButton::Left) && state.tabs_drag_target.is_some() {
+    if window.mouse_down(MouseButton::Left) && state.tabs_drag_target.is_some() {
         return tabs_drag::apply_drag_at(state, x, y);
     }
-    if window.get_mouse_down(MouseButton::Left) && state.text_area_resize_dragging {
+    if window.mouse_down(MouseButton::Left) && state.text_area_resize_dragging {
         return text_area_resize::apply_drag_at(state, x, y);
     }
     if !left_started && !right_started {
@@ -233,19 +265,6 @@ pub(super) fn apply_mouse_click(
     {
         state.drag_scroll_target = Some(PanelScrollDragTarget::Vertical(region));
         return apply_scrollbar_drag(state, region, raw_y);
-    }
-    if left_started
-        && let Some(region) = panel_scroll_drag::horizontal_region_at(
-            x,
-            raw_y,
-            state.panel_scroll,
-            state.selected_page,
-            state.tree_expansion,
-            state.scrollbar_visible,
-        )
-    {
-        state.drag_scroll_target = Some(PanelScrollDragTarget::Horizontal(region));
-        return apply_horizontal_scrollbar_drag(state, region, x);
     }
     if left_started && text_area_resize::handle_at(state, x, y) {
         state.text_area_resize_dragging = true;
@@ -279,11 +298,28 @@ pub(super) fn copy_selected_text_to_clipboard_for_frame(
     state.screen_state.last_action = "copy_selection";
     state.screen_state.last_event = "clipboard_copy";
     state.screen_state.state_label = "clipboard=selected_text";
-    #[cfg(not(test))]
-    if let Err(error) = write_clipboard_text(&payload) {
+    write_clipboard_payload(&payload, clipboard_writer());
+    true
+}
+
+type ClipboardWriter = fn(&str) -> Result<(), std::io::Error>;
+
+#[cfg(not(test))]
+fn clipboard_writer() -> Option<ClipboardWriter> {
+    Some(write_clipboard_text)
+}
+
+#[cfg(test)]
+fn clipboard_writer() -> Option<ClipboardWriter> {
+    None
+}
+
+fn write_clipboard_payload(payload: &str, writer: Option<ClipboardWriter>) {
+    if let Some(writer) = writer
+        && let Err(error) = writer(payload)
+    {
         eprintln!("[katana-ui-core-storybook] clipboard write failed: {error}");
     }
-    true
 }
 
 fn apply_text_selection(
@@ -450,15 +486,23 @@ pub(super) fn apply_click(state: &mut StorybookWindowState, x: usize, y: usize) 
     false
 }
 
-fn click_started(window: &Window, button: MouseButton, mouse_was_down: &mut bool) -> bool {
-    let mouse_down = window.get_mouse_down(button);
+fn click_started(
+    window: &impl StorybookWindowInput,
+    button: MouseButton,
+    mouse_was_down: &mut bool,
+) -> bool {
+    let mouse_down = window.mouse_down(button);
     let started = mouse_down && !*mouse_was_down;
     *mouse_was_down = mouse_down;
     started
 }
 
-fn normalize_mouse_point(window: &Window, x: f32, y: f32) -> Option<CanvasPoint> {
-    let (width, height) = window.get_size();
+fn normalize_mouse_point(
+    window: &impl StorybookWindowInput,
+    x: f32,
+    y: f32,
+) -> Option<CanvasPoint> {
+    let (width, height) = window.surface_size();
     window_point_to_canvas_point(
         WindowPoint::new(x, y),
         SurfaceSize::new(width, height),

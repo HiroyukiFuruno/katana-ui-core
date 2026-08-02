@@ -2,7 +2,9 @@ use katana_ui_core::molecule::{
     ContextMenu, ContextMenuAction, ContextMenuAnchor, ContextMenuDividerTone, ContextMenuItem,
     ContextMenuItemKind, ContextMenuPlacement, ContextMenuSize, ContextMenuViewport,
 };
-use katana_ui_core::render_model::{UiContextMenuAnchor, UiNode};
+use katana_ui_core::render_model::{
+    UiContextMenuAnchor, UiContextMenuItem, UiContextMenuItemKind, UiNode,
+};
 
 #[test]
 fn context_menu_anchor_variants_render_non_empty_contracts() {
@@ -94,6 +96,16 @@ fn item_visual_kinds_are_typed_without_image_snapshots() {
             .iter()
             .any(|it| it.kind == ContextMenuItemKind::Radio && it.radio_group == "view")
     );
+}
+
+#[test]
+fn render_model_context_item_projects_icon_and_accessibility_builders() {
+    let item = UiContextMenuItem::new("open", "Open", UiContextMenuItemKind::Action)
+        .leading_icon("folder-open")
+        .accessibility_label("Open selected folder");
+
+    assert_eq!("folder-open", item.leading_icon);
+    assert_eq!("Open selected folder", item.accessibility_label);
 }
 
 #[test]

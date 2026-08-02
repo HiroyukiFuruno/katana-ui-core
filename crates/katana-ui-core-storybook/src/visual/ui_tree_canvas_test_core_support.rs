@@ -241,3 +241,16 @@ pub(in crate::visual) fn first_row_content_x_after(
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Canvas, first_row_content_x_after, first_row_for_color};
+
+    #[test]
+    fn color_search_helpers_return_none_when_the_color_is_absent() {
+        let canvas = Canvas::new(2, 2, 0);
+
+        assert_eq!(None, first_row_for_color(&canvas, 1));
+        assert_eq!(None, first_row_content_x_after(&canvas, 1, 0));
+    }
+}

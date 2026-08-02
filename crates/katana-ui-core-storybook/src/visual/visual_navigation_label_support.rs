@@ -53,3 +53,19 @@ pub(super) fn count_text_antialias_pixels(
     }
     count
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn label_metrics_handle_empty_and_out_of_bounds_rectangles() {
+        let canvas = Canvas::new(4, 4, 0x101010);
+
+        assert!(ink_vertical_bounds_in_rect(&canvas, 0, 0, 4, 4, 0x101010).is_none());
+        assert_eq!(
+            0,
+            count_text_antialias_pixels(&canvas, 10, 10, 2, 2, 0x101010, 0xffffff)
+        );
+    }
+}

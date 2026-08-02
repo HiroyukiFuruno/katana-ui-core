@@ -31,3 +31,20 @@ pub(super) fn draw_text_selection_highlight(
     }
     true
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Canvas, draw_text_selection_highlight};
+
+    #[test]
+    fn drag_without_text_runs_has_no_highlight() {
+        let mut canvas = Canvas::new(8, 8, 0);
+
+        assert!(!draw_text_selection_highlight(
+            &mut canvas,
+            Some((0, 0)),
+            Some((1, 1)),
+            1,
+        ));
+    }
+}

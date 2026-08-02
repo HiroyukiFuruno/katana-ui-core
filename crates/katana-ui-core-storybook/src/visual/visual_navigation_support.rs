@@ -1,8 +1,6 @@
 use super::{Canvas, layout_metrics};
 use crate::catalog::story_map::StoryGroup;
-use crate::visual::navigation_tree::{
-    NavigationRow, TreeExpansionState, row_from_click, visible_rows,
-};
+use crate::visual::navigation_tree::{NavigationRow, TreeExpansionState, visible_rows};
 use crate::visual::render;
 
 const NAV_SAMPLE_ROW_COUNT: usize = 3;
@@ -60,29 +58,7 @@ pub(super) fn navigation_line_x(depth: usize) -> usize {
 }
 
 pub(super) fn require_navigation_value<T>(value: Option<T>, message: &str) -> Result<T, String> {
-    value.ok_or_else(|| message.to_string())
-}
-
-pub(super) fn row_y_and_depth_in_navigation(
-    page: &str,
-    expansion: TreeExpansionState,
-) -> Option<(usize, usize)> {
-    for y in layout_metrics::NAV_FIRST_ROW_Y..layout_metrics::CONTENT_HEIGHT {
-        let Some(row) = row_from_click(layout_metrics::NAV_ROW_X + 1, y, expansion) else {
-            continue;
-        };
-        let depth = match row {
-            NavigationRow::Group { .. } => NAV_DEPTH_GROUP,
-            NavigationRow::Section { .. } => NAV_DEPTH_SECTION,
-            NavigationRow::Page { page: row_page, .. } if row_page == page => NAV_DEPTH_PAGE,
-            NavigationRow::PageWithoutSection { page: row_page, .. } if row_page == page => {
-                NAV_DEPTH_SECTION
-            }
-            _ => continue,
-        };
-        return Some((y, depth));
-    }
-    None
+    value.ok_or(message.to_string())
 }
 
 pub(super) fn navigation_row_y_for_group(
@@ -125,13 +101,15 @@ pub(super) fn navigation_next_page_row_y_after_page(
     rows.iter()
         .enumerate()
         .skip(current + 1)
-        .find(|(_, row)| {
-            matches!(
-                row,
-                NavigationRow::Page { .. } | NavigationRow::PageWithoutSection { .. },
-            )
-        })
+        .find(|(_, row)| is_page_row(row))
         .map(|(index, _)| layout_metrics::NAV_FIRST_ROW_Y + index * layout_metrics::NAV_ROW_STEP)
+}
+
+fn is_page_row(row: &NavigationRow) -> bool {
+    matches!(
+        row,
+        NavigationRow::Page { .. } | NavigationRow::PageWithoutSection { .. }
+    )
 }
 
 pub(super) fn navigation_row_y_and_depth_for_page(
@@ -140,19 +118,13 @@ pub(super) fn navigation_row_y_and_depth_for_page(
 ) -> Option<(usize, usize)> {
     visible_rows(expansion)
         .iter()
-        .position(|row| {
-            matches!(
-                row,
-                NavigationRow::Page { page: row_page, .. }
-                    | NavigationRow::PageWithoutSection { page: row_page, .. }
-                    if *row_page == page
-            )
-        })
-        .and_then(|index| {
-            let row = visible_rows(expansion).get(index).copied()?;
+        .enumerate()
+        .find_map(|(index, row)| {
             let depth = match row {
-                NavigationRow::Page { .. } => NAV_DEPTH_PAGE,
-                NavigationRow::PageWithoutSection { .. } => NAV_DEPTH_SECTION,
+                NavigationRow::Page { page: row_page, .. } if *row_page == page => NAV_DEPTH_PAGE,
+                NavigationRow::PageWithoutSection { page: row_page, .. } if *row_page == page => {
+                    NAV_DEPTH_SECTION
+                }
                 _ => return None,
             };
             Some((
@@ -255,4 +227,66 @@ pub(super) fn assert_vertical_tree_segment(
 
 pub(super) fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {
     canvas.pixels().get(y * canvas.width() + x).copied()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_assert::KucTestExpect;
+
+    #[test]
+    fn navigation_helpers_cover_missing_sectioned_and_unsectioned_pages() {
+        let expansion = TreeExpansionState::default();
+        let rows = visible_rows(expansion);
+        let sectioned = rows
+            .iter()
+            .find_map(|row| match row {
+                NavigationRow::Page { page, .. } => Some(*page),
+                _ => None,
+            })
+            .kuc_expect("default navigation should contain a sectioned page");
+        let unsectioned = rows
+            .iter()
+            .find_map(|row| match row {
+                NavigationRow::PageWithoutSection { page, .. } => Some(*page),
+                _ => None,
+            })
+            .kuc_expect("default navigation should contain an unsectioned page");
+
+        assert_eq!(
+            Some(NAV_DEPTH_PAGE),
+            navigation_row_y_and_depth_for_page(expansion, sectioned).map(|(_, depth)| depth)
+        );
+        assert_eq!(
+            Some(NAV_DEPTH_SECTION),
+            navigation_row_y_and_depth_for_page(expansion, unsectioned).map(|(_, depth)| depth)
+        );
+        assert_eq!(
+            None,
+            navigation_row_y_and_depth_for_page(expansion, "missing-page")
+        );
+        assert!(
+            navigation_next_page_row_y_after_page(expansion, sectioned).is_some(),
+            "the first sectioned page should have a following page"
+        );
+        assert_eq!(
+            None,
+            navigation_next_page_row_y_after_page(expansion, "missing-page")
+        );
+        assert!(
+            rows.iter().any(|row| !is_page_row(row)),
+            "navigation rows should include non-page hierarchy entries"
+        );
+
+        assert_eq!(NAV_PAGE_LINE_X, navigation_line_x(usize::MAX));
+        assert_eq!(NAV_PAGE_LABEL_X, navigation_label_x(usize::MAX));
+        assert_eq!(
+            NAV_PAGE_LABEL_SAMPLE_WIDTH,
+            navigation_label_sample_width(NAV_DEPTH_PAGE)
+        );
+        assert_eq!(
+            NAV_PAGE_LABEL_SAMPLE_WIDTH,
+            navigation_label_sample_width(usize::MAX)
+        );
+    }
 }

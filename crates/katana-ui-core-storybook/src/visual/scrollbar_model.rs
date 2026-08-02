@@ -23,6 +23,7 @@ impl ScrollbarModel {
         )
     }
 
+    #[cfg(test)]
     pub(super) fn horizontal(
         track: LayoutRect,
         viewport_width: usize,
@@ -46,6 +47,7 @@ impl ScrollbarModel {
         Self::new(track, viewport_height, max_offset, min_thumb_length)
     }
 
+    #[cfg(test)]
     pub(super) fn horizontal_from_max_offset(
         track: LayoutRect,
         viewport_width: usize,
@@ -78,6 +80,7 @@ impl ScrollbarModel {
         )
     }
 
+    #[cfg(test)]
     pub(super) fn horizontal_thumb_rect(self, offset: usize) -> LayoutRect {
         LayoutRect::new(
             self.thumb_x(offset),
@@ -99,6 +102,7 @@ impl ScrollbarModel {
         self.track.y + movable.saturating_mul(offset.min(max_offset)) / max_offset
     }
 
+    #[cfg(test)]
     pub(super) fn thumb_x(self, offset: usize) -> usize {
         let movable = self
             .track
@@ -123,6 +127,7 @@ impl ScrollbarModel {
         relative * self.max_offset() / movable
     }
 
+    #[cfg(test)]
     pub(super) fn offset_from_thumb_x(self, x: usize) -> usize {
         let movable = self
             .track

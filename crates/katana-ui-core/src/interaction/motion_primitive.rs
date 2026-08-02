@@ -132,3 +132,73 @@ pub enum ShimmerDirection {
     LeftToRight,
     RightToLeft,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn primitive_kinds_and_legacy_numeric_boundaries_are_total() {
+        for (primitive, kind) in [
+            (
+                MotionPrimitive::Fade { from: 0.0, to: 1.0 },
+                MotionPrimitiveKind::Fade,
+            ),
+            (
+                MotionPrimitive::Slide {
+                    distance: MotionDistanceToken::Compact,
+                    direction: SlideDirection::Down,
+                },
+                MotionPrimitiveKind::Slide,
+            ),
+            (
+                MotionPrimitive::Scale {
+                    from: 0.9,
+                    to: 1.0,
+                    origin: ScaleOrigin::Top,
+                },
+                MotionPrimitiveKind::Scale,
+            ),
+            (
+                MotionPrimitive::Shimmer {
+                    speed: ShimmerSpeed::Fast,
+                    direction: ShimmerDirection::RightToLeft,
+                },
+                MotionPrimitiveKind::Shimmer,
+            ),
+        ] {
+            assert_eq!(kind, primitive.kind());
+            assert_eq!(kind, MotionPrimitiveResolver::legacy_primitive(kind).kind());
+        }
+
+        for (duration, token) in [
+            (0, MotionDurationToken::Instant),
+            (1, MotionDurationToken::Fast),
+            (160, MotionDurationToken::Fast),
+            (161, MotionDurationToken::Default),
+            (260, MotionDurationToken::Default),
+            (261, MotionDurationToken::Slow),
+        ] {
+            assert_eq!(
+                token,
+                MotionPrimitiveResolver::token_from_duration(duration)
+            );
+        }
+        for (distance, token) in [
+            (0, MotionDistanceToken::Compact),
+            (6, MotionDistanceToken::Compact),
+            (7, MotionDistanceToken::Default),
+            (12, MotionDistanceToken::Default),
+            (13, MotionDistanceToken::Spacious),
+        ] {
+            assert_eq!(
+                token,
+                MotionPrimitiveResolver::token_from_distance(distance)
+            );
+        }
+        assert_eq!(
+            MotionEasingToken::Standard,
+            MotionPrimitiveResolver::standard_easing()
+        );
+    }
+}

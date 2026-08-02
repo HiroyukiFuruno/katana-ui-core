@@ -109,4 +109,14 @@ mod tests {
             raster_buffer_height(line_height, font_size, supersample_scale) > line_height + 30.0
         );
     }
+
+    #[test]
+    fn empty_rich_line_and_invalid_scale_have_empty_safe_fallbacks() {
+        let mut font_system = FontSystem::new();
+        let mut swash_cache = SwashCache::new();
+        let raster = rasterize_rich_line(&[], &mut font_system, &mut swash_cache, 1.0);
+
+        assert_eq!(0, raster.width());
+        assert_eq!(1.0, normalized_scale(f32::NAN));
+    }
 }

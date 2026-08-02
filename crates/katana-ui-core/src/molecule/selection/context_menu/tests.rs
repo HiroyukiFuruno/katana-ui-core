@@ -4,6 +4,8 @@ use super::{
     ContextMenuKeyboardNavigator, ContextMenuPlacement, ContextMenuPlacementResolver,
     ContextMenuRect, ContextMenuSize, ContextMenuTypeAheadBuffer, ContextMenuViewport,
 };
+use crate::component::ComponentAction;
+use crate::interaction::UiAction;
 use crate::render_model::UiNode;
 
 #[test]
@@ -130,6 +132,76 @@ fn typeahead_buffer_resets_after_timeout() {
     assert_eq!("c", buffer.push("c", 100));
     assert_eq!("co", buffer.push("o", 400));
     assert_eq!("p", buffer.push("p", 1_800));
+}
+
+#[test]
+fn component_action_routes_close_highlight_dismiss_callback_and_ignored_inputs() {
+    let mut menu = ContextMenu::new("context").items(sample_items());
+    let target = menu.state_id().clone();
+    let foreign = UiAction::press(crate::render_model::UiStateId::new("foreign"));
+    assert!(!menu.apply_action(&foreign).handled);
+
+    assert!(
+        menu.apply_action(&UiAction::set_open(target.clone(), true))
+            .handled
+    );
+    assert!(
+        menu.apply_action(&UiAction::set_selected_index(target.clone(), 1))
+            .handled
+    );
+    assert!(menu.apply_action(&UiAction::press(target.clone())).handled);
+    assert!(
+        !menu
+            .apply_action(&UiAction::invoke_callback(target.clone(), "missing"))
+            .handled
+    );
+    assert!(
+        menu.apply_action(&UiAction::invoke_callback(target.clone(), "copy"))
+            .handled
+    );
+    assert!(
+        menu.apply_action(&UiAction::dismiss(target.clone()))
+            .handled
+    );
+    assert!(
+        menu.apply_action(&UiAction::set_open(target.clone(), false))
+            .handled
+    );
+    assert!(
+        menu.apply_action(&UiAction::set_value(target, "ignored"))
+            .handled
+    );
+}
+
+#[test]
+fn submenu_typeahead_and_close_paths_preserve_state_events() {
+    let mut menu = ContextMenu::new("context").items(sample_items());
+
+    assert_eq!(
+        ContextMenuEvent::SubmenuOpened { path: vec![3] },
+        menu.apply_context_action(&ContextMenuAction::OpenSubmenu { path: vec![3] })
+    );
+    assert_eq!(
+        ContextMenuEvent::SubmenuClosed { path: vec![3] },
+        menu.apply_context_action(&ContextMenuAction::CloseSubmenu { path: vec![3] })
+    );
+    assert_eq!(
+        ContextMenuEvent::TypeAheadMatched {
+            prefix: "wr".to_string(),
+            path: vec![4]
+        },
+        menu.apply_context_action(&ContextMenuAction::TypeAhead {
+            prefix: "wr".to_string()
+        })
+    );
+    assert_eq!(
+        ContextMenuEvent::Closed {
+            reason: ContextMenuCloseReason::OutsideClick
+        },
+        menu.apply_context_action(&ContextMenuAction::Close {
+            reason: ContextMenuCloseReason::OutsideClick
+        })
+    );
 }
 
 fn sample_items() -> Vec<ContextMenuItem> {

@@ -88,3 +88,33 @@ pub(in crate::visual) fn panel_state(setting: &'static str) -> &'static str {
         _ => setting,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn collection_setting_mappers_preserve_unknown_keys_and_form_field_semantics() {
+        for actual in [
+            hover_card_state("unknown"),
+            menu_state("unknown"),
+            form_field_state("unknown"),
+            breadcrumb_state("unknown"),
+            side_menu_state("unknown"),
+            list_state("unknown"),
+            collapsible_panel_state("unknown"),
+            tree_state("unknown"),
+            panel_state("unknown"),
+        ] {
+            assert_eq!("unknown", actual);
+        }
+
+        for (setting, expected) in [
+            ("form_field.invalid", "form_field.invalid=true"),
+            ("form_field.helper_text", "form_field.helper_text=long"),
+            ("form_field.required", "form_field.required=true"),
+        ] {
+            assert_eq!(expected, form_field_state(setting));
+        }
+    }
+}

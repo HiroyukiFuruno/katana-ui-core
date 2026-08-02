@@ -75,7 +75,10 @@ pub(super) fn remaining_width(area: UiTreeRenderArea, x: usize) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::{TABLE_ROW_MIN_HEIGHT, build_row_layout};
+    use super::{
+        ASCII_CELL_CHAR_WIDTH, TABLE_ROW_MIN_HEIGHT, WIDE_CELL_CHAR_WIDTH, build_row_layout,
+        estimated_cell_char_width, wrap_cell,
+    };
     use crate::visual::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 
     #[test]
@@ -112,5 +115,12 @@ mod tests {
         let row = build_row_layout(&["Full support".to_string()], &[241], metrics);
 
         assert_eq!(vec!["Full support".to_string()], row.lines[0]);
+    }
+
+    #[test]
+    fn table_cell_wrap_handles_empty_and_wide_text() {
+        assert_eq!(vec![String::new()], wrap_cell("", 0));
+        assert_eq!(WIDE_CELL_CHAR_WIDTH, estimated_cell_char_width('界'));
+        assert_eq!(ASCII_CELL_CHAR_WIDTH, estimated_cell_char_width('a'));
     }
 }

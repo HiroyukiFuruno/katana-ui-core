@@ -69,3 +69,23 @@ fn assert_accordion(setting: &str, state: &StorybookWindowState) {
         _ => {}
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{StorybookWindowState, assert_runtime_structured_state, expected_action};
+
+    #[test]
+    fn structured_assertions_ignore_unknown_pages_and_settings() {
+        let state = StorybookWindowState::default();
+        assert_eq!("settings_option_changed", expected_action("unknown"));
+        assert_runtime_structured_state("unknown", "unknown.setting", &state);
+        for page in [
+            "shortcut-combo",
+            "skeleton-cluster",
+            "window-control-button-group",
+            "accordion",
+        ] {
+            assert_runtime_structured_state(page, "unknown.setting", &state);
+        }
+    }
+}

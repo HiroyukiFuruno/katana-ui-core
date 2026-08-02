@@ -9,6 +9,18 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-30
+
+### 追加
+
+- 固定・可変 track、固定行・固定列、表示範囲に限定した cell materialization、結合 cell、型付き cell appearance を備える format-neutral な 2 次元 virtualized grid を追加した。
+- public KUC API に、型付き pointer hit-test、keyboard navigation、active cell、range selection を追加した。
+- 文書 format semantics や framework 固有依存を持たない KDV `v0.4.0` 向け public consumer contract を追加した。
+
+### 変更
+
+- release gate 前に互換性のある直接・推移依存を最新化した。
+
 ## [0.1.1] - 2026-06-24
 
 ### 追加

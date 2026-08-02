@@ -90,3 +90,20 @@ fn preset_label(index: usize) -> &'static str {
         _ => "active",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::active_scroll_summary;
+    use crate::visual::render_context::ScenarioContext;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn missing_preview_props_have_an_explicit_summary() {
+        let state = StorybookScreenState::default();
+
+        assert_eq!(
+            "preview missing",
+            active_scroll_summary(None, ScenarioContext::for_test("panel", 0, &state))
+        );
+    }
+}

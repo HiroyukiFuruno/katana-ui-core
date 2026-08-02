@@ -143,6 +143,27 @@ fn wheel_over_preset_tabs_scrolls_tabs_without_scrolling_root() {
 }
 
 #[test]
+fn preset_tab_scroll_handles_empty_pages_zero_delta_reverse_wheel_and_missing_labels() {
+    let viewport = preset_tab_scroll::viewport_rect();
+    assert_eq!(0, preset_tab_scroll::ensure_index_visible("unknown", 4, 8));
+    assert_eq!(0, preset_tab_scroll::max_scroll_x_for_page("unknown"));
+    assert_eq!(0, preset_tab_scroll::scroll_delta("unknown", 8, -1.0));
+    assert_eq!(10, preset_tab_scroll::scroll_delta(PAGE, 10, 0.0));
+    assert_eq!(
+        0,
+        preset_tab_scroll::scroll_delta(PAGE, layout_metrics::PRESET_WIDTH, 1.0)
+    );
+    assert_eq!(
+        Some(0),
+        preset_tab_scroll::hit_index_at("unknown", viewport.x + 1, viewport.y + 1, 0)
+    );
+    assert_eq!(
+        None,
+        preset_tab_scroll::hit_index_at("unknown", viewport.right() - 1, viewport.y + 1, 0)
+    );
+}
+
+#[test]
 fn external_render_preset_scrolls_active_overflow_tab_into_view() -> Result<(), String> {
     let last_preset = last_preset_index();
     let canvas = StorybookVisual.render_preset("dark", PAGE, last_preset, 0);

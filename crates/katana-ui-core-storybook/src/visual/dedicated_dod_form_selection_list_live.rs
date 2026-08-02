@@ -268,3 +268,20 @@ fn selection_list_focus_index(scenario: ScenarioContext<'_>) -> Option<usize> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{selection_list_focus_index, selection_list_multi_mask};
+    use crate::visual::render_context::ScenarioContext;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn live_selection_list_prefers_state_and_accepts_unknown_presets() {
+        let mut state = StorybookScreenState::default();
+        state.selection.selection_list_multi_mask = 0b1010;
+        let scenario = ScenarioContext::for_test("selection-list", usize::MAX, &state);
+
+        assert_eq!(0b1010, selection_list_multi_mask(scenario));
+        assert_eq!(None, selection_list_focus_index(scenario));
+    }
+}

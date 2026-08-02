@@ -5,9 +5,12 @@ use katana_ui_core::molecule::{
 };
 use katana_ui_core::render_model::{
     UI_DISCLOSURE_TOGGLE_ACTION_ID, UI_IMAGE_HIGHLIGHT_ACTION_ID, UI_LINK_OPEN_ACTION_ID,
-    UI_TASK_TOGGLE_ACTION_ID, UiContextMenuItem, UiContextMenuItemKind, UiContextMenuProps,
-    UiHostActionKind, UiHostActionPlan, UiHostActionSpec, UiImageSurfaceHighlight, UiNode, UiRect,
-    UiTaskMarker, UiTextSpan, UiTextSpanAction, UiTextSpanStyle, UiTree,
+    UI_SETTINGS_FIELD_ACTIVATE_ACTION_ID, UI_SETTINGS_SECTION_TOGGLE_ACTION_ID,
+    UI_TASK_TOGGLE_ACTION_ID, UI_TREE_ROW_ACTION_ID, UiContextMenuItem, UiContextMenuItemKind,
+    UiContextMenuProps, UiHostActionKind, UiHostActionPlan, UiHostActionSpec,
+    UiImageSurfaceHighlight, UiNode, UiNodeKind, UiRect, UiSlotActionSpec, UiSlotPlacement,
+    UiSlotSpec, UiTaskMarker, UiTextEntryProps, UiTextSpan, UiTextSpanAction, UiTextSpanStyle,
+    UiTree, UiTreeRowActionKind,
 };
 
 const APP_TOOLBAR_COPY: &str = "app.toolbar.copy";
@@ -78,6 +81,19 @@ fn generic_host_action_plan_collects_action_ids_and_enabled_state() -> Result<()
         UiHostActionKind::SurfaceControl
     ));
     Ok(())
+}
+
+#[test]
+fn text_entry_host_actions_ignore_missing_and_empty_callbacks() {
+    let no_action = UiSlotSpec::new(UiSlotPlacement::Trailing, "plain");
+    let mut empty_callback = UiSlotSpec::new(UiSlotPlacement::Trailing, "empty");
+    empty_callback.action = Some(UiSlotActionSpec::new("empty", ""));
+    let node = UiNode::new(UiNodeKind::Input, "input").text_entry(UiTextEntryProps {
+        trailing_icon_buttons: vec![no_action, empty_callback],
+        ..UiTextEntryProps::default()
+    });
+
+    assert!(UiHostActionPlan::collect_from_node(&node).is_empty());
 }
 
 #[test]
@@ -283,6 +299,125 @@ fn text_span_action_is_typed_from_host_action_plan() {
     assert!(actions.contains(&UiTextSpanAction::CopyCode {
         node_id: "code-node".to_string(),
     }));
+}
+
+#[test]
+fn typed_host_action_accessors_reject_wrong_ids_payloads_and_text_contracts() {
+    let field = UiHostActionPlan::new(
+        "settings".into(),
+        UiHostActionSpec::settings_field_control("Theme", "theme"),
+    );
+    assert_eq!(
+        Some("theme"),
+        field
+            .settings_field_control_target()
+            .as_ref()
+            .map(|target| target.field_id.as_str())
+    );
+    let mut wrong_field_id = field.clone();
+    wrong_field_id.action_id = "settings.wrong".to_string();
+    assert!(wrong_field_id.settings_field_control_target().is_none());
+    let wrong_field_payload = UiHostActionPlan::new(
+        "settings".into(),
+        UiHostActionSpec::command(UI_SETTINGS_FIELD_ACTIVATE_ACTION_ID, "Theme"),
+    );
+    assert!(
+        wrong_field_payload
+            .settings_field_control_target()
+            .is_none()
+    );
+
+    let section = UiHostActionPlan::new(
+        "settings".into(),
+        UiHostActionSpec::settings_section_toggle("Appearance", "appearance"),
+    );
+    assert_eq!(
+        Some("appearance"),
+        section
+            .settings_section_toggle_target()
+            .as_ref()
+            .map(|target| target.section_id.as_str())
+    );
+    let mut wrong_section_id = section.clone();
+    wrong_section_id.action_id = "settings.wrong".to_string();
+    assert!(wrong_section_id.settings_section_toggle_target().is_none());
+    let wrong_section_payload = UiHostActionPlan::new(
+        "settings".into(),
+        UiHostActionSpec::command(UI_SETTINGS_SECTION_TOGGLE_ACTION_ID, "Appearance"),
+    );
+    assert!(
+        wrong_section_payload
+            .settings_section_toggle_target()
+            .is_none()
+    );
+
+    let tree_row = UiHostActionPlan::new(
+        "tree".into(),
+        UiHostActionSpec::tree_row("README", "readme", UiTreeRowActionKind::Select),
+    );
+    assert_eq!(
+        Some("readme"),
+        tree_row
+            .tree_row_action_target()
+            .as_ref()
+            .map(|target| target.node_id.as_str())
+    );
+    let wrong_tree_payload = UiHostActionPlan::new(
+        "tree".into(),
+        UiHostActionSpec::command(UI_TREE_ROW_ACTION_ID, "README"),
+    );
+    assert!(wrong_tree_payload.tree_row_action_target().is_none());
+    let mut wrong_tree_id = tree_row.clone();
+    wrong_tree_id.action_id = "tree.wrong".to_string();
+    assert!(wrong_tree_id.tree_row_action_target().is_none());
+
+    let empty_link = UiHostActionPlan::new(
+        "text".into(),
+        UiHostActionSpec::command(UI_LINK_OPEN_ACTION_ID, "Empty link"),
+    );
+    assert!(empty_link.text_span_action().is_none());
+    let invalid_accordion = UiHostActionPlan::new(
+        "accordion".into(),
+        UiHostActionSpec::command(UI_DISCLOSURE_TOGGLE_ACTION_ID, "Invalid")
+            .payload("open=invalid"),
+    );
+    assert!(invalid_accordion.text_span_action().is_none());
+    let unknown = UiHostActionPlan::new(
+        "text".into(),
+        UiHostActionSpec::command("ui.unknown", "Unknown"),
+    );
+    assert!(unknown.text_span_action().is_none());
+    assert!(
+        UiTextSpanAction::OpenLink {
+            target: "https://example.test".to_string(),
+        }
+        .accordion_toggle_action()
+        .is_none()
+    );
+}
+
+#[test]
+fn blank_text_links_and_non_dispatching_context_menu_children_are_ignored() {
+    let mut blank_link = UiTextSpan::plain("blank");
+    blank_link.link_target = "   ".to_string();
+    let tree = UiTree::new(
+        Column::new()
+            .child(Text::new("Blank link").text_spans(vec![blank_link]))
+            .child(
+                ContextMenu::new("Menu").item(
+                    ContextMenuItem::new("section", "Section", ContextMenuItemKind::Section)
+                        .child(ContextMenuItem::action("hidden", "Hidden")),
+                ),
+            ),
+    );
+
+    let actions = UiHostActionPlan::collect_from_tree(&tree);
+    assert!(
+        !actions
+            .iter()
+            .any(|action| action.action_id == UI_LINK_OPEN_ACTION_ID)
+    );
+    assert!(!actions.iter().any(|action| action.action_id == "hidden"));
 }
 
 #[test]

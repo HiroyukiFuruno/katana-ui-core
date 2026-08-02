@@ -235,3 +235,29 @@ fn clamp_marker_width(scenario: ScenarioContext<'_>) -> usize {
     }
     m::PX_8
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::screen_state::StorybookScreenState;
+    use crate::visual::window_interaction::split_pane_operation::SplitPaneStoryAction;
+
+    #[test]
+    fn live_drag_and_resize_state_drive_split_geometry() {
+        let mut dragged = StorybookScreenState::default();
+        dragged.register_split_pane_action(SplitPaneStoryAction::Drag);
+        let drag_scenario = ScenarioContext::for_test("split-pane", 0, &dragged);
+        assert_eq!(
+            PANEL_WIDTH * usize::from(dragged.split_pane.ratio_percent()) / 100,
+            left_width_for(drag_scenario)
+        );
+        assert_eq!(m::PX_10, handle_width_for(drag_scenario));
+
+        let mut resized = StorybookScreenState::default();
+        resized.register_split_pane_action(SplitPaneStoryAction::Resize);
+        assert_eq!(
+            m::PX_20,
+            clamp_marker_width(ScenarioContext::for_test("split-pane", 0, &resized))
+        );
+    }
+}

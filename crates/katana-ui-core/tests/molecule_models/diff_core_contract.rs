@@ -1,8 +1,8 @@
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::molecule::{
-    CodeDiff, CodeDiffBuildError, CodeDiffDirection, CodeDiffLineKind, CodeDiffMode,
-    CodeDiffWhitespace,
+    CodeDiff, CodeDiffBuildError, CodeDiffDirection, CodeDiffLineHighlight, CodeDiffLineKind,
+    CodeDiffMode, CodeDiffSource, CodeDiffSummary, CodeDiffWhitespace,
 };
 
 #[test]
@@ -21,14 +21,23 @@ fn code_diff_builds_from_before_after_first_line_and_line_count_contracts()
     assert_eq!(Some(20), diff.lines()[0].new_number);
     assert_eq!(1, diff.addition_count());
     assert_eq!(1, diff.removal_count());
+    assert_eq!(
+        CodeDiffSummary {
+            additions: 1,
+            removals: 1,
+        },
+        diff.summary()
+    );
     Ok(())
 }
 
 #[test]
 fn code_diff_reports_invalid_line_count_without_ambiguous_diff() {
     let result = CodeDiff::from_sources("Diff", "one\ntwo", 1, 1, "one\ntwo", 1, 2);
+    let invalid_after = CodeDiff::from_sources("Diff", "one\ntwo", 1, 2, "one\ntwo", 1, 1);
 
     assert!(result.is_err());
+    assert!(invalid_after.is_err());
 }
 
 #[test]
@@ -65,9 +74,18 @@ fn code_diff_uses_lcs_classification_and_split_placeholders() -> Result<(), Code
 #[test]
 fn code_diff_uses_character_positions_for_japanese_local_highlights()
 -> Result<(), CodeDiffBuildError> {
-    let diff = CodeDiff::from_sources("Diff", "名前:太郎", 1, 1, "名前:花子", 1, 1)?;
+    let diff = CodeDiff::from_sources("Diff", "名前:太郎", 1, 1, "名前:花子", 1, 1)?
+        .local_highlight(CodeDiffLineHighlight {
+            line_index: 2,
+            start_character: 1,
+            end_character: 2,
+        });
 
-    assert_eq!(vec![(0, 3, 5), (1, 3, 5)], diff.local_highlight_ranges());
+    assert_eq!(3, diff.local_highlights().len());
+    assert_eq!(
+        vec![(0, 3, 5), (1, 3, 5), (2, 1, 2)],
+        diff.local_highlight_ranges()
+    );
     Ok(())
 }
 
@@ -122,5 +140,57 @@ fn code_diff_inline_ignores_direction_and_scroll_sync_toggles_state()
     assert!(sync.handled);
     assert!(diff.scroll_sync_enabled());
     assert!(sync.after.active);
+    Ok(())
+}
+
+#[test]
+fn code_diff_split_source_hidden_whitespace_and_extra_added_line_are_built() {
+    let split = CodeDiffSource::Split {
+        before: "old".to_string(),
+        after: "new\nextra".to_string(),
+    };
+    let hidden_whitespace = CodeDiffWhitespace {
+        visible: false,
+        space_symbol: "·".to_string(),
+        tab_symbol: "→".to_string(),
+    };
+    let diff = CodeDiff::new("Diff")
+        .whitespace(hidden_whitespace)
+        .source_texts("old value", 1, 1, "new value\nextra", 1, 2);
+    assert!(diff.is_ok(), "valid split source");
+    let Ok(diff) = diff else {
+        return;
+    };
+
+    assert!(
+        diff.lines()
+            .iter()
+            .any(|line| line.kind == CodeDiffLineKind::Placeholder)
+    );
+    assert!(diff.lines().iter().any(|line| line.text == "new value"));
+    assert!(matches!(split, CodeDiffSource::Split { .. }));
+}
+
+#[test]
+fn code_diff_builds_split_source_and_rejects_unified_source() -> Result<(), CodeDiffBuildError> {
+    let split = CodeDiff::from_source(
+        "Split",
+        CodeDiffSource::Split {
+            before: "before".to_string(),
+            after: "after".to_string(),
+        },
+    )?;
+    assert_eq!(1, split.summary().additions);
+    assert_eq!(1, split.summary().removals);
+
+    assert_eq!(
+        Err(CodeDiffBuildError::UnsupportedUnifiedSource),
+        CodeDiff::from_source(
+            "Unified",
+            CodeDiffSource::Unified {
+                text: "@@".to_string(),
+            },
+        )
+    );
     Ok(())
 }

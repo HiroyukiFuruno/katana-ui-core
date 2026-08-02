@@ -117,3 +117,17 @@ fn storybook_context_menu_items() -> Vec<ContextMenuItem> {
         ContextMenuItem::action("delete", "Delete").destructive(true),
     ]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::StorybookScreenState;
+
+    #[test]
+    fn unrelated_page_does_not_open_a_context_menu() {
+        let mut state = StorybookScreenState::default();
+        state.register_context_menu("unknown");
+
+        assert_eq!(0, state.action_count);
+        assert_eq!("none", state.last_action);
+    }
+}

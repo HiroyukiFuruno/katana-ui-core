@@ -28,6 +28,28 @@ pub(super) struct ScenarioContext<'a> {
     pub(super) show_navigation_text_connectors: bool,
 }
 
+#[cfg(test)]
+impl<'a> ScenarioContext<'a> {
+    pub(super) fn for_test(
+        selected_page: &'a str,
+        preset_index: usize,
+        screen_state: &'a StorybookScreenState,
+    ) -> Self {
+        Self {
+            selected_page,
+            selected_instance_id: "primary",
+            preset_index,
+            preset_tab_scroll_x: 0,
+            tree_expansion: TreeExpansionState::default(),
+            scrollbar_visible: true,
+            panel_scroll: PanelScrollOffsets::default(),
+            screen_state,
+            show_navigation_lines: false,
+            show_navigation_text_connectors: false,
+        }
+    }
+}
+
 #[derive(Clone, Copy)]
 pub(super) struct ShellContext<'a> {
     pub(super) root: &'a UiNode,

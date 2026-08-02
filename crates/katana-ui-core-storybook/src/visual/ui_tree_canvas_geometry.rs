@@ -204,3 +204,84 @@ pub(super) fn dimension_px(value: &UiDimension) -> usize {
         _ => 0,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::render_model::{UiCommonProps, UiImageSurfaceProps, UiInteractionState};
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn geometry_helpers_cover_layout_and_non_layout_nodes() {
+        let column = UiNode::new(UiNodeKind::Column, "")
+            .common(UiCommonProps::default().gap(UiDimension::px(7)));
+        let text = UiNode::new(UiNodeKind::Text, "label");
+
+        assert_eq!(7, column_gap(&column));
+        assert_eq!(0, column_gap(&text));
+        assert_eq!(20, child_container_x(&column, 20));
+        assert_eq!(20 + INDENT, child_container_x(&text, 20));
+        for kind in [
+            UiNodeKind::AlignCenter,
+            UiNodeKind::AlignNode,
+            UiNodeKind::Column,
+            UiNodeKind::Grid,
+            UiNodeKind::Row,
+            UiNodeKind::Stack,
+        ] {
+            assert!(is_layout_container(&UiNode::new(kind, "")));
+        }
+        assert!(!is_layout_container(&text));
+    }
+
+    #[test]
+    fn label_and_hover_background_draw_inside_remaining_area() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let text = TextRenderer::load(&UiCoreFacade::default(), "body");
+        let node = UiNode::new(UiNodeKind::Text, "label").interaction(UiInteractionState {
+            hovered: true,
+            ..UiInteractionState::default()
+        });
+        let area = area();
+        let mut canvas = Canvas::new(area.width, area.height, palette.background);
+        let mut y = 4;
+
+        draw_hover_background(&mut canvas, &node, 8, y, area, palette);
+        draw_label(&mut canvas, &text, &node, 8, &mut y, palette);
+
+        assert_eq!(4 + TEXT_HEIGHT, y);
+        assert!(canvas.non_background_pixels(palette.background) > 0);
+        assert_eq!(area.width - 8, remaining_width(area, 8));
+    }
+
+    #[test]
+    fn stack_and_media_height_respect_explicit_and_image_dimensions() {
+        let explicit = UiNode::new(UiNodeKind::Text, "").height(UiDimension::px(44));
+        let image = UiNode::new(UiNodeKind::ImageSurface, "").image_surface(UiImageSurfaceProps {
+            display_height: 36,
+            display_height_milli: 36_000,
+            ..UiImageSurfaceProps::default()
+        });
+        let stack = UiNode::new(UiNodeKind::Stack, "").child(image.clone());
+
+        assert_eq!(44, child_media_height(&explicit));
+        assert_eq!(36, child_media_height(&image));
+        assert_eq!(36, stack_frame_height(&stack));
+        assert_eq!(
+            52,
+            stack_frame_height(&UiNode::new(UiNodeKind::Stack, "").height(UiDimension::px(52)))
+        );
+    }
+
+    fn area() -> UiTreeRenderArea {
+        UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 160,
+            height: 96,
+            scroll_y: 0.0,
+        }
+    }
+}

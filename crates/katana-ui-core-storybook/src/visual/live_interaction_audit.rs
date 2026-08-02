@@ -329,14 +329,15 @@ fn page_state(page: &'static str) -> StorybookWindowState {
 
 #[cfg(test)]
 mod tests {
-    use super::{checkbox_row_click_scenario, radio_row_click_scenario};
+    use super::{
+        checkbox_row_click_scenario, live_interaction_audit_report, radio_row_click_scenario,
+    };
 
     #[test]
     fn live_interaction_audit_unit_covers_critical_binary_scenarios() {
         let scenarios = [checkbox_row_click_scenario(), radio_row_click_scenario()];
-        let failed: Vec<_> = scenarios
+        let diagnostics: Vec<_> = scenarios
             .iter()
-            .filter(|scenario| !scenario.passed)
             .map(|scenario| {
                 format!(
                     "{}:{} kind={} diff={}",
@@ -348,6 +349,14 @@ mod tests {
             })
             .collect();
 
-        assert_eq!(Vec::<String>::new(), failed);
+        assert!(
+            scenarios.iter().all(|scenario| scenario.passed),
+            "critical binary scenarios failed: {diagnostics:?}"
+        );
+
+        let summary = live_interaction_audit_report().summary();
+        assert!(summary.contains("live_interactions="));
+        assert!(summary.contains("checkbox_changed=true"));
+        assert!(summary.contains("radio_changed=true"));
     }
 }

@@ -63,16 +63,21 @@ impl SettingsListScreenState {
             "settings_list.field_description" => {
                 self.option_state.field_description_visible = true;
             }
-            "settings_list.set_value"
-            | "settings_list.control_kind"
-            | "settings_list.control_options"
-            | "settings_list.custom_control" => {
-                self.apply_control_option(setting);
-                let _ = self.update_field(
-                    "settings_update_field",
-                    "settings_field_changed",
-                    "settings_list.value=changed",
-                );
+            "settings_list.control_kind" => {
+                self.option_state.control_kind_number = true;
+                self.record_control_update();
+            }
+            "settings_list.control_options" => {
+                self.option_state.control_option_count = EXPANDED_CONTROL_OPTION_COUNT;
+                self.record_control_update();
+            }
+            "settings_list.custom_control" => {
+                self.option_state.custom_control_button = true;
+                self.record_control_update();
+            }
+            "settings_list.set_value" => {
+                self.option_state.value_changed = true;
+                self.record_control_update();
             }
             "settings_list.reset" => {
                 self.option_state.reset_default = true;
@@ -225,24 +230,50 @@ impl SettingsListScreenState {
         self.option_state.default_collapsed = true;
     }
 
-    fn apply_control_option(&mut self, setting: &str) {
-        match setting {
-            "settings_list.control_kind" => self.option_state.control_kind_number = true,
-            "settings_list.control_options" => {
-                self.option_state.control_option_count = EXPANDED_CONTROL_OPTION_COUNT;
-            }
-            "settings_list.custom_control" => self.option_state.custom_control_button = true,
-            "settings_list.set_value" => self.option_state.value_changed = true,
-            _ => {}
-        }
+    fn record_control_update(&mut self) {
+        let _ = self.update_field(
+            "settings_update_field",
+            "settings_field_changed",
+            "settings_list.value=changed",
+        );
     }
 
     fn scroll_label(&self) -> &'static str {
         match self.scroll_offset {
-            0 => "scroll=0",
             1 => "scroll=1",
             2 => "scroll=2",
             _ => "scroll=3",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unknown_option_is_a_noop_and_scroll_label_clamps_at_three() {
+        let mut state = SettingsListScreenState::default();
+        let initial = state.clone();
+
+        state.apply_option("settings_list.unknown");
+        assert_eq!(initial, state);
+
+        assert_eq!(
+            "scroll=1",
+            state.apply_action(SettingsListStoryAction::Scroll).state
+        );
+        assert_eq!(
+            "scroll=2",
+            state.apply_action(SettingsListStoryAction::Scroll).state
+        );
+        assert_eq!(
+            "scroll=3",
+            state.apply_action(SettingsListStoryAction::Scroll).state
+        );
+        assert_eq!(
+            "scroll=3",
+            state.apply_action(SettingsListStoryAction::Scroll).state
+        );
     }
 }

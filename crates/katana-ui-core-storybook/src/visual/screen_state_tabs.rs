@@ -294,3 +294,64 @@ impl TabsScreenState {
             > self.tabs.iter().position(|tab| tab.id == "terminal")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::screen_state_tabs_types::TabsContextMenuState;
+
+    #[test]
+    fn tabs_cover_missing_unpinned_endpoint_scroll_focus_and_group_boundaries() {
+        let mut state = TabsScreenState {
+            context_menu: Some(TabsContextMenuState {
+                tab_id: "scratch.md".to_string(),
+                group_id: None,
+                x: 0,
+                y: 0,
+                commands: Vec::new(),
+                items: Vec::new(),
+            }),
+            ..TabsScreenState::default()
+        };
+        assert_eq!("tabs.context=tab-menu", state.state_label());
+
+        assert_eq!(
+            "closeable_tab_pin_missing",
+            state.unpin_tab_by_icon("missing").event
+        );
+        assert_eq!(
+            "closeable_tab_pin_missing",
+            state.unpin_tab_by_icon("terminal").event
+        );
+
+        state.active_tab_id = "missing".to_string();
+        assert_eq!(
+            "closeable_tab_pin_missing",
+            state.apply(TabsScreenAction::TogglePinActive).event
+        );
+        assert_eq!(
+            "closeable_tab_move_missing",
+            state.apply(TabsScreenAction::MoveActiveRight).event
+        );
+
+        state.active_tab_id = "terminal".to_string();
+        assert_eq!(
+            "closeable_tab_move_blocked",
+            state.apply(TabsScreenAction::MoveActiveRight).event
+        );
+
+        state.scroll_horizontal(1.0);
+        assert_eq!(TAB_SCROLL_STEP_PX, state.scroll_x);
+        state.scroll_horizontal(-1.0);
+        assert_eq!(0, state.scroll_x);
+
+        assert_eq!(
+            "closeable_tab_focus_missing",
+            state.focus_tab("missing").event
+        );
+        state.groups.clear();
+        state.ensure_docs_group();
+        assert_eq!(1, state.groups.len());
+        assert_eq!("docs", state.groups[0].id);
+    }
+}

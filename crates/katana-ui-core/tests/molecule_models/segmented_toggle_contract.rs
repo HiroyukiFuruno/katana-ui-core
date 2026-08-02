@@ -1,3 +1,4 @@
+use katana_ui_core::atom::Text;
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::molecule::{ChoiceItem, SegmentedToggle};
@@ -39,4 +40,28 @@ fn segmented_toggle_action_ignores_disabled_segment() {
         enabled_result.callback_log[0].action
     );
     assert_eq!(0, enabled_result.after.selected_index);
+}
+
+#[test]
+fn segmented_toggle_child_and_generic_component_actions_are_projected() {
+    let mut toggle = SegmentedToggle::new("Mode")
+        .item_count(2)
+        .child(Text::new("Consumer hint"));
+    let target = toggle.state_id().clone();
+
+    assert!(
+        toggle
+            .apply_action(&UiAction::focus(target.clone()))
+            .handled
+    );
+    assert!(
+        !toggle
+            .apply_action(&UiAction::focus(
+                katana_ui_core::render_model::UiStateId::new("other-toggle"),
+            ))
+            .handled
+    );
+    let tree = UiTree::new(toggle);
+    assert_eq!(2, tree.root().props().interaction.item_count);
+    assert_eq!("Consumer hint", tree.root().children()[0].props().label);
 }

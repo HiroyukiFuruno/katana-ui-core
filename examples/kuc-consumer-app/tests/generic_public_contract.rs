@@ -3,7 +3,8 @@ use katana_ui_core::interaction::UiAction;
 use katana_ui_core::render_model::UiNodeKind;
 use katana_ui_core::widget::molecules::{
     ChoiceItem, ComboBox, ContextMenu, ContextMenuAction, ContextMenuAnchor, ContextMenuEvent,
-    ContextMenuItem, ModalOverlay, SearchBox, SelectBox,
+    ContextMenuItem, GenericGrid, GridCellContent, GridCoordinate, GridTrackSizeProvider,
+    GridViewport, ModalOverlay, SearchBox, SelectBox,
 };
 use kuc_consumer_app::ConsumerApp;
 
@@ -149,4 +150,38 @@ fn public_overlay_and_context_menu_emit_lifecycle_event_contract() {
         ],
         event_names
     );
+}
+
+#[test]
+fn public_grid_contract_bounds_one_hundred_thousand_cell_model()
+-> Result<(), Box<dyn std::error::Error>> {
+    let grid = GenericGrid::new("Data", 1_000, 100)
+        .row_tracks(GridTrackSizeProvider::fixed(24))
+        .column_tracks(GridTrackSizeProvider::fixed(96))
+        .viewport(GridViewport::new(480, 240).scroll(288, 2_400))
+        .overscan(2, 1)
+        .frozen(1, 1)
+        .active_cell(GridCoordinate::new(100, 3));
+    let coordinates = grid.visible_coordinates();
+    let content = coordinates
+        .iter()
+        .copied()
+        .map(|coordinate| {
+            GridCellContent::new(
+                coordinate,
+                format!("r{}c{}", coordinate.row, coordinate.column),
+            )
+        })
+        .collect::<Vec<_>>();
+    let rendered = katana_ui_core::render_model::UiNode::from(grid.with_visible_cells(content)?);
+
+    assert_eq!(UiNodeKind::Grid, rendered.kind());
+    assert_eq!(1_000, rendered.props().grid.row_count);
+    assert_eq!(100, rendered.props().grid.column_count);
+    assert_eq!(288, rendered.props().grid.viewport.scroll_x);
+    assert_eq!(2_400, rendered.props().grid.viewport.scroll_y);
+    assert!(coordinates.len() < 150);
+    assert_eq!(coordinates.len(), rendered.props().grid.cells.len());
+    assert!(rendered.props().grid.validate().is_ok());
+    Ok(())
 }

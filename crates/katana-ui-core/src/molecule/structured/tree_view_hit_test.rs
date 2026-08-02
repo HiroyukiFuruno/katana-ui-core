@@ -213,59 +213,53 @@ mod tests {
     }
 
     #[test]
-    fn hit_target_returns_action_and_rendered_row_rect() -> Result<(), String> {
+    fn hit_target_returns_action_and_rendered_row_rect() {
         let tree = sample_tree();
 
-        let target = tree
-            .hit_target(
-                TreeViewHitTestInput {
-                    pointer_x: 0,
-                    pointer_y: 49,
-                    scroll_offset_y: 0,
-                },
-                240,
-            )
-            .ok_or_else(|| "file row target".to_string())?;
-
-        assert_eq!("src/lib.rs", target.node_id);
-        assert_eq!(
-            TreeViewAction::SelectNode {
-                node_id: "src/lib.rs".to_string()
+        let target = tree.hit_target(
+            TreeViewHitTestInput {
+                pointer_x: 0,
+                pointer_y: 49,
+                scroll_offset_y: 0,
             },
-            target.action
+            240,
         );
-        assert_eq!(
-            TreeViewAction::HoverNode {
-                node_id: "src/lib.rs".to_string(),
-                hovered: true,
-            },
-            target.hover_action
-        );
-        assert_eq!(0, target.rect.x);
-        assert_eq!(44, target.rect.y);
-        assert_eq!(240, target.rect.width);
-        assert_eq!(TreeView::row_height(), target.rect.height);
-        Ok(())
+        assert!(matches!(
+            target,
+            Some(target)
+                if target.node_id == "src/lib.rs"
+                    && target.action
+                        == TreeViewAction::SelectNode {
+                            node_id: "src/lib.rs".to_string()
+                        }
+                    && target.hover_action
+                        == TreeViewAction::HoverNode {
+                            node_id: "src/lib.rs".to_string(),
+                            hovered: true,
+                        }
+                    && target.rect.x == 0
+                    && target.rect.y == 44
+                    && target.rect.width == 240
+                    && target.rect.height == TreeView::row_height()
+        ));
     }
 
     #[test]
-    fn hit_target_accounts_for_scroll_offset() -> Result<(), String> {
+    fn hit_target_accounts_for_scroll_offset() {
         let tree = sample_tree();
 
-        let target = tree
-            .hit_target(
-                TreeViewHitTestInput {
-                    pointer_x: 0,
-                    pointer_y: 5,
-                    scroll_offset_y: 39,
-                },
-                240,
-            )
-            .ok_or_else(|| "scrolled file row target".to_string())?;
-
-        assert_eq!("src/lib.rs", target.node_id);
-        assert_eq!(5, target.rect.y);
-        Ok(())
+        let target = tree.hit_target(
+            TreeViewHitTestInput {
+                pointer_x: 0,
+                pointer_y: 5,
+                scroll_offset_y: 39,
+            },
+            240,
+        );
+        assert!(matches!(
+            target,
+            Some(target) if target.node_id == "src/lib.rs" && target.rect.y == 5
+        ));
     }
 
     #[test]
@@ -311,6 +305,93 @@ mod tests {
             },
             action
         );
+    }
+
+    #[test]
+    fn hit_metrics_unlabelled_rows_and_all_trigger_areas_are_explicit() {
+        assert_eq!(12, TreeView::indent_width());
+        assert_eq!(16, TreeView::disclosure_width());
+        assert_eq!(4, TreeView::disclosure_gap());
+        assert_eq!(16, TreeView::icon_width());
+        assert_eq!(6, TreeView::icon_gap());
+
+        let unlabelled = TreeView::new("")
+            .toggle_trigger_area(crate::molecule::DisclosureTriggerArea::WholeElement)
+            .item(TreeNode::new("root", "root", 0).directory());
+        assert_eq!(1, unlabelled.row_count());
+        assert_eq!(
+            TreeViewAction::ToggleNode {
+                node_id: "root".to_string(),
+            },
+            unlabelled.hit_test(TreeViewHitTestInput {
+                pointer_x: u32::MAX,
+                pointer_y: 0,
+                scroll_offset_y: 0,
+            })
+        );
+        assert_eq!(
+            TreeViewAction::None,
+            unlabelled.hit_test(TreeViewHitTestInput {
+                pointer_x: 0,
+                pointer_y: 100,
+                scroll_offset_y: 0,
+            })
+        );
+
+        let icon_hidden = sample_tree()
+            .icons_visible(false)
+            .toggle_trigger_area(crate::molecule::DisclosureTriggerArea::IconOnly);
+        assert!(matches!(
+            icon_hidden.hit_test(TreeViewHitTestInput {
+                pointer_x: 1,
+                pointer_y: 25,
+                scroll_offset_y: 0,
+            }),
+            TreeViewAction::FocusNode { .. }
+        ));
+
+        let icon_and_text =
+            sample_tree().toggle_trigger_area(crate::molecule::DisclosureTriggerArea::IconAndText);
+        assert!(matches!(
+            icon_and_text.hit_test(TreeViewHitTestInput {
+                pointer_x: 0,
+                pointer_y: 25,
+                scroll_offset_y: 0,
+            }),
+            TreeViewAction::ToggleNode { .. }
+        ));
+
+        let text_only = sample_tree()
+            .icons_visible(true)
+            .toggle_trigger_area(crate::molecule::DisclosureTriggerArea::TextOnly);
+        assert!(matches!(
+            text_only.hit_test(TreeViewHitTestInput {
+                pointer_x: 20,
+                pointer_y: 25,
+                scroll_offset_y: 0,
+            }),
+            TreeViewAction::FocusNode { .. }
+        ));
+        assert!(matches!(
+            text_only.hit_test(TreeViewHitTestInput {
+                pointer_x: 42,
+                pointer_y: 25,
+                scroll_offset_y: 0,
+            }),
+            TreeViewAction::ToggleNode { .. }
+        ));
+
+        let text_only_without_icons = sample_tree()
+            .icons_visible(false)
+            .toggle_trigger_area(crate::molecule::DisclosureTriggerArea::TextOnly);
+        assert!(matches!(
+            text_only_without_icons.hit_test(TreeViewHitTestInput {
+                pointer_x: 1,
+                pointer_y: 25,
+                scroll_offset_y: 0,
+            }),
+            TreeViewAction::ToggleNode { .. }
+        ));
     }
 
     fn sample_tree() -> TreeView {

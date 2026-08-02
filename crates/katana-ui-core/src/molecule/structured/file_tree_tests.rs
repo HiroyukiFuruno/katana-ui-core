@@ -49,7 +49,8 @@ fn render_builds_nested_tree_view() {
 #[test]
 fn render_with_state_passes_hovered_item_to_tree_view_props() {
     let items = sample_items();
-    let state = FileTreeState::default().hovered("katana/nested/b.md");
+    let mut state = FileTreeState::default();
+    state.set_hovered_item(Some("katana/nested/b.md".to_string()));
     let tree = FileTree::render_with_state_and_offset(&items, "katana/a.md", 240, 480, 0, &state);
     let tree_view = &tree.root().children()[0];
 

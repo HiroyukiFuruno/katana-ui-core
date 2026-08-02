@@ -175,7 +175,7 @@ pub(super) fn apply_scroll_delta_x_at(
     }
     let region =
         panel_scroll_state::PanelScrollRegionModel::region_at(x, y + state.panel_scroll.root_y);
-    let mut changed = scroll_limits::clamp_horizontal_offset(state, region);
+    let changed = scroll_limits::clamp_horizontal_offset(state, region);
     if scroll_hit::text_area_at(state, region, x, y) {
         let instance =
             super::component_instance_id_for_page(state.selected_page, state.selected_instance_id);
@@ -197,18 +197,6 @@ pub(super) fn apply_scroll_delta_x_at(
     if let Some(panel) = scroll_hit::panel_child_at(state, region, x, y) {
         return state.screen_state.scroll_panel_horizontal(panel, delta_x) || changed;
     }
-    if !panel_scrollbars::horizontal_region_scrollable_for(
-        region,
-        state.selected_page,
-        state.tree_expansion,
-    ) {
-        return changed;
-    }
-    changed |= state.panel_scroll.scroll_delta_x_with_max(
-        region,
-        scroll_limits::max_scroll_x(state, region),
-        delta_x,
-    );
     changed
 }
 
@@ -247,17 +235,15 @@ pub(super) fn apply_scrollbar_drag(
 pub(super) fn apply_scrollbar_drag_target(
     state: &mut StorybookWindowState,
     target: PanelScrollDragTarget,
-    x: usize,
+    _x: usize,
     y: usize,
 ) -> bool {
     match target {
         PanelScrollDragTarget::Vertical(region) => apply_scrollbar_drag(state, region, y),
-        PanelScrollDragTarget::Horizontal(region) => {
-            apply_horizontal_scrollbar_drag(state, region, x)
-        }
     }
 }
 
+#[cfg(test)]
 pub(super) fn apply_horizontal_scrollbar_drag(
     state: &mut StorybookWindowState,
     region: PanelScrollRegion,
@@ -276,4 +262,66 @@ pub(super) fn apply_horizontal_scrollbar_drag(
         scroll_limits::max_scroll_x(state, region),
     );
     changed
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::preview_detail;
+
+    #[test]
+    fn component_wheel_routes_cover_specialized_scroll_actions() {
+        for page in [
+            "list",
+            "select-box",
+            "code-diff",
+            "selection-list",
+            "side-menu",
+            "shortcut-cheatsheet",
+            "settings-list",
+            "diagnostics-list",
+            "virtualization",
+        ] {
+            let rect = preview_detail::component_action_hit_rect(page);
+            let mut state = StorybookWindowState {
+                selected_page: page,
+                ..StorybookWindowState::default()
+            };
+
+            assert!(
+                apply_scroll_delta_at(&mut state, rect.x + 1, rect.y + 1, -1.0),
+                "{page} must consume wheel input inside its component surface"
+            );
+            assert_ne!("none", state.screen_state.last_action, "{page}");
+        }
+    }
+
+    #[test]
+    fn zero_deltas_and_root_drag_boundaries_are_explicit() {
+        let mut state = StorybookWindowState::default();
+        assert!(!apply_scroll_delta_at(&mut state, 0, 0, 0.0));
+        assert!(!apply_scroll_delta_x_at(&mut state, 0, 0, 0.0));
+
+        let changed = apply_scrollbar_drag(&mut state, PanelScrollRegion::Root, usize::MAX);
+        assert!(changed);
+        assert_eq!(state.panel_scroll.root_y, state.scroll_y);
+    }
+
+    #[test]
+    fn horizontal_wheel_over_overflowing_preset_tabs_changes_only_tab_offset() {
+        let mut state = StorybookWindowState {
+            selected_page: "text-input",
+            ..StorybookWindowState::default()
+        };
+        let viewport = crate::visual::preset_tab_scroll::viewport_rect();
+
+        assert!(apply_scroll_delta_x_at(
+            &mut state,
+            viewport.x + 1,
+            viewport.y + 1,
+            -1.0,
+        ));
+        assert!(state.preset_tab_scroll_x > 0);
+        assert_eq!(0, state.scroll_y);
+    }
 }

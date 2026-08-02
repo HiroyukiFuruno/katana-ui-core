@@ -75,3 +75,26 @@ impl StorybookScreenState {
         self.set_text_area_selection_for(instance, start, end);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::StorybookScreenState;
+    use crate::visual::text_area_screen_state::DEFAULT_TEXT_AREA_INSTANCE;
+
+    #[test]
+    fn paste_requires_focus_and_reports_readonly_or_disabled_mutation_blocks() {
+        let instance = DEFAULT_TEXT_AREA_INSTANCE;
+        let mut unfocused = StorybookScreenState::default();
+        assert!(!unfocused.register_text_area_paste_for(instance, "text"));
+
+        let mut readonly = StorybookScreenState::default();
+        readonly.register_text_area_focus_for(instance, true, false);
+        assert!(readonly.register_text_area_paste_for(instance, "text"));
+        assert_eq!("text_area_readonly_blocked", readonly.last_action);
+
+        let mut disabled = StorybookScreenState::default();
+        disabled.register_text_area_focus_for(instance, false, true);
+        assert!(disabled.register_text_area_paste_for(instance, "text"));
+        assert_eq!("text_area_disabled_blocked", disabled.last_action);
+    }
+}

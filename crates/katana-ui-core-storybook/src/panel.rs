@@ -152,4 +152,18 @@ mod tests {
         assert_eq!(1, report.operation_sequence.len());
         assert_eq!(1, report.callback_log.len());
     }
+
+    #[test]
+    fn storybook_panel_allows_a_missing_selected_detail_page() {
+        let examples = StoryCatalog.examples();
+        let tree =
+            StorybookPanel::new(ThemeSnapshot::dark()).build_selected(&examples, "missing-page");
+        let details = tree
+            .root()
+            .children()
+            .iter()
+            .find(|node| node.props().label == "Details");
+
+        assert_eq!(Some(0), details.map(|node| node.children().len()));
+    }
 }

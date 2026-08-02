@@ -170,3 +170,16 @@ pub(super) fn apply_text_input_submit_state(before: &UiComponentState) -> UiComp
     let _result = input.apply_action(&UiAction::input_submitted(before.state_id.clone()));
     input.state_snapshot()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{apply_text_input_focus_state, default_text_input_state};
+
+    #[test]
+    fn input_focus_can_be_cleared() {
+        let focused = apply_text_input_focus_state(&default_text_input_state(), true);
+        let blurred = apply_text_input_focus_state(&focused, false);
+
+        assert!(!blurred.interaction.focused);
+    }
+}

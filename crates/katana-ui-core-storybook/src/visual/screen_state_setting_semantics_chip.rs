@@ -43,3 +43,18 @@ pub(in crate::visual) fn chip_group_state(setting: &'static str) -> &'static str
         _ => setting,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn chip_semantics_preserve_unknown_settings() {
+        assert_eq!("unknown.chip", chip_state("unknown.chip"));
+        assert_eq!(
+            "unknown.attachment",
+            attachment_chip_state("unknown.attachment")
+        );
+        assert_eq!("unknown.chip_group", chip_group_state("unknown.chip_group"));
+    }
+}

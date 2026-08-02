@@ -37,3 +37,16 @@ pub(in crate::visual) fn modal_overlay_state(setting: &'static str) -> &'static 
         _ => setting,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn overlay_setting_semantics_preserve_unknown_setting_keys() {
+        assert_eq!("unknown", tooltip_state("unknown"));
+        assert_eq!("unknown", popover_state("unknown"));
+        assert_eq!("unknown", modal_state("unknown"));
+        assert_eq!("unknown", modal_overlay_state("unknown"));
+    }
+}

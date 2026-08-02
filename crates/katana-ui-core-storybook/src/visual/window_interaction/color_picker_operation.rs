@@ -46,3 +46,49 @@ pub(super) fn operation_at(
         _ => ColorPickerAction::Drag,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn operation_maps_live_blocking_and_hue_state() {
+        let rect = preview_detail::component_action_hit_rect(PAGE);
+
+        let mut disabled = StorybookWindowState {
+            selected_page: PAGE,
+            ..StorybookWindowState::default()
+        };
+        disabled
+            .screen_state
+            .color_picker
+            .apply_option("color_picker.disabled");
+        assert_eq!(
+            Some(ColorPickerAction::DisabledBlocked),
+            operation_at(&disabled, rect.x, rect.y)
+        );
+
+        let mut readonly = StorybookWindowState {
+            selected_page: PAGE,
+            ..StorybookWindowState::default()
+        };
+        readonly
+            .screen_state
+            .color_picker
+            .apply_option("color_picker.readonly");
+        assert_eq!(
+            Some(ColorPickerAction::ReadonlyBlocked),
+            operation_at(&readonly, rect.x, rect.y)
+        );
+
+        let hue = StorybookWindowState {
+            selected_page: PAGE,
+            preset_index: HUE_PRESET_INDEX,
+            ..StorybookWindowState::default()
+        };
+        assert_eq!(
+            Some(ColorPickerAction::HueDrag),
+            operation_at(&hue, rect.x, rect.y)
+        );
+    }
+}
