@@ -210,6 +210,31 @@ fn legacy_grid_cell_json_defaults_appearance_and_spans() -> Result<(), serde_jso
 }
 
 #[test]
+fn legacy_grid_props_default_to_visible_grid_lines() -> Result<(), serde_json::Error> {
+    let value = serde_json::json!({
+        "row_count": 0,
+        "column_count": 0,
+        "total_width": 0,
+        "total_height": 0,
+        "viewport": {"width": 0, "height": 0, "scroll_x": 0, "scroll_y": 0},
+        "visible_range": {
+            "rows": {"start": 0, "end": 0},
+            "columns": {"start": 0, "end": 0},
+            "frozen_rows": 0,
+            "frozen_columns": 0
+        },
+        "selection": null,
+        "active_cell": null,
+        "cells": []
+    });
+
+    let props: UiGridProps = serde_json::from_value(value)?;
+
+    assert!(props.show_grid_lines);
+    Ok(())
+}
+
+#[test]
 fn grid_validation_errors_explain_each_typed_failure() {
     let coordinate = UiGridCoordinate::new(2, 4);
     let errors = [

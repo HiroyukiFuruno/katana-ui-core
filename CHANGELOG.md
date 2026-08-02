@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-02
+
+### Fixed
+
+- Preserved generic grid-line visibility through the public grid model and typed render props, including backward-compatible defaults for existing consumers.
+
 ## [0.2.0] - 2026-07-30
 
 ### Added
