@@ -1,28 +1,11 @@
-mod render_model {
-    pub use katana_ui_core::render_model::*;
-}
-
-#[path = "../src/interaction/drag_and_drop/mod.rs"]
-pub mod drag_and_drop;
-
-pub mod interaction {
-    pub use crate::drag_and_drop;
-}
-
-#[path = "../src/event/drag.rs"]
-pub mod drag_event;
-
-pub mod event {
-    pub use crate::drag_event as drag;
-}
-
-use event::drag::{
+use katana_ui_core::event::drag::{
     DRAG_CANCEL_REASON_KEYBOARD_ESCAPE, DragEvent, DragEventRouteNode, DragEventRouting,
 };
-use interaction::drag_and_drop::{
-    AutoScrollEngine, AutoScrollPolicy, DndPoint, DndRect, DragData, DragMetadata, DragSource,
-    DropAcceptance, DropEffect, DropIndicatorKind, DropTarget, KeyboardDragContext,
-    KeyboardDragKey, KeyboardDragState, KeyboardDropTargetFocus, OS_FILE_LIST_TAG,
+use katana_ui_core::interaction::drag_and_drop::{
+    AutoScrollEngine, AutoScrollPolicy, CONSUMER_TAG_PREFIX, DndPoint, DndRect, DragData,
+    DragMetadata, DragSource, DropAcceptance, DropEffect, DropIndicator, DropIndicatorKind,
+    DropIndicatorOrientation, DropTarget, KUC_TAG_PREFIX, KeyboardDragContext, KeyboardDragKey,
+    KeyboardDragPhase, KeyboardDragState, KeyboardDropTargetFocus, OS_FILE_LIST_TAG, OS_TAG_PREFIX,
 };
 use katana_ui_core::render_model::UiNodeId;
 
@@ -41,6 +24,20 @@ fn drop_target_rejects_mismatched_tag_without_indicator() {
 }
 
 #[test]
+fn drag_metadata_count_insert_and_reserved_prefixes_are_explicit() {
+    let metadata = DragMetadata::new().count(3).insert("source", "explorer");
+    assert_eq!(Some("3"), metadata.get("count"));
+    assert_eq!(Some("explorer"), metadata.get("source"));
+
+    for prefix in [OS_TAG_PREFIX, KUC_TAG_PREFIX, CONSUMER_TAG_PREFIX] {
+        assert!(
+            DragData::new(format!("{prefix}item"), serde_json::Value::Null).has_reserved_prefix()
+        );
+    }
+    assert!(!DragData::new("custom/item", serde_json::Value::Null).has_reserved_prefix());
+}
+
+#[test]
 fn drop_indicator_switches_between_before_inside_and_after() {
     let target = DropTarget::new(UiNodeId::new("tree-row")).accepted_tag("consumer/tree-node");
     let data = DragData::new("consumer/tree-node", serde_json::json!({"id": "a"}));
@@ -53,6 +50,48 @@ fn drop_indicator_switches_between_before_inside_and_after() {
     assert_eq!(Some(DropIndicatorKind::Before), before.indicator_kind());
     assert_eq!(Some(DropIndicatorKind::Inside), inside.indicator_kind());
     assert_eq!(Some(DropIndicatorKind::After), after.indicator_kind());
+}
+
+#[test]
+fn horizontal_indicator_zero_extent_and_hidden_acceptance_are_explicit() {
+    let data = DragData::new("consumer/tree-node", serde_json::json!({"id": "a"}));
+    let mut target = DropTarget::new(UiNodeId::new("tree-row"))
+        .accepted_tag("consumer/tree-node")
+        .auto_scroll(AutoScrollPolicy::default());
+    target.indicator_orientation = DropIndicatorOrientation::Horizontal;
+    let rect = DndRect::new(10.0, 20.0, 100.0, 40.0);
+
+    assert_eq!(
+        Some(DropIndicatorKind::Before),
+        target
+            .accept(&data, DndPoint::new(20.0, 30.0), rect)
+            .indicator_kind()
+    );
+    assert_eq!(
+        0.0,
+        DndRect::new(0.0, 0.0, 0.0, 10.0).horizontal_ratio(DndPoint::new(2.0, 5.0))
+    );
+
+    let hidden = DropAcceptance::Accept {
+        effect: DropEffect::Move,
+        indicator: DropIndicator::hidden(rect),
+    };
+    assert!(hidden.indicator().is_none());
+    assert_eq!(DropEffect::Move, hidden.effect());
+    assert_eq!(DropEffect::None, DropAcceptance::Reject.effect());
+}
+
+#[test]
+fn drag_source_adds_each_allowed_effect_only_once() {
+    let source = DragSource::new(
+        UiNodeId::new("source"),
+        DragData::new("consumer/item", serde_json::Value::Null),
+    )
+    .allowed_effect(DropEffect::Copy)
+    .allowed_effect(DropEffect::Copy);
+
+    assert!(source.allows_effect(DropEffect::Copy));
+    assert_eq!(2, source.allowed_effects.len());
 }
 
 #[test]
@@ -133,6 +172,143 @@ fn keyboard_escape_emits_cancel_then_uncommitted_end() {
             DragEvent::DragCancel { reason, .. },
             DragEvent::DragEnd { committed: false, .. }
         ] if reason == DRAG_CANCEL_REASON_KEYBOARD_ESCAPE));
+}
+
+#[test]
+fn keyboard_drag_ignores_invalid_starts_idle_movement_and_missing_targets() {
+    let idle = KeyboardDragState::idle();
+    assert_eq!(KeyboardDragPhase::Idle, idle.phase());
+
+    let idle_move = idle.handle_key(
+        KeyboardDragKey::ArrowLeft,
+        KeyboardDragContext::empty(UiNodeId::new("none")),
+    );
+    assert_eq!(KeyboardDragPhase::Idle, idle_move.state.phase());
+    assert!(idle_move.events.is_empty());
+    assert!(idle_move.announcement.is_none());
+
+    let missing_source = idle.handle_key(
+        KeyboardDragKey::Space,
+        KeyboardDragContext::empty(UiNodeId::new("none")),
+    );
+    assert_eq!(KeyboardDragPhase::Idle, missing_source.state.phase());
+
+    let disabled_source = DragSource::new(
+        UiNodeId::new("disabled"),
+        DragData::new("consumer/item", serde_json::json!("disabled")),
+    );
+    let disabled = idle.handle_key(
+        KeyboardDragKey::Enter,
+        KeyboardDragContext::focused_source(disabled_source),
+    );
+    assert_eq!(KeyboardDragPhase::Idle, disabled.state.phase());
+
+    let active_source = DragSource::new(
+        UiNodeId::new("source"),
+        DragData::new("consumer/item", serde_json::json!("source")),
+    )
+    .keyboard_draggable(true);
+    let dragging = idle
+        .handle_key(
+            KeyboardDragKey::Space,
+            KeyboardDragContext::focused_source(active_source),
+        )
+        .state;
+    assert_eq!(KeyboardDragPhase::Dragging, dragging.phase());
+    let no_target = dragging.handle_key(
+        KeyboardDragKey::ArrowDown,
+        KeyboardDragContext::empty(UiNodeId::new("none")),
+    );
+    assert_eq!(KeyboardDragPhase::Dragging, no_target.state.phase());
+    assert!(no_target.events.is_empty());
+    let no_drop_target = no_target.state.handle_key(
+        KeyboardDragKey::Space,
+        KeyboardDragContext::empty(UiNodeId::new("none")),
+    );
+    assert_eq!(KeyboardDragPhase::Dragging, no_drop_target.state.phase());
+    assert!(no_drop_target.events.is_empty());
+}
+
+#[test]
+fn keyboard_drag_tracks_target_changes_and_rejects_unsupported_drop_effects() {
+    let source = DragSource::new(
+        UiNodeId::new("source"),
+        DragData::new("consumer/item", serde_json::json!("source")),
+    )
+    .keyboard_draggable(true);
+    let first_focus = KeyboardDropTargetFocus::new(
+        DropTarget::new(UiNodeId::new("first")).accepted_tag("consumer/item"),
+        DndRect::new(0.0, 0.0, 100.0, 40.0),
+        DndPoint::new(50.0, 20.0),
+    );
+    let second_focus = KeyboardDropTargetFocus::new(
+        DropTarget::new(UiNodeId::new("second")).accepted_tag("consumer/item"),
+        DndRect::new(0.0, 0.0, 100.0, 40.0),
+        DndPoint::new(50.0, 20.0),
+    );
+    let picked_up = KeyboardDragState::idle().handle_key(
+        KeyboardDragKey::Space,
+        KeyboardDragContext::focused_source(source),
+    );
+    assert_eq!(
+        Some("Picked up source"),
+        picked_up
+            .announcement
+            .as_ref()
+            .map(|announcement| announcement.message.as_str())
+    );
+
+    let first = picked_up.state.handle_key(
+        KeyboardDragKey::ArrowRight,
+        KeyboardDragContext::focused_target(first_focus.clone()),
+    );
+    let same = first.state.handle_key(
+        KeyboardDragKey::ArrowRight,
+        KeyboardDragContext::focused_target(first_focus),
+    );
+    assert!(matches!(
+        same.events.as_slice(),
+        [DragEvent::DragOver { .. }]
+    ));
+
+    let second = same.state.handle_key(
+        KeyboardDragKey::ArrowRight,
+        KeyboardDragContext::focused_target(second_focus),
+    );
+    assert!(matches!(
+        second.events.as_slice(),
+        [
+            DragEvent::DragLeave { target },
+            DragEvent::DragEnter { .. },
+            DragEvent::DragOver { .. }
+        ] if target.as_str() == "first"
+    ));
+
+    let copy_focus = KeyboardDropTargetFocus::new(
+        DropTarget::new(UiNodeId::new("copy"))
+            .accepted_tag("consumer/item")
+            .effect(DropEffect::Copy),
+        DndRect::new(0.0, 0.0, 100.0, 40.0),
+        DndPoint::new(50.0, 20.0),
+    );
+    let unsupported = second.state.handle_key(
+        KeyboardDragKey::Space,
+        KeyboardDragContext::focused_target(copy_focus),
+    );
+    assert_eq!(KeyboardDragPhase::Dragging, unsupported.state.phase());
+    assert!(unsupported.events.is_empty());
+
+    let rejected_focus = KeyboardDropTargetFocus::new(
+        DropTarget::new(UiNodeId::new("rejected")).accepted_tag("other"),
+        DndRect::new(0.0, 0.0, 100.0, 40.0),
+        DndPoint::new(50.0, 20.0),
+    );
+    let rejected = unsupported.state.handle_key(
+        KeyboardDragKey::Enter,
+        KeyboardDragContext::focused_target(rejected_focus),
+    );
+    assert_eq!(KeyboardDragPhase::Dragging, rejected.state.phase());
+    assert!(rejected.events.is_empty());
 }
 
 #[test]

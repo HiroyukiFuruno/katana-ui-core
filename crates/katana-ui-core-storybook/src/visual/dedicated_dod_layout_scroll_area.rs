@@ -89,7 +89,7 @@ pub(super) fn scroll_area(
         &scroll_chrome_blocks(palette, scenario),
     );
     let clip = content_clip_rect(x, y);
-    canvas.with_clip(clip.x, clip.y, clip.width, clip.height, |canvas| {
+    canvas.with_clip(clip.x, clip.y, clip.width, clip.height, &mut |canvas| {
         common::draw_blocks(
             canvas,
             palette,

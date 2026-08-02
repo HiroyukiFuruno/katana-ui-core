@@ -45,9 +45,7 @@ pub(super) fn legacy_preview_signature_stats() -> LegacyPreviewSignatureStats {
     for page in LEGACY_DOD_PREVIEW_PAGES {
         let canvas = render::render_storybook_canvas_for("dark", page, false);
         let signature = hero_preview_signature(&canvas);
-        if signatures.insert(signature, *page).is_some() {
-            collisions += 1;
-        }
+        collisions += usize::from(signatures.insert(signature, *page).is_some());
     }
     LegacyPreviewSignatureStats {
         signatures: signatures.len(),

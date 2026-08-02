@@ -281,3 +281,169 @@ const fn layout_preset_state(layout: StorybookButtonLayoutPreset) -> &'static st
         StorybookButtonLayoutPreset::Dense => "layout=dense",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_button_option_reports_before_and_after_contract_values() {
+        for control in StorybookButtonOptionControl::all() {
+            let before = StorybookButtonOptions::default();
+            assert!(!control.setting_name().is_empty());
+            assert!(!control.setting_value(before).is_empty());
+            assert!(!control.state_label(before).is_empty());
+
+            let mut after = before;
+            after.apply_contract_after(control);
+            assert!(!control.setting_value(after).is_empty());
+            assert!(!control.state_label(after).is_empty());
+        }
+    }
+
+    #[test]
+    fn button_option_value_cycles_cover_every_enum_variant() {
+        for width in [
+            StorybookButtonWidthMode::Auto,
+            StorybookButtonWidthMode::Px,
+            StorybookButtonWidthMode::Percent,
+            StorybookButtonWidthMode::Fill,
+        ] {
+            let options = StorybookButtonOptions {
+                width_mode: width,
+                ..StorybookButtonOptions::default()
+            };
+            assert!(
+                !StorybookButtonOptionControl::Width
+                    .state_label(options)
+                    .is_empty()
+            );
+            assert!(!width.label().is_empty());
+            let _ = width.next();
+        }
+        for height in [
+            StorybookButtonHeightMode::Auto,
+            StorybookButtonHeightMode::Compact,
+            StorybookButtonHeightMode::Tall,
+        ] {
+            let options = StorybookButtonOptions {
+                height_mode: height,
+                ..StorybookButtonOptions::default()
+            };
+            assert!(
+                !StorybookButtonOptionControl::Height
+                    .state_label(options)
+                    .is_empty()
+            );
+            assert!(!height.label().is_empty());
+            let _ = height.next();
+        }
+        for tab_index in [
+            StorybookButtonTabIndex::Zero,
+            StorybookButtonTabIndex::One,
+            StorybookButtonTabIndex::Disabled,
+        ] {
+            let options = StorybookButtonOptions {
+                tab_index,
+                ..StorybookButtonOptions::default()
+            };
+            assert!(
+                !StorybookButtonOptionControl::TabIndex
+                    .state_label(options)
+                    .is_empty()
+            );
+            assert!(!tab_index.label().is_empty());
+            let _ = tab_index.next();
+        }
+        for z_index in [
+            StorybookButtonZIndex::Auto,
+            StorybookButtonZIndex::Raised,
+            StorybookButtonZIndex::Overlay,
+        ] {
+            let options = StorybookButtonOptions {
+                z_index,
+                ..StorybookButtonOptions::default()
+            };
+            assert!(
+                !StorybookButtonOptionControl::ZIndex
+                    .state_label(options)
+                    .is_empty()
+            );
+            assert!(!z_index.label().is_empty());
+            let _ = z_index.next();
+        }
+        for command in [
+            StorybookButtonCommandMode::Save,
+            StorybookButtonCommandMode::Open,
+        ] {
+            let options = StorybookButtonOptions {
+                command_mode: command,
+                ..StorybookButtonOptions::default()
+            };
+            assert!(
+                !StorybookButtonOptionControl::Command
+                    .state_label(options)
+                    .is_empty()
+            );
+            assert!(!command.label().is_empty());
+            let _ = command.next();
+        }
+        for position in [
+            StorybookButtonIconPosition::Leading,
+            StorybookButtonIconPosition::Trailing,
+        ] {
+            let options = StorybookButtonOptions {
+                icon_position: position,
+                ..StorybookButtonOptions::default()
+            };
+            assert!(
+                !StorybookButtonOptionControl::IconPosition
+                    .state_label(options)
+                    .is_empty()
+            );
+            assert!(!position.label().is_empty());
+            let _ = position.next();
+        }
+        for layout in [
+            StorybookButtonLayoutPreset::Page,
+            StorybookButtonLayoutPreset::Dense,
+        ] {
+            let options = StorybookButtonOptions {
+                layout_preset: layout,
+                ..StorybookButtonOptions::default()
+            };
+            assert!(
+                !StorybookButtonOptionControl::LayoutPreset
+                    .state_label(options)
+                    .is_empty()
+            );
+            assert!(!layout.label().is_empty());
+            let _ = layout.next();
+            let _ = layout.preset_index(2);
+        }
+    }
+
+    #[test]
+    fn button_option_helpers_cover_label_icon_and_preset_resolution() {
+        let fallback = StorybookButtonOptions::default();
+        assert_eq!("Fallback", fallback.label("Fallback"));
+        assert!(!fallback.icon_trailing());
+        assert_eq!(2, fallback.effective_preset_index(2));
+
+        let open = StorybookButtonOptions {
+            command_mode: StorybookButtonCommandMode::Open,
+            ..fallback
+        };
+        assert_eq!("Open command", open.label("Fallback"));
+
+        let japanese = StorybookButtonOptions {
+            japanese_label: true,
+            icon_position: StorybookButtonIconPosition::Trailing,
+            layout_preset: StorybookButtonLayoutPreset::Dense,
+            ..fallback
+        };
+        assert_eq!("保存する", japanese.label("Fallback"));
+        assert!(japanese.icon_trailing());
+        assert_eq!(3, japanese.effective_preset_index(2));
+    }
+}

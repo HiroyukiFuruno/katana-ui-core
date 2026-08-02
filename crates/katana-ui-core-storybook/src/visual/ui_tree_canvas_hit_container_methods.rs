@@ -13,9 +13,9 @@ impl UiTreeHostActionHitCollector<'_> {
         }
         let container_top = self.y;
         self.push_container_action_hits(node, x, container_top, remaining_width(self.area, x));
-        if should_draw_container_label(node) {
-            self.y = self.y.saturating_add(TEXT_HEIGHT);
-        }
+        self.y = self.y.saturating_add(
+            TEXT_HEIGHT.saturating_mul(usize::from(should_draw_container_label(node))),
+        );
         let padding = ContainerPadding::from_node(node);
         let child_x = child_container_x(node, x).saturating_add(padding.left);
         let previous_area = self.area;
@@ -93,5 +93,29 @@ impl UiTreeHostActionHitCollector<'_> {
                 height,
             },
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::render_model::UiHostActionSpec;
+
+    #[test]
+    fn labelled_container_action_uses_fallback_width_and_height() {
+        let root = UiNode::new(UiNodeKind::Column, "Actions")
+            .host_action(UiHostActionSpec::command("open", "Open"));
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 120,
+            scroll_y: 0.0,
+        };
+
+        let hits = UiTreeHostActionHitCollector::collect(&root, area);
+        assert_eq!(1, hits.len());
+        assert_eq!(180, hits[0].rect.width);
+        assert!(hits[0].rect.height >= TEXT_HEIGHT);
     }
 }

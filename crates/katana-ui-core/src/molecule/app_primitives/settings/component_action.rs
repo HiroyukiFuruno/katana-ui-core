@@ -8,7 +8,7 @@ impl ComponentAction for SettingsList {
         if action.target() != &self.state_id {
             return UiActionResult::ignored(self.state_id.clone(), before);
         }
-        let events = match action {
+        let _events = match action {
             UiAction::SetValue { value, .. } => {
                 self.apply_settings_action(SettingsListAction::SetQuery(Some(value.clone())))
             }
@@ -28,9 +28,6 @@ impl ComponentAction for SettingsList {
             }
             _ => return UiActionResult::ignored(self.state_id.clone(), before),
         };
-        if events.is_empty() {
-            return UiActionResult::ignored(self.state_id.clone(), before);
-        }
         UiActionResult::handled(
             self.state_id.clone(),
             action,

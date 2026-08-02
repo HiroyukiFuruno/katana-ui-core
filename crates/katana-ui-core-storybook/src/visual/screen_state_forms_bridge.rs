@@ -1,7 +1,7 @@
 use super::screen_state::StorybookScreenState;
 use super::screen_state_forms::{
-    apply_binary_choice_option, apply_radio_selected_index_state, apply_radio_selected_state,
-    radio_state_label,
+    apply_binary_choice_focus, apply_binary_choice_option, apply_radio_selected_index_state,
+    apply_radio_selected_state, radio_state_label,
 };
 use super::screen_state_setting_semantics::semantic_setting_state;
 use super::screen_state_settings::{format_setting_action, format_setting_event};
@@ -53,10 +53,7 @@ impl StorybookScreenState {
             return;
         }
         self.action_count += 1;
-        let Some(next) = apply_binary_choice_option(&self.radio_state, "focus") else {
-            return;
-        };
-        self.radio_state = next;
+        self.radio_state = apply_binary_choice_focus(&self.radio_state);
         self.last_action = "radio_focus";
         self.last_event = "radio_focused";
         self.state_label = "focused=true";
@@ -118,9 +115,7 @@ impl StorybookScreenState {
         let mut toggle = Toggle::new("Markdown Linter").checked(self.toggle_checked);
         let result =
             toggle.apply_action(&UiAction::toggle_checked(toggle.state_id().clone(), next));
-        if !result.handled {
-            return;
-        }
+        debug_assert!(result.handled);
         self.toggle_checked = result.after.has_selection;
         self.toggle_checked_overridden = true;
         self.action_count += 1;
@@ -293,5 +288,91 @@ const fn toggle_checked_label(checked: bool) -> &'static str {
         "checked=true"
     } else {
         "checked=false"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn radio_toggle_and_slide_paths_cover_disabled_focus_keyboard_and_reset() {
+        let mut radio = StorybookScreenState::default();
+        radio.register_radio_state_read();
+        radio.register_radio_keyboard_select();
+        assert_eq!(radio.last_event, "radio_keyboard_ignored");
+        radio.register_radio_focus();
+        radio.register_radio_keyboard_select();
+        radio.register_radio_select_index(1);
+        radio.register_radio_reset();
+        assert!(!radio.is_radio_selected());
+        assert!(!radio.is_radio_disabled());
+        assert!(radio.is_radio_focused());
+        assert!(!radio.has_radio_selection());
+        assert_eq!(radio.radio_selected_index(), 0);
+        assert_eq!(radio.radio_state_snapshot(), &radio.radio_state);
+
+        radio.radio_state.disabled = true;
+        radio.register_radio_focus();
+        assert_eq!(radio.last_event, "radio_focus_ignored");
+        radio.register_radio_keyboard_select();
+        assert_eq!(radio.last_event, "radio_keyboard_ignored");
+
+        let mut toggle = StorybookScreenState::default();
+        assert!(toggle.uses_default_toggle_state());
+        toggle.register_toggle_focus(true);
+        toggle.register_toggle_keyboard_toggle(true);
+        toggle.register_toggle_keyboard_toggle(false);
+        assert_eq!(toggle.last_event, "toggle_keyboard_ignored");
+        toggle.register_toggle_focus(false);
+        toggle.register_toggle_change();
+        toggle.register_toggle_keyboard_toggle(false);
+        toggle.apply_toggle_checked_preset_default();
+        assert!(toggle.toggle_checked);
+        assert!(!toggle.uses_default_toggle_state());
+
+        let mut slide = StorybookScreenState::default();
+        slide.register_slide_keyboard_increment();
+        assert_eq!(slide.last_event, "slide_keyboard_ignored");
+        slide.register_slide_focus();
+        slide.register_slide_drag();
+        slide.register_slide_keyboard_increment();
+        assert_eq!(slide.state_label, "value=64");
+    }
+
+    #[test]
+    fn form_setting_contracts_cover_valid_unknown_and_non_form_pages() {
+        let mut state = StorybookScreenState::default();
+        assert!(!state.apply_binary_choice_state("unknown", "focus"));
+        let checked = StorybookUiOptionContract::new("checked", "false", "true");
+        assert!(!state.register_binary_choice_contract_setting("toggle", checked));
+        assert!(state.register_binary_choice_contract_setting("checkbox", checked));
+        assert!(state.register_binary_choice_contract_setting("radio", checked));
+        assert!(!state.register_binary_choice_contract_setting(
+            "radio",
+            StorybookUiOptionContract::new("unknown", "a", "b")
+        ));
+        assert!(state.register_toggle_contract_setting(checked));
+
+        for setting in [
+            "form_field.invalid",
+            "form_field.helper_text",
+            "form_field.required",
+        ] {
+            assert!(
+                state.register_form_field_contract_setting(StorybookUiOptionContract::new(
+                    setting, "false", "true"
+                ))
+            );
+        }
+        assert!(
+            !state.register_form_field_contract_setting(StorybookUiOptionContract::new(
+                "form_field.unknown",
+                "a",
+                "b"
+            ))
+        );
+        assert_eq!(toggle_checked_label(true), "checked=true");
+        assert_eq!(toggle_checked_label(false), "checked=false");
     }
 }

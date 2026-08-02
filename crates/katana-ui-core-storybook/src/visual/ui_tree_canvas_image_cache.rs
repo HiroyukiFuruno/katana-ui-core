@@ -83,9 +83,6 @@ fn blit_cached_canvas(
         let cache_end = cache_row.saturating_add(row_end_x).min(cached.pixels.len());
         if cache_end > cache_start && cached.row_opaque(cache_y, cache_start, cache_end) {
             let dest_y = draw_top.saturating_add(y);
-            if dest_y >= canvas.height {
-                break;
-            }
             let dest_start = dest_y
                 .saturating_mul(canvas.width)
                 .saturating_add(draw_left);
@@ -187,29 +184,27 @@ fn blit_cached_spans(
         return;
     }
     let cache_row = cache_y.saturating_mul(cached.width);
-    if let Some(spans) = cached.opaque_spans.get(cache_y) {
-        for &(span_start_x, span_end_x) in spans {
-            let span_start_x = span_start_x.max(row_start_x);
-            let span_end_x = span_end_x.min(row_end_x);
-            if span_start_x >= span_end_x {
-                continue;
-            }
-            let cache_start = cache_row.saturating_add(span_start_x);
-            let cache_end = cache_row
-                .saturating_add(span_end_x)
-                .min(cached.pixels.len());
-            if cache_start >= cache_end {
-                continue;
-            }
-            let dest_x = dest_left.saturating_add(span_start_x.saturating_sub(row_start_x));
-            let dest_start = dest_y.saturating_mul(canvas.width).saturating_add(dest_x);
-            let dest_end = dest_start
-                .saturating_add(cache_end.saturating_sub(cache_start))
-                .min(canvas.pixels.len());
-            let copy_width = dest_end.saturating_sub(dest_start);
-            canvas.pixels[dest_start..dest_end]
-                .copy_from_slice(&cached.pixels[cache_start..cache_start + copy_width]);
+    for &(span_start_x, span_end_x) in cached.opaque_spans.get(cache_y).into_iter().flatten() {
+        let span_start_x = span_start_x.max(row_start_x);
+        let span_end_x = span_end_x.min(row_end_x);
+        if span_start_x >= span_end_x {
+            continue;
         }
+        let cache_start = cache_row.saturating_add(span_start_x);
+        let cache_end = cache_row
+            .saturating_add(span_end_x)
+            .min(cached.pixels.len());
+        if cache_start >= cache_end {
+            continue;
+        }
+        let dest_x = dest_left.saturating_add(span_start_x.saturating_sub(row_start_x));
+        let dest_start = dest_y.saturating_mul(canvas.width).saturating_add(dest_x);
+        let dest_end = dest_start
+            .saturating_add(cache_end.saturating_sub(cache_start))
+            .min(canvas.pixels.len());
+        let copy_width = dest_end.saturating_sub(dest_start);
+        canvas.pixels[dest_start..dest_end]
+            .copy_from_slice(&cached.pixels[cache_start..cache_start + copy_width]);
     }
     let Some(spans) = cached.translucent_spans.get(cache_y) else {
         return;
@@ -292,4 +287,195 @@ fn can_use_cached_request(
         && request.source.y.abs() < f32::EPSILON
         && (request.source.height - image.height as f32).abs() < 1.0
         && request.area.width <= target_width
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::canvas_clip::CanvasClip;
+    use super::super::ui_tree_canvas_types::UiTreeRenderArea;
+    use super::*;
+    use crate::test_assert::KucTestExpect;
+
+    #[test]
+    fn cache_hit_and_capacity_eviction_use_the_latest_surfaces() {
+        clear_cache();
+        let first = image_surface("cache-0", u8::MAX);
+        let first_key =
+            CachedImageKey::new(&first, 1.0, 2, 2).kuc_expect("cache key should be valid");
+        let mut canvas = Canvas::new(4, 4, 0);
+        assert!(try_blit_cached_image(
+            &mut canvas,
+            &first,
+            request(&first, 0, 0, 2, 2),
+            2,
+            2,
+        ));
+        assert!(try_blit_cached_image(
+            &mut canvas,
+            &first,
+            request(&first, 0, 0, 2, 2),
+            2,
+            2,
+        ));
+
+        for index in 1..=MAX_CACHE_ENTRIES {
+            let image = image_surface(&format!("cache-{index}"), u8::MAX);
+            assert!(try_blit_cached_image(
+                &mut canvas,
+                &image,
+                request(&image, 0, 0, 2, 2),
+                2,
+                2,
+            ));
+        }
+
+        IMAGE_CACHE.with(|cache| {
+            let cache = cache.borrow();
+            assert_eq!(MAX_CACHE_ENTRIES, cache.len());
+            assert!(cache.iter().all(|entry| entry.key != first_key));
+        });
+        clear_cache();
+    }
+
+    #[test]
+    fn cached_canvas_handles_empty_clipped_and_out_of_range_draws() {
+        let opaque_image = image_surface("opaque", u8::MAX);
+        let opaque = rasterize_cached_surface(&opaque_image, 2, 2, 1.0);
+        let mut canvas = Canvas::new(2, 2, 0);
+        blit_cached_canvas(
+            &mut canvas,
+            &opaque,
+            request(&opaque_image, 0, 0, 0, 2),
+            opaque_image.height,
+            2,
+        );
+
+        canvas.clip = Some(CanvasClip {
+            x: 0,
+            y: 0,
+            width: 1,
+            height: 1,
+        });
+        blit_cached_canvas(
+            &mut canvas,
+            &opaque,
+            request(&opaque_image, 1, 1, 1, 1),
+            opaque_image.height,
+            2,
+        );
+        let mut clipped_source_outside = request(&opaque_image, 0, 0, 1, 1);
+        clipped_source_outside.source.y = 10.0;
+        clipped_source_outside.source.height = 1.0;
+        blit_cached_canvas(
+            &mut canvas,
+            &opaque,
+            clipped_source_outside,
+            opaque_image.height,
+            2,
+        );
+
+        canvas.clip = None;
+        let mut source_outside = request(&opaque_image, 0, 0, 1, 1);
+        source_outside.source.y = 10.0;
+        source_outside.source.height = 1.0;
+        blit_cached_canvas(&mut canvas, &opaque, source_outside, opaque_image.height, 2);
+        blit_cached_canvas(
+            &mut canvas,
+            &opaque,
+            request(&opaque_image, 0, 3, 1, 1),
+            opaque_image.height,
+            2,
+        );
+
+        let translucent_image = image_surface("translucent", 128);
+        let translucent = rasterize_cached_surface(&translucent_image, 2, 2, 1.0);
+        blit_cached_canvas(
+            &mut canvas,
+            &translucent,
+            request(&translucent_image, 0, 3, 1, 1),
+            translucent_image.height,
+            2,
+        );
+    }
+
+    #[test]
+    fn cached_span_guards_reject_empty_and_malformed_ranges() {
+        let image = image_surface("spans", 128);
+        let mut cached = rasterize_cached_surface(&image, 2, 2, 1.0);
+        let mut canvas = Canvas::new(2, 2, 0);
+
+        blit_cached_spans(&mut canvas, &cached, 0, 0, 1, 0, 3);
+        blit_cached_spans(&mut canvas, &cached, 0, 1, 1, 0, 0);
+
+        cached.opaque_spans = vec![vec![(1, 1), (5, 6)]];
+        cached.translucent_spans = vec![vec![(1, 1), (5, 6)]];
+        blit_cached_spans(&mut canvas, &cached, 0, 0, 10, 0, 0);
+
+        cached.translucent_spans.clear();
+        blit_cached_spans(&mut canvas, &cached, 0, 0, 1, 0, 0);
+
+        cached.opaque_spans = vec![vec![(0, 1)]];
+        blit_cached_spans(&mut canvas, &cached, 0, 0, 1, 0, 0);
+        assert_eq!(cached.pixels[0], canvas.pixels()[0]);
+    }
+
+    #[test]
+    fn unclipped_cached_canvas_stops_before_out_of_bounds_destination_rows() {
+        let opaque_image = image_surface("opaque-outside", u8::MAX);
+        let opaque = rasterize_cached_surface(&opaque_image, 2, 2, 1.0);
+        let mut canvas = Canvas::new(2, 2, 0);
+        blit_cached_canvas_unclipped(&mut canvas, &opaque, 0, 3, 1, 1, 0);
+
+        let translucent_image = image_surface("translucent-outside", 128);
+        let translucent = rasterize_cached_surface(&translucent_image, 2, 2, 1.0);
+        blit_cached_canvas_unclipped(&mut canvas, &translucent, 0, 3, 1, 1, 0);
+    }
+
+    #[test]
+    fn cached_source_offset_scales_positive_source_coordinates() {
+        assert_eq!(
+            4,
+            cached_source_y(
+                RgbaSourceRect {
+                    x: 0.0,
+                    y: 2.0,
+                    width: 2.0,
+                    height: 1.0,
+                },
+                4,
+                8,
+            )
+        );
+    }
+
+    fn clear_cache() {
+        IMAGE_CACHE.with(|cache| cache.borrow_mut().clear());
+    }
+
+    fn image_surface(fingerprint: &str, alpha: u8) -> UiImageSurfaceProps {
+        UiImageSurfaceProps::new(fingerprint, 2, 2, [64, 128, 192, alpha].repeat(4))
+            .kuc_expect("test image should be valid")
+    }
+
+    fn request(
+        image: &UiImageSurfaceProps,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+    ) -> RgbaBlitRequest<'_> {
+        RgbaBlitRequest {
+            rgba: &image.rgba,
+            width: image.width,
+            height: image.height,
+            source: RgbaSourceRect::full(image.width, image.height),
+            area: UiTreeRenderArea {
+                x,
+                y,
+                width,
+                height,
+                scroll_y: 0.0,
+            },
+        }
+    }
 }

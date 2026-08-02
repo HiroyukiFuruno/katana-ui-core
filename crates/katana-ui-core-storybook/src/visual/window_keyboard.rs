@@ -9,6 +9,7 @@ use super::dedicated_status_bar;
 use super::dedicated_tabs_metrics::{STRIP_LEADING_INSET, STRIP_X, TAB_Y};
 use super::dedicated_tooltip;
 use super::preview_detail;
+use super::runtime::StorybookKeyboardRuntimeReport;
 use super::window_interaction::{
     StorybookWindowState, apply_clickable_keyboard_activation_for_audit,
     apply_clipboard_paste_text, apply_tabs_keyboard_shortcut, apply_text_area_key,
@@ -24,23 +25,88 @@ use keymap::{tabs_keyboard_shortcut, text_area_key, text_input_key};
 
 const FOCUS_OFFSET: usize = 4;
 
+pub(super) trait StorybookKeyboardInput {
+    fn key_down(&self, key: Key) -> bool;
+    fn keys_pressed(&self) -> Vec<Key>;
+}
+
+impl StorybookKeyboardInput for Window {
+    fn key_down(&self, key: Key) -> bool {
+        self.is_key_down(key)
+    }
+
+    fn keys_pressed(&self) -> Vec<Key> {
+        self.get_keys_pressed(KeyRepeat::Yes)
+    }
+}
+
 pub(super) fn apply_keyboard(
-    window: &Window,
+    window: &dyn StorybookKeyboardInput,
     state: &mut StorybookWindowState,
     frame: &Canvas,
 ) -> bool {
-    let shifted = window.is_key_down(Key::LeftShift) || window.is_key_down(Key::RightShift);
-    let command_or_control = window.is_key_down(Key::LeftCtrl)
-        || window.is_key_down(Key::RightCtrl)
-        || window.is_key_down(Key::LeftSuper)
-        || window.is_key_down(Key::RightSuper);
+    let shifted = window.key_down(Key::LeftShift) || window.key_down(Key::RightShift);
+    let command_or_control = window.key_down(Key::LeftCtrl)
+        || window.key_down(Key::RightCtrl)
+        || window.key_down(Key::LeftSuper)
+        || window.key_down(Key::RightSuper);
     let mut changed = false;
-    for key in window.get_keys_pressed(KeyRepeat::Yes) {
-        if apply_keyboard_key(key, command_or_control, shifted, state, frame) {
-            changed = true;
-        }
+    for key in window.keys_pressed() {
+        changed |= apply_keyboard_key(key, command_or_control, shifted, state, frame);
     }
     changed
+}
+
+struct RuntimeKeyboardInput {
+    pressed: Key,
+}
+
+impl StorybookKeyboardInput for RuntimeKeyboardInput {
+    fn key_down(&self, _key: Key) -> bool {
+        false
+    }
+
+    fn keys_pressed(&self) -> Vec<Key> {
+        vec![self.pressed]
+    }
+}
+
+pub(super) fn runtime_report() -> StorybookKeyboardRuntimeReport {
+    let frame = Canvas::new(1, 1, 0);
+    let mut checkbox = StorybookWindowState {
+        selected_page: "checkbox",
+        ..StorybookWindowState::default()
+    };
+    let checkbox_focused = apply_keyboard_key(Key::Tab, false, false, &mut checkbox, &frame);
+    let checkbox_toggled = apply_keyboard(
+        &RuntimeKeyboardInput {
+            pressed: Key::Space,
+        },
+        &mut checkbox,
+        &frame,
+    );
+
+    let mut modal = StorybookWindowState {
+        selected_page: "modal",
+        ..StorybookWindowState::default()
+    };
+    let _ = apply_keyboard_key(Key::Tab, false, false, &mut modal, &frame);
+    let modal_closed = apply_keyboard_key(Key::Escape, false, false, &mut modal, &frame);
+
+    let unhandled_key_ignored = !apply_keyboard(
+        &RuntimeKeyboardInput { pressed: Key::F12 },
+        &mut checkbox,
+        &frame,
+    );
+    let unavailable_clipboard_ignored =
+        unhandled_key_ignored && !apply_keyboard_key(Key::V, true, false, &mut checkbox, &frame);
+
+    StorybookKeyboardRuntimeReport {
+        checkbox_focused,
+        checkbox_toggled,
+        modal_closed,
+        unavailable_clipboard_ignored,
+    }
 }
 
 fn apply_keyboard_key(
@@ -49,6 +115,25 @@ fn apply_keyboard_key(
     shifted: bool,
     state: &mut StorybookWindowState,
     frame: &Canvas,
+) -> bool {
+    let mut clipboard_text = read_clipboard_text;
+    apply_keyboard_key_with_clipboard(
+        key,
+        command_or_control,
+        shifted,
+        state,
+        frame,
+        &mut clipboard_text,
+    )
+}
+
+fn apply_keyboard_key_with_clipboard(
+    key: Key,
+    command_or_control: bool,
+    shifted: bool,
+    state: &mut StorybookWindowState,
+    frame: &Canvas,
+    clipboard_text: &mut dyn FnMut() -> Option<String>,
 ) -> bool {
     if let Some(shortcut) = tabs_keyboard_shortcut(key, command_or_control, shifted)
         && apply_tabs_keyboard_shortcut(state, shortcut)
@@ -60,7 +145,7 @@ fn apply_keyboard_key(
             return true;
         }
         if key == Key::V
-            && let Some(text) = read_clipboard_text()
+            && let Some(text) = clipboard_text()
             && apply_clipboard_paste_text(state, text.as_str())
         {
             return true;
@@ -170,10 +255,140 @@ fn read_clipboard_text() -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::apply_keyboard_key;
+    use super::{
+        StorybookKeyboardInput, apply_keyboard, apply_keyboard_key,
+        apply_keyboard_key_with_clipboard, focus_default_clickable, read_clipboard_text,
+        runtime_report,
+    };
     use crate::visual::canvas::Canvas;
     use crate::visual::window_interaction::StorybookWindowState;
     use minifb::Key;
+
+    struct FakeKeyboard {
+        down: Vec<Key>,
+        pressed: Vec<Key>,
+    }
+
+    impl StorybookKeyboardInput for FakeKeyboard {
+        fn key_down(&self, key: Key) -> bool {
+            self.down.contains(&key)
+        }
+
+        fn keys_pressed(&self) -> Vec<Key> {
+            self.pressed.clone()
+        }
+    }
+
+    #[test]
+    fn headless_keyboard_runtime_report_passes() {
+        assert!(runtime_report().passed());
+    }
+
+    #[test]
+    fn keyboard_input_port_routes_pressed_keys_and_modifiers() {
+        let keyboard = FakeKeyboard {
+            down: vec![Key::LeftShift],
+            pressed: vec![Key::Tab, Key::Space],
+        };
+        let mut state = StorybookWindowState {
+            selected_page: "checkbox",
+            ..StorybookWindowState::default()
+        };
+
+        assert!(apply_keyboard(&keyboard, &mut state, &Canvas::new(1, 1, 0)));
+        assert!(state.screen_state.is_checkbox_checked_at(0));
+    }
+
+    #[test]
+    fn command_copy_and_injected_paste_route_through_keyboard_contract() {
+        let mut frame = Canvas::new(100, 40, 0);
+        frame.record_text_run("selected", 0, 0, 80, 20);
+        let mut state = StorybookWindowState {
+            selected_page: "text",
+            text_selection_start: Some((0, 0)),
+            text_selection_end: Some((80, 20)),
+            ..StorybookWindowState::default()
+        };
+        assert!(apply_keyboard_key_with_clipboard(
+            Key::C,
+            true,
+            false,
+            &mut state,
+            &frame,
+            &mut || None
+        ));
+        assert_eq!("selected", state.clipboard_text);
+
+        state.selected_page = "text-input";
+        let instance = crate::visual::window_interaction::component_instance_id_for_page(
+            state.selected_page,
+            state.selected_instance_id,
+        );
+        state
+            .screen_state
+            .register_text_input_focus_for(instance, "", false);
+        assert!(apply_keyboard_key_with_clipboard(
+            Key::V,
+            true,
+            false,
+            &mut state,
+            &frame,
+            &mut || Some("pasted".to_string())
+        ));
+        assert!(state.screen_state.text_input_value().contains("pasted"));
+    }
+
+    #[test]
+    fn keyboard_key_routes_text_area_text_input_tabs_and_unhandled_keys() {
+        let frame = Canvas::new(1, 1, 0);
+        for page in ["text-area", "text-input", "tabs"] {
+            let mut state = StorybookWindowState {
+                selected_page: page,
+                ..StorybookWindowState::default()
+            };
+            if page == "tabs" {
+                assert!(apply_keyboard_key(
+                    Key::Tab,
+                    false,
+                    false,
+                    &mut state,
+                    &frame
+                ));
+            } else {
+                let instance = crate::visual::window_interaction::component_instance_id_for_page(
+                    state.selected_page,
+                    state.selected_instance_id,
+                );
+                if page == "text-area" {
+                    state
+                        .screen_state
+                        .register_text_area_focus_for(instance, false, false);
+                } else {
+                    state
+                        .screen_state
+                        .register_text_input_focus_for(instance, "", false);
+                }
+                assert!(apply_keyboard_key(Key::A, false, false, &mut state, &frame));
+            }
+        }
+
+        let mut state = StorybookWindowState::default();
+        assert!(!apply_keyboard_key(
+            Key::F12,
+            false,
+            false,
+            &mut state,
+            &frame
+        ));
+        assert!(!apply_keyboard_key_with_clipboard(
+            Key::V,
+            true,
+            false,
+            &mut state,
+            &frame,
+            &mut || None
+        ));
+    }
 
     #[test]
     fn focused_checkbox_space_uses_native_keyboard_activation_path() {
@@ -300,5 +515,22 @@ mod tests {
             assert_eq!(expected_event, state.screen_state.last_event, "{page}");
             assert_eq!(expected_state, state.screen_state.state_label, "{page}");
         }
+    }
+
+    #[test]
+    fn tabs_shortcut_tooltip_focus_and_test_clipboard_cover_native_boundaries() {
+        let frame = Canvas::new(1, 1, 0);
+        let mut tabs = StorybookWindowState {
+            selected_page: "tabs",
+            ..StorybookWindowState::default()
+        };
+        assert!(apply_keyboard_key(Key::Tab, true, false, &mut tabs, &frame));
+
+        let mut tooltip = StorybookWindowState {
+            selected_page: "tooltip",
+            ..StorybookWindowState::default()
+        };
+        assert!(focus_default_clickable(&mut tooltip));
+        assert!(read_clipboard_text().is_none());
     }
 }

@@ -48,3 +48,19 @@ impl SelectionScreenState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{SelectionScreenState, StorybookUiOptionContract};
+
+    #[test]
+    fn unknown_combo_contract_option_is_a_noop() {
+        let mut state = SelectionScreenState::default();
+        state.apply_combo_contract_option(StorybookUiOptionContract::new(
+            "unknown", "before", "after",
+        ));
+
+        assert!(!state.combo_open);
+        assert!(!state.combo_filtered);
+    }
+}

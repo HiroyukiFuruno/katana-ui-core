@@ -218,3 +218,50 @@ fn size(value: &str) -> UiSize {
         _ => UiSize::Medium,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn legacy_option_fallbacks_and_remaining_variants_are_total() {
+        let mut props = UiProps::new("legacy", "legacy-options".into());
+        props.theme_id = "theme".to_string();
+        assert_eq!("theme", option_value("unknown", &props));
+        assert_eq!(
+            "changed",
+            props_with_option(&props, "unknown", "changed").theme_id
+        );
+        assert_eq!(
+            UiAnimationState::Idle,
+            props_with_option(&props, "loading.animation_state", "unknown")
+                .loading_indicator
+                .animation_state
+        );
+        assert_eq!(
+            UiVariant::Plain,
+            props_with_option(&props, "variant", "unknown").variant
+        );
+        assert_eq!(
+            UiTone::Neutral,
+            props_with_option(&props, "tone", "unknown").tone
+        );
+
+        assert_eq!("0", changed_usize("1"));
+        assert_eq!("64", changed_u8("1"));
+        assert_eq!(
+            "configured",
+            alternate_text("other", "configured", "replacement")
+        );
+        assert_eq!(UiSize::Large, size("large"));
+        assert_eq!(UiSize::XLarge, size("x-large"));
+        assert_eq!(UiSize::Medium, size("medium"));
+        assert_eq!(UiSize::Medium, size("unknown"));
+
+        let placement = props_with_option(&props, "context_menu.placement", "AboveEnd");
+        assert_eq!(
+            katana_ui_core::render_model::UiContextMenuPlacement::AboveEnd,
+            placement.context_menu.placement_used
+        );
+    }
+}

@@ -224,7 +224,8 @@ fn ui_rect_to_layout(rect: &UiRect) -> LayoutRect {
 #[cfg(test)]
 mod tests {
     use super::{
-        SelectableTextRun, TextSelection, copy_payload_for_selection, selected_text_run_rects,
+        SelectableTextRun, TextSelection, copy_payload_for_selection, ordered_selection_points,
+        selected_text_run_rects,
     };
 
     #[test]
@@ -310,6 +311,16 @@ mod tests {
                 super::LayoutRect::new(120, 160, 10, 20),
             ],
             selected_text_run_rects(&runs, selection)
+        );
+    }
+
+    #[test]
+    fn selectable_run_width_and_reverse_drag_order_are_observable() {
+        let run = SelectableTextRun::new("abc", 10, 20, 30, 12);
+        assert_eq!(30, run.width());
+        assert_eq!(
+            ((10, 20), (40, 50)),
+            ordered_selection_points(TextSelection::drag((40, 50), (10, 20)))
         );
     }
 }

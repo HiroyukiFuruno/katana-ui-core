@@ -233,3 +233,17 @@ fn contract_label(scenario: ScenarioContext<'_>) -> &'static str {
         "shared atom public API"
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn icon_grid_unknown_preset_uses_the_generic_option_name() {
+        let state = StorybookScreenState::default();
+        let scenario = ScenarioContext::for_test("icon", usize::MAX, &state);
+
+        assert_eq!("icon.option", preset_label(scenario));
+    }
+}

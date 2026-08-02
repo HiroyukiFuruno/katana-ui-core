@@ -18,6 +18,14 @@ fn input_rejects_multiline_value_and_directs_consumers_to_text_area() {
 }
 
 #[test]
+fn input_accepts_single_line_value() {
+    assert_eq!(
+        Ok(()),
+        Input::new("Single line").value("one line").validate()
+    );
+}
+
+#[test]
 fn adapter_ime_request_carries_multiline_preedit_and_caret() {
     let target = UiNodeId::new("composer");
     let request = ImeRequest::multiline(

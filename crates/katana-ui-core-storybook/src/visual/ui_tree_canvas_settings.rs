@@ -163,3 +163,31 @@ const fn metrics() -> SettingsListLayoutMetrics {
 const fn to_usize(value: u32) -> usize {
     value as usize
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::atom::Text;
+    use katana_ui_core::render_model::UiNode;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn panel_renders_nonduplicate_child_content() {
+        let root = UiNode::new(UiNodeKind::Panel, "Parent").child(Text::new("Child"));
+        let mut canvas = Canvas::new(240, 100, 0);
+        UiTreeCanvasRenderer::new(ThemeSnapshot::dark()).render(
+            &mut canvas,
+            &root,
+            UiTreeRenderArea {
+                x: 4,
+                y: 4,
+                width: 220,
+                height: 90,
+                scroll_y: 0.0,
+            },
+        );
+
+        assert!(canvas.text_runs().iter().any(|run| run.text() == "Parent"));
+        assert!(canvas.text_runs().iter().any(|run| run.text() == "Child"));
+    }
+}

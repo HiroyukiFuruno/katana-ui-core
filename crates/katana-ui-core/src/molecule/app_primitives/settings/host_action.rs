@@ -21,7 +21,7 @@ mod tests {
     use crate::render_model::UiHostActionPlan;
 
     #[test]
-    fn toggle_control_host_action_returns_settings_update() -> Result<(), String> {
+    fn toggle_control_host_action_returns_settings_update() {
         let list = SettingsList::new("Settings").section(
             SettingsSection::new("display", "Display").field(SettingsField::new(
                 "dark",
@@ -32,21 +32,20 @@ mod tests {
         let root = crate::render_model::UiNode::from(list.clone());
         let plan = UiHostActionPlan::collect_from_root(&root)
             .into_iter()
-            .find_map(|plan| plan.settings_field_control_target().map(|_| plan))
-            .ok_or_else(|| "settings field host action missing".to_string())?;
+            .find_map(|plan| plan.settings_field_control_target().map(|_| plan));
 
         assert_eq!(
             Some(SettingsListAction::UpdateField {
                 field_id: "dark".to_string(),
                 value: SettingsValue::Bool(false),
             }),
-            action_from_host_plan(&list, &plan)
+            plan.as_ref()
+                .and_then(|plan| action_from_host_plan(&list, plan))
         );
-        Ok(())
     }
 
     #[test]
-    fn section_host_action_returns_toggle_section() -> Result<(), String> {
+    fn section_host_action_returns_toggle_section() {
         let list = SettingsList::new("Settings").section(
             SettingsSection::new("display", "Display").field(SettingsField::new(
                 "dark",
@@ -57,15 +56,14 @@ mod tests {
         let root = crate::render_model::UiNode::from(list.clone());
         let plan = UiHostActionPlan::collect_from_root(&root)
             .into_iter()
-            .find_map(|plan| plan.settings_section_toggle_target().map(|_| plan))
-            .ok_or_else(|| "settings section host action missing".to_string())?;
+            .find_map(|plan| plan.settings_section_toggle_target().map(|_| plan));
 
         assert_eq!(
             Some(SettingsListAction::ToggleSection {
                 section_id: "display".to_string(),
             }),
-            action_from_host_plan(&list, &plan)
+            plan.as_ref()
+                .and_then(|plan| action_from_host_plan(&list, plan))
         );
-        Ok(())
     }
 }

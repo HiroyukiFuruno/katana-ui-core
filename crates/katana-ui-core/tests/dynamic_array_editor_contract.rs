@@ -88,6 +88,18 @@ fn dynamic_array_editor_validation_and_removable_guard_are_core_events() {
         }],
         editor.apply_array_action(DynamicArrayEditorAction::Validate)
     );
+
+    for action in [
+        DynamicArrayEditorAction::RemoveItem("missing".to_string()),
+        DynamicArrayEditorAction::ReorderItem { from: 0, to: 0 },
+        DynamicArrayEditorAction::ReorderItem { from: 99, to: 0 },
+        DynamicArrayEditorAction::EditItem {
+            id: "missing".to_string(),
+            value: "Ignored".to_string(),
+        },
+    ] {
+        assert!(editor.apply_array_action(action).is_empty());
+    }
 }
 
 fn row(id: &str, label: &str) -> ArrayEditorItem {

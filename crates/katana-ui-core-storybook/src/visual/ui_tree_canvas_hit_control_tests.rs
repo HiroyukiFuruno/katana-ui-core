@@ -1,5 +1,8 @@
 use super::*;
 use crate::test_assert::KucTestExpect;
+use crate::visual::ui_tree_canvas_hit_metrics::NODE_GAP;
+use crate::visual::ui_tree_canvas_text_metrics::UiTreeDocumentTypography;
+use katana_ui_core::render_model::UiTextProps;
 
 #[test]
 fn collects_accordion_header_action_rect_with_kuc_cursor() {
@@ -28,6 +31,89 @@ fn collects_accordion_header_action_rect_with_kuc_cursor() {
         },
         hits[0].rect
     );
+}
+
+#[test]
+fn open_accordion_collects_indented_and_html_aligned_child_hits() {
+    for (role, expected_x) in [("", 19), ("html-accordion", 3)] {
+        let root = UiNode::from(Accordion::new("Show details").open(true).child(
+            UiNode::from(Text::new("body")).host_action(UiHostActionSpec::command("body", "Body")),
+        ))
+        .text(UiTextProps {
+            role: role.to_string(),
+            ..UiTextProps::default()
+        });
+
+        let hits = UiTreeHostActionHitCollector::collect(
+            &root,
+            UiTreeRenderArea {
+                x: 3,
+                y: 5,
+                width: 220,
+                height: 120,
+                scroll_y: 0.0,
+            },
+        );
+
+        assert!(
+            hits.iter()
+                .any(|hit| hit.action.action_id == "body" && hit.rect.x == expected_x),
+            "{role}"
+        );
+    }
+}
+
+#[test]
+fn unframed_image_hit_uses_natural_target_size_and_gap_advance() {
+    let image: UiNode =
+        ImageSurface::from_rgba("image", "hit-natural", 2, 2, [255, 0, 0, 255].repeat(4))
+            .kuc_expect("valid image")
+            .into();
+    let image_common = image
+        .props()
+        .common
+        .clone()
+        .semantic_node_id("image-semantic");
+    let image = image.common(image_common);
+    let root = UiNode::new(UiNodeKind::Column, "").child(image).child(
+        UiNode::from(Button::new("after"))
+            .host_action(UiHostActionSpec::command("after", "After image")),
+    );
+
+    let area = UiTreeRenderArea {
+        x: 7,
+        y: 11,
+        width: 80,
+        height: 80,
+        scroll_y: 0.0,
+    };
+    let hits = UiTreeHostActionHitCollector::collect(&root, area);
+    let node_hits = UiTreeHostActionHitCollector::collect_node_hits_with_renderers(
+        &root,
+        area,
+        &TextRenderer::load(&UiCoreFacade::default(), "body"),
+        &TextRenderer::load(&UiCoreFacade::default(), "body"),
+        &TextRenderer::load(&UiCoreFacade::default(), "code"),
+        UiTreeDocumentTypography::default(),
+    );
+    let image_hit = node_hits
+        .iter()
+        .find(|hit| {
+            hit.semantic_node_id
+                .as_ref()
+                .is_some_and(|id| id.as_str() == "image-semantic")
+        })
+        .kuc_expect("image hit");
+    let button_hit = hits
+        .iter()
+        .find(|hit| hit.action.action_id == "after")
+        .kuc_expect("button hit");
+
+    assert_eq!(7, image_hit.rect.x);
+    assert_eq!(11, image_hit.rect.y);
+    assert_eq!(2, image_hit.rect.width);
+    assert_eq!(2, image_hit.rect.height);
+    assert_eq!(11 + 2 + NODE_GAP, button_hit.rect.y);
 }
 
 #[test]

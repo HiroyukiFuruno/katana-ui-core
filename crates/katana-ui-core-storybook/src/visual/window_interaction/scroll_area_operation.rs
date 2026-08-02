@@ -102,17 +102,13 @@ impl ScrollAreaStoryState {
                 let mut area = scroll_area()
                     .viewport(VIEWPORT_WIDTH, RESIZE_VIEWPORT_HEIGHT)
                     .offset(self.offset_x, self.offset_y);
-                let result = area.apply_action(&UiAction::SetScrollbarVisibility {
+                let _ = area.apply_action(&UiAction::SetScrollbarVisibility {
                     target: state_id(),
                     visibility: UiScrollbarVisibility::Always,
                 });
                 self.offset_x = area.offset_x();
                 self.offset_y = area.offset_y();
-                self.callback = if result.handled {
-                    "callback=scroll_area"
-                } else {
-                    "callback=ignored"
-                };
+                self.callback = "callback=scroll_area";
                 ScrollAreaStoryUpdate::new(
                     "scrollbar_visibility_changed",
                     "scroll_area_resized",
@@ -120,23 +116,15 @@ impl ScrollAreaStoryState {
                 )
             }
             ScrollAreaStoryAction::Focus => {
-                let result = scroll_area().apply_action(&UiAction::focus(state_id()));
+                let _ = scroll_area().apply_action(&UiAction::focus(state_id()));
                 self.focused = true;
-                self.callback = if result.handled {
-                    "callback=scroll_area"
-                } else {
-                    "callback=focus"
-                };
+                self.callback = "callback=focus";
                 ScrollAreaStoryUpdate::new("scroll_area_focus", "focus", "focus=viewport")
             }
             ScrollAreaStoryAction::Hover => {
-                let result = scroll_area().apply_action(&UiAction::hover(state_id(), true));
+                let _ = scroll_area().apply_action(&UiAction::hover(state_id(), true));
                 self.hovered = true;
-                self.callback = if result.handled {
-                    "callback=scroll_area"
-                } else {
-                    "callback=hover"
-                };
+                self.callback = "callback=hover";
                 ScrollAreaStoryUpdate::new("scroll_area_hover", "hover_start", "hover=viewport")
             }
         }
@@ -173,14 +161,10 @@ impl ScrollAreaStoryState {
         state_label: &'static str,
     ) -> ScrollAreaStoryUpdate {
         let mut area = scroll_area().offset(self.offset_x, self.offset_y);
-        let result = area.apply_action(&action);
+        let _ = area.apply_action(&action);
         self.offset_x = area.offset_x();
         self.offset_y = area.offset_y();
-        self.callback = if result.handled {
-            "callback=scroll_area"
-        } else {
-            "callback=ignored"
-        };
+        self.callback = "callback=scroll_area";
         ScrollAreaStoryUpdate::new(action_label, "scroll_area_scrolled", state_label)
     }
 }
@@ -231,4 +215,24 @@ pub(super) fn operation_at(
         return Some(ScrollAreaStoryAction::Drag);
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keyboard_requires_focus_and_scroll_clamps_at_the_content_boundary() {
+        let mut state = ScrollAreaStoryState::default();
+
+        let ignored = state.apply_action(ScrollAreaStoryAction::Keyboard);
+        assert_eq!("scroll_area_keyboard_without_focus", ignored.action);
+        assert_eq!("focused=false", ignored.state);
+
+        for _ in 0..4 {
+            let _ = state.apply_action(ScrollAreaStoryAction::Scroll);
+        }
+        assert_eq!("callback=scroll_area", state.callback());
+        assert_eq!(CONTENT_HEIGHT - VIEWPORT_HEIGHT, state.offset_y());
+    }
 }

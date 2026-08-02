@@ -20,11 +20,19 @@ pub(super) fn from_main_window(
     modal_frame: &Canvas,
 ) -> Result<ModalWindowPlan, ModalWindowPlacementError> {
     let (x, y) = main.get_position();
-    let parent_rect = WindowRect::new(
+    from_geometry(
         WindowPoint::new(x as f32, y as f32),
         WindowSize::new(main_frame.width() as f32, main_frame.height() as f32),
-    );
-    let modal_size = WindowSize::new(modal_frame.width() as f32, modal_frame.height() as f32);
+        WindowSize::new(modal_frame.width() as f32, modal_frame.height() as f32),
+    )
+}
+
+fn from_geometry(
+    parent_origin: WindowPoint,
+    parent_size: WindowSize,
+    modal_size: WindowSize,
+) -> Result<ModalWindowPlan, ModalWindowPlacementError> {
+    let parent_rect = WindowRect::new(parent_origin, parent_size);
     ModalWindowPlacement::same_display(
         WindowId::new("storybook-main"),
         WindowId::new("storybook-modal"),
@@ -71,4 +79,43 @@ fn display_around_parent(parent_rect: WindowRect) -> DisplayBounds {
         ),
         1.0,
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_assert::KucTestExpect;
+
+    #[test]
+    fn geometry_plan_centers_modal_on_the_parent_display() {
+        let plan = from_geometry(
+            WindowPoint::new(320.0, 180.0),
+            WindowSize::new(1280.0, 720.0),
+            WindowSize::new(480.0, 320.0),
+        )
+        .kuc_expect("valid geometry must resolve");
+
+        assert_eq!(WindowId::new("storybook-main"), plan.parent_window_id);
+        assert_eq!(WindowId::new("storybook-modal"), plan.modal_window_id);
+        assert!(plan.same_display);
+        assert!(plan.frontmost);
+        assert_eq!(720.0, plan.position.x);
+        assert_eq!(380.0, plan.position.y);
+    }
+
+    #[test]
+    fn display_bounds_include_parent_with_padding() {
+        let parent = WindowRect::new(
+            WindowPoint::new(100.0, 200.0),
+            WindowSize::new(800.0, 600.0),
+        );
+        let display = display_around_parent(parent);
+
+        assert_eq!("parent-display", display.name);
+        assert_eq!(-156.0, display.rect.origin.x);
+        assert_eq!(-56.0, display.rect.origin.y);
+        assert_eq!(1312.0, display.rect.size.width);
+        assert_eq!(1112.0, display.rect.size.height);
+        assert_eq!(1.0, display.scale_factor);
+    }
 }

@@ -279,3 +279,50 @@ fn is_virtualized_page(page: &str) -> bool {
 fn is_binary_choice_page(page: &str) -> bool {
     matches!(page, "checkbox" | "radio" | "toggle" | "segmented-toggle")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::StoryCatalog;
+    use crate::test_assert::KucTestExpect;
+    use crate::visual::panel_screen_state::PanelOptionControl;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn inspector_rows_cover_panel_hidden_scrollbar_and_active_button_state() {
+        let examples = StoryCatalog.examples();
+        let panel = examples
+            .iter()
+            .find(|example| example.page == "panel")
+            .kuc_expect("panel story must exist");
+        let mut panel_state = StorybookScreenState::default();
+        panel_state
+            .panel
+            .apply_option(PanelOptionControl::ScrollbarVisible(false));
+        let panel_rows = settings_rows(
+            panel.tree.root(),
+            panel,
+            ScenarioContext::for_test("panel", 0, &panel_state),
+        );
+        assert!(panel_rows.iter().any(|row| row.contains("off")));
+        assert_eq!("Panel settings", settings_title(panel));
+
+        let button = examples
+            .iter()
+            .find(|example| example.page == "button")
+            .kuc_expect("button story must exist");
+        let button_state = StorybookScreenState {
+            action_count: 1,
+            settings_revision: 1,
+            ..StorybookScreenState::default()
+        };
+        let spec = StorybookInteractionSpec::for_page("button");
+        let button_rows = settings_rows(
+            button.tree.root(),
+            button,
+            ScenarioContext::for_test("button", 0, &button_state),
+        );
+        assert!(button_rows.iter().any(|row| row.contains(spec.after)));
+        assert!(button_rows.iter().any(|row| row.contains(spec.event)));
+    }
+}

@@ -120,3 +120,36 @@ pub(super) fn is_export_heading_3_role(role: &str) -> bool {
 pub(super) fn is_long_heading_2_role(role: &str) -> bool {
     role == "heading-2-long"
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn compact_heading_metrics_cover_export_and_html_roles() {
+        assert_eq!(
+            COMPACT_HEADING_2_LINE_HEIGHT,
+            compact_heading_line_height("heading-2-export")
+        );
+        assert_eq!(
+            COMPACT_HEADING_3_LINE_HEIGHT,
+            compact_heading_line_height("heading-3-export")
+        );
+        assert_eq!(
+            COMPACT_HEADING_LINE_HEIGHT,
+            compact_heading_line_height("heading-export")
+        );
+        assert!(is_html_role("heading-html-1"));
+        assert!(is_html_role("html-accordion-body-preview"));
+        assert!(!is_html_role("body"));
+    }
+
+    #[test]
+    fn html_body_font_size_only_compacts_small_document_text() {
+        assert_eq!(
+            COMPACT_HTML_BODY_FONT_SIZE,
+            html_body_font_size(super::super::COMPACT_BODY_FONT_SIZE)
+        );
+        assert_eq!(18.0, html_body_font_size(18.0));
+    }
+}

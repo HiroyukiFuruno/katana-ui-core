@@ -13,6 +13,8 @@ use crate::render_model::{UiNode, UiNodeKind};
 
 #[test]
 fn typed_options_cover_workspace_tab_and_group_contract() {
+    let owned_tab_id = WorkspaceTabId::from("owned-tab".to_string());
+    let owned_group_id = WorkspaceTabGroupId::from("owned-group".to_string());
     let tab = WorkspaceTab::new("draft", "Draft")
         .icon("<svg/>")
         .dirty(true)
@@ -43,6 +45,8 @@ fn typed_options_cover_workspace_tab_and_group_contract() {
     assert!(tab.pinned);
     assert_eq!("accent", group.color);
     assert!(group.collapsed);
+    assert_eq!("owned-tab", owned_tab_id.as_str());
+    assert_eq!("owned-group", owned_group_id.as_str());
 }
 
 #[test]
@@ -102,6 +106,20 @@ fn context_command_sets_match_tab_and_group_state() {
     assert!(group_commands.contains(&WorkspaceGroupContextCommand::Expand));
     assert!(group_commands.contains(&WorkspaceGroupContextCommand::Ungroup));
     assert!(group_commands.contains(&WorkspaceGroupContextCommand::Close));
+
+    assert!(
+        WorkspaceTabContextMenu::tab_commands_with_restore(
+            &regular,
+            std::slice::from_ref(&group),
+            true
+        )
+        .contains(&WorkspaceTabContextCommand::RestoreClosed)
+    );
+    let group_submenu = WorkspaceTabContextMenu::tab_command_item(
+        WorkspaceTabContextCommand::MoveToGroup,
+        std::slice::from_ref(&group),
+    );
+    assert_eq!(ContextMenuItemKind::Submenu, group_submenu.kind);
 }
 
 #[test]
@@ -225,6 +243,7 @@ fn all_tab_context_command_ids_round_trip_to_public_actions() {
             Some(command),
             WorkspaceTabContextCommand::from_id(command.id())
         );
+        assert!(!command.label().is_empty());
         assert_eq!(expected_action, command.to_tab_action(tab_id.clone()));
     }
 }
@@ -251,6 +270,22 @@ fn context_menu_command_ids_round_trip_to_typed_actions() {
 fn group_context_commands_map_to_public_actions() {
     let expanded = WorkspaceTabGroup::new("docs", "Docs").collapsed(false);
     let collapsed = WorkspaceTabGroup::new("docs", "Docs").collapsed(true);
+
+    for command in [
+        WorkspaceGroupContextCommand::Rename,
+        WorkspaceGroupContextCommand::SetColor,
+        WorkspaceGroupContextCommand::Collapse,
+        WorkspaceGroupContextCommand::Expand,
+        WorkspaceGroupContextCommand::Move,
+        WorkspaceGroupContextCommand::Ungroup,
+        WorkspaceGroupContextCommand::Close,
+    ] {
+        assert_eq!(
+            Some(command),
+            WorkspaceGroupContextCommand::from_id(command.id())
+        );
+        assert!(!command.label().is_empty());
+    }
 
     assert_eq!(
         Some(WorkspaceTabBarAction::ToggleGroupCollapse {

@@ -29,8 +29,8 @@ fn card_report(
             after_value: option.after.to_string(),
         },
         state: BeforeAfterReport {
-            before: option.state("before"),
-            after: option.state("after"),
+            before: option.state(option.before),
+            after: option.state(option.after),
         },
         preview: BeforeAfterReport {
             before: format!("{marker}:preview:{}={}", option.name, option.before),
@@ -77,12 +77,7 @@ struct CardSettingOption {
 }
 
 impl CardSettingOption {
-    fn state(self, phase: &str) -> String {
-        let value = match phase {
-            "before" => self.before,
-            "after" => self.after,
-            _ => unreachable!("card setting phase is controlled by report builder"),
-        };
+    fn state(self, value: &str) -> String {
         format!("card option:{}={}", self.name, value)
     }
 }

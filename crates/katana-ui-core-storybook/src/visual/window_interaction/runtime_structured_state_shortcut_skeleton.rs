@@ -10,11 +10,7 @@ impl ShortcutComboRuntimeState {
         RuntimeStructuredUpdate::new(
             "shortcut_platform_preview",
             "shortcut_display_changed",
-            if self.platform_preview_macos {
-                "combo=Command+K"
-            } else {
-                "combo=unknown"
-            },
+            shortcut_platform_label(self.platform_preview_macos),
         )
     }
 
@@ -47,11 +43,7 @@ impl SkeletonClusterRuntimeState {
         RuntimeStructuredUpdate::new(
             "skeleton_cluster_preset_apply",
             "skeleton_cluster_changed",
-            if self.preview_child_count == 2 {
-                "items=2"
-            } else {
-                "items=unknown"
-            },
+            skeleton_child_count_label(self.preview_child_count),
         )
     }
 
@@ -61,11 +53,7 @@ impl SkeletonClusterRuntimeState {
         RuntimeStructuredUpdate::new(
             "skeleton_cluster_focus",
             "focus",
-            if live_region == "Loading card loading" {
-                "focus=cluster"
-            } else {
-                "focus=unknown"
-            },
+            skeleton_focus_label(live_region.as_str()),
         )
     }
 
@@ -79,11 +67,7 @@ impl SkeletonClusterRuntimeState {
         RuntimeStructuredUpdate::new(
             "skeleton_cluster_keyboard_reduce_motion",
             "skeleton_reduced_motion_changed",
-            if self.keyboard_reduced_motion {
-                "reduced_motion=true"
-            } else {
-                "reduced_motion=ignored"
-            },
+            skeleton_reduced_motion_label(self.keyboard_reduced_motion),
         )
     }
 
@@ -95,6 +79,38 @@ impl SkeletonClusterRuntimeState {
             "skeleton_cluster.reduced_motion" => self.reduced_motion = true,
             _ => {}
         }
+    }
+}
+
+const fn shortcut_platform_label(macos: bool) -> &'static str {
+    if macos {
+        "combo=Command+K"
+    } else {
+        "combo=unknown"
+    }
+}
+
+const fn skeleton_child_count_label(count: usize) -> &'static str {
+    if count == 2 {
+        "items=2"
+    } else {
+        "items=unknown"
+    }
+}
+
+fn skeleton_focus_label(live_region: &str) -> &'static str {
+    if live_region == "Loading card loading" {
+        "focus=cluster"
+    } else {
+        "focus=unknown"
+    }
+}
+
+const fn skeleton_reduced_motion_label(handled: bool) -> &'static str {
+    if handled {
+        "reduced_motion=true"
+    } else {
+        "reduced_motion=ignored"
     }
 }
 
@@ -128,4 +144,38 @@ fn skeleton_reduced_motion_action_handled() -> bool {
         Skeleton::new("line", SkeletonShape::Rect).animation(SkeletonAnimation::Shimmer);
     let action = UiAction::reduced_motion(skeleton.state_id().clone(), true);
     skeleton.apply_action(&action).handled
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ShortcutComboRuntimeState, SkeletonClusterRuntimeState, shortcut_platform_label,
+        skeleton_child_count_label, skeleton_focus_label, skeleton_reduced_motion_label,
+    };
+
+    #[test]
+    fn shortcut_and_skeleton_labels_cover_fallbacks_and_unknown_options_are_noops() {
+        assert_eq!("combo=Command+K", shortcut_platform_label(true));
+        assert_eq!("combo=unknown", shortcut_platform_label(false));
+        assert_eq!("items=2", skeleton_child_count_label(2));
+        assert_eq!("items=unknown", skeleton_child_count_label(3));
+        assert_eq!(
+            "focus=cluster",
+            skeleton_focus_label("Loading card loading")
+        );
+        assert_eq!("focus=unknown", skeleton_focus_label("unknown"));
+        assert_eq!("reduced_motion=true", skeleton_reduced_motion_label(true));
+        assert_eq!(
+            "reduced_motion=ignored",
+            skeleton_reduced_motion_label(false)
+        );
+
+        let mut shortcut = ShortcutComboRuntimeState::default();
+        shortcut.apply_option("unknown.setting");
+        assert_eq!(ShortcutComboRuntimeState::default(), shortcut);
+
+        let mut skeleton = SkeletonClusterRuntimeState::default();
+        skeleton.apply_option("unknown.setting");
+        assert_eq!(SkeletonClusterRuntimeState::default(), skeleton);
+    }
 }

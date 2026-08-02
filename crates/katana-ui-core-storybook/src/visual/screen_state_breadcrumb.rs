@@ -7,16 +7,18 @@ use katana_ui_core::render_model::UiStateId;
 
 impl StorybookScreenState {
     pub(in crate::visual) fn register_breadcrumb_click(&mut self, index: usize) {
-        if !core_breadcrumb_selection(index).handled {
-            return;
-        }
+        assert!(
+            core_breadcrumb_selection(index).handled,
+            "the breadcrumb selection action must be handled"
+        );
         self.apply_breadcrumb_route(index);
     }
 
     pub(in crate::visual) fn register_breadcrumb_hover(&mut self, index: usize) {
-        if !core_breadcrumb_transient(UiAction::hover, true).handled {
-            return;
-        }
+        assert!(
+            core_breadcrumb_transient(UiAction::hover, true).handled,
+            "the breadcrumb hover action must be handled"
+        );
         self.action_count += 1;
         self.apply_breadcrumb_transient(
             "breadcrumb_hover",
@@ -28,9 +30,10 @@ impl StorybookScreenState {
     }
 
     pub(in crate::visual) fn register_breadcrumb_focus(&mut self, index: usize) {
-        if !core_breadcrumb_transient(|target, _| UiAction::focus(target), true).handled {
-            return;
-        }
+        assert!(
+            core_breadcrumb_transient(|target, _| UiAction::focus(target), true).handled,
+            "the breadcrumb focus action must be handled"
+        );
         self.action_count += 1;
         self.button_focused = true;
         self.apply_breadcrumb_transient(
@@ -50,9 +53,10 @@ impl StorybookScreenState {
             return;
         }
         const NEXT_INDEX: usize = 1;
-        if !core_breadcrumb_selection(NEXT_INDEX).handled {
-            return;
-        }
+        assert!(
+            core_breadcrumb_selection(NEXT_INDEX).handled,
+            "the fixed breadcrumb keyboard target must be selectable"
+        );
         self.apply_breadcrumb_route(NEXT_INDEX);
     }
 
@@ -153,4 +157,36 @@ fn breadcrumb_contract_model() -> Breadcrumb {
         .placement("bottom-start")
         .selected_index(0)
         .value("root")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn breadcrumb_rejects_invalid_selection_and_contract_options() {
+        let mut state = StorybookScreenState::default();
+        state.register_breadcrumb_click(usize::MAX);
+        assert_eq!(1, state.action_count);
+        assert_eq!("route=2", state.state_label);
+
+        state.register_breadcrumb_keyboard_next();
+        assert_eq!("breadcrumb_keyboard_ignored", state.last_event);
+        state.register_breadcrumb_focus(0);
+        state.register_breadcrumb_keyboard_next();
+        assert_eq!("route_changed", state.last_event);
+
+        assert!(
+            !state.apply_breadcrumb_contract_setting(StorybookUiOptionContract::new(
+                "unknown", "0", "1"
+            ))
+        );
+        assert!(
+            !state.apply_breadcrumb_contract_setting(StorybookUiOptionContract::new(
+                "interaction.selected_index",
+                "0",
+                "invalid"
+            ))
+        );
+    }
 }

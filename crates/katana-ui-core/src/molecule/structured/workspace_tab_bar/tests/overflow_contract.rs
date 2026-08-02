@@ -51,6 +51,28 @@ fn overflow_stays_hidden_when_all_measured_tabs_fit() {
 }
 
 #[test]
+fn overflow_keeps_visible_active_tab_and_promotes_active_when_none_fit() {
+    let measured = measured_tabs();
+    let visible_active = WorkspaceTabOverflowPlanner::compute(
+        WorkspaceTabOverflowConfig::new(230, 40),
+        &measured,
+        Some(&WorkspaceTabId::new("one")),
+    );
+    assert!(
+        visible_active
+            .visible_tab_ids
+            .contains(&WorkspaceTabId::new("one"))
+    );
+
+    let promoted = WorkspaceTabOverflowPlanner::compute(
+        WorkspaceTabOverflowConfig::new(40, 40),
+        &measured,
+        Some(&WorkspaceTabId::new("three")),
+    );
+    assert_eq!(vec![WorkspaceTabId::new("three")], promoted.visible_tab_ids);
+}
+
+#[test]
 fn scroll_planner_follows_active_tab_when_external_selection_moves_right() {
     let measured = measured_tabs();
 

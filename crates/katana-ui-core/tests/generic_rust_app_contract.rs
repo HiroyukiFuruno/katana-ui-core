@@ -5,9 +5,9 @@ use katana_ui_core::render_model::{UiNode, UiNodeId, UiNodeKind, UiStateId};
 use katana_ui_core::theme::ThemeSnapshot;
 use katana_ui_core::widget::atoms::{Button, Input, TextArea, TextAreaAction, TextAreaEvent};
 use katana_ui_core::widget::molecules::{
-    CloseableTab, CloseableTabGroup, CloseableTabId, CloseableTabScrollConfig,
-    CloseableTabScrollPlanner, CloseableTabStrip, CloseableTabStripAction, CloseableTabStripEvent,
-    MeasuredCloseableTab,
+    CloseableTab, CloseableTabGroup, CloseableTabGroupId, CloseableTabGroupTarget, CloseableTabId,
+    CloseableTabScrollConfig, CloseableTabScrollPlanner, CloseableTabStrip,
+    CloseableTabStripAction, CloseableTabStripEvent, MeasuredCloseableTab,
 };
 
 #[path = "generic_rust_app_contract/support.rs"]
@@ -282,6 +282,119 @@ fn generic_app_tabs_can_follow_externally_selected_tab_by_scroll() {
     assert!(plan.overflow_scroll_enabled);
     assert!(plan.active_tab_visible);
     assert_eq!(80, plan.scroll_x);
+}
+
+#[test]
+fn generic_app_tab_group_mutations_keep_invalid_and_idempotent_actions_as_noops() {
+    let mut tabs = CloseableTabStrip::new("workspace")
+        .group(CloseableTabGroup::new("docs", "Docs"))
+        .group(CloseableTabGroup::new("review", "Review"))
+        .tab(CloseableTab::new("pinned", "Pinned").pinned(true))
+        .tab(CloseableTab::new("editor", "Editor").group_id("docs"))
+        .tab(CloseableTab::new("preview", "Preview").group_id("review"));
+    let missing_tab = CloseableTabId::new("missing");
+    let missing_group = CloseableTabGroupId::new("missing");
+
+    for action in [
+        CloseableTabStripAction::PinTab {
+            tab_id: missing_tab.clone(),
+        },
+        CloseableTabStripAction::PinTab {
+            tab_id: CloseableTabId::new("pinned"),
+        },
+        CloseableTabStripAction::MoveToGroup {
+            tab_id: missing_tab,
+            target: CloseableTabGroupTarget::Ungrouped,
+        },
+        CloseableTabStripAction::ToggleGroupCollapse {
+            group_id: missing_group.clone(),
+        },
+        CloseableTabStripAction::MoveGroup {
+            group_id: missing_group.clone(),
+            to_index: 0,
+        },
+        CloseableTabStripAction::MoveGroup {
+            group_id: CloseableTabGroupId::new("docs"),
+            to_index: 0,
+        },
+        CloseableTabStripAction::RenameGroup {
+            group_id: missing_group.clone(),
+            label: "Missing".to_string(),
+        },
+        CloseableTabStripAction::RenameGroup {
+            group_id: CloseableTabGroupId::new("docs"),
+            label: "Docs".to_string(),
+        },
+        CloseableTabStripAction::SetGroupColor {
+            group_id: missing_group.clone(),
+            color: "#fff".to_string(),
+        },
+        CloseableTabStripAction::SetGroupColor {
+            group_id: CloseableTabGroupId::new("docs"),
+            color: String::new(),
+        },
+        CloseableTabStripAction::Ungroup {
+            group_id: missing_group.clone(),
+        },
+        CloseableTabStripAction::CloseGroup {
+            group_id: missing_group.clone(),
+        },
+        CloseableTabStripAction::HoverCollapsedGroupForDrop {
+            group_id: CloseableTabGroupId::new("docs"),
+            elapsed_ms: 0,
+        },
+        CloseableTabStripAction::HoverCollapsedGroupForDrop {
+            group_id: missing_group,
+            elapsed_ms: u16::MAX,
+        },
+        CloseableTabStripAction::HoverCollapsedGroupForDrop {
+            group_id: CloseableTabGroupId::new("docs"),
+            elapsed_ms: u16::MAX,
+        },
+    ] {
+        assert!(tabs.apply_action(action).is_empty());
+    }
+}
+
+#[test]
+fn generic_app_tab_scroll_handles_absent_left_and_already_visible_active_tabs() {
+    let measured = vec![
+        MeasuredCloseableTab::new("home", 80),
+        MeasuredCloseableTab::new("editor", 80),
+        MeasuredCloseableTab::new("preview", 80),
+    ];
+
+    let absent = CloseableTabScrollPlanner::follow_active(
+        CloseableTabScrollConfig::new(100, 999),
+        &measured,
+        None,
+    );
+    assert_eq!(140, absent.scroll_x);
+    assert!(!absent.active_tab_visible);
+
+    let missing = CloseableTabScrollPlanner::follow_active(
+        CloseableTabScrollConfig::new(100, 10),
+        &measured,
+        Some(&CloseableTabId::new("missing")),
+    );
+    assert_eq!(10, missing.scroll_x);
+    assert!(!missing.active_tab_visible);
+
+    let left = CloseableTabScrollPlanner::follow_active(
+        CloseableTabScrollConfig::new(100, 100),
+        &measured,
+        Some(&CloseableTabId::new("home")),
+    );
+    assert_eq!(0, left.scroll_x);
+    assert!(left.active_tab_visible);
+
+    let visible = CloseableTabScrollPlanner::follow_active(
+        CloseableTabScrollConfig::new(100, 70),
+        &measured,
+        Some(&CloseableTabId::new("editor")),
+    );
+    assert_eq!(70, visible.scroll_x);
+    assert!(visible.active_tab_visible);
 }
 
 fn generic_app_tree() -> katana_ui_core::render_model::UiTree {

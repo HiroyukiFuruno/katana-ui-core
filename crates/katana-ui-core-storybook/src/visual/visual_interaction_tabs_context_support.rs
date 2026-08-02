@@ -116,3 +116,16 @@ pub(super) fn group_by_id<'a>(
         "group exists",
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn context_helpers_report_missing_menu_tab_and_group() {
+        let mut state = tabs_state();
+        assert!(click_open_context_command(&mut state, 0).is_err());
+        assert!(open_context_menu(&mut state, "missing").is_err());
+        assert!(open_group_context_menu(&mut state, "missing").is_err());
+    }
+}

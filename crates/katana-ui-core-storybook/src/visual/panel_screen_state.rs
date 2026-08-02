@@ -246,3 +246,32 @@ fn next_scroll(current: u32, max_scroll: u32, delta: f32) -> u32 {
         delta,
     ) as u32
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn panel_options_update_each_child_and_scrollbar_visibility() {
+        let mut state = PanelScreenState::default();
+
+        let navigation =
+            state.apply_option(PanelOptionControl::ActivePanel(PanelChildKey::Navigation));
+        assert_eq!("nav", navigation.value);
+        assert_eq!(PanelChildKey::Navigation, state.active_panel);
+        assert_eq!(
+            NAV_SCROLL_Y,
+            state.child(PanelChildKey::Navigation).scroll_y
+        );
+
+        let shown = state.apply_option(PanelOptionControl::ScrollbarVisible(true));
+        assert_eq!("panel_scrollbar_show", shown.action);
+        assert_eq!("visible", shown.value);
+        assert!(state.child(PanelChildKey::Navigation).scrollbar_visible);
+
+        let hidden = state.apply_option(PanelOptionControl::ScrollbarVisible(false));
+        assert_eq!("panel_scrollbar_hide", hidden.action);
+        assert_eq!("hidden", hidden.value);
+        assert!(!state.child(PanelChildKey::Navigation).scrollbar_visible);
+    }
+}

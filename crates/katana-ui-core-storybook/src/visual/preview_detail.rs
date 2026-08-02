@@ -111,7 +111,7 @@ pub(super) fn draw_selected_hero(
         render.palette.muted,
     );
     let component_x = HERO_PREVIEW_X.saturating_sub(preview_x);
-    canvas.with_clip(PREVIEW_X, hero_y, HERO_WIDTH, hero_height, |canvas| {
+    canvas.with_clip(PREVIEW_X, hero_y, HERO_WIDTH, hero_height, &mut |canvas| {
         dedicated::draw_page(
             canvas,
             dedicated::DedicatedPageRequest {
@@ -148,4 +148,41 @@ fn selected_example<'a>(
     examples
         .iter()
         .find(|example| example.page == selected_page)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Canvas, RenderContext, ScenarioContext, draw_runtime_state};
+    use crate::visual::palette::VisualPalette;
+    use crate::visual::screen_state::StorybookScreenState;
+    use crate::visual::text::TextRenderer;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn unknown_page_has_no_runtime_state_surface() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let text = TextRenderer::load(&facade, facade.default_font_role());
+        let palette = VisualPalette::from_theme(facade.theme());
+        let render = RenderContext {
+            text: &text,
+            code_text: &text,
+            examples: &[],
+            palette: &palette,
+        };
+        let state = StorybookScreenState::default();
+        let mut canvas = Canvas::new(16, 16, palette.background);
+
+        draw_runtime_state(
+            &mut canvas,
+            render,
+            ScenarioContext::for_test("unknown", 0, &state),
+        );
+        assert!(
+            canvas
+                .pixels()
+                .iter()
+                .all(|pixel| *pixel == palette.background)
+        );
+    }
 }

@@ -130,6 +130,47 @@ mod tests {
         assert_eq!(Some(palette.background), pixel_at(&canvas, 16, 28));
     }
 
+    #[test]
+    fn highlight_backgrounds_take_priority_over_inline_code() {
+        let palette = UiTreeCanvasPalette::from_theme(&ThemeSnapshot::dark());
+        let metrics = metrics_for_test();
+        let mut canvas = Canvas::new(80, 40, palette.background);
+
+        draw_span_background(
+            &mut canvas,
+            10,
+            8,
+            20,
+            UiTextSpanStyle {
+                current_highlight: true,
+                highlight: true,
+                inline_code: true,
+                ..UiTextSpanStyle::default()
+            },
+            palette,
+            metrics,
+        );
+        assert_eq!(
+            Some(super::CURRENT_HIGHLIGHT_BACKGROUND),
+            pixel_at(&canvas, 10, 8)
+        );
+
+        draw_span_background(
+            &mut canvas,
+            40,
+            8,
+            20,
+            UiTextSpanStyle {
+                highlight: true,
+                inline_code: true,
+                ..UiTextSpanStyle::default()
+            },
+            palette,
+            metrics,
+        );
+        assert_eq!(Some(super::HIGHLIGHT_BACKGROUND), pixel_at(&canvas, 40, 8));
+    }
+
     fn metrics_for_test() -> UiTreeTextMetrics {
         UiTreeTextMetrics {
             font_size: 14.0,

@@ -64,13 +64,10 @@ fn draw_loading_dots(
 
 fn loading_phase(node: &UiNode) -> usize {
     let indicator = &node.props().loading_indicator;
-    if indicator.reduced_motion
-        || matches!(
+    let animated = !indicator.reduced_motion
+        && !matches!(
             indicator.animation_state,
             UiAnimationState::Idle | UiAnimationState::Paused
-        )
-    {
-        return 0;
-    }
-    usize::from(node.props().interaction.animation_phase)
+        );
+    usize::from(node.props().interaction.animation_phase) * usize::from(animated)
 }

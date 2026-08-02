@@ -97,11 +97,8 @@ impl ToastStackManager {
         if self.state.queued.len() < self.options.max_queued {
             return Vec::new();
         }
-        let dropped_id = self
-            .state
-            .queued
-            .pop_front()
-            .map_or_else(|| incoming_id.to_string(), |it| it.id);
+        let dropped_id = self.state.queued[0].id.clone();
+        let _ = self.state.queued.pop_front();
         self.record(ToastStackEvent::ToastQueueOverflow { dropped_id })
     }
 }

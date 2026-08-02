@@ -1,6 +1,9 @@
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
-use katana_ui_core::molecule::{ChoiceItem, ComboBox, SelectBox};
+use katana_ui_core::molecule::{
+    Breadcrumb, ChoiceItem, ComboBox, MenuButton, SelectBox, SelectionList, SideMenu, Tabs,
+};
+use katana_ui_core::render_model::UiNode;
 
 const LIGHT_INDEX: usize = 1;
 const DISABLED_INDEX: usize = 2;
@@ -97,4 +100,37 @@ fn combo_box_filters_focuses_and_selects_through_core_actions() {
     assert!(!selected.after.open);
     assert!(focus.after.focused);
     assert!(hover.after.hovered);
+}
+
+#[test]
+fn every_choice_molecule_exposes_disabled_and_readonly_state() {
+    let nodes = [
+        UiNode::from(SelectBox::new("select").disabled(true).readonly(true)),
+        UiNode::from(ComboBox::new("combo").disabled(true).readonly(true)),
+        UiNode::from(MenuButton::new("menu").disabled(true).readonly(true)),
+        UiNode::from(SelectionList::new("list").disabled(true).readonly(true)),
+        UiNode::from(SideMenu::new("side").disabled(true).readonly(true)),
+        UiNode::from(Tabs::new("tabs").disabled(true).readonly(true)),
+        UiNode::from(Breadcrumb::new("breadcrumb").disabled(true).readonly(true)),
+    ];
+
+    assert!(
+        nodes
+            .iter()
+            .all(|node| node.props().disabled && node.props().readonly)
+    );
+}
+
+#[test]
+fn selection_components_ignore_unrelated_actions_and_normalize_missing_items() {
+    let mut select = SelectBox::new("Empty");
+    let id = select.state_id().clone();
+    let mut disabled = SelectBox::new("Disabled").disabled(true);
+
+    let ignored = disabled.apply_action(&UiAction::focus(disabled.state_id().clone()));
+    let missing = select.apply_action(&UiAction::select_box_selected(id, 99));
+
+    assert!(!ignored.handled);
+    assert!(missing.handled);
+    assert!(select.selected_option().is_none());
 }

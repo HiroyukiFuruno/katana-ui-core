@@ -136,3 +136,49 @@ fn stable_hash(value: &str) -> u64 {
     value.hash(&mut hasher);
     hasher.finish()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::text::TextRenderer;
+    use crate::visual::ui_tree_canvas_palette::UiTreeCanvasPalette;
+    use crate::visual::ui_tree_canvas_text_metrics::UiTreeDocumentTypography;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn measured_height_cache_reuses_entries_and_evicts_at_capacity() {
+        let facade = UiCoreFacade::default();
+        let text = TextRenderer::load(&facade, "body");
+        let code = TextRenderer::load(&facade, "code");
+        let theme = ThemeSnapshot::dark();
+        let text_context = UiTreeTextContext {
+            text: &text,
+            export_text: &text,
+            code_text: &code,
+            palette: UiTreeCanvasPalette::from_theme(&theme),
+            typography: UiTreeDocumentTypography::default(),
+        };
+        let node = UiNode::new(UiNodeKind::Text, "cached");
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 200,
+            height: 100,
+            scroll_y: 0.0,
+        };
+        let mut cache = MeasuredNodeHeightCache::default();
+
+        let first = cache.height(&node, text_context, 0, area);
+        assert_eq!(first, cache.height(&node, text_context, 0, area));
+
+        cache.heights.clear();
+        for x in 0..MAX_SCROLL_HEIGHT_CACHE_ENTRIES {
+            cache
+                .heights
+                .insert(MeasuredNodeHeightCacheKey::from_node(&node, x, area), 1);
+        }
+        cache.height(&node, text_context, MAX_SCROLL_HEIGHT_CACHE_ENTRIES, area);
+        assert_eq!(1, cache.heights.len());
+    }
+}

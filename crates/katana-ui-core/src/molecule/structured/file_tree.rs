@@ -268,3 +268,84 @@ fn content_height(items: &[FileTreeItem], viewport_height: u32, state: &FileTree
 fn viewport_extent(value: u32) -> u32 {
     value.max(MIN_VIEWPORT_EXTENT)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interaction::UiAction;
+    use crate::render_model::{UiHostActionSpec, UiNodeId};
+
+    #[test]
+    fn host_plan_maps_focus_and_rejects_non_tree_actions() {
+        let focus = UiHostActionPlan::new(
+            UiNodeId::new("files"),
+            UiHostActionSpec::tree_row("Focus", "src/lib.rs", UiTreeRowActionKind::Focus),
+        );
+        let command = UiHostActionPlan::new(
+            UiNodeId::new("files"),
+            UiHostActionSpec::command("open", "Open"),
+        );
+
+        assert_eq!(
+            Some(FileTreeAction::FocusItem {
+                item_id: "src/lib.rs".to_string(),
+            }),
+            FileTree::action_from_host_plan(&focus)
+        );
+        assert_eq!(None, FileTree::action_from_host_plan(&command));
+    }
+
+    #[test]
+    fn tree_action_and_item_identity_helpers_cover_focus_hover_and_none() {
+        assert_eq!(
+            FileTreeAction::FocusItem {
+                item_id: "focused".to_string(),
+            },
+            file_tree_action_from_tree_action(TreeViewAction::FocusNode {
+                node_id: "focused".to_string(),
+            })
+        );
+        assert_eq!(
+            FileTreeAction::None,
+            file_tree_action_from_tree_action(TreeViewAction::HoverNode {
+                node_id: "hovered".to_string(),
+                hovered: true,
+            })
+        );
+        assert_eq!(
+            FileTreeAction::None,
+            file_tree_action_from_tree_action(TreeViewAction::None)
+        );
+        assert_eq!(
+            Some("focused"),
+            item_id_for_action(&FileTreeAction::FocusItem {
+                item_id: "focused".to_string(),
+            })
+        );
+        assert_eq!(None, item_id_for_action(&FileTreeAction::None));
+    }
+
+    #[test]
+    fn selected_item_id_skips_unrelated_actions_before_value() {
+        let actions = [
+            UiAction::focus("files".into()),
+            UiAction::set_value("files".into(), "src/main.rs"),
+        ];
+
+        assert_eq!(Some("src/main.rs"), FileTree::selected_item_id(&actions));
+    }
+
+    #[test]
+    fn missing_item_has_no_hit_target() {
+        assert_eq!(
+            None,
+            FileTree::hit_target_for_item_with_state(
+                &[FileTreeItem::new("src/lib.rs", "src/lib.rs")],
+                &FileTreeState::default(),
+                "missing",
+                0,
+                200,
+            )
+        );
+    }
+}

@@ -204,10 +204,17 @@ fn display_size_milli(value: f32) -> u32 {
 }
 
 fn expected_rgba_len(width: u32, height: u32) -> Result<usize, UiImageSurfaceValidationError> {
-    let pixels = (width as usize)
-        .checked_mul(height as usize)
+    let bytes = u64::from(width)
+        .checked_mul(u64::from(height))
+        .and_then(|pixels| pixels.checked_mul(RGBA_BYTES_PER_PIXEL as u64))
         .ok_or(UiImageSurfaceValidationError::RgbaLengthOverflow { width, height })?;
-    pixels
-        .checked_mul(RGBA_BYTES_PER_PIXEL)
-        .ok_or(UiImageSurfaceValidationError::RgbaLengthOverflow { width, height })
+    #[cfg(target_pointer_width = "32")]
+    {
+        usize::try_from(bytes)
+            .map_err(|_| UiImageSurfaceValidationError::RgbaLengthOverflow { width, height })
+    }
+    #[cfg(target_pointer_width = "64")]
+    {
+        Ok(bytes as usize)
+    }
 }

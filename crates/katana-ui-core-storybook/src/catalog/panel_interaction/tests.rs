@@ -1,5 +1,9 @@
-use super::{PresetDifferenceReport, SettingsMutationReport, StorybookPanelInteractionReport};
+use super::{
+    PresetDifferenceReport, SettingsMutationReport, StorybookPanelInteractionReport,
+    selected_story, story_child,
+};
 use crate::catalog::StoryCatalog;
+use katana_ui_core::render_model::{UiNode, UiNodeKind};
 use std::collections::BTreeSet;
 
 mod settings_switch_app_assertions;
@@ -175,5 +179,27 @@ fn report_covers_selector_overlay_and_color_picker_sequences() {
             .tree_view_option_mutations
             .iter()
             .any(|it| it.action == "tree_click_toggle" && it.after_summary.contains("open=false"))
+    );
+    let summary = report.summary();
+    assert!(summary.contains("story_selection=text-input"));
+    assert!(summary.contains("legacy_settings_mutations="));
+}
+
+#[test]
+fn panel_story_selection_falls_back_to_the_first_available_story() {
+    let mut examples = StoryCatalog.examples();
+    examples[0].page = "fallback-story";
+    examples.retain(|example| example.page != crate::DEFAULT_STORYBOOK_PAGE);
+
+    assert_eq!(
+        Some("fallback-story"),
+        selected_story(&examples).map(|story| story.page)
+    );
+
+    let preview =
+        UiNode::new(UiNodeKind::Panel, "Preview").child(UiNode::new(UiNodeKind::Text, "Fallback"));
+    assert_eq!(
+        Some("Fallback"),
+        story_child(&preview, Some("Missing")).map(|node| node.props().label.as_str())
     );
 }

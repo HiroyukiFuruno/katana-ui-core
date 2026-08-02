@@ -1,7 +1,6 @@
 use super::snapshot_output::SnapshotOutput;
 use katana_ui_core_storybook::{DEFAULT_STORYBOOK_PAGE, StorybookVisual};
 use std::path::Path;
-use std::process;
 
 const SNAPSHOT_PAGE_ARG: usize = 3;
 const SNAPSHOT_THEME_ARG: usize = 4;
@@ -17,7 +16,7 @@ const THEME_PRESET_INDEX: usize = 3;
 pub(crate) struct SnapshotCommand;
 
 impl SnapshotCommand {
-    pub(crate) fn save_snapshot(args: &[String]) {
+    pub(crate) fn save_snapshot(args: &[String]) -> Result<(), String> {
         let output = args
             .get(2)
             .map(String::as_str)
@@ -39,14 +38,11 @@ impl SnapshotCommand {
             request.scroll_y,
             request.scrollbar_visible,
             request.clicked,
-        );
+        )
     }
 
-    pub(crate) fn prepare_or_exit(path: &Path, failure: &str) {
-        if let Err(error) = SnapshotOutput::prepare(path) {
-            eprintln!("{failure}: {error}");
-            process::exit(2);
-        }
+    pub(crate) fn prepare(path: &Path, failure: &str) -> Result<(), String> {
+        SnapshotOutput::prepare(path).map_err(|error| format!("{failure}: {error}"))
     }
 
     fn write_snapshot(
@@ -57,9 +53,9 @@ impl SnapshotCommand {
         scroll_y: usize,
         scrollbar_visible: bool,
         clicked: bool,
-    ) {
+    ) -> Result<(), String> {
         let output_path = Path::new(output);
-        Self::prepare_or_exit(output_path, "failed to prepare visual snapshot");
+        Self::prepare(output_path, "failed to prepare visual snapshot")?;
         let result = if clicked {
             StorybookVisual.save_clicked_preset_scrolled_png_with_scrollbar(
                 output_path,
@@ -79,13 +75,15 @@ impl SnapshotCommand {
                 scrollbar_visible,
             )
         };
-        if let Err(error) = result {
-            eprintln!("failed to write visual snapshot: {error}");
-            process::exit(2);
-        }
-        let evidence = snapshot_evidence_or_exit(output_path, "failed to inspect visual snapshot");
+        result.map_err(visual_snapshot_error)?;
+        let evidence = snapshot_evidence(output_path, "failed to inspect visual snapshot")?;
         println!("katana-ui-core-storybook-snapshot: {output} {evidence}");
+        Ok(())
     }
+}
+
+fn visual_snapshot_error(error: image::ImageError) -> String {
+    format!("failed to write visual snapshot: {error}")
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -164,22 +162,20 @@ fn snapshot_scrollbar_visible(value: &str) -> bool {
     )
 }
 
-fn snapshot_evidence_or_exit(path: &Path, failure: &str) -> String {
-    match SnapshotOutput::evidence(path) {
-        Ok(evidence) => evidence,
-        Err(error) => {
-            eprintln!("{failure}: {error}");
-            process::exit(2);
-        }
-    }
+fn snapshot_evidence(path: &Path, failure: &str) -> Result<String, String> {
+    SnapshotOutput::evidence(path).map_err(|error| format!("{failure}: {error}"))
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        DEFAULT_PRESET_INDEX, EDGE_PRESET_INDEX, INTERACTIVE_PRESET_INDEX, SnapshotRequest,
-        snapshot_preset_index, snapshot_request,
+        DEFAULT_PRESET_INDEX, EDGE_PRESET_INDEX, INTERACTIVE_PRESET_INDEX, SnapshotCommand,
+        SnapshotRequest, snapshot_evidence, snapshot_preset_index, snapshot_request,
+        visual_snapshot_error,
     };
+    use std::error::Error;
+    use std::io;
+    use std::{env, fs, process};
 
     #[test]
     fn snapshot_preset_index_keeps_named_aliases() {
@@ -238,6 +234,94 @@ mod tests {
                 scrollbar_visible: true,
             },
             snapshot_request(&args)
+        );
+    }
+
+    #[test]
+    fn snapshot_request_covers_scroll_visibility_and_fallback_values() {
+        let args = args(&[
+            "storybook",
+            "--visual-snapshot",
+            "target/checkbox.png",
+            "checkbox",
+            "dark",
+            "unknown",
+            "invalid-scroll",
+            "hidden",
+        ]);
+
+        assert_eq!(
+            SnapshotRequest {
+                preset_index: DEFAULT_PRESET_INDEX,
+                clicked: false,
+                scroll_y: 0,
+                scrollbar_visible: false,
+            },
+            snapshot_request(&args)
+        );
+    }
+
+    #[test]
+    fn snapshot_command_writes_clicked_and_non_clicked_pngs() -> Result<(), Box<dyn Error>> {
+        let directory = env::temp_dir().join(format!("kuc-storybook-command-{}", process::id()));
+        let plain = directory.join("plain.png");
+        let clicked = directory.join("clicked.png");
+        let plain_path = plain.to_string_lossy();
+        let clicked_path = clicked.to_string_lossy();
+        let plain_args = args(&[
+            "storybook",
+            "--visual-snapshot",
+            plain_path.as_ref(),
+            "checkbox",
+            "dark",
+            "preset-1",
+            "12",
+            "off",
+        ]);
+        let clicked_args = args(&[
+            "storybook",
+            "--visual-snapshot",
+            clicked_path.as_ref(),
+            "checkbox",
+            "dark",
+            "preset-1",
+            "clicked",
+            "12",
+            "true",
+        ]);
+
+        SnapshotCommand::save_snapshot(&plain_args)?;
+        SnapshotCommand::save_snapshot(&clicked_args)?;
+
+        assert!(fs::metadata(&plain)?.len() > 0);
+        assert!(fs::metadata(&clicked)?.len() > 0);
+        fs::remove_dir_all(directory)?;
+        Ok(())
+    }
+
+    #[test]
+    fn snapshot_errors_preserve_operation_context() {
+        let missing =
+            env::temp_dir().join(format!("kuc-storybook-missing-evidence-{}", process::id()));
+        let missing_error = snapshot_evidence(&missing, "inspect failed");
+        assert!(matches!(
+            missing_error,
+            Err(error) if error.starts_with("inspect failed:")
+        ));
+
+        let directory = env::temp_dir();
+        let prepare_error = SnapshotCommand::prepare(&directory, "prepare failed");
+        assert!(
+            prepare_error.is_err(),
+            "directory cannot be removed as a file"
+        );
+        assert!(matches!(
+            prepare_error,
+            Err(error) if error.starts_with("prepare failed:")
+        ));
+        assert!(
+            visual_snapshot_error(image::ImageError::IoError(io::Error::other("write failed")))
+                .starts_with("failed to write visual snapshot:")
         );
     }
 

@@ -6,15 +6,11 @@ use super::{
 impl MotionRuntimeState {
     pub(in crate::visual) fn preview_reduce(&mut self) -> RuntimeStructuredUpdate {
         self.reduced = motion_reduced_action_is_instant();
-        RuntimeStructuredUpdate::new(
-            "motion_reduce",
-            "motion_snapshot_changed",
-            if self.reduced {
-                "instant=true"
-            } else {
-                "instant=false"
-            },
-        )
+        debug_assert!(
+            self.reduced,
+            "reduced motion must resolve to an instant snapshot"
+        );
+        RuntimeStructuredUpdate::new("motion_reduce", "motion_snapshot_changed", "instant=true")
     }
 
     pub(in crate::visual) fn focus(&mut self) -> RuntimeStructuredUpdate {
@@ -94,5 +90,19 @@ impl AccordionRuntimeState {
             "accordion.reduced_motion" => self.reduced_motion = true,
             _ => {}
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unknown_accordion_option_preserves_runtime_state() {
+        let mut state = AccordionRuntimeState::default();
+
+        state.apply_option("accordion.unknown");
+
+        assert_eq!(AccordionRuntimeState::default(), state);
     }
 }

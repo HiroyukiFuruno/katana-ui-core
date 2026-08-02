@@ -148,7 +148,10 @@ fn append_workspace_tab_children(
     state: &WorkspaceTabBarState,
 ) -> UiNode {
     for tab in options.tabs.iter().filter(|tab| tab.pinned) {
-        node = node.child(workspace_tab_node(tab, state.child_state_id(&tab.id)));
+        node = node.child(workspace_tab_node(
+            tab,
+            state.stable_child_state_id(&tab.id),
+        ));
     }
     for group in &options.groups {
         let grouped_tabs = group_tabs(options, &group.id);
@@ -160,18 +163,27 @@ fn append_workspace_tab_children(
             continue;
         }
         for tab in grouped_tabs {
-            node = node.child(workspace_tab_node(tab, state.child_state_id(&tab.id)));
+            node = node.child(workspace_tab_node(
+                tab,
+                state.stable_child_state_id(&tab.id),
+            ));
         }
     }
     for tab in unknown_group_tabs(options) {
-        node = node.child(workspace_tab_node(tab, state.child_state_id(&tab.id)));
+        node = node.child(workspace_tab_node(
+            tab,
+            state.stable_child_state_id(&tab.id),
+        ));
     }
     for tab in options
         .tabs
         .iter()
         .filter(|tab| !tab.pinned && tab.group_id.is_none())
     {
-        node = node.child(workspace_tab_node(tab, state.child_state_id(&tab.id)));
+        node = node.child(workspace_tab_node(
+            tab,
+            state.stable_child_state_id(&tab.id),
+        ));
     }
     node
 }
@@ -200,14 +212,8 @@ fn unknown_group_tabs(options: &WorkspaceTabBarOptions) -> Vec<&WorkspaceTab> {
         .collect()
 }
 
-fn workspace_tab_node(
-    tab: &WorkspaceTab,
-    state_id: Option<&crate::render_model::UiStateId>,
-) -> UiNode {
-    let mut node = state_id.map_or_else(
-        || UiNode::new(UiNodeKind::CloseableTab, tab.title.clone()),
-        |it| UiNode::from_state(UiNodeKind::CloseableTab, tab.title.clone(), it.clone()),
-    );
+fn workspace_tab_node(tab: &WorkspaceTab, state_id: crate::render_model::UiStateId) -> UiNode {
+    let mut node = UiNode::from_state(UiNodeKind::CloseableTab, tab.title.clone(), state_id);
     node = node
         .width(UiDimension::FitContent)
         .height(UiDimension::Px(WORKSPACE_TAB_HEIGHT_PX))
@@ -260,5 +266,23 @@ fn tab_tone(tone: WorkspaceTabTone) -> crate::render_model::UiTone {
         WorkspaceTabTone::Accent => crate::render_model::UiTone::Accent,
         WorkspaceTabTone::Warning => crate::render_model::UiTone::Warning,
         WorkspaceTabTone::Danger => crate::render_model::UiTone::Danger,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn standalone_workspace_tab_node_preserves_stable_state_identity() {
+        let state_id = crate::render_model::UiStateId::new("workspace:standalone");
+        let node = workspace_tab_node(
+            &WorkspaceTab::new("standalone", "Standalone"),
+            state_id.clone(),
+        );
+
+        assert_eq!(UiNodeKind::CloseableTab, node.kind());
+        assert_eq!("Standalone", node.props().label);
+        assert_eq!(state_id, node.props().state_id);
     }
 }

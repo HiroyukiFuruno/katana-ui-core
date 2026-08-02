@@ -64,22 +64,21 @@ fn draw_offset_scroll_area(
         viewport.y,
         viewport.width,
         viewport.height,
-        |canvas| {
+        &mut |canvas| {
             for child in node.children() {
-                if logical_y >= source_y.saturating_add(viewport.height) {
-                    break;
+                if logical_y < source_y.saturating_add(viewport.height) {
+                    draw_visible_node(
+                        renderer,
+                        canvas,
+                        child,
+                        viewport.x,
+                        &mut logical_y,
+                        source_y,
+                        viewport,
+                        palette,
+                        text_context,
+                    );
                 }
-                draw_visible_node(
-                    renderer,
-                    canvas,
-                    child,
-                    viewport.x,
-                    &mut logical_y,
-                    source_y,
-                    viewport,
-                    palette,
-                    text_context,
-                );
             }
         },
     );

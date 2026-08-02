@@ -11,6 +11,7 @@ use katana_ui_core::molecule::{
 const DEFAULT_ITEM_COUNT: usize = 3;
 const FIRST_ROW_INDEX: usize = 0;
 const SECOND_ROW_INDEX: usize = 1;
+#[cfg(test)]
 const VISIBLE_ROW_COUNT: usize = 3;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -87,6 +88,7 @@ impl DynamicArrayEditorScreenState {
         }
     }
 
+    #[cfg(test)]
     pub(in crate::visual) fn item_count(&self) -> usize {
         self.editor.items().len()
     }
@@ -111,6 +113,7 @@ impl DynamicArrayEditorScreenState {
         self.callback_event
     }
 
+    #[cfg(test)]
     pub(in crate::visual) fn order_label(&self) -> &'static str {
         let ids = self
             .editor
@@ -296,4 +299,29 @@ pub(super) fn operation_at(
     }
     let base = preview_detail::component_action_hit_rect(state.selected_page);
     dedicated_dynamic_array_editor::action_at(base.x, base.y, x, y)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{DynamicArrayEditorAction, DynamicArrayEditorScreenState};
+
+    #[test]
+    fn dynamic_array_boundaries_cover_unknown_options_labels_duplicate_add_and_short_orders() {
+        let mut state = DynamicArrayEditorScreenState::default();
+        assert_eq!("order=1,2,3", state.order_label());
+        assert_eq!("array_option_unknown", state.apply_option("unknown").action);
+        assert_eq!("Item", state.row_label(99));
+
+        state.apply_action(DynamicArrayEditorAction::Add);
+        assert_eq!(4, state.item_count());
+        assert_eq!("Item 4", state.row_label(3));
+        state.apply_action(DynamicArrayEditorAction::Add);
+        assert_eq!(4, state.item_count());
+
+        let mut short = DynamicArrayEditorScreenState::default();
+        short.apply_action(DynamicArrayEditorAction::Remove);
+        assert_eq!("order=changed", short.order_label());
+        short.apply_action(DynamicArrayEditorAction::Reorder);
+        assert_eq!("order=2,1,3", short.order_label());
+    }
 }

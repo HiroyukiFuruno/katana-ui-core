@@ -21,11 +21,7 @@ impl UiTreeHostActionHitCollector<'_> {
         node: &UiNode,
         tree_node_id: &str,
     ) -> Vec<UiHostActionPlan> {
-        let actions = if self.actions.is_empty() {
-            UiHostActionPlan::collect_from_node(node)
-        } else {
-            self.actions.clone()
-        };
+        let actions = self.actions_for_node(node);
         actions
             .iter()
             .filter(move |action| action.target.as_str() == node.id().as_str())
@@ -96,11 +92,8 @@ impl UiTreeHostActionHitCollector<'_> {
                 let (visible_offset, visible_width) = self.text_span_visible_hit_bounds(node, span);
                 let visible_x = span_x + visible_offset as isize;
                 let rect_x = visible_x.max(0) as usize;
-                let clipped_width = if visible_x < 0 {
-                    visible_width.saturating_sub(visible_x.unsigned_abs())
-                } else {
-                    visible_width
-                };
+                let hidden_width = visible_x.unsigned_abs() * usize::from(visible_x.is_negative());
+                let clipped_width = visible_width.saturating_sub(hidden_width);
                 self.hits.push(UiTreeHostActionHit {
                     action: action.clone(),
                     rect: UiTreeHitRect {

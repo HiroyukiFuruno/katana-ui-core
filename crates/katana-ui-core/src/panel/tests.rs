@@ -133,3 +133,80 @@ fn panel_does_not_scroll_or_show_scrollbars_without_overflow() {
         panel.horizontal_scrollbar.visibility
     );
 }
+
+#[test]
+fn typed_panel_helpers_cover_active_panel_and_both_scroll_axes() {
+    let panel = crate::render_model::UiPanelProps::vertical_scroll(900, 300, 1_000, true)
+        .active_panel("preview")
+        .with_horizontal_scroll(800, 400, 900, true);
+
+    assert_eq!("preview", panel.active_panel);
+    assert_eq!(700, panel.scroll_y);
+    assert_eq!(500, panel.scroll_x);
+    assert!(panel.vertical_scrollbar_visible);
+    assert!(panel.horizontal_scrollbar_visible);
+    assert_eq!(700, panel.vertical_scrollbar.offset);
+    assert_eq!(500, panel.horizontal_scrollbar.offset);
+
+    let horizontal = crate::render_model::UiPanelProps::horizontal_scroll(10, 100, 90, true);
+    let vertical = crate::render_model::UiPanelProps::vertical_scroll(10, 100, 90, false);
+    assert_eq!(0, horizontal.scroll_x);
+    assert_eq!(
+        UiScrollbarVisibility::Hidden,
+        horizontal.horizontal_scrollbar.visibility
+    );
+    assert_eq!(0, vertical.scroll_y);
+    assert_eq!(
+        UiScrollbarVisibility::Hidden,
+        vertical.vertical_scrollbar.visibility
+    );
+}
+
+#[test]
+fn scrollbar_dragging_at_and_hidden_models_update_axis_contracts() {
+    let vertical = UiScrollbarModel::new(
+        UiScrollbarVisibility::Always,
+        UiScrollbarPlacement::Overlay,
+        UiRect::new(200, 0, 8, 300),
+        UiRect::new(200, 75, 8, 100),
+        75,
+    )
+    .dragging_at(42, 200, 75);
+    let horizontal = UiScrollbarModel::new(
+        UiScrollbarVisibility::Hidden,
+        UiScrollbarPlacement::Reserved,
+        UiRect::new(0, 200, 300, 8),
+        UiRect::new(25, 200, 100, 8),
+        25,
+    );
+    let panel = crate::render_model::UiPanelProps::default()
+        .scrollbar(vertical)
+        .horizontal_scrollbar(horizontal);
+
+    assert!(panel.vertical_scrollbar_visible);
+    assert!(!panel.horizontal_scrollbar_visible);
+    assert_eq!(75, panel.scroll_y);
+    assert_eq!(25, panel.scroll_x);
+    assert_eq!(Some(42), panel.vertical_scrollbar.drag_state.pointer_id);
+    assert_eq!(200, panel.vertical_scrollbar.drag_state.origin_x);
+    assert_eq!(75, panel.vertical_scrollbar.drag_state.origin_y);
+    assert_eq!(75, panel.vertical_scrollbar.drag_state.origin_offset);
+}
+
+#[test]
+fn panel_accessors_and_region_keys_cover_every_region() {
+    let theme = ThemeSnapshot::dark();
+    for (region, key) in [
+        (PanelRegion::Root, "root"),
+        (PanelRegion::Navigation, "navigation"),
+        (PanelRegion::Preview, "preview"),
+        (PanelRegion::Details, "details"),
+    ] {
+        let panel = Panel::new(key, region, theme.clone()).active_panel(region);
+        assert_eq!(&theme, panel.theme());
+        assert_eq!(region, panel.region());
+
+        let node = crate::render_model::UiNode::from(panel);
+        assert_eq!(key, node.props().panel.active_panel);
+    }
+}

@@ -1,6 +1,6 @@
 use super::UiTreeSurfaceHost;
 use crate::test_assert::KucTestExpect;
-use crate::visual::UiTreeRenderArea;
+use crate::visual::{Canvas, UiTreeRenderArea};
 use katana_ui_core::atom::{Text, Toggle};
 use katana_ui_core::render_model::{
     UiCursor, UiDimension, UiHostActionSpec, UiNode, UiNodeId, UiNodeKind,
@@ -74,6 +74,16 @@ fn surface_host_hovered_node_id_prefers_semantic_node_id() {
 }
 
 #[test]
+fn surface_host_hovered_node_id_falls_back_to_rendered_node_id() {
+    let hit = katana_ui_core_storybook_hit("rendered-node", None, 0, 0, 100, 24);
+
+    assert_eq!(
+        Some(UiNodeId::new("rendered-node")),
+        UiTreeSurfaceHost::hovered_node_id_at(&[hit], 10.0, 10.0)
+    );
+}
+
+#[test]
 fn surface_host_document_node_hits_inherit_parent_semantic_node_id() {
     let text: UiNode = Text::new("Nested item").into();
     let column = UiNode::new(UiNodeKind::Column, "").child(text);
@@ -94,6 +104,41 @@ fn surface_host_document_node_hits_inherit_parent_semantic_node_id() {
         Some(UiNodeId::new("viewer-list-node")),
         hit.semantic_node_id
     );
+}
+
+#[test]
+fn surface_host_public_entrypoints_share_the_same_rendered_tree() {
+    let root = toggle_root();
+    let host = UiTreeSurfaceHost::new(ThemeSnapshot::dark());
+    let area = test_area();
+    let mut canvas = Canvas::new(TEST_AREA_WIDTH, TEST_AREA_HEIGHT, 0);
+
+    host.render(&mut canvas, &root, area);
+    let document_actions = host.document_host_action_hits(&root, area);
+    let viewport_actions = host.viewport_host_action_hits(&root, area);
+    let all_actions = host.host_action_hits(&root, area);
+    let viewport_nodes = host.viewport_node_hits(&root, area);
+    let (interaction_actions, interaction_nodes) = host.viewport_interaction_hits(&root, area);
+
+    assert_eq!(document_actions, all_actions);
+    assert_eq!(viewport_actions, interaction_actions);
+    assert_eq!(viewport_nodes, interaction_nodes);
+    let hit = viewport_actions
+        .first()
+        .kuc_expect("viewport toggle action");
+    let (x, y) = hit.center_point();
+    assert_eq!(
+        host.host_action_hits_at(&root, area, x, y),
+        UiTreeSurfaceHost::hits_at(&viewport_actions, x, y)
+    );
+    assert_eq!(
+        host.interaction_target_at(&root, area, x, y),
+        UiTreeSurfaceHost::interaction_target_for_hits_at(&viewport_actions, &viewport_nodes, x, y,)
+    );
+    assert!(UiTreeSurfaceHost::context_menu_item_id_at(&root, x, y).is_none());
+    assert!(UiTreeSurfaceHost::context_menu_host_action_at(&root, x, y).is_none());
+    assert!(UiTreeSurfaceHost::context_menu_item_center_for_id(&root, "missing").is_none());
+    assert!(canvas.pixels().iter().any(|pixel| *pixel != 0));
 }
 
 fn toggle_root() -> UiNode {

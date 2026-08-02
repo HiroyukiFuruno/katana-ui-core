@@ -84,7 +84,8 @@ impl ThemeSnapshot {
 
 #[cfg(test)]
 mod tests {
-    use super::{FontFamily, ThemeSnapshot};
+    use super::{FontFamily, MotionToken, ThemeSnapshot};
+    use crate::interaction::{MotionDurationToken, MotionEasingToken};
 
     #[test]
     fn light_and_dark_have_stable_ids() {
@@ -114,5 +115,56 @@ mod tests {
             dark.font("code").map(|it| it.family)
         );
         assert!(dark.motion.iter().any(|it| it.name == "fast"));
+    }
+
+    #[test]
+    fn diff_reports_font_spacing_and_motion_changes() {
+        let base = ThemeSnapshot::light();
+        let mut changed = base.clone();
+        changed.fonts[0].size += 1.0;
+        changed.spacing[0].px += 1.0;
+        changed.motion[0].duration_ms += 1;
+
+        assert_eq!(
+            &[
+                "fonts".to_string(),
+                "spacing".to_string(),
+                "motion".to_string(),
+            ],
+            base.diff(&changed).changed_sections()
+        );
+    }
+
+    #[test]
+    fn motion_tokens_map_duration_distance_alias_and_unknown_names() {
+        let mut theme = ThemeSnapshot::light();
+        theme.motion = vec![
+            motion("instant", 1, 0),
+            motion("fast", 2, 0),
+            motion("standard", 3, 0),
+            motion("slow", 4, 0),
+            motion("compact", 0, 5),
+            motion("spacious", 0, 6),
+            motion("unknown", 99, 99),
+        ];
+
+        let tokens = theme.motion_tokens();
+        assert_eq!(1, tokens.instant_ms);
+        assert_eq!(2, tokens.fast_ms);
+        assert_eq!(3, tokens.default_ms);
+        assert_eq!(4, tokens.slow_ms);
+        assert_eq!(5, tokens.compact_px);
+        assert_eq!(6, tokens.spacious_px);
+        assert_eq!(1, tokens.duration(MotionDurationToken::Instant));
+        assert_eq!("accelerate", tokens.easing(MotionEasingToken::Accelerate));
+    }
+
+    fn motion(name: &str, duration_ms: u16, distance_px: u16) -> MotionToken {
+        MotionToken {
+            name: name.to_string(),
+            duration_ms,
+            easing: "linear".to_string(),
+            distance_px,
+        }
     }
 }

@@ -1,11 +1,125 @@
 use super::super::{
     CLOSEABLE_TAB_DRAG_TAG, WorkspaceTab, WorkspaceTabBar, WorkspaceTabBarAction,
     WorkspaceTabBarEvent, WorkspaceTabDropRules, WorkspaceTabGroup, WorkspaceTabGroupId,
-    WorkspaceTabGroupTarget, WorkspaceTabId,
+    WorkspaceTabGroupTarget, WorkspaceTabId, WorkspaceTabKeyboardInput,
 };
 use crate::interaction::drag_and_drop::{DropEffect, DropIndicatorOrientation};
 use crate::render_model::{UiNode, UiNodeKind};
 use std::collections::HashSet;
+
+#[test]
+fn workspace_history_add_without_activation_and_non_active_close_cover_boundaries() {
+    let mut bar = WorkspaceTabBar::new("Workspace")
+        .tab(WorkspaceTab::new("active", "Active"))
+        .tab(WorkspaceTab::new("other", "Other"))
+        .active_tab_id("active");
+
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::TabAdded {
+            tab_id: WorkspaceTabId::new("background"),
+        }],
+        bar.apply_action(WorkspaceTabBarAction::AddTab {
+            tab: WorkspaceTab::new("background", "Background"),
+            activate: false,
+        })
+    );
+    assert_eq!(
+        Some("active"),
+        bar.state()
+            .active_tab_id
+            .as_ref()
+            .map(WorkspaceTabId::as_str)
+    );
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::TabClosed {
+            tab_id: WorkspaceTabId::new("other"),
+        }],
+        bar.apply_action(WorkspaceTabBarAction::CloseTab {
+            tab_id: WorkspaceTabId::new("other"),
+        })
+    );
+
+    let mut history = WorkspaceTabBar::new("History");
+    for index in 0..=super::super::state::MAX_RECENTLY_CLOSED_TABS {
+        history = history.recently_closed_tab(WorkspaceTab::new(
+            format!("closed-{index}"),
+            format!("Closed {index}"),
+        ));
+    }
+    assert_eq!(
+        super::super::state::MAX_RECENTLY_CLOSED_TABS,
+        history.state().recently_closed_tabs.len()
+    );
+    assert_eq!(
+        "closed-1",
+        history.state().recently_closed_tabs[0].tab.id.as_str()
+    );
+}
+
+#[test]
+fn workspace_group_mutations_cover_already_pinned_and_dirty_close_boundaries() {
+    let mut already_pinned_grouped = WorkspaceTabBar::new("Workspace")
+        .group(WorkspaceTabGroup::new("docs", "Docs"))
+        .tab(
+            WorkspaceTab::new("pinned", "Pinned")
+                .pinned(true)
+                .group_id("docs"),
+        );
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::TabGroupChanged {
+            tab_id: WorkspaceTabId::new("pinned"),
+            group_id: None,
+        }],
+        already_pinned_grouped.apply_action(WorkspaceTabBarAction::PinTab {
+            tab_id: WorkspaceTabId::new("pinned"),
+        })
+    );
+
+    let mut dirty_group = WorkspaceTabBar::new("Workspace")
+        .group(WorkspaceTabGroup::new("docs", "Docs"))
+        .tab(
+            WorkspaceTab::new("dirty", "Dirty")
+                .dirty(true)
+                .group_id("docs"),
+        );
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::TabCloseRequested {
+            tab_id: WorkspaceTabId::new("dirty"),
+        }],
+        dirty_group.apply_action(WorkspaceTabBarAction::CloseGroup {
+            group_id: WorkspaceTabGroupId::new("docs"),
+        })
+    );
+    assert_eq!(1, dirty_group.options().groups.len());
+
+    let mut unpinned = WorkspaceTabBar::new("Workspace").tab(WorkspaceTab::new("tab", "Tab"));
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::TabPinChanged {
+            tab_id: WorkspaceTabId::new("tab"),
+            pinned: true,
+        }],
+        unpinned.apply_action(WorkspaceTabBarAction::PinTab {
+            tab_id: WorkspaceTabId::new("tab"),
+        })
+    );
+}
+
+#[test]
+fn unknown_group_tabs_render_with_stable_child_state() {
+    let bar = WorkspaceTabBar::new("Workspace")
+        .tab(WorkspaceTab::new("orphan", "Orphan").group_id("missing"));
+    let node = UiNode::from(bar);
+
+    assert_eq!(1, node.children().len());
+    assert_eq!(UiNodeKind::CloseableTab, node.children()[0].kind());
+    assert!(
+        node.children()[0]
+            .props()
+            .state_id
+            .as_str()
+            .contains("orphan")
+    );
+}
 
 #[test]
 fn pinned_tabs_are_leading_and_unpinned_cannot_drop_into_pinned_area() {
@@ -241,6 +355,11 @@ fn drop_rules_keep_grouped_prefix_and_pinned_region_distinct() {
         WorkspaceTab::new("loose", "Loose"),
     ];
 
+    assert!(!WorkspaceTabDropRules::can_accept(
+        &tabs,
+        &WorkspaceTabId::new("missing"),
+        0
+    ));
     assert!(!WorkspaceTabDropRules::can_accept(
         &tabs,
         &WorkspaceTabId::new("draft"),
@@ -524,6 +643,31 @@ fn close_to_left_right_endpoint_targets_are_noop() {
 }
 
 #[test]
+fn missing_bulk_close_targets_and_idle_keyboard_cancel_are_noops() {
+    let missing = WorkspaceTabId::new("missing");
+    for action in [
+        WorkspaceTabBarAction::CloseOthers {
+            tab_id: missing.clone(),
+        },
+        WorkspaceTabBarAction::CloseToRight {
+            tab_id: missing.clone(),
+        },
+        WorkspaceTabBarAction::CloseToLeft {
+            tab_id: missing.clone(),
+        },
+    ] {
+        let mut bar = WorkspaceTabBar::new("Workspace").tab(WorkspaceTab::new("one", "One"));
+        assert!(bar.apply_action(action).is_empty());
+    }
+
+    let mut bar = WorkspaceTabBar::new("Workspace").tab(WorkspaceTab::new("one", "One"));
+    assert!(
+        bar.apply_keyboard_input(WorkspaceTabKeyboardInput::CancelDrag, &[])
+            .is_empty()
+    );
+}
+
+#[test]
 fn bulk_close_keeps_pinned_and_non_closeable_tabs() {
     let mut bar = WorkspaceTabBar::new("Workspace")
         .tab(WorkspaceTab::new("pinned", "Pinned").pinned(true))
@@ -573,6 +717,26 @@ fn move_tab_emits_reordered_event_and_updates_visual_order() {
         }],
         events
     );
+}
+
+#[test]
+fn move_tab_rejects_crossing_the_pinned_region() {
+    let mut bar = WorkspaceTabBar::new("Workspace")
+        .tab(WorkspaceTab::new("pinned", "Pinned").pinned(true))
+        .tab(WorkspaceTab::new("loose", "Loose"));
+
+    let events = bar.apply_action(WorkspaceTabBarAction::MoveTab {
+        tab_id: WorkspaceTabId::new("loose"),
+        to_visual_index: 0,
+    });
+    let visual_ids: Vec<&str> = bar
+        .visual_tabs()
+        .iter()
+        .map(|tab| tab.id.as_str())
+        .collect();
+
+    assert!(events.is_empty());
+    assert_eq!(vec!["pinned", "loose"], visual_ids);
 }
 
 #[test]
@@ -801,6 +965,22 @@ fn group_color_ungroup_and_close_group_emit_typed_events() {
 }
 
 #[test]
+fn close_missing_group_is_a_noop() {
+    let mut bar = WorkspaceTabBar::new("Workspace")
+        .group(WorkspaceTabGroup::new("docs", "Docs"))
+        .tab(WorkspaceTab::new("docs-a", "Docs A").group_id("docs"));
+
+    assert!(
+        bar.apply_action(WorkspaceTabBarAction::CloseGroup {
+            group_id: "missing".into(),
+        })
+        .is_empty()
+    );
+    assert_eq!(1, bar.options().groups.len());
+    assert_eq!(1, bar.options().tabs.len());
+}
+
+#[test]
 fn move_group_clamps_out_of_range_target_index_to_last_declared_group() {
     let mut bar = WorkspaceTabBar::new("Workspace")
         .group(WorkspaceTabGroup::new("docs", "Docs"))
@@ -954,4 +1134,93 @@ fn tab_drag_lifecycle_sets_state_and_uses_drag_primitives() -> Result<(), String
     );
     assert!(!bar.state().drag_in_progress);
     Ok(())
+}
+
+#[test]
+fn invalid_mutation_targets_are_noops_and_empty_history_does_not_restore() {
+    let mut bar = WorkspaceTabBar::new("Workspace").tab(WorkspaceTab::new("one", "One"));
+    let missing = WorkspaceTabId::new("missing");
+
+    assert!(
+        bar.apply_action(WorkspaceTabBarAction::AddTab {
+            tab: WorkspaceTab::new("one", "Duplicate"),
+            activate: true,
+        })
+        .is_empty()
+    );
+    assert!(
+        bar.apply_action(WorkspaceTabBarAction::SelectTab {
+            tab_id: missing.clone(),
+        })
+        .is_empty()
+    );
+    assert!(
+        bar.apply_action(WorkspaceTabBarAction::CloseTab {
+            tab_id: missing.clone(),
+        })
+        .is_empty()
+    );
+    assert!(
+        bar.apply_action(WorkspaceTabBarAction::ConfirmClose {
+            tab_id: missing.clone(),
+        })
+        .is_empty()
+    );
+    assert!(
+        bar.apply_action(WorkspaceTabBarAction::MoveTab {
+            tab_id: missing.clone(),
+            to_visual_index: 0,
+        })
+        .is_empty()
+    );
+    assert!(
+        bar.apply_action(WorkspaceTabBarAction::StartDrag { tab_id: missing })
+            .is_empty()
+    );
+    assert!(
+        bar.apply_action(WorkspaceTabBarAction::EndDrag { committed: true })
+            .is_empty()
+    );
+    assert!(
+        bar.apply_action(WorkspaceTabBarAction::RestoreClosedTab)
+            .is_empty()
+    );
+}
+
+#[test]
+fn add_activation_close_record_and_duplicate_restore_history_are_explicit() {
+    let mut bar = WorkspaceTabBar::new("Workspace")
+        .tab(WorkspaceTab::new("one", "One"))
+        .recently_closed_tab(WorkspaceTab::new("one", "Older duplicate"));
+
+    let added = bar.apply_action(WorkspaceTabBarAction::AddTab {
+        tab: WorkspaceTab::new("two", "Two"),
+        activate: true,
+    });
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::TabAdded {
+            tab_id: WorkspaceTabId::new("two")
+        }],
+        added
+    );
+    assert_eq!(
+        Some(&WorkspaceTabId::new("two")),
+        bar.state().active_tab_id.as_ref()
+    );
+
+    assert!(
+        bar.apply_action(WorkspaceTabBarAction::RestoreClosedTab)
+            .is_empty()
+    );
+
+    let closed = bar.apply_action(WorkspaceTabBarAction::CloseTab {
+        tab_id: WorkspaceTabId::new("two"),
+    });
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::TabClosed {
+            tab_id: WorkspaceTabId::new("two")
+        }],
+        closed
+    );
+    assert_eq!(1, bar.state().recently_closed_tabs.len());
 }

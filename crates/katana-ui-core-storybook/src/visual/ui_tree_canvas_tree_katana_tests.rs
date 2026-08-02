@@ -1,4 +1,5 @@
 use super::ui_tree_canvas_palette::UiTreeCanvasPalette;
+use super::ui_tree_canvas_tree_parts::draw_affordance;
 use super::{Canvas, UiTreeCanvasRenderer, UiTreeRenderArea};
 use katana_ui_core::molecule::TreeView;
 use katana_ui_core::render_model::{
@@ -72,6 +73,42 @@ fn tree_canvas_uses_node_specific_file_icon_contract() {
     assert_eq!(
         Some(palette.text),
         pixel_at(&canvas, MARKDOWN_ICON_SAMPLE_X, MARKDOWN_ICON_SAMPLE_Y)
+    );
+}
+
+#[test]
+fn tree_affordances_render_expanded_directories_and_image_files() {
+    let color = 0x44aaee;
+    let mut canvas = Canvas::new(96, 48, 0);
+
+    draw_affordance(
+        &mut canvas,
+        UiTreeNodeKind::Directory,
+        true,
+        "folder-open",
+        "",
+        2,
+        2,
+        color,
+    );
+    draw_affordance(
+        &mut canvas,
+        UiTreeNodeKind::File,
+        false,
+        "",
+        "image",
+        48,
+        2,
+        color,
+    );
+
+    assert!(
+        canvas
+            .pixels()
+            .iter()
+            .filter(|pixel| **pixel == color)
+            .count()
+            > 30
     );
 }
 

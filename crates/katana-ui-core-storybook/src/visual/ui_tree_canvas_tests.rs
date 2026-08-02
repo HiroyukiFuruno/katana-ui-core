@@ -41,6 +41,8 @@ mod ui_tree_canvas_test_document_support;
 mod ui_tree_canvas_test_overlay_support;
 #[path = "ui_tree_canvas_text_height_tests.rs"]
 mod ui_tree_canvas_text_height_tests;
+#[path = "ui_tree_canvas_tree_context_tests.rs"]
+mod ui_tree_canvas_tree_context_tests;
 #[path = "ui_tree_canvas_tree_tests.rs"]
 mod ui_tree_canvas_tree_tests;
 pub(in crate::visual) use ui_tree_canvas_test_core_support::*;

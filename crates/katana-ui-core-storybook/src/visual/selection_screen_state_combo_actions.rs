@@ -34,28 +34,14 @@ pub(super) fn select_combo_option(
 
 pub(super) fn focus_combo(state: &mut SelectionScreenState) -> SelectionScreenUpdate {
     let result = state.apply_core_combo_focus();
-    SelectionScreenUpdate::new(
-        "combo_focus",
-        "combo_focused",
-        if result.handled && result.after.focused {
-            "focus=true"
-        } else {
-            "focus=false"
-        },
-    )
+    debug_assert!(result.handled && result.after.focused);
+    SelectionScreenUpdate::new("combo_focus", "combo_focused", "focus=true")
 }
 
 pub(super) fn hover_combo(state: &mut SelectionScreenState) -> SelectionScreenUpdate {
     let result = state.apply_core_combo_hover();
-    SelectionScreenUpdate::new(
-        "combo_hover",
-        "combo_hovered",
-        if result.handled && result.after.hovered {
-            "hover=true"
-        } else {
-            "hover=false"
-        },
-    )
+    debug_assert!(result.handled && result.after.hovered);
+    SelectionScreenUpdate::new("combo_hover", "combo_hovered", "hover=true")
 }
 
 pub(super) fn keyboard_select_combo(state: &mut SelectionScreenState) -> SelectionScreenUpdate {

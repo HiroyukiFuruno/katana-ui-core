@@ -286,3 +286,13 @@ fn state_label(scenario: ScenarioContext<'_>) -> &'static str {
     }
     "determinate / indeterminate"
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn progress_unknown_percent_uses_changed_label() {
+        assert_eq!("changed%", percent_label_for_value(1));
+    }
+}

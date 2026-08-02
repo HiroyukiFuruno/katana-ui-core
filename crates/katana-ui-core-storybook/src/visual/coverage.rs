@@ -218,3 +218,18 @@ pub(super) fn has_dedicated_renderer(kind: UiNodeKind) -> bool {
             | UiNodeKind::AlignCenter
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn visual_coverage_summary_and_missing_catalog_are_reported() {
+        let examples: Vec<StoryExample> = Vec::new();
+        let report = visual_coverage_report(std::hint::black_box(&examples));
+
+        assert_eq!(report.required_ui, report.missing_pages.len());
+        assert!(report.summary().contains("required_ui="));
+        assert!(report.summary().contains("legacy_preview_signatures="));
+    }
+}

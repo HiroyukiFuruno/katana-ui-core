@@ -234,3 +234,59 @@ impl StorybookScreenState {
         self.settings_revision % 2 == 1
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{StorybookButtonOptionControl, StorybookScreenState};
+
+    #[test]
+    fn button_card_and_chip_rejection_states_do_not_emit_widget_actions() {
+        let mut disabled = StorybookScreenState::default();
+        disabled.register_button_option(StorybookButtonOptionControl::Disabled);
+        disabled.register_button_click("button");
+        assert_eq!("button_press_blocked", disabled.last_action);
+        disabled.register_button_focus();
+        assert_eq!("button_focus_blocked", disabled.last_action);
+        disabled.register_button_keyboard_activation("button");
+        assert_eq!("button_keyboard_blocked", disabled.last_action);
+
+        let mut unfocusable = StorybookScreenState::default();
+        unfocusable.register_button_option(StorybookButtonOptionControl::Focusable);
+        unfocusable.register_button_focus();
+        assert_eq!("button_focus_blocked", unfocusable.last_action);
+
+        let mut no_keyboard = StorybookScreenState::default();
+        no_keyboard.register_button_option(StorybookButtonOptionControl::KeyboardActivation);
+        no_keyboard.register_button_keyboard_activation("button");
+        assert_eq!("button_keyboard_blocked", no_keyboard.last_action);
+
+        let mut no_focus = StorybookScreenState::default();
+        no_focus.register_button_keyboard_activation("button");
+        assert_eq!("button_keyboard_without_focus", no_focus.last_action);
+        no_focus.register_card_keyboard_activation();
+        assert_eq!("card_keyboard_without_focus", no_focus.last_action);
+        no_focus.register_chip_focus(true);
+        assert_eq!("chip_focus_blocked", no_focus.last_action);
+        no_focus.register_chip_keyboard_dismiss(true);
+        assert_eq!("chip_keyboard_blocked", no_focus.last_action);
+        no_focus.register_chip_keyboard_dismiss(false);
+        assert_eq!("chip_keyboard_without_focus", no_focus.last_action);
+        assert!(!no_focus.release_button_press());
+    }
+
+    #[test]
+    fn release_button_press_clears_an_active_press() {
+        let mut state = StorybookScreenState::default();
+        state.register_button_click("button");
+        assert!(state.release_button_press());
+        assert!(!state.is_button_pressed());
+    }
+
+    #[test]
+    fn summary_hover_reports_only_state_changes() {
+        let mut state = StorybookScreenState::default();
+        assert!(state.set_hovered_summary_index(Some(1)));
+        assert!(!state.set_hovered_summary_index(Some(1)));
+        assert!(state.set_hovered_summary_index(None));
+    }
+}

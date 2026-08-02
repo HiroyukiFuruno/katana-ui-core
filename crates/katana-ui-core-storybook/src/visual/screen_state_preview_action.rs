@@ -252,3 +252,80 @@ impl StorybookScreenState {
         self.state_label = spec.state;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn preview_action_routes_cover_every_specialized_and_fallback_route() {
+        let routes = [
+            "checkbox",
+            "radio",
+            "toggle",
+            "progress-bar",
+            "panel",
+            "tabs",
+            "breadcrumb",
+            "breadcrumb-hover",
+            "breadcrumb-focus",
+            "breadcrumb-keyboard",
+            "accordion",
+            "accordion-hover",
+            "accordion-focus",
+            "accordion-keyboard",
+            "accordion-disabled",
+            "accordion-group",
+            "code-diff",
+            "code-diff-hover",
+            "code-diff-focus",
+            "code-diff-keyboard",
+            "code-diff-scroll-sync",
+            "theme-tokens-hover",
+            "theme-tokens-focus",
+            "theme-tokens-keyboard",
+            "theme-tokens-resize",
+            "collapsible-panel",
+            "virtualization",
+            "list",
+            "tree-view-hover",
+            "tree-view-focus",
+            "tree-view-keyboard",
+            "tree-view-scroll",
+            "menu-button",
+            "modal-overlay",
+            "notification-toast",
+            "popover",
+            "hover-card",
+            "hover-card-hover",
+            "hover-card-focus",
+            "hover-card-inner-focus",
+            "search-box",
+            "search-control-strip",
+            "segmented-toggle",
+            "selection-list",
+            "side-menu",
+            "shortcut-combo",
+            "shortcut-cheatsheet",
+            "skeleton-cluster",
+            "motion",
+            "window-control-button-group",
+            "startup-state-panel",
+            "attachment-chip",
+            "chip-group",
+            "empty-state",
+            "empty-state-hover",
+            "empty-state-focus",
+            "empty-state-keyboard",
+            "fallback-route",
+        ];
+
+        for route in routes {
+            let mut state = StorybookScreenState::default();
+            state.register_preview_action(route);
+            assert_ne!(state.last_action, "none", "route {route}");
+            assert_ne!(state.last_event, "none", "route {route}");
+            assert_ne!(state.state_label, "idle", "route {route}");
+        }
+    }
+}

@@ -1,7 +1,7 @@
 use katana_ui_core::atom::Text;
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
-use katana_ui_core::render_model::{UiNodeKind, UiTree, UiVariant};
+use katana_ui_core::render_model::{UiNode, UiNodeKind, UiTree, UiVariant};
 use katana_ui_core::widget::atoms::{
     KeyCombo, KeyKind, KeyModifiers, RuntimePlatform, ShortcutCombo, Skeleton, SkeletonAnimation,
     SkeletonShape,
@@ -9,14 +9,15 @@ use katana_ui_core::widget::atoms::{
 use katana_ui_core::widget::molecules::{
     CollapsiblePanel, CollapsiblePanelWidth, CollapsibleSidebar, MotionPrimitive,
     MotionPrimitiveKind, MotionSpec, PanelMode, ReducedMotionPolicy, ResizableWidth,
-    RowHeightProvider, SettingsControl, SettingsDirtyVisualization, SettingsField, SettingsList,
-    SettingsListEvent, SettingsSection, SettingsValue, ShortcutCheatsheet,
-    ShortcutCheatsheetAction, ShortcutCheatsheetEvent, ShortcutCheatsheetGroup,
-    ShortcutCheatsheetItem, SidebarEvent, SidebarMode, SkeletonCluster, StartupState,
-    StartupStatePanel, StartupStatePanelAction, StartupStatePanelEvent, VirtualizationConfig,
-    VirtualizedEvent, VirtualizedList, VirtualizedTree, WindowControlButtonGroup,
-    WindowControlButtonGroupAction, WindowControlButtonGroupEvent, WindowControlButtonGroupOptions,
-    WindowControlKind, WindowControlSize, WindowControlVisibility, WindowControlsPosition,
+    RowHeightProvider, SettingsControl, SettingsControlKind, SettingsControlOption,
+    SettingsDirtyVisualization, SettingsField, SettingsList, SettingsListEvent, SettingsSection,
+    SettingsValue, ShortcutCheatsheet, ShortcutCheatsheetAction, ShortcutCheatsheetEvent,
+    ShortcutCheatsheetGroup, ShortcutCheatsheetItem, SidebarEvent, SidebarMode, SkeletonCluster,
+    StartupState, StartupStatePanel, StartupStatePanelAction, StartupStatePanelEvent,
+    VirtualizationConfig, VirtualizedEvent, VirtualizedList, VirtualizedTree,
+    WindowControlButtonGroup, WindowControlButtonGroupAction, WindowControlButtonGroupEvent,
+    WindowControlButtonGroupOptions, WindowControlKind, WindowControlSize, WindowControlVisibility,
+    WindowControlsPosition,
 };
 
 #[test]
@@ -115,6 +116,203 @@ fn sidebar_exposes_width_mode_and_event_contract() {
 }
 
 #[test]
+fn sidebar_handles_all_modes_hover_width_bounds_and_foreign_actions() {
+    let width = ResizableWidth {
+        min: 160,
+        max: 320,
+        current: 240,
+        persist_id: "sidebar-width".to_string(),
+    };
+    let mut sidebar = CollapsibleSidebar::new("Sidebar", width).hover_expand(false, true);
+    let id = sidebar.state_id().clone();
+
+    for (index, expected) in [
+        (0, SidebarMode::Expanded),
+        (1, SidebarMode::IconOnly),
+        (2, SidebarMode::Collapsed),
+        (3, SidebarMode::FloatingOverlay),
+        (99, SidebarMode::FloatingOverlay),
+    ] {
+        assert!(
+            sidebar
+                .apply_action(&UiAction::set_selected_index(id.clone(), index))
+                .handled
+        );
+        assert_eq!(expected, sidebar.mode_state());
+    }
+
+    assert!(
+        sidebar
+            .apply_action(&UiAction::set_value(id.clone(), "not-a-number"))
+            .handled
+    );
+    assert_eq!(240, sidebar.width());
+    assert!(
+        sidebar
+            .apply_action(&UiAction::set_value(id.clone(), "1"))
+            .handled
+    );
+    assert_eq!(160, sidebar.width());
+    assert!(
+        sidebar
+            .apply_action(&UiAction::hover(id.clone(), false))
+            .handled
+    );
+    assert_eq!(SidebarMode::Collapsed, sidebar.mode_state());
+    assert!(
+        sidebar
+            .apply_action(&UiAction::hover(id.clone(), true))
+            .handled
+    );
+    assert_eq!(SidebarMode::Expanded, sidebar.mode_state());
+    assert!(
+        !sidebar
+            .apply_action(&UiAction::press(
+                katana_ui_core::render_model::UiStateId::new("other",)
+            ))
+            .handled
+    );
+    assert!(!sidebar.apply_action(&UiAction::press(id)).handled);
+
+    let floating = UiTree::new(sidebar.mode(SidebarMode::FloatingOverlay));
+    assert_eq!(
+        katana_ui_core::render_model::UiZIndex::Value(80),
+        floating.root().props().common.z_index
+    );
+    assert_eq!(3, floating.root().props().interaction.selected_index);
+
+    let expanded = UiTree::new(CollapsibleSidebar::new(
+        "Expanded",
+        ResizableWidth {
+            min: 160,
+            max: 320,
+            current: 240,
+            persist_id: "expanded-width".to_string(),
+        },
+    ));
+    assert_eq!(
+        katana_ui_core::render_model::UiZIndex::Auto,
+        expanded.root().props().common.z_index
+    );
+}
+
+#[test]
+fn settings_controls_cover_all_typed_values_and_reject_mismatches() {
+    let options = vec![SettingsControlOption::new("a", "Option A")];
+    let mut controls = vec![
+        SettingsControl::Toggle { checked: false },
+        SettingsControl::Select {
+            options: options.clone(),
+            selected: "a".to_string(),
+        },
+        SettingsControl::Combo {
+            options: options.clone(),
+            query: "query".to_string(),
+            selected: None,
+        },
+        SettingsControl::Input {
+            value: "input".to_string(),
+        },
+        SettingsControl::TextArea {
+            value: "text".to_string(),
+        },
+        SettingsControl::Number {
+            value: 5,
+            min: 0,
+            max: 10,
+        },
+        SettingsControl::Chips {
+            values: vec!["one".to_string()],
+        },
+        SettingsControl::Radio {
+            options,
+            selected: "a".to_string(),
+        },
+        SettingsControl::ColorPicker {
+            color: SettingsValue::Color {
+                red: 1,
+                green: 2,
+                blue: 3,
+                alpha: 255,
+            },
+        },
+        SettingsControl::custom(Text::new("Custom")),
+    ];
+    assert_eq!(
+        vec![
+            SettingsControlKind::Toggle,
+            SettingsControlKind::Select,
+            SettingsControlKind::Combo,
+            SettingsControlKind::Input,
+            SettingsControlKind::TextArea,
+            SettingsControlKind::Number,
+            SettingsControlKind::Chips,
+            SettingsControlKind::Radio,
+            SettingsControlKind::ColorPicker,
+            SettingsControlKind::Custom,
+        ],
+        controls
+            .iter()
+            .map(SettingsControl::kind)
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        SettingsValue::Text("query".to_string()),
+        controls[2].value()
+    );
+    assert_eq!(
+        vec![
+            SettingsValue::Bool(false),
+            SettingsValue::Text("a".to_string()),
+            SettingsValue::Text("query".to_string()),
+            SettingsValue::Text("input".to_string()),
+            SettingsValue::Text("text".to_string()),
+            SettingsValue::Number(5),
+            SettingsValue::List(vec!["one".to_string()]),
+            SettingsValue::Text("a".to_string()),
+            SettingsValue::Color {
+                red: 1,
+                green: 2,
+                blue: 3,
+                alpha: 255,
+            },
+            SettingsValue::None,
+        ],
+        controls
+            .iter()
+            .map(SettingsControl::value)
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(SettingsValue::None, controls[9].value());
+
+    let updates = [
+        SettingsValue::Bool(true),
+        SettingsValue::Text("b".to_string()),
+        SettingsValue::Text("selected".to_string()),
+        SettingsValue::Text("changed".to_string()),
+        SettingsValue::Text("changed".to_string()),
+        SettingsValue::Number(99),
+        SettingsValue::List(vec!["two".to_string()]),
+        SettingsValue::Text("b".to_string()),
+        SettingsValue::Color {
+            red: 4,
+            green: 5,
+            blue: 6,
+            alpha: 255,
+        },
+    ];
+    for (control, update) in controls.iter_mut().zip(updates) {
+        assert!(control.set_value(update));
+    }
+    assert_eq!(SettingsValue::Number(10), controls[5].value());
+    assert_eq!(
+        SettingsValue::Text("selected".to_string()),
+        controls[2].value()
+    );
+    assert!(!controls[0].set_value(SettingsValue::Text("invalid".to_string())));
+}
+
+#[test]
 fn virtualized_list_and_tree_compute_stable_visible_ranges() {
     let config = VirtualizationConfig {
         enabled: true,
@@ -137,6 +335,19 @@ fn virtualized_list_and_tree_compute_stable_visible_ranges() {
     let scroll = UiAction::set_value(list.state_id().clone(), "1000");
     assert!(list.apply_action(&scroll).handled);
     assert!(matches!(list.last_event(), VirtualizedEvent::Scrolled(_)));
+    let focused = list.apply_action(&UiAction::set_selected_index(list.state_id().clone(), 88));
+    assert!(focused.handled);
+    assert!(matches!(list.last_event(), VirtualizedEvent::FocusKept(88)));
+    let unsupported = list.apply_action(&UiAction::focus(list.state_id().clone()));
+    let wrong_target = list.apply_action(&UiAction::set_value(
+        katana_ui_core::render_model::UiStateId::new("other-list"),
+        "1200",
+    ));
+    assert!(!unsupported.handled);
+    assert!(!wrong_target.handled);
+    let list_tree = UiTree::new(list);
+    assert_eq!(UiNodeKind::VirtualizedList, list_tree.root().kind());
+    assert!(list_tree.root().props().interaction.has_selection);
 
     let tree = VirtualizedTree::new("Tree", config).expanded_node("root");
     assert_eq!(10_000, tree.visible_range().aria_set_size);
@@ -165,6 +376,25 @@ fn skeleton_and_motion_make_passive_and_reduced_motion_contract_explicit() {
     let reduce = UiAction::reduced_motion(motion.state_id().clone(), true);
     assert!(motion.apply_action(&reduce).handled);
     assert_eq!(0, motion.effective_duration_ms());
+    let tick = motion.apply_action(&UiAction::animation_tick(motion.state_id().clone(), 75));
+    assert!(tick.handled);
+    assert_eq!(75, tick.after.animation_phase);
+    assert!(
+        !motion
+            .apply_action(&UiAction::focus(motion.state_id().clone()))
+            .handled
+    );
+    assert!(
+        !motion
+            .apply_action(&UiAction::animation_tick(
+                katana_ui_core::render_model::UiStateId::new("other-motion"),
+                90,
+            ))
+            .handled
+    );
+    let motion_node = UiNode::from(motion);
+    assert_eq!(UiNodeKind::MotionPrimitive, motion_node.kind());
+    assert_eq!(75, motion_node.props().interaction.animation_phase);
 }
 
 #[test]
@@ -201,6 +431,13 @@ fn window_control_group_and_startup_panel_emit_typed_events() {
         true,
     ));
     assert_eq!("alert", startup.accessibility_role());
+    assert!(!startup.state_id().as_str().is_empty());
+    assert!(matches!(startup.state_model(), StartupState::Error { .. }));
+    assert_eq!("Startup status", startup.live_region_label_model());
+    assert_eq!(
+        startup.options_model().live_region_label,
+        startup.live_region_label_model()
+    );
     let retried = startup.apply_action(StartupStatePanelAction::Retry);
     assert_eq!([StartupStatePanelEvent::StartupRetried], retried.as_slice());
 

@@ -74,9 +74,6 @@ impl WorkspaceTabBar {
         tab_id: WorkspaceTabId,
         to_visual_index: usize,
     ) -> Vec<WorkspaceTabBarEvent> {
-        if !WorkspaceTabDropRules::can_accept(&self.options.tabs, &tab_id, to_visual_index) {
-            return Vec::new();
-        }
         let mut visual_tabs: Vec<WorkspaceTab> =
             ordered_tabs(&self.options.tabs, &self.options.groups)
                 .into_iter()
@@ -85,6 +82,9 @@ impl WorkspaceTabBar {
         let Some(from) = visual_tabs.iter().position(|tab| tab.id == tab_id) else {
             return Vec::new();
         };
+        if !WorkspaceTabDropRules::can_accept(&self.options.tabs, &tab_id, to_visual_index) {
+            return Vec::new();
+        }
         let tab = visual_tabs.remove(from);
         let to = to_visual_index.min(visual_tabs.len());
         visual_tabs.insert(to, tab);

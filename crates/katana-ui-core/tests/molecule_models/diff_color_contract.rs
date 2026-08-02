@@ -1,11 +1,11 @@
 use katana_ui_core::atom::Text;
 use katana_ui_core::component::ComponentAction;
-use katana_ui_core::interaction::UiAction;
+use katana_ui_core::interaction::{UiAction, UiActionSource};
 use katana_ui_core::molecule::{
     CodeDiff, CodeDiffDirection, CodeDiffLine, CodeDiffLineKind, CodeDiffMode, CodeDiffSource,
     CodeDiffWhitespace, CollapsedBlock, ColorBlendingMode, ColorPicker, HighlightRange, RgbaColor,
 };
-use katana_ui_core::render_model::{UiSize, UiTree};
+use katana_ui_core::render_model::{UiColorBlendingMode, UiSize, UiTree};
 
 const FIRST_LINE: usize = 1;
 const COLLAPSED_START_LINE: usize = 2;
@@ -171,4 +171,63 @@ fn color_picker_keeps_typed_model_and_projects_children_to_neutral_tree() {
 
     assert_eq!(BRAND_HUE, picker.hue_value());
     assert_eq!(CHILD_COUNT, UiTree::new(picker).root().children().len());
+}
+
+#[test]
+fn color_blending_parser_and_render_mapping_cover_every_mode() {
+    let cases = [
+        (
+            "normal",
+            ColorBlendingMode::Normal,
+            UiColorBlendingMode::Normal,
+        ),
+        (
+            "additive",
+            ColorBlendingMode::Additive,
+            UiColorBlendingMode::Additive,
+        ),
+        (
+            "replace",
+            ColorBlendingMode::Replace,
+            UiColorBlendingMode::Replace,
+        ),
+        (
+            "multiply",
+            ColorBlendingMode::Multiply,
+            UiColorBlendingMode::Multiply,
+        ),
+        (
+            "screen",
+            ColorBlendingMode::Screen,
+            UiColorBlendingMode::Screen,
+        ),
+    ];
+
+    for (name, mode, rendered) in cases {
+        assert_eq!(Some(mode), ColorBlendingMode::parse(name));
+        assert_eq!(
+            rendered,
+            UiTree::new(ColorPicker::new("Color").blending(mode))
+                .root()
+                .props()
+                .color_picker
+                .blending
+        );
+    }
+    assert_eq!(None, ColorBlendingMode::parse("unsupported"));
+}
+
+#[test]
+fn color_picker_rejects_unknown_blending_mode_without_mutation() {
+    let mut picker = ColorPicker::new("Color").blending(ColorBlendingMode::Screen);
+    let result = picker.apply_action(&UiAction::SetValue {
+        target: picker.state_id().clone(),
+        value: "unsupported".to_string(),
+        source: UiActionSource::ColorPickerBlending,
+        progress: None,
+        color_drag: None,
+    });
+
+    assert!(!result.handled);
+    assert_eq!(ColorBlendingMode::Screen, picker.blending_mode());
 }

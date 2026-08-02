@@ -125,9 +125,7 @@ fn should_wrap(node: &UiNode) -> bool {
 
 fn alert_plain_lines(label: &str) -> Vec<String> {
     let mut lines = label.split('\n');
-    let Some(title) = lines.next() else {
-        return vec![String::new()];
-    };
+    let title = lines.next().unwrap_or_default();
     let body_lines = lines.collect::<Vec<_>>();
     let title_max_chars = if body_lines.is_empty() {
         ALERT_TITLE_MAX_CHARS
@@ -171,9 +169,8 @@ fn push_no_wrap_span(lines: &mut Vec<Vec<UiTextSpan>>, span: &UiTextSpan) {
         }
         let mut segment = span.clone();
         segment.text = part.to_string();
-        if let Some(line) = lines.last_mut() {
-            line.push(segment);
-        }
+        let line_index = lines.len() - 1;
+        lines[line_index].push(segment);
     }
 }
 
@@ -290,7 +287,11 @@ fn is_compact_document_text(node: &UiNode, metrics: UiTreeTextMetrics) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{UiTreeTextWrap, available_width, span_segments, span_width};
+    use super::{
+        MAX_PLAIN_LINE_CACHE_ENTRIES, PLAIN_LINE_CACHE, PlainLineCacheKey, UiTreeTextWrap,
+        alert_plain_lines, available_width, fixed_char_chunks, remember_plain_lines,
+        span_no_wrap_lines, span_segments, span_width,
+    };
     use crate::visual::text::TextRenderer;
     use crate::visual::ui_tree_canvas_text_line_width::{SpanTextRenderers, whitespace_width};
     use crate::visual::ui_tree_canvas_text_metrics::{UiTreeDocumentTypography, UiTreeTextMetrics};
@@ -302,6 +303,55 @@ mod tests {
         UiTextSpanStyle, UiTextWrapMode,
     };
     use katana_ui_core::theme::{FontFamily, FontToken, ThemeSnapshot};
+
+    #[test]
+    fn plain_line_helpers_preserve_empty_and_multiline_content() {
+        assert_eq!(vec![String::new()], alert_plain_lines(""));
+        assert_eq!(vec![String::new()], fixed_char_chunks("", 4));
+
+        let lines = span_no_wrap_lines(&[UiTextSpan::plain("\nalpha\n\nbeta")]);
+        assert_eq!(4, lines.len());
+        assert!(lines[0].is_empty());
+        assert_eq!("alpha", lines[1][0].text);
+        assert!(lines[2].is_empty());
+        assert_eq!("beta", lines[3][0].text);
+    }
+
+    #[test]
+    fn plain_line_cache_clears_at_capacity_before_inserting() {
+        PLAIN_LINE_CACHE.with(|cache| {
+            let mut cache = cache.borrow_mut();
+            cache.clear();
+            for index in 0..MAX_PLAIN_LINE_CACHE_ENTRIES {
+                cache.insert(
+                    cache_key(format!("existing-{index}")),
+                    vec!["old".to_string()],
+                );
+            }
+        });
+
+        let key = cache_key("replacement".to_string());
+        remember_plain_lines(key.clone(), &["new".to_string()]);
+
+        PLAIN_LINE_CACHE.with(|cache| {
+            let cache = cache.borrow();
+            assert_eq!(1, cache.len());
+            assert_eq!(Some(&vec!["new".to_string()]), cache.get(&key));
+        });
+    }
+
+    fn cache_key(node_id: String) -> PlainLineCacheKey {
+        PlainLineCacheKey {
+            node_id,
+            label: "label".to_string(),
+            role: "body".to_string(),
+            font_role: "body".to_string(),
+            wrap: true,
+            width: 120,
+            font_size_bits: 14.0_f32.to_bits(),
+            line_height: 20,
+        }
+    }
 
     #[test]
     fn span_segments_preserve_whitespace_only_syntax_spans() {

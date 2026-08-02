@@ -114,3 +114,23 @@ pub(super) fn action_for_result(result: &SettingsListHitTestResult) -> Option<Se
         SettingsListHitTestResult::Field { .. } | SettingsListHitTestResult::None => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_interaction_and_result_helpers_cover_none_and_field_paths() {
+        let none = SettingsListInteraction::none();
+        assert_eq!(SettingsListHitTestResult::None, none.result);
+        assert_eq!(UiCursor::Default, none.cursor);
+        assert!(none.target.is_none());
+        assert!(hover_action_for_result(&SettingsListHitTestResult::None).is_none());
+        assert!(
+            action_for_result(&SettingsListHitTestResult::Field {
+                field_id: "theme".to_string()
+            })
+            .is_none()
+        );
+    }
+}

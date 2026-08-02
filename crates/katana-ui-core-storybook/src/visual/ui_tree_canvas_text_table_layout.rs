@@ -188,7 +188,10 @@ fn add_remainder_to_last_column(widths: &mut [usize], available_width: usize) {
 
 #[cfg(test)]
 mod tests {
-    use super::build_layout;
+    use super::{
+        ParsedTable, allocate_katana_column_widths, build_layout, katana_column_widths,
+        split_table_row,
+    };
     use crate::visual::text::TextRenderer;
     use crate::visual::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
     use crate::visual::ui_tree_canvas_types::UiTreeRenderArea;
@@ -290,6 +293,45 @@ mod tests {
         assert_eq!(
             920, layout.table_width,
             "table must consume the remaining full Markdown row width, not a stale fixed content width"
+        );
+    }
+
+    #[test]
+    fn table_layout_handles_empty_separator_and_zero_column_boundaries() {
+        let facade = UiCoreFacade::default();
+        let renderer = TextRenderer::load(&facade, "body");
+        let empty_node = Text::new("").text_role("table").into();
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 320,
+            height: 120,
+            scroll_y: 0.0,
+        };
+
+        let empty = build_layout(
+            &renderer,
+            &empty_node,
+            0,
+            area,
+            UiTreeTextMetrics::for_node(&empty_node),
+        );
+        assert!(empty.rows.is_empty());
+        assert!(empty.alignments.is_empty());
+        assert_eq!(0, empty.column_count);
+        assert_eq!(0, empty.table_width);
+        assert!(empty.column_widths.is_empty());
+
+        let parsed = ParsedTable::new("| --- | :---: | ---: |\n| A | B | C |");
+        assert_eq!(1, parsed.rows.len());
+        assert_eq!(3, parsed.alignments.len());
+        assert_eq!(1, ParsedTable::new("|\n| A |").rows.len());
+        assert_eq!(None, split_table_row("|"));
+        assert!(katana_column_widths(&[], 0, 100).is_empty());
+        assert!(allocate_katana_column_widths(0, 100, &[]).is_empty());
+        assert_eq!(
+            vec![50, 50],
+            allocate_katana_column_widths(2, 100, &[(20, 0), (30, 1)])
         );
     }
 }

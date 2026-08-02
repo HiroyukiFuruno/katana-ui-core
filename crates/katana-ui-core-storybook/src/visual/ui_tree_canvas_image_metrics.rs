@@ -56,3 +56,24 @@ pub(super) fn logical_image_height_exact(image: &UiImageSurfaceProps) -> f32 {
 fn scaled_dimension(value: f32, scale: f32) -> usize {
     (value * scale).round().max(1.0) as usize
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn integer_display_dimensions_are_used_without_exact_dimensions() {
+        let image = UiImageSurfaceProps {
+            width: 10,
+            height: 20,
+            display_width: 30,
+            display_height: 40,
+            content_scale: 100,
+            ..UiImageSurfaceProps::default()
+        };
+
+        assert_eq!(30.0, logical_image_width_exact(&image));
+        assert_eq!(40.0, logical_image_height_exact(&image));
+        assert_eq!(40, logical_image_height(&image));
+    }
+}

@@ -1,3 +1,4 @@
+use katana_ui_core::atom::Text;
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::molecule::{
@@ -136,4 +137,63 @@ fn tree_view_click_toggles_directory_open_state_and_logs_click() {
         DisclosureTriggerArea::IconAndText,
         tree.toggle_trigger_area_model()
     );
+}
+
+#[test]
+fn tree_render_maps_all_line_and_trigger_variants() {
+    for (line_style, expected) in [
+        (TreeLineStyle::Solid, UiTreeLineStyle::Solid),
+        (TreeLineStyle::Dotted, UiTreeLineStyle::Dotted),
+        (TreeLineStyle::Dashed, UiTreeLineStyle::Dashed),
+    ] {
+        let tree = UiTree::new(TreeView::new("Tree").line_style(line_style));
+        assert_eq!(expected, tree.root().props().tree.line_style);
+    }
+    for (trigger, expected) in [
+        (
+            DisclosureTriggerArea::IconOnly,
+            UiTreeToggleTriggerArea::IconOnly,
+        ),
+        (
+            DisclosureTriggerArea::IconAndText,
+            UiTreeToggleTriggerArea::IconAndText,
+        ),
+        (
+            DisclosureTriggerArea::WholeElement,
+            UiTreeToggleTriggerArea::WholeElement,
+        ),
+        (
+            DisclosureTriggerArea::TextOnly,
+            UiTreeToggleTriggerArea::TextOnly,
+        ),
+    ] {
+        let tree = UiTree::new(TreeView::new("Tree").toggle_trigger_area(trigger));
+        assert_eq!(expected, tree.root().props().tree.toggle_trigger_area);
+    }
+}
+
+#[test]
+fn structured_components_cover_children_generic_actions_wrong_targets_and_disabled_press() {
+    let mut tree = TreeView::new("Tree");
+    let tree_target = tree.state_id().clone();
+    let other = TreeView::new("Other");
+    assert!(
+        !tree
+            .apply_action(&UiAction::click(other.state_id().clone()))
+            .handled
+    );
+    assert!(tree.apply_action(&UiAction::focus(tree_target)).handled);
+
+    let mut palette = CommandPalette::new("Commands");
+    let palette_target = palette.state_id().clone();
+    assert!(
+        palette
+            .apply_action(&UiAction::focus(palette_target))
+            .handled
+    );
+
+    let mut editor = DynamicArrayEditor::new("Rows").child(Text::new("Child"));
+    let editor_target = editor.state_id().clone();
+    assert!(editor.apply_action(&UiAction::focus(editor_target)).handled);
+    assert_eq!(1, UiTree::new(editor).root().children().len());
 }

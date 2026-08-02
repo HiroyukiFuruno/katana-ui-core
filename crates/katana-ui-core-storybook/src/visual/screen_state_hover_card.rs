@@ -8,10 +8,7 @@ const SLOT_ACTION_ID: &str = "configure-action";
 
 impl StorybookScreenState {
     pub(in crate::visual) fn register_hover_card_open(&mut self) {
-        let event = hover_card_event(HoverCardAction::AnchorPointerEntered);
-        if event != HoverCardEvent::Opened {
-            return;
-        }
+        let _ = hover_card_event(HoverCardAction::AnchorPointerEntered);
         self.action_count += 1;
         self.last_action = "hover_card_open";
         self.last_event = "hover_card_opened";
@@ -21,10 +18,7 @@ impl StorybookScreenState {
     }
 
     pub(in crate::visual) fn register_hover_card_hover(&mut self) {
-        let event = hover_card_event(HoverCardAction::AnchorPointerEntered);
-        if event != HoverCardEvent::Opened {
-            return;
-        }
+        let _ = hover_card_event(HoverCardAction::AnchorPointerEntered);
         self.action_count += 1;
         self.preview_hovered = true;
         self.last_action = "hover_card_hover";
@@ -35,10 +29,7 @@ impl StorybookScreenState {
     }
 
     pub(in crate::visual) fn register_hover_card_focus(&mut self) {
-        let event = hover_card_event(HoverCardAction::AnchorFocused);
-        if event != HoverCardEvent::Opened {
-            return;
-        }
+        let _ = hover_card_event(HoverCardAction::AnchorFocused);
         self.action_count += 1;
         self.button_focused = true;
         self.last_action = "hover_card_focus";
@@ -49,12 +40,9 @@ impl StorybookScreenState {
     }
 
     pub(in crate::visual) fn register_hover_card_inner_focus_keep_open(&mut self) {
-        let event = hover_card_event(HoverCardAction::InnerFocusEntered(UiNodeId::new(
+        let _ = hover_card_event(HoverCardAction::InnerFocusEntered(UiNodeId::new(
             SLOT_ACTION_ID,
         )));
-        if event != HoverCardEvent::KeptOpen {
-            return;
-        }
         self.action_count += 1;
         self.button_focused = true;
         self.last_action = "hover_card_inner_focus";
@@ -79,4 +67,27 @@ fn hover_card_fixture() -> HoverCard {
         .close_delay_ms(CLOSE_DELAY_MS)
         .pointer_follow(true)
         .slot_action(PopoverActionSlot::new(SLOT_ACTION_ID, "Configure"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hover_card_fixture_emits_the_events_used_by_the_story_adapter() {
+        assert_eq!(
+            HoverCardEvent::Opened,
+            hover_card_event(HoverCardAction::AnchorPointerEntered)
+        );
+        assert_eq!(
+            HoverCardEvent::Opened,
+            hover_card_event(HoverCardAction::AnchorFocused)
+        );
+        assert_eq!(
+            HoverCardEvent::KeptOpen,
+            hover_card_event(HoverCardAction::InnerFocusEntered(UiNodeId::new(
+                SLOT_ACTION_ID,
+            )))
+        );
+    }
 }

@@ -7,20 +7,18 @@ const CONTROL_STATE_ID: &str = "field:repository-name";
 
 impl StorybookScreenState {
     pub(in crate::visual) fn register_form_field_focus_link(&mut self) {
-        let Some(target) = form_field_focus_target() else {
-            return;
-        };
+        let target = form_field_focus_target();
+        debug_assert_eq!(
+            target.as_ref().map(UiStateId::as_str),
+            Some(CONTROL_STATE_ID)
+        );
         self.action_count += 1;
         self.button_focused = true;
         self.last_action = "form_field_focus_link";
         self.last_event = "form_field_control_focused";
         self.last_setting = "form_field.control_state_id";
         self.last_setting_value = CONTROL_STATE_ID;
-        self.state_label = if target.as_str() == CONTROL_STATE_ID {
-            "focus=control"
-        } else {
-            "focus=unknown"
-        };
+        self.state_label = "focus=control";
     }
 }
 

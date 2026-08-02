@@ -90,3 +90,42 @@ impl UiComponentState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{UiComponentState, UiStateHandle};
+    use crate::render_model::UiStateId;
+    use std::panic::{AssertUnwindSafe, catch_unwind, resume_unwind};
+
+    #[test]
+    fn state_handle_shares_updates_and_recovers_poisoned_lock() {
+        let handle = UiStateHandle::new(1usize);
+        let clone = handle.clone();
+        clone.set(2);
+        handle.update(|value| *value += 3);
+        assert_eq!(5, clone.get());
+        assert_eq!(10, handle.with(|value| value * 2));
+
+        let poisoned = handle.clone();
+        let panic_result = catch_unwind(AssertUnwindSafe(|| {
+            poisoned.update(|_| resume_unwind(Box::new("poison state lock")));
+        }));
+        assert!(panic_result.is_err());
+        assert_eq!(5, handle.get());
+        handle.set(8);
+        assert_eq!(8, clone.get());
+    }
+
+    #[test]
+    fn component_state_starts_with_neutral_flags() {
+        let state = UiComponentState::new(UiStateId::new("component"));
+
+        assert_eq!("component", state.state_id.as_str());
+        assert!(!state.disabled);
+        assert!(!state.focusable);
+        assert!(!state.loading);
+        assert!(!state.readonly);
+        assert!(!state.invalid);
+        assert!(!state.checked);
+    }
+}

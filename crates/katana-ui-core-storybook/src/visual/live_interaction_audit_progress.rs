@@ -143,3 +143,13 @@ fn segment_inside_track(segment: ProgressSegmentMotionSnapshot) -> bool {
         && segment.x.saturating_add(segment.width)
             <= segment.track_x.saturating_add(segment.track_width)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::segment_moved_within_track;
+
+    #[test]
+    fn missing_progress_segment_cannot_report_motion() {
+        assert!(!segment_moved_within_track(None, None));
+    }
+}

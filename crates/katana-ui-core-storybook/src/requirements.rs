@@ -154,3 +154,16 @@ impl StoryRequirements {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn unknown_story_pages_use_the_child_node_minimum() {
+        assert_eq!(
+            MIN_CHILDREN_NODE,
+            StoryRequirements::minimum_nodes_for("unknown")
+        );
+    }
+}

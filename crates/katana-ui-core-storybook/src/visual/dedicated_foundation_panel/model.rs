@@ -170,3 +170,23 @@ fn set_horizontal(props: &mut UiPanelProps, scroll_x: u32, visible: bool) {
     props.scroll_x = scroll_x.min(props.content_width.saturating_sub(props.viewport_width));
     props.horizontal_scrollbar_visible = visible && props.content_width > props.viewport_width;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{PanelChildKey, PanelSlot};
+
+    #[test]
+    fn panel_slot_constructor_rect_and_contains_share_the_same_bounds() {
+        let slot = PanelSlot::new("test", "Test panel", PanelChildKey::Preview, 4, 6, 20, 10);
+        let rect = slot.rect(100, 200);
+
+        assert_eq!(
+            (104, 206, 20, 10),
+            (rect.x, rect.y, rect.width, rect.height)
+        );
+        assert!(slot.contains(100, 200, 104, 206));
+        assert!(slot.contains(100, 200, 123, 215));
+        assert!(!slot.contains(100, 200, 124, 215));
+        assert!(!slot.contains(100, 200, 123, 216));
+    }
+}

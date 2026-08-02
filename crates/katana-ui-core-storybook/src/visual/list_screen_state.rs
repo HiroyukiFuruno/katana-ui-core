@@ -53,3 +53,19 @@ impl ListScreenState {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ListScreenState;
+
+    #[test]
+    fn keyboard_next_starts_and_wraps_at_the_second_row() {
+        let mut state = ListScreenState::default();
+        state.keyboard_next();
+        assert_eq!(Some(1), state.focused_index);
+
+        state.focused_index = Some(2);
+        state.keyboard_next();
+        assert_eq!(Some(1), state.focused_index);
+    }
+}

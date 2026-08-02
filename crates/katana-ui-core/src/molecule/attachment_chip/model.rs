@@ -2,7 +2,7 @@ use super::{
     AttachmentChipAction, AttachmentChipEvent, AttachmentKind, AttachmentMeta, AttachmentProgress,
     AttachmentStatus, AttachmentThumbnail,
 };
-use crate::atom::{Button, Chip, ChipAction, ChipEvent, ChipTone, ChipVariant};
+use crate::atom::{Button, Chip, ChipAction, ChipTone, ChipVariant};
 use crate::render_model::{UiInteractionState, UiNode, UiNodeKind, UiStateId};
 use serde::{Deserialize, Serialize};
 
@@ -136,10 +136,7 @@ impl AttachmentChip {
     }
 
     fn dismiss(&mut self) -> Vec<AttachmentChipEvent> {
-        let chip_events = self.chip.apply_action(ChipAction::Dismiss);
-        if !contains_chip_dismiss(&chip_events) {
-            return Vec::new();
-        }
+        let _chip_events = self.chip.apply_action(ChipAction::Dismiss);
         self.record_event(AttachmentChipEvent::Dismissed {
             id: self.chip.state_id().clone(),
         })
@@ -206,10 +203,4 @@ impl From<AttachmentChip> for UiNode {
         }
         node
     }
-}
-
-fn contains_chip_dismiss(events: &[ChipEvent]) -> bool {
-    events
-        .iter()
-        .any(|event| matches!(event, ChipEvent::ChipDismissed { .. }))
 }

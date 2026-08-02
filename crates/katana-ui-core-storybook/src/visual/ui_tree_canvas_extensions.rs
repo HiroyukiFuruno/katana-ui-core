@@ -52,11 +52,13 @@ impl Canvas {
             return;
         }
         let dest_y = request.dest_y.saturating_add(dest_y_offset);
-        for x in 0..request.width.min(source.width()) {
+        let copy_width = request
+            .width
+            .min(source.width())
+            .min(self.width().saturating_sub(request.dest_x))
+            .saturating_mul(usize::from(dest_y < self.height()));
+        for x in 0..copy_width {
             let dest_x = request.dest_x.saturating_add(x);
-            if dest_x >= self.width() || dest_y >= self.height() {
-                break;
-            }
             let color = source.pixels()[source_y * source.width() + x];
             self.set(dest_x, dest_y, color);
         }
@@ -195,9 +197,6 @@ impl Canvas {
         let top = unclipped_top.min(self.height);
         let right = unclipped_right.min(self.width);
         let bottom = unclipped_bottom.min(self.height);
-        if right <= left || bottom <= top {
-            return PhysicalImageTarget::default();
-        }
         PhysicalImageTarget {
             left,
             top,
@@ -288,6 +287,9 @@ fn with_text_renderer<T>(role: &str, operation: impl FnOnce(&mut TextRenderer) -
     BODY_TEXT.with(|renderer| operation(&mut renderer.borrow_mut()))
 }
 
+#[cfg(test)]
+#[path = "ui_tree_canvas_rgba_boundary_tests.rs"]
+mod rgba_boundary_tests;
 #[cfg(test)]
 #[path = "ui_tree_canvas_extensions_tests.rs"]
 mod tests;

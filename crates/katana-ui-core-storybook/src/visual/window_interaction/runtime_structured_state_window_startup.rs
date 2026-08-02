@@ -6,11 +6,7 @@ impl WindowControlRuntimeState {
         RuntimeStructuredUpdate::new(
             "window_control_press",
             "window_control_pressed",
-            if self.pressed_close {
-                "pressed=Close"
-            } else {
-                "pressed=unknown"
-            },
+            window_control_close_label(self.pressed_close),
         )
     }
 
@@ -24,11 +20,7 @@ impl WindowControlRuntimeState {
         RuntimeStructuredUpdate::new(
             "window_control_hover",
             "window_control_visibility_changed",
-            if self.hover_visible {
-                "visible=true"
-            } else {
-                "visible=false"
-            },
+            window_control_visibility_label(self.hover_visible),
         )
     }
 
@@ -37,11 +29,7 @@ impl WindowControlRuntimeState {
         RuntimeStructuredUpdate::new(
             "window_control_keyboard_restore",
             "window_control_pressed",
-            if self.keyboard_restore {
-                "pressed=Restore"
-            } else {
-                "pressed=unknown"
-            },
+            window_control_restore_label(self.keyboard_restore),
         )
     }
 
@@ -110,11 +98,7 @@ impl StartupStateRuntimeState {
         RuntimeStructuredUpdate::new(
             "startup_state_error",
             "startup_state_changed",
-            if self.error {
-                "retry=true"
-            } else {
-                "retry=false"
-            },
+            startup_error_label(self.error),
         )
     }
 
@@ -133,11 +117,7 @@ impl StartupStateRuntimeState {
         RuntimeStructuredUpdate::new(
             "startup_state_keyboard_retry",
             "startup_retried",
-            if self.retried {
-                "retry=requested"
-            } else {
-                "retry=ignored"
-            },
+            startup_retry_label(self.retried),
         )
     }
 
@@ -148,6 +128,42 @@ impl StartupStateRuntimeState {
             "startup_state.cancel" => self.canceled = true,
             _ => {}
         }
+    }
+}
+
+const fn window_control_close_label(pressed: bool) -> &'static str {
+    if pressed {
+        "pressed=Close"
+    } else {
+        "pressed=unknown"
+    }
+}
+
+const fn window_control_visibility_label(visible: bool) -> &'static str {
+    if visible {
+        "visible=true"
+    } else {
+        "visible=false"
+    }
+}
+
+const fn window_control_restore_label(restored: bool) -> &'static str {
+    if restored {
+        "pressed=Restore"
+    } else {
+        "pressed=unknown"
+    }
+}
+
+const fn startup_error_label(error: bool) -> &'static str {
+    if error { "retry=true" } else { "retry=false" }
+}
+
+const fn startup_retry_label(retried: bool) -> &'static str {
+    if retried {
+        "retry=requested"
+    } else {
+        "retry=ignored"
     }
 }
 
@@ -183,4 +199,30 @@ fn startup_state_retry_event() -> bool {
     ));
     let events = panel.apply_action(StartupStatePanelAction::Retry);
     events == [StartupStatePanelEvent::StartupRetried]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        WindowControlRuntimeState, startup_error_label, startup_retry_label,
+        window_control_close_label, window_control_restore_label, window_control_visibility_label,
+    };
+
+    #[test]
+    fn window_and_startup_labels_cover_fallbacks_and_unknown_window_options_are_noops() {
+        assert_eq!("pressed=Close", window_control_close_label(true));
+        assert_eq!("pressed=unknown", window_control_close_label(false));
+        assert_eq!("visible=true", window_control_visibility_label(true));
+        assert_eq!("visible=false", window_control_visibility_label(false));
+        assert_eq!("pressed=Restore", window_control_restore_label(true));
+        assert_eq!("pressed=unknown", window_control_restore_label(false));
+        assert_eq!("retry=true", startup_error_label(true));
+        assert_eq!("retry=false", startup_error_label(false));
+        assert_eq!("retry=requested", startup_retry_label(true));
+        assert_eq!("retry=ignored", startup_retry_label(false));
+
+        let mut state = WindowControlRuntimeState::default();
+        state.apply_option("unknown.setting");
+        assert_eq!(WindowControlRuntimeState::default(), state);
+    }
 }

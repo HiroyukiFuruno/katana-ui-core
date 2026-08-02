@@ -196,7 +196,10 @@ fn combined_color_override(samples: &[SuperSample]) -> Option<u32> {
 
 #[cfg(test)]
 mod tests {
-    use super::{SuperSample, push_glyph_samples};
+    use super::{
+        CachedTextPixel, CachedTextRaster, SuperSample, combined_color_override, push_glyph_samples,
+    };
+    use crate::visual::canvas::Canvas;
 
     #[test]
     fn glyph_callback_rect_expands_all_supersample_pixels() {
@@ -214,6 +217,43 @@ mod tests {
                 .iter()
                 .all(|sample| sample.color_override == Some(0x00ff00))
         );
+    }
+
+    #[test]
+    fn negative_raster_rows_and_zero_alpha_color_samples_are_ignored() {
+        let raster = CachedTextRaster::new(vec![CachedTextPixel {
+            x: 0,
+            y: -1,
+            alpha: 255,
+            color_override: None,
+        }]);
+        let mut canvas = Canvas::new(1, 1, 7);
+        raster.draw(&mut canvas, 0, 0, 9, 1.0);
+        assert_eq!(&[7], canvas.pixels());
+
+        let samples = [SuperSample {
+            x: 0,
+            y: 0,
+            alpha: 0,
+            color_override: Some(0x00ff00),
+        }];
+        assert_eq!(None, combined_color_override(&samples));
+
+        let mixed_samples = [
+            SuperSample {
+                x: 0,
+                y: 0,
+                alpha: 255,
+                color_override: None,
+            },
+            SuperSample {
+                x: 0,
+                y: 0,
+                alpha: 255,
+                color_override: Some(0x123456),
+            },
+        ];
+        assert_eq!(Some(0x123456), combined_color_override(&mixed_samples));
     }
 
     fn position(sample: SuperSample) -> (i32, i32) {

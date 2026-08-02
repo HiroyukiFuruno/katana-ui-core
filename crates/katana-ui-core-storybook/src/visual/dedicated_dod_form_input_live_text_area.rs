@@ -63,7 +63,7 @@ fn draw_text_area_lines(
         rect.y + 1,
         rect.width - 2,
         rect.height - 2,
-        |canvas| {
+        &mut |canvas| {
             for (index, line) in text_area_lines(scenario).iter().enumerate() {
                 text.draw(
                     canvas,

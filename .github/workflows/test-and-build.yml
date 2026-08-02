@@ -80,6 +80,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         uses: taiki-e/install-action@cargo-llvm-cov
 
+      - name: Install headless display
+        if: matrix.os == 'ubuntu-latest'
+        run: sudo apt-get update && sudo apt-get install --yes fonts-noto-cjk fonts-noto-color-emoji xauth xvfb
+
       - name: Install just
         uses: taiki-e/install-action@just
 
@@ -115,5 +119,4 @@ jobs:
 
       - name: Run coverage
         if: matrix.os == 'ubuntu-latest'
-        continue-on-error: true
         run: just coverage

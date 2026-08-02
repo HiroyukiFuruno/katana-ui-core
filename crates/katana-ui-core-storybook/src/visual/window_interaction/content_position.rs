@@ -34,3 +34,23 @@ pub(in crate::visual) fn click_content_y(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{PanelScrollRegion, StorybookWindowState, click_content_y};
+    use crate::visual::panel_layout;
+
+    #[test]
+    fn inspector_click_position_includes_its_independent_scroll_offset() {
+        let frame = panel_layout::region_frame(PanelScrollRegion::Inspector);
+        let mut state = StorybookWindowState {
+            selected_page: "settings-list",
+            ..StorybookWindowState::default()
+        };
+        state.panel_scroll.inspector_y = 40;
+
+        let y = click_content_y(&state, frame.x + 1, frame.y + 1);
+
+        assert!(y > frame.y);
+    }
+}

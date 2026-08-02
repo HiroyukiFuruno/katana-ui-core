@@ -292,3 +292,32 @@ fn menu_selected_label(index: usize) -> &'static str {
         _ => "selected=unknown",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{StorybookButtonOperation, StorybookWindowState, apply};
+    use crate::visual::panel_screen_state::PanelChildKey;
+
+    #[test]
+    fn button_operation_dispatches_theme_panel_and_every_menu_label_boundary() {
+        let mut state = StorybookWindowState::default();
+
+        assert!(apply(StorybookButtonOperation::DarkTheme, &mut state));
+        assert_eq!("dark", state.theme_id);
+
+        assert!(apply(
+            StorybookButtonOperation::PanelChild(PanelChildKey::Preview),
+            &mut state
+        ));
+        assert_eq!("panel_active_select", state.screen_state.last_action);
+
+        state.screen_state.selection.select_open = true;
+        assert!(apply(StorybookButtonOperation::MenuClose, &mut state));
+        assert_eq!("menu_close", state.screen_state.last_action);
+
+        assert!(apply(StorybookButtonOperation::MenuSelect(0), &mut state));
+        assert_eq!("selected=open", state.screen_state.state_label);
+        assert!(apply(StorybookButtonOperation::MenuSelect(99), &mut state));
+        assert_eq!("selected=unknown", state.screen_state.state_label);
+    }
+}

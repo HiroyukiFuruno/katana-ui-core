@@ -21,7 +21,7 @@ fn consumer_app_builds_tree_from_kuc_public_api() {
         navigation.props().scroll_area.axis
     );
     assert_eq!(UiNodeKind::Column, content.kind());
-    assert_eq!(7, content.children().len());
+    assert_eq!(8, content.children().len());
     assert_eq!(UiNodeKind::CloseableTabStrip, content.children()[0].kind());
     assert_eq!(UiNodeKind::Toolbar, content.children()[1].kind());
     assert_eq!(
@@ -42,6 +42,8 @@ fn consumer_app_builds_tree_from_kuc_public_api() {
     );
     assert_eq!(UiNodeKind::TextArea, content.children()[3].kind());
     assert_eq!(UiNodeKind::ImageSurface, content.children()[4].kind());
+    assert_eq!(UiNodeKind::Grid, content.children()[5].kind());
+    assert!(content.children()[5].props().grid.cells.len() < 100);
 }
 
 #[test]

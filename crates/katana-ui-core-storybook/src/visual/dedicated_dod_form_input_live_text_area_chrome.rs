@@ -182,3 +182,20 @@ fn thumb_y(scenario: ScenarioContext<'_>) -> usize {
     }
     m::PX_12
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{m, thumb_y};
+    use crate::visual::render_context::ScenarioContext;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn live_vertical_scrollbar_uses_the_near_thumb_origin() {
+        let state = StorybookScreenState::default();
+
+        assert_eq!(
+            m::PX_12,
+            thumb_y(ScenarioContext::for_test("text-area", 0, &state))
+        );
+    }
+}

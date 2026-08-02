@@ -52,3 +52,16 @@ fn segment_x_for_props(percent: u8, width: usize, determinate: bool) -> usize {
     let travel = m::PX_244.saturating_sub(width);
     m::PX_22 + (travel * usize::from(percent) / 100)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn determinate_segment_stays_at_the_track_origin() {
+        assert_eq!(
+            m::PX_22,
+            segment_x_for_props(99, DEFAULT_SEGMENT_WIDTH, true)
+        );
+    }
+}

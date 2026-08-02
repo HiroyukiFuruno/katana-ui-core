@@ -64,3 +64,25 @@ pub(in crate::visual) fn menu_button_state(setting: &'static str) -> &'static st
         _ => setting,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        combo_box_state, menu_button_state, search_box_state, select_box_state,
+        selection_list_state,
+    };
+
+    #[test]
+    fn selection_setting_semantics_preserve_unknown_setting_keys() {
+        const UNKNOWN: &str = "unknown.setting";
+        for mapper in [
+            search_box_state,
+            combo_box_state,
+            select_box_state,
+            selection_list_state,
+            menu_button_state,
+        ] {
+            assert_eq!(UNKNOWN, mapper(UNKNOWN));
+        }
+    }
+}

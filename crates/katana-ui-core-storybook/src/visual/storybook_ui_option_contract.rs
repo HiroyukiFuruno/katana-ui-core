@@ -119,3 +119,14 @@ pub(super) fn options_for_page(page: &str) -> &'static [StorybookUiOptionContrac
         _ => &[],
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{options_for_page, settings_rows_for};
+
+    #[test]
+    fn unknown_page_has_no_settings_contract() {
+        assert!(options_for_page("unknown").is_empty());
+        assert!(settings_rows_for("unknown").is_empty());
+    }
+}

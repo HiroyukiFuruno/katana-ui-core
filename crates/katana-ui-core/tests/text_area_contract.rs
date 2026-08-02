@@ -1,11 +1,13 @@
 use katana_ui_core::atom::{
     TextArea, TextAreaAction, TextAreaCaretMove, TextAreaCompositionPhase, TextAreaEvent,
-    TextAreaKeyChord, TextAreaNewlineKey, TextAreaSubmitKey, TextAreaTabBehavior,
-    TextAreaValidationError, TextAreaWrapPolicy,
+    TextAreaKey, TextAreaKeyChord, TextAreaNewlineKey, TextAreaSelection, TextAreaSubmitKey,
+    TextAreaTabBehavior, TextAreaValidationError, TextAreaWrapPolicy,
 };
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
-use katana_ui_core::render_model::{UiNode, UiNodeKind, UiSlotPlacement, UiVisualRole};
+use katana_ui_core::render_model::{
+    UiCommonProps, UiNode, UiNodeKind, UiSlotPlacement, UiVisualRole,
+};
 
 #[test]
 fn text_area_options_are_typed_and_rendered() {
@@ -85,6 +87,26 @@ fn enter_submits_and_shift_enter_inserts_newline() {
 }
 
 #[test]
+fn unconfigured_key_chord_is_ignored_without_mutating_state() {
+    let mut text_area = TextArea::new("Composer");
+    let before = text_area.state().clone();
+
+    let outcome = text_area.handle_key(TextAreaKeyChord {
+        key: TextAreaKey::Enter,
+        shift: true,
+        primary_modifier: true,
+    });
+    assert!(outcome.is_ok(), "valid text area");
+    let Ok(outcome) = outcome else {
+        return;
+    };
+
+    assert!(!outcome.handled);
+    assert!(outcome.events.is_empty());
+    assert_eq!(&before, text_area.state());
+}
+
+#[test]
 fn conflicting_submit_and_newline_keys_fail_contract_validation() {
     let conflict = TextArea::new("Composer")
         .submit_key(TextAreaSubmitKey::Enter)
@@ -112,6 +134,34 @@ fn disabled_and_readonly_suppress_text_area_actions() {
     assert!(readonly_result.events.is_empty());
     assert_eq!("locked", disabled.state().value);
     assert_eq!("locked", readonly.state().value);
+}
+
+#[test]
+fn editable_clear_common_props_and_fixed_row_measurement_are_explicit() {
+    let mut editable = TextArea::new("Editable").value("draft");
+    let cleared = editable.apply_text_area_action(TextAreaAction::Clear);
+    assert!(cleared.handled);
+    assert_eq!("", editable.state().value);
+    assert_eq!(
+        [TextAreaEvent::Change(String::new())],
+        cleared.events.as_slice()
+    );
+
+    let common = UiCommonProps {
+        disabled: true,
+        ..UiCommonProps::default()
+    };
+    let fixed = TextArea::new("Fixed")
+        .value("one\ntwo")
+        .min_rows(0)
+        .max_rows(0)
+        .auto_grow(false)
+        .common(common);
+    assert_eq!(1, fixed.state().measured_rows);
+    assert!(fixed.state().internal_scroll);
+    let node = UiNode::from(fixed);
+    assert!(node.props().common.disabled);
+    assert!(node.props().disabled);
 }
 
 #[test]
@@ -211,4 +261,136 @@ fn tab_behavior_moves_focus_or_inserts_tab_explicitly() {
             .is_ok_and(|outcome| outcome.events.contains(&tab_event))
     );
     assert_eq!("\t", insert_tab.state().value);
+}
+
+#[test]
+fn text_area_grapheme_navigation_selection_and_disabled_ime_cover_boundaries() {
+    let value = "e\u{301}👍🏻✈️";
+    let mut text_area = TextArea::new("Unicode").value(value);
+
+    assert!(
+        text_area
+            .apply_text_area_action(TextAreaAction::MoveCaret(TextAreaCaretMove::Start))
+            .handled
+    );
+    assert!(
+        text_area
+            .apply_text_area_action(TextAreaAction::MoveCaret(TextAreaCaretMove::NextGrapheme))
+            .handled
+    );
+    assert_eq!("e\u{301}".len(), text_area.state().caret);
+    assert!(
+        text_area
+            .apply_text_area_action(TextAreaAction::MoveCaret(TextAreaCaretMove::End))
+            .handled
+    );
+    assert_eq!(value.len(), text_area.state().caret);
+    assert!(
+        text_area
+            .apply_text_area_action(TextAreaAction::MoveCaret(TextAreaCaretMove::To(2)))
+            .handled
+    );
+    assert_eq!(1, text_area.state().caret);
+    let _ = text_area.apply_text_area_action(TextAreaAction::MoveCaret(TextAreaCaretMove::Start));
+    assert!(
+        !text_area
+            .apply_text_area_action(TextAreaAction::DeleteBackward)
+            .handled
+    );
+
+    let selected = text_area.apply_text_area_action(TextAreaAction::Select(TextAreaSelection {
+        start: value.len(),
+        end: 0,
+    }));
+    assert!(selected.handled);
+    assert_eq!(0, selected.state.caret);
+    let replaced = text_area.apply_text_area_action(TextAreaAction::Type("🙂".to_string()));
+    assert_eq!("🙂", replaced.state.value);
+    assert!(
+        replaced
+            .events
+            .iter()
+            .any(|event| matches!(event, TextAreaEvent::EmojiInput { grapheme_count: 1 }))
+    );
+
+    let mut no_ime = TextArea::new("No IME").ime_enabled(false);
+    assert!(
+        !no_ime
+            .apply_text_area_action(TextAreaAction::composition(
+                TextAreaCompositionPhase::Start,
+                "に",
+                3
+            ))
+            .handled
+    );
+    assert!(
+        !no_ime
+            .apply_text_area_action(TextAreaAction::ime_commit("日本語"))
+            .handled
+    );
+}
+
+#[test]
+fn text_area_component_actions_options_and_key_validation_cover_remaining_paths() {
+    let mut text_area = TextArea::new("Composer").value("draft");
+    assert_eq!("draft", text_area.options().value);
+
+    assert!(
+        text_area
+            .apply_action(&UiAction::copy_selection(text_area.state_id().clone()))
+            .handled
+    );
+    assert!(
+        text_area
+            .apply_action(&UiAction::input_submitted(text_area.state_id().clone()))
+            .handled
+    );
+    assert!(
+        text_area
+            .apply_action(&UiAction::clear_value(text_area.state_id().clone()))
+            .handled
+    );
+    assert_eq!("", text_area.state().value);
+    assert!(
+        text_area
+            .apply_action(&UiAction::blur(text_area.state_id().clone()))
+            .handled
+    );
+    assert!(text_area.events().contains(&TextAreaEvent::Blur));
+
+    assert_eq!(
+        Err(TextAreaValidationError::MinRowsMustBePositive),
+        TextArea::new("Rows").min_rows(0).validate()
+    );
+    assert_eq!(
+        Err(TextAreaValidationError::MaxRowsBelowMinRows),
+        TextArea::new("Rows").min_rows(4).max_rows(3).validate()
+    );
+
+    let mut mod_enter = TextArea::new("Submit")
+        .submit_key(TextAreaSubmitKey::ModEnter)
+        .newline_key(TextAreaNewlineKey::Disabled);
+    assert!(
+        mod_enter
+            .handle_key(TextAreaKeyChord::mod_enter())
+            .is_ok_and(|outcome| outcome.handled)
+    );
+}
+
+#[test]
+fn text_area_component_action_replaces_selected_graphemes_on_paste() {
+    let mut text_area = TextArea::new("Composer").value("a日本語z");
+    let target = text_area.state_id().clone();
+
+    assert!(
+        text_area
+            .apply_action(&UiAction::cursor_selection(target.clone(), 4, 1, 4))
+            .handled
+    );
+    let pasted = text_area.apply_action(&UiAction::paste_text(target, "KUC"));
+
+    assert!(pasted.handled);
+    assert_eq!("aKUCz", text_area.state().value);
+    assert_eq!(4, text_area.state().caret);
+    assert_eq!(TextAreaSelection::collapsed(4), text_area.state().selection);
 }

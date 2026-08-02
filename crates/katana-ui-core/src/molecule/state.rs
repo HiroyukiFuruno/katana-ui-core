@@ -188,3 +188,98 @@ impl MoleculeState {
         self.transient.selection_end = self.transient.cursor;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::MoleculeState;
+    use crate::interaction::UiAction;
+    use crate::render_model::{UiNodeKind, UiStateId};
+
+    #[test]
+    fn molecule_state_applies_complete_neutral_interaction_sequence() {
+        let mut state = MoleculeState::new(UiNodeKind::ComboBox);
+        let target = state.state_id.clone();
+        state.open = true;
+        state.value = "ab".to_string();
+
+        for action in [
+            UiAction::press(target.clone()),
+            UiAction::focus(target.clone()),
+            UiAction::hover(target.clone(), true),
+            UiAction::active(target.clone(), true),
+            UiAction::dragging(target.clone(), true),
+            UiAction::animation_tick(target.clone(), 7),
+            UiAction::reduced_motion(target.clone(), true),
+            UiAction::cursor_selection(target.clone(), 1, 0, 1),
+            UiAction::paste_text(target.clone(), "Z"),
+            UiAction::set_open(target.clone(), true),
+            UiAction::set_selected_index(target.clone(), 3),
+            UiAction::set_value(target.clone(), "value"),
+            UiAction::copy_selection(target.clone()),
+            UiAction::invoke_callback(target.clone(), "noop"),
+        ] {
+            assert!(state.apply_action(&action, false).handled);
+        }
+
+        let interaction = state.interaction();
+        assert!(interaction.focused);
+        assert!(interaction.hovered);
+        assert!(interaction.active);
+        assert!(interaction.dragging);
+        assert_eq!(7, interaction.animation_phase);
+        assert!(interaction.reduced_motion);
+        assert!(interaction.has_selection);
+        assert_eq!(3, interaction.selected_index);
+        assert_eq!("value", interaction.value);
+
+        assert!(
+            state
+                .apply_action(&UiAction::clear_value(target.clone()), false)
+                .handled
+        );
+        assert!(state.value.is_empty());
+        assert!(
+            state
+                .apply_action(&UiAction::dismiss(target.clone()), false)
+                .handled
+        );
+        assert!(!state.open);
+
+        let node = state.node(UiNodeKind::ComboBox, "Combo");
+        assert_eq!(UiNodeKind::ComboBox, node.kind());
+        assert_eq!(target, node.props().state_id);
+    }
+
+    #[test]
+    fn molecule_state_enforces_target_disabled_readonly_and_close_policy() {
+        let mut state = MoleculeState::new(UiNodeKind::Input);
+        let target = state.state_id.clone();
+        let foreign = UiAction::set_value(UiStateId::new("foreign"), "ignored");
+        assert!(!state.apply_action(&foreign, false).handled);
+
+        state.disabled = true;
+        assert!(
+            !state
+                .apply_action(&UiAction::set_value(target.clone(), "ignored"), false)
+                .handled
+        );
+        state.disabled = false;
+        state.readonly = true;
+        for action in [
+            UiAction::set_value(target.clone(), "ignored"),
+            UiAction::clear_value(target.clone()),
+            UiAction::paste_text(target.clone(), "ignored"),
+        ] {
+            assert!(!state.apply_action(&action, false).handled);
+        }
+
+        state.readonly = false;
+        state.open = true;
+        assert!(
+            state
+                .apply_action(&UiAction::set_selected_index(target, 2), true)
+                .handled
+        );
+        assert!(!state.open);
+    }
+}

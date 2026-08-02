@@ -143,3 +143,34 @@ impl AlignVertical {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::render_model::{UiAlignItems, UiDimension, UiJustifyContent, UiOverflow};
+
+    #[test]
+    fn layout_value_conversions_cover_all_remaining_variants() {
+        assert_eq!(UiDimension::Fill, Length::Fill.into());
+        assert_eq!(UiDimension::FitContent, Length::Fit.into());
+        assert_eq!(UiAlignItems::End, Alignment::End.into());
+        assert_eq!(UiAlignItems::Stretch, Alignment::Stretch.into());
+        assert_eq!(UiJustifyContent::End, Alignment::End.into());
+        assert_eq!(UiJustifyContent::Stretch, Alignment::Stretch.into());
+        assert_eq!(UiOverflow::Hidden, OverflowBehavior::Hidden.into());
+        assert_eq!(UiOverflow::Auto, OverflowBehavior::Auto.into());
+        assert_eq!(
+            UiJustifyContent::Center,
+            AlignHorizontal::Center.to_justify()
+        );
+        assert_eq!(UiJustifyContent::End, AlignHorizontal::End.to_justify());
+        assert_eq!(
+            UiJustifyContent::Stretch,
+            AlignHorizontal::Stretch.to_justify()
+        );
+        assert_eq!(UiAlignItems::Start, AlignVertical::Start.to_items());
+        assert_eq!(UiAlignItems::Center, AlignVertical::Center.to_items());
+        assert_eq!(UiAlignItems::End, AlignVertical::End.to_items());
+        assert_eq!(UiAlignItems::Stretch, AlignVertical::Stretch.to_items());
+    }
+}

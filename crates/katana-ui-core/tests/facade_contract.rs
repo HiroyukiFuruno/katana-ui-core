@@ -1,6 +1,6 @@
 use katana_ui_core::atom::{Button, Text};
 use katana_ui_core::component::ComponentTree;
-use katana_ui_core::facade::{UiCoreFacade, UiGlobalState};
+use katana_ui_core::facade::{UiCoreFacade, UiFacadeChangeLog, UiGlobalState};
 use katana_ui_core::render_model::{UiNodeId, UiTree};
 use katana_ui_core::style::{StyleDeclaration, StyleProperty, StyleRule, StyleSheet, StyleValue};
 use katana_ui_core::theme::{FontFamily, ThemeSnapshot};
@@ -67,4 +67,41 @@ fn facade_settings_mutate_theme_and_font_with_change_logs() {
     assert_eq!("code", font_log.after);
     assert_eq!("light", facade.global_state().active_theme_id.as_str());
     assert_eq!(state_id, component.state_id().clone());
+}
+
+#[test]
+fn facade_builders_and_setters_cover_overlay_modal_style_and_global_state() {
+    let overlay = UiNodeId::new("overlay");
+    let modal = UiNodeId::new("modal");
+    let global = UiGlobalState::new(ThemeSnapshot::light().id)
+        .active_overlay(overlay.clone())
+        .modal(modal.clone());
+    let mut facade = UiCoreFacade::new(ThemeSnapshot::dark())
+        .with_theme(ThemeSnapshot::light())
+        .with_global_state(global.clone());
+
+    assert_eq!("light", facade.theme().id.as_str());
+    assert_eq!(
+        Some(&overlay),
+        facade.global_state().active_overlay.as_ref()
+    );
+    assert_eq!(&[modal], facade.global_state().modal_stack.as_slice());
+    assert_eq!(Some(FontFamily::Proportional), facade.font_family("body"));
+
+    let style_log = facade.set_style_sheet(StyleSheet::new().rule(StyleRule::class(
+        "surface",
+        vec![StyleDeclaration::new(
+            StyleProperty::Background,
+            StyleValue::ColorToken("surface".to_string()),
+        )],
+    )));
+    assert_eq!(UiFacadeChangeLog::new("style_sheet", "0", "1"), style_log);
+    assert_eq!(1, facade.style_sheet().rule_count());
+
+    let global_log = facade.set_global_state(UiGlobalState::new(ThemeSnapshot::dark().id));
+    assert_eq!(
+        UiFacadeChangeLog::new("global_state", "light", "dark"),
+        global_log
+    );
+    assert_eq!("dark", facade.global_state().active_theme_id.as_str());
 }

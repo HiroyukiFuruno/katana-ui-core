@@ -90,3 +90,29 @@ impl UiTreeHostActionHitCollector<'_> {
         self.y = self.y.saturating_add(tree_parts::NODE_GAP);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::ui_tree_canvas_types::UiTreeRenderArea;
+    use katana_ui_core::render_model::UiNodeKind;
+
+    #[test]
+    fn settings_panel_omits_its_duplicate_text_label() {
+        let panel = UiNode::new(UiNodeKind::Panel, "Same")
+            .child(UiNode::new(UiNodeKind::Text, "Same"))
+            .child(UiNode::new(UiNodeKind::Text, "Other"));
+        let hits = UiTreeHostActionHitCollector::collect(
+            &panel,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 200,
+                height: 100,
+                scroll_y: 0.0,
+            },
+        );
+
+        assert!(hits.is_empty());
+    }
+}

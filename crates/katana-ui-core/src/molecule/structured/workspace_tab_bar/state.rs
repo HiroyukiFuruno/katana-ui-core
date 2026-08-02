@@ -76,6 +76,11 @@ impl WorkspaceTabBarState {
     }
 
     #[must_use]
+    pub(super) fn stable_child_state_id(&self, tab_id: &WorkspaceTabId) -> UiStateId {
+        child_state_id(&self.state_id, tab_id)
+    }
+
+    #[must_use]
     pub fn interaction(&self, item_count: usize) -> UiInteractionState {
         UiInteractionState {
             open: self.overflow_visible,
@@ -95,11 +100,15 @@ fn child_states(parent_state_id: &UiStateId, tabs: &[WorkspaceTab]) -> Vec<Works
     tabs.iter()
         .map(|tab| WorkspaceTabChildState {
             tab_id: tab.id.clone(),
-            state_id: UiStateId::new(format!(
-                "{}:closeable-tab:{}",
-                parent_state_id.as_str(),
-                tab.id.as_str()
-            )),
+            state_id: child_state_id(parent_state_id, &tab.id),
         })
         .collect()
+}
+
+fn child_state_id(parent_state_id: &UiStateId, tab_id: &WorkspaceTabId) -> UiStateId {
+    UiStateId::new(format!(
+        "{}:closeable-tab:{}",
+        parent_state_id.as_str(),
+        tab_id.as_str()
+    ))
 }

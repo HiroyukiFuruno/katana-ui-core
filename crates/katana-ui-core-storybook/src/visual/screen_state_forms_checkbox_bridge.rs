@@ -1,6 +1,7 @@
 use super::super::screen_state::StorybookScreenState;
 use super::super::screen_state_forms::{
-    apply_binary_choice_option, apply_checkbox_checked_state, checkbox_state_label,
+    apply_binary_choice_focus, apply_binary_choice_option, apply_checkbox_checked_state,
+    checkbox_state_label,
 };
 use katana_ui_core::state::UiComponentState;
 
@@ -53,9 +54,7 @@ impl StorybookScreenState {
         self.action_count += 1;
         self.checkbox_state.interaction.focused = false;
         self.checkbox_secondary_state.interaction.focused = false;
-        let Some(next) = apply_binary_choice_option(self.checkbox_state_at(index), "focus") else {
-            return;
-        };
+        let next = apply_binary_choice_focus(self.checkbox_state_at(index));
         self.set_checkbox_state_at(index, next);
         self.checkbox_focused_index = checkbox_index(index);
         self.last_action = "checkbox_focus";
@@ -204,4 +203,18 @@ impl StorybookScreenState {
 
 const fn checkbox_index(index: usize) -> usize {
     if index == 0 { 0 } else { 1 }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::StorybookScreenState;
+
+    #[test]
+    fn disabled_checkbox_read_reports_the_disabled_state() {
+        let mut state = StorybookScreenState::default();
+        state.checkbox_state.disabled = true;
+        state.register_checkbox_state_read();
+
+        assert_eq!("disabled=true", state.state_label);
+    }
 }

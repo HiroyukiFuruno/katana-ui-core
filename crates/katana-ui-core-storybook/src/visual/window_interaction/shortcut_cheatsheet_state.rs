@@ -223,3 +223,20 @@ impl ShortcutCheatsheetUpdate {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shortcut_options_ignore_unknown_settings_and_scroll_labels_cover_each_offset() {
+        let mut state = ShortcutCheatsheetScreenState::default();
+        state.apply_option("unknown");
+        assert_eq!("none", state.callback_action());
+        assert_eq!("scroll=0", state.scroll_label());
+
+        assert_eq!("scroll=1", state.scroll_results().state);
+        assert_eq!("scroll=2", state.scroll_results().state);
+        assert_eq!("scroll=3", state.scroll_results().state);
+    }
+}

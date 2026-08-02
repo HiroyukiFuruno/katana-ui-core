@@ -2,7 +2,9 @@ use katana_ui_core::atom::{Button, IconTextButton, SvgButton, Text, TextButton};
 use katana_ui_core::layout::Row;
 use katana_ui_core::molecule::Toolbar;
 use katana_ui_core::panel::{Panel, PanelRegion};
-use katana_ui_core::render_model::{UiCommonProps, UiDimension, UiNodeKind, UiTree};
+use katana_ui_core::render_model::{
+    UiCommonProps, UiDimension, UiNode, UiNodeId, UiNodeKind, UiStateId, UiTree,
+};
 use katana_ui_core::runtime::{
     AppConfig, AppHandle, AppLifecycle, Application, RuntimeAdapter, RuntimeRunReport,
 };
@@ -78,6 +80,20 @@ fn runtime_handle_reports_event_loop_redraw_and_shutdown_contract() {
 }
 
 #[test]
+fn application_builder_and_empty_handle_keep_neutral_runtime_contract() {
+    let handle = Application::builder(AppConfig::new("builder-app"))
+        .window(WindowConfig::new("Builder"))
+        .run_with(NoopRuntime::default());
+    assert_eq!("builder-app", handle.app_id());
+    assert_eq!(1, handle.window_ids().len());
+
+    let empty = AppHandle::new("empty-app", Vec::new());
+    assert_eq!("empty-app", empty.app_id());
+    assert!(empty.window_ids().is_empty());
+    assert!(empty.runtime_report().lifecycle_events().is_empty());
+}
+
+#[test]
 fn neutral_tree_can_represent_atoms_and_layout() {
     let button = Button::new("Save").disabled(false).focusable(true);
     let tree = UiTree::new(Row::new().child(Text::new("Title")).child(button));
@@ -136,4 +152,14 @@ fn button_variants_keep_unique_state_identity() {
     assert_ne!(first.props().state_id, second.props().state_id);
     assert_ne!(second.props().state_id, third.props().state_id);
     assert_ne!(first.props().state_id, third.props().state_id);
+}
+
+#[test]
+fn owned_identity_values_and_state_id_alias_preserve_exact_values() {
+    let node_id = UiNodeId::from("owned-node".to_string());
+    let state_id = UiStateId::from("owned-state".to_string());
+    let node = UiNode::from(Text::new("Identity")).state_id(state_id);
+
+    assert_eq!("owned-node", node_id.as_str());
+    assert_eq!("owned-state", node.props().state_id.as_str());
 }
