@@ -39,6 +39,12 @@
   reported function coverage. It now mechanically requires both functions and
   lines at 100% with zero uncovered functions and lines, and release-readiness
   self-tests reject removal of any of these conditions.
+- The first release PR exposed a `cargo-llvm-cov` 0.8.7 aggregation difference:
+  separate native-window coverage invocations re-added unexecuted workspace
+  dependency object maps to the final report. The Linux/Xvfb gate now starts
+  its display first and runs normal plus ignored native tests in one
+  instrumentation pass. The container pins the same 0.8.7 tool as CI, and the
+  unchanged strict thresholds pass with zero uncovered functions and lines.
 
 ## Conclusion
 

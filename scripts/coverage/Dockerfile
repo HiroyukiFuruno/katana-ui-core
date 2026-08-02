@@ -1,6 +1,6 @@
 FROM rust:1.95-bookworm
 
-ARG CARGO_LLVM_COV_VERSION=0.8.4
+ARG CARGO_LLVM_COV_VERSION=0.8.7
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
