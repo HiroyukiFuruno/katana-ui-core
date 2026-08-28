@@ -20,8 +20,8 @@ mod scroll;
 mod state;
 
 pub use actions::{
-    CLOSEABLE_TAB_DRAG_TAG, WorkspaceTabBarAction, WorkspaceTabDropPosition, WorkspaceTabDropRules,
-    WorkspaceTabGroupTarget,
+    CLOSEABLE_TAB_DRAG_TAG, WorkspaceTabBarAction, WorkspaceTabBarIntent, WorkspaceTabDropPosition,
+    WorkspaceTabDropRules, WorkspaceTabGroupTarget,
 };
 pub use bar::WorkspaceTabBar;
 pub use context_commands::{WorkspaceGroupContextCommand, WorkspaceTabContextCommand};
@@ -32,7 +32,10 @@ pub use keyboard::{
     WorkspaceTabKey, WorkspaceTabKeyboardController, WorkspaceTabKeyboardInput,
     WorkspaceTabKeyboardShortcut,
 };
-pub use options::{WorkspaceTab, WorkspaceTabBarOptions, WorkspaceTabGroup, WorkspaceTabTone};
+pub use options::{
+    WorkspaceTab, WorkspaceTabBarOptions, WorkspaceTabClosePresentation, WorkspaceTabGroup,
+    WorkspaceTabTone,
+};
 pub use overflow::{
     MeasuredWorkspaceTab, WorkspaceTabOverflowConfig, WorkspaceTabOverflowPlan,
     WorkspaceTabOverflowPlanner,
@@ -43,6 +46,8 @@ pub use state::{
 };
 
 pub type CloseableTab = WorkspaceTab;
+pub type CloseableTabClosePresentation = WorkspaceTabClosePresentation;
+pub type CloseableTabStripIntent = WorkspaceTabBarIntent;
 pub type CloseableTabChildState = WorkspaceTabChildState;
 pub type CloseableTabContextCommand = WorkspaceTabContextCommand;
 pub type CloseableTabContextMenu = WorkspaceTabContextMenu;

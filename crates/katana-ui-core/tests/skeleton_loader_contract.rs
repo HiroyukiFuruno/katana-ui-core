@@ -118,10 +118,7 @@ fn cluster_presets_emit_stable_children_and_single_live_region() {
         let root = tree.root();
 
         assert_eq!(UiNodeKind::SkeletonCluster, root.kind());
-        assert_eq!(
-            format!("Loading messages"),
-            root.props().accessibility_label
-        );
+        assert_eq!("Loading messages", root.props().accessibility_label);
         assert_eq!(child_count, root.children().len(), "{preset:?}");
         assert!(
             root.props()

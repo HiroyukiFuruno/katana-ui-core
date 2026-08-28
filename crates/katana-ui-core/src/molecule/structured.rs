@@ -50,15 +50,16 @@ pub use tree_view_hit_test::{
 };
 pub use types::TreeLineStyle;
 pub use workspace_tab_bar::{
-    CLOSEABLE_TAB_DRAG_TAG, CloseableTab, CloseableTabChildState, CloseableTabContextCommand,
-    CloseableTabContextMenu, CloseableTabDropPosition, CloseableTabDropRules, CloseableTabGroup,
-    CloseableTabGroupContextCommand, CloseableTabGroupId, CloseableTabGroupTarget, CloseableTabId,
-    CloseableTabKey, CloseableTabKeyboardController, CloseableTabKeyboardInput,
-    CloseableTabKeyboardShortcut, CloseableTabOverflowConfig, CloseableTabOverflowPlan,
-    CloseableTabOverflowPlanner, CloseableTabScrollConfig, CloseableTabScrollPlan,
-    CloseableTabScrollPlanner, CloseableTabStrip, CloseableTabStripAction, CloseableTabStripEvent,
-    CloseableTabStripOptions, CloseableTabStripState, CloseableTabTone, ClosedTab,
-    MAX_RECENTLY_CLOSED_TABS, MeasuredCloseableTab, TabGroup, TabGroupId, TabGroupTarget, TabId,
+    CLOSEABLE_TAB_DRAG_TAG, CloseableTab, CloseableTabChildState, CloseableTabClosePresentation,
+    CloseableTabContextCommand, CloseableTabContextMenu, CloseableTabDropPosition,
+    CloseableTabDropRules, CloseableTabGroup, CloseableTabGroupContextCommand, CloseableTabGroupId,
+    CloseableTabGroupTarget, CloseableTabId, CloseableTabKey, CloseableTabKeyboardController,
+    CloseableTabKeyboardInput, CloseableTabKeyboardShortcut, CloseableTabOverflowConfig,
+    CloseableTabOverflowPlan, CloseableTabOverflowPlanner, CloseableTabScrollConfig,
+    CloseableTabScrollPlan, CloseableTabScrollPlanner, CloseableTabStrip, CloseableTabStripAction,
+    CloseableTabStripEvent, CloseableTabStripIntent, CloseableTabStripOptions,
+    CloseableTabStripState, CloseableTabTone, ClosedTab, MAX_RECENTLY_CLOSED_TABS,
+    MeasuredCloseableTab, TabGroup, TabGroupId, TabGroupTarget, TabId,
 };
 
 #[cfg(test)]

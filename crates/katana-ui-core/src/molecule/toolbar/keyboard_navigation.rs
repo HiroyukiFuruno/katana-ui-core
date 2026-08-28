@@ -4,10 +4,13 @@ use serde::{Deserialize, Serialize};
 pub enum ToolbarKeyboardInput {
     ArrowLeft,
     ArrowRight,
+    ArrowUp,
+    ArrowDown,
     Home,
     End,
     Enter,
     Space,
+    Escape,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -51,18 +54,33 @@ impl ToolbarKeyboardNavigator {
         }
         let focused = focused_index.unwrap_or(0).min(action_count - 1);
         match input {
-            ToolbarKeyboardInput::ArrowLeft => {
+            ToolbarKeyboardInput::ArrowLeft | ToolbarKeyboardInput::ArrowUp => {
                 ToolbarKeyboardResult::new(Some(focused.saturating_sub(1)), None)
             }
-            ToolbarKeyboardInput::ArrowRight => ToolbarKeyboardResult::new(
-                Some(focused.saturating_add(1).min(action_count - 1)),
-                None,
-            ),
+            ToolbarKeyboardInput::ArrowRight | ToolbarKeyboardInput::ArrowDown => {
+                ToolbarKeyboardResult::new(
+                    Some(focused.saturating_add(1).min(action_count - 1)),
+                    None,
+                )
+            }
             ToolbarKeyboardInput::Home => ToolbarKeyboardResult::new(Some(0), None),
             ToolbarKeyboardInput::End => ToolbarKeyboardResult::new(Some(action_count - 1), None),
             ToolbarKeyboardInput::Enter | ToolbarKeyboardInput::Space => {
                 ToolbarKeyboardResult::new(Some(focused), Some(focused))
             }
+            ToolbarKeyboardInput::Escape => ToolbarKeyboardResult::new(Some(focused), None),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn escape_preserves_the_current_focus_without_activation() {
+        let result = ToolbarKeyboardNavigator::apply(Some(2), 4, ToolbarKeyboardInput::Escape);
+        assert_eq!(result.focused_index(), Some(2));
+        assert_eq!(result.activated_index(), None);
     }
 }

@@ -160,15 +160,15 @@ fn changed_u8(before: &str) -> String {
 }
 
 fn parse_usize(value: &str) -> usize {
-    value.parse().map_or(INVALID_USIZE_SETTING, |it| it)
+    value.parse().unwrap_or(INVALID_USIZE_SETTING)
 }
 
 fn parse_u32(value: &str) -> u32 {
-    value.parse().map_or(INVALID_U32_SETTING, |it| it)
+    value.parse().unwrap_or(INVALID_U32_SETTING)
 }
 
 fn parse_u8(value: &str) -> u8 {
-    value.parse().map_or(INVALID_U8_SETTING, |it| it)
+    value.parse().unwrap_or(INVALID_U8_SETTING)
 }
 
 fn alternate_text(before: &str, configured: &str, replacement: &str) -> String {

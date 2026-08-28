@@ -2,11 +2,15 @@ use super::{BODY_FONT_SIZE, COMPACT_BODY_FONT_SIZE};
 use katana_ui_core::render_model::UiDimension;
 
 const UNDERLINE_OFFSET_SCALE_NUMERATOR: usize = 122;
+const UNDERLINE_BOTTOM_SEPARATION: usize = 2;
 const STRIKE_THROUGH_OFFSET_SCALE_NUMERATOR: usize = 72;
 const OFFSET_SCALE_DENOMINATOR: usize = 100;
 
 pub(super) const fn underline_offset(font_size: f32) -> usize {
-    (font_size as usize).saturating_mul(UNDERLINE_OFFSET_SCALE_NUMERATOR) / OFFSET_SCALE_DENOMINATOR
+    (font_size as usize)
+        .saturating_mul(UNDERLINE_OFFSET_SCALE_NUMERATOR)
+        .saturating_div(OFFSET_SCALE_DENOMINATOR)
+        .saturating_add(UNDERLINE_BOTTOM_SEPARATION)
 }
 
 pub(super) const fn strikethrough_offset(font_size: f32) -> usize {

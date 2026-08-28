@@ -16,6 +16,28 @@ pub enum WorkspaceTabTone {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct WorkspaceTabClosePresentation {
+    pub visible_label: String,
+    pub tooltip: String,
+    pub accessibility_label: String,
+}
+
+impl WorkspaceTabClosePresentation {
+    #[must_use]
+    pub fn new(
+        visible_label: impl Into<String>,
+        tooltip: impl Into<String>,
+        accessibility_label: impl Into<String>,
+    ) -> Self {
+        Self {
+            visible_label: visible_label.into(),
+            tooltip: tooltip.into(),
+            accessibility_label: accessibility_label.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WorkspaceTab {
     pub id: WorkspaceTabId,
     pub title: String,
@@ -28,6 +50,8 @@ pub struct WorkspaceTab {
     pub tooltip: Option<String>,
     pub group_id: Option<WorkspaceTabGroupId>,
     pub accessibility_label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub close_presentation: Option<Box<WorkspaceTabClosePresentation>>,
 }
 
 impl WorkspaceTab {
@@ -45,6 +69,7 @@ impl WorkspaceTab {
             tooltip: None,
             group_id: None,
             accessibility_label: None,
+            close_presentation: None,
         }
     }
 
@@ -109,6 +134,12 @@ impl WorkspaceTab {
     }
 
     #[must_use]
+    pub fn close_presentation(mut self, value: WorkspaceTabClosePresentation) -> Self {
+        self.close_presentation = Some(Box::new(value));
+        self
+    }
+
+    #[must_use]
     pub fn accessibility_text(&self) -> String {
         self.accessibility_label.clone().unwrap_or_else(|| {
             let dirty = if self.dirty { " dirty" } else { "" };
@@ -123,6 +154,8 @@ pub struct WorkspaceTabGroup {
     pub id: WorkspaceTabGroupId,
     pub label: String,
     pub color: String,
+    #[serde(default)]
+    pub parent_group_id: Option<WorkspaceTabGroupId>,
     pub collapsed: bool,
 }
 
@@ -133,6 +166,7 @@ impl WorkspaceTabGroup {
             id: id.into(),
             label: label.into(),
             color: String::new(),
+            parent_group_id: None,
             collapsed: false,
         }
     }
@@ -140,6 +174,12 @@ impl WorkspaceTabGroup {
     #[must_use]
     pub fn color(mut self, value: impl Into<String>) -> Self {
         self.color = value.into();
+        self
+    }
+
+    #[must_use]
+    pub fn parent_group(mut self, parent_group_id: impl Into<WorkspaceTabGroupId>) -> Self {
+        self.parent_group_id = Some(parent_group_id.into());
         self
     }
 

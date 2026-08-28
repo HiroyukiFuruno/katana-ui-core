@@ -4,6 +4,8 @@ import unittest
 import importlib.util
 from pathlib import Path
 
+from storybook_ui_harness_sources import StorybookUiHarnessSources
+
 MODULE_PATH = Path(__file__).with_name("assert-storybook-ui-harness.py")
 SPEC = importlib.util.spec_from_file_location("assert_storybook_ui_harness", MODULE_PATH)
 assert SPEC is not None
@@ -29,6 +31,98 @@ def write_text(path: Path, source: str) -> None:
 
 
 class StorybookUiHarnessTest(unittest.TestCase):
+    def test_runtime_pages_are_parsed_separately_from_canvas_requirements(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/requirements.rs",
+                'const CANVAS_REQUIRED_PAGES: &[&str] = &["text", "button"];\n'
+                'const INTERACTIVE_RUNTIME_PAGES: &[&str] = &["command-chrome"];\n',
+            )
+
+            sources = StorybookUiHarnessSources(root)
+
+            self.assertEqual(["text", "button"], sources.required_pages())
+            self.assertEqual(["command-chrome"], sources.interactive_runtime_pages())
+
+    def test_rejects_runtime_page_without_eframe_dispatch_or_shared_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_minimal_repo(root, option_arm='"button" => &BUTTON_OPTIONS,')
+            write_runtime_page_fixture(root)
+
+            failures = StorybookUiHarness(root).failures()
+
+            self.assertIn(
+                "command-chrome: runtime contract missing `command_chrome_runtime::open_window` "
+                "in crates/katana-ui-core-storybook/src/visual/window.rs",
+                failures,
+            )
+            self.assertIn(
+                "command-chrome: runtime contract missing `EguiCommandChromeAdapter` "
+                "in crates/katana-ui-core-storybook/src/visual/command_chrome_surface.rs",
+                failures,
+            )
+
+    def test_accepts_text_command_root_with_strict_facade_artifact_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_minimal_repo(root, option_arm='"button" => &BUTTON_OPTIONS,')
+            write_text_command_root_runtime_fixture(root)
+
+            self.assertEqual([], StorybookUiHarness(root).failures())
+
+    def test_rejects_text_command_root_without_facade_mp4_or_manifest_evidence(self) -> None:
+        required_tokens = (
+            "EguiTextCommandSurfaceHostProjectionEncoder::token",
+            '"framemd5"',
+            '"text-command-root-manifest.json"',
+        )
+        for missing_token in required_tokens:
+            with self.subTest(missing_token=missing_token), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                write_minimal_repo(root, option_arm='"button" => &BUTTON_OPTIONS,')
+                write_text_command_root_runtime_fixture(root, missing_token=missing_token)
+
+                failures = StorybookUiHarness(root).failures()
+
+                self.assertIn(
+                    "text-command-root: runtime contract missing "
+                    f"`{missing_token}` in "
+                    "crates/katana-ui-core-storybook/src/visual/text_command_root_storybook.rs",
+                    failures,
+                )
+
+    def test_rejects_runtime_page_in_canvas_menu_preset_or_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_minimal_repo(root, option_arm='"button" => &BUTTON_OPTIONS,')
+            write_runtime_page_fixture(root, complete=True)
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/catalog/story_paths_runtime.rs",
+                'StoryPath { page: "command-chrome" }\n',
+            )
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/catalog/preset_labels.rs",
+                '"command-chrome" => &["a", "b", "c", "d"],\n',
+            )
+            write_minimal_manifest(root, pages=("text", "button", "command-chrome"))
+
+            failures = StorybookUiHarness(root).failures()
+
+            self.assertIn(
+                "command-chrome: interactive runtime page must not appear in the Canvas menu",
+                failures,
+            )
+            self.assertIn(
+                "command-chrome: interactive runtime page must not use Canvas preset labels",
+                failures,
+            )
+            self.assertIn(
+                "command-chrome: interactive runtime page must not appear in the Canvas manifest",
+                failures,
+            )
+
     def test_accepts_required_pages_with_presets_options_and_inspector_route(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -2743,6 +2837,105 @@ def write_minimal_repo(root: Path, option_arm: str) -> None:
     )
     write_leaf_change(root, "storybook-page-text")
     write_leaf_change(root, "storybook-page-button")
+
+
+def write_runtime_page_fixture(root: Path, complete: bool = False) -> None:
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/requirements.rs",
+        'const CANVAS_REQUIRED_PAGES: &[&str] = &["text", "button"];\n'
+        'const INTERACTIVE_RUNTIME_PAGES: &[&str] = &["command-chrome"];\n',
+    )
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/lib.rs",
+        "StorybookRoutes::default_routes(); interactive_runtime_pages();\n",
+    )
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/visual/window.rs",
+        "command_chrome_runtime::handles_page(selected_page);\n"
+        + ("command_chrome_runtime::open_window(frames);\n" if complete else ""),
+    )
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/visual/command_chrome_runtime.rs",
+        "CommandChromeStorybookApp; eframe::run_native;\n",
+    )
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/visual/command_chrome_app.rs",
+        "CommandChromeStorybookApp; CommandChromeSurface;\n",
+    )
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/visual/command_chrome_surface.rs",
+        "show_command_chrome; "
+        + ("EguiCommandChromeAdapter;\n" if complete else ""),
+    )
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/visual/command_chrome_script.rs",
+        "run_scripted_sequence;\n",
+    )
+
+
+def write_text_command_root_runtime_fixture(
+    root: Path, missing_token: str | None = None
+) -> None:
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/requirements.rs",
+        'const CANVAS_REQUIRED_PAGES: &[&str] = &["text", "button"];\n'
+        'const INTERACTIVE_RUNTIME_PAGES: &[&str] = &["text-command-root"];\n',
+    )
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/lib.rs",
+        "StorybookRoutes::default_routes(); interactive_runtime_pages();\n",
+    )
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/visual/window.rs",
+        "text_command_root_storybook::handles_page(selected_page);\n"
+        "text_command_root_storybook::open_window(frames);\n",
+    )
+    source = """
+struct TextCommandRootStorybookApp;
+eframe::run_native;
+EguiTextCommandSurfaceHostRoot;
+let token = EguiTextCommandSurfaceHostProjectionEncoder::token(...);
+EguiTextCommandSurfaceRootFactory::default().retain(token);
+root.show(ui);
+.forward_events_once(&mut forwarder);
+consumed_once: receipt.consumed_once(),
+forwarder_calls: forwarder.calls,
+if sequence.steps.len() < 9 {
+write_mp4;
+decode_mp4;
+"framemd5";
+decoded_frame_count != sequence.steps.len();
+let manifest_path = output_dir.join("text-command-root-manifest.json");
+FullRootManifest::from_sequence;
+event_receipt: EventReceiptEvidence;
+frame_sequence_sha256;
+decoder: DecoderEvidence;
+encoder_capability_verified;
+muxer_capability_verified;
+""".strip()
+    if missing_token is not None:
+        source = source.replace(missing_token, "", 1)
+    write_text(
+        root / "crates/katana-ui-core-storybook/src/visual/text_command_root_storybook.rs",
+        source,
+    )
+    write_text(
+        root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root.rs",
+        "pub struct EguiTextCommandSurfacePresentationToken;\n"
+        "pub fn retain(\n"
+        "pub struct EguiTextCommandSurfaceHostProjectionEncoder;\n"
+        "pub fn token(\n",
+    )
+    write_text(
+        root / "crates/katana-ui-core-egui-adapter/tests/host_root_facade_contract.rs",
+        "opaque_tokens_and_transport_have_no_clone_or_serialize_derives\n"
+        "compatibility_types_are_hidden_and_storybook_uses_only_the_facade_root\n",
+    )
+    write_text(
+        root / "crates/katana-ui-core-egui-adapter/tests/text_command_root_contract.rs",
+        "root_event_batch_forwards_once_and_returns_a_closed_receipt\n"
+        "assert!(receipt.consumed_once())\n",
+    )
 
 
 def write_minimal_manifest(root: Path, pages: tuple[str, ...]) -> None:

@@ -11,6 +11,7 @@ use katana_ui_core_storybook::{
 };
 use snapshot_command::SnapshotCommand;
 use std::env;
+use std::path::Path;
 use std::process::ExitCode;
 
 const DEFAULT_WINDOW_FRAMES: usize = 0;
@@ -49,18 +50,65 @@ fn run_with(
     open_modal_command: impl FnOnce(&[String]) -> Result<(), String>,
 ) -> Result<(), String> {
     if let Some(command) = args.get(1).map(String::as_str) {
-        match command {
-            "--visual-snapshot" => SnapshotCommand::save_snapshot(args)?,
-            "--open-window" => open_window_command(args)?,
-            "--open-modal-window" => open_modal_command(args)?,
-            "--runtime-regression" => print_runtime_regression(),
-            "--headless-scenario" => run_headless_scenario()?,
-            "--headless-interaction-audit" => run_headless_interaction_audit()?,
-            _ => print_summary(),
-        }
-        return Ok(());
+        return match command {
+            "--text-surface-artifact" => write_text_surface_artifact(args),
+            "--command-chrome-artifact" => write_command_chrome_artifact(args),
+            "--text-command-root-artifact" => write_text_command_root_artifact(args),
+            "--visual-snapshot" => SnapshotCommand::save_snapshot(args),
+            "--open-window" => open_window_command(args),
+            "--open-modal-window" => open_modal_command(args),
+            "--runtime-regression" => {
+                print_runtime_regression();
+                Ok(())
+            }
+            "--headless-scenario" => run_headless_scenario(),
+            "--headless-interaction-audit" => run_headless_interaction_audit(),
+            _ => {
+                print_summary();
+                Ok(())
+            }
+        };
     }
     print_summary();
+    Ok(())
+}
+
+fn write_text_surface_artifact(args: &[String]) -> Result<(), String> {
+    let Some(output_dir) = args.get(2) else {
+        return Err("missing output directory for --text-surface-artifact".to_owned());
+    };
+    if let Err(error) = StorybookVisual::write_text_surface_artifact(Path::new(output_dir)) {
+        return Err(format!(
+            "failed to write TextSurface Storybook artifact: {error}"
+        ));
+    }
+    println!("katana-ui-core-storybook-text-surface-artifact: {output_dir}");
+    Ok(())
+}
+
+fn write_command_chrome_artifact(args: &[String]) -> Result<(), String> {
+    let Some(output_dir) = args.get(2) else {
+        return Err("missing output directory for --command-chrome-artifact".to_owned());
+    };
+    if let Err(error) = StorybookVisual::write_command_chrome_artifact(Path::new(output_dir)) {
+        return Err(format!(
+            "failed to write CommandChrome Storybook artifact: {error}"
+        ));
+    }
+    println!("katana-ui-core-storybook-command-chrome-artifact: {output_dir}");
+    Ok(())
+}
+
+fn write_text_command_root_artifact(args: &[String]) -> Result<(), String> {
+    let Some(output_dir) = args.get(2) else {
+        return Err("missing output directory for --text-command-root-artifact".to_owned());
+    };
+    if let Err(error) = StorybookVisual::write_text_command_root_artifact(Path::new(output_dir)) {
+        return Err(format!(
+            "failed to write TextCommandRoot Storybook artifact: {error}"
+        ));
+    }
+    println!("katana-ui-core-storybook-text-command-root-artifact: {output_dir}");
     Ok(())
 }
 
@@ -69,11 +117,17 @@ fn print_summary() {
 }
 
 fn open_window(args: &[String]) -> Result<(), String> {
-    open_window_with(args, |frames, page, preset_index| {
-        StorybookVisual
-            .open_window_for_page_and_preset(frames, page, preset_index)
-            .map_err(minifb_error)
-    })
+    open_window_with(args, open_storybook_window)
+}
+
+fn open_storybook_window(
+    frames: usize,
+    page: &'static str,
+    preset_index: Option<usize>,
+) -> Result<(), String> {
+    StorybookVisual
+        .open_window_for_page_and_preset(frames, page, preset_index)
+        .map_err(storybook_visual_error)
 }
 
 fn open_window_with(
@@ -150,6 +204,7 @@ fn storybook_visual_error(error: StorybookVisualError) -> String {
     error.to_string()
 }
 
+#[cfg(test)]
 fn minifb_error(error: minifb::Error) -> String {
     error.to_string()
 }
@@ -163,11 +218,15 @@ fn resolve_storybook_page(value: &str) -> Option<&'static str> {
 }
 
 fn open_modal_window(args: &[String]) -> Result<(), String> {
-    open_modal_window_with(args, |frames| {
-        StorybookVisual
-            .open_modal_window(frames)
-            .map_err(storybook_visual_error)
-    })
+    open_modal_window_with(args, open_storybook_modal_window)
+}
+
+fn open_storybook_modal_window(
+    frames: usize,
+) -> Result<katana_ui_core_storybook::StorybookWindowRun, String> {
+    StorybookVisual
+        .open_modal_window(frames)
+        .map_err(storybook_visual_error)
 }
 
 fn open_modal_window_with(
@@ -199,14 +258,15 @@ mod tests {
     use super::{
         DEFAULT_WINDOW_FRAMES, exit_code, main as cli_main, minifb_error, modal_snapshot_error,
         open_modal_window_with, open_window_request, open_window_with, resolve_storybook_page, run,
-        run_steps, run_with, scenario_snapshot_error, storybook_visual_error, write_json,
+        run_steps, run_with, scenario_snapshot_error, storybook_visual_error,
+        write_command_chrome_artifact, write_json, write_text_command_root_artifact,
+        write_text_surface_artifact,
     };
     #[cfg(target_os = "linux")]
     use super::{open_modal_window, open_window};
     use katana_ui_core_storybook::StorybookWindowRun;
     use serde::ser::{Error as _, Serialize, Serializer};
     use std::cell::Cell;
-    use std::error::Error;
     use std::io;
     use std::process::ExitCode;
     use std::{env, fs, process};
@@ -286,6 +346,10 @@ mod tests {
     #[test]
     fn resolve_storybook_page_rejects_unknown_page_without_defaulting() {
         assert_eq!(Some("progress-bar"), resolve_storybook_page("progress-bar"));
+        assert_eq!(
+            Some("command-chrome"),
+            resolve_storybook_page("command-chrome")
+        );
         assert_eq!(None, resolve_storybook_page("progress"));
     }
 
@@ -376,7 +440,8 @@ mod tests {
     #[ignore = "requires an X11 display such as the strict coverage Xvfb session"]
     fn native_xvfb_cli_wrappers_open_main_and_modal_windows() -> Result<(), String> {
         open_window(&args(&["bin", "--open-window", "1", "button"]))?;
-        open_modal_window(&args(&["bin", "--open-modal-window", "1"]))
+        open_modal_window(&args(&["bin", "--open-modal-window", "1"]))?;
+        Ok(())
     }
 
     #[test]
@@ -422,6 +487,178 @@ mod tests {
     }
 
     #[test]
+    fn command_dispatch_reports_missing_artifact_output_directory() {
+        let missing_text_surface =
+            write_text_surface_artifact(&["bin".into(), "--text-surface-artifact".into()]);
+        assert!(matches!(
+            missing_text_surface,
+            Err(error)
+                if error.contains("missing output directory for --text-surface-artifact")
+        ));
+
+        let missing_command_chrome =
+            write_command_chrome_artifact(&["bin".into(), "--command-chrome-artifact".into()]);
+        assert!(matches!(
+            missing_command_chrome,
+            Err(error)
+                if error.contains("missing output directory for --command-chrome-artifact")
+        ));
+
+        let missing_text_command_root = write_text_command_root_artifact(&[
+            "bin".into(),
+            "--text-command-root-artifact".into(),
+        ]);
+        assert!(matches!(
+            missing_text_command_root,
+            Err(error)
+                if error.contains("missing output directory for --text-command-root-artifact")
+        ));
+
+        for command in [
+            "--text-surface-artifact",
+            "--command-chrome-artifact",
+            "--text-command-root-artifact",
+        ] {
+            assert!(
+                run_with(
+                    &args(&["bin", command]),
+                    ok_window_command,
+                    ok_modal_command
+                )
+                .is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn command_dispatch_reports_artifact_writer_failures() -> Result<(), String> {
+        let blocking_file = env::temp_dir().join(format!(
+            "kuc-storybook-artifact-blocking-file-{}",
+            process::id()
+        ));
+        fs::write(&blocking_file, b"not a directory").map_err(io_error_to_string)?;
+        let output = blocking_file.display().to_string();
+
+        for (writer, command, expected) in [
+            (
+                write_text_surface_artifact as fn(&[String]) -> Result<(), String>,
+                "--text-surface-artifact",
+                "failed to write TextSurface Storybook artifact",
+            ),
+            (
+                write_command_chrome_artifact,
+                "--command-chrome-artifact",
+                "failed to write CommandChrome Storybook artifact",
+            ),
+            (
+                write_text_command_root_artifact,
+                "--text-command-root-artifact",
+                "failed to write TextCommandRoot Storybook artifact",
+            ),
+        ] {
+            assert!(matches!(
+                writer(&args(&["bin", command, &output])),
+                Err(error) if error.starts_with(expected)
+            ));
+        }
+        for (writer, directory) in [
+            (
+                write_text_surface_artifact as fn(&[String]) -> Result<(), String>,
+                "text-surface-success",
+            ),
+            (write_command_chrome_artifact, "command-chrome-success"),
+            (
+                write_text_command_root_artifact,
+                "text-command-root-success",
+            ),
+        ] {
+            let output = env::temp_dir()
+                .join(format!("kuc-storybook-{directory}-{}", process::id()))
+                .display()
+                .to_string();
+            writer(&args(&["bin", "artifact", &output]))?;
+            fs::remove_dir_all(&output).map_err(io_error_to_string)?;
+        }
+        fs::remove_file(blocking_file).map_err(io_error_to_string)?;
+        Ok(())
+    }
+
+    #[test]
+    fn command_dispatch_writes_artifacts_and_visual_snapshot() -> Result<(), String> {
+        let directory =
+            env::temp_dir().join(format!("kuc-storybook-cli-dispatch-{}", process::id()));
+        fs::create_dir_all(&directory).map_err(io_error_to_string)?;
+
+        for command in [
+            "--text-surface-artifact",
+            "--command-chrome-artifact",
+            "--text-command-root-artifact",
+        ] {
+            let output = directory.join(command.trim_start_matches("--"));
+            let output = output.display().to_string();
+            let artifact_run = run_with(
+                &args(&["bin", command, &output]),
+                ok_window_command,
+                ok_modal_command,
+            );
+            artifact_run?;
+            assert!(
+                fs::read_dir(&output)
+                    .map_err(io_error_to_string)?
+                    .next()
+                    .is_some(),
+                "artifact route writes at least one output: {command}"
+            );
+        }
+
+        let snapshot = directory.join("panel.png");
+        let snapshot_argument = snapshot.display().to_string();
+        let snapshot_run = run_with(
+            &args(&[
+                "bin",
+                "--visual-snapshot",
+                &snapshot_argument,
+                "checkbox",
+                "dark",
+                "preset-1",
+                "clicked",
+                "12",
+                "true",
+            ]),
+            ok_window_command,
+            ok_modal_command,
+        );
+        snapshot_run?;
+        assert!(fs::metadata(&snapshot).map_err(io_error_to_string)?.len() > 0);
+
+        fs::remove_dir_all(directory).map_err(io_error_to_string)?;
+        Ok(())
+    }
+
+    #[test]
+    fn command_dispatch_reports_visual_snapshot_output_errors() -> Result<(), String> {
+        let blocking_file = env::temp_dir().join(format!(
+            "kuc-storybook-cli-snapshot-blocking-file-{}",
+            process::id()
+        ));
+        fs::create_dir_all(&blocking_file).map_err(io_error_to_string)?;
+        let blocking_file_argument = blocking_file.display().to_string();
+
+        let result = run_with(
+            &args(&["bin", "--visual-snapshot", &blocking_file_argument]),
+            ok_window_command,
+            ok_modal_command,
+        );
+        assert!(matches!(
+            result,
+            Err(error) if error.starts_with("failed to prepare visual snapshot:")
+        ));
+
+        fs::remove_dir_all(blocking_file).map_err(io_error_to_string)?;
+        Ok(())
+    }
+
+    #[test]
     fn command_dispatch_runs_headless_scenario_and_interaction_audit() {
         for command in ["--headless-scenario", "--headless-interaction-audit"] {
             assert!(
@@ -457,11 +694,18 @@ mod tests {
     }
 
     #[test]
-    fn write_json_covers_success_and_contextual_failures() -> Result<(), Box<dyn Error>> {
+    fn write_json_covers_success_and_contextual_failures() -> Result<(), String> {
         let directory = env::temp_dir().join(format!("kuc-storybook-json-{}", process::id()));
         let path = directory.join("report.json");
         write_json(&path, &vec!["ok"], "write failed")?;
-        assert!(fs::read_to_string(&path)?.contains("ok"));
+        assert!(
+            fs::read_to_string(&path)
+                .map_err(io_error_to_string)?
+                .contains("ok")
+        );
+        let missing_read =
+            fs::read_to_string(directory.join("missing")).map_err(io_error_to_string);
+        assert!(matches!(missing_read, Err(error) if !error.is_empty()));
 
         let serialization_error = write_json(&path, &FailingSerialize, "serialize failed");
         assert!(matches!(
@@ -477,7 +721,7 @@ mod tests {
         );
 
         let blocking_file = directory.join("blocking");
-        fs::write(&blocking_file, b"file")?;
+        fs::write(&blocking_file, b"file").map_err(io_error_to_string)?;
         let create_error = write_json(
             &blocking_file.join("report.json"),
             &vec!["value"],
@@ -493,7 +737,7 @@ mod tests {
             write_error,
             Err(error) if error.starts_with("write failed:")
         ));
-        fs::remove_dir_all(directory)?;
+        fs::remove_dir_all(directory).map_err(io_error_to_string)?;
         Ok(())
     }
 
@@ -533,5 +777,9 @@ mod tests {
 
     fn args(values: &[&str]) -> Vec<String> {
         values.iter().map(|value| (*value).to_string()).collect()
+    }
+
+    fn io_error_to_string(error: std::io::Error) -> String {
+        error.to_string()
     }
 }

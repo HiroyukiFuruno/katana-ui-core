@@ -10,6 +10,12 @@ use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::theme::FontFamily;
 
 #[test]
+fn measurement_falls_back_when_the_platform_request_is_invalid() {
+    let renderer = TextRenderer::load(&UiCoreFacade::default(), "body");
+    assert_eq!(renderer.measure_width("text", f32::INFINITY), usize::MAX);
+}
+
+#[test]
 fn draws_japanese_and_emoji_text() {
     let facade = UiCoreFacade::default();
     let renderer = TextRenderer::load(&facade, "body");

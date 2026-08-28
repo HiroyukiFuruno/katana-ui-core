@@ -4,6 +4,7 @@ use super::{
     TextArea, TextAreaCompositionPhase, TextAreaEvent, TextAreaSelection, TextAreaState,
     TextAreaTabBehavior, TextAreaValidationError,
 };
+use crate::render_model::UiStateId;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -87,6 +88,69 @@ pub struct TextAreaActionOutcome {
 }
 
 impl TextArea {
+    /// Synchronizes a controlled identity without replacing interaction-owned state.
+    pub fn synchronize_state_id(&mut self, value: impl Into<UiStateId>) -> bool {
+        let value = value.into();
+        if self.state.state_id == value {
+            return false;
+        }
+        self.state.state_id = value;
+        true
+    }
+
+    /// Updates a controlled value without treating it as user input.
+    pub fn synchronize_value(&mut self, value: impl Into<String>) -> bool {
+        let value = value.into();
+        if self.state.value == value {
+            return false;
+        }
+        self.set_value(value);
+        true
+    }
+
+    /// Synchronizes host-controlled selection without emitting an input event.
+    ///
+    /// This intentionally bypasses `ComponentAction`: a controlled render update is not a
+    /// user interaction and must not be observable as one.
+    pub fn synchronize_selection(&mut self, selection: TextAreaSelection) -> bool {
+        let before = self.state.selection;
+        self.state.set_selection(selection);
+        before != self.state.selection
+    }
+
+    /// Synchronizes the input policy while preserving focus and IME composition state.
+    pub fn synchronize_input_policy(
+        &mut self,
+        readonly: bool,
+        disabled: bool,
+        ime_enabled: bool,
+    ) -> bool {
+        let changed = self.options.readonly != readonly
+            || self.options.disabled != disabled
+            || self.options.ime_enabled != ime_enabled;
+        if !changed {
+            return false;
+        }
+        self.options.readonly = readonly;
+        self.options.disabled = disabled;
+        self.options.ime_enabled = ime_enabled;
+        self.state.readonly = readonly;
+        self.state.disabled = disabled;
+        changed
+    }
+
+    #[must_use]
+    pub fn cancel_ime_composition(&mut self) -> TextAreaActionOutcome {
+        if self.state.disabled || self.state.composition.take().is_none() {
+            return TextAreaActionOutcome::ignored(self.state.clone());
+        }
+        TextAreaActionOutcome {
+            handled: true,
+            events: Vec::new(),
+            state: self.state.clone(),
+        }
+    }
+
     pub fn handle_key(
         &mut self,
         key: TextAreaKeyChord,
@@ -169,5 +233,16 @@ impl TextAreaActionOutcome {
             events: Vec::new(),
             state,
         }
+    }
+}
+
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+
+    #[test]
+    fn cancelling_without_an_ime_composition_is_ignored() {
+        let mut area = TextArea::new("area");
+        assert!(!area.cancel_ime_composition().handled);
     }
 }

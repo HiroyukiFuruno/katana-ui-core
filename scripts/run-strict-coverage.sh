@@ -54,6 +54,9 @@ if [[ ! -S "/tmp/.X11-unix/X${display_number}" ]]; then
   exit 1
 fi
 export DISPLAY=":${display_number}"
+export XDG_RUNTIME_DIR="${CARGO_TARGET_DIR:-target}/kuc-xdg-runtime"
+mkdir -p "${XDG_RUNTIME_DIR}"
+chmod 700 "${XDG_RUNTIME_DIR}"
 export KUC_STORYBOOK_MOUSE_TRACE="${CARGO_TARGET_DIR:-target}/kuc-storybook-mouse-trace.jsonl"
 # LLVM更新で実行済みgeneric関数が未到達の最適化instanceとして集計されないようにする。
 export CARGO_PROFILE_TEST_OPT_LEVEL=0
@@ -63,16 +66,21 @@ run_cargo clean --target-dir "$coverage_target_dir"
 run_cargo llvm-cov clean --workspace
 run_cargo llvm-cov \
   -p katana-ui-core \
+  -p katana-ui-core-egui-adapter \
   -p katana-ui-core-storybook \
+  -p katana-ui-core-svg-raster \
+  -p katana-ui-core-text-raster \
   -p kuc-consumer-app \
   --all-targets \
   --all-features \
   --locked \
   --no-report \
   -- \
-  --include-ignored
+  --include-ignored \
+  --test-threads=2
 run_cargo llvm-cov report \
   --summary-only \
+  --ignore-filename-regex '(^|/)(tests/|tests\.rs$|[^/]+_tests\.rs$)' \
   --fail-under-functions 100 \
   --fail-under-lines 100 \
   --fail-uncovered-functions 0 \

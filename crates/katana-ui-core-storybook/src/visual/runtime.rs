@@ -100,6 +100,7 @@ impl StorybookWindowRun {
 #[derive(Debug)]
 pub enum StorybookVisualError {
     Window(minifb::Error),
+    Eframe(eframe::Error),
     Placement(ModalWindowPlacementError),
 }
 
@@ -107,6 +108,7 @@ impl fmt::Display for StorybookVisualError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Window(error) => write!(formatter, "{error}"),
+            Self::Eframe(error) => write!(formatter, "{error}"),
             Self::Placement(error) => write!(formatter, "{error:?}"),
         }
     }
@@ -188,5 +190,10 @@ mod tests {
 
         let placement = StorybookVisualError::from(ModalWindowPlacementError::ParentOutsideDisplay);
         assert_eq!("ParentOutsideDisplay", placement.to_string());
+
+        let eframe = StorybookVisualError::Eframe(eframe::Error::AppCreation(Box::new(
+            std::io::Error::other("eframe failed"),
+        )));
+        assert!(eframe.to_string().contains("eframe failed"));
     }
 }

@@ -193,6 +193,16 @@ pub(in crate::visual) fn first_content_x(canvas: &Canvas) -> Option<usize> {
         .map(|index| index % canvas.width())
 }
 
+pub(in crate::visual) fn leftmost_content_x(canvas: &Canvas, background: u32) -> Option<usize> {
+    canvas
+        .pixels()
+        .iter()
+        .enumerate()
+        .filter(|(_, pixel)| **pixel != background)
+        .map(|(index, _)| index % canvas.width())
+        .min()
+}
+
 pub(in crate::visual) fn rightmost_content_x(canvas: &Canvas, background: u32) -> Option<usize> {
     canvas
         .pixels()

@@ -74,6 +74,38 @@ impl ContextMenu {
         event
     }
 
+    /// Applies one action while preserving every typed event emitted by the core model.
+    pub fn apply_context_action_events(
+        &mut self,
+        action: &ContextMenuAction,
+    ) -> Vec<ContextMenuEvent> {
+        let event_count = self.state.callback_log.len();
+        self.apply_context_action(action);
+        self.state.callback_log[event_count..].to_vec()
+    }
+
+    /// Replaces controlled presentation without resetting retained interaction state.
+    pub fn synchronize_items(&mut self, items: Vec<ContextMenuItem>) {
+        self.props.items = items;
+        self.state.item_count = self.props.items.len();
+        self.state.sync_submenu_state_ids(&self.props.items);
+    }
+
+    #[must_use]
+    pub fn presentation_items(&self) -> &[ContextMenuItem] {
+        &self.props.items
+    }
+
+    #[must_use]
+    pub fn is_open(&self) -> bool {
+        self.state.open
+    }
+
+    #[must_use]
+    pub fn current_highlighted_path(&self) -> &[usize] {
+        &self.props.highlighted_path
+    }
+
     #[must_use]
     pub fn state_id(&self) -> &crate::render_model::UiStateId {
         &self.state.state_id

@@ -6,6 +6,8 @@ mod editing;
 mod events;
 mod options;
 mod state;
+#[cfg(test)]
+mod synchronization_identity_tests;
 
 use crate::component::ComponentAction;
 use crate::interaction::{UiAction, UiActionResult, UiActionSource};

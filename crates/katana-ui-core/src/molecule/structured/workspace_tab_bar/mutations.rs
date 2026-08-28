@@ -6,6 +6,19 @@ use super::options::WorkspaceTab;
 use super::ordering::ordered_tabs;
 
 impl WorkspaceTabBar {
+    pub(super) fn request_tab_close(
+        &mut self,
+        tab_id: WorkspaceTabId,
+    ) -> Vec<WorkspaceTabBarEvent> {
+        let Some(tab) = self.find_tab(&tab_id) else {
+            return Vec::new();
+        };
+        if tab.pinned || !tab.closeable {
+            return Vec::new();
+        }
+        vec![WorkspaceTabBarEvent::TabCloseRequested { tab_id }]
+    }
+
     pub(super) fn add_tab(
         &mut self,
         tab: WorkspaceTab,
@@ -115,12 +128,12 @@ impl WorkspaceTabBar {
     fn remove_tab(&mut self, tab_id: &WorkspaceTabId) {
         if let Some(tab) = self.find_tab(tab_id).cloned() {
             self.state.record_closed_tab(tab);
+            self.options.tabs.retain(|tab| &tab.id != tab_id);
+            if self.state.active_tab_id.as_ref() == Some(tab_id) {
+                self.state.active_tab_id = self.options.tabs.first().map(|tab| tab.id.clone());
+            }
+            self.state.sync_child_states(&self.options.tabs);
         }
-        self.options.tabs.retain(|tab| &tab.id != tab_id);
-        if self.state.active_tab_id.as_ref() == Some(tab_id) {
-            self.state.active_tab_id = self.options.tabs.first().map(|tab| tab.id.clone());
-        }
-        self.state.sync_child_states(&self.options.tabs);
     }
 
     pub(super) fn normalize_tabs(&mut self) {
@@ -133,5 +146,107 @@ impl WorkspaceTabBar {
 
     fn find_tab(&self, tab_id: &WorkspaceTabId) -> Option<&WorkspaceTab> {
         self.options.tabs.iter().find(|tab| &tab.id == tab_id)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::molecule::structured::workspace_tab_bar::{WorkspaceTab, WorkspaceTabBar};
+
+    #[test]
+    fn close_request_rejects_missing_and_pinned_tabs() {
+        let mut bar = WorkspaceTabBar::new("tabs")
+            .tab(WorkspaceTab::new("pinned", "Pinned").pinned(true))
+            .tab(WorkspaceTab::new("fixed", "Fixed").closeable(false))
+            .tab(WorkspaceTab::new("closeable", "Closeable"));
+        assert!(bar.request_tab_close("missing".into()).is_empty());
+        assert!(bar.request_tab_close("pinned".into()).is_empty());
+        assert!(bar.request_tab_close("fixed".into()).is_empty());
+        assert_eq!(
+            vec![crate::molecule::structured::workspace_tab_bar::WorkspaceTabBarEvent::TabCloseRequested {
+                tab_id: "closeable".into()
+            }],
+            bar.request_tab_close("closeable".into())
+        );
+    }
+
+    #[test]
+    fn add_and_select_tabs_cover_missing_and_duplicate_paths() {
+        let mut bar = WorkspaceTabBar::new("tabs").tab(WorkspaceTab::new("first", "First"));
+        assert!(
+            bar.add_tab(WorkspaceTab::new("first", "Duplicate"), false)
+                .is_empty()
+        );
+        assert!(bar.request_tab_close("missing".into()).is_empty());
+        assert_eq!(
+            vec![
+                crate::molecule::structured::workspace_tab_bar::WorkspaceTabBarEvent::TabSelected {
+                    tab_id: "first".into()
+                }
+            ],
+            bar.select_tab("first".into())
+        );
+        assert!(bar.select_tab("missing".into()).is_empty());
+    }
+
+    #[test]
+    fn close_and_restore_tabs_cover_dirty_and_confirmation_paths() {
+        let mut bar = WorkspaceTabBar::new("tabs")
+            .tab(WorkspaceTab::new("clean", "Clean"))
+            .tab(
+                WorkspaceTab::new("dirty", "Dirty")
+                    .closeable(true)
+                    .dirty(true),
+            );
+
+        let clean_closed = bar.close_tab("clean".into());
+        assert_eq!(
+            vec![
+                crate::molecule::structured::workspace_tab_bar::WorkspaceTabBarEvent::TabClosed {
+                    tab_id: "clean".into()
+                }
+            ],
+            clean_closed
+        );
+
+        let dirty_requested = bar.close_tab("dirty".into());
+        assert_eq!(
+            vec![
+                crate::molecule::structured::workspace_tab_bar::WorkspaceTabBarEvent::TabCloseRequested {
+                    tab_id: "dirty".into()
+                }
+            ],
+            dirty_requested
+        );
+        assert_eq!(
+            vec![
+                crate::molecule::structured::workspace_tab_bar::WorkspaceTabBarEvent::TabClosed {
+                    tab_id: "dirty".into()
+                }
+            ],
+            bar.confirm_close("dirty".into())
+        );
+    }
+
+    #[test]
+    fn move_tab_covers_rejection_on_unknown_from_index_and_restore_from_empty_history() {
+        let mut bar = WorkspaceTabBar::new("tabs")
+            .tab(WorkspaceTab::new("a", "A"))
+            .tab(WorkspaceTab::new("b", "B"));
+        assert!(bar.move_tab("missing".into(), 0).is_empty());
+        let state = bar.state();
+        let recent = state.recently_closed_tabs.clone();
+        assert!(recent.is_empty());
+        assert!(bar.restore_closed_tab().is_empty());
+    }
+
+    #[test]
+    fn removing_an_unknown_tab_is_a_no_op() {
+        let mut bar = WorkspaceTabBar::new("tabs").tab(WorkspaceTab::new("a", "A"));
+        let before = bar.clone();
+
+        bar.remove_tab(&"missing".into());
+
+        assert_eq!(before, bar);
     }
 }

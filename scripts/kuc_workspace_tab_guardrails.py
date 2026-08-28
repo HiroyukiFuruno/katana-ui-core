@@ -148,15 +148,25 @@ class WorkspaceTabGuardrails:
         if not path.exists():
             return [f"{self.relative(path)}: workspace tab visual order guard source is missing"]
         source = self.read(path)
+        declared_group_token = (
+            "push_group_tabs"
+            if "push_group_tabs" in source
+            else "append_grouped_tabs"
+        )
+        group_iteration_token = (
+            "for group in groups"
+            if "for group in groups" in source
+            else "for group in root_groups"
+        )
         order = (
             ("pinned tabs", "push_pinned_tabs"),
-            ("declared group tabs", "push_group_tabs"),
+            ("declared group tabs", declared_group_token),
             ("unknown group tabs", "push_unknown_group_tabs"),
             ("ungrouped tabs", "filter(|tab| !tab.pinned && tab.group_id.is_none())"),
         )
         required = (
             "groups: &[WorkspaceTabGroup]",
-            "for group in groups",
+            group_iteration_token,
             "tab.group_id.as_ref() == Some(&group.id)",
         )
         positions = [(name, source.find(token)) for name, token in order]

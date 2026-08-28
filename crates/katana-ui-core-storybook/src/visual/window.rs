@@ -1,7 +1,10 @@
 use super::canvas::Canvas;
+use super::command_chrome_runtime;
 use super::modal;
 use super::render;
 use super::runtime::{StorybookRuntimeReport, StorybookVisualError, StorybookWindowRun};
+use super::text_command_root_storybook;
+use super::text_surface_runtime;
 use super::types::StorybookVisual;
 use super::window_cursor::StorybookCursorPort;
 use super::window_frame::{
@@ -23,7 +26,7 @@ const MAIN_WINDOW_TITLE: &str = "katana-ui-core Storybook";
 const MODAL_WINDOW_TITLE: &str = "katana-ui-core Modal";
 
 impl StorybookVisual {
-    pub fn open_window(self, frames: usize) -> Result<(), minifb::Error> {
+    pub fn open_window(self, frames: usize) -> Result<(), StorybookVisualError> {
         self.open_window_for_page(frames, crate::DEFAULT_STORYBOOK_PAGE)
     }
 
@@ -31,7 +34,7 @@ impl StorybookVisual {
         self,
         frames: usize,
         selected_page: &'static str,
-    ) -> Result<(), minifb::Error> {
+    ) -> Result<(), StorybookVisualError> {
         self.open_window_for_page_and_preset(frames, selected_page, None)
     }
 
@@ -40,12 +43,28 @@ impl StorybookVisual {
         frames: usize,
         selected_page: &'static str,
         preset_index: Option<usize>,
-    ) -> Result<(), minifb::Error> {
+    ) -> Result<(), StorybookVisualError> {
+        match window_runtime_for_page(selected_page) {
+            StorybookWindowRuntime::TextCommandRoot => {
+                return text_command_root_storybook::open_window(frames)
+                    .map_err(StorybookVisualError::Eframe);
+            }
+            StorybookWindowRuntime::CommandChrome => {
+                return command_chrome_runtime::open_window(frames)
+                    .map_err(StorybookVisualError::Eframe);
+            }
+            StorybookWindowRuntime::TextSurface => {
+                return text_surface_runtime::open_window(frames)
+                    .map_err(StorybookVisualError::Eframe);
+            }
+            StorybookWindowRuntime::Canvas => {}
+        }
         let state = window_state_for_selected_page_and_preset(selected_page, preset_index);
         let mut renderer = render::StorybookFrameRenderer::new();
         let frame = render_frame_for_scale(&mut renderer, &state, storybook_scale_factor());
         let mut window = create_main_window(MAIN_WINDOW_TITLE, &frame)?;
-        run_single_window(&mut window, &mut renderer, frame, frames, state)
+        run_single_window(&mut window, &mut renderer, frame, frames, state)?;
+        Ok(())
     }
 
     pub fn open_modal_window(
@@ -105,6 +124,27 @@ fn finish_modal_window_run(
         state_reflected: runtime.state_reflected,
         overlay_rendered: runtime.overlay_rendered,
     })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum StorybookWindowRuntime {
+    Canvas,
+    TextCommandRoot,
+    TextSurface,
+    CommandChrome,
+}
+
+fn window_runtime_for_page(selected_page: &str) -> StorybookWindowRuntime {
+    if text_command_root_storybook::handles_page(selected_page) {
+        return StorybookWindowRuntime::TextCommandRoot;
+    }
+    if command_chrome_runtime::handles_page(selected_page) {
+        return StorybookWindowRuntime::CommandChrome;
+    }
+    if text_surface_runtime::handles_page(selected_page) {
+        return StorybookWindowRuntime::TextSurface;
+    }
+    StorybookWindowRuntime::Canvas
 }
 
 fn create_window(title: &str, frame: &Canvas) -> Result<Window, minifb::Error> {
@@ -257,9 +297,9 @@ mod native_coverage_tests;
 mod tests {
     use super::StorybookVisual;
     use super::{
-        apply_runtime_tick, apply_runtime_tick_for_frame, finish_modal_window_run,
-        render_frame_for_scale, window_height_for_canvas, window_state_for_selected_page,
-        window_width_for_canvas,
+        StorybookWindowRuntime, apply_runtime_tick, apply_runtime_tick_for_frame,
+        finish_modal_window_run, render_frame_for_scale, window_height_for_canvas,
+        window_runtime_for_page, window_state_for_selected_page, window_width_for_canvas,
     };
     use crate::test_assert::KucTestExpect;
     use crate::visual::canvas::Canvas;
@@ -309,6 +349,22 @@ mod tests {
             ),
             Err(super::StorybookVisualError::Window(_))
         ));
+    }
+
+    #[test]
+    fn eframe_pages_dispatch_to_their_actual_runtimes() {
+        assert_eq!(
+            StorybookWindowRuntime::TextSurface,
+            window_runtime_for_page("text-area")
+        );
+        assert_eq!(
+            StorybookWindowRuntime::CommandChrome,
+            window_runtime_for_page("command-chrome")
+        );
+        assert_eq!(
+            StorybookWindowRuntime::Canvas,
+            window_runtime_for_page("text-input")
+        );
     }
 
     #[test]

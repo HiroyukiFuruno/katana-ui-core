@@ -214,7 +214,7 @@ fn tooltip_idle_does_not_render_open_bubble_until_hover_or_focus() {
     let component = preview_detail::component_action_hit_rect(PAGE);
     let border_x = component.x + BUBBLE_X;
     let border_y = component.y + BUBBLE_Y;
-    let sample_x = component.x + BUBBLE_X + BUBBLE_SAMPLE_OFFSET;
+    let sample_x = component.x + BUBBLE_X + BUBBLE_WIDTH - BUBBLE_SAMPLE_OFFSET;
     let sample_y = component.y + BUBBLE_Y + BUBBLE_SAMPLE_OFFSET;
 
     assert_ne!(
