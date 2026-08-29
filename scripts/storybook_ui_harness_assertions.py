@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from storybook_ui_harness_interaction_assertions import StorybookUiInteractionHarness
@@ -20,6 +21,7 @@ class StorybookUiHarness:
 
     def failures(self) -> list[str]:
         required = self.sources.required_pages()
+        interactive_runtime_pages = self.sources.interactive_runtime_pages()
         preset_counts = self.sources.preset_counts()
         option_pages = self.sources.option_pages()
         option_counts = self.sources.option_counts()
@@ -43,6 +45,13 @@ class StorybookUiHarness:
         failures.extend(self.dedicated_page_failures(leaf_statuses, dedicated_pages))
         failures.extend(self.split_summary_count_failures(leaf_statuses))
         failures.extend(self.priority_order_failures(menu_pages, leaf_changes, priority_order))
+        failures.extend(
+            self.interactive_runtime_page_failures(
+                interactive_runtime_pages,
+                menu_pages,
+                preset_counts,
+            )
+        )
         failures.extend(StorybookUiInteractionHarness(self.root).failures())
         failures.extend(self.text_input_runtime_state_failures())
         failures.extend(self.text_area_runtime_state_failures())
@@ -55,6 +64,161 @@ class StorybookUiHarness:
             "crates/katana-ui-core-storybook/src/visual/inspector_rows.rs"
         ):
             failures.append("Inspector settings must render Storybook UI option contract rows")
+        return failures
+
+    def interactive_runtime_page_failures(
+        self,
+        runtime_pages: list[str],
+        menu_pages: list[str],
+        preset_counts: dict[str, int],
+    ) -> list[str]:
+        failures: list[str] = []
+        manifest_pages = self.interaction_manifest_pages()
+        for page in runtime_pages:
+            if page in menu_pages:
+                failures.append(f"{page}: interactive runtime page must not appear in the Canvas menu")
+            if page in preset_counts:
+                failures.append(
+                    f"{page}: interactive runtime page must not use Canvas preset labels"
+                )
+            if page in manifest_pages:
+                failures.append(
+                    f"{page}: interactive runtime page must not appear in the Canvas manifest"
+                )
+            runtime_contracts = {
+                "command-chrome": self.command_chrome_runtime_failures,
+                "text-command-root": self.text_command_root_runtime_failures,
+            }
+            contract = runtime_contracts.get(page)
+            if contract is None:
+                failures.append(f"{page}: interactive runtime page has no strict runtime contract")
+                continue
+            failures.extend(contract())
+        return failures
+
+    def interaction_manifest_pages(self) -> set[str]:
+        manifest = self.root / "docs/storybook-77ui-interaction-manifest.json"
+        if not manifest.exists():
+            return set()
+        try:
+            payload = json.loads(manifest.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return set()
+        entries = payload.get("ui") if isinstance(payload, dict) else None
+        if not isinstance(entries, list):
+            return set()
+        return {
+            page
+            for entry in entries
+            if isinstance(entry, dict)
+            if isinstance((page := entry.get("page")), str)
+        }
+
+    def command_chrome_runtime_failures(self) -> list[str]:
+        required_tokens = {
+            "crates/katana-ui-core-storybook/src/lib.rs": ("interactive_runtime_pages",),
+            "crates/katana-ui-core-storybook/src/visual/window.rs": (
+                "command_chrome_runtime::handles_page",
+                "command_chrome_runtime::open_window",
+            ),
+            "crates/katana-ui-core-storybook/src/visual/command_chrome_runtime.rs": (
+                "CommandChromeStorybookApp",
+                "eframe::run_native",
+            ),
+            "crates/katana-ui-core-storybook/src/visual/command_chrome_app.rs": (
+                "CommandChromeStorybookApp",
+                "CommandChromeSurface",
+            ),
+            "crates/katana-ui-core-storybook/src/visual/command_chrome_surface.rs": (
+                "show_command_chrome",
+                "EguiCommandChromeAdapter",
+            ),
+            "crates/katana-ui-core-storybook/src/visual/command_chrome_script.rs": (
+                "run_scripted_sequence",
+            ),
+        }
+        failures: list[str] = []
+        for path, tokens in required_tokens.items():
+            source_path = self.root / path
+            source = source_path.read_text(encoding="utf-8") if source_path.exists() else ""
+            for token in tokens:
+                if token not in source:
+                    failures.append(f"command-chrome: runtime contract missing `{token}` in {path}")
+        visual_root = self.root / "crates/katana-ui-core-storybook/src/visual"
+        # The adapter's ArtifactCanvasBounds is an actual-frame fact, not a
+        # Storybook canvas renderer. Reject renderer/fallback implementations.
+        forbidden = ("egui::Canvas", "minifb", "fallback", "StorybookFallbackRenderer")
+        for path in sorted(visual_root.glob("command_chrome_*.rs")):
+            source = path.read_text(encoding="utf-8")
+            for token in forbidden:
+                if token in source:
+                    failures.append(
+                        f"command-chrome: runtime source must not contain `{token}`: {path.relative_to(self.root)}"
+                    )
+        return failures
+
+    def text_command_root_runtime_failures(self) -> list[str]:
+        required_tokens = {
+            "crates/katana-ui-core-storybook/src/lib.rs": (
+                "interactive_runtime_pages",
+            ),
+            "crates/katana-ui-core-storybook/src/requirements.rs": (
+                '"text-command-root"',
+            ),
+            "crates/katana-ui-core-storybook/src/visual/window.rs": (
+                "text_command_root_storybook::handles_page",
+                "text_command_root_storybook::open_window",
+            ),
+            "crates/katana-ui-core-storybook/src/visual/text_command_root_storybook.rs": (
+                "TextCommandRootStorybookApp",
+                "eframe::run_native",
+                "EguiTextCommandSurfaceHostRoot",
+                "EguiTextCommandSurfaceHostProjectionEncoder::token",
+                "EguiTextCommandSurfaceRootFactory::default()",
+                ".retain(token)",
+                "root.show(ui)",
+                ".forward_events_once(&mut forwarder)",
+                "consumed_once: receipt.consumed_once()",
+                "forwarder_calls: forwarder.calls",
+                "if sequence.steps.len() < 9",
+                "write_mp4",
+                "decode_mp4",
+                '"framemd5"',
+                "decoded_frame_count != sequence.steps.len()",
+                '"text-command-root-manifest.json"',
+                "FullRootManifest::from_sequence",
+                "event_receipt: EventReceiptEvidence",
+                "frame_sequence_sha256",
+                "decoder: DecoderEvidence",
+                "encoder_capability_verified",
+                "muxer_capability_verified",
+            ),
+            "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root.rs": (
+                "pub struct EguiTextCommandSurfacePresentationToken",
+                "pub fn retain(",
+                "pub struct EguiTextCommandSurfaceHostProjectionEncoder",
+                "pub fn token(",
+            ),
+            "crates/katana-ui-core-egui-adapter/tests/host_root_facade_contract.rs": (
+                "opaque_tokens_and_transport_have_no_clone_or_serialize_derives",
+                "compatibility_types_are_hidden_and_storybook_uses_only_the_facade_root",
+            ),
+            "crates/katana-ui-core-egui-adapter/tests/text_command_root_contract.rs": (
+                "root_event_batch_forwards_once_and_returns_a_closed_receipt",
+                "assert!(receipt.consumed_once())",
+            ),
+        }
+        failures: list[str] = []
+        for path, tokens in required_tokens.items():
+            source_path = self.root / path
+            source = source_path.read_text(encoding="utf-8") if source_path.exists() else ""
+            if path.endswith("text_command_root_storybook.rs"):
+                source = source.split("#[cfg(test)]", 1)[0]
+            for token in tokens:
+                if token not in source:
+                    failures.append(
+                        f"text-command-root: runtime contract missing `{token}` in {path}"
+                    )
         return failures
 
     def manual_acceptance_queue_failures(self) -> list[str]:

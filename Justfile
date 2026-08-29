@@ -54,6 +54,7 @@ ast-lint:
     python3 scripts/assert-storybook-ui-harness.py
     kal check
     python3 scripts/assert-kuc-state-ownership.py
+    python3 scripts/assert-kuc-guardrails.py
     python3 scripts/assert-storybook-page-layout.py
 
 # Run the non-Storybook consumer contract used by release readiness.
@@ -136,11 +137,7 @@ test: unit-test
 
 # Run coverage as a release confidence gate
 coverage:
-    @if [[ "$(uname -s)" == "Linux" ]]; then \
-      CARGO="{{CARGO}}" bash scripts/run-strict-coverage.sh; \
-    else \
-      just coverage-container; \
-    fi
+    just coverage-container
 
 # Run the Linux/Xvfb coverage implementation directly
 coverage-linux:
@@ -149,7 +146,7 @@ coverage-linux:
 # Run strict Linux/Xvfb coverage from macOS or Windows without opening a window
 coverage-container:
     docker build --tag "{{COVERAGE_IMAGE}}" --file scripts/coverage/Dockerfile scripts/coverage
-    docker run --rm --volume "{{REPO_ROOT}}:/source:ro" --volume kuc-coverage-cargo-registry:/usr/local/cargo/registry --volume kuc-coverage-target:/tmp/kuc-target --workdir /source --env CARGO_TARGET_DIR=/tmp/kuc-target "{{COVERAGE_IMAGE}}" bash scripts/coverage/run-in-container.sh
+    docker run --rm --volume "{{REPO_ROOT}}:/source:ro" --volume kuc-coverage-cargo-registry:/usr/local/cargo/registry --volume kuc-coverage-target:/tmp/kuc-target --workdir /source --env CARGO_BUILD_JOBS=1 --env CARGO_INCREMENTAL=0 --env CARGO_TARGET_DIR=/tmp/kuc-target "{{COVERAGE_IMAGE}}" bash scripts/coverage/run-in-container.sh
 
 # Run the local quality gate
 check: fmt-check check-types lint unit-test ast-lint kuc-guardrails overlay-lifecycle-lint menu-button-contract
@@ -216,6 +213,12 @@ release-verify: check coverage
     bash scripts/release/verify-version.sh "{{VERSION}}"
     {{CARGO}} package -p katana-ui-core --locked --allow-dirty
     {{CARGO}} publish -p katana-ui-core --dry-run --locked --allow-dirty
+    # Dependent crates cannot resolve this release from crates.io before core is published.
+    # Validate their package file sets here; the release workflow performs normal verified
+    # packaging and publishing after each prerequisite appears in the registry.
+    {{CARGO}} package -p katana-ui-core-text-raster --locked --allow-dirty --list >/dev/null
+    {{CARGO}} package -p katana-ui-core-svg-raster --locked --allow-dirty --list >/dev/null
+    {{CARGO}} package -p katana-ui-core-egui-adapter --locked --allow-dirty --list >/dev/null
     bash scripts/release/verify-core-release-scope.sh "{{VERSION}}"
 
 # Verify release branch readiness before merging

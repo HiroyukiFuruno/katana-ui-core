@@ -84,22 +84,23 @@ pub use tree_props::{
 };
 pub use tree_semantics_types::UiTreeSemantics;
 pub use typed::{
+    APPLE_COLOR_EMOJI_FONT_FAMILY, LINUX_COLOR_EMOJI_FONT_FAMILY, RGBA_CHANNEL_COUNT,
     UiAnimationState, UiButtonProps, UiClearActionSpec, UiColorBlendingMode, UiColorPickerProps,
     UiColorPickerTriggerKind, UiColorSwatchProps, UiCommandResultProps,
     UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea, UiDismissAction,
-    UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiFormFieldProps, UiGridCell,
-    UiGridCellAppearance, UiGridCellSpan, UiGridCoordinate, UiGridDataBar,
-    UiGridHorizontalAlignment, UiGridIcon, UiGridIndexRange, UiGridProps, UiGridRating,
-    UiGridSelection, UiGridValidationError, UiGridVerticalAlignment, UiGridViewport,
-    UiGridVisibleRange, UiIconProps, UiLoadingProps, UiModalParentInteraction, UiModalPlacement,
-    UiModalPresentation, UiModalProps, UiModalSize, UiPanelProps, UiPopoverFocusManagement,
-    UiPopoverPlacement, UiPopoverProps, UiProgressMode, UiRect, UiScrollAreaAxis,
-    UiScrollAreaProps, UiScrollbarDragState, UiScrollbarModel, UiScrollbarPlacement,
-    UiScrollbarVisibility, UiSearchControlProps, UiSearchReplaceMode, UiShortcutProps,
-    UiSkeletonAnimation, UiSkeletonProps, UiSkeletonShape, UiSlotActionSpec, UiSlotPlacement,
-    UiSlotSpec, UiSplitPaneAxis, UiSplitPaneHandleProps, UiSplitPaneProps, UiSplitPaneResizeMode,
-    UiStatusProps, UiSvgPaintPolicy, UiTextEntryProps, UiTextProps, UiTextSpan, UiTextSpanStyle,
-    UiTextWrapMode,
+    UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiEmojiTextSegment,
+    UiEmojiTextSegments, UiFormFieldProps, UiGridCell, UiGridCellAppearance, UiGridCellSpan,
+    UiGridCoordinate, UiGridDataBar, UiGridHorizontalAlignment, UiGridIcon, UiGridIndexRange,
+    UiGridProps, UiGridRating, UiGridSelection, UiGridValidationError, UiGridVerticalAlignment,
+    UiGridViewport, UiGridVisibleRange, UiIconProps, UiLoadingProps, UiModalParentInteraction,
+    UiModalPlacement, UiModalPresentation, UiModalProps, UiModalSize, UiPanelProps,
+    UiPlatformEmojiFontFamily, UiPopoverFocusManagement, UiPopoverPlacement, UiPopoverProps,
+    UiProgressMode, UiRect, UiScrollAreaAxis, UiScrollAreaProps, UiScrollbarDragState,
+    UiScrollbarModel, UiScrollbarPlacement, UiScrollbarVisibility, UiSearchControlProps,
+    UiSearchReplaceMode, UiShortcutProps, UiSkeletonAnimation, UiSkeletonProps, UiSkeletonShape,
+    UiSlotActionSpec, UiSlotPlacement, UiSlotSpec, UiSplitPaneAxis, UiSplitPaneHandleProps,
+    UiSplitPaneProps, UiSplitPaneResizeMode, UiStatusProps, UiSvgPaintPolicy, UiTextEntryProps,
+    UiTextProps, UiTextSpan, UiTextSpanStyle, UiTextWrapMode,
 };
 
 #[cfg(test)]

@@ -74,3 +74,18 @@ impl Canvas {
             ));
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn empty_or_zero_sized_text_runs_are_ignored() {
+        let mut canvas = Canvas::new(8, 8, 0);
+        canvas.record_text_run("", 0, 0, 1, 1);
+        canvas.record_text_run("text", 0, 0, 0, 1);
+        canvas.record_text_run_with_glyph_widths("", 0, 0, 1, 1, &[]);
+        canvas.record_text_run_with_glyph_widths("text", 0, 0, 1, 0, &[1]);
+        assert!(canvas.text_runs().is_empty());
+    }
+}

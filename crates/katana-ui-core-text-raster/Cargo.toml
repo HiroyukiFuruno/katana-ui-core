@@ -1,0 +1,15 @@
+[package]
+name = "katana-ui-core-text-raster"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "Framework-neutral platform text raster runtime for katana-ui-core"
+authors.workspace = true
+
+[dependencies]
+cosmic-text.workspace = true
+katana-ui-core.workspace = true
+sha2.workspace = true
+unicode-segmentation.workspace = true

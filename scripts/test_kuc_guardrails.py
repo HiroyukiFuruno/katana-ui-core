@@ -1888,6 +1888,321 @@ class KucGuardrailsTest(unittest.TestCase):
 
             self.assertEqual([], failures)
 
+    def test_rejects_storybook_private_svg_raster_dependencies(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core-storybook/Cargo.toml",
+                "[dependencies]\nresvg.workspace = true\ntiny-skia.workspace = true\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/visual/ui_tree_canvas_svg_icon.rs",
+                "use resvg::usvg;\nuse tiny_skia::Pixmap;\nfn rasterize_svg() {\n"
+                "    let _ = usvg::Tree::from_str(\"<svg/>\", &usvg::Options::default());\n"
+                "}\n",
+            )
+
+            failures = KucGuardrails(root).storybook_svg_runtime_boundary_failures()
+
+            self.assertTrue(
+                any("must depend on the public katana-ui-core-svg-raster runtime" in failure for failure in failures),
+                failures,
+            )
+            self.assertTrue(
+                any("private SVG raster dependency `resvg`" in failure for failure in failures), failures)
+            self.assertTrue(
+                any("private SVG raster path `resvg::`" in failure for failure in failures), failures)
+
+    def test_accepts_storybook_public_svg_raster_runtime_adapter(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core-storybook/Cargo.toml",
+                "[dependencies]\nkatana-ui-core-svg-raster.workspace = true\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/visual/ui_tree_canvas_svg_icon.rs",
+                "use katana_ui_core_svg_raster::{UiSvgRasterRequest, UiSvgRasterizer};\n"
+                "fn draw(request: UiSvgRasterRequest, rasterizer: &mut UiSvgRasterizer) {\n"
+                "    let _ = rasterizer.rasterize(&request);\n"
+                "}\n",
+            )
+
+            failures = KucGuardrails(root).storybook_svg_runtime_boundary_failures()
+
+            self.assertEqual([], failures)
+
+    def test_rejects_command_chrome_host_fixed_text_and_glyph_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "crates/katana-ui-core/src/molecule/command_chrome/model.rs"
+            write_text(
+                source,
+                "use katana_language_editor::Editor;\n"
+                "fn draw() {\n"
+                "    let _ = egui::TextEdit::singleline(&mut String::new());\n"
+                "    let _ = UiIconProps::new(\"⭐️\");\n"
+                "    let _ = \"Search controls\";\n"
+                "}\n",
+            )
+
+            failures = KucGuardrails(root).command_chrome_boundary_failures()
+
+            self.assertTrue(any("katana_language_editor" in failure for failure in failures), failures)
+            self.assertTrue(any("egui::" in failure for failure in failures), failures)
+            self.assertTrue(any("UiIconProps::new(" in failure for failure in failures), failures)
+            self.assertTrue(any("Search controls" in failure for failure in failures), failures)
+
+    def test_accepts_generic_injected_command_chrome_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core/src/molecule/command_chrome/model.rs",
+                "pub struct CommandChromeAction { icon: Option<UiIconProps> }\n"
+                "pub struct SearchControlStrings { label: String }\n",
+            )
+
+            failures = KucGuardrails(root).command_chrome_boundary_failures()
+
+            self.assertEqual([], failures)
+
+    def test_rejects_missing_retained_context_presentation_and_root_style_literals(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            adapter = root / "crates/katana-ui-core-egui-adapter"
+            write_text(
+                adapter / "src/text_command_surface/types.rs",
+                "pub struct EguiTextCommandSurfacePresentation {}\n"
+                "impl TextCommandSurfaceStyle { fn context_menu_raster_style() {} fn context_menu_paint_style() {} }\n",
+            )
+            write_text(
+                adapter / "src/text_command_surface/synchronization.rs",
+                "fn synchronize_context_menu() {}\n",
+            )
+            write_text(
+                adapter / "src/text_command_surface/context_menu.rs",
+                "fn show() { let color = [1, 2, 3, 4]; }\n",
+            )
+            write_text(
+                adapter / "tests/text_command_surface/context_menu.rs",
+                "context_menu: Some(context_menu)\n"
+                "ContextMenuEvent::TypeAheadMatched\n"
+                "fn assert_focus_restored() {}\n"
+                "AccessKitActionRequest\n"
+                "assert_menu_closed(&outside_restored);\n"
+                "assert_context_menu_opened(&accesskit_open)\n",
+            )
+
+            failures = KucGuardrails(root).text_command_surface_context_menu_root_contract_failures()
+
+            self.assertTrue(any("presentation contract missing" in item for item in failures), failures)
+            self.assertTrue(any("in-module color literal" in item for item in failures), failures)
+
+    def test_rejects_prospective_consumer_context_menu_composition(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root
+                / "crates/katana-ui-core-storybook/src/visual/text_command_surface_integration_tests/harness.rs",
+                "use adapter::{EguiTextCommandSurfaceAdapter, EguiContextMenuAdapter};\n"
+                "fn show() { request_open(anchor); plans.push(ArtifactPaintPlanRef::ContextMenu(plan)); }\n"
+                "fn reorder() { output.artifact_order.insert(0, layer); output.artifact_order.remove(0); output.artifact_order.sort(); output.artifact_order.reverse(); output.artifact_order.extend(layers); output.artifact_order.splice(.., layers); }\n",
+            )
+
+            failures = KucGuardrails(root).text_command_surface_context_menu_consumer_failures()
+
+            self.assertTrue(any("sequential EguiContextMenuAdapter" in item for item in failures), failures)
+            self.assertTrue(any("request_open(" in item for item in failures), failures)
+            self.assertTrue(any("ArtifactPaintPlanRef::ContextMenu" in item for item in failures), failures)
+            for token in (".artifact_order.insert(", ".artifact_order.remove(", ".artifact_order.sort(", ".artifact_order.reverse(", ".artifact_order.extend(", ".artifact_order.splice("):
+                self.assertTrue(any(token in item for item in failures), failures)
+
+    def test_rejects_public_text_command_surface_artifact_order_storage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/types.rs",
+                "pub struct EguiTextCommandSurfaceOutput {\n"
+                "    pub artifact_order: Vec<EguiTextCommandSurfaceChild>,\n"
+                "}\n",
+            )
+
+            failures = KucGuardrails(
+                root
+            ).text_command_surface_artifact_order_ownership_failures()
+
+            self.assertTrue(any("mutable public artifact_order storage" in item for item in failures), failures)
+            self.assertTrue(any("read-only" in item for item in failures), failures)
+
+    def test_rejects_controlled_presentation_geometry_and_legacy_gutter_escape_hatches(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core/src/text_surface/gutter_types.rs",
+                "pub struct TextSurfaceGutterRowId;\n"
+                "pub struct TextSurfaceGutterRow;\n"
+                "pub struct TextSurfaceAutomaticGutterOverride;\n"
+                "pub struct TextSurfaceAutomaticGutterPresentation {\n"
+                "    pub width: u32,\n"
+                "    pub display_label: String,\n"
+                "    pub logical_row: usize,\n"
+                "    pub bounds: UiRect,\n"
+                "    pub overrides: Vec<(TextSurfaceGutterRowId, TextSurfaceAutomaticGutterOverride)>,\n"
+                "}\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/text_surface/gutter.rs",
+                "impl TextSurfaceAutomaticGutterPresentation {\n"
+                "    pub const fn new(width: u32) -> Self { todo!() }\n"
+                "}\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/text_surface/props.rs",
+                "pub struct TextSurfacePresentation {\n"
+                "    pub gutter: TextSurfaceGutter,\n"
+                "}\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/text_surface/surface_controlled.rs",
+                "fn synchronize() { TextSurfaceGutter::new(32); }\n",
+            )
+            write_text(
+                root
+                / "crates/katana-ui-core/src/molecule/command_chrome/floating_model.rs",
+                "pub struct FloatingCommandToolbarPresentation {\n"
+                "    pub anchor: Rect,\n"
+                "    pub viewport: Rect,\n"
+                "    pub panel_size: Size,\n"
+                "}\n",
+            )
+
+            failures = KucGuardrails(root).controlled_presentation_boundary_failures()
+
+            self.assertTrue(any("automatic gutter DTO must not accept `width`" in item for item in failures), failures)
+            self.assertTrue(any("automatic gutter DTO must not accept `display_label`" in item for item in failures), failures)
+            self.assertTrue(any("automatic gutter DTO must not accept `logical_row`" in item for item in failures), failures)
+            self.assertTrue(any("automatic gutter constructor must not accept consumer geometry" in item for item in failures), failures)
+            self.assertTrue(any("must not expose legacy gutter props" in item for item in failures), failures)
+            self.assertTrue(any("must not require consumer gutter geometry" in item for item in failures), failures)
+            self.assertTrue(any("floating toolbar DTO must not accept `panel_size`" in item for item in failures), failures)
+
+    def test_accepts_controlled_presentation_without_consumer_geometry(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core/src/text_surface/gutter_types.rs",
+                "pub struct TextSurfaceGutterRowId;\n"
+                "pub struct TextSurfaceAutomaticGutterOverride;\n"
+                "pub struct TextSurfaceAutomaticGutterPresentation {\n"
+                "    pub overrides: Vec<(TextSurfaceGutterRowId, TextSurfaceAutomaticGutterOverride)>,\n"
+                "}\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/text_surface/gutter.rs",
+                "impl TextSurfaceAutomaticGutterPresentation {\n"
+                "    pub const fn new() -> Self { todo!() }\n"
+                "}\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/text_surface/props.rs",
+                "pub struct TextSurfacePresentation {\n"
+                "    pub automatic_gutter: Option<TextSurfaceAutomaticGutterPresentation>,\n"
+                "}\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/text_surface/surface_controlled.rs",
+                "fn synchronize() { TextSurfaceGutter::from_controlled_automatic(value); }\n",
+            )
+            write_text(
+                root
+                / "crates/katana-ui-core/src/molecule/command_chrome/floating_model.rs",
+                "pub struct FloatingCommandToolbarPresentation {\n"
+                "    pub anchor: Rect,\n"
+                "    pub viewport: Rect,\n"
+                "    pub visibility: FloatingCommandToolbarVisibility,\n"
+                "}\n"
+                "impl FloatingCommandToolbarPresentation {\n"
+                "    pub const fn new(anchor: Rect, viewport: Rect, visibility: FloatingCommandToolbarVisibility) -> Self { todo!() }\n"
+                "}\n",
+            )
+
+            failures = KucGuardrails(root).controlled_presentation_boundary_failures()
+
+            self.assertEqual([], failures)
+
+    def test_rejects_private_text_surface_adapter_paths_and_emoji_substitution(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core-egui-adapter/Cargo.toml",
+                "[dependencies]\n"
+                "egui.workspace = true\n"
+                "katana-ui-core.workspace = true\n"
+                "katana-ui-core-text-raster.workspace = true\n"
+                "katana-ui-core-svg-raster.workspace = true\n"
+                "cosmic-text.workspace = true\n"
+                "katana-language-editor.workspace = true\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core-egui-adapter/src/text_surface/adapter.rs",
+                "fn draw() {\n"
+                "    let _ = egui::TextEdit::singleline(&mut String::new());\n"
+                "    let _ = FontDefinitions::default();\n"
+                "    let _ = input.replace(\"⭐️\", \"☆\");\n"
+                "    ui.painter().text(Default::default(), Default::default(), \"x\", Default::default(), Default::default());\n"
+                "}\n",
+            )
+
+            failures = KucGuardrails(root).egui_text_surface_adapter_boundary_failures()
+
+            self.assertTrue(any("cosmic-text" in failure for failure in failures), failures)
+            self.assertTrue(any("katana-language-editor" in failure for failure in failures), failures)
+            self.assertTrue(any("egui::TextEdit" in failure for failure in failures), failures)
+            self.assertTrue(any("FontDefinitions" in failure for failure in failures), failures)
+            self.assertTrue(any('replace(\"⭐' in failure for failure in failures), failures)
+            self.assertTrue(any("painter().text(" in failure for failure in failures), failures)
+
+    def test_accepts_shared_text_surface_adapter_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core-egui-adapter/Cargo.toml",
+                "[dependencies]\n"
+                "egui.workspace = true\n"
+                "katana-ui-core.workspace = true\n"
+                "katana-ui-core-text-raster.workspace = true\n"
+                "katana-ui-core-svg-raster.workspace = true\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core-egui-adapter/src/text_surface/adapter.rs",
+                "use katana_ui_core_text_raster::PlatformTextRasterizer;\n"
+                "fn draw(_rasterizer: &mut PlatformTextRasterizer) {}\n",
+            )
+
+            failures = KucGuardrails(root).egui_text_surface_adapter_boundary_failures()
+
+            self.assertEqual([], failures)
+
+    def test_rejects_command_chrome_adapter_private_text_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core-egui-adapter/src/command_chrome_future.rs",
+                "fn draw() {\n"
+                "    let _ = egui::TextEdit::singleline(&mut String::new());\n"
+                "    let _ = egui::Popup::from_response;\n"
+                "    let _ = ui.button(\"fallback\");\n"
+                "    ui.painter().text(Default::default(), Default::default(), \"x\", Default::default(), Default::default());\n"
+                "}\n",
+            )
+
+            failures = KucGuardrails(root).egui_command_chrome_adapter_boundary_failures()
+
+            self.assertTrue(any("egui::TextEdit" in failure for failure in failures), failures)
+            self.assertTrue(any("egui::Popup" in failure for failure in failures), failures)
+            self.assertTrue(any("ui.button(" in failure for failure in failures), failures)
+            self.assertTrue(any("painter().text(" in failure for failure in failures), failures)
+
     def test_rejects_ambiguous_storybook_next_change_completion_scope(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -3417,6 +3732,132 @@ class KucGuardrailsTest(unittest.TestCase):
             failures = KucGuardrails(root).public_app_shell_failures()
 
             self.assertEqual([], failures)
+
+    def test_rejects_text_surface_storybook_canvas_and_direct_core_action(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            runtime = root / "crates/katana-ui-core-storybook/src/visual/text_surface_runtime.rs"
+            artifact = root / "crates/katana-ui-core-storybook/src/visual/text_surface_artifact.rs"
+            write_text(
+                runtime,
+                "EguiTextSurfaceAdapter\n"
+                "adapter.show(ui, surface\n"
+                "egui::RawInput\n"
+                "fn run_scripted_sequence() {}\n"
+                "TextSurfaceArtifactFrame\n"
+                "TextSurfaceEvent\n"
+                "fn actual_egui_script_is_deterministic_and_covers_editor_surface_events() {}\n"
+                "fn scripted_artifact_writes_plan_only_png_gif_and_manifest() {}\n"
+                "egui::Canvas\n"
+                "surface.apply_action(\n",
+            )
+            write_text(
+                artifact,
+                "TextSurfacePaintOperationKind\n"
+                "fn render_artifact_frame() {}\n"
+                "fn write_png() {}\n"
+                "fn write_gif() {}\n"
+                "adapter-paint-plan-only\n"
+                "actual-egui-raw-input\n"
+                "color_emoji_texture_present\n"
+                "star_variation_selector_present\n",
+            )
+
+            failures = KucGuardrails(root).text_surface_storybook_artifact_boundary_failures()
+
+            self.assertTrue(
+                any("must not contain `egui::Canvas`" in failure for failure in failures), failures
+            )
+            self.assertTrue(
+                any("must not contain `surface.apply_action(`" in failure for failure in failures),
+                failures,
+            )
+
+    def test_accepts_text_surface_storybook_actual_egui_paint_plan_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            runtime = root / "crates/katana-ui-core-storybook/src/visual/text_surface_runtime.rs"
+            artifact = root / "crates/katana-ui-core-storybook/src/visual/text_surface_artifact.rs"
+            write_text(
+                runtime,
+                "EguiTextSurfaceAdapter\n"
+                "adapter.show(ui, surface\n"
+                "egui::RawInput\n"
+                "fn run_scripted_sequence() {}\n"
+                "TextSurfaceArtifactFrame\n"
+                "TextSurfaceEvent\n"
+                "fn actual_egui_script_is_deterministic_and_covers_editor_surface_events() {}\n"
+                "fn scripted_artifact_writes_plan_only_png_gif_and_manifest() {}\n",
+            )
+            write_text(
+                artifact,
+                "TextSurfacePaintOperationKind\n"
+                "fn render_artifact_frame() {}\n"
+                "fn write_png() {}\n"
+                "fn write_gif() {}\n"
+                "adapter-paint-plan-only\n"
+                "actual-egui-raw-input\n"
+                "color_emoji_texture_present\n"
+                "star_variation_selector_present\n",
+            )
+
+            failures = KucGuardrails(root).text_surface_storybook_artifact_boundary_failures()
+
+            self.assertEqual([], failures)
+
+    def test_rejects_storybook_private_artifact_compositor(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core-egui-adapter/src/artifact_compositor.rs",
+                "mod artifact_compositor_types;\n"
+                "mod artifact_compositor_paint;\n"
+                "pub struct ArtifactCompositor;\n"
+                "impl ArtifactCompositor { pub fn compose() {} }\n",
+            )
+            write_text(
+                root / "crates/katana-ui-core-storybook/src/visual/text_surface_artifact.rs",
+                "fn blend_texture() {}\n",
+            )
+
+            failures = KucGuardrails(root).artifact_compositor_boundary_failures()
+
+            self.assertTrue(
+                any("ArtifactCompositor::compose" in failure for failure in failures), failures
+            )
+            self.assertTrue(
+                any("blend_texture(" in failure for failure in failures), failures
+            )
+
+    def test_release_publish_script_uses_dependency_order_and_registry_waits(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "scripts/release/publish-crates.sh").read_text(encoding="utf-8")
+        packages = [
+            "katana-ui-core",
+            "katana-ui-core-text-raster",
+            "katana-ui-core-svg-raster",
+            "katana-ui-core-egui-adapter",
+        ]
+        positions = [source.index(f"  {package}\n") for package in packages]
+
+        self.assertEqual(sorted(positions), positions)
+        self.assertIn('wait_until_available "${package}"', source)
+        self.assertIn('cargo publish -p "${package}" --locked', source)
+
+    def test_release_scope_guard_lists_exactly_four_public_crates(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "scripts/release/verify-core-release-scope.sh").read_text(
+            encoding="utf-8"
+        )
+        expected = (
+            "expected_publishable=$'katana-ui-core\\n"
+            "katana-ui-core-egui-adapter\\n"
+            "katana-ui-core-svg-raster\\n"
+            "katana-ui-core-text-raster'"
+        )
+
+        self.assertIn(expected, source)
+        self.assertIn('p["publish"] != []', source)
 
 
 if __name__ == "__main__":

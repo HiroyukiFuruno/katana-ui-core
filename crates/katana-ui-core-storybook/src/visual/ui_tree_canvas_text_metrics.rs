@@ -41,7 +41,7 @@ const TABLE_LINE_HEIGHT: usize = 34;
 
 const DOCUMENT_BODY_FONT_ROLE: &str = "document-body";
 const DOCUMENT_CODE_FONT_ROLE: &str = "document-code";
-const MARKDOWN_HEADING_1_RASTER_VERTICAL_SCALE: f32 = 7.0 / 6.0;
+const MARKDOWN_HEADING_1_RASTER_VERTICAL_SCALE: f32 = 7.0 / 5.0;
 const KATANA_LONG_HEADING_2_TOP_MARGIN_PX: usize = 15;
 
 #[path = "ui_tree_canvas_text_document_typography.rs"]
@@ -280,7 +280,7 @@ mod tests {
 
         assert_eq!(24.0, metrics.font_size);
         assert_eq!(34, metrics.line_height);
-        assert_eq!(29, metrics.underline_offset);
+        assert_eq!(31, metrics.underline_offset);
         assert_eq!(17, metrics.strikethrough_offset);
         assert!(metrics.strikethrough_offset < metrics.underline_offset);
     }

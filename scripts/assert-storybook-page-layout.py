@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import sys
+import tomllib
 
 STORYBOOK_FILES = (
     Path("storybook/Cargo.toml"),
@@ -126,10 +127,14 @@ DOC_FILES = (
     Path("docs/architecture/ui-separation/owned-ui-task-map.md"),
 )
 
+TEXT_SURFACE_STORYBOOK_MANIFEST = Path("crates/katana-ui-core-storybook/Cargo.toml")
+
 
 def main() -> int:
     source = "\n".join(path.read_text(encoding="utf-8") for path in STORYBOOK_FILES)
     docs = "\n".join(path.read_text(encoding="utf-8") for path in DOC_FILES)
+    manifest = tomllib.loads(TEXT_SURFACE_STORYBOOK_MANIFEST.read_text(encoding="utf-8"))
+    adapter_dependency = manifest.get("dependencies", {}).get("katana-ui-core-egui-adapter")
     required = (
         "StorybookPanel::verify_theme_variants",
         "ThemeSnapshot::light()",
@@ -216,6 +221,16 @@ def main() -> int:
     missing.extend(token for token in current_panel_tokens if token not in source)
     missing.extend(token for token in source_evidence_tokens if token not in source)
     missing.extend(token for token in evidence_tokens if token not in docs)
+    if not (
+        isinstance(adapter_dependency, dict)
+        and adapter_dependency.get("workspace") is True
+        and isinstance(adapter_dependency.get("features"), list)
+        and "storybook-artifacts" in adapter_dependency.get("features", [])
+    ):
+        missing.append(
+            "katana-ui-core-egui-adapter dependency must use workspace = true "
+            "and enable the storybook-artifacts feature"
+        )
     forbidden = (
         "framework-native runtime",
         "katana_ui_core_adapter",
@@ -228,6 +243,8 @@ def main() -> int:
     )
     leaked = []
     for path in STORYBOOK_FILES:
+        if path == TEXT_SURFACE_STORYBOOK_MANIFEST:
+            continue
         candidate = path.read_text(encoding="utf-8")
         for token in forbidden:
             if token in candidate:

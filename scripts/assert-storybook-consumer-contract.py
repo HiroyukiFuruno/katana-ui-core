@@ -92,8 +92,8 @@ P0_READY_PAGES = (
     "search-box",
     "selection-list",
 )
-REQUIRED_PAGES_BLOCK_PATTERN = re.compile(
-    r"const\s+REQUIRED_PAGES:\s*&\[\s*&str\s*\]\s*=\s*&\[(?P<body>.*?)\];",
+CANVAS_REQUIRED_PAGES_BLOCK_PATTERN = re.compile(
+    r"const\s+(?:CANVAS_REQUIRED_PAGES|REQUIRED_PAGES):\s*&\[\s*&str\s*\]\s*=\s*&\[(?P<body>.*?)\];",
     flags=re.DOTALL,
 )
 REQUIRED_COUNT_PATTERN = re.compile(
@@ -118,12 +118,12 @@ def read(path: Path) -> str:
 
 
 def required_pages_from_source(source: str) -> tuple[str, ...]:
-    match = REQUIRED_PAGES_BLOCK_PATTERN.search(source)
+    match = CANVAS_REQUIRED_PAGES_BLOCK_PATTERN.search(source)
     if match is None:
-        raise ValueError("REQUIRED_PAGES block not found")
+        raise ValueError("Canvas required-pages block not found")
     pages = re.findall(r'"([a-z0-9-]+)"', match.group("body"))
     if not pages:
-        raise ValueError("REQUIRED_PAGES block is empty")
+        raise ValueError("Canvas required-pages block is empty")
     return tuple(pages)
 
 

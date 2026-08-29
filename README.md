@@ -56,9 +56,18 @@ theme / event / render_model
 ## Framework 方針
 
 `katana-ui-core` の中核 crate（core crate）は framework-specific UI に依存しません。
-この repository の active workspace は `katana-ui-core`、`katana-ui-core-storybook`、`kuc-consumer-app` だけです。
-UI framework ごとの描画実装は、この crate が公開する中立 DTO / trait / render model を消費する外部変換層の責務です。
-KUC 本体の release gate は core と consumer contract に閉じます。
+framework-specific な接続は、中立 DTO / trait / render model を消費する独立 adapter crate に閉じます。
+
+| crate | 役割 | 公開 |
+|---|---|---|
+| `katana-ui-core` | framework-neutral な UI model / state / event / render contract | crates.io |
+| `katana-ui-core-text-raster` | platform font、color emoji、grapheme、RGBA text raster | crates.io |
+| `katana-ui-core-svg-raster` | renderer-neutral な SVG icon raster | crates.io |
+| `katana-ui-core-egui-adapter` | KUC contract と egui input / output の接続 | crates.io |
+| `katana-ui-core-storybook` | 実部品を操作する private harness | 非公開 |
+| `kuc-consumer-app` | framework-neutral consumer contract | 非公開 |
+
+release gate は4つの公開crateとprivate consumer / Storybookの契約をまとめて検証します。
 
 OS ネイティブのドラッグ&ドロップ（native drag and drop）は、中核 crate に OS 固有型を持ち込みません。
 外部変換層は OS ファイル一覧、URL、テキストを `os/file-list`、`os/url`、`os/text` の `DragData` に変換し、`NativeDragDropBridge` 経由で `DragStart` / `Drop` / `DragCancel` を KUC event に渡します。

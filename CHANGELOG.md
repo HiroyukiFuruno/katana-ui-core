@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-08-28
+
+### Added
+
+- Added framework-neutral platform text and SVG raster runtimes with deterministic layout, color emoji, grapheme hit-testing, and cache contracts.
+- Added generic text-surface and command-chrome models plus the optional KUC-owned egui adapter for text, toolbar, floating toolbar, search, context-menu, IME, and accessibility integration.
+- Added host-projected opaque command-family identities through a versioned token envelope without adding required fields to existing public presentation struct literals.
+
+### Changed
+
+- Updated compatible direct and transitive dependencies without changing release quality gates.
+- Extended strict Linux coverage to all publishable runtime and adapter crates, including deterministic font and motion-artifact prerequisites.
+
+### Fixed
+
+- Preserved legacy host-token decoding and rendering behavior while rejecting duplicate explicitly projected command families and unknown envelope versions fail closed.
+
 ## [0.3.0] - 2026-08-02
 
 ### Fixed

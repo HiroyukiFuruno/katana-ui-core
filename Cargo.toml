@@ -1,13 +1,16 @@
 [workspace]
 members = [
     "crates/katana-ui-core",
+    "crates/katana-ui-core-text-raster",
+    "crates/katana-ui-core-svg-raster",
+    "crates/katana-ui-core-egui-adapter",
     "crates/katana-ui-core-storybook",
     "examples/kuc-consumer-app",
 ]
 resolver = "2"
 
 [workspace.package]
-version = "0.3.0"
+version = "0.3.1"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/HiroyukiFuruno/katana-ui-core"
@@ -15,13 +18,20 @@ rust-version = "1.95.0"
 authors = ["Hiroyuki Furuno"]
 
 [workspace.dependencies]
-katana-ui-core = { version = "0.3.0", path = "crates/katana-ui-core" }
+katana-ui-core = { version = "0.3.1", path = "crates/katana-ui-core" }
+katana-ui-core-text-raster = { version = "0.3.1", path = "crates/katana-ui-core-text-raster" }
+katana-ui-core-svg-raster = { version = "0.3.1", path = "crates/katana-ui-core-svg-raster" }
+katana-ui-core-egui-adapter = { version = "0.3.1", path = "crates/katana-ui-core-egui-adapter" }
 cosmic-text = "0.19.0"
-image = { version = "0.25.10", default-features = false, features = ["png"] }
+eframe = "0.36"
+egui = "0.36"
+hex = "0.4.3"
+image = { version = "0.25.10", default-features = false, features = ["gif", "png"] }
 minifb = "0.28.0"
-resvg = "0.47"
+resvg = "0.48"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
+sha2 = "0.11.0"
 tiny-skia = "0.12"
 unicode-segmentation = "1.13.3"
 

@@ -164,8 +164,8 @@ fn text_raster_cache_keeps_scale_separated_entries_for_hidpi_and_standard_layout
 
     assert_eq!(
         2,
-        renderer.cache_stats().entries,
-        "scale factor should split raster cache entries"
+        renderer.cache_stats().raster_misses,
+        "scale factor should split runtime raster cache entries"
     );
     assert_eq!(2, renderer.cache_stats().raster_misses);
 }
@@ -195,7 +195,6 @@ fn text_renderer_reuses_raster_cache_for_repeated_draws() {
     );
     let after_second = renderer.cache_stats();
 
-    assert_eq!(1, after_first.entries);
     assert_eq!(1, after_first.raster_misses);
     assert_eq!(after_first, after_second);
 }

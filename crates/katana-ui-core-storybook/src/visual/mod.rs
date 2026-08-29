@@ -13,6 +13,18 @@ mod canvas_scale;
 mod canvas_scroll;
 mod canvas_text_selection;
 mod canvas_viewport;
+mod command_chrome_app;
+mod command_chrome_artifact;
+mod command_chrome_artifact_writer;
+mod command_chrome_fixture;
+mod command_chrome_runtime;
+mod command_chrome_script;
+#[cfg(test)]
+mod command_chrome_script_tests;
+mod command_chrome_script_types;
+mod command_chrome_surface;
+#[cfg(test)]
+mod context_menu_surface;
 mod coverage;
 mod coverage_legacy_preview;
 mod coverage_markers;
@@ -176,7 +188,6 @@ mod legacy_01_24_contract_tests;
 mod legacy_01_24_expected_kind;
 mod list_screen_state;
 mod live_interaction_audit;
-mod markdown_font_loader;
 mod modal;
 mod navigation;
 mod navigation_guides;
@@ -310,19 +321,23 @@ mod text_antialias_band_tests;
 #[cfg(test)]
 mod text_antialias_tests;
 mod text_area_screen_state;
+mod text_command_root_storybook;
+#[cfg(test)]
+mod text_command_surface_integration_tests;
 #[cfg(test)]
 mod text_emoji_color_tests;
 mod text_input_screen_state;
-mod text_raster;
-mod text_raster_cache_entry;
-mod text_raster_color;
-mod text_raster_font;
-mod text_raster_pixels;
-mod text_raster_rasterize;
-mod text_raster_request;
 mod text_selection;
 mod text_selection_overlay;
 mod text_selection_types;
+mod text_surface_app;
+mod text_surface_artifact;
+mod text_surface_artifact_writer;
+mod text_surface_fixture;
+mod text_surface_runtime;
+mod text_surface_script;
+mod text_surface_script_steps;
+mod text_surface_script_types;
 #[cfg(test)]
 mod text_test_support;
 #[cfg(test)]
@@ -812,7 +827,9 @@ pub use runtime::{
 };
 use std::path::Path;
 pub use text::TextRenderer;
+pub use text_command_root_storybook::FullRootArtifactError;
 pub use text_selection::SelectableTextRun;
+pub use text_surface_script_types::TextSurfaceArtifactError;
 pub use types::StorybookVisual;
 pub use ui_tree_canvas::UiTreeCanvasRenderer;
 pub use ui_tree_canvas_types::{
@@ -822,6 +839,26 @@ pub use ui_tree_canvas_types::{
 pub use ui_tree_interaction_surface::UiTreeInteractionSurface;
 pub use ui_tree_storybook_host::UiTreeStorybookHost;
 pub use ui_tree_surface_host::UiTreeSurfaceHost;
+
+impl StorybookVisual {
+    pub fn write_text_command_root_artifact(
+        output_dir: &std::path::Path,
+    ) -> Result<(), FullRootArtifactError> {
+        text_command_root_storybook::write_artifact(output_dir)
+    }
+
+    pub fn write_text_surface_artifact(
+        output_dir: &std::path::Path,
+    ) -> Result<(), TextSurfaceArtifactError> {
+        text_surface_artifact_writer::write_scripted_artifact(output_dir)
+    }
+
+    pub fn write_command_chrome_artifact(
+        output_dir: &std::path::Path,
+    ) -> Result<(), command_chrome_script_types::CommandChromeArtifactError> {
+        command_chrome_artifact_writer::write_scripted_artifact(output_dir)
+    }
+}
 
 impl StorybookVisual {
     #[must_use]

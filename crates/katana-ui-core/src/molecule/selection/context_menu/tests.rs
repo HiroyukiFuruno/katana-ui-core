@@ -18,6 +18,7 @@ fn open_with_layout_resolves_pointer_anchor_inside_viewport() {
     });
 
     assert!(matches!(event, ContextMenuEvent::Opened { .. }));
+    assert_eq!(menu.presentation_items().len(), 7);
     let node = UiNode::from(menu);
     assert_eq!(
         ContextMenuPlacement::AboveEnd,

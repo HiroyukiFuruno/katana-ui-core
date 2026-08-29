@@ -10,14 +10,18 @@ authors.workspace = true
 publish = false
 
 [dependencies]
-cosmic-text.workspace = true
+eframe.workspace = true
+egui.workspace = true
+hex.workspace = true
 image.workspace = true
 katana-ui-core.workspace = true
+katana-ui-core-egui-adapter = { workspace = true, features = ["storybook-artifacts"] }
+katana-ui-core-text-raster.workspace = true
+katana-ui-core-svg-raster.workspace = true
 minifb.workspace = true
-resvg.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-tiny-skia.workspace = true
+sha2.workspace = true
 unicode-segmentation.workspace = true
 
 [dev-dependencies]

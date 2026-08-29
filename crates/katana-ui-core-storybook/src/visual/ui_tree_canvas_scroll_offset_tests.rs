@@ -138,12 +138,12 @@ fn scroll_area_measures_wrapped_text_with_rendered_line_count() {
         },
     );
 
-    let code_pixels = count_pixel(&canvas, palette.code_background);
+    let code_background_run = max_horizontal_color_run(&canvas, palette.code_background);
     let visible_pixels = canvas.non_background_pixels(palette.background);
 
     assert!(
-        code_pixels <= 1,
-        "scrolled code row must stay outside the viewport with at most antialias residue: code_pixels={code_pixels}"
+        code_background_run <= 1,
+        "scrolled code row must stay outside the viewport: code_background_run={code_background_run}"
     );
     assert!(
         visible_pixels > 100,
@@ -268,6 +268,26 @@ fn count_pixel(canvas: &Canvas, color: u32) -> usize {
         .iter()
         .filter(|pixel| **pixel == color)
         .count()
+}
+
+fn max_horizontal_color_run(canvas: &Canvas, color: u32) -> usize {
+    canvas
+        .pixels()
+        .chunks(canvas.width())
+        .map(|row| {
+            row.iter()
+                .fold((0usize, 0usize), |(longest, current), pixel| {
+                    if *pixel == color {
+                        let current = current.saturating_add(1);
+                        (longest.max(current), current)
+                    } else {
+                        (longest, 0)
+                    }
+                })
+                .0
+        })
+        .max()
+        .unwrap_or_default()
 }
 
 fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {

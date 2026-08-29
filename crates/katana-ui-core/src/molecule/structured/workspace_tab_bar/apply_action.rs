@@ -1,4 +1,4 @@
-use super::actions::WorkspaceTabBarAction;
+use super::actions::{WorkspaceTabBarAction, WorkspaceTabBarIntent};
 use super::bar::WorkspaceTabBar;
 use super::events::WorkspaceTabBarEvent;
 
@@ -47,6 +47,14 @@ impl WorkspaceTabBar {
                 self.open_overflow(hidden_tab_ids)
             }
             WorkspaceTabBarAction::ConfirmClose { tab_id } => self.confirm_close(tab_id),
+        };
+        self.event_log.extend(events.clone());
+        events
+    }
+
+    pub fn apply_intent(&mut self, intent: WorkspaceTabBarIntent) -> Vec<WorkspaceTabBarEvent> {
+        let events = match intent {
+            WorkspaceTabBarIntent::RequestTabClose { tab_id } => self.request_tab_close(tab_id),
         };
         self.event_log.extend(events.clone());
         events

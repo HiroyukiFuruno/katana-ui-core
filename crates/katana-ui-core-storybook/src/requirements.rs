@@ -1,4 +1,4 @@
-const REQUIRED_PAGES: &[&str] = &[
+const CANVAS_REQUIRED_PAGES: &[&str] = &[
     "text",
     "icon",
     "chip",
@@ -78,6 +78,8 @@ const REQUIRED_PAGES: &[&str] = &[
     "theme-tokens",
 ];
 
+const INTERACTIVE_RUNTIME_PAGES: &[&str] = &["command-chrome", "text-command-root"];
+
 const MIN_SINGLE_NODE: usize = 1;
 const MIN_CHILDREN_NODE: usize = 2;
 const MIN_COMPOSITE_NODE: usize = 3;
@@ -88,7 +90,11 @@ pub(crate) struct StoryRequirements;
 
 impl StoryRequirements {
     pub(crate) fn required_pages() -> &'static [&'static str] {
-        REQUIRED_PAGES
+        CANVAS_REQUIRED_PAGES
+    }
+
+    pub(crate) fn interactive_runtime_pages() -> &'static [&'static str] {
+        INTERACTIVE_RUNTIME_PAGES
     }
 
     pub(crate) fn minimum_nodes_for(page: &str) -> usize {
@@ -165,5 +171,12 @@ mod tests {
             MIN_CHILDREN_NODE,
             StoryRequirements::minimum_nodes_for("unknown")
         );
+    }
+
+    #[test]
+    fn command_chrome_is_an_interactive_runtime_page_not_a_canvas_requirement() {
+        assert!(!StoryRequirements::required_pages().contains(&"command-chrome"));
+        assert!(StoryRequirements::interactive_runtime_pages().contains(&"command-chrome"));
+        assert!(StoryRequirements::interactive_runtime_pages().contains(&"text-command-root"));
     }
 }

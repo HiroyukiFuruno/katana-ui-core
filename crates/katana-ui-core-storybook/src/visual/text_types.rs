@@ -1,21 +1,16 @@
-use super::super::text_raster::{TextRasterCache, TextStyle};
-use cosmic_text::{FontSystem, SwashCache};
 use katana_ui_core::theme::FontToken;
+use katana_ui_core_text_raster::PlatformTextRasterizer;
 use std::cell::RefCell;
 
 pub struct TextRenderer {
-    pub(super) font_system: RefCell<FontSystem>,
-    pub(super) swash_cache: RefCell<SwashCache>,
-    pub(super) raster_cache: RefCell<TextRasterCache>,
+    pub(super) rasterizer: RefCell<PlatformTextRasterizer>,
     pub(super) font: FontToken,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct RichTextLineSpan {
     pub(super) text: String,
-    pub(super) font: FontToken,
-    pub(super) style: TextStyle,
-    pub(super) emoji: bool,
+    pub(super) style: RichTextStyle,
 }
 
 #[derive(Debug, Clone, Copy)]

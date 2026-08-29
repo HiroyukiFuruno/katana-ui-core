@@ -61,6 +61,18 @@ class KucGuardrails:
         failures.extend(self.host_action_render_plan_failures())
         failures.extend(self.adapter_coverage_plan_failures())
         failures.extend(self.storybook_live_component_contract_failures())
+        failures.extend(self.storybook_svg_runtime_boundary_failures())
+        failures.extend(self.command_chrome_boundary_failures())
+        failures.extend(self.controlled_presentation_boundary_failures())
+        failures.extend(self.egui_text_surface_adapter_boundary_failures())
+        failures.extend(self.text_surface_storybook_artifact_boundary_failures())
+        failures.extend(self.artifact_compositor_boundary_failures())
+        failures.extend(self.context_menu_adapter_boundary_failures())
+        failures.extend(self.text_command_surface_artifact_order_ownership_failures())
+        failures.extend(self.text_command_surface_adapter_boundary_failures())
+        failures.extend(self.text_command_surface_context_menu_root_contract_failures())
+        failures.extend(self.text_command_surface_context_menu_consumer_failures())
+        failures.extend(self.egui_command_chrome_adapter_boundary_failures())
         failures.extend(self.choice_api_boundary_failures())
         failures.extend(WorkspaceTabGuardrails(self.root).failures())
         failures.extend(self.agent_stop_policy_failures())
@@ -460,10 +472,7 @@ class KucGuardrails:
                         f"{self.relative(path)}: generic grid contains forbidden format or framework token `{token}`"
                     )
 
-        dependency_files = (
-            self.root / "Cargo.toml",
-            self.root / "crates/katana-ui-core/Cargo.toml",
-        )
+        dependency_files = (self.root / "crates/katana-ui-core/Cargo.toml",)
         for path in dependency_files:
             if not path.exists():
                 continue
@@ -740,6 +749,993 @@ class KucGuardrails:
         )
         return failures
 
+    def storybook_svg_runtime_boundary_failures(self) -> list[str]:
+        storybook_root = self.root / "crates/katana-ui-core-storybook"
+        cargo_toml = storybook_root / "Cargo.toml"
+        icon_raster = storybook_root / "src/visual/ui_tree_canvas_svg_icon.rs"
+        if not cargo_toml.exists() and not icon_raster.exists():
+            return []
+
+        failures: list[str] = []
+        if not cargo_toml.exists():
+            failures.append(
+                "crates/katana-ui-core-storybook/Cargo.toml: Storybook SVG runtime dependency file is missing"
+            )
+        else:
+            cargo_source = self.read(cargo_toml)
+            required_dependency = "katana-ui-core-svg-raster.workspace = true"
+            if required_dependency not in cargo_source:
+                failures.append(
+                    "crates/katana-ui-core-storybook/Cargo.toml: Storybook must depend on the public katana-ui-core-svg-raster runtime"
+                )
+            for dependency in ("resvg", "tiny-skia"):
+                if re.search(rf"(?m)^\s*{re.escape(dependency)}(?:\.|\s|=)", cargo_source):
+                    failures.append(
+                        "crates/katana-ui-core-storybook/Cargo.toml: "
+                        f"Storybook must not directly depend on private SVG raster dependency `{dependency}`"
+                    )
+
+        if not icon_raster.exists():
+            failures.append(
+                "crates/katana-ui-core-storybook/src/visual/ui_tree_canvas_svg_icon.rs: Storybook SVG runtime adapter is missing"
+            )
+            return failures
+
+        source = self.read(icon_raster)
+        required_tokens = (
+            "katana_ui_core_svg_raster",
+            "UiSvgRasterRequest",
+            "UiSvgRasterizer",
+            "rasterize(&request)",
+        )
+        failures.extend(
+            f"{self.relative(icon_raster)}: Storybook SVG runtime adapter missing token `{token}`"
+            for token in required_tokens
+            if token not in source
+        )
+        forbidden_tokens = (
+            "resvg::",
+            "tiny_skia::",
+            "usvg::",
+            "Pixmap",
+            "Tree::from_str",
+            "fn apply_paint_policy",
+            "fn unpremultiply",
+            "HashMap<",
+            "VecDeque<",
+        )
+        failures.extend(
+            f"{self.relative(icon_raster)}: Storybook must not retain a private SVG raster path `{token}`"
+            for token in forbidden_tokens
+            if token in source
+        )
+        return failures
+
+    def command_chrome_boundary_failures(self) -> list[str]:
+        command_chrome = self.root / "crates/katana-ui-core/src/molecule/command_chrome"
+        if not command_chrome.exists():
+            return []
+
+        failures: list[str] = []
+        forbidden_tokens = (
+            "KatanA",
+            "KLE",
+            "KDV",
+            "Markdown",
+            "katana_language_editor",
+            "egui::",
+            "TextEdit",
+            "FontDefinitions",
+            "load_system_fonts",
+            "UiIconProps::new(",
+            '"Match case"',
+            '"Whole word"',
+            '"Use regex"',
+            '"Previous result"',
+            '"Next result"',
+            '"Replace all"',
+            '"Search controls"',
+        )
+        for path in self.rust_files(command_chrome):
+            source = self.read(path)
+            failures.extend(
+                f"{self.relative(path)}: command chrome must not contain forbidden token `{token}`"
+                for token in forbidden_tokens
+                if token in source
+            )
+        return failures
+
+    def controlled_presentation_boundary_failures(self) -> list[str]:
+        gutter_types_path = (
+            self.root / "crates/katana-ui-core/src/text_surface/gutter_types.rs"
+        )
+        gutter_logic_path = self.root / "crates/katana-ui-core/src/text_surface/gutter.rs"
+        props_path = self.root / "crates/katana-ui-core/src/text_surface/props.rs"
+        controlled_path = self.root / "crates/katana-ui-core/src/text_surface/surface_controlled.rs"
+        floating_path = (
+            self.root
+            / "crates/katana-ui-core/src/molecule/command_chrome/floating_model.rs"
+        )
+        paths = (
+            gutter_types_path,
+            gutter_logic_path,
+            props_path,
+            controlled_path,
+            floating_path,
+        )
+        if not any(path.exists() for path in paths):
+            return []
+
+        failures: list[str] = []
+        if gutter_types_path.exists():
+            source = self.read(gutter_types_path)
+            fields = self.public_struct_fields(
+                source, "TextSurfaceAutomaticGutterPresentation"
+            )
+            forbidden = (
+                "width",
+                "display_label",
+                "logical_row",
+                "row_coordinate",
+                "bounds",
+                "coordinate",
+                "panel_size",
+                "UiRect",
+                "TextSurfaceGutterRow",
+            )
+            failures.extend(
+                f"{self.relative(gutter_types_path)}: controlled automatic gutter DTO must not accept `{token}`"
+                for token in forbidden
+                if (
+                    bool(re.search(r"\bTextSurfaceGutterRow\b", fields))
+                    if token == "TextSurfaceGutterRow"
+                    else token in fields
+                )
+            )
+            if "TextSurfaceGutterRowId" not in fields:
+                failures.append(
+                    f"{self.relative(gutter_types_path)}: controlled automatic gutter DTO must use KUC-issued row identities"
+                )
+            constructor_source = (
+                self.read(gutter_logic_path) if gutter_logic_path.exists() else source
+            )
+            constructor = self.public_constructor_args(
+                constructor_source, "TextSurfaceAutomaticGutterPresentation"
+            )
+            if constructor is None:
+                failures.append(
+                    f"{self.relative(gutter_types_path)}: controlled automatic gutter DTO must expose a zero-argument constructor"
+                )
+            elif constructor.strip():
+                failures.append(
+                    f"{self.relative(gutter_types_path)}: controlled automatic gutter constructor must not accept consumer geometry"
+                )
+
+        if props_path.exists():
+            fields = self.public_struct_fields(
+                self.read(props_path), "TextSurfacePresentation"
+            )
+            if not re.search(r"\bpub\s+automatic_gutter\s*:", fields):
+                failures.append(
+                    f"{self.relative(props_path)}: controlled TextSurface presentation must expose automatic_gutter"
+                )
+            if re.search(r"\bpub\s+gutter\s*:", fields):
+                failures.append(
+                    f"{self.relative(props_path)}: controlled TextSurface presentation must not expose legacy gutter props"
+                )
+
+        if controlled_path.exists():
+            source = self.read(controlled_path)
+            if "TextSurfaceGutter::from_controlled_automatic" not in source:
+                failures.append(
+                    f"{self.relative(controlled_path)}: controlled TextSurface synchronization must use KUC automatic gutter conversion"
+                )
+            if "TextSurfaceGutter::new(" in source:
+                failures.append(
+                    f"{self.relative(controlled_path)}: controlled TextSurface synchronization must not require consumer gutter geometry"
+                )
+
+        if floating_path.exists():
+            source = self.read(floating_path)
+            fields = self.public_struct_fields(source, "FloatingCommandToolbarPresentation")
+            forbidden = ("panel_size", "width", "height", "bounds", "Size")
+            failures.extend(
+                f"{self.relative(floating_path)}: controlled floating toolbar DTO must not accept `{token}`"
+                for token in forbidden
+                if token in fields
+            )
+            constructor = self.public_constructor_args(
+                source, "FloatingCommandToolbarPresentation"
+            )
+            if constructor is None:
+                failures.append(
+                    f"{self.relative(floating_path)}: controlled floating toolbar DTO must expose a presentation constructor"
+                )
+            elif any(token in constructor for token in forbidden):
+                failures.append(
+                    f"{self.relative(floating_path)}: controlled floating toolbar constructor must not accept panel dimensions"
+                )
+
+        measurement_path = (
+            self.root
+            / "crates/katana-ui-core-egui-adapter/src/text_surface/measurement.rs"
+        )
+        if measurement_path.exists():
+            source = self.read(measurement_path)
+            if "controlled_gutter_width" not in source:
+                failures.append(
+                    f"{self.relative(measurement_path)}: controlled gutter must be measured by KUC"
+                )
+            elif "rasterize_gutter_label" not in source:
+                failures.append(
+                    f"{self.relative(measurement_path)}: controlled gutter width must come from the KUC text raster"
+                )
+        return failures
+
+    def public_struct_fields(self, source: str, name: str) -> str:
+        match = re.search(
+            rf"pub\s+struct\s+{re.escape(name)}\s*\{{(?P<fields>[^}}]*)\}}",
+            source,
+            re.DOTALL,
+        )
+        return match.group("fields") if match else ""
+
+    def public_constructor_args(self, source: str, name: str) -> str | None:
+        match = re.search(
+            rf"impl\s+{re.escape(name)}\s*\{{.*?pub\s+(?:const\s+)?fn\s+new\s*\((?P<args>[^)]*)\)",
+            source,
+            re.DOTALL,
+        )
+        return match.group("args") if match else None
+
+    def egui_text_surface_adapter_boundary_failures(self) -> list[str]:
+        adapter = self.root / "crates/katana-ui-core-egui-adapter"
+        if not adapter.exists():
+            return []
+
+        failures: list[str] = []
+        manifest = adapter / "Cargo.toml"
+        if not manifest.exists():
+            return [
+                "crates/katana-ui-core-egui-adapter/Cargo.toml: shared text surface adapter manifest is missing"
+            ]
+        manifest_source = self.read(manifest)
+        required_dependencies = (
+            "egui.workspace = true",
+            "katana-ui-core.workspace = true",
+            "katana-ui-core-text-raster.workspace = true",
+            "katana-ui-core-svg-raster.workspace = true",
+        )
+        failures.extend(
+            "crates/katana-ui-core-egui-adapter/Cargo.toml: "
+            f"shared adapter dependency is missing `{dependency}`"
+            for dependency in required_dependencies
+            if dependency not in manifest_source
+        )
+        forbidden_dependencies = (
+            "cosmic-text",
+            "resvg",
+            "tiny-skia",
+            "katana-language-editor",
+            "katana-document-viewer",
+            "katana-render-runtime",
+        )
+        failures.extend(
+            "crates/katana-ui-core-egui-adapter/Cargo.toml: "
+            f"shared adapter must not directly depend on `{dependency}`"
+            for dependency in forbidden_dependencies
+            if re.search(rf"(?m)^\s*{re.escape(dependency)}(?:\.|\s|=)", manifest_source)
+        )
+
+        source_root = adapter / "src/text_surface"
+        forbidden_tokens = (
+            "egui::TextEdit",
+            "TextEdit::",
+            "egui::Popup",
+            "Popup::",
+            "MenuButton",
+            "menu_button(",
+            "egui::Label",
+            "Label::",
+            "ui.label(",
+            "ui.button(",
+            "FontDefinitions",
+            "FontData",
+            "FontFamily::Name",
+            "load_system_fonts",
+            "SystemSource",
+            "/System/Library/Fonts",
+            "/Library/Fonts",
+            "/usr/share/fonts",
+            "C:\\\\Windows\\\\Fonts",
+            "cosmic_text::",
+            "resvg::",
+            "tiny_skia::",
+            "painter().text(",
+            "painter.text(",
+            "draw_glyph",
+            "rasterize_glyph",
+            "GlyphAtlas",
+            "UiIconProps::new(",
+            "katana_language_editor",
+            "katana_document_viewer",
+            "KatanA",
+            "KLE",
+            "KDV",
+            "Markdown",
+            'replace("⭐',
+            "replace('⭐",
+            "replace(\"☆",
+            "replace('☆",
+        )
+        for path in self.rust_files(source_root):
+            source = self.read(path)
+            failures.extend(
+                f"{self.relative(path)}: shared text surface adapter must not contain `{token}`"
+                for token in forbidden_tokens
+                if token in source
+            )
+        return failures
+
+    def text_surface_storybook_artifact_boundary_failures(self) -> list[str]:
+        storybook_root = self.root / "crates/katana-ui-core-storybook/src/visual"
+        runtime = storybook_root / "text_surface_runtime.rs"
+        artifact = storybook_root / "text_surface_artifact.rs"
+        if not runtime.exists() and not artifact.exists():
+            return []
+        if not runtime.exists() or not artifact.exists():
+            missing = runtime if not runtime.exists() else artifact
+            return [
+                f"{self.relative(missing)}: TextSurface Storybook artifact path is incomplete"
+            ]
+
+        sources = tuple(sorted(storybook_root.glob("text_surface*.rs")))
+        source_by_path = {path: self.read(path) for path in sources}
+        combined = "\n".join(source_by_path.values())
+        required_runtime_tokens = (
+            "EguiTextSurfaceAdapter",
+            "egui::RawInput",
+            "run_scripted_sequence",
+            "TextSurfaceArtifactFrame",
+            "TextSurfaceEvent",
+            "actual_egui_script_is_deterministic_and_covers_editor_surface_events",
+            "scripted_artifact_writes_plan_only_png_gif_and_manifest",
+        )
+        required_artifact_tokens = (
+            "TextSurfacePaintOperationKind",
+            "render_artifact_frame",
+            "write_png",
+            "write_gif",
+            "adapter-paint-plan-only",
+            "actual-egui-raw-input",
+            "color_emoji_texture_present",
+            "star_variation_selector_present",
+        )
+        failures = [
+            f"{self.relative(runtime)}: TextSurface Storybook actual-egui contract missing `{token}`"
+            for token in required_runtime_tokens
+            if token not in combined
+        ]
+        failures.extend(
+            f"{self.relative(artifact)}: TextSurface Storybook artifact contract missing `{token}`"
+            for token in required_artifact_tokens
+            if token not in combined
+        )
+        if not re.search(r"adapter\s*\.show\(\s*ui,\s*surface", combined):
+            failures.append(
+                f"{self.relative(runtime)}: TextSurface Storybook actual-egui contract missing `adapter.show(ui, surface`"
+            )
+
+        forbidden_runtime_tokens = (
+            "egui::Canvas",
+            "TextRenderer",
+            "render_storybook_canvas",
+            "TextSurfaceAction::",
+            "surface.apply_action(",
+            "layout_for_surface",
+            "rasterize_surface",
+            "painter.text(",
+            "painter().text(",
+            "draw_glyph",
+            "rasterize_glyph",
+            "GlyphAtlas",
+            "shape_count",
+            "shapes.len()",
+            "replace(\"⭐",
+            "replace('⭐",
+            "replace(\"☆",
+            "replace('☆",
+        )
+        for path, source in source_by_path.items():
+            failures.extend(
+                f"{self.relative(path)}: TextSurface Storybook must not contain `{token}`"
+                for token in forbidden_runtime_tokens
+                if token in source
+            )
+        return failures
+
+    def artifact_compositor_boundary_failures(self) -> list[str]:
+        adapter_root = self.root / "crates/katana-ui-core-egui-adapter/src"
+        public_entry = adapter_root / "artifact_compositor.rs"
+        if not public_entry.exists():
+            return []
+        source = self.read(public_entry)
+        required_entry_tokens = (
+            "pub struct ArtifactCompositor",
+            "impl ArtifactCompositor",
+            "pub fn compose",
+            "artifact_compositor_types",
+            "artifact_compositor_paint",
+        )
+        failures = [
+            f"{self.relative(public_entry)}: public artifact compositor missing `{token}`"
+            for token in required_entry_tokens
+            if token not in source
+        ]
+        if re.search(r"^pub\s+fn\s+compose_artifact_plans", source, re.MULTILINE):
+            failures.append(
+                f"{self.relative(public_entry)}: public free compositor function is forbidden"
+            )
+
+        storybook_root = self.root / "crates/katana-ui-core-storybook/src/visual"
+        callers = (
+            storybook_root / "text_surface_artifact.rs",
+            storybook_root / "command_chrome_artifact.rs",
+            storybook_root / "command_chrome_artifact_writer_composite.rs",
+        )
+        for caller in callers:
+            if not caller.exists():
+                continue
+            caller_source = self.read(caller)
+            if "ArtifactCompositor::compose" not in caller_source:
+                failures.append(
+                    f"{self.relative(caller)}: Storybook must call `ArtifactCompositor::compose`"
+                )
+            for token in (
+                "blend_at(",
+                "blend_fill(",
+                "blend_texture(",
+                "fn source_over(",
+                "fn nearest_texture_pixel(",
+                "fn validate_texture(",
+                "overlay_plan_into(",
+                "pixel_index(",
+                "composite_canvas_dimensions(",
+                "translate_rect(",
+                "union_bounds(",
+                "include_bounds(",
+                "StorybookFallbackRenderer",
+                "minifb",
+                "fontdue",
+                "fontdb",
+            ):
+                if token in caller_source:
+                    failures.append(
+                        f"{self.relative(caller)}: private compositor/fallback token `{token}` is forbidden"
+                    )
+
+        compositor_sources = self.rust_files(adapter_root)
+        manual_tokens = ("fn source_over(", "fn nearest_texture_pixel(", "fn validate_texture(")
+        for path in compositor_sources:
+            source = self.read(path)
+            if path.name == "artifact_compositor_blend.rs":
+                continue
+            for token in manual_tokens:
+                if token in source:
+                    failures.append(
+                        f"{self.relative(path)}: manual compositor token `{token}` belongs only to KUC artifact compositor"
+                    )
+        return failures
+
+    def egui_command_chrome_adapter_boundary_failures(self) -> list[str]:
+        source_root = self.root / "crates/katana-ui-core-egui-adapter/src"
+        paths = tuple(sorted(source_root.glob("command_chrome*.rs")))
+        if not paths:
+            return []
+        forbidden_tokens = (
+            "egui::TextEdit",
+            "TextEdit::",
+            "egui::Popup",
+            "Popup::",
+            "MenuButton",
+            "menu_button(",
+            "egui::Label",
+            "Label::",
+            "ui.label(",
+            "ui.button(",
+            "FontDefinitions",
+            "FontData",
+            "load_system_fonts",
+            "SystemSource",
+            "/System/Library/Fonts",
+            "/Library/Fonts",
+            "/usr/share/fonts",
+            "C:\\\\Windows\\\\Fonts",
+            "cosmic_text::",
+            "painter().text(",
+            "painter.text(",
+            "draw_glyph",
+            "rasterize_glyph",
+            "UiIconProps::new(",
+            "katana_language_editor",
+            "katana_document_viewer",
+            "KatanA",
+            "KLE",
+            "KDV",
+            "Markdown",
+            'replace("⭐',
+            "replace('⭐",
+        )
+        failures: list[str] = []
+        for path in paths:
+            source = self.read(path)
+            failures.extend(
+                f"{self.relative(path)}: command chrome adapter must not contain `{token}`"
+                for token in forbidden_tokens
+                if token in source
+            )
+        return failures
+
+    def context_menu_adapter_boundary_failures(self) -> list[str]:
+        adapter_root = self.root / "crates/katana-ui-core-egui-adapter/src/context_menu"
+        types_path = adapter_root / "types.rs"
+        adapter_path = adapter_root / "adapter.rs"
+        compositor_types = self.root / "crates/katana-ui-core-egui-adapter/src/artifact_compositor_types.rs"
+        compositor_paint = self.root / "crates/katana-ui-core-egui-adapter/src/artifact_compositor_paint.rs"
+        storybook_root = self.root / "crates/katana-ui-core-storybook/src/visual"
+        storybook_sources = tuple(sorted(storybook_root.glob("context_menu_surface*.rs")))
+        if not adapter_root.exists() and not storybook_sources:
+            return []
+        failures: list[str] = []
+        required_paths = (types_path, adapter_path, compositor_types, compositor_paint)
+        failures.extend(
+            f"{self.relative(path)}: ContextMenu actual adapter path is incomplete"
+            for path in required_paths
+            if not path.exists()
+        )
+        if types_path.exists():
+            fields = self.public_struct_fields(
+                self.read(types_path), "ContextMenuPresentation"
+            )
+            forbidden_dto_tokens = ("UiRect", "anchor", "x:", "y:", "bounds", "viewport")
+            failures.extend(
+                f"{self.relative(types_path)}: controlled ContextMenu presentation must not expose pixel DTO `{token}`"
+                for token in forbidden_dto_tokens
+                if token in fields
+            )
+        if adapter_path.exists():
+            adapter_source = self.read(adapter_path)
+            required_tokens = (
+                "EguiContextMenuAdapter",
+                "egui::Area",
+                "ContextMenuPlacementResolver",
+                "ContextMenuTypeAheadBuffer",
+                "TextSurfaceContextTargetAnchor",
+                "request_open",
+            )
+            failures.extend(
+                f"{self.relative(adapter_path)}: ContextMenu actual adapter missing `{token}`"
+                for token in required_tokens
+                if token not in adapter_source
+            )
+            forbidden_tokens = (
+                "katana_language_editor",
+                "katana_document_viewer",
+                "KatanA",
+                "KLE",
+                "KDV",
+                "Markdown",
+                "clipboard",
+                "egui::menu",
+                "menu_button(",
+            )
+            failures.extend(
+                f"{self.relative(adapter_path)}: ContextMenu actual adapter must not contain `{token}`"
+                for token in forbidden_tokens
+                if token in adapter_source
+            )
+        for path in (compositor_types, compositor_paint):
+            if path.exists() and "ContextMenu" not in self.read(path):
+                failures.append(
+                    f"{self.relative(path)}: artifact compositor must include ContextMenu plan refs"
+                )
+        required_storybook_tokens = (
+            "EguiContextMenuAdapter",
+            "EguiTextSurfaceAdapter",
+            "egui::RawInput",
+            "ArtifactCompositor::compose",
+            "actual_egui_context_menu_storybook_integration_is_repeatable",
+            "AccessKitActionRequest",
+        )
+        storybook_source = "\n".join(self.read(path) for path in storybook_sources)
+        failures.extend(
+            "crates/katana-ui-core-storybook/src/visual/context_menu_surface: "
+            f"ContextMenu actual Storybook evidence missing `{token}`"
+            for token in required_storybook_tokens
+            if token not in storybook_source
+        )
+        forbidden_storybook_tokens = (
+            "egui::Area",
+            "egui::menu",
+            "menu_button(",
+            "ContextMenuAction::",
+            "ContextMenuAnchor::Pointer",
+            "painter.text(",
+            "painter().text(",
+        )
+        for token in forbidden_storybook_tokens:
+            if token in storybook_source:
+                failures.append(
+                    "crates/katana-ui-core-storybook/src/visual/context_menu_surface: "
+                    f"consumer ContextMenu geometry or direct core dispatch `{token}` is forbidden"
+                )
+        return failures
+
+    def text_command_surface_artifact_order_ownership_failures(self) -> list[str]:
+        """Keep root artifact order private and read-only to consumers."""
+        types = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/types.rs"
+        if not types.exists():
+            return []
+        source = self.read(types)
+        failures: list[str] = []
+        if re.search(
+            r"(?m)^\s*pub(?:\([^)]*\))?\s+artifact_order\s*:\s*Vec<EguiTextCommandSurfaceChild>",
+            source,
+        ):
+            failures.append(
+                f"{self.relative(types)}: EguiTextCommandSurfaceOutput must not expose mutable public artifact_order storage"
+            )
+        required_accessor = "pub fn artifact_order(&self) -> &[EguiTextCommandSurfaceChild]"
+        if required_accessor not in source:
+            failures.append(
+                f"{self.relative(types)}: EguiTextCommandSurfaceOutput must expose read-only `{required_accessor}`"
+            )
+        for token in ("pub fn artifact_order_mut", "pub fn set_artifact_order"):
+            if token in source:
+                failures.append(
+                    f"{self.relative(types)}: EguiTextCommandSurfaceOutput must not expose mutable artifact order API `{token}`"
+                )
+        return failures
+
+    def text_command_surface_adapter_boundary_failures(self) -> list[str]:
+        adapter = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface.rs"
+        adapter_artifact = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/artifact.rs"
+        adapter_composition = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/composition.rs"
+        adapter_model = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/model.rs"
+        adapter_synchronization = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/synchronization.rs"
+        adapter_types = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/types.rs"
+        floating_adapter = self.root / "crates/katana-ui-core-egui-adapter/src/command_chrome_floating.rs"
+        dropdown_adapter = self.root / "crates/katana-ui-core-egui-adapter/src/command_chrome_dropdown.rs"
+        storybook = self.root / "crates/katana-ui-core-storybook/src/visual/text_command_surface_integration_tests.rs"
+        storybook_facts = self.root / "crates/katana-ui-core-storybook/src/visual/text_command_surface_integration_tests/facts.rs"
+        storybook_harness = self.root / "crates/katana-ui-core-storybook/src/visual/text_command_surface_integration_tests/harness.rs"
+        storybook_assertions = self.root / "crates/katana-ui-core-storybook/src/visual/text_command_surface_integration_tests/assertions.rs"
+        storybook_scenario = self.root / "crates/katana-ui-core-storybook/src/visual/text_command_surface_integration_tests/scenario.rs"
+        if not adapter.exists() and not storybook.exists():
+            return []
+        failures: list[str] = []
+        for path in (
+            adapter,
+            adapter_artifact,
+            adapter_composition,
+            adapter_model,
+            adapter_synchronization,
+            adapter_types,
+            storybook,
+            storybook_facts,
+            storybook_harness,
+            storybook_assertions,
+            storybook_scenario,
+        ):
+            if not path.exists():
+                failures.append(f"{self.relative(path)}: text-command surface path is incomplete")
+        if not adapter.exists() or not storybook.exists():
+            return failures
+        adapter_modules = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface"
+        adapter_module_paths = (
+            path
+            for path in self.rust_files(adapter_modules)
+            if not path.stem.endswith("_tests") and "tests" not in path.parts
+        )
+        adapter_source = "\n".join(
+            self.production_source(self.read(path))
+            for path in (adapter, *adapter_module_paths)
+            if path.exists()
+        )
+        adapter_production_source = "\n".join(
+            self.read(path).split("\n#[cfg(test)]\n", maxsplit=1)[0]
+            for path in (adapter, *adapter_module_paths)
+            if path.exists()
+        )
+        required_adapter_tokens = (
+            "EguiTextCommandSurfaceAdapter",
+            "EguiTextCommandSurface",
+            "available_rect_before_wrap",
+            "measure_toolbar",
+            "show_floating_toolbar",
+            "artifact_order_for_root",
+            "show_search_strip",
+            "root_bounds",
+            "Vec<EguiTextCommandSurfaceChild>",
+            "pub fn artifact_order(&self) -> &[EguiTextCommandSurfaceChild]",
+            "EguiContextMenuAdapter",
+            "with_context_menu",
+            "synchronize_context_menu",
+            "ArtifactPaintPlanRef::ContextMenu",
+        )
+        failures.extend(
+            f"{self.relative(adapter)}: text-command adapter missing `{token}`"
+            for token in required_adapter_tokens
+            if token not in adapter_source
+        )
+        separate_children = (
+            "toolbar: &mut CommandChromeToolbar",
+            "floating: &mut FloatingCommandToolbar",
+            "search: &mut CommandChromeSearchStrip",
+        )
+        failures.extend(
+            f"{self.relative(adapter)}: public root API must retain `{token}` inside EguiTextCommandSurface"
+            for token in separate_children
+            if token in adapter_source
+        )
+        required_retained_tokens = (
+            "pub struct EguiTextCommandSurface",
+            "deferred_floating_toolbar",
+            "with_floating_toolbar",
+            "surface: &mut EguiTextCommandSurface",
+            "EguiTextCommandSurfacePresentation",
+            "synchronize_presentation",
+            "synchronize_floating_for_frame",
+            "floating_visibility_controlled",
+        )
+        failures.extend(
+            f"{self.relative(adapter)}: consumer-safe retained composition missing `{token}`"
+            for token in required_retained_tokens
+            if token not in adapter_source
+        )
+        mutable_getters = (
+            "pub fn text_mut",
+            "pub fn toolbar_mut",
+            "pub fn floating_toolbar_mut",
+            "pub fn search_strip_mut",
+        )
+        failures.extend(
+            f"{self.relative(adapter)}: retained text-command surface must not expose mutable child getter `{token}`"
+            for token in mutable_getters
+            if token in adapter_source
+        )
+        toolbar_index = adapter_source.find("EguiTextCommandSurfaceChild::Toolbar")
+        search_index = (
+            adapter_source.find("EguiTextCommandSurfaceChild::Search", toolbar_index + 1)
+            if toolbar_index >= 0
+            else -1
+        )
+        text_index = (
+            adapter_source.find("EguiTextCommandSurfaceChild::Text", search_index + 1)
+            if search_index >= 0
+            else -1
+        )
+        if not (
+            toolbar_index >= 0
+            and search_index > toolbar_index
+            and text_index > search_index
+            and "artifact_order_for_root" in adapter_source
+        ):
+            failures.append(
+                f"{self.relative(adapter)}: text-command adapter must define canonical child paint order Toolbar -> Search -> Text"
+            )
+        forbidden_adapter_tokens = (
+            "katana_language_editor",
+            "katana_document_viewer",
+            "KatanA",
+            "KLE",
+            "KDV",
+            "Markdown",
+            "search-provider",
+        )
+        failures.extend(
+            f"{self.relative(adapter)}: text-command adapter must not contain `{token}`"
+            for token in forbidden_adapter_tokens
+            if token in adapter_production_source
+        )
+        floating_source = self.read(floating_adapter) if floating_adapter.exists() else ""
+        dropdown_source = self.read(dropdown_adapter) if dropdown_adapter.exists() else ""
+        required_dropdown_precedence = (
+            "outside_dismiss_events",
+            "floating_interaction_contains",
+            "!item.disabled && contains_ui_rect(item.bounds, point)",
+        )
+        failures.extend(
+            f"{self.relative(floating_adapter)}: floating dropdown must resolve enabled item bounds before outside dismissal `{token}`"
+            for token in required_dropdown_precedence
+            if token not in floating_source
+        )
+        if "!item.disabled && contains(item.bounds, *pos)" not in dropdown_source:
+            failures.append(
+                f"{self.relative(dropdown_adapter)}: dropdown item hit resolution must precede outside dismissal"
+            )
+        storybook_source = "\n".join(
+            self.read(path)
+            for path in (
+                storybook,
+                storybook_facts,
+                storybook_harness,
+                storybook_assertions,
+                storybook_scenario,
+            )
+        )
+        required_storybook_tokens = (
+            "EguiTextCommandSurfaceAdapter",
+            "egui::RawInput",
+            "actual_egui_text_command_surface_keeps_all_children_inside_root_repeatably",
+            "⭐️",
+            "assert_artifact_output_contract",
+            "expected_artifact_order",
+            "assert_inside",
+        )
+        failures.extend(
+            f"{self.relative(storybook)}: text-command Storybook evidence missing `{token}`"
+            for token in required_storybook_tokens
+            if token not in storybook_source
+        )
+        forbidden_storybook_tokens = (
+            "EguiTextSurfaceAdapter",
+            "EguiCommandChromeAdapter",
+            "new_child(",
+            "available_height",
+            "allocate_ui_with_layout",
+            "FloatingCommandToolbarLayout",
+            "previous TextSurface frame",
+            "FloatingCommandToolbarPresentation",
+            "text_mut()",
+            "floating_dropdown_hit_test(",
+            "retry_floating_dropdown_pointer(",
+        )
+        failures.extend(
+            f"{self.relative(storybook)}: consumer layout bypass `{token}` is forbidden"
+            for token in forbidden_storybook_tokens
+            if token in storybook_source
+        )
+        return failures
+
+    def text_command_surface_context_menu_root_contract_failures(self) -> list[str]:
+        """Keep ContextMenu styling, controlled state, and AccessKit proof in the root."""
+        adapter_root = self.root / "crates/katana-ui-core-egui-adapter"
+        types = adapter_root / "src/text_command_surface/types.rs"
+        synchronization = adapter_root / "src/text_command_surface/synchronization.rs"
+        context_menu = adapter_root / "src/text_command_surface/context_menu.rs"
+        test = adapter_root / "tests/text_command_surface/context_menu.rs"
+        paths = (types, synchronization, context_menu, test)
+        if not any(path.exists() for path in paths):
+            return []
+        failures: list[str] = []
+        failures.extend(
+            f"{self.relative(path)}: retained ContextMenu root contract path is incomplete"
+            for path in paths
+            if not path.exists()
+        )
+        if not all(path.exists() for path in paths):
+            return failures
+        types_source = self.read(types)
+        synchronization_source = self.read(synchronization)
+        context_source = self.read(context_menu)
+        test_source = self.read(test)
+        required_type_tokens = (
+            "pub context_menu: Option<ContextMenuPresentation>",
+            "context_menu_raster_style",
+            "context_menu_paint_style",
+        )
+        failures.extend(
+            f"{self.relative(types)}: retained ContextMenu presentation contract missing `{token}`"
+            for token in required_type_tokens
+            if token not in types_source
+        )
+        required_synchronization_tokens = (
+            "value.context_menu",
+            "synchronize_context_menu",
+        )
+        failures.extend(
+            f"{self.relative(synchronization)}: retained ContextMenu synchronization missing `{token}`"
+            for token in required_synchronization_tokens
+            if token not in synchronization_source
+        )
+        forbidden_style_tokens = (
+            "ContextMenuRasterStyle",
+            "ContextMenuPaintStyle",
+            "FontToken",
+            "FontFamily",
+            "RGBA",
+        )
+        failures.extend(
+            f"{self.relative(context_menu)}: root ContextMenu style must come from TextCommandSurfaceStyle, not `{token}`"
+            for token in forbidden_style_tokens
+            if token in context_source
+        )
+        if re.search(r"\[\s*\d+(?:\s*,\s*\d+){2}", context_source):
+            failures.append(
+                f"{self.relative(context_menu)}: root ContextMenu style must not contain an in-module color literal"
+            )
+        required_test_tokens = (
+            "context_menu: Some(context_menu)",
+            "ContextMenuEvent::TypeAheadMatched",
+            "assert_focus_restored",
+            "AccessKitActionRequest",
+            "assert_context_menu_opened(&accesskit_open)",
+        )
+        failures.extend(
+            f"{self.relative(test)}: actual root ContextMenu test missing `{token}`"
+            for token in required_test_tokens
+            if token not in test_source
+        )
+        if not re.search(
+            r"assert_menu_closed\(&outside_restored\)(?:\?|);[\s\S]*AccessKitActionRequest[\s\S]*assert_context_menu_opened\(&accesskit_open\)",
+            test_source,
+        ):
+            failures.append(
+                f"{self.relative(test)}: AccessKit ContextMenu proof must begin from a closed retained root menu"
+            )
+        return failures
+
+    def text_command_surface_context_menu_consumer_failures(self) -> list[str]:
+        """Reject prospective consumer ownership of root ContextMenu composition."""
+        storybook_root = (
+            self.root
+            / "crates/katana-ui-core-storybook/src/visual/text_command_surface_integration_tests"
+        )
+        kle_root = (
+            self.root.parent
+            / "katana-language-editor/crates/katana-language-editor-egui/src"
+        )
+        consumer_roots = (
+            ("KUC Storybook TextCommandSurface", storybook_root),
+            ("KLE sibling TextCommandSurface", kle_root),
+        )
+        failures: list[str] = []
+        for consumer_name, consumer_root in consumer_roots:
+            sources = [self.read(path) for path in self.rust_files(consumer_root)]
+            source = "\n".join(sources)
+            if "EguiTextCommandSurfaceAdapter" not in source:
+                continue
+            if "EguiContextMenuAdapter" in source:
+                failures.append(
+                    f"{consumer_name}: consumer must use one EguiTextCommandSurfaceAdapter root show API, not sequential EguiContextMenuAdapter composition"
+                )
+            geometry_tokens = (
+                "TextSurfaceContextTargetAnchor",
+                "UiContextMenuAnchor",
+                "UiContextMenuRect",
+                "ContextMenuAnchor::",
+                "ContextMenuPlacementResolver",
+                "ContextMenuViewport",
+                "ContextMenuSize",
+                "request_open(",
+                "egui::Area",
+                ".fixed_pos(",
+            )
+            failures.extend(
+                f"{consumer_name}: consumer ContextMenu target, anchor, rect, or geometry `{token}` is forbidden"
+                for token in geometry_tokens
+                if token in source
+            )
+            manual_artifact_tokens = (
+                "plans.push(ArtifactPaintPlanRef::ContextMenu",
+                ".artifact_order.push(",
+                ".artifact_order.insert(",
+                ".artifact_order.remove(",
+                ".artifact_order.sort(",
+                ".artifact_order.reverse(",
+                ".artifact_order.extend(",
+                ".artifact_order.splice(",
+                "artifact_paint_plans().sort",
+                "artifact_paint_plans().reverse",
+            )
+            failures.extend(
+                f"{consumer_name}: consumer must not manually compose or reorder ContextMenu artifacts `{token}`"
+                for token in manual_artifact_tokens
+                if token in source
+            )
+        return failures
+
     def storybook_closeable_tab_strip_core_bridge_failures(
         self, storybook_src: Path
     ) -> list[str]:
@@ -892,8 +1888,15 @@ class KucGuardrails:
                 )
 
         if core_bar.exists():
-            source = self.read(core_bar)
+            bar_modules = core_bar.parent / "bar"
+            source = "\n".join(
+                self.read(path)
+                for path in (core_bar, *self.rust_files(bar_modules))
+                if path.exists()
+            )
             group_index = source.find("for group in &options.groups")
+            if group_index < 0:
+                group_index = source.find("for group in root_groups(&options.groups)")
             pinned_index = source.find("for tab in options.tabs.iter().filter(|tab| tab.pinned)")
             order_contract_active = order_contract_active or group_index >= 0 or pinned_index >= 0
             if group_index < 0 or pinned_index < 0 or pinned_index > group_index:

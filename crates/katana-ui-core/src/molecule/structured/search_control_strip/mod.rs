@@ -41,6 +41,12 @@ impl SearchControlStrip {
     }
 
     #[must_use]
+    pub fn stable_state_id(mut self, value: impl Into<UiStateId>) -> Self {
+        self.state_id = value.into();
+        self
+    }
+
+    #[must_use]
     pub fn query(mut self, value: impl Into<String>) -> Self {
         self.query = value.into();
         self
@@ -107,11 +113,48 @@ impl SearchControlStrip {
         types::result_summary(self.result_count, self.active_index)
     }
 
+    #[must_use]
+    pub const fn result_count_model(&self) -> Option<usize> {
+        self.result_count
+    }
+
+    #[must_use]
+    pub const fn active_index_model(&self) -> Option<usize> {
+        self.active_index
+    }
+
     pub fn apply_action(
         &mut self,
         action: SearchControlStripAction,
     ) -> Vec<SearchControlStripEvent> {
         actions::apply(self, action)
+    }
+
+    /// Synchronizes consumer-controlled search presentation without an interaction event.
+    pub fn synchronize_presentation(
+        &mut self,
+        query: impl Into<String>,
+        options: SearchOptions,
+        result_count: Option<usize>,
+        active_index: Option<usize>,
+        replace_mode: ReplaceMode,
+        replace_value: impl Into<String>,
+    ) -> bool {
+        let query = query.into();
+        let replace_value = replace_value.into();
+        let changed = self.query != query
+            || self.options != options
+            || self.result_count != result_count
+            || self.active_index != active_index
+            || self.replace_mode != replace_mode
+            || self.replace_value != replace_value;
+        self.query = query;
+        self.options = options;
+        self.result_count = result_count;
+        self.active_index = active_index;
+        self.replace_mode = replace_mode;
+        self.replace_value = replace_value;
+        changed
     }
 }
 
