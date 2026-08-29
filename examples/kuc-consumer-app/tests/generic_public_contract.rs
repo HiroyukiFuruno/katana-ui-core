@@ -1,6 +1,10 @@
 use katana_ui_core::component::ComponentAction;
-use katana_ui_core::interaction::UiAction;
-use katana_ui_core::render_model::UiNodeKind;
+use katana_ui_core::interaction::{
+    UiAction, UiGestureSurface, UiSurfaceGestureCapabilities, UiSurfaceGestureCommand,
+    UiSurfaceGestureController, UiSurfaceGestureInput, UiSurfaceGestureOverride,
+    UiSurfaceHostEvent, UiSurfacePoint,
+};
+use katana_ui_core::render_model::{UiNodeKind, UiRect, UiStateId};
 use katana_ui_core::widget::molecules::{
     ChoiceItem, ComboBox, ContextMenu, ContextMenuAction, ContextMenuAnchor, ContextMenuEvent,
     ContextMenuItem, GenericGrid, GridCellContent, GridCoordinate, GridTrackSizeProvider,
@@ -184,4 +188,69 @@ fn public_grid_contract_bounds_one_hundred_thousand_cell_model()
     assert_eq!(coordinates.len(), rendered.props().grid.cells.len());
     assert!(rendered.props().grid.validate().is_ok());
     Ok(())
+}
+
+#[test]
+fn public_typed_gesture_contract_needs_no_consumer_string_or_geometry_parsing() {
+    let target = UiStateId::new("opaque-surface");
+    let capabilities = UiSurfaceGestureCapabilities::default()
+        .pointer_pan(true)
+        .smooth_scroll_pan(true)
+        .zoom(true)
+        .fullscreen(true);
+    let mut controller = UiSurfaceGestureController::new([UiGestureSurface::new(
+        target.clone(),
+        UiRect::new(10, 20, 100, 80),
+    )
+    .capabilities(capabilities)]);
+
+    let down = controller.apply(UiSurfaceGestureInput::PointerDown {
+        pointer_id: 7,
+        position: UiSurfacePoint::new(30, 40),
+    });
+    assert!(down.captured);
+    assert_eq!(down.target.as_ref(), Some(&target));
+
+    let moved = controller.apply(UiSurfaceGestureInput::PointerMove {
+        pointer_id: 7,
+        position: UiSurfacePoint::new(34, 47),
+    });
+    assert_eq!(
+        moved.command,
+        Some(UiSurfaceGestureCommand::PanBy {
+            delta_x: 4.0,
+            delta_y: 7.0,
+        })
+    );
+
+    let zoomed = controller.apply_with_override(
+        UiSurfaceGestureInput::Zoom {
+            multiplier: 1.25,
+            center: UiSurfacePoint::new(34, 47),
+        },
+        |event| match event.input {
+            UiSurfaceGestureInput::Zoom { center, .. } => {
+                UiSurfaceGestureOverride::Command(UiSurfaceGestureCommand::ZoomBy {
+                    multiplier: 2.0,
+                    center,
+                })
+            }
+            _ => UiSurfaceGestureOverride::UseDefault,
+        },
+    );
+    assert!(zoomed.captured);
+    assert_eq!(
+        zoomed.command,
+        Some(UiSurfaceGestureCommand::ZoomBy {
+            multiplier: 2.0,
+            center: UiSurfacePoint::new(34, 47),
+        })
+    );
+    assert_eq!(
+        controller.set_fullscreen(&target, true),
+        Some(UiSurfaceHostEvent::FullscreenChanged {
+            target,
+            fullscreen: true,
+        })
+    );
 }

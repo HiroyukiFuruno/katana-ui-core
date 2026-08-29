@@ -115,3 +115,56 @@ impl EguiTextCommandSurface {
             })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::EguiTextCommandSurface;
+    use katana_ui_core::atom::TextArea;
+    use katana_ui_core::interaction::placement::{Rect, Size};
+    use katana_ui_core::molecule::command_chrome::{
+        CommandChromeToolbar, FloatingCommandToolbar, FloatingCommandToolbarLayout,
+        FloatingCommandToolbarVisibility,
+    };
+    use katana_ui_core::text_surface::{TextSurface, TextSurfaceProps, TextSurfaceViewport};
+
+    fn text_surface() -> TextSurface {
+        let value = "fixture";
+        let props = TextSurfaceProps::new(
+            TextArea::new("surface-text").value(value),
+            Vec::new(),
+            TextSurfaceViewport::new(0, 0, 16, 16),
+        );
+        TextSurface::new(props)
+    }
+
+    fn floating_toolbar() -> FloatingCommandToolbar {
+        let toolbar = CommandChromeToolbar::new().action(
+            katana_ui_core::molecule::command_chrome::CommandChromeAction::new(
+                "fixture", "fixture",
+            ),
+        );
+        FloatingCommandToolbar::new(
+            toolbar,
+            FloatingCommandToolbarLayout::new(
+                Rect::new(0, 0, 10, 10),
+                Size::new(1, 1),
+                Rect::new(0, 0, 20, 20),
+            ),
+        )
+        .focus_return_target("focus-return".into())
+        .initial_visibility(FloatingCommandToolbarVisibility::Visible)
+    }
+
+    #[test]
+    fn floating_toolbar_returns_none_before_assignment() {
+        let surface = EguiTextCommandSurface::new(text_surface());
+        assert!(surface.floating_toolbar().is_none());
+    }
+
+    #[test]
+    fn floating_toolbar_returns_active_toolbar_when_present() {
+        let mut surface = EguiTextCommandSurface::new(text_surface());
+        surface.floating = Some(floating_toolbar());
+        assert!(surface.floating_toolbar().is_some());
+    }
+}

@@ -9,10 +9,19 @@ use super::error::MotionArtifactError;
 use super::types::MotionArtifactSettings;
 use crate::system::ProcessService;
 
+const FRAME_MD5_HEX_LENGTH: usize = 32;
+
 #[derive(Debug)]
 pub(super) struct Ffmpeg {
     pub path: PathBuf,
     pub version: String,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(super) struct FrameEvidence {
+    pub frame_hashes: Vec<String>,
+    pub width: u32,
+    pub height: u32,
 }
 
 impl Ffmpeg {
@@ -93,6 +102,8 @@ impl Ffmpeg {
             "-an",
             "-c:v",
             DEFAULT_ENCODER,
+            "-crf",
+            "0",
             "-pix_fmt",
             DEFAULT_PIXEL_FORMAT,
             "-f",
@@ -112,35 +123,71 @@ impl Ffmpeg {
         Ok(())
     }
 
-    pub(super) fn decode(&self, path: &Path) -> Result<(usize, u32, u32), MotionArtifactError> {
+    pub(super) fn source_evidence(
+        &self,
+        dir: &Path,
+        count: usize,
+        settings: MotionArtifactSettings,
+    ) -> Result<FrameEvidence, MotionArtifactError> {
+        let pattern = dir.join(ROOT_IMAGE_PATTERN);
+        self.frame_evidence([
+            "-framerate",
+            &format!("{}/{}", settings.fps_numerator, settings.fps_denominator),
+            "-start_number",
+            "0",
+            "-i",
+            pattern.to_str().unwrap_or_default(),
+            "-frames:v",
+            &count.to_string(),
+            "-map",
+            "0:v:0",
+            "-pix_fmt",
+            DEFAULT_PIXEL_FORMAT,
+            "-f",
+            "framemd5",
+            "-",
+        ])
+    }
+
+    pub(super) fn decode(&self, path: &Path) -> Result<FrameEvidence, MotionArtifactError> {
+        self.frame_evidence([
+            "-i",
+            path.to_str().unwrap_or_default(),
+            "-map",
+            "0:v:0",
+            "-pix_fmt",
+            DEFAULT_PIXEL_FORMAT,
+            "-f",
+            "framemd5",
+            "-",
+        ])
+    }
+
+    fn frame_evidence<const N: usize>(
+        &self,
+        body_args: [&str; N],
+    ) -> Result<FrameEvidence, MotionArtifactError> {
         let service = ProcessService;
+        let mut args = vec!["-hide_banner", "-loglevel", "error"];
+        args.extend(body_args);
         let result = service
-            .run_output(
-                &self.path,
-                [
-                    "-hide_banner",
-                    "-loglevel",
-                    "error",
-                    "-i",
-                    path.to_str().unwrap_or_default(),
-                    "-map",
-                    "0:v:0",
-                    "-f",
-                    "framemd5",
-                    "-",
-                ],
-            )
+            .run_output(&self.path, args)
             .map_err(|error| MotionArtifactError::Encoder(format!("ffmpeg decode: {error}")))?;
         if !result.status.success() {
             return Err(MotionArtifactError::Encoder(process_detail(&result)));
         }
         let text = String::from_utf8_lossy(&result.stdout);
         let dimensions = parse_framemd5_dimensions(&text)?;
-        let frame_count = text
+        let frame_hashes = text
             .lines()
             .filter(|line| !line.starts_with('#') && !line.trim().is_empty())
-            .count();
-        Ok((frame_count, dimensions.0, dimensions.1))
+            .map(parse_framemd5_hash)
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(FrameEvidence {
+            frame_hashes,
+            width: dimensions.0,
+            height: dimensions.1,
+        })
     }
 }
 
@@ -175,6 +222,20 @@ fn parse_framemd5_dimensions(text: &str) -> Result<(u32, u32), MotionArtifactErr
         })
         .ok_or_else(|| MotionArtifactError::Encoder("decoder omitted dimensions".into()))?;
     Ok(dimensions)
+}
+
+fn parse_framemd5_hash(line: &str) -> Result<String, MotionArtifactError> {
+    let hash = line
+        .rsplit(',')
+        .next()
+        .map(str::trim)
+        .filter(|hash| {
+            hash.len() == FRAME_MD5_HEX_LENGTH && hash.bytes().all(|byte| byte.is_ascii_hexdigit())
+        })
+        .ok_or_else(|| {
+            MotionArtifactError::Encoder("decoder emitted an invalid frame hash".into())
+        })?;
+    Ok(hash.to_ascii_lowercase())
 }
 
 fn find_executable(name: &str) -> Option<PathBuf> {
@@ -467,8 +528,8 @@ elif [ "$1" = "-hide_banner" ] && [ "$3" = "error" ] && [ "$4" = "-formats" ]; t
   echo " E....  {DEFAULT_MUXER}"
 elif echo "$@" | grep -q framemd5; then
   echo "{STAGE_DIMENSIONS_PREFIX}2x1"
-  echo "0, 0"
-  echo "0, 1"
+  echo "0, 0, 0, 1, 6, 0123456789abcdef0123456789abcdef"
+  echo "0, 1, 1, 1, 6, fedcba9876543210fedcba9876543210"
 elif echo "$@" | grep -q "{0}"; then
   output=""
   for arg in "$@"; do
@@ -488,12 +549,12 @@ exit 0
         ffmpeg
             .encode(&mp4_path, &dir, 2, MotionArtifactSettings::new(2, 2, 1))
             .expect("fake encode should write mp4");
-        let (frames, width, height) = ffmpeg
+        let evidence = ffmpeg
             .decode(&mp4_path)
             .expect("decode should parse fake framemd5");
-        assert_eq!(frames, 2);
-        assert_eq!(width, 2);
-        assert_eq!(height, 1);
+        assert_eq!(evidence.frame_hashes.len(), 2);
+        assert_eq!(evidence.width, 2);
+        assert_eq!(evidence.height, 1);
     }
 
     #[test]
@@ -539,6 +600,22 @@ exit 0
             parse_framemd5_dimensions(&format!("{STAGE_DIMENSIONS_PREFIX}2x1\n")).expect("parse");
         assert_eq!(parsed, (2, 1));
         assert!(parse_framemd5_dimensions("no-dim\n").is_err());
+    }
+
+    #[test]
+    fn parse_framemd5_hash_rejects_invalid_value() {
+        assert!(super::parse_framemd5_hash("invalid").is_err());
+        assert!(super::parse_framemd5_hash("0, 0, 0, 1, 6, 0123456789abc").is_err());
+        match super::parse_framemd5_hash("0, 0, 0, 1, 6, zz0123456789abcdef0123456789abcdef") {
+            Err(error) => {
+                assert!(
+                    error
+                        .to_string()
+                        .contains("decoder emitted an invalid frame hash")
+                );
+            }
+            Ok(hash) => panic!("unexpected valid framemd5 hash: {hash}"),
+        }
     }
 
     #[test]

@@ -46,6 +46,8 @@ pub struct MotionArtifactManifest {
     pub decoded_frame_count: usize,
     pub decoded_width: u32,
     pub decoded_height: u32,
+    pub source_frame_hashes: Vec<String>,
+    pub decoded_frame_hashes: Vec<String>,
     pub canonical_sha256: String,
 }
 

@@ -1473,7 +1473,22 @@ fn actual_egui_range_icon_marker_owns_bounds_hits_accesskit_and_artifact()
         .iter()
         .map(|(_, node)| node)
         .find(|node| {
-            node.role() == egui::accesskit::Role::Button && node.label() == Some("範囲 marker ⭐️")
+            node.role() == egui::accesskit::Role::Button
+                && node.label() == Some("範囲 marker ⭐️")
+                && node.bounds().is_some_and(|bounds| {
+                    bounds.x0 == f64::from(marker_bounds.x)
+                        && bounds.y0 == f64::from(marker_bounds.y)
+                        && bounds.x1
+                            == f64::from(
+                                marker_bounds.x.saturating_add_unsigned(marker_bounds.width),
+                            )
+                        && bounds.y1
+                            == f64::from(
+                                marker_bounds
+                                    .y
+                                    .saturating_add_unsigned(marker_bounds.height),
+                            )
+                })
         })
         .expect("marker-specific AccessKit node was not published");
     let accesskit_bounds = accesskit_marker
@@ -1483,6 +1498,15 @@ fn actual_egui_range_icon_marker_owns_bounds_hits_accesskit_and_artifact()
     assert_eq!(
         accesskit_bounds.x1,
         f64::from(marker_bounds.x.saturating_add_unsigned(marker_bounds.width))
+    );
+    assert_eq!(accesskit_bounds.y0, f64::from(marker_bounds.y));
+    assert_eq!(
+        accesskit_bounds.y1,
+        f64::from(
+            marker_bounds
+                .y
+                .saturating_add_unsigned(marker_bounds.height)
+        )
     );
 
     let marker_point = center_bounds(marker_bounds);

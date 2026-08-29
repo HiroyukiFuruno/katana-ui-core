@@ -273,3 +273,7 @@ impl TabStripRetainedState {
         response.inner
     }
 }
+
+#[cfg(test)]
+#[path = "overlay_panel_tests.rs"]
+mod tests;

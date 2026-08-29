@@ -60,3 +60,7 @@ fn color_for(style: &UiTextSpanStyle, fallback: [u8; RGBA_CHANNEL_COUNT]) -> Col
     let [red, green, blue, alpha] = color.unwrap_or(fallback);
     Color::rgba(red, green, blue, alpha)
 }
+
+#[cfg(test)]
+#[path = "attributes_tests.rs"]
+mod tests;

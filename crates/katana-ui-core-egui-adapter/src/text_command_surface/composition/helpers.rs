@@ -1,6 +1,6 @@
 use super::super::types::{
     EguiTextCommandSurface, EguiTextCommandSurfaceAdapter, EguiTextCommandSurfaceError,
-    EguiTextCommandSurfaceOutput, TextCommandSurfaceStyle,
+    EguiTextCommandSurfaceOutput, RootChildOutputs, TextCommandSurfaceStyle,
 };
 use crate::command_chrome::{EguiCommandChromeAdapter, EguiCommandChromeError};
 use crate::text_surface::{EguiTextSurfaceInputPolicy, EguiTextSurfaceOutput};
@@ -11,6 +11,41 @@ use katana_ui_core::molecule::command_chrome::{
 use katana_ui_core::render_model::UiRect;
 use katana_ui_core::text_surface::TextSurface;
 
+pub(super) fn finish_root_output(
+    root: UiRect,
+    text: EguiTextSurfaceOutput,
+    mut children: RootChildOutputs,
+    tab_strip: Option<super::super::tab_strip_retained::TabStripRootOutput>,
+) -> EguiTextCommandSurfaceOutput {
+    children.ordered_artifacts = super::super::artifact::artifact_order_for_root(
+        super::super::artifact::RootArtifactChildren {
+            tab_strip: tab_strip.is_some(),
+            tab_strip_overlay: tab_strip
+                .as_ref()
+                .is_some_and(|value| value.overlay_paint_plan.is_some()),
+            source_address: children.source_address.is_some(),
+            toolbar: children.toolbar.is_some(),
+            toolbar_dropdown_open: children
+                .toolbar
+                .as_ref()
+                .is_some_and(|value| value.record.dropdown.is_some()),
+            search: children.search.is_some(),
+            floating_open: children
+                .floating
+                .as_ref()
+                .is_some_and(|value| value.artifact.is_some()),
+            context_menu_open: children
+                .context_menu
+                .as_ref()
+                .is_some_and(|value| value.artifact.is_some()),
+            status_bar: children.status_bar.is_some(),
+            diagnostics_list: children.diagnostics_list.is_some(),
+            preview: children.preview.is_some(),
+        },
+    );
+    EguiTextCommandSurfaceOutput::from_root(root, text, children).with_tab_strip(tab_strip)
+}
+
 impl EguiTextCommandSurfaceAdapter {
     pub fn show(
         &mut self,
@@ -18,7 +53,7 @@ impl EguiTextCommandSurfaceAdapter {
         surface: &mut EguiTextCommandSurface,
         style: &TextCommandSurfaceStyle,
     ) -> Result<EguiTextCommandSurfaceOutput, EguiTextCommandSurfaceError> {
-        self.show_with_tab_strip(ui, surface, style, None, None, None)
+        self.show_with_tab_strip(ui, surface, style, None, None, None, None)
     }
 
     pub(super) fn synchronize_floating_for_frame(

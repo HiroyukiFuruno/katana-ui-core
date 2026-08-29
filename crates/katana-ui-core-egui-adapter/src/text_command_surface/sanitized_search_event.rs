@@ -245,7 +245,7 @@ mod tests {
     };
     use super::{
         SanitizedSearchEventKind, SanitizedSearchEventTransport, SanitizedSearchOneShotText,
-        SanitizedSearchRoutedTarget,
+        SanitizedSearchRoutedTarget, SanitizedSearchTextOperation, SanitizedSearchUnitOperation,
     };
     use std::cell::RefCell;
     use std::rc::Rc;
@@ -287,5 +287,127 @@ mod tests {
         for forbidden in ["日本語", "⭐️", "👩‍💻"] {
             assert!(!debug.contains(forbidden));
         }
+    }
+
+    #[test]
+    fn text_capability_invokes_text_operation_once() {
+        let calls = Rc::new(RefCell::new(Vec::<(String, String)>::new()));
+        let target = SanitizedSearchTarget::from_opaque_bytes([0x70, 0x75, 0x72, 0x65])
+            .with_text_capability({
+                let calls = calls.clone();
+                move |operation, value| {
+                    calls.borrow_mut().push((format!("{operation:?}"), value));
+                    Ok::<(), ()>(())
+                }
+            });
+        let mut transport = SanitizedSearchEventTransport {
+            target: SanitizedSearchRoutedTarget::from_target(&target),
+            kind: SanitizedSearchEventKind::Query,
+            text: Some(SanitizedSearchOneShotText::new("hello".to_owned())),
+            unit_value: None,
+            revision: 42,
+            correlation: "correlation".to_owned(),
+        };
+
+        assert_eq!(transport.invoke_once(), Ok(()));
+        assert_eq!(
+            transport.invoke_once(),
+            Err(SanitizedSearchCapabilityRejection::AlreadyConsumed)
+        );
+        assert_eq!(
+            *calls.borrow(),
+            vec![(
+                format!("{:?}", SanitizedSearchTextOperation::Query),
+                "hello".to_owned()
+            )]
+        );
+    }
+
+    #[test]
+    fn unit_capability_invokes_unit_operation_once() {
+        let calls = Rc::new(RefCell::new(Vec::<String>::new()));
+        let target = SanitizedSearchTarget::from_opaque_bytes([0x6d, 0x61, 0x74, 0x63, 0x68])
+            .with_unit_capability({
+                let calls = calls.clone();
+                move |operation| {
+                    calls.borrow_mut().push(format!("{operation:?}"));
+                    Ok::<(), ()>(())
+                }
+            });
+        let mut transport = SanitizedSearchEventTransport {
+            target: SanitizedSearchRoutedTarget::from_target(&target),
+            kind: SanitizedSearchEventKind::MatchCase,
+            text: None,
+            unit_value: Some(true),
+            revision: 7,
+            correlation: "correlation".to_owned(),
+        };
+
+        assert_eq!(transport.invoke_once(), Ok(()));
+        assert_eq!(
+            transport.invoke_once(),
+            Err(SanitizedSearchCapabilityRejection::AlreadyConsumed)
+        );
+        assert_eq!(
+            *calls.borrow(),
+            vec![format!(
+                "{:?}",
+                SanitizedSearchUnitOperation::MatchCase(true)
+            )]
+        );
+    }
+
+    #[test]
+    fn wrong_text_payload_shape_is_rejected() {
+        let called = Rc::new(RefCell::new(false));
+        let target = SanitizedSearchTarget::from_opaque_bytes([0x74, 0x65, 0x78, 0x74])
+            .with_text_capability({
+                let called = called.clone();
+                move |_, _| {
+                    *called.borrow_mut() = true;
+                    Ok::<(), ()>(())
+                }
+            });
+        let mut transport = SanitizedSearchEventTransport {
+            target: SanitizedSearchRoutedTarget::from_target(&target),
+            kind: SanitizedSearchEventKind::MatchCase,
+            text: None,
+            unit_value: Some(true),
+            revision: 1,
+            correlation: "correlation".to_owned(),
+        };
+
+        assert_eq!(
+            transport.invoke_once(),
+            Err(SanitizedSearchCapabilityRejection::WrongOperation)
+        );
+        assert!(!*called.borrow());
+    }
+
+    #[test]
+    fn unit_payload_requires_value() {
+        let called = Rc::new(RefCell::new(false));
+        let target = SanitizedSearchTarget::from_opaque_bytes([0x75, 0x6e, 0x69, 0x74])
+            .with_unit_capability({
+                let called = called.clone();
+                move |_| {
+                    *called.borrow_mut() = true;
+                    Ok::<(), ()>(())
+                }
+            });
+        let mut transport = SanitizedSearchEventTransport {
+            target: SanitizedSearchRoutedTarget::from_target(&target),
+            kind: SanitizedSearchEventKind::MatchCase,
+            text: None,
+            unit_value: None,
+            revision: 1,
+            correlation: "correlation".to_owned(),
+        };
+
+        assert_eq!(
+            transport.invoke_once(),
+            Err(SanitizedSearchCapabilityRejection::WrongOperation)
+        );
+        assert!(!*called.borrow());
     }
 }

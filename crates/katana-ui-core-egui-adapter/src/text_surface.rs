@@ -3,11 +3,13 @@ mod adapter;
 mod artifact_model;
 mod controlled_focus;
 mod controlled_scroll;
+mod events;
 mod gutter_icon;
 mod gutter_interaction;
-mod input;
+mod keyboard;
 mod measurement;
 mod model;
+mod model_paint;
 mod paint;
 mod raster;
 

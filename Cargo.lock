@@ -1753,9 +1753,9 @@ checksum = "65b27460c2c92b037f3f94c538ed9a3342f3fdf923606781629ccb35f82d042a"
 
 [[package]]
 name = "indexmap"
-version = "2.14.0"
+version = "2.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d466e9454f08e4a911e14806c24e16fba1b4c121d1ea474396f396069cf949d9"
+checksum = "07aa2048142242915a31d35844fb311e0e53fcca590c3a0a40dcf1b841fa09eb"
 dependencies = [
  "equivalent",
  "hashbrown 0.17.1",
@@ -1881,7 +1881,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "serde",
  "serde_json",
@@ -1890,7 +1890,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core-egui-adapter"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "egui",
  "hex",
@@ -1905,7 +1905,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core-storybook"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "eframe",
  "egui",
@@ -1925,7 +1925,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core-svg-raster"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "katana-ui-core",
  "resvg",
@@ -1934,7 +1934,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core-text-raster"
-version = "0.3.1"
+version = "0.3.2"
 dependencies = [
  "cosmic-text",
  "katana-ui-core",

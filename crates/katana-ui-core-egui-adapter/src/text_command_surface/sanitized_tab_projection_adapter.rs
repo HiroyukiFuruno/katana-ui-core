@@ -520,7 +520,7 @@ mod tests {
         events: Vec<egui::Event>,
     ) -> super::SanitizedTabProjectionFrame {
         let mut output = None;
-        let _ = context.run_ui(
+        let mut platform_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, SCREEN_SIZE)),
                 events,
@@ -528,6 +528,7 @@ mod tests {
             },
             |ui| output = Some(adapter.show(ui).expect("sanitized tab render succeeds")),
         );
+        platform_output.textures_delta.clear();
         output.expect("sanitized tab frame is produced")
     }
 

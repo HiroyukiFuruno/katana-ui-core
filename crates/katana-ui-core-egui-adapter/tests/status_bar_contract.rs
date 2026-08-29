@@ -33,7 +33,7 @@ fn frame(
     events: Vec<egui::Event>,
 ) -> Result<(egui::FullOutput, Vec<StatusBarEvent>), String> {
     let mut receipt = None;
-    let output = context.run_ui(
+    let mut output = context.run_ui(
         egui::RawInput {
             events,
             screen_rect: Some(egui::Rect::from_min_size(
@@ -48,6 +48,7 @@ fn frame(
             });
         },
     );
+    output.textures_delta.clear();
     let receipt = receipt
         .ok_or_else(|| "status-bar receipt was not produced".to_owned())?
         .map_err(|error| error.to_string())?;

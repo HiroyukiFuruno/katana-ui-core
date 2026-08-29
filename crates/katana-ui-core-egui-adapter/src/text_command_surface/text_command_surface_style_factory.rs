@@ -170,22 +170,19 @@ mod tests {
     }
 
     #[test]
-    fn missing_color_is_reported_without_substitution() -> Result<(), String> {
+    fn missing_color_is_reported_without_substitution() {
         let mut theme = ThemeSnapshot::dark();
         theme.colors.retain(|token| token.name != "accent");
 
-        match TextCommandSurfaceStyle::from_theme(&theme) {
-            Err(EguiTextCommandSurfaceError::MissingThemeColor { token }) => {
-                assert_eq!("accent", token);
-                Ok(())
-            }
-            Err(error) => Err(format!("unexpected style error: {error}")),
-            Ok(_) => Err("missing color was accepted".to_owned()),
-        }
+        assert!(matches!(
+            TextCommandSurfaceStyle::from_theme(&theme),
+            Err(EguiTextCommandSurfaceError::MissingThemeColor { token })
+                if token == "accent"
+        ));
     }
 
     #[test]
-    fn invalid_font_and_spacing_are_rejected() -> Result<(), String> {
+    fn invalid_font_and_spacing_are_rejected() {
         let mut invalid_font = ThemeSnapshot::dark();
         if let Some(font) = invalid_font
             .fonts
@@ -194,13 +191,11 @@ mod tests {
         {
             font.size = f32::NAN;
         }
-        match TextCommandSurfaceStyle::from_theme(&invalid_font) {
-            Err(EguiTextCommandSurfaceError::InvalidThemeFont { token, .. }) => {
-                assert_eq!("body", token);
-            }
-            Err(error) => return Err(format!("unexpected font error: {error}")),
-            Ok(_) => return Err("invalid font was accepted".to_owned()),
-        }
+        assert!(matches!(
+            TextCommandSurfaceStyle::from_theme(&invalid_font),
+            Err(EguiTextCommandSurfaceError::InvalidThemeFont { token, .. })
+                if token == "body"
+        ));
 
         let mut invalid_spacing = ThemeSnapshot::dark();
         if let Some(spacing) = invalid_spacing
@@ -210,13 +205,10 @@ mod tests {
         {
             spacing.px = 0.0;
         }
-        match TextCommandSurfaceStyle::from_theme(&invalid_spacing) {
-            Err(EguiTextCommandSurfaceError::InvalidThemeSpacing { token, .. }) => {
-                assert_eq!("sm", token);
-                Ok(())
-            }
-            Err(error) => Err(format!("unexpected spacing error: {error}")),
-            Ok(_) => Err("invalid spacing was accepted".to_owned()),
-        }
+        assert!(matches!(
+            TextCommandSurfaceStyle::from_theme(&invalid_spacing),
+            Err(EguiTextCommandSurfaceError::InvalidThemeSpacing { token, .. })
+                if token == "sm"
+        ));
     }
 }

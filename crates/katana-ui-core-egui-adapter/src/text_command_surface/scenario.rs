@@ -28,9 +28,10 @@ mod tests {
             stage.apply_to(&mut input);
         }
         let mut output = None;
-        let _ = context.run_ui(input, |ui| {
+        let mut frame = context.run_ui(input, |ui| {
             output = Some(root.show_output_for_test(ui));
         });
+        frame.textures_delta.clear();
         output.expect("root frame").expect("root render")
     }
 
@@ -40,9 +41,10 @@ mod tests {
         input: egui::RawInput,
     ) -> crate::text_command_surface::EguiTextCommandSurfaceRootOutput {
         let mut output = None;
-        let _ = context.run_ui(input, |ui| {
+        let mut frame = context.run_ui(input, |ui| {
             output = Some(root.show_output_for_test(ui));
         });
+        frame.textures_delta.clear();
         output.expect("root frame").expect("root render")
     }
 
@@ -52,11 +54,12 @@ mod tests {
         input: egui::RawInput,
     ) -> crate::text_command_surface::EguiTextCommandSurfaceHostRootFrame {
         let mut frame = None;
-        let _ = context.run_ui(input, |ui| {
+        let mut output = context.run_ui(input, |ui| {
             egui::CentralPanel::default().show(ui, |ui| {
                 frame = Some(root.show(ui));
             });
         });
+        output.textures_delta.clear();
         frame
             .expect("public root frame")
             .expect("public root render")
@@ -638,8 +641,9 @@ mod tests {
 
     #[test]
     fn workspace_tabs_default_workbench_keeps_find_and_replace_blocker_in_the_same_root() {
+        let context = egui::Context::default();
         let mut root = retained(FullTextCommandSurfaceScenarioId::WorkspaceTabs);
-        let output = render(&egui::Context::default(), &mut root, None);
+        let output = render(&context, &mut root, None);
         let search = output
             .search_record
             .as_ref()
@@ -868,9 +872,9 @@ mod tests {
         assert!(stages[2].event_count() > 0);
         assert!(stages[3].event_count() > 0);
 
-        let mut root = retained(FullTextCommandSurfaceScenarioId::WorkspaceTabs);
         let context = egui::Context::default();
         context.enable_accesskit();
+        let mut root = retained(FullTextCommandSurfaceScenarioId::WorkspaceTabs);
         let initial = render(&context, &mut root, Some(&stages[0]));
         let _ = render(&context, &mut root, Some(&stages[1]));
         let dragging = render(&context, &mut root, Some(&stages[2]));
@@ -886,6 +890,12 @@ mod tests {
                 .artifact_order()
                 .contains(&super::super::EguiTextCommandSurfaceChild::DiagnosticsList),
             "workspace tabs consumes the diagnostics projection through the opaque lease"
+        );
+        assert!(
+            released
+                .artifact_order()
+                .contains(&super::super::EguiTextCommandSurfaceChild::Preview),
+            "workspace tabs consumes the generic preview through the opaque lease"
         );
         assert_ne!(
             initial.evidence_composite.pixel_hash, dragging.evidence_composite.pixel_hash,
@@ -910,5 +920,16 @@ mod tests {
             .chunks_exact(4)
             .filter(|pixel| *pixel == color)
             .count()
+    }
+
+    #[test]
+    fn raw_stage_applies_owned_events_and_debug_keeps_payload_opaque() {
+        let stage = super::stage(vec![egui::Event::Text("opaque 日本語".to_string())], 1.5);
+        let mut input = egui::RawInput::default();
+        stage.apply_to(&mut input);
+        assert_eq!(stage.event_count(), 1);
+        assert_eq!(input.events.len(), 1);
+        assert!(format!("{stage:?}").contains("event_count: 1"));
+        assert!(!format!("{stage:?}").contains("opaque"));
     }
 }

@@ -1,6 +1,10 @@
 use crate::render_model::UiTone;
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+#[path = "model_tests.rs"]
+mod tests;
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StatusBarMode {
     #[default]

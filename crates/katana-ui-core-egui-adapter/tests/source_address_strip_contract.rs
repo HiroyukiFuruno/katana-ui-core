@@ -47,7 +47,7 @@ fn frame_with_events(
     events: Vec<egui::Event>,
 ) -> Result<(egui::FullOutput, EguiSourceAddressStripOutput), String> {
     let mut receipt = None;
-    let output = context.run_ui(
+    let mut output = context.run_ui(
         egui::RawInput {
             events,
             screen_rect: Some(egui::Rect::from_min_size(
@@ -62,6 +62,7 @@ fn frame_with_events(
             });
         },
     );
+    output.textures_delta.clear();
     let receipt = receipt
         .ok_or_else(|| "source-address receipt was not produced".to_owned())?
         .map_err(|error| error.to_string())?;
@@ -75,7 +76,7 @@ fn direct_frame_with_events(
     events: Vec<egui::Event>,
 ) -> Result<(egui::FullOutput, EguiSourceAddressStripOutput), String> {
     let mut receipt = None;
-    let output = context.run_ui(
+    let mut output = context.run_ui(
         egui::RawInput {
             events,
             screen_rect: Some(egui::Rect::from_min_size(
@@ -86,6 +87,7 @@ fn direct_frame_with_events(
         },
         |ui| receipt = Some(adapter.show(ui, strip)),
     );
+    output.textures_delta.clear();
     let receipt = receipt
         .ok_or_else(|| "source-address direct receipt was not produced".to_owned())?
         .map_err(|error| error.to_string())?;

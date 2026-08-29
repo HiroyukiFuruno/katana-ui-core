@@ -1,3 +1,4 @@
+use super::super::EditorViewportProjectionLease;
 use super::super::root::EguiTextCommandSurfaceRootOutput;
 use super::super::source_address_projection_lease::SourceAddressProjectionLease;
 use super::super::status_diagnostics_projection_lease::StatusDiagnosticsProjectionLease;
@@ -13,6 +14,7 @@ pub(super) type HostProjectionParts = (
     Option<SourceAddressProjectionLease>,
     Option<TabStripProjectionLease>,
     Option<StatusDiagnosticsProjectionLease>,
+    Option<EditorViewportProjectionLease>,
 );
 
 /// Opaque host target token. Its payload cannot be inspected by a consumer.
@@ -34,6 +36,7 @@ pub struct EguiTextCommandSurfaceHostProjectionLease {
     pub(super) source_address: Option<SourceAddressProjectionLease>,
     pub(super) tab_strip: Option<TabStripProjectionLease>,
     pub(super) status_diagnostics: Option<StatusDiagnosticsProjectionLease>,
+    pub(super) editor_viewport: Option<EditorViewportProjectionLease>,
 }
 
 /// Encodes host-projected generic presentation data into an opaque root token.

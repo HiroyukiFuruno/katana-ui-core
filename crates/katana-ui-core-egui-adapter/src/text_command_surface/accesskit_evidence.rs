@@ -229,6 +229,24 @@ fn target_class_name(class: AccessKitTargetClass) -> &'static str {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::AccessKitTargetClass;
+    use super::target_class_name;
+
+    #[test]
+    fn status_bar_segment_and_diagnostics_fix_class_names_are_mapped() {
+        assert_eq!(
+            "status-bar-segment",
+            target_class_name(AccessKitTargetClass::StatusBarSegment)
+        );
+        assert_eq!(
+            "diagnostics-fix",
+            target_class_name(AccessKitTargetClass::DiagnosticsFix)
+        );
+    }
+}
+
 impl BoundAccessKitEvidence {
     fn bind_frame(
         entries: Vec<AccessKitEvidence>,

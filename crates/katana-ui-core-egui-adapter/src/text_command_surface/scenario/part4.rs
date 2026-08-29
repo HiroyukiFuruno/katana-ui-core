@@ -20,43 +20,9 @@ enum DropdownMotionTransition {
     BeginItem,
 }
 
-/// Issues generic full-surface scenarios without exposing fixture geometry or semantics.
-pub struct FullTextCommandSurfaceScenarioFactory;
+mod scenario_factory;
 
-impl FullTextCommandSurfaceScenarioFactory {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self
-    }
-
-    /// Creates a deterministic opaque scenario from a stable ID.
-    pub fn issue(
-        &self,
-        id: FullTextCommandSurfaceScenarioId,
-    ) -> Result<FullTextCommandSurfaceScenario, FullTextCommandSurfaceScenarioError> {
-        self.issue_with_router(id, NoopRouter)
-    }
-
-    /// Creates a deterministic scenario and retains a caller-owned generic router opaquely.
-    ///
-    /// The router receives only the closed root event-batch context at render time. The
-    /// scenario fixture, presentation, and encoded token remain private to KUC.
-    pub fn issue_with_router<R>(
-        &self,
-        id: FullTextCommandSurfaceScenarioId,
-        router: R,
-    ) -> Result<FullTextCommandSurfaceScenario, FullTextCommandSurfaceScenarioError>
-    where
-        R: super::KucRootEffectRouter + 'static,
-    {
-        let lease = issue_lease(id, presentation(id), router)?;
-        Ok(FullTextCommandSurfaceScenario {
-            id,
-            lease: Some(lease),
-            stages: stages(id),
-        })
-    }
-}
+pub use scenario_factory::FullTextCommandSurfaceScenarioFactory;
 
 pub(super) fn issue_lease<R>(
     id: FullTextCommandSurfaceScenarioId,
@@ -99,21 +65,20 @@ where
     )
     .map_err(|_| FullTextCommandSurfaceScenarioError::InvalidProjection)?;
     let lease = EguiTextCommandSurfaceHostProjectionLease::new(token, router);
-    Ok(match id {
+    let lease = match id {
         FullTextCommandSurfaceScenarioId::NavigationInput => {
             lease.with_source_address(navigation_input_lease())
         }
         FullTextCommandSurfaceScenarioId::WorkspaceTabs => lease
             .with_tab_strip(workspace_tabs_lease())
-            .with_status_diagnostics(workspace_tabs_status_diagnostics_lease()),
+            .with_status_diagnostics(workspace_tabs_status_diagnostics_lease())
+            .with_editor_viewport(
+                workspace_tabs_editor_viewport_lease()
+                    .map_err(|_| FullTextCommandSurfaceScenarioError::InvalidProjection)?,
+            ),
         _ => lease,
-    })
-}
-
-impl Default for FullTextCommandSurfaceScenarioFactory {
-    fn default() -> Self {
-        Self::new()
-    }
+    };
+    Ok(lease)
 }
 
 struct NoopRouter;
@@ -237,4 +202,19 @@ fn workspace_tabs_status_diagnostics_lease() -> StatusDiagnosticsProjectionLease
     StatusDiagnosticsProjectionLease::new()
         .with_status_bar(status_bar)
         .with_diagnostics_list(diagnostics)
+}
+
+fn workspace_tabs_editor_viewport_lease(
+) -> Result<
+    EditorViewportProjectionLease,
+    katana_ui_core::render_model::UiImageSurfaceValidationError,
+> {
+    let preview = UiImageSurfaceProps::new(
+        "generic-workspace-preview",
+        2,
+        2,
+        vec![36, 42, 54, 255, 74, 85, 104, 255, 74, 85, 104, 255, 36, 42, 54, 255],
+    )?
+    .accessibility_label("Generic preview");
+    Ok(EditorViewportProjectionLease::new(preview))
 }

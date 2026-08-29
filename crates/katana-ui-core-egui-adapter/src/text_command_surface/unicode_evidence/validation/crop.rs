@@ -79,3 +79,8 @@ pub(super) fn artifact(
         chromatic_pixel_count,
     })
 }
+
+#[cfg(test)]
+#[cfg(test)]
+#[path = "crop_tests.rs"]
+mod tests;

@@ -4,6 +4,8 @@ pub(crate) mod accesskit_evidence;
 mod artifact;
 mod composition;
 mod context_menu;
+mod editor_viewport_projection_lease;
+mod editor_viewport_render;
 mod host_root;
 mod model;
 #[path = "text_command_surface/root.rs"]
@@ -24,6 +26,9 @@ mod types;
 mod unicode_evidence;
 
 pub use artifact::EguiTextCommandSurfaceArtifactError;
+pub use editor_viewport_projection_lease::{
+    EditorViewportProjectionError, EditorViewportProjectionLease,
+};
 pub use host_root::{
     EguiTextCommandSurfaceCommandFamilyProjection, EguiTextCommandSurfaceHostProjectionEncoder,
     EguiTextCommandSurfaceHostProjectionLease, EguiTextCommandSurfaceHostRoot,

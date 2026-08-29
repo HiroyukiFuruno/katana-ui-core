@@ -27,6 +27,8 @@ pub struct EguiCommandChromeAdapter {
     pub(super) text_surface_adapter: EguiTextSurfaceAdapter,
     pub(super) search_surfaces: Option<SearchSurfaceState>,
     pub(super) metrics: SharedTextMetrics,
+    pub(super) dropdown_primary_press: Option<(String, String)>,
+    pub(super) floating_pointer_exclusions: Vec<UiRect>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

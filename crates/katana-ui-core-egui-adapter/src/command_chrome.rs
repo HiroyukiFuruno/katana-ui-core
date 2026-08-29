@@ -79,6 +79,8 @@ impl EguiCommandChromeAdapter {
             ),
             search_surfaces: None,
             metrics,
+            dropdown_primary_press: None,
+            floating_pointer_exclusions: Vec::new(),
         })
     }
 
@@ -112,7 +114,13 @@ impl EguiCommandChromeAdapter {
             metrics: Rc::new(RefCell::new(
                 katana_ui_core_text_raster::PlatformTextMetricsFrame::new(),
             )),
+            dropdown_primary_press: None,
+            floating_pointer_exclusions: Vec::new(),
         }
+    }
+
+    pub(crate) fn floating_pointer_exclusions(&self) -> &[UiRect] {
+        &self.floating_pointer_exclusions
     }
 
     pub fn show_toolbar(
@@ -172,3 +180,7 @@ pub(super) fn ui_rect(rect: egui::Rect) -> UiRect {
         rect.height().round().max(0.0) as u32,
     )
 }
+
+#[cfg(test)]
+#[path = "command_chrome_tests.rs"]
+mod tests;

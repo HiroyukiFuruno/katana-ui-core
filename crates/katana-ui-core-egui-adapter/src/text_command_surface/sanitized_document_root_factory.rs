@@ -93,11 +93,15 @@ impl SanitizedDocumentRoot {
         #[cfg(test)]
         let tab_close_rects = self.process.tab_close_rects().to_vec();
         let tab_closed_events = self.process.take_tab_closed_events();
-        let raw_search_events = output.events().detach_search_events().map_err(|error| {
-            SanitizedDocumentRootFactoryError::Render(format!(
-                "search event detach failed: {error:?}"
-            ))
-        })?;
+        let raw_search_events =
+            output
+                .events()
+                .detach_search_events_exclusively()
+                .map_err(|error| {
+                    SanitizedDocumentRootFactoryError::Render(format!(
+                        "search event detach failed: {error:?}"
+                    ))
+                })?;
         let search_events = self
             .process
             .route_search_events(
@@ -630,7 +634,7 @@ mod tests {
         events: Vec<egui::Event>,
     ) -> (egui::FullOutput, SanitizedDocumentRootFrame) {
         let mut frame = None;
-        let output = context.run_ui(
+        let mut output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -645,6 +649,7 @@ mod tests {
                 });
             },
         );
+        output.textures_delta.clear();
         (output, frame.expect("frame exists"))
     }
 
@@ -797,6 +802,11 @@ mod tests {
             .forward_events_once(&mut forwarder)
             .expect("unit operation forwarding succeeds");
         assert_eq!(unit_events.borrow().as_slice(), &[operation]);
+        assert_eq!(
+            frame.output.events().event_cardinality(),
+            0,
+            "sanitized search consumes its physical text event exclusively"
+        );
         assert_eq!(receipt.event_cardinality(), 1);
         assert_eq!(forwarder.calls, 1);
         assert_eq!(
@@ -815,7 +825,7 @@ mod tests {
         assert_eq!(
             frame.output.events().event_cardinality(),
             0,
-            "{leaf}: root batch must not contain a raw search event"
+            "{leaf}: root batch must not duplicate the sanitized physical search event"
         );
         assert_eq!(
             frame.search_events.borrow().as_ref().map_or(0, Vec::len),
@@ -1670,7 +1680,7 @@ mod tests {
             .expect("retain succeeds");
         let context = egui::Context::default();
         let mut frame = None;
-        let _ = context.run_ui(
+        let mut output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -1684,6 +1694,7 @@ mod tests {
                 });
             },
         );
+        output.textures_delta.clear();
         let frame = frame.expect("frame exists");
 
         assert_eq!(frame.record().revision(), 1);
@@ -2174,7 +2185,7 @@ mod tests {
         let context = egui::Context::default();
 
         let mut first = None;
-        let _ = context.run_ui(
+        let mut first_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -2188,6 +2199,7 @@ mod tests {
                 });
             },
         );
+        first_output.textures_delta.clear();
         let first = first.expect("first frame exists");
         let mut root_only_forwarder = RecordingForwarder {
             calls: 0,
@@ -2206,7 +2218,7 @@ mod tests {
             .expect("second tab rect exists");
 
         let mut pressed = None;
-        let _ = context.run_ui(
+        let mut pressed_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -2226,6 +2238,7 @@ mod tests {
                 });
             },
         );
+        pressed_output.textures_delta.clear();
         let pressed = pressed.expect("pressed frame exists");
         assert_eq!(pressed.tab_closed_event_count(), 0);
         let mut no_event_forwarder = RecordingForwarder {
@@ -2238,7 +2251,7 @@ mod tests {
         assert_eq!(no_event_forwarder.calls, 1);
 
         let mut released = None;
-        let _ = context.run_ui(
+        let mut released_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -2258,6 +2271,7 @@ mod tests {
                 });
             },
         );
+        released_output.textures_delta.clear();
         let released = released.expect("released frame exists");
         assert_eq!(released.tab_closed_event_count(), 1);
         let mut forwarder = RecordingForwarder {
@@ -2327,7 +2341,7 @@ mod tests {
             .expect("retain succeeds");
         let context = egui::Context::default();
         let mut frame = None;
-        let _ = context.run_ui(
+        let mut output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -2341,6 +2355,7 @@ mod tests {
                 });
             },
         );
+        output.textures_delta.clear();
         let frame = frame.expect("frame exists");
         let _ = frame.tab_closed_events.borrow_mut().take();
         let mut forwarder = RecordingForwarder {
@@ -2362,7 +2377,7 @@ mod tests {
         let context = egui::Context::default();
 
         let mut first = None;
-        let _ = context.run_ui(
+        let mut output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -2376,6 +2391,7 @@ mod tests {
                 });
             },
         );
+        output.textures_delta.clear();
         let first = first.expect("first frame exists");
         let select_target = first
             .tab_rects()
@@ -2487,7 +2503,7 @@ mod tests {
         context.enable_accesskit();
 
         let mut first_frame = None;
-        let first_output = context.run_ui(
+        let mut first_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -2501,6 +2517,7 @@ mod tests {
                 });
             },
         );
+        first_output.textures_delta.clear();
         let first_frame = first_frame.expect("first frame exists");
         let update = first_output
             .platform_output
@@ -2524,7 +2541,7 @@ mod tests {
         let close_node = close_node.expect("close button node exists");
 
         let mut accesskit_frame = None;
-        let accesskit_output = context.run_ui(
+        let mut accesskit_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -2546,6 +2563,7 @@ mod tests {
                 });
             },
         );
+        accesskit_output.textures_delta.clear();
         let accesskit_frame = accesskit_frame.expect("AccessKit frame exists");
         assert_eq!(accesskit_frame.tab_activation_event_count(), 0);
         assert_eq!(accesskit_frame.tab_close_request_event_count(), 1);
@@ -2868,7 +2886,7 @@ mod tests {
         Result<super::SanitizedDocumentRootFrame, SanitizedDocumentRootFactoryError>,
     ) {
         let mut frame = None;
-        let output = context.run_ui(
+        let mut output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -2883,6 +2901,7 @@ mod tests {
                 });
             },
         );
+        output.textures_delta.clear();
         (output, frame.expect("command frame result exists"))
     }
 
@@ -3252,7 +3271,7 @@ mod tests {
         event: egui::Event,
     ) -> super::SanitizedDocumentRootFrame {
         let mut frame = None;
-        let _ = context.run_ui(
+        let mut output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -3267,6 +3286,7 @@ mod tests {
                 });
             },
         );
+        output.textures_delta.clear();
         frame.expect("frame exists")
     }
 
@@ -3276,7 +3296,7 @@ mod tests {
         events: Vec<egui::Event>,
     ) -> (egui::FullOutput, super::SanitizedDocumentRootFrame) {
         let mut frame = None;
-        let output = context.run_ui(
+        let mut output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -3291,6 +3311,7 @@ mod tests {
                 });
             },
         );
+        output.textures_delta.clear();
         (output, frame.expect("frame exists"))
     }
 
@@ -3328,7 +3349,7 @@ mod tests {
         events: Vec<egui::Event>,
     ) -> Result<super::SanitizedDocumentRootFrame, SanitizedDocumentRootFactoryError> {
         let mut frame = None;
-        let _ = context.run_ui(
+        let mut output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -3343,6 +3364,7 @@ mod tests {
                 });
             },
         );
+        output.textures_delta.clear();
         frame.expect("frame exists")
     }
 
@@ -4132,13 +4154,10 @@ mod tests {
                     .expect("disabled event batch forwards empty");
                 assert_eq!(
                     disabled_frame.output.events().event_cardinality(),
-                    1,
-                    "{name}: only the native focus transition may remain"
+                    0,
+                    "{name}: the floating overlay retains text focus"
                 );
-                assert_eq!(
-                    disabled_frame.output.evidence_text.events.as_slice(),
-                    [katana_ui_core::text_surface::TextSurfaceEvent::FocusChanged(false)]
-                );
+                assert!(disabled_frame.output.evidence_text.events.is_empty());
                 assert_eq!(
                     disabled_frame
                         .output
@@ -4147,7 +4166,7 @@ mod tests {
                         .map_or(0, |value| value.events.len()),
                     0
                 );
-                assert_eq!(receipt.event_cardinality(), 1);
+                assert_eq!(receipt.event_cardinality(), 0);
                 assert_eq!(forwarder.calls, 1);
                 assert_eq!(*calls.borrow(), 0);
                 assert_eq!(

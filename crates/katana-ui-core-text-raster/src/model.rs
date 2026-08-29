@@ -181,3 +181,7 @@ impl PlatformTextRasterRequest {
             .min(maximum)
     }
 }
+
+#[cfg(test)]
+#[path = "model_tests.rs"]
+mod tests;

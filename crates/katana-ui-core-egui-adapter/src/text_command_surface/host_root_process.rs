@@ -1,3 +1,4 @@
+use super::super::EditorViewportProjectionLease;
 use super::super::root::KucRootEffectRouter;
 use super::super::root::{EguiTextCommandSurfaceRoot, EguiTextCommandSurfaceRootOutput};
 use super::super::source_address_projection_lease::SourceAddressProjectionLease;
@@ -54,6 +55,7 @@ impl HostRootProcess {
         source_address: Option<SourceAddressProjectionLease>,
         tab_strip: Option<TabStripProjectionLease>,
         status_diagnostics: Option<StatusDiagnosticsProjectionLease>,
+        editor_viewport: Option<EditorViewportProjectionLease>,
     ) -> Result<Self, EguiTextCommandSurfaceRootFactoryError> {
         let mut process = Self::retain(decoded, presentation_revision)?;
         process.effect_router = Some(router);
@@ -74,6 +76,9 @@ impl HostRootProcess {
             if let Some(diagnostics_list) = diagnostics_list {
                 process.root.attach_diagnostics_list(diagnostics_list);
             }
+        }
+        if let Some(editor_viewport) = editor_viewport {
+            process.root.attach_editor_viewport(editor_viewport);
         }
         Ok(process)
     }
@@ -115,6 +120,7 @@ impl HostRootProcess {
         earlier lease-owned tab strip behind the opaque root boundary. */
         changed |= self.root.clear_tab_strip();
         changed |= self.root.clear_status_diagnostics();
+        changed |= self.root.clear_editor_viewport();
         self.style = decoded.style;
         self.presentation = decoded.presentation;
         self.command_families = decoded.command_families;
@@ -130,6 +136,7 @@ impl HostRootProcess {
         source_address: Option<SourceAddressProjectionLease>,
         tab_strip: Option<TabStripProjectionLease>,
         status_diagnostics: Option<StatusDiagnosticsProjectionLease>,
+        editor_viewport: Option<EditorViewportProjectionLease>,
     ) -> Result<bool, EguiTextCommandSurfaceRootFactoryError> {
         if revision <= self.presentation_revision {
             return Err(EguiTextCommandSurfaceRootFactoryError::DuplicateLease { revision });
@@ -155,6 +162,10 @@ impl HostRootProcess {
                 self.root.attach_diagnostics_list(diagnostics_list);
                 changed = true;
             }
+        }
+        if let Some(editor_viewport) = editor_viewport {
+            self.root.attach_editor_viewport(editor_viewport);
+            changed = true;
         }
         Ok(changed)
     }

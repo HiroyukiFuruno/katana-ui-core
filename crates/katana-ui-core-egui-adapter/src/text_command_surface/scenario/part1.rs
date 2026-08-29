@@ -1,5 +1,6 @@
 use super::{
     EguiTextCommandSurfaceCommandFamilyProjection, EguiTextCommandSurfaceFloatingPresentation,
+    EditorViewportProjectionLease,
     EguiTextCommandSurfaceHostProjectionEncoder, EguiTextCommandSurfaceHostProjectionLease,
     EguiTextCommandSurfacePresentation, EguiTextCommandSurfaceSearchPresentation,
     KucInteractionActionClass, KucInteractionLocator, KucInteractionLocatorError,
@@ -32,7 +33,7 @@ use katana_ui_core::molecule::{
     DiagnosticLocation, DiagnosticSeverity, DiagnosticsList, StatusBar, StatusBarDensity,
     StatusBarMode, StatusBarSegment,
 };
-use katana_ui_core::render_model::UiStateId;
+use katana_ui_core::render_model::{UiImageSurfaceProps, UiStateId};
 use katana_ui_core::text_selection::UiTextSelectionRange;
 use katana_ui_core::text_surface::{
     TextSurface, TextSurfaceAnnotation, TextSurfaceAnnotationStyle,

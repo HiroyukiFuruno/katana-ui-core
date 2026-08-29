@@ -41,6 +41,8 @@ fn actual_egui_floating_toolbar_uses_core_placement_rasters_tooltip_and_accesski
         &mut output,
     );
     let output = expect_output(output);
+    let emitted_textures = !full_output.textures_delta.set.is_empty();
+    full_output.textures_delta.clear();
     let Some(record) = output.record else {
         panic!("the opened floating toolbar did not produce a frame record");
     };
@@ -73,16 +75,19 @@ fn actual_egui_floating_toolbar_uses_core_placement_rasters_tooltip_and_accesski
     ));
     assert!(plan_has_fill(
         artifact,
-        EguiCommandChromeDrawLayer::PanelFill,
+        EguiCommandChromeDrawLayer::PanelBorder,
         record.panel_bounds,
     ));
+    let panel_fill = plan_fill_bounds(artifact, EguiCommandChromeDrawLayer::PanelFill)
+        .expect("floating panel fill was absent from the composed plan");
+    assert!(contains(record.panel_bounds, panel_fill));
+    assert!(panel_fill.x > record.panel_bounds.x && panel_fill.y > record.panel_bounds.y);
     assert!(plan_has_fill(
         artifact,
         EguiCommandChromeDrawLayer::ActionFill,
         record.toolbar.actions[0].bounds,
     ));
-    assert!(!full_output.textures_delta.set.is_empty());
-    full_output.textures_delta.clear();
+    assert!(emitted_textures);
     let Some(update) = full_output.platform_output.accesskit_update else {
         panic!("the enabled egui context did not emit an AccessKit tree update");
     };
@@ -857,15 +862,30 @@ fn plan_has_fill(
     bounds: katana_ui_core::render_model::UiRect,
 ) -> bool {
     artifact.paint_plan.operations.iter().any(|operation| {
-        operation.layer == layer
-            && matches!(
-                operation.kind,
-                CommandChromePaintOperationKind::Fill {
-                    bounds: operation_bounds,
-                    ..
-                } if operation_bounds == bounds
-            )
+        operation.layer == layer && plan_operation_fill_bounds(&operation.kind) == Some(bounds)
     })
+}
+
+fn plan_fill_bounds(
+    artifact: &EguiCommandChromeFloatingArtifactFrame,
+    layer: EguiCommandChromeDrawLayer,
+) -> Option<katana_ui_core::render_model::UiRect> {
+    artifact
+        .paint_plan
+        .operations
+        .iter()
+        .find(|operation| operation.layer == layer)
+        .and_then(|operation| plan_operation_fill_bounds(&operation.kind))
+}
+
+fn plan_operation_fill_bounds(
+    kind: &CommandChromePaintOperationKind,
+) -> Option<katana_ui_core::render_model::UiRect> {
+    match kind {
+        CommandChromePaintOperationKind::Fill { bounds, .. }
+        | CommandChromePaintOperationKind::RoundedFill { bounds, .. } => Some(*bounds),
+        CommandChromePaintOperationKind::Texture { .. } => None,
+    }
 }
 
 fn plan_texture(

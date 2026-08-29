@@ -102,6 +102,10 @@ kuw-guardrails: kuc-guardrails
 install-hooks:
     bash scripts/install-git-hooks.sh
 
+# Run hook policy validation fixtures.
+hook:
+    python3 scripts/test_hook_policy.py
+
 # Run Storybook page structure checks
 storybook-ast-lint:
     python3 scripts/assert-storybook-page-layout.py

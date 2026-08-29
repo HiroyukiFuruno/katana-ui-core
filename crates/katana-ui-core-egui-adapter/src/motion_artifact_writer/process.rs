@@ -142,8 +142,12 @@ impl MotionArtifactWriter {
         write_gif(&images, &gif_path, settings.fps_denominator).map_err(io_error)?;
         let mp4_path = output_dir.join(DEFAULT_MP4_FILENAME);
         let ffmpeg = Ffmpeg::discover()?;
+        let source_evidence = ffmpeg.source_evidence(output_dir, receipts.len(), settings)?;
         ffmpeg.encode(&mp4_path, output_dir, receipts.len(), settings)?;
-        let (decoded_frame_count, decoded_width, decoded_height) = ffmpeg.decode(&mp4_path)?;
+        let decoded_evidence = ffmpeg.decode(&mp4_path)?;
+        let decoded_frame_count = decoded_evidence.frame_hashes.len();
+        let decoded_width = decoded_evidence.width;
+        let decoded_height = decoded_evidence.height;
         if decoded_frame_count != receipts.len()
             || decoded_width != settings.width
             || decoded_height != settings.height
@@ -151,6 +155,11 @@ impl MotionArtifactWriter {
             return Err(MotionArtifactError::Encoder(format!(
                 "decoded evidence mismatch: frames={decoded_frame_count}, dimensions={decoded_width}x{decoded_height}"
             )));
+        }
+        if decoded_evidence.frame_hashes != source_evidence.frame_hashes {
+            return Err(MotionArtifactError::Encoder(
+                "decoded frame hashes do not match the PNG frame sequence".into(),
+            ));
         }
 
         let manifest_path = output_dir.join(DEFAULT_MANIFEST_FILENAME);
@@ -172,6 +181,8 @@ impl MotionArtifactWriter {
             decoded_frame_count,
             decoded_width,
             decoded_height,
+            source_frame_hashes: source_evidence.frame_hashes,
+            decoded_frame_hashes: decoded_evidence.frame_hashes,
             canonical_sha256: String::new(),
         };
 
@@ -330,13 +341,13 @@ mod tests {
             r#"if [ "$1" = "-version" ]; then
   echo "ffmpeg version 1.0"
 elif [ "$1" = "-hide_banner" ] && [ "$3" = "error" ] && [ "$4" = "-encoders" ]; then
-  echo " V....  mpeg4"
+  echo " V....  libx264rgb"
 elif [ "$1" = "-hide_banner" ] && [ "$3" = "error" ] && [ "$4" = "-formats" ]; then
   echo " E....  mp4"
 elif echo "$@" | grep -q framemd5; then
   echo "{decode_dimensions}"
-  echo "0, 0"
-  echo "1, 0"
+  echo "0, 0, 0, 1, 6, 0123456789abcdef0123456789abcdef"
+  echo "0, 1, 1, 1, 6, fedcba9876543210fedcba9876543210"
 else
   arg=""
   for token in "$@"; do
@@ -362,6 +373,91 @@ exit 0
         let _script = fake_ffmpeg_script(&root, decode_dimensions);
         let _path = PathEnvGuard::with_root(&root);
         test(&root)
+    }
+
+    fn with_fake_ffmpeg_hash_series(
+        source_hashes: &[&str],
+        decoded_hashes: &[&str],
+        test: impl FnOnce(&std::path::Path),
+    ) {
+        let _guard = super::super::TEST_ENV_LOCK.lock().unwrap();
+        let root = tempfile_dir("motion-process-ffmpeg-hash-series");
+        let path = root.join("ffmpeg");
+        let mut source_body = String::new();
+        for hash in source_hashes {
+            source_body.push_str(&format!("    echo \"{hash}\"\n"));
+        }
+        let mut decoded_body = String::new();
+        for hash in decoded_hashes {
+            decoded_body.push_str(&format!("    echo \"{hash}\"\n"));
+        }
+
+        let body = [
+            "if [ \"$1\" = \"-version\" ]; then\n",
+            "  echo \"ffmpeg version 1.0\"\n",
+            "elif [ \"$1\" = \"-hide_banner\" ] && [ \"$3\" = \"error\" ] && [ \"$4\" = \"-encoders\" ]; then\n",
+            "  echo \" V....  libx264rgb\"\n",
+            "elif [ \"$1\" = \"-hide_banner\" ] && [ \"$3\" = \"error\" ] && [ \"$4\" = \"-formats\" ]; then\n",
+            "  echo \" E....  mp4\"\n",
+            "elif echo \"$@\" | grep -q framemd5; then\n",
+            "  if echo \"$@\" | grep -q \"-start_number\"; then\n",
+            "    echo \"#dimensions 0:2x1\"\n",
+            "{source_body}",
+            "  else\n",
+            "    echo \"#dimensions 0:2x1\"\n",
+            "{decoded_body}",
+            "  fi\n",
+            "else\n",
+            "  arg=\"\"\n",
+            "  for token in \"$@\"; do\n",
+            "    arg=\"$token\"\n",
+            "  done\n",
+            "  printf \"motion\" > \"$arg\"\n",
+            "fi\n",
+            "exit 0\n",
+        ]
+        .concat();
+        let body = body
+            .replace("{source_body}", &source_body)
+            .replace("{decoded_body}", &decoded_body);
+        std::fs::write(&path, format!("#!/bin/sh\n{body}")).expect("ffmpeg script should write");
+        #[cfg(unix)]
+        use std::os::unix::fs::PermissionsExt;
+        #[cfg(unix)]
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
+            .expect("ffmpeg script should execute");
+        let _path = PathEnvGuard::with_root(&root);
+        test(&root)
+    }
+
+    #[test]
+    fn write_rejects_mismatched_decoded_frame_hashes() {
+        let first = receipt("frame-000", 2, 1, &[255, 0, 0, 255, 0, 255, 0, 255]);
+        let second = receipt("frame-001", 2, 1, &[0, 255, 0, 255, 255, 0, 0, 255]);
+        with_fake_ffmpeg_hash_series(
+            &[
+                "0, 0, 0, 1, 6, 0123456789abcdef0123456789abcdef",
+                "0, 0, 1, 1, 6, fedcba9876543210fedcba9876543210",
+            ],
+            &[
+                "0, 0, 0, 1, 6, 0123456789abcdef0123456789abcdef",
+                "0, 1, 1, 1, 6, 00112233445566778899aabbccddeeff00",
+            ],
+            |output| {
+                let error = MotionArtifactWriter::new()
+                    .write(
+                        &[first, second],
+                        output,
+                        MotionArtifactSettings::new(2, 2, 1),
+                    )
+                    .expect_err("frame hashes should mismatch between source and decode");
+                assert!(matches!(
+                    error,
+                    MotionArtifactError::Encoder(message)
+                        if message.contains("decoded frame hashes do not match the PNG frame sequence")
+                ));
+            },
+        );
     }
 
     #[test]

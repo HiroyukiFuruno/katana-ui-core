@@ -72,6 +72,7 @@ pub(super) fn show_dropdown(
     let (items, paint_sources) = egui::Area::new(menu_id)
         .order(egui::Order::Foreground)
         .fixed_pos(menu_rect.min)
+        .constrain(false)
         .show(ui.ctx(), |menu_ui| {
             menu_ui.set_min_size(menu_rect.size());
             let mut items = Vec::with_capacity(rendered.len());
@@ -95,7 +96,21 @@ pub(super) fn show_dropdown(
                     item.item.id().as_str(),
                     crate::text_command_surface::accesskit_evidence::AccessKitTargetClass::DropdownItem,
                 );
-                if response.clicked()
+                let pointer_key = (
+                    open.action_id().as_str().to_owned(),
+                    item.item.id().as_str().to_owned(),
+                );
+                let pressed = pointer_button_in(menu_ui, row_rect, true);
+                if pressed {
+                    adapter.dropdown_primary_press = Some(pointer_key.clone());
+                }
+                let released = pointer_button_in(menu_ui, row_rect, false);
+                let captured = released
+                    && adapter.dropdown_primary_press.as_ref() == Some(&pointer_key);
+                if released {
+                    adapter.dropdown_primary_press = None;
+                }
+                if (response.clicked() || captured)
                     && !keyboard_dropdown_activation(menu_ui)
                     && !item.item.disabled_model()
                 {
@@ -141,6 +156,14 @@ pub(super) fn show_dropdown(
         },
         paint: DropdownPaintSource::new(bounds, paint_style.action_rgba, paint_sources),
     }))
+}
+
+fn pointer_button_in(ui: &egui::Ui, bounds: egui::Rect, pressed: bool) -> bool {
+    ui.input(|input| {
+        input.events.iter().any(|event| {
+            matches!(event, egui::Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: event_pressed, .. } if *event_pressed == pressed && bounds.contains(*pos))
+        })
+    })
 }
 
 fn render_dropdown_items(

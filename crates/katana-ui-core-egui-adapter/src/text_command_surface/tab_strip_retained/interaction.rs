@@ -29,16 +29,25 @@ impl TabStripRetainedState {
         ui: &egui::Ui,
         response: &egui::Response,
     ) -> Result<bool, TabStripRetainedError> {
-        let primary_pressed =
-            ui.input(|input| input.pointer.button_pressed(egui::PointerButton::Primary));
-        if primary_pressed && response.contains_pointer() {
+        let primary_pressed = ui.input(|input| {
+            input.events.iter().any(|event| {
+                matches!(event, egui::Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: true, .. } if response.rect.contains(*pos))
+            })
+        });
+        if primary_pressed {
             self.overlay_primary_press = Some(response.id);
         }
-        let primary_released =
-            ui.input(|input| input.pointer.button_released(egui::PointerButton::Primary));
+        let primary_released = ui.input(|input| {
+            input.events.iter().any(|event| {
+                matches!(event, egui::Event::PointerButton { pos, button: egui::PointerButton::Primary, pressed: false, .. } if response.rect.contains(*pos))
+            })
+        });
         let captured_pointer = primary_released
             && self.overlay_primary_press == Some(response.id)
-            && response.contains_pointer();
+            && response.rect.contains(
+                ui.input(|input| input.pointer.latest_pos())
+                    .unwrap_or(response.rect.center()),
+            );
         if primary_released && self.overlay_primary_press == Some(response.id) {
             self.overlay_primary_press = None;
         }
@@ -283,3 +292,7 @@ impl TabStripRetainedState {
         self.forward_proposal(correlation, operation)
     }
 }
+
+#[cfg(test)]
+#[path = "interaction_tests.rs"]
+mod tests;

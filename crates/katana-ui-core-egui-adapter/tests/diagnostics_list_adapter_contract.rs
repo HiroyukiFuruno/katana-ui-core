@@ -288,7 +288,7 @@ fn frame(
 ) -> Result<(egui::FullOutput, Vec<DiagnosticsListEvent>), String> {
     let mut output_events = Vec::new();
     let mut show_error = None;
-    let output = context.run_ui(
+    let mut output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -304,6 +304,7 @@ fn frame(
             });
         },
     );
+    output.textures_delta.clear();
     show_error.map_or_else(|| Ok((output, output_events)), Err)
 }
 

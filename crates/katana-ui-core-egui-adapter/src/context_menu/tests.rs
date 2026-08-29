@@ -67,9 +67,10 @@ fn run_menu() -> Result<(UiRect, usize, String), Box<dyn std::error::Error>> {
         UiRect::new(0, 0, FRAME_WIDTH_PX as u32, FRAME_HEIGHT_PX as u32),
     ));
     let mut output = None;
-    let _ = context.run_ui(frame_input(), |ui| {
+    let mut frame_output = context.run_ui(frame_input(), |ui| {
         output = Some(adapter.show(ui, &raster_style(), &paint_style()));
     });
+    frame_output.textures_delta.clear();
     let output = output.ok_or_else(|| std::io::Error::other("actual egui frame did not run"))??;
     let record = output
         .record

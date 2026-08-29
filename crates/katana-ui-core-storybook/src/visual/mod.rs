@@ -681,6 +681,8 @@ mod visual_interaction_status_bar_state_tests;
 #[cfg(test)]
 mod visual_interaction_status_bar_tests;
 #[cfg(test)]
+mod visual_interaction_surface_gesture_tests;
+#[cfg(test)]
 mod visual_interaction_surface_options_tests;
 #[cfg(test)]
 mod visual_interaction_svg_button_options_tests;

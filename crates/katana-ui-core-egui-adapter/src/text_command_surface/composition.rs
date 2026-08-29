@@ -23,6 +23,7 @@ impl EguiTextCommandSurfaceAdapter {
         tab_strip: Option<&mut super::tab_strip_retained::TabStripRetainedState>,
         status_bar: Option<&mut katana_ui_core::molecule::StatusBar>,
         diagnostics_list: Option<&mut katana_ui_core::molecule::DiagnosticsList>,
+        editor_viewport: Option<&mut super::EditorViewportProjectionLease>,
     ) -> Result<EguiTextCommandSurfaceOutput, EguiTextCommandSurfaceError> {
         if let (Some(primary), Some(floating)) = (
             surface.primary_command_family(),
@@ -97,10 +98,16 @@ impl EguiTextCommandSurfaceAdapter {
             egui::pos2(root.min.x, source_address_rect.max.y),
             egui::vec2(root.width(), toolbar_height),
         );
-        let text_rect = egui::Rect::from_min_size(
+        let body_rect = egui::Rect::from_min_size(
             egui::pos2(root.min.x, toolbar_rect.max.y),
             egui::vec2(root.width(), text_height),
         );
+        let (text_rect, preview_rect) = if let Some(viewport) = editor_viewport {
+            let layout = super::editor_viewport_render::layout(ui, body_rect, viewport);
+            (layout.document, Some((layout.preview, viewport)))
+        } else {
+            (body_rect, None)
+        };
         let search_rect = egui::Rect::from_min_size(
             egui::pos2(root.min.x, text_rect.max.y),
             egui::vec2(root.width(), search_height),
@@ -178,7 +185,10 @@ impl EguiTextCommandSurfaceAdapter {
         }) {
             surface.search_closed_by_interaction = true;
             let _ = surface.text.apply_action(TextSurfaceAction::SetFocus(true));
+            self.text.request_focus_for_next_frame(true);
         }
+        self.text
+            .set_pointer_exclusion_bounds(self.chrome.floating_pointer_exclusions().to_vec());
         let text = self.show_text_in(
             ui,
             text_rect,
@@ -188,6 +198,15 @@ impl EguiTextCommandSurfaceAdapter {
                 .as_ref()
                 .is_some_and(crate::context_menu::EguiContextMenuAdapter::is_open),
         )?;
+        let preview = preview_rect.map(|(rect, viewport)| {
+            super::editor_viewport_render::render_preview(
+                ui,
+                rect,
+                viewport,
+                &mut self.preview_texture,
+                style.text_paint.background_rgba,
+            )
+        });
         let diagnostics_list = diagnostics_list
             .map(|diagnostics| {
                 let mut child = ui.new_child(egui::UiBuilder::new().max_rect(diagnostics_rect));
@@ -216,7 +235,7 @@ impl EguiTextCommandSurfaceAdapter {
             .transpose()?;
         let context_menu = self.show_context_menu(ui, surface, &text, style)?;
         #[cfg(test)]
-        inject_same_bounds_test_overlay(ui, toolbar.as_mut(), &mut self.chrome, style)?;
+        tests::inject_same_bounds_test_overlay(ui, toolbar.as_mut(), &mut self.chrome, style)?;
         if context_menu.as_ref().is_some_and(|output| {
             output.events.iter().any(|event| {
                 matches!(
@@ -227,6 +246,7 @@ impl EguiTextCommandSurfaceAdapter {
         }) {
             /* WHY: Root-owned dismissal restores the retained TextSurface focus state. */
             let _ = surface.text.apply_action(TextSurfaceAction::SetFocus(true));
+            self.text.request_focus_for_next_frame(true);
         }
         if floating.as_ref().is_some_and(|value| {
             value
@@ -247,95 +267,44 @@ impl EguiTextCommandSurfaceAdapter {
         }) {
             /* WHY: The root compositor owns focus hand-back; consumers never need egui ids. */
             let _ = surface.text.apply_action(TextSurfaceAction::SetFocus(true));
+            self.text.request_focus_for_next_frame(true);
         }
         ui.allocate_rect(root, egui::Sense::hover());
-        let artifact_order =
-            super::artifact::artifact_order_for_root(super::artifact::RootArtifactChildren {
-                tab_strip: tab_strip.is_some(),
-                tab_strip_overlay: tab_strip
-                    .as_ref()
-                    .is_some_and(|value| value.overlay_paint_plan.is_some()),
-                source_address: source_address.is_some(),
-                toolbar: toolbar.is_some(),
-                toolbar_dropdown_open: toolbar
-                    .as_ref()
-                    .is_some_and(|value| value.record.dropdown.is_some()),
-                search: search.is_some(),
-                floating_open: floating
-                    .as_ref()
-                    .is_some_and(|value| value.artifact.is_some()),
-                context_menu_open: context_menu
-                    .as_ref()
-                    .is_some_and(|value| value.artifact.is_some()),
-                status_bar: status_bar.is_some(),
-                diagnostics_list: diagnostics_list.is_some(),
-            });
-
-        Ok(EguiTextCommandSurfaceOutput::from_root(
+        let children = RootChildOutputs {
+            toolbar,
+            floating,
+            search,
+            context_menu,
+            source_address: match (source_address, source_address_paint_plan) {
+                (Some(output), Some(paint_plan)) => {
+                    Some(super::types::SourceAddressRootOutput { output, paint_plan })
+                }
+                (None, None) => None,
+                _ => return Err(
+                    crate::source_address_strip::EguiSourceAddressStripError::PaintPlanNotProduced
+                        .into(),
+                ),
+            },
+            accesskit_evidence: super::accesskit_evidence::finish_frame(ui.ctx()),
+            ordered_artifacts: Vec::new(),
+            status_bar,
+            diagnostics_list,
+            preview,
+        };
+        Ok(helpers::finish_root_output(
             ui_rect(root),
             text,
-            RootChildOutputs {
-                toolbar,
-                floating,
-                search,
-                context_menu,
-                source_address: match (source_address, source_address_paint_plan) {
-                    (Some(output), Some(paint_plan)) => Some(super::types::SourceAddressRootOutput {
-                        output,
-                        paint_plan,
-                    }),
-                    (None, None) => None,
-                    _ => return Err(crate::source_address_strip::EguiSourceAddressStripError::PaintPlanNotProduced.into()),
-                },
-                accesskit_evidence: super::accesskit_evidence::finish_frame(ui.ctx()),
-                ordered_artifacts: artifact_order,
-                status_bar,
-                diagnostics_list,
-            },
-        )
-        .with_tab_strip(tab_strip))
+            children,
+            tab_strip,
+        ))
     }
 }
 
 mod helpers;
 
 #[cfg(test)]
-fn inject_same_bounds_test_overlay(
-    ui: &mut egui::Ui,
-    toolbar: Option<&mut crate::command_chrome::EguiCommandChromeOutput>,
-    chrome: &mut crate::command_chrome::EguiCommandChromeAdapter,
-    style: &TextCommandSurfaceStyle,
-) -> Result<(), EguiTextCommandSurfaceError> {
-    let Some(toolbar) = toolbar else {
-        return Ok(());
-    };
-    let bounds = toolbar.record.bounds;
-    let rect = egui::Rect::from_min_size(
-        egui::pos2(bounds.x as f32, bounds.y as f32),
-        egui::vec2(bounds.width as f32, bounds.height as f32),
-    );
-    let mut render = |id: &str| -> Result<crate::command_chrome::EguiCommandChromeOutput, _> {
-        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
-        let mut overlay = katana_ui_core::molecule::command_chrome::CommandChromeToolbar::new();
-        overlay = overlay.action(
-            katana_ui_core::molecule::command_chrome::CommandChromeAction::new(id, "同一")
-                .accessibility_label("同一 ⭐️"),
-        );
-        chrome.show_toolbar(
-            &mut child,
-            &mut overlay,
-            &style.chrome_raster,
-            &style.chrome_paint,
-        )
-    };
-    let first = render("collision-left")?;
-    let second = render("collision-right")?;
-    toolbar.record.actions.extend(first.record.actions);
-    toolbar.record.actions.extend(second.record.actions);
-    toolbar.events.extend(first.events);
-    toolbar.events.extend(second.events);
-    Ok(())
-}
+#[path = "composition_tests.rs"]
+mod tests;
 
 fn selection_for(surface: &EguiTextCommandSurface) -> (usize, usize) {
     (

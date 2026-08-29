@@ -121,3 +121,65 @@ fn public_api_rejects_canvas_edge_overflow() {
         Err(ArtifactCompositeError::Overflow { .. })
     ));
 }
+
+#[test]
+fn public_api_composes_rounded_and_transparent_layers_with_clipping() {
+    let rounded = CommandChromePaintPlan {
+        surface_bounds: UiRect::new(OVERLAY_X, CANVAS_Y, 3, 3),
+        operations: vec![CommandChromePaintOperation {
+            layer: EguiCommandChromeDrawLayer::PanelFill,
+            clip_bounds: UiRect::new(OVERLAY_X, CANVAS_Y, 3, 3),
+            kind: CommandChromePaintOperationKind::RoundedFill {
+                bounds: UiRect::new(OVERLAY_X, CANVAS_Y, 3, 3),
+                color_rgba: [20, 40, 80, 255],
+                radius_px: 2,
+            },
+        }],
+    };
+    let transparent = text_plan(TextSurfacePaintOperationKind::Fill {
+        bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+        color_rgba: [255, 255, 255, 0],
+    });
+    let frame = ArtifactCompositor::compose(ArtifactCompositeRequest {
+        canvas: ArtifactCanvasBounds::new(UiRect::new(CANVAS_X, CANVAS_Y, 3, 3)),
+        plans: &[
+            ArtifactPaintPlanRef::CommandChrome(&rounded),
+            ArtifactPaintPlanRef::TextSurface(&transparent),
+        ],
+    })
+    .expect("rounded fill with transparent overlay composes");
+
+    assert!(frame.non_transparent_pixel_count > 0);
+    assert!(
+        frame
+            .rgba_pixels
+            .chunks_exact(4)
+            .any(|pixel| pixel == [0, 0, 0, 0])
+    );
+    assert!(
+        frame
+            .rgba_pixels
+            .chunks_exact(4)
+            .any(|pixel| pixel == [20, 40, 80, 255])
+    );
+}
+
+#[test]
+fn public_api_rejects_zero_dimension_texture_before_sampling() {
+    let text = text_plan(TextSurfacePaintOperationKind::Texture {
+        bounds: UiRect::new(CANVAS_X, CANVAS_Y, ONE_PIXEL, ONE_PIXEL),
+        texture: TextSurfacePaintTexture {
+            identity: "empty".to_owned(),
+            width: 0,
+            height: 1,
+            rgba_pixels: Vec::new(),
+        },
+    });
+    let result = ArtifactCompositor::compose(ArtifactCompositeRequest {
+        canvas: ArtifactCanvasBounds::new(UiRect::new(CANVAS_X, CANVAS_Y, ONE_PIXEL, ONE_PIXEL)),
+        plans: &[ArtifactPaintPlanRef::TextSurface(&text)],
+    });
+    assert!(
+        matches!(result, Err(ArtifactCompositeError::ZeroTexture { identity }) if identity == "empty")
+    );
+}

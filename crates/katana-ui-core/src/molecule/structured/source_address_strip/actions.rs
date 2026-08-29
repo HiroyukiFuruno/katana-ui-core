@@ -67,3 +67,7 @@ pub(super) fn apply(
         _ => None,
     }
 }
+
+#[cfg(test)]
+#[path = "actions_tests.rs"]
+mod tests;

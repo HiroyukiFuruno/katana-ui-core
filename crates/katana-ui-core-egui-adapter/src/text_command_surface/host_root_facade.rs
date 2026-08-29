@@ -36,7 +36,8 @@ impl EguiTextCommandSurfaceHostRoot {
         &mut self,
         lease: EguiTextCommandSurfaceHostProjectionLease,
     ) -> Result<bool, EguiTextCommandSurfaceRootFactoryError> {
-        let (token, router, source_address, tab_strip, status_diagnostics) = lease.into_parts();
+        let (token, router, source_address, tab_strip, status_diagnostics, editor_viewport) =
+            lease.into_parts();
         self.process.synchronize_with_router(
             token.revision,
             super::host_root_token_codec::decode_token(&token)?,
@@ -44,6 +45,7 @@ impl EguiTextCommandSurfaceHostRoot {
             source_address,
             tab_strip,
             status_diagnostics,
+            editor_viewport,
         )
     }
 

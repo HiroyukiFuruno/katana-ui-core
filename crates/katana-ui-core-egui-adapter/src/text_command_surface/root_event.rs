@@ -389,6 +389,38 @@ mod tests {
         );
     }
 
+    #[test]
+    fn exclusive_search_detach_removes_same_frame_text_without_changing_generic_detach() {
+        let payload = || RootEventPayload {
+            text: vec![TextSurfaceEvent::FocusChanged(true)],
+            toolbar: None,
+            floating: None,
+            search: Some(vec![CommandChromeSearchEvent::CloseRequested]),
+            context_menu: None,
+            source_address_submissions: Vec::new(),
+            ..RootEventPayload::empty()
+        };
+        let exclusive = EguiTextCommandSurfaceRootEventBatch::new(payload(), String::new());
+        assert_eq!(
+            exclusive
+                .detach_search_events_exclusively()
+                .expect("exclusive detach succeeds")
+                .len(),
+            1
+        );
+        assert_eq!(exclusive.event_cardinality(), 0);
+
+        let generic = EguiTextCommandSurfaceRootEventBatch::new(payload(), String::new());
+        assert_eq!(
+            generic
+                .detach_search_events()
+                .expect("generic detach succeeds")
+                .len(),
+            1
+        );
+        assert_eq!(generic.event_cardinality(), 1);
+    }
+
     struct CountingForwarder {
         calls: usize,
     }
@@ -1209,7 +1241,7 @@ mod tests {
         );
         let mut root = EguiTextCommandSurfaceRootFactory::new().retain_with_lease(lease)?;
         let context = egui::Context::default();
-        let _first_output = context.run_ui(
+        let mut first_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -1223,8 +1255,9 @@ mod tests {
                 });
             },
         );
+        first_output.textures_delta.clear();
         let mut frame: Option<Result<EguiTextCommandSurfaceHostRootFrame, _>> = None;
-        let _output = context.run_ui(
+        let mut output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -1253,6 +1286,7 @@ mod tests {
                 });
             },
         );
+        output.textures_delta.clear();
         let frame = frame.ok_or_else(|| "root frame missing".to_owned())??;
         assert_eq!(router_seen_query.borrow().as_deref(), Some("needle⭐️"));
         assert_eq!(host_mutations.get(), 0);

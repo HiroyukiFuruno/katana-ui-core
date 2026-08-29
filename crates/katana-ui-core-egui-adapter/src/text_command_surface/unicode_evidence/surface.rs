@@ -114,3 +114,25 @@ pub(super) fn trace_style() -> TextCommandSurfaceStyle {
         },
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn explicit_spans_keep_plain_text_and_emoji_roles_in_order() {
+        let spans = explicit_spans("a⭐️b👩‍💻c");
+        assert_eq!(spans.len(), 5);
+        assert!(spans[1].style.emoji);
+        assert!(spans[3].style.emoji);
+        assert_eq!(spans[0].text, "a");
+        assert_eq!(spans[4].text, "c");
+    }
+
+    #[test]
+    fn evidence_style_has_distinct_search_input_geometry() {
+        let style = trace_style();
+        assert!(style.search.input_width_px > style.search.input_height_px);
+        assert_eq!(style.text_raster.font.name, "kuc-unicode-evidence");
+    }
+}

@@ -70,9 +70,10 @@ impl TextLayoutRasterizer {
                 )
                 .map(|attrs| (span.text.as_str(), attrs))
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>();
+        let rich_text = rich_text?;
         buffer.set_rich_text(rich_text, &Attrs::new(), Shaping::Advanced, None);
-        let (ascent, descent, line_height) = buffer
+        let first_line = buffer
             .line_layout(0)
             .and_then(|lines| lines.first())
             .map(|line| {
@@ -82,7 +83,8 @@ impl TextLayoutRasterizer {
                     line.max_ascent + line.max_descent,
                 )
             })
-            .ok_or(PlatformTextRasterError::EmptyText)?;
+            .ok_or(PlatformTextRasterError::EmptyText);
+        let (ascent, descent, line_height) = first_line?;
         let advance_px = buffer.layout_runs().map(|run| run.line_w).sum();
         let grapheme_advances = collect_grapheme_advances(&mut buffer, &request.text);
         Ok(PlatformTextMetrics {
@@ -123,7 +125,8 @@ impl TextLayoutRasterizer {
                 attrs_for_span(&request.font, span, request.fallback_color_rgba, emoji_face)
                     .map(|attrs| (span.text.as_str(), attrs))
             })
-            .collect::<Result<Vec<_>, _>>()?;
+            .collect::<Result<Vec<_>, _>>();
+        let rich_text = rich_text?;
         buffer.set_rich_text(rich_text, &Attrs::new(), Shaping::Advanced, None);
         let source_text = request.text();
         let grapheme_bounds = collect_grapheme_bounds(&mut buffer, &source_text, scale);
@@ -137,3 +140,7 @@ impl TextLayoutRasterizer {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "layout_tests.rs"]
+mod tests;

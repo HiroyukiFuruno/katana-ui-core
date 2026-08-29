@@ -412,7 +412,7 @@ mod tests {
         context: &egui::Context,
     ) -> Result<SanitizedDocumentRootRecord, String> {
         let mut output = None;
-        let _ = context.run_ui(
+        let mut platform_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -426,6 +426,7 @@ mod tests {
                 });
             },
         );
+        platform_output.textures_delta.clear();
         let output = output.ok_or_else(|| "frame output was not produced".to_owned())??;
         Ok(SanitizedDocumentRootRecord::from_output(
             process.input.revision,
@@ -770,7 +771,7 @@ mod tests {
         events: Vec<egui::Event>,
     ) -> Result<SanitizedDocumentRootRecord, String> {
         let mut output = None;
-        let _ = context.run_ui(
+        let mut platform_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -785,6 +786,7 @@ mod tests {
                 });
             },
         );
+        platform_output.textures_delta.clear();
         let output = output.ok_or_else(|| "frame output was not produced".to_owned())??;
         Ok(SanitizedDocumentRootRecord::from_output(
             process.input.revision,

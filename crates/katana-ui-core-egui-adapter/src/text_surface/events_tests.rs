@@ -56,6 +56,7 @@ fn focused_hovered_surface_applies_smooth_wheel_scroll() {
             &frame,
             &EguiTextSurfaceInputPolicy::default(),
             None,
+            &[],
         );
     });
     output.textures_delta.clear();
@@ -98,6 +99,7 @@ fn dragging_then_releasing_emits_selection_event_from_pointer_release() {
                     &frame,
                     &EguiTextSurfaceInputPolicy::default(),
                     None,
+                    &[],
                 );
             },
         );
@@ -183,6 +185,7 @@ fn secondary_pointer_inside_surface_requests_context_target() {
                     &frame,
                     &EguiTextSurfaceInputPolicy::default(),
                     None,
+                    &[],
                 );
             },
         );
@@ -270,6 +273,7 @@ fn run_pointer_frame(
                 frame,
                 &EguiTextSurfaceInputPolicy::default(),
                 None,
+                &[],
             );
         },
     );

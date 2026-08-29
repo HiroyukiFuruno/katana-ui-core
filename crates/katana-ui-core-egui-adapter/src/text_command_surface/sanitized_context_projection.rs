@@ -134,4 +134,32 @@ mod tests {
         assert!(!api_source.contains("derive(Debug, Clone"));
         assert!(!api_source.contains("Serialize"));
     }
+
+    #[test]
+    fn context_item_fingerprint_tracks_optional_fields_and_icon_policies() {
+        let target = || SanitizedContextMenuTarget::from_opaque_bytes([1, 2, 3]);
+        let base = SanitizedContextMenuProjectionBuilder::new()
+            .item(
+                SanitizedContextMenuItem::new(target(), 1, "項目")
+                    .accessibility_label_text("項目")
+                    .with_icon(UiIconProps::new("<svg/>"))
+                    .enabled_state(false)
+                    .checked_state(true)
+                    .submenu_item(SanitizedContextMenuItem::new(target(), 2, "子")),
+            )
+            .build();
+        let changed = SanitizedContextMenuProjectionBuilder::new()
+            .item(
+                SanitizedContextMenuItem::new(target(), 1, "項目")
+                    .with_icon(UiIconProps::new("<svg-alt/>"))
+                    .submenu_item(
+                        SanitizedContextMenuItem::new(target(), 2, "子").enabled_state(false),
+                    ),
+            )
+            .build();
+
+        assert_ne!(base.stable_fingerprint(), changed.stable_fingerprint());
+        assert!(!base.same_as(&changed));
+        assert!(format!("{base:?}").contains("item_count"));
+    }
 }

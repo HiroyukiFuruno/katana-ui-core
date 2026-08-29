@@ -123,4 +123,17 @@ mod tests {
         );
         Ok(())
     }
+
+    #[test]
+    fn raster_debug_shape_is_opaque() -> Result<(), String> {
+        let mut rasterizer = TabStripTextRasterizer::new().map_err(|error| error.to_string())?;
+        let raster = rasterizer
+            .rasterize(&TabStripText::new("debug"), 1.0)
+            .map_err(|error| error.to_string())?;
+
+        assert_eq!(format!("{:?}", raster), "TabStripTextRaster(..)");
+        assert!(raster.width > 0);
+        assert!(raster.height > 0);
+        Ok(())
+    }
 }

@@ -26,6 +26,7 @@ impl EguiTextSurfaceAdapter {
             svg_rasterizer: UiSvgRasterizer::new(UiSvgRasterConfig::default()),
             textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
             pending_focus_request: None,
+            pointer_exclusion_bounds: Vec::new(),
             metrics: Rc::new(RefCell::new(
                 katana_ui_core_text_raster::PlatformTextMetricsFrame::new(),
             )),
@@ -42,6 +43,7 @@ impl EguiTextSurfaceAdapter {
             svg_rasterizer: UiSvgRasterizer::new(UiSvgRasterConfig::default()),
             textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
             pending_focus_request: None,
+            pointer_exclusion_bounds: Vec::new(),
             metrics,
         })
     }

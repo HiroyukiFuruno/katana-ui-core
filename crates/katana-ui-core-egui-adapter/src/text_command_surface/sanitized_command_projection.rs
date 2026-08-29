@@ -155,4 +155,30 @@ mod tests {
         assert!(!api_source.contains(&["pub fn ", "bytes("].concat()));
         assert!(!api_source.contains(&["pub fn ", "opaque_bytes("].concat()));
     }
+
+    #[test]
+    fn command_projection_fingerprint_tracks_nested_optional_fields() {
+        let target = || SanitizedCommandTarget::from_opaque_bytes([1, 2, 3]);
+        let base = SanitizedCommandProjection::new([SanitizedCommandGroup::new(1, "グループ")
+            .tooltip_text("説明")
+            .accessibility_label_text("グループ")
+            .with_icon(UiIconProps::new("<svg/>"))
+            .enabled_state(false)
+            .visible_state(false)
+            .item(
+                SanitizedCommandItem::new(target(), 2, "項目").dropdown_item(
+                    SanitizedCommandDropdownItem::new(target(), 3, "子")
+                        .tooltip_text("子の説明")
+                        .accessibility_label_text("子")
+                        .with_icon(UiIconProps::new("<svg-child/>"))
+                        .enabled_state(false)
+                        .visible_state(false),
+                ),
+            )]);
+        let changed = SanitizedCommandProjection::new([SanitizedCommandGroup::new(1, "グループ")
+            .item(SanitizedCommandItem::new(target(), 2, "項目"))]);
+
+        assert_ne!(base.stable_fingerprint(), changed.stable_fingerprint());
+        assert!(format!("{base:?}").contains("SanitizedCommandProjection"));
+    }
 }

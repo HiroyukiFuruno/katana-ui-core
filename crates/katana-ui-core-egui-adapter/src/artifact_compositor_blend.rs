@@ -221,3 +221,7 @@ fn source_over(
     pixels[index + ALPHA_CHANNEL] = output_alpha as u8;
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "artifact_compositor_blend_tests.rs"]
+mod tests;

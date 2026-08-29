@@ -6,6 +6,10 @@ use super::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
+#[cfg(test)]
+#[path = "state_tests.rs"]
+mod tests;
+
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiagnosticsListState {
     pub selected_id: Option<DiagnosticId>,

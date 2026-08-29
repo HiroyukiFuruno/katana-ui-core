@@ -19,6 +19,10 @@ pub use model::{
 use render::segment_nodes;
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+#[path = "status_bar_tests.rs"]
+mod tests;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StatusBar {
     label: String,

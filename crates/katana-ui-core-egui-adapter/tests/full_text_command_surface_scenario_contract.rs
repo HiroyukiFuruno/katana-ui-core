@@ -46,9 +46,10 @@ fn render(
         stage.apply_to(&mut input);
     }
     let mut record = None;
-    let _ = context.run_ui(input, |ui| {
+    let mut output = context.run_ui(input, |ui| {
         record = Some(root.show(ui).expect("scenario root renders"));
     });
+    output.textures_delta.clear();
     record
         .expect("scenario frame exists")
         .record()
@@ -118,9 +119,10 @@ fn render_frame(
         input.screen_rect = Some(full_surface_rect());
     }
     let mut frame = None;
-    let _ = context.run_ui(input, |ui| {
+    let mut output = context.run_ui(input, |ui| {
         frame = Some(root.show(ui));
     });
+    output.textures_delta.clear();
     frame
         .expect("scenario frame exists")
         .expect("scenario root renders")
@@ -192,9 +194,10 @@ fn render_event_count(
         stage.apply_to(&mut input);
     }
     let mut frame = None;
-    let _ = context.run_ui(input, |ui| {
+    let mut output = context.run_ui(input, |ui| {
         frame = Some(root.show(ui).expect("scenario root renders"));
     });
+    output.textures_delta.clear();
     let mut forwarder = EventForwarder { transport: None };
     frame
         .expect("scenario frame exists")
@@ -824,11 +827,12 @@ fn custom_router_receives_one_actual_scenario_context_without_projection_readbac
 
     let mut input = egui::RawInput::default();
     stage.apply_to(&mut input);
-    let _ = context.run_ui(input, |ui| {
+    let mut output = context.run_ui(input, |ui| {
         egui::CentralPanel::default().show(ui, |ui| {
             root.show(ui).expect("scenario root renders");
         });
     });
+    output.textures_delta.clear();
 
     let contexts = contexts.borrow();
     assert_eq!(contexts.len(), 1);
@@ -848,9 +852,10 @@ fn issue_remains_backward_compatible_and_lease_is_one_shot() {
         .retain_with_lease(scenario.into_lease().expect("legacy lease"))
         .expect("legacy lease retains");
     let context = egui::Context::default();
-    let _ = context.run_ui(Default::default(), |ui| {
+    let mut output = context.run_ui(Default::default(), |ui| {
         root.show(ui).expect("legacy scenario root renders");
     });
+    output.textures_delta.clear();
 
     let replay = FullTextCommandSurfaceScenarioFactory::new()
         .issue(FullTextCommandSurfaceScenarioId::Resting)

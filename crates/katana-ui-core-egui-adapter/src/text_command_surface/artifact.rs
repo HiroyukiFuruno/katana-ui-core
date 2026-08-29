@@ -18,6 +18,7 @@ pub enum EguiTextCommandSurfaceArtifactError {
     MissingContextMenuPaintPlan,
     MissingStatusBar,
     MissingDiagnosticsList,
+    MissingPreview,
 }
 
 impl std::fmt::Display for EguiTextCommandSurfaceArtifactError {
@@ -38,6 +39,7 @@ impl std::fmt::Display for EguiTextCommandSurfaceArtifactError {
             Self::MissingDiagnosticsList => {
                 "diagnostics-list child requires a diagnostics-list paint plan"
             }
+            Self::MissingPreview => "preview child requires a preview paint plan",
         };
         formatter.write_str(message)
     }
@@ -56,6 +58,7 @@ pub(super) struct RootArtifactChildren {
     pub context_menu_open: bool,
     pub status_bar: bool,
     pub diagnostics_list: bool,
+    pub preview: bool,
 }
 
 pub(super) fn artifact_order_for_root(
@@ -75,6 +78,9 @@ pub(super) fn artifact_order_for_root(
         order.push(EguiTextCommandSurfaceChild::Search);
     }
     order.push(EguiTextCommandSurfaceChild::Text);
+    if children.preview {
+        order.push(EguiTextCommandSurfaceChild::Preview);
+    }
     if children.diagnostics_list {
         order.push(EguiTextCommandSurfaceChild::DiagnosticsList);
     }
@@ -131,6 +137,13 @@ impl EguiTextCommandSurfaceOutput {
                 EguiTextCommandSurfaceChild::Text => {
                     ArtifactPaintPlanRef::TextSurface(&self.text.artifact.paint_plan)
                 }
+                EguiTextCommandSurfaceChild::Preview => ArtifactPaintPlanRef::TextSurface(
+                    &self
+                        .preview
+                        .as_ref()
+                        .ok_or(EguiTextCommandSurfaceArtifactError::MissingPreview)?
+                        .paint_plan,
+                ),
                 EguiTextCommandSurfaceChild::Toolbar => ArtifactPaintPlanRef::CommandChrome(
                     &self
                         .toolbar
@@ -189,4 +202,9 @@ impl EguiTextCommandSurfaceOutput {
         }
         Ok(plans)
     }
+}
+
+#[cfg(test)]
+mod tests {
+    include!("artifact_tests.rs");
 }

@@ -68,3 +68,8 @@ pub(super) fn validate_scalar_sequence(
 pub(super) fn scalars(text: &str) -> Vec<u32> {
     text.chars().map(u32::from).collect()
 }
+
+#[cfg(test)]
+#[cfg(test)]
+#[path = "grapheme_tests.rs"]
+mod tests;

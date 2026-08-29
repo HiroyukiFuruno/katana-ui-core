@@ -293,5 +293,6 @@ fn close_presentation_debug_does_not_reveal_localized_labels() {
     assert!(!debug.contains("アクセシビリティの秘密"));
 }
 
+include!("coverage.rs");
 include!("api.rs");
 include!("debug.rs");

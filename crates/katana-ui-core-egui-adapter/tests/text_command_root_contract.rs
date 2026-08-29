@@ -85,6 +85,22 @@ impl KucRootEventBatchDispatcher for PublicDispatcher {
         self.calls += 1;
         Ok(())
     }
+
+    fn dispatch_status_bar_events(
+        &mut self,
+        _events: Vec<katana_ui_core::molecule::StatusBarEvent>,
+    ) -> Result<(), Self::Error> {
+        self.calls += 1;
+        Ok(())
+    }
+
+    fn dispatch_diagnostics_list_events(
+        &mut self,
+        _events: Vec<katana_ui_core::molecule::DiagnosticsListEvent>,
+    ) -> Result<(), Self::Error> {
+        self.calls += 1;
+        Ok(())
+    }
 }
 
 fn dispatch_receipt_from_public_api(
@@ -775,13 +791,15 @@ fn external_consumer_can_retain_public_dispatch_receipt() {
     let output = render(&mut root());
     let (receipt, dispatch_calls) = dispatch_receipt_from_public_api(&output);
 
-    assert_eq!(dispatch_calls, 5);
+    assert_eq!(dispatch_calls, 7);
     assert_eq!(receipt.text_count(), 0);
     assert_eq!(receipt.toolbar_count(), 0);
     assert_eq!(receipt.floating_count(), 0);
     assert_eq!(receipt.search_count(), 0);
     assert_eq!(receipt.context_menu_count(), 0);
-    assert_eq!(receipt.class_dispatches().len(), 5);
+    assert_eq!(receipt.status_bar_count(), 0);
+    assert_eq!(receipt.diagnostics_list_count(), 0);
+    assert_eq!(receipt.class_dispatches().len(), 7);
 }
 
 #[test]
@@ -835,9 +853,7 @@ fn public_root_event_forwarding_contract_is_opaque_and_child_free() {
     let transport_source = include_str!("../src/text_command_surface/root_event.rs");
     let public_contract = transport_source
         .split_once("pub struct EguiTextCommandSurfaceRootEventTransport")
-        .and_then(|(_, value)| {
-            value.split_once("impl std::fmt::Debug for EguiTextCommandSurfaceRootEventTransport")
-        })
+        .and_then(|(_, value)| value.split_once("/// Deterministic receipt"))
         .map(|(value, _)| value)
         .expect("public root event forwarding contract was not found");
 
@@ -861,6 +877,11 @@ fn public_root_event_forwarding_contract_is_opaque_and_child_free() {
             "public root event forwarding contract leaked `{forbidden}`"
         );
     }
+    let transport_impl = include_str!("../src/text_command_surface/root_event/transport.rs");
+    assert!(
+        transport_impl
+            .contains("formatter.write_str(\"EguiTextCommandSurfaceRootEventTransport(..)\")")
+    );
 
     let batch_source = include_str!("../src/text_command_surface/root_event_types.rs");
     let batch_definition = batch_source

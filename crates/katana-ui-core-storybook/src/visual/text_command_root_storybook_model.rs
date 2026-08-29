@@ -83,6 +83,8 @@ pub(super) struct DecoderEvidence {
     pub(super) tool: String,
     pub(super) verified: bool,
     pub(super) decoded_frame_count: usize,
+    pub(super) source_frame_hashes: Vec<String>,
+    pub(super) decoded_frame_hashes: Vec<String>,
 }
 
 #[derive(Debug)]
@@ -223,6 +225,8 @@ impl FullRootManifest {
                     tool: video.decoder.tool.clone(),
                     verified: video.decoder.verified,
                     decoded_frame_count: video.decoder.decoded_frame_count,
+                    source_frame_hashes: video.decoder.source_frame_hashes.clone(),
+                    decoded_frame_hashes: video.decoder.decoded_frame_hashes.clone(),
                 },
             },
         }

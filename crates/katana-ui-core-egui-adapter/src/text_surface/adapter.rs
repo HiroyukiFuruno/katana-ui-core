@@ -8,7 +8,7 @@ use super::controlled_focus::{focus_request_event, synchronize_focus_request};
 use super::controlled_scroll::{
     scroll_request_event, synchronize_scroll_bounds, synchronize_scroll_request,
 };
-use super::input::apply_interactions;
+use super::events::TextSurfaceInteraction;
 use super::measurement::{
     controlled_gutter_width, placeholder_bounds, placeholder_raster_identity, surface_extent_for_ui,
 };
@@ -26,6 +26,14 @@ use katana_ui_core::text_surface::{
 mod constructors;
 
 impl EguiTextSurfaceAdapter {
+    pub(crate) fn request_focus_for_next_frame(&mut self, focused: bool) {
+        self.pending_focus_request = Some(focused);
+    }
+
+    pub(crate) fn set_pointer_exclusion_bounds(&mut self, bounds: Vec<UiRect>) {
+        self.pointer_exclusion_bounds = bounds;
+    }
+
     pub fn show_with_input_policy(
         &mut self,
         ui: &mut egui::Ui,
@@ -118,7 +126,8 @@ impl EguiTextSurfaceAdapter {
         );
         let initial_frame =
             surface.frame_with_bounds(&initial_layout, surface_bounds, viewport_bounds);
-        let mut events = apply_interactions(
+        let pointer_exclusion_bounds = std::mem::take(&mut self.pointer_exclusion_bounds);
+        let mut events = TextSurfaceInteraction::apply_interactions(
             ui,
             &response,
             surface,
@@ -126,6 +135,7 @@ impl EguiTextSurfaceAdapter {
             &initial_frame,
             input_policy,
             self.pending_focus_request.take(),
+            &pointer_exclusion_bounds,
         );
         let focus_request = synchronize_focus_request(&response, surface);
         if let Some(TextSurfaceFocusRequestResult::Acknowledged(value)) = focus_request.as_ref() {

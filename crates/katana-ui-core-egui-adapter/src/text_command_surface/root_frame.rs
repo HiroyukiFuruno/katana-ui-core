@@ -5,7 +5,7 @@ use crate::artifact_compositor::ArtifactCompositeFrame;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-const ROOT_CHILD_RECORD_SLOT_COUNT: usize = 7;
+const ROOT_CHILD_RECORD_SLOT_COUNT: usize = 8;
 
 /// Root dimensions without child coordinates or geometry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -128,6 +128,11 @@ pub(super) fn build_frame(
         .as_ref()
         .map(|value| hash_serialized(&value.paint_plan))
         .transpose()?;
+    let preview_hash = output
+        .preview
+        .as_ref()
+        .map(|value| hash_serialized(&value.paint_plan))
+        .transpose()?;
     let material = RootRecordMaterial {
         identity,
         state_revision,
@@ -161,6 +166,7 @@ pub(super) fn build_frame(
             }),
             status_bar_hash.as_deref(),
             diagnostics_list_hash.as_deref(),
+            preview_hash.as_deref(),
         ],
         accessibility_hash: &accessibility_hash,
     };

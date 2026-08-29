@@ -19,6 +19,7 @@ mod host_root_token_codec;
 #[path = "host_root/types.rs"]
 mod host_root_types;
 
+use super::EditorViewportProjectionLease;
 use super::root::KucRootEffectRouter;
 use super::source_address_projection_lease::SourceAddressProjectionLease;
 use super::status_diagnostics_projection_lease::StatusDiagnosticsProjectionLease;
@@ -109,6 +110,7 @@ impl EguiTextCommandSurfaceHostProjectionLease {
             source_address: None,
             tab_strip: None,
             status_diagnostics: None,
+            editor_viewport: None,
         }
     }
 
@@ -123,6 +125,7 @@ impl EguiTextCommandSurfaceHostProjectionLease {
             source_address: None,
             tab_strip: None,
             status_diagnostics: None,
+            editor_viewport: None,
         }
     }
 
@@ -147,6 +150,13 @@ impl EguiTextCommandSurfaceHostProjectionLease {
         self
     }
 
+    /// Adds one generic document/preview split viewport to this consuming lease.
+    #[must_use]
+    pub fn with_editor_viewport(mut self, lease: EditorViewportProjectionLease) -> Self {
+        self.editor_viewport = Some(lease);
+        self
+    }
+
     pub(super) fn into_parts(self) -> HostProjectionParts {
         (
             self.token,
@@ -154,6 +164,7 @@ impl EguiTextCommandSurfaceHostProjectionLease {
             self.source_address,
             self.tab_strip,
             self.status_diagnostics,
+            self.editor_viewport,
         )
     }
 }
@@ -246,7 +257,8 @@ impl EguiTextCommandSurfaceRootFactory {
         &self,
         lease: EguiTextCommandSurfaceHostProjectionLease,
     ) -> Result<EguiTextCommandSurfaceHostRoot, EguiTextCommandSurfaceRootFactoryError> {
-        let (token, router, source_address, tab_strip, status_diagnostics) = lease.into_parts();
+        let (token, router, source_address, tab_strip, status_diagnostics, editor_viewport) =
+            lease.into_parts();
         let decoded = decode_token(&token)?;
         Ok(EguiTextCommandSurfaceHostRoot {
             process: HostRootProcess::retain_with_router(
@@ -256,6 +268,7 @@ impl EguiTextCommandSurfaceRootFactory {
                 source_address,
                 tab_strip,
                 status_diagnostics,
+                editor_viewport,
             )?,
         })
     }
@@ -266,3 +279,7 @@ impl Default for EguiTextCommandSurfaceRootFactory {
         Self::new()
     }
 }
+
+#[cfg(test)]
+#[path = "host_root_tests.rs"]
+mod tests;

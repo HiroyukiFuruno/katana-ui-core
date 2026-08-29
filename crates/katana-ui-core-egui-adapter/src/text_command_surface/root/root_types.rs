@@ -21,6 +21,7 @@ pub struct EguiTextCommandSurfaceRoot {
     pub(super) tab_strip: Option<TabStripRetainedState>,
     pub(super) status_bar: Option<katana_ui_core::molecule::StatusBar>,
     pub(super) diagnostics_list: Option<katana_ui_core::molecule::DiagnosticsList>,
+    pub(super) editor_viewport: Option<super::super::EditorViewportProjectionLease>,
 }
 
 /// The only frame data exposed by the retained root.

@@ -1,7 +1,7 @@
 use katana_ui_core::render_model::UiRect;
 use katana_ui_core_egui_adapter::text_command_surface::{
-    CONTROL_STAR_TEXT, IME_COMMIT_TEXT, IME_PREEDIT_TEXT, KucBounds, KucCaretObservation,
-    KucHitTestObservation, KucImeTraceEvidence, KucRgbaCropEvidence,
+    CONTROL_STAR_TEXT, IME_COMMIT_TEXT, IME_PREEDIT_TEXT, KucAccessKitNodeObservation, KucBounds,
+    KucCaretObservation, KucHitTestObservation, KucImeTraceEvidence, KucRgbaCropEvidence,
     KucUnicodeColorGlyphEvidenceBuilder, KucUnicodeColorGlyphEvidenceCapture,
     KucUnicodeColorGlyphEvidenceError, KucUnicodeColorGlyphEvidenceInput,
     KucUnicodeColorGlyphEvidenceOptions, STAR_TEXT, ZWJ_TEXT,
@@ -89,7 +89,13 @@ fn fixture_input() -> KucUnicodeColorGlyphEvidenceInput {
                 [200, 200, 200, 255],
             ],
         ),
-        accesskit_text_input: None,
+        accesskit_text_input: Some(KucAccessKitNodeObservation {
+            node_id: "fixture-text-input".to_string(),
+            role: "MultilineTextInput".to_string(),
+            value: FIXTURE_TEXT.to_string(),
+            scalar_sequence: FIXTURE_TEXT.chars().map(u32::from).collect(),
+            bounds: KucBounds::new(0, 0, 320, 120),
+        }),
         accesskit_text_snapshot_hash: "accesskit-hash".to_string(),
         root_frame_hash: "root-frame-hash".to_string(),
         root_record_hash: "root-record-hash".to_string(),

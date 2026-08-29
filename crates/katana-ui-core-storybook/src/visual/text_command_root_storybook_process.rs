@@ -2,9 +2,9 @@ use super::model::{DecoderEvidence, FrameRate, FullRootArtifactError, Mp4Artifac
 use katana_ui_core_egui_adapter::{FullRootArtifact, MotionArtifactSettings, MotionArtifactWriter};
 use std::path::Path;
 
-pub(super) const VIDEO_ENCODER: &str = "mpeg4";
+pub(super) const VIDEO_ENCODER: &str = "libx264rgb";
 pub(super) const VIDEO_MUXER: &str = "mp4";
-pub(super) const VIDEO_PIXEL_FORMAT: &str = "yuv420p";
+pub(super) const VIDEO_PIXEL_FORMAT: &str = "rgb24";
 
 pub(super) fn write_mp4(
     receipts: &[FullRootArtifact],
@@ -43,6 +43,8 @@ pub(super) fn write_mp4(
             tool: "ffmpeg framemd5".to_owned(),
             verified: true,
             decoded_frame_count: evidence.decoded_frame_count,
+            source_frame_hashes: evidence.source_frame_hashes.clone(),
+            decoded_frame_hashes: evidence.decoded_frame_hashes.clone(),
         },
         gif_path: evidence.gif_path.clone(),
         gif_sha256: evidence.gif_sha256.clone(),
@@ -77,8 +79,8 @@ mod tests {
 
     #[test]
     fn process_and_codec_constants_are_declared() {
-        assert_eq!("mpeg4", VIDEO_ENCODER);
+        assert_eq!("libx264rgb", VIDEO_ENCODER);
         assert_eq!("mp4", VIDEO_MUXER);
-        assert_eq!("yuv420p", VIDEO_PIXEL_FORMAT);
+        assert_eq!("rgb24", VIDEO_PIXEL_FORMAT);
     }
 }

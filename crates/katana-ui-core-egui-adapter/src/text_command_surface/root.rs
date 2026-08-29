@@ -75,6 +75,7 @@ impl EguiTextCommandSurfaceRoot {
             tab_strip: None,
             status_bar: None,
             diagnostics_list: None,
+            editor_viewport: None,
         })
     }
 
@@ -94,6 +95,7 @@ impl EguiTextCommandSurfaceRoot {
             tab_strip: None,
             status_bar: None,
             diagnostics_list: None,
+            editor_viewport: None,
         })
     }
 
@@ -162,6 +164,14 @@ impl EguiTextCommandSurfaceRoot {
         changed
     }
 
+    pub(crate) fn attach_editor_viewport(&mut self, lease: super::EditorViewportProjectionLease) {
+        self.editor_viewport = Some(lease);
+    }
+
+    pub(crate) fn clear_editor_viewport(&mut self) -> bool {
+        self.editor_viewport.take().is_some()
+    }
+
     pub(crate) fn synchronize_command_families(
         &mut self,
         primary: Option<katana_ui_core::molecule::command_chrome::CommandChromeFamilyId>,
@@ -185,6 +195,7 @@ impl EguiTextCommandSurfaceRoot {
             self.tab_strip.as_mut(),
             self.status_bar.as_mut(),
             self.diagnostics_list.as_mut(),
+            self.editor_viewport.as_mut(),
         )?;
         let mut events =
             build_event_batch(&mut output, self.source_address_submission_port.clone())
@@ -372,7 +383,7 @@ mod tests {
         let context = egui::Context::default();
         let style = TextCommandSurfaceStyle::standard()?;
         let mut result = None;
-        let _ = context.run_ui(
+        let mut platform_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -382,6 +393,7 @@ mod tests {
             },
             |ui| result = Some(root.show(ui, &style)),
         );
+        platform_output.textures_delta.clear();
         let error = result
             .ok_or_else(|| "root invocation missing".to_owned())?
             .err()
@@ -1760,13 +1772,14 @@ mod tests {
     ) -> Result<EguiTextCommandSurfaceRootOutput, EguiTextCommandSurfaceRootError> {
         let style = TextCommandSurfaceStyle::standard()?;
         let mut output = None;
-        let _ = context.run_ui(
+        let mut platform_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, size)),
                 ..input
             },
             |ui| output = Some(root.show(ui, &style)),
         );
+        platform_output.textures_delta.clear();
         output.ok_or_else(|| {
             EguiTextCommandSurfaceRootError::Serialization("root frame missing".to_owned())
         })?
@@ -1780,7 +1793,7 @@ mod tests {
     {
         let style = TextCommandSurfaceStyle::standard()?;
         let mut root_output = None;
-        let platform_output = context.run_ui(
+        let mut platform_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -1790,6 +1803,7 @@ mod tests {
             },
             |ui| root_output = Some(root.show(ui, &style)),
         );
+        platform_output.textures_delta.clear();
         Ok((
             platform_output,
             root_output.ok_or_else(|| {

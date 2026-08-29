@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize as DeriveSerialize};
 use std::fmt;
 
+#[cfg(test)]
+#[path = "model_tests.rs"]
+mod tests;
+
 #[derive(Debug, Clone, PartialEq, Eq, DeriveSerialize, Deserialize)]
 pub struct SourceAddressPresentation {
     visible: String,

@@ -171,3 +171,7 @@ pub(super) fn ui_rect(rect: egui::Rect) -> UiRect {
         rect.height().round().max(0.0) as u32,
     )
 }
+
+#[cfg(test)]
+#[path = "support_tests.rs"]
+mod tests;

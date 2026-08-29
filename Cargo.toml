@@ -10,7 +10,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.3.1"
+version = "0.3.2"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/HiroyukiFuruno/katana-ui-core"
@@ -18,10 +18,10 @@ rust-version = "1.95.0"
 authors = ["Hiroyuki Furuno"]
 
 [workspace.dependencies]
-katana-ui-core = { version = "0.3.1", path = "crates/katana-ui-core" }
-katana-ui-core-text-raster = { version = "0.3.1", path = "crates/katana-ui-core-text-raster" }
-katana-ui-core-svg-raster = { version = "0.3.1", path = "crates/katana-ui-core-svg-raster" }
-katana-ui-core-egui-adapter = { version = "0.3.1", path = "crates/katana-ui-core-egui-adapter" }
+katana-ui-core = { version = "0.3.2", path = "crates/katana-ui-core" }
+katana-ui-core-text-raster = { version = "0.3.2", path = "crates/katana-ui-core-text-raster" }
+katana-ui-core-svg-raster = { version = "0.3.2", path = "crates/katana-ui-core-svg-raster" }
+katana-ui-core-egui-adapter = { version = "0.3.2", path = "crates/katana-ui-core-egui-adapter" }
 cosmic-text = "0.19.0"
 eframe = "0.36"
 egui = "0.36"

@@ -66,3 +66,7 @@ impl TabStripRetainedState {
         });
     }
 }
+
+#[cfg(test)]
+#[path = "overlay_paint_tests.rs"]
+mod tests;

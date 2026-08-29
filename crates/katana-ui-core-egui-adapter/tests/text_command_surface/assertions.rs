@@ -34,6 +34,7 @@ pub(crate) fn assert_artifact_output_contract(
     for (position, (child, plan)) in output.artifact_order().iter().zip(plans.iter()).enumerate() {
         match (child, plan) {
             (EguiTextCommandSurfaceChild::Text, ArtifactPaintPlanRef::TextSurface(_)) => {}
+            (EguiTextCommandSurfaceChild::Preview, ArtifactPaintPlanRef::TextSurface(_)) => {}
             (EguiTextCommandSurfaceChild::TabStrip, ArtifactPaintPlanRef::TabStrip(_))
             | (EguiTextCommandSurfaceChild::TabStripOverlay, ArtifactPaintPlanRef::TabStrip(_)) => {
             }

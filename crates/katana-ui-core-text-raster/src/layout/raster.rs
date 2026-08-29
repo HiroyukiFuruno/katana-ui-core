@@ -79,13 +79,9 @@ pub(super) fn raster_extent(
         .fold(MIN_RASTER_DIMENSION, f32::max);
     let width = raster_dimension(width * scale)?;
     let height = raster_dimension(height * scale)?;
-    let pixels = width
-        .checked_mul(height)
-        .ok_or(PlatformTextRasterError::RasterTooLarge {
-            width,
-            height,
-            max_pixels: MAX_RASTER_PIXELS,
-        })?;
+    /* WHY: Both dimensions were bounded above before this multiplication, so
+     * it is representable on every supported desktop target. */
+    let pixels = width * height;
     if pixels > MAX_RASTER_PIXELS {
         return Err(PlatformTextRasterError::RasterTooLarge {
             width,
@@ -142,3 +138,7 @@ pub(super) fn collect_pixels(
     );
     pixels
 }
+
+#[cfg(test)]
+#[path = "raster_tests.rs"]
+mod tests;

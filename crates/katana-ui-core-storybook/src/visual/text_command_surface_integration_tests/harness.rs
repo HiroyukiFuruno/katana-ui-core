@@ -29,10 +29,8 @@ impl Harness {
     pub(crate) fn run_frame_for_fact(
         events: Vec<egui::Event>,
     ) -> Result<facts::FrameFacts, Box<dyn std::error::Error>> {
-        let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
-            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
-        )
-        .expect("text command adapter");
+        let raster_config = katana_ui_core_text_raster::PlatformTextRasterConfig::default();
+        let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(raster_config)?;
         let mut surface = EguiTextCommandSurface::new(text_surface_fixture())
             .with_toolbar(toolbar_fixture().command_family(CommandChromeFamilyId::new("primary")))
             .with_floating_toolbar(

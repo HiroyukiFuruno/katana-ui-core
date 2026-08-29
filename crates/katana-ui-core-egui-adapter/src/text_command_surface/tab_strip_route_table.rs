@@ -282,6 +282,7 @@ impl TabStripRouteTable {
 mod tests {
     use super::super::tab_strip_proposal_port::TabStripProposalOperation;
     use super::TabStripRouteTable;
+    use crate::text_command_surface::TabStripControlPresentation;
     use crate::text_command_surface::{
         TabStripContextMenuPresentation, TabStripCorrelation, TabStripGroupCapabilities,
         TabStripGroupDescriptor, TabStripGroupPopupPresentation, TabStripGroupTarget,
@@ -332,6 +333,218 @@ mod tests {
         ));
         assert!(routes.proposal_for("tab-strip-next").is_none());
         assert!(routes.proposal_for("missing").is_none());
+    }
+
+    #[test]
+    fn routes_include_overflow_and_navigation_controls_when_navigation_is_present() {
+        let projection =
+            TabStripProjection::new(1, TabStripCorrelation::from_opaque_bytes(b"correlation"))
+                .navigation(
+                    crate::text_command_surface::TabStripNavigationPresentation::new(
+                        crate::text_command_surface::TabStripControlPresentation::new(
+                            TabStripText::new("prev"),
+                            TabStripText::new("prev a11y"),
+                        ),
+                        crate::text_command_surface::TabStripControlPresentation::new(
+                            TabStripText::new("next"),
+                            TabStripText::new("next a11y"),
+                        ),
+                    )
+                    .overflow(
+                        crate::text_command_surface::TabStripControlPresentation::new(
+                            TabStripText::new("more"),
+                            TabStripText::new("more a11y"),
+                        ),
+                    ),
+                )
+                .tab(
+                    TabStripTabDescriptor::new(
+                        TabStripTabTarget::from_opaque_bytes(b"tab"),
+                        TabStripText::new("tab"),
+                    )
+                    .capabilities(TabStripTabCapabilities::new().selectable(true)),
+                );
+        let routes = TabStripRouteTable::from_projection(&projection);
+
+        assert!(matches!(
+            routes.proposal_for("tab-strip-previous"),
+            Some((_, TabStripProposalOperation::SelectPrevious))
+        ));
+        assert!(matches!(
+            routes.proposal_for("tab-strip-next"),
+            Some((_, TabStripProposalOperation::SelectNext))
+        ));
+        assert!(matches!(
+            routes.proposal_for("tab-strip-overflow"),
+            Some((_, TabStripProposalOperation::OpenOverflow))
+        ));
+    }
+
+    #[test]
+    fn tab_trailing_routes_distinguish_closeable_and_pinned_behavior() {
+        let projection =
+            TabStripProjection::new(2, TabStripCorrelation::from_opaque_bytes(b"correlation"))
+                .tab(
+                    TabStripTabDescriptor::new(
+                        TabStripTabTarget::from_opaque_bytes(b"closeable-tab"),
+                        TabStripText::new("closeable"),
+                    )
+                    .capabilities(
+                        TabStripTabCapabilities::new()
+                            .selectable(true)
+                            .closeable(true),
+                    )
+                    .trailing_control(TabStripControlPresentation::new(
+                        TabStripText::new("close"),
+                        TabStripText::new("close a11y"),
+                    )),
+                )
+                .tab(
+                    TabStripTabDescriptor::new(
+                        TabStripTabTarget::from_opaque_bytes(b"pinned-tab"),
+                        TabStripText::new("pinned"),
+                    )
+                    .capabilities(TabStripTabCapabilities::new().selectable(true).pinned(true))
+                    .trailing_control(TabStripControlPresentation::new(
+                        TabStripText::new("pin"),
+                        TabStripText::new("pin a11y"),
+                    )),
+                );
+        let routes = TabStripRouteTable::from_projection(&projection);
+
+        assert!(matches!(
+            routes.proposal_for("root-tab-0-trailing"),
+            Some((_, TabStripProposalOperation::RequestClose(_)))
+        ));
+        assert!(matches!(
+            routes.proposal_for("root-tab-1-trailing"),
+            Some((
+                _,
+                TabStripProposalOperation::SetPinned { pinned: false, .. }
+            ))
+        ));
+    }
+
+    #[test]
+    fn rename_proposal_is_only_defined_for_group_popup_rename_paths() {
+        let projection =
+            TabStripProjection::new(3, TabStripCorrelation::from_opaque_bytes(b"correlation"))
+                .group(
+                    TabStripGroupDescriptor::new(
+                        TabStripGroupTarget::from_opaque_bytes(b"group"),
+                        TabStripText::new("group"),
+                    )
+                    .popup(
+                        TabStripGroupPopupPresentation::new()
+                            .rename_placeholder(TabStripText::new("rename"))
+                            .entry(TabStripMenuEntry::action(
+                                TabStripText::new("Ungroup"),
+                                TabStripText::new("Ungroup"),
+                                TabStripMenuOperation::Ungroup,
+                            )),
+                    )
+                    .capabilities(TabStripGroupCapabilities::new().collapsible(true)),
+                )
+                .tab(
+                    TabStripTabDescriptor::new(
+                        TabStripTabTarget::from_opaque_bytes(b"tab"),
+                        TabStripText::new("tab"),
+                    )
+                    .capabilities(TabStripTabCapabilities::new().selectable(true)),
+                );
+        let routes = TabStripRouteTable::from_projection(&projection);
+
+        assert!(matches!(
+            routes.rename_proposal_for(
+                "root-group-0-popup-rename",
+                TabStripText::new("renamed-group"),
+            ),
+            Some((_, TabStripProposalOperation::RenameGroup { .. }))
+        ));
+        assert!(
+            routes
+                .rename_proposal_for("root-tab-0-label", TabStripText::new("ignored"))
+                .is_none()
+        );
+        assert!(matches!(
+            routes.proposal_for("root-group-0-popup-0"),
+            Some((_, TabStripProposalOperation::Ungroup(_)))
+        ));
+    }
+
+    #[test]
+    fn nested_menu_entries_are_inserted_recursively_for_set_pinned_and_group_popups() {
+        let projection =
+            TabStripProjection::new(4, TabStripCorrelation::from_opaque_bytes(b"correlation"))
+                .tab(
+                    TabStripTabDescriptor::new(
+                        TabStripTabTarget::from_opaque_bytes(b"tab"),
+                        TabStripText::new("tab"),
+                    )
+                    .capabilities(TabStripTabCapabilities::new().selectable(true))
+                    .context_menu(
+                        TabStripContextMenuPresentation::new().entry(
+                            TabStripMenuEntry::submenu(
+                                TabStripText::new("pin-state"),
+                                TabStripText::new("pin-state"),
+                            )
+                            .child(TabStripMenuEntry::action(
+                                TabStripText::new("Pin state"),
+                                TabStripText::new("Pin state"),
+                                TabStripMenuOperation::SetPinned(false),
+                            )),
+                        ),
+                    ),
+                )
+                .group(
+                    TabStripGroupDescriptor::new(
+                        TabStripGroupTarget::from_opaque_bytes(b"group"),
+                        TabStripText::new("group"),
+                    )
+                    .popup(
+                        TabStripGroupPopupPresentation::new().entry(
+                            TabStripMenuEntry::submenu(
+                                TabStripText::new("nested"),
+                                TabStripText::new("nested"),
+                            )
+                            .child(
+                                TabStripMenuEntry::action(
+                                    TabStripText::new("Ungroup"),
+                                    TabStripText::new("Ungroup"),
+                                    TabStripMenuOperation::Ungroup,
+                                )
+                                .child(TabStripMenuEntry::action(
+                                    TabStripText::new("Remove"),
+                                    TabStripText::new("Remove"),
+                                    TabStripMenuOperation::RemoveFromGroup,
+                                )),
+                            ),
+                        ),
+                    )
+                    .capabilities(TabStripGroupCapabilities::new().collapsible(true)),
+                );
+        let routes = TabStripRouteTable::from_projection(&projection);
+
+        assert!(matches!(
+            routes.proposal_for("root-tab-0-menu-0-0"),
+            Some((
+                _,
+                TabStripProposalOperation::SetPinned { pinned: false, .. }
+            ))
+        ));
+        assert!(matches!(
+            routes.proposal_for("root-group-0-popup-0-0"),
+            Some((_, TabStripProposalOperation::Ungroup(_)))
+        ));
+        assert!(routes.proposal_for("root-group-0-popup-0-0-0").is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "rename proposals require their one-shot name")]
+    fn route_proposal_for_rename_is_contractual_panic() {
+        let route =
+            super::TabStripRoute::RenameGroup(TabStripGroupTarget::from_opaque_bytes(b"group"));
+        let _ = route.proposal();
     }
 
     #[test]

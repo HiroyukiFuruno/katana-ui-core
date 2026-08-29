@@ -20,10 +20,8 @@ pub(super) fn run_storybook_context_menu() -> Result<ContextMenuEvidence, Box<dy
     context.enable_accesskit();
     let mut text_adapter = EguiTextSurfaceAdapter::default();
     let mut text_surface = super::super::text_surface_fixture::text_surface_fixture();
-    let mut menu_adapter = EguiContextMenuAdapter::new(
-        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
-    )
-    .expect("context menu adapter");
+    let raster_config = katana_ui_core_text_raster::PlatformTextRasterConfig::default();
+    let mut menu_adapter = EguiContextMenuAdapter::new(raster_config)?;
     let pointer_anchor = pointer_anchor(&context, &mut text_adapter, &mut text_surface)?;
 
     menu_adapter.synchronize_presentation(context_menu_presentation());
@@ -283,10 +281,8 @@ mod tests {
         context.enable_accesskit();
         let mut text_adapter = EguiTextSurfaceAdapter::default();
         let mut text_surface = crate::visual::text_surface_fixture::text_surface_fixture();
-        let mut menu_adapter = EguiContextMenuAdapter::new(
-            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
-        )
-        .expect("context menu adapter");
+        let raster_config = katana_ui_core_text_raster::PlatformTextRasterConfig::default();
+        let mut menu_adapter = EguiContextMenuAdapter::new(raster_config)?;
         let pointer_anchor = pointer_anchor(&context, &mut text_adapter, &mut text_surface)?;
 
         menu_adapter.synchronize_presentation(context_menu_presentation());

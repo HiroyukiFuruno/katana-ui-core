@@ -86,6 +86,7 @@ pub struct EguiTextCommandSurfaceAdapter {
     pub(crate) source_address: crate::source_address_strip::EguiSourceAddressStripAdapter,
     pub(crate) status_bar: EguiStatusBarAdapter,
     pub(crate) diagnostics_list: EguiDiagnosticsListAdapter,
+    pub(crate) preview_texture: Option<(String, egui::TextureId)>,
 }
 
 impl EguiTextCommandSurfaceAdapter {
@@ -120,6 +121,7 @@ impl EguiTextCommandSurfaceAdapter {
                 )?,
             status_bar: EguiStatusBarAdapter::new("root-status-bar")?,
             diagnostics_list: EguiDiagnosticsListAdapter::new("root-diagnostics-list")?,
+            preview_texture: None,
         })
     }
 }
@@ -177,6 +179,7 @@ pub struct EguiTextCommandSurfaceOutput {
     pub(crate) tab_strip: Option<super::tab_strip_retained::TabStripRootOutput>,
     pub(crate) status_bar: Option<crate::status_bar::EguiStatusBarOutput>,
     pub(crate) diagnostics_list: Option<crate::diagnostics_list::EguiDiagnosticsListOutput>,
+    pub(crate) preview: Option<super::editor_viewport_render::EditorPreviewRootOutput>,
     pub(crate) accesskit_evidence: Vec<super::accesskit_evidence::AccessKitEvidence>,
     artifact_order: Vec<EguiTextCommandSurfaceChild>,
 }
@@ -191,6 +194,7 @@ pub(super) struct RootChildOutputs {
     pub(super) ordered_artifacts: Vec<EguiTextCommandSurfaceChild>,
     pub status_bar: Option<crate::status_bar::EguiStatusBarOutput>,
     pub diagnostics_list: Option<crate::diagnostics_list::EguiDiagnosticsListOutput>,
+    pub preview: Option<super::editor_viewport_render::EditorPreviewRootOutput>,
 }
 
 impl EguiTextCommandSurfaceOutput {
@@ -210,6 +214,7 @@ impl EguiTextCommandSurfaceOutput {
             tab_strip: None,
             status_bar: children.status_bar,
             diagnostics_list: children.diagnostics_list,
+            preview: children.preview,
             accesskit_evidence: children.accesskit_evidence,
             artifact_order: children.ordered_artifacts,
         }
@@ -241,6 +246,7 @@ pub enum EguiTextCommandSurfaceChild {
     TabStripOverlay,
     SourceAddress,
     Text,
+    Preview,
     Toolbar,
     Search,
     Floating,
@@ -248,3 +254,7 @@ pub enum EguiTextCommandSurfaceChild {
     StatusBar,
     DiagnosticsList,
 }
+
+#[cfg(test)]
+#[path = "types_tests.rs"]
+mod tests;

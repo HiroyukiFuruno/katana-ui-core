@@ -17,7 +17,7 @@ pub(super) fn run_frame(
 ) -> Result<CapturedFrame, KucUnicodeColorGlyphEvidenceError> {
     context.enable_accesskit();
     let mut result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -28,7 +28,8 @@ pub(super) fn run_frame(
         },
         |ui| result = Some(root.show(ui, style)),
     );
-    let accesskit_update = full_output.platform_output.accesskit_update;
+    let accesskit_update = full_output.platform_output.accesskit_update.take();
+    full_output.textures_delta.clear();
     let output = result
         .ok_or_else(|| KucUnicodeColorGlyphEvidenceError::RootTrace("root frame missing".into()))?
         .map_err(|error| KucUnicodeColorGlyphEvidenceError::RootTrace(error.to_string()))?;

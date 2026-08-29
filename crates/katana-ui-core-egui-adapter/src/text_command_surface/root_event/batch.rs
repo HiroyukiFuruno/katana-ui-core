@@ -101,6 +101,34 @@ impl EguiTextCommandSurfaceRootEventBatch {
         Ok(search_events)
     }
 
+    pub(crate) fn detach_search_events_exclusively(
+        &self,
+    ) -> Result<Vec<CommandChromeSearchEvent>, EguiTextCommandSurfaceRootEventSearchDetachError>
+    {
+        let search_events = self.detach_search_events()?;
+        if search_events.is_empty() {
+            return Ok(search_events);
+        }
+        let mut transport = self.transport.borrow_mut();
+        let transport = transport
+            .as_mut()
+            .ok_or(EguiTextCommandSurfaceRootEventSearchDetachError::AlreadyConsumed)?;
+        /* WHY: A sanitized search control and the text child can observe the same
+         * RawInput frame; the search capability owns that physical input exclusively. */
+        transport.payload.text.clear();
+        self.event_cardinality
+            .set(transport.payload.event_cardinality());
+        *self.event_batch_fingerprint.borrow_mut() =
+            RootEventFingerprint::fingerprint_payload(&transport.payload)
+                .map_err(|_| EguiTextCommandSurfaceRootEventSearchDetachError::Serialization)?;
+        *self.correlation_fingerprint.borrow_mut() = RootEventFingerprint::correlation_fingerprint(
+            &self.root_identity,
+            self.state_revision,
+            &self.event_batch_fingerprint.borrow(),
+        );
+        Ok(search_events)
+    }
+
     pub(crate) fn detach_command_events(
         &self,
     ) -> Result<

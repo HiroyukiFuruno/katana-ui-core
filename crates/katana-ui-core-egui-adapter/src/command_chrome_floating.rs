@@ -28,6 +28,7 @@ impl EguiCommandChromeAdapter {
     ) -> Result<EguiCommandChromeFloatingOutput, EguiCommandChromeError> {
         let mut events = escape_dismiss_events(ui, floating);
         if !floating.is_open() {
+            self.floating_pointer_exclusions.clear();
             return Ok(EguiCommandChromeFloatingOutput {
                 record: None,
                 events,
@@ -93,6 +94,7 @@ impl EguiCommandChromeAdapter {
                 .as_ref()
                 .map(|value| value.raster_identity().to_string()),
         };
+        self.floating_pointer_exclusions = floating_pointer_exclusions(&record);
         let paint_plan = build_floating_paint_plan(
             panel_bounds,
             &toolbar_output.artifact.paint_plan,
@@ -141,6 +143,16 @@ impl EguiCommandChromeAdapter {
         );
         Ok(TooltipPaintSource::new(bounds, text_bounds, raster))
     }
+}
+
+fn floating_pointer_exclusions(record: &EguiCommandChromeFloatingFrameRecord) -> Vec<UiRect> {
+    let mut bounds = vec![record.panel_bounds, record.toolbar.bounds];
+    if let Some(dropdown) = record.toolbar.dropdown.as_ref() {
+        bounds.push(dropdown.trigger_bounds);
+        bounds.push(dropdown.bounds);
+        bounds.extend(dropdown.items.iter().map(|item| item.bounds));
+    }
+    bounds
 }
 
 fn escape_dismiss_events(

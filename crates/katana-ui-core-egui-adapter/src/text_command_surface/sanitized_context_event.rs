@@ -129,27 +129,5 @@ fn event_correlation(root_identity_fingerprint: &str, revision: u64) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use std::cell::RefCell;
-    use std::rc::Rc;
-
-    #[test]
-    fn reentrant_capability_is_rejected_without_consuming_callback() {
-        let capability: ContextMenuCapability = Rc::new(RefCell::new(Some(Box::new(|| Ok(())))));
-        let _guard = capability.borrow_mut();
-        let mut event = SanitizedContextMenuActivationTransport {
-            target: SanitizedContextMenuRoutedTarget {
-                signature: [0; SHA256_SIGNATURE_LENGTH],
-                capability: Some(capability.clone()),
-            },
-            revision: 1,
-            correlation: "opaque".to_owned(),
-        };
-
-        assert_eq!(
-            event.invoke_once(),
-            Err(SanitizedContextMenuCapabilityRejection::Reentrant)
-        );
-    }
-}
+#[path = "sanitized_context_event_tests.rs"]
+mod tests;
