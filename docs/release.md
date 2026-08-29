@@ -43,6 +43,28 @@ GitHub のブランチ保護（branch protection）では、KUC repo 内で次�
 5. `katana-ui-core-text-raster` と `katana-ui-core-svg-raster` を公開し、各反映を確認
 6. `katana-ui-core-egui-adapter` を公開し、反映を確認
 
+## リリース後の自動クリーンアップ
+
+`Release` ワークフローでは `GitHub Release` が公開された後に、公開済み前提でクリーンアップを実行する。
+
+対象:
+- `release/vX.Y.Z` 形式の release ブランチ
+- ローカル/リモート同時監査（`git branch` と `git branch -r`）
+
+削除条件（ローカル/リモートともに該当）:
+- `default branch` ではないこと
+- 対象ブランチがデフォルトブランチへ `merged` していること
+- 対応する worktree が存在しない（`unused`）
+- 対応する worktree が dirty でない（`clean`）
+
+保持条件（削除不能で失敗として報告）:
+- `dirty`（未コミット差分あり）
+- `unmerged`（`merged` 条件を満たさない）
+- `in-use`（worktree で参照中）
+- `default`（デフォルトブランチ）
+
+保持対象が存在した場合、`cleanup` は失敗扱いとなり、release ワークフローでの失敗報告トリガーとなる。
+
 ## 必要な秘匿値
 
 自動実行基盤（GitHub Actions）には次の秘匿値（secret）が必要。
