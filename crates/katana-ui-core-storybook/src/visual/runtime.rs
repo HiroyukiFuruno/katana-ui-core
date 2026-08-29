@@ -50,6 +50,7 @@ impl StorybookWindowRun {
 #[derive(Debug)]
 pub enum StorybookVisualError {
     Window(minifb::Error),
+    Eframe(eframe::Error),
     Placement(ModalWindowPlacementError),
 }
 
@@ -57,6 +58,7 @@ impl fmt::Display for StorybookVisualError {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Window(error) => write!(formatter, "{error}"),
+            Self::Eframe(error) => write!(formatter, "{error}"),
             Self::Placement(error) => write!(formatter, "{error:?}"),
         }
     }
@@ -67,6 +69,12 @@ impl std::error::Error for StorybookVisualError {}
 impl From<minifb::Error> for StorybookVisualError {
     fn from(error: minifb::Error) -> Self {
         Self::Window(error)
+    }
+}
+
+impl From<eframe::Error> for StorybookVisualError {
+    fn from(error: eframe::Error) -> Self {
+        Self::Eframe(error)
     }
 }
 

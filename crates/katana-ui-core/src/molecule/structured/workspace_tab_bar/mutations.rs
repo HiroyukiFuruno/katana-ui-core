@@ -6,6 +6,19 @@ use super::options::WorkspaceTab;
 use super::ordering::ordered_tabs;
 
 impl WorkspaceTabBar {
+    pub(super) fn request_tab_close(
+        &mut self,
+        tab_id: WorkspaceTabId,
+    ) -> Vec<WorkspaceTabBarEvent> {
+        let Some(tab) = self.find_tab(&tab_id) else {
+            return Vec::new();
+        };
+        if tab.pinned || !tab.closeable {
+            return Vec::new();
+        }
+        vec![WorkspaceTabBarEvent::TabCloseRequested { tab_id }]
+    }
+
     pub(super) fn add_tab(
         &mut self,
         tab: WorkspaceTab,

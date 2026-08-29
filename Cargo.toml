@@ -1,6 +1,9 @@
 [workspace]
 members = [
     "crates/katana-ui-core",
+    "crates/katana-ui-core-text-raster",
+    "crates/katana-ui-core-svg-raster",
+    "crates/katana-ui-core-egui-adapter",
     "crates/katana-ui-core-storybook",
     "examples/kuc-consumer-app",
 ]
@@ -16,12 +19,19 @@ authors = ["Hiroyuki Furuno"]
 
 [workspace.dependencies]
 katana-ui-core = { version = "0.1.4", path = "crates/katana-ui-core" }
+katana-ui-core-text-raster = { version = "0.1.4", path = "crates/katana-ui-core-text-raster" }
+katana-ui-core-svg-raster = { version = "0.1.4", path = "crates/katana-ui-core-svg-raster" }
+katana-ui-core-egui-adapter = { version = "0.1.4", path = "crates/katana-ui-core-egui-adapter" }
 cosmic-text = "0.19.0"
-image = { version = "0.25.10", default-features = false, features = ["png"] }
+fontdb = "0.23.0"
+eframe = "0.34"
+egui = "0.34"
+image = { version = "0.25.10", default-features = false, features = ["gif", "png"] }
 minifb = "0.28.0"
 resvg = "0.47"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
+sha2 = "0.10.9"
 tiny-skia = "0.12"
 unicode-segmentation = "1.12.0"
 

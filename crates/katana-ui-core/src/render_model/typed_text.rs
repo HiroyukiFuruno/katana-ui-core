@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub const APPLE_COLOR_EMOJI_FONT_FAMILY: &str = "Apple Color Emoji";
+pub const LINUX_COLOR_EMOJI_FONT_FAMILY: &str = "Noto Color Emoji";
 pub const RGBA_CHANNEL_COUNT: usize = 4;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -45,7 +47,32 @@ impl UiTextSpan {
             link_target: String::new(),
         }
     }
+
+    #[must_use]
+    pub fn emoji_marked_spans(text: impl AsRef<str>, base_style: UiTextSpanStyle) -> Vec<Self> {
+        UiEmojiTextSegments::split(text.as_ref())
+            .into_iter()
+            .map(|segment| Self {
+                text: segment.text,
+                style: if segment.emoji {
+                    base_style.emoji()
+                } else {
+                    base_style
+                },
+                link_target: String::new(),
+            })
+            .collect()
+    }
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiEmojiTextSegment {
+    pub text: String,
+    pub emoji: bool,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UiEmojiTextSegments;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiTextSpanStyle {
@@ -73,5 +100,26 @@ impl UiTextSpanStyle {
     pub fn inline_math(mut self) -> Self {
         self.inline_math = true;
         self
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum UiPlatformEmojiFontFamily {
+    #[default]
+    None,
+    AppleColorEmoji,
+    SegoeUiEmoji,
+    NotoColorEmoji,
+}
+
+impl UiPlatformEmojiFontFamily {
+    #[must_use]
+    pub const fn as_str(&self) -> Option<&'static str> {
+        match self {
+            Self::AppleColorEmoji => Some(APPLE_COLOR_EMOJI_FONT_FAMILY),
+            Self::SegoeUiEmoji => Some("Segoe UI Emoji"),
+            Self::NotoColorEmoji => Some(LINUX_COLOR_EMOJI_FONT_FAMILY),
+            Self::None => None,
+        }
     }
 }

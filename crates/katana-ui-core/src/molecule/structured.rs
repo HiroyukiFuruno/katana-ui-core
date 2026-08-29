@@ -10,6 +10,7 @@ mod options;
 mod options_actions;
 mod options_extra;
 pub mod search_control_strip;
+pub mod source_address_strip;
 pub mod startup_state_panel;
 mod tree_view_hit_test;
 mod types;
@@ -41,6 +42,10 @@ pub use search_control_strip::{
     ReplaceMode, SearchControlStrip, SearchControlStripAction, SearchControlStripEvent,
     SearchNavigationDirection, SearchOptionKind, SearchOptions, SearchReplaceScope,
 };
+pub use source_address_strip::{
+    SourceAddressAction, SourceAddressEntry, SourceAddressEvent, SourceAddressPresentation,
+    SourceAddressStrip, SourceAddressSubmission,
+};
 pub use startup_state_panel::{
     StartupState, StartupStatePanel, StartupStatePanelAction, StartupStatePanelEvent,
     StartupStatePanelOptions,
@@ -50,15 +55,16 @@ pub use tree_view_hit_test::{
 };
 pub use types::TreeLineStyle;
 pub use workspace_tab_bar::{
-    CLOSEABLE_TAB_DRAG_TAG, CloseableTab, CloseableTabChildState, CloseableTabContextCommand,
-    CloseableTabContextMenu, CloseableTabDropPosition, CloseableTabDropRules, CloseableTabGroup,
-    CloseableTabGroupContextCommand, CloseableTabGroupId, CloseableTabGroupTarget, CloseableTabId,
-    CloseableTabKey, CloseableTabKeyboardController, CloseableTabKeyboardInput,
-    CloseableTabKeyboardShortcut, CloseableTabOverflowConfig, CloseableTabOverflowPlan,
-    CloseableTabOverflowPlanner, CloseableTabScrollConfig, CloseableTabScrollPlan,
-    CloseableTabScrollPlanner, CloseableTabStrip, CloseableTabStripAction, CloseableTabStripEvent,
-    CloseableTabStripOptions, CloseableTabStripState, CloseableTabTone, ClosedTab,
-    MAX_RECENTLY_CLOSED_TABS, MeasuredCloseableTab, TabGroup, TabGroupId, TabGroupTarget, TabId,
+    CLOSEABLE_TAB_DRAG_TAG, CloseableTab, CloseableTabChildState, CloseableTabClosePresentation,
+    CloseableTabContextCommand, CloseableTabContextMenu, CloseableTabDropPosition,
+    CloseableTabDropRules, CloseableTabGroup, CloseableTabGroupContextCommand, CloseableTabGroupId,
+    CloseableTabGroupTarget, CloseableTabId, CloseableTabKey, CloseableTabKeyboardController,
+    CloseableTabKeyboardInput, CloseableTabKeyboardShortcut, CloseableTabOverflowConfig,
+    CloseableTabOverflowPlan, CloseableTabOverflowPlanner, CloseableTabScrollConfig,
+    CloseableTabScrollPlan, CloseableTabScrollPlanner, CloseableTabStrip, CloseableTabStripAction,
+    CloseableTabStripEvent, CloseableTabStripIntent, CloseableTabStripOptions,
+    CloseableTabStripState, CloseableTabTone, ClosedTab, MAX_RECENTLY_CLOSED_TABS,
+    MeasuredCloseableTab, TabGroup, TabGroupId, TabGroupTarget, TabId,
 };
 
 #[cfg(test)]

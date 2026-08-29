@@ -1,6 +1,7 @@
 use super::{
-    BulkFixSkipReason, DiagnosticId, DiagnosticItem, DiagnosticKeyboardInput,
-    DiagnosticsListAction, DiagnosticsListEvent, DiagnosticsListOptions, DiagnosticsListPlanner,
+    BulkFixSkipReason, DiagnosticId, DiagnosticItem, DiagnosticKeyboardInput, DiagnosticScopeInput,
+    DiagnosticScopeKey, DiagnosticsListAction, DiagnosticsListEvent, DiagnosticsListOptions,
+    DiagnosticsListPlanner,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -11,6 +12,7 @@ pub struct DiagnosticsListState {
     pub expanded_ids: BTreeSet<DiagnosticId>,
     pub loading: bool,
     pub bulk_preview_open: bool,
+    pub selected_scope_key: Option<DiagnosticScopeKey>,
 }
 
 impl DiagnosticsListState {
@@ -18,8 +20,10 @@ impl DiagnosticsListState {
         &mut self,
         action: DiagnosticsListAction,
         items: &[DiagnosticItem],
+        scopes: &[DiagnosticScopeInput],
         options: &DiagnosticsListOptions,
     ) -> Vec<DiagnosticsListEvent> {
+        self.reconcile_scope_selection(scopes);
         match action {
             DiagnosticsListAction::SetGroupBy(_)
             | DiagnosticsListAction::SetSortBy(_)
@@ -27,12 +31,41 @@ impl DiagnosticsListState {
                 vec![DiagnosticsListEvent::FilterChanged]
             }
             DiagnosticsListAction::Select(id) => self.select(id),
+            DiagnosticsListAction::SelectScope(key) => self.select_scope(key, scopes),
             DiagnosticsListAction::ToggleFixPreview(id) => self.toggle_fix_preview(id),
             DiagnosticsListAction::ApplyFix(id) => apply_fix(items, id),
             DiagnosticsListAction::OpenBulkPreview => self.open_bulk_preview(),
             DiagnosticsListAction::ConfirmBulkApply => bulk_apply(items, options),
-            DiagnosticsListAction::Keyboard(input) => self.apply_keyboard(input, items, options),
+            DiagnosticsListAction::Keyboard(input) => {
+                self.apply_keyboard(input, items, scopes, options)
+            }
         }
+    }
+
+    pub(super) fn reconcile_scope_selection(&mut self, scopes: &[DiagnosticScopeInput]) {
+        if self
+            .selected_scope_key
+            .as_ref()
+            .is_some_and(|key| scopes.iter().any(|scope| &scope.key == key))
+        {
+            return;
+        }
+        self.selected_scope_key = scopes.first().map(|scope| scope.key.clone());
+    }
+
+    fn select_scope(
+        &mut self,
+        key: DiagnosticScopeKey,
+        scopes: &[DiagnosticScopeInput],
+    ) -> Vec<DiagnosticsListEvent> {
+        if scopes.len() < 2 || !scopes.iter().any(|scope| scope.key == key) {
+            return Vec::new();
+        }
+        if self.selected_scope_key.as_ref() == Some(&key) {
+            return Vec::new();
+        }
+        self.selected_scope_key = Some(key.clone());
+        vec![DiagnosticsListEvent::ScopeSelected { scope_key: key }]
     }
 
     fn select(&mut self, id: DiagnosticId) -> Vec<DiagnosticsListEvent> {
@@ -60,6 +93,7 @@ impl DiagnosticsListState {
         &mut self,
         input: DiagnosticKeyboardInput,
         items: &[DiagnosticItem],
+        scopes: &[DiagnosticScopeInput],
         options: &DiagnosticsListOptions,
     ) -> Vec<DiagnosticsListEvent> {
         match input {
@@ -71,7 +105,32 @@ impl DiagnosticsListState {
             DiagnosticKeyboardInput::ArrowLeft => self.collapse_selected_preview(),
             DiagnosticKeyboardInput::ArrowUp => self.select_visible(items, options, false),
             DiagnosticKeyboardInput::ArrowDown => self.select_visible(items, options, true),
+            DiagnosticKeyboardInput::ScopeNext => self.select_scope_relative(scopes, true),
+            DiagnosticKeyboardInput::ScopePrevious => self.select_scope_relative(scopes, false),
         }
+    }
+
+    fn select_scope_relative(
+        &mut self,
+        scopes: &[DiagnosticScopeInput],
+        forward: bool,
+    ) -> Vec<DiagnosticsListEvent> {
+        if scopes.len() < 2 {
+            return Vec::new();
+        }
+        let index = self
+            .selected_scope_key
+            .as_ref()
+            .and_then(|key| scopes.iter().position(|scope| &scope.key == key))
+            .unwrap_or(0);
+        let next = if forward {
+            (index + 1) % scopes.len()
+        } else if index == 0 {
+            scopes.len() - 1
+        } else {
+            index - 1
+        };
+        self.select_scope(scopes[next].key.clone(), scopes)
     }
 
     fn select_visible(

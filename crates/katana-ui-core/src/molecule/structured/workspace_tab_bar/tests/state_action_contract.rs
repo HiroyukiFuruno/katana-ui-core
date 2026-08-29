@@ -837,6 +837,180 @@ fn move_group_clamps_out_of_range_target_index_to_last_declared_group() {
 }
 
 #[test]
+fn nested_group_ordering_exposes_parent_child_structure_in_visual_traversal() {
+    let bar = WorkspaceTabBar::new("Workspace")
+        .group(WorkspaceTabGroup::new("team", "Team"))
+        .group(WorkspaceTabGroup::new("team/active", "Active").parent_group("team"))
+        .group(WorkspaceTabGroup::new("team/archive", "Archive").parent_group("team"))
+        .group(WorkspaceTabGroup::new("notes", "Notes"))
+        .tab(WorkspaceTab::new("loose", "Loose"))
+        .tab(WorkspaceTab::new("team-note", "Team Note").group_id("team"))
+        .tab(WorkspaceTab::new("active-a", "Active A").group_id("team/active"))
+        .tab(WorkspaceTab::new("archive-a", "Archive A").group_id("team/archive"))
+        .tab(WorkspaceTab::new("notes-a", "Notes A").group_id("notes"))
+        .tab(WorkspaceTab::new("pinned", "Pinned").pinned(true));
+
+    let visual_ids: Vec<&str> = bar
+        .visual_tabs()
+        .iter()
+        .map(|tab| tab.id.as_str())
+        .collect();
+
+    assert_eq!(
+        vec![
+            "pinned",
+            "team-note",
+            "active-a",
+            "archive-a",
+            "notes-a",
+            "loose"
+        ],
+        visual_ids
+    );
+}
+
+#[test]
+fn nested_group_collapse_controls_descendant_visibility_in_visual_state() {
+    let mut bar = WorkspaceTabBar::new("Workspace")
+        .group(WorkspaceTabGroup::new("team", "Team"))
+        .group(WorkspaceTabGroup::new("team/active", "Active").parent_group("team"))
+        .tab(WorkspaceTab::new("team-note", "Team Note").group_id("team"))
+        .tab(WorkspaceTab::new("active-a", "Active A").group_id("team/active"))
+        .tab(WorkspaceTab::new("loose", "Loose"));
+
+    let collapsed = bar.apply_action(WorkspaceTabBarAction::ToggleGroupCollapse {
+        group_id: "team".into(),
+    });
+    let visual_ids: Vec<&str> = bar
+        .visual_tabs()
+        .iter()
+        .map(|tab| tab.id.as_str())
+        .collect();
+
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::GroupCollapseChanged {
+            group_id: "team".into(),
+            collapsed: true
+        }],
+        collapsed
+    );
+    assert_eq!(vec!["loose"], visual_ids);
+}
+
+#[test]
+fn select_tab_and_collapse_child_group_work_at_nested_depth() {
+    let mut bar = WorkspaceTabBar::new("Workspace")
+        .group(WorkspaceTabGroup::new("team", "Team"))
+        .group(WorkspaceTabGroup::new("team/active", "Active").parent_group("team"))
+        .group(WorkspaceTabGroup::new("team/active/archive", "Archive").parent_group("team/active"))
+        .tab(WorkspaceTab::new("team-note", "Team Note").group_id("team"))
+        .tab(WorkspaceTab::new("active-a", "Active A").group_id("team/active"))
+        .tab(WorkspaceTab::new("archive-a", "Archive A").group_id("team/active/archive"))
+        .tab(WorkspaceTab::new("loose", "Loose"));
+
+    let visual_ids: Vec<&str> = bar
+        .visual_tabs()
+        .iter()
+        .map(|tab| tab.id.as_str())
+        .collect();
+    assert_eq!(
+        vec!["team-note", "active-a", "archive-a", "loose"],
+        visual_ids
+    );
+
+    let selected = bar.apply_action(WorkspaceTabBarAction::SelectTab {
+        tab_id: WorkspaceTabId::new("archive-a"),
+    });
+    let collapsed_child = bar.apply_action(WorkspaceTabBarAction::ToggleGroupCollapse {
+        group_id: "team/active".into(),
+    });
+    let collapsed_root = bar.apply_action(WorkspaceTabBarAction::ToggleGroupCollapse {
+        group_id: "team".into(),
+    });
+    let collapsed_grandchild = bar.apply_action(WorkspaceTabBarAction::ToggleGroupCollapse {
+        group_id: "team/active/archive".into(),
+    });
+    let visible_after_nested_collapses: Vec<&str> = bar
+        .visual_tabs()
+        .iter()
+        .map(|tab| tab.id.as_str())
+        .collect();
+
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::TabSelected {
+            tab_id: WorkspaceTabId::new("archive-a")
+        }],
+        selected
+    );
+    assert_eq!(
+        Some(&WorkspaceTabId::new("archive-a")),
+        bar.state().active_tab_id.as_ref()
+    );
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::GroupCollapseChanged {
+            group_id: WorkspaceTabGroupId::new("team/active"),
+            collapsed: true
+        }],
+        collapsed_child
+    );
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::GroupCollapseChanged {
+            group_id: WorkspaceTabGroupId::new("team"),
+            collapsed: true
+        }],
+        collapsed_root
+    );
+    assert_eq!(
+        vec![WorkspaceTabBarEvent::GroupCollapseChanged {
+            group_id: WorkspaceTabGroupId::new("team/active/archive"),
+            collapsed: true
+        }],
+        collapsed_grandchild
+    );
+    assert_eq!(vec!["loose"], visible_after_nested_collapses);
+}
+
+#[test]
+fn empty_leaf_groups_do_not_emit_empty_group_headers() {
+    let bar = WorkspaceTabBar::new("Workspace")
+        .group(WorkspaceTabGroup::new("ghost", "Ghost"))
+        .group(WorkspaceTabGroup::new("team", "Team"))
+        .group(WorkspaceTabGroup::new("team/archive", "Archive").parent_group("team"))
+        .tab(WorkspaceTab::new("archive-tab", "Archive Tab").group_id("team/archive"))
+        .tab(WorkspaceTab::new("loose", "Loose"));
+
+    let node = UiNode::from(bar);
+    let child_labels: Vec<&str> = node
+        .children()
+        .iter()
+        .map(|child| child.props().label.as_str())
+        .collect();
+
+    assert_eq!(
+        vec!["Team", "Archive", "Archive Tab", "Loose"],
+        child_labels
+    );
+}
+
+#[test]
+fn empty_group_tabs_do_not_affect_visual_tab_order() {
+    let bar = WorkspaceTabBar::new("Workspace")
+        .group(WorkspaceTabGroup::new("ghost", "Ghost"))
+        .group(WorkspaceTabGroup::new("team", "Team").collapsed(true))
+        .group(WorkspaceTabGroup::new("team/active", "Active").parent_group("team"))
+        .tab(WorkspaceTab::new("active-tab", "Active Tab").group_id("team/active"))
+        .tab(WorkspaceTab::new("loose", "Loose"));
+
+    let visual_ids: Vec<&str> = bar
+        .visual_tabs()
+        .iter()
+        .map(|tab| tab.id.as_str())
+        .collect();
+
+    assert_eq!(vec!["loose"], visual_ids);
+}
+
+#[test]
 fn group_collapse_and_overflow_emit_typed_events() {
     let mut bar = WorkspaceTabBar::new("Workspace").group(WorkspaceTabGroup::new("docs", "Docs"));
 

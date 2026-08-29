@@ -6,6 +6,8 @@ use katana_ui_core::atom::{
 use katana_ui_core::component::ComponentAction;
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::render_model::{UiNode, UiNodeKind, UiSlotPlacement, UiVisualRole};
+use std::error::Error;
+use unicode_segmentation::UnicodeSegmentation;
 
 #[test]
 fn text_area_options_are_typed_and_rendered() {
@@ -188,6 +190,92 @@ fn ime_composition_lifecycle_commits_once() {
             .filter(|event| matches!(event, TextAreaEvent::ImeCommit(_)))
             .count()
     );
+}
+
+#[test]
+fn type_emoji_emits_emoji_input_event_with_typed_value_grapheme_count_for_star_emoji()
+-> Result<(), Box<dyn Error>> {
+    let mut text_area = TextArea::new("Emoji");
+
+    let result = text_area.apply_text_area_action(TextAreaAction::Type("⭐️".to_string()));
+    let grapheme_count = result
+        .events
+        .iter()
+        .find_map(|event| {
+            if let TextAreaEvent::EmojiInput { grapheme_count } = event {
+                Some(*grapheme_count)
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| std::io::Error::other("EmojiInput should be emitted"))?;
+    let expected_event = TextAreaEvent::EmojiInput { grapheme_count: 1 };
+    let expected_grapheme_count = "⭐️".graphemes(true).count();
+
+    assert!(result.handled);
+    assert_eq!("⭐️", text_area.state().value);
+    assert!(result.events.contains(&expected_event));
+    assert_eq!(expected_grapheme_count, grapheme_count);
+    assert_eq!(3, result.events.len());
+    Ok(())
+}
+
+#[test]
+fn ime_commit_emoji_emits_emoji_input_event_with_typed_value_grapheme_count_for_star_emoji()
+-> Result<(), Box<dyn Error>> {
+    let mut text_area = TextArea::new("Emoji").ime_enabled(true);
+
+    let result = text_area.apply_text_area_action(TextAreaAction::ImeCommit("⭐️".to_string()));
+    let grapheme_count = result
+        .events
+        .iter()
+        .find_map(|event| {
+            if let TextAreaEvent::EmojiInput { grapheme_count } = event {
+                Some(*grapheme_count)
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| std::io::Error::other("EmojiInput should be emitted"))?;
+    let expected_event = TextAreaEvent::EmojiInput { grapheme_count: 1 };
+    let expected_commit = TextAreaEvent::ImeCommit("⭐️".to_string());
+    let expected_change = TextAreaEvent::Change("⭐️".to_string());
+    let expected_grapheme_count = "⭐️".graphemes(true).count();
+
+    assert!(result.handled);
+    assert_eq!("⭐️", text_area.state().value);
+    assert!(result.events.contains(&expected_commit));
+    assert!(result.events.contains(&expected_event));
+    assert!(result.events.contains(&expected_change));
+    assert_eq!(expected_grapheme_count, grapheme_count);
+    assert_eq!(3, result.events.len());
+    Ok(())
+}
+
+#[test]
+fn type_multiple_emojis_emits_emoji_input_event_with_grapheme_count_of_whole_typed_value()
+-> Result<(), Box<dyn Error>> {
+    let mut text_area = TextArea::new("Emoji");
+    let value = "🙂😄";
+
+    let result = text_area.apply_text_area_action(TextAreaAction::Type(value.to_string()));
+    let grapheme_count = result
+        .events
+        .iter()
+        .find_map(|event| {
+            if let TextAreaEvent::EmojiInput { grapheme_count } = event {
+                Some(*grapheme_count)
+            } else {
+                None
+            }
+        })
+        .ok_or_else(|| std::io::Error::other("EmojiInput should be emitted"))?;
+
+    assert!(result.handled);
+    assert_eq!(value, text_area.state().value);
+    assert_eq!(2, grapheme_count);
+    assert_eq!(value.graphemes(true).count(), grapheme_count);
+    Ok(())
 }
 
 #[test]

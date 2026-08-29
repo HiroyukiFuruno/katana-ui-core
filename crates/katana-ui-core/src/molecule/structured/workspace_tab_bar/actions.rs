@@ -82,6 +82,11 @@ pub enum WorkspaceTabBarAction {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum WorkspaceTabBarIntent {
+    RequestTabClose { tab_id: WorkspaceTabId },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WorkspaceTabGroupTarget {
     Existing(WorkspaceTabGroupId),
     Ungrouped,

@@ -1,12 +1,21 @@
 use super::canvas::Canvas;
+use katana_ui_core::molecule::RgbaColor;
 use katana_ui_core::render_model::UiIconProps;
-use resvg::usvg;
-use tiny_skia::{Pixmap, Transform};
+use katana_ui_core_svg_raster::{UiSvgRasterRequest, UiSvgRasterizer};
+use std::cell::RefCell;
 
-const HEX_COLOR_LENGTH: usize = 7;
+const RGBA_CHANNEL_COUNT: usize = 4;
+const RED_CHANNEL_INDEX: usize = 0;
+const GREEN_CHANNEL_INDEX: usize = 1;
+const BLUE_CHANNEL_INDEX: usize = 2;
+const ALPHA_CHANNEL_INDEX: usize = 3;
 const RED_SHIFT: u32 = 16;
 const GREEN_SHIFT: u32 = 8;
 const CHANNEL_MASK: u32 = 0xff;
+
+thread_local! {
+    static SVG_RASTERIZER: RefCell<UiSvgRasterizer> = RefCell::new(UiSvgRasterizer::default());
+}
 
 pub(super) struct SvgIconRaster;
 
@@ -22,67 +31,60 @@ impl SvgIconRaster {
         let physical_left = canvas.to_physical_x(left);
         let physical_top = canvas.to_physical_y(top);
         let physical_size = canvas.logical_scale(size).max(1);
-        let Some(pixmap) = Self::rasterize(icon, physical_size, color) else {
+        let Ok(physical_size) = u32::try_from(physical_size) else {
             return false;
         };
-        for y in 0..physical_size {
-            for x in 0..physical_size {
-                let Some(pixel) = pixmap.pixel(x as u32, y as u32) else {
-                    continue;
+        let request = UiSvgRasterRequest {
+            icon: icon.clone(),
+            width_px: physical_size,
+            height_px: physical_size,
+            color: rgba_color(color),
+        };
+        let raster = SVG_RASTERIZER.with(|rasterizer| rasterizer.borrow_mut().rasterize(&request));
+        let Ok(raster) = raster else {
+            return false;
+        };
+
+        let Ok(raster_width) = usize::try_from(raster.width_px) else {
+            return false;
+        };
+        let Ok(raster_height) = usize::try_from(raster.height_px) else {
+            return false;
+        };
+        for y in 0..raster_height {
+            for x in 0..raster_width {
+                let index = (y * raster_width + x) * RGBA_CHANNEL_COUNT;
+                let Some(pixel) = raster
+                    .rgba_unmultiplied
+                    .get(index..index + RGBA_CHANNEL_COUNT)
+                else {
+                    return false;
                 };
-                let alpha = pixel.alpha();
-                if alpha == 0 {
+                if pixel[ALPHA_CHANNEL_INDEX] == 0 {
                     continue;
                 }
-                let color = (u32::from(pixel.red()) << RED_SHIFT)
-                    | (u32::from(pixel.green()) << GREEN_SHIFT)
-                    | u32::from(pixel.blue());
+                let color = (u32::from(pixel[RED_CHANNEL_INDEX]) << RED_SHIFT)
+                    | (u32::from(pixel[GREEN_CHANNEL_INDEX]) << GREEN_SHIFT)
+                    | u32::from(pixel[BLUE_CHANNEL_INDEX]);
                 canvas.blend_physical(
                     physical_left.saturating_add(x),
                     physical_top.saturating_add(y),
                     color,
-                    alpha,
+                    pixel[ALPHA_CHANNEL_INDEX],
                 );
             }
         }
         true
     }
-
-    fn rasterize(icon: &UiIconProps, size: usize, color: u32) -> Option<Pixmap> {
-        let svg = Self::themed_svg_source(icon, color);
-        let options = usvg::Options::default();
-        let tree = usvg::Tree::from_str(&svg, &options).ok()?;
-        let source_size = tree.size();
-        let mut pixmap = Pixmap::new(size as u32, size as u32)?;
-        let scale_x = size as f32 / source_size.width().max(1.0);
-        let scale_y = size as f32 / source_size.height().max(1.0);
-        resvg::render(
-            &tree,
-            Transform::from_scale(scale_x, scale_y),
-            &mut pixmap.as_mut(),
-        );
-        Some(pixmap)
-    }
-
-    fn themed_svg_source(icon: &UiIconProps, color: u32) -> String {
-        let hex = color_hex(color);
-        icon.svg_source
-            .replace("fill=\"#FFFFFF\"", &format!("fill=\"{hex}\""))
-            .replace("fill=\"#ffffff\"", &format!("fill=\"{hex}\""))
-            .replace("fill=\"currentColor\"", &format!("fill=\"{hex}\""))
-            .replace("stroke=\"#FFFFFF\"", &format!("stroke=\"{hex}\""))
-            .replace("stroke=\"#ffffff\"", &format!("stroke=\"{hex}\""))
-            .replace("stroke=\"currentColor\"", &format!("stroke=\"{hex}\""))
-    }
 }
 
-fn color_hex(color: u32) -> String {
-    let red = (color >> RED_SHIFT) & CHANNEL_MASK;
-    let green = (color >> GREEN_SHIFT) & CHANNEL_MASK;
-    let blue = color & CHANNEL_MASK;
-    let hex = format!("#{red:02X}{green:02X}{blue:02X}");
-    debug_assert_eq!(HEX_COLOR_LENGTH, hex.len());
-    hex
+fn rgba_color(color: u32) -> RgbaColor {
+    RgbaColor::new(
+        ((color >> RED_SHIFT) & CHANNEL_MASK) as u8,
+        ((color >> GREEN_SHIFT) & CHANNEL_MASK) as u8,
+        (color & CHANNEL_MASK) as u8,
+        u8::MAX,
+    )
 }
 
 #[cfg(test)]
@@ -94,7 +96,8 @@ mod tests {
 
     const BACKGROUND: u32 = 0x101010;
     const TEXT: u32 = 0xeeeeee;
-    const MATERIAL_PAN_UP: &str = r##"<svg fill="#FFFFFF" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24"><path d="M440-647 244-451q-12 12-28 11.5T188-452q-11-12-11.5-28t11.5-28l264-264q6-6 13-8.5t15-2.5q8 0 15 2.5t13 8.5l264 264q11 11 11 27.5T772-452q-12 12-28.5 12T715-452L520-647v447q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-447Z"/></svg>"##;
+    const GREEN: u32 = 0x12ab34;
+    const MATERIAL_PAN_UP: &str = r##"<svg fill="#FFFFFF" xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24"><path d="M440-647 244-451q-12 12-28 11.5T188-452q-11-12-11.5-28t11.5-28l264-264q6-6 13-8.5t15-2.5q8 0 15 2.5t13 8.5l264 264q11 11 11 27.5T772-452q0 17-11.5 28.5T743-439L520-647v447q0 17-11.5 28.5T480-160q-17 0-28.5-11.5T440-200v-447Z"/></svg>"##;
     const KATANA_STROKE_PAN_UP: &str = r##"<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 10 8 4 12 10"/></svg>"##;
 
     #[test]
@@ -114,15 +117,18 @@ mod tests {
     }
 
     #[test]
-    fn katana_stroke_icon_tints_white_stroke_to_requested_color() {
+    fn katana_stroke_icon_uses_public_runtime_white_paint_normalization() {
         let icon = UiIconProps::new(KATANA_STROKE_PAN_UP)
             .role("surface.pan-up")
             .view_box("0 0 16 16");
+        let mut canvas = Canvas::new(24, 24, BACKGROUND);
 
-        let themed = SvgIconRaster::themed_svg_source(&icon, 0x12AB34);
-
-        assert!(themed.contains("stroke=\"#12AB34\""));
-        assert!(!themed.contains("stroke=\"#FFFFFF\""));
+        assert!(SvgIconRaster::draw(&mut canvas, &icon, 4, 4, 16, GREEN));
+        assert!(canvas.pixels().iter().any(|pixel| {
+            let red = (*pixel >> 16) & 0xff;
+            let green = (*pixel >> 8) & 0xff;
+            green > red
+        }));
     }
 
     #[test]

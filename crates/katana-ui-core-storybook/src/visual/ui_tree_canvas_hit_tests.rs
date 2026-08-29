@@ -3,6 +3,7 @@ use super::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 use super::ui_tree_canvas_types::{UiTreeHitRect, UiTreeHostActionHit, UiTreeRenderArea};
 use super::{Canvas, TextRenderer, UiTreeCanvasRenderer};
 use crate::visual::ui_tree_canvas_palette::UiTreeCanvasPalette;
+use crate::visual::ui_tree_canvas_text_line_width::{SpanTextRenderers, span_part_width};
 use katana_ui_core::atom::Button;
 use katana_ui_core::atom::Checkbox;
 use katana_ui_core::atom::ImageSurface;
@@ -39,23 +40,13 @@ mod ui_tree_canvas_hit_text_tests;
 fn text_hit_width(node: &UiNode, text: &str) -> usize {
     let metrics = UiTreeTextMetrics::for_node(node);
     let renderer = TextRenderer::load(&UiCoreFacade::default(), "body");
-    let mut width = 0usize;
-    let mut segment = String::new();
-    for character in text.chars() {
-        if character.is_whitespace() {
-            width = width.saturating_add(renderer.measure_width(&segment, metrics.font_size));
-            segment.clear();
-            width = width.saturating_add(
-                (metrics.font_size * super::ui_tree_canvas_hit::COLLAPSED_WHITESPACE_WIDTH_FACTOR)
-                    .ceil() as usize,
-            );
-            continue;
-        }
-        segment.push(character);
-    }
-    width
-        .saturating_add(renderer.measure_width(&segment, metrics.font_size))
-        .max(1)
+    let span = UiTextSpan::plain(text);
+    span_part_width(
+        SpanTextRenderers::new(&renderer, &renderer),
+        &span,
+        metrics,
+        node.props().text.role == "code",
+    )
 }
 
 fn top_right_overlay_margin() -> UiEdgeInsets {

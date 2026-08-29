@@ -118,6 +118,31 @@ impl StatusBar {
     }
 
     #[must_use]
+    pub fn label(&self) -> &str {
+        &self.label
+    }
+
+    #[must_use]
+    pub const fn mode_value(&self) -> StatusBarMode {
+        self.mode
+    }
+
+    #[must_use]
+    pub const fn density_value(&self) -> StatusBarDensity {
+        self.density
+    }
+
+    #[must_use]
+    pub fn single_message(&self) -> Option<&str> {
+        self.single_message.as_deref()
+    }
+
+    #[must_use]
+    pub fn segments(&self) -> &[StatusBarSegment] {
+        &self.segments
+    }
+
+    #[must_use]
     pub fn segments_for(&self, alignment: StatusBarSegmentAlignment) -> Vec<&StatusBarSegment> {
         self.segments
             .iter()

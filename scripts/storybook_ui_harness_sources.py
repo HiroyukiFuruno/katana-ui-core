@@ -4,6 +4,10 @@ import re
 from pathlib import Path
 
 PAGE_TOKEN = re.compile(r'"([a-z0-9-]+)"')
+PAGE_LIST_BLOCK = re.compile(
+    r"const\s+(?P<name>[A-Z_]+):\s*&\[\s*&str\s*\]\s*=\s*&\[(?P<body>.*?)\];",
+    re.S,
+)
 LABEL_TOKEN = re.compile(r'"([^"]+)"')
 STORY_PATH_PAGE = re.compile(r'page:\s*"([a-z0-9-]+)"')
 LEAF_CHANGE_ROW = re.compile(
@@ -37,8 +41,21 @@ class StorybookUiHarnessSources:
         self.root = root
 
     def required_pages(self) -> list[str]:
+        return self.page_list("CANVAS_REQUIRED_PAGES", "REQUIRED_PAGES")
+
+    def interactive_runtime_pages(self) -> list[str]:
+        return self.page_list("INTERACTIVE_RUNTIME_PAGES")
+
+    def page_list(self, *names: str) -> list[str]:
         source = self.read("crates/katana-ui-core-storybook/src/requirements.rs")
-        return PAGE_TOKEN.findall(source.split("const MIN_SINGLE_NODE", 1)[0])
+        blocks = {
+            match.group("name"): PAGE_TOKEN.findall(match.group("body"))
+            for match in PAGE_LIST_BLOCK.finditer(source)
+        }
+        for name in names:
+            if name in blocks:
+                return blocks[name]
+        return []
 
     def preset_counts(self) -> dict[str, int]:
         counts: dict[str, int] = {}

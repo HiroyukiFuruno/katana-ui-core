@@ -324,6 +324,98 @@ fn keyboard_arrows_and_shift_f8_move_selection_through_visible_items() {
     ));
 }
 
+#[test]
+fn render_snapshot_keeps_generic_visible_state_without_host_specific_values() {
+    let mut list = DiagnosticsList::new("診断")
+        .item(item_with_fix("error-a"))
+        .item(item_without_fix("warning-a"));
+    list.apply_action(DiagnosticsListAction::Select(id("warning-a")));
+
+    let snapshot = list.render_snapshot();
+
+    assert_eq!("診断", snapshot.label);
+    assert_eq!(2, snapshot.visible.total_count);
+    assert_eq!(Some(id("warning-a")), snapshot.state.selected_id);
+    assert_eq!(
+        vec![id("error-a"), id("warning-a")],
+        snapshot.visible.visible_ids
+    );
+}
+
+#[test]
+fn scopes_reconcile_deterministically_and_filter_by_membership() {
+    let mut list = DiagnosticsList::new("診断 ⭐️")
+        .scope("all", "すべて ⭐️", "すべての診断 ⭐️")
+        .scope("active", "現在", "現在の範囲")
+        .item(item_with_fix("all").scope("all"))
+        .item(item_without_fix("active").scope("active"))
+        .item(item_without_fix("both").scopes(["all", "active"]));
+
+    assert_eq!(
+        Some("all"),
+        list.render_snapshot()
+            .state
+            .selected_scope_key
+            .as_ref()
+            .map(|key| key.as_str())
+    );
+    assert_eq!(
+        vec![id("all"), id("both")],
+        list.render_snapshot().visible.visible_ids
+    );
+
+    let selected = list.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ScopeNext,
+    ));
+    assert!(
+        matches!(selected.as_slice(), [DiagnosticsListEvent::ScopeSelected { scope_key }] if scope_key.as_str() == "active")
+    );
+    assert_eq!(
+        vec![id("active"), id("both")],
+        list.render_snapshot().visible.visible_ids
+    );
+
+    list.set_scopes(vec![(
+        "all".into(),
+        "すべて ⭐️".into(),
+        "すべての診断 ⭐️".into(),
+    )]);
+    assert_eq!(
+        Some("all"),
+        list.render_snapshot()
+            .state
+            .selected_scope_key
+            .as_ref()
+            .map(|key| key.as_str())
+    );
+    assert!(
+        list.apply_action(DiagnosticsListAction::Keyboard(
+            DiagnosticKeyboardInput::ScopeNext,
+        ))
+        .is_empty()
+    );
+}
+
+#[test]
+fn scope_keyboard_selection_uses_current_scopes_only() {
+    let mut list = DiagnosticsList::new("診断")
+        .scope("one", "一", "一")
+        .scope("two", "二", "二");
+    let events = list.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ScopeNext,
+    ));
+    assert!(
+        matches!(events.as_slice(), [DiagnosticsListEvent::ScopeSelected { scope_key }] if scope_key.as_str() == "two")
+    );
+    list.set_scopes(vec![("one".into(), "一".into(), "一".into())]);
+    assert!(
+        list.apply_action(DiagnosticsListAction::Keyboard(
+            DiagnosticKeyboardInput::ScopePrevious,
+        ))
+        .is_empty()
+    );
+}
+
 fn items() -> Vec<DiagnosticItem> {
     vec![
         item_with_fix("error-a"),

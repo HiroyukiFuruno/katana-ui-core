@@ -4,6 +4,7 @@ use super::{
     TextArea, TextAreaAction, TextAreaCaretMove, TextAreaEvent, TextAreaResizeDelta,
     TextAreaSelection,
 };
+use crate::render_model::UiEmojiTextSegments;
 
 impl TextArea {
     pub(super) fn suppresses(&self, action: &TextAreaAction) -> bool {
@@ -94,7 +95,11 @@ impl TextArea {
         self.state.composition = None;
         self.replace_selection_or_insert(&value);
         self.options.value = self.state.value.clone();
-        events.push(TextAreaEvent::ImeCommit(value));
+        let grapheme_count = caret::count_graphemes(&value);
+        events.push(TextAreaEvent::ImeCommit(value.clone()));
+        if contains_emoji(&value) {
+            events.push(TextAreaEvent::EmojiInput { grapheme_count });
+        }
         events.push(TextAreaEvent::Change(self.state.value.clone()));
         true
     }
@@ -161,7 +166,7 @@ impl TextArea {
 }
 
 fn contains_emoji(value: &str) -> bool {
-    value
-        .chars()
-        .any(|character| matches!(character as u32, 0x1f300..=0x1faff))
+    UiEmojiTextSegments::split(value)
+        .into_iter()
+        .any(|segment| segment.emoji)
 }

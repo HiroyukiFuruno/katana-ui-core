@@ -81,12 +81,14 @@ pub use tree_props::{
 };
 pub use tree_semantics::UiTreeSemantics;
 pub use typed::{
+    APPLE_COLOR_EMOJI_FONT_FAMILY, LINUX_COLOR_EMOJI_FONT_FAMILY, RGBA_CHANNEL_COUNT,
     UiAnimationState, UiButtonProps, UiClearActionSpec, UiColorBlendingMode, UiColorPickerProps,
     UiColorPickerTriggerKind, UiColorSwatchProps, UiCommandResultProps,
     UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea, UiDismissAction,
-    UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiFormFieldProps, UiIconProps,
-    UiLoadingProps, UiModalParentInteraction, UiModalPlacement, UiModalPresentation, UiModalProps,
-    UiModalSize, UiPanelProps, UiPopoverFocusManagement, UiPopoverPlacement, UiPopoverProps,
+    UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiEmojiTextSegment,
+    UiEmojiTextSegments, UiFormFieldProps, UiIconProps, UiLoadingProps, UiModalParentInteraction,
+    UiModalPlacement, UiModalPresentation, UiModalProps, UiModalSize, UiPanelProps,
+    UiPlatformEmojiFontFamily, UiPopoverFocusManagement, UiPopoverPlacement, UiPopoverProps,
     UiProgressMode, UiRect, UiScrollAreaAxis, UiScrollAreaProps, UiScrollbarDragState,
     UiScrollbarModel, UiScrollbarPlacement, UiScrollbarVisibility, UiSearchControlProps,
     UiSearchReplaceMode, UiShortcutProps, UiSkeletonAnimation, UiSkeletonProps, UiSkeletonShape,

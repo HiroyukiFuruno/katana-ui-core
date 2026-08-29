@@ -1,0 +1,23 @@
+[package]
+name = "katana-ui-core-egui-adapter"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+description = "KUC-owned egui adapter for shared text surfaces and command chrome"
+authors.workspace = true
+
+[features]
+default = []
+storybook-artifacts = ["dep:image"]
+
+[dependencies]
+egui.workspace = true
+image = { workspace = true, optional = true }
+katana-ui-core.workspace = true
+katana-ui-core-svg-raster.workspace = true
+katana-ui-core-text-raster.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+sha2.workspace = true

@@ -24,8 +24,6 @@ use super::ui_tree_canvas_types::{
 };
 #[path = "ui_tree_canvas_hit_geometry.rs"]
 mod geometry;
-#[cfg(test)]
-pub(crate) use geometry::COLLAPSED_WHITESPACE_WIDTH_FACTOR;
 use geometry::{
     ContainerPadding, ScrollHitClip, child_render_area, clip_scroll_hit, duplicate_panel_label,
     node_cursor, scroll_source_y, whitespace_width,

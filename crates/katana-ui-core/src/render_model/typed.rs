@@ -26,6 +26,8 @@ mod typed_search;
 mod typed_split_pane;
 #[path = "typed_text.rs"]
 mod typed_text;
+#[path = "typed_text_emoji.rs"]
+mod typed_text_emoji;
 #[path = "typed_text_entry.rs"]
 mod typed_text_entry;
 pub use typed_color_picker::{UiColorBlendingMode, UiColorPickerProps, UiColorPickerTriggerKind};
@@ -48,7 +50,11 @@ pub use typed_search::{UiSearchControlProps, UiSearchReplaceMode};
 pub use typed_split_pane::{
     UiSplitPaneAxis, UiSplitPaneHandleProps, UiSplitPaneProps, UiSplitPaneResizeMode,
 };
-pub use typed_text::{UiTextProps, UiTextSpan, UiTextSpanStyle, UiTextWrapMode};
+pub use typed_text::{
+    APPLE_COLOR_EMOJI_FONT_FAMILY, LINUX_COLOR_EMOJI_FONT_FAMILY, RGBA_CHANNEL_COUNT,
+    UiEmojiTextSegment, UiEmojiTextSegments, UiPlatformEmojiFontFamily, UiTextProps, UiTextSpan,
+    UiTextSpanStyle, UiTextWrapMode,
+};
 pub use typed_text_entry::{
     UiClearActionSpec, UiSlotActionSpec, UiSlotPlacement, UiSlotSpec, UiTextEntryProps,
 };

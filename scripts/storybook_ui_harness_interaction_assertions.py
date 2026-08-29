@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+from storybook_ui_harness_sources import StorybookUiHarnessSources
+
 PAGE_TOKEN = re.compile(r'"([a-z0-9-]+)"')
 
 
@@ -214,8 +216,7 @@ class StorybookUiInteractionHarness:
         return failures
 
     def required_pages(self) -> list[str]:
-        source = self.read_optional("crates/katana-ui-core-storybook/src/requirements.rs")
-        return PAGE_TOKEN.findall(source.split("const MIN_SINGLE_NODE", 1)[0])
+        return StorybookUiHarnessSources(self.root).required_pages()
 
     @staticmethod
     def page_has_preset_distinct_test(

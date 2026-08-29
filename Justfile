@@ -53,6 +53,7 @@ ast-lint:
     python3 scripts/assert-storybook-ui-harness.py
     kal check
     python3 scripts/assert-kuc-state-ownership.py
+    python3 scripts/assert-kuc-guardrails.py
     python3 scripts/assert-storybook-page-layout.py
 
 # Run the non-Storybook consumer contract used by release readiness.

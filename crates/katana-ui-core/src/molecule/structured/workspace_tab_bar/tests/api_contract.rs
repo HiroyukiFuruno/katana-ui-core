@@ -46,6 +46,24 @@ fn typed_options_cover_workspace_tab_and_group_contract() {
 }
 
 #[test]
+fn legacy_workspace_tab_group_payload_deserializes_with_default_parent_group() -> Result<(), String>
+{
+    let payload = r##"{"id":"docs","label":"Docs","color":"#4a90d9","collapsed":true}"##;
+
+    let group: WorkspaceTabGroup = serde_json::from_str(payload)
+        .map_err(|error| format!("legacy workspace tab group payload must deserialize: {error}"))?;
+
+    assert_eq!(
+        WorkspaceTabGroup::new("docs", "Docs")
+            .color("#4a90d9")
+            .collapsed(true),
+        group
+    );
+    assert_eq!(None, group.parent_group_id);
+    Ok(())
+}
+
+#[test]
 fn workspace_tab_icon_accepts_external_svg_props() {
     let tab = WorkspaceTab::new("search", "Search").svg_icon(
         UiIconProps::new("<svg data-icon=\"search\"/>")

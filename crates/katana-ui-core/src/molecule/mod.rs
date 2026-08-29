@@ -5,6 +5,7 @@ mod basic_list;
 mod card;
 mod chip_group;
 mod color;
+pub mod command_chrome;
 mod diff;
 mod disclosure;
 mod disclosure_foundation;
@@ -18,6 +19,7 @@ mod skeleton_cluster;
 mod state;
 pub mod status_bar;
 pub mod structured;
+pub mod tab_strip_icon_catalog;
 mod toast_stack_manager;
 pub mod toolbar;
 mod virtualization;
@@ -89,26 +91,27 @@ pub use status_bar::{
 };
 pub use structured::{
     ArrayEditorItem, BulkFixSkipReason, CLOSEABLE_TAB_DRAG_TAG, CloseableTab,
-    CloseableTabChildState, CloseableTabContextCommand, CloseableTabContextMenu,
-    CloseableTabDropPosition, CloseableTabDropRules, CloseableTabGroup,
+    CloseableTabChildState, CloseableTabClosePresentation, CloseableTabContextCommand,
+    CloseableTabContextMenu, CloseableTabDropPosition, CloseableTabDropRules, CloseableTabGroup,
     CloseableTabGroupContextCommand, CloseableTabGroupId, CloseableTabGroupTarget, CloseableTabId,
     CloseableTabKey, CloseableTabKeyboardController, CloseableTabKeyboardInput,
     CloseableTabKeyboardShortcut, CloseableTabOverflowConfig, CloseableTabOverflowPlan,
     CloseableTabOverflowPlanner, CloseableTabScrollConfig, CloseableTabScrollPlan,
     CloseableTabScrollPlanner, CloseableTabStrip, CloseableTabStripAction, CloseableTabStripEvent,
-    CloseableTabStripOptions, CloseableTabStripState, CloseableTabTone, CollapsiblePanel,
-    CollapsiblePanelAction, CollapsiblePanelEvent, CollapsiblePanelOptions, CollapsiblePanelState,
-    CollapsiblePanelWidth, CommandItem, CommandKeyboardInput, CommandLauncherAction,
-    CommandLauncherEvent, CommandPalette, CommandResultRow, CommandResultRows, DiagnosticAction,
-    DiagnosticFixPreview, DiagnosticId, DiagnosticItem, DiagnosticKeyboardInput,
-    DiagnosticLocation, DiagnosticSeverity, DiagnosticsGroup, DiagnosticsGroupBy, DiagnosticsList,
-    DiagnosticsListAction, DiagnosticsListEvent, DiagnosticsListOptions, DiagnosticsListPlanner,
-    DiagnosticsListState, DiagnosticsSortBy, DiagnosticsVisibleSnapshot, DynamicArrayEditor,
-    DynamicArrayEditorAction, DynamicArrayEditorEvent, FileTree, FileTreeAction, FileTreeHitRect,
-    FileTreeHitTarget, FileTreeHitTestInput, FileTreeItem, FileTreeState, HighlightMove,
-    MeasuredCloseableTab, PanelMode, PanelSide, ReplaceMode, SearchControlStrip,
-    SearchControlStripAction, SearchControlStripEvent, SearchNavigationDirection, SearchOptionKind,
-    SearchOptions, SearchReplaceScope, StartupState, StartupStatePanel, StartupStatePanelAction,
+    CloseableTabStripIntent, CloseableTabStripOptions, CloseableTabStripState, CloseableTabTone,
+    CollapsiblePanel, CollapsiblePanelAction, CollapsiblePanelEvent, CollapsiblePanelOptions,
+    CollapsiblePanelState, CollapsiblePanelWidth, CommandItem, CommandKeyboardInput,
+    CommandLauncherAction, CommandLauncherEvent, CommandPalette, CommandResultRow,
+    CommandResultRows, DiagnosticAction, DiagnosticFixPreview, DiagnosticId, DiagnosticItem,
+    DiagnosticKeyboardInput, DiagnosticLocation, DiagnosticSeverity, DiagnosticsGroup,
+    DiagnosticsGroupBy, DiagnosticsList, DiagnosticsListAction, DiagnosticsListEvent,
+    DiagnosticsListOptions, DiagnosticsListPlanner, DiagnosticsListState, DiagnosticsSortBy,
+    DiagnosticsVisibleSnapshot, DynamicArrayEditor, DynamicArrayEditorAction,
+    DynamicArrayEditorEvent, FileTree, FileTreeAction, FileTreeHitRect, FileTreeHitTarget,
+    FileTreeHitTestInput, FileTreeItem, FileTreeState, HighlightMove, MeasuredCloseableTab,
+    PanelMode, PanelSide, ReplaceMode, SearchControlStrip, SearchControlStripAction,
+    SearchControlStripEvent, SearchNavigationDirection, SearchOptionKind, SearchOptions,
+    SearchReplaceScope, StartupState, StartupStatePanel, StartupStatePanelAction,
     StartupStatePanelEvent, StartupStatePanelOptions, TabGroup, TabGroupId, TabGroupTarget, TabId,
     TreeLineStyle, TreeNode, TreeNodeKind, TreeView, TreeViewAction, TreeViewHitRect,
     TreeViewHitTarget, TreeViewHitTestInput,

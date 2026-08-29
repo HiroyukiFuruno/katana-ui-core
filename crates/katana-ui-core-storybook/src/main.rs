@@ -24,6 +24,9 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if let Some(command) = args.get(1).map(String::as_str) {
         match command {
+            "--text-surface-artifact" => write_text_surface_artifact(&args),
+            "--command-chrome-artifact" => write_command_chrome_artifact(&args),
+            "--text-command-root-artifact" => write_text_command_root_artifact(&args),
             "--visual-snapshot" => SnapshotCommand::save_snapshot(&args),
             "--open-window" => open_window(&args),
             "--open-modal-window" => open_modal_window(&args),
@@ -35,6 +38,42 @@ fn main() {
         return;
     }
     print_summary();
+}
+
+fn write_text_surface_artifact(args: &[String]) {
+    let Some(output_dir) = args.get(2) else {
+        eprintln!("missing output directory for --text-surface-artifact");
+        process::exit(2);
+    };
+    if let Err(error) = StorybookVisual::write_text_surface_artifact(Path::new(output_dir)) {
+        eprintln!("failed to write TextSurface Storybook artifact: {error}");
+        process::exit(2);
+    }
+    println!("katana-ui-core-storybook-text-surface-artifact: {output_dir}");
+}
+
+fn write_command_chrome_artifact(args: &[String]) {
+    let Some(output_dir) = args.get(2) else {
+        eprintln!("missing output directory for --command-chrome-artifact");
+        process::exit(2);
+    };
+    if let Err(error) = StorybookVisual::write_command_chrome_artifact(Path::new(output_dir)) {
+        eprintln!("failed to write CommandChrome Storybook artifact: {error}");
+        process::exit(2);
+    }
+    println!("katana-ui-core-storybook-command-chrome-artifact: {output_dir}");
+}
+
+fn write_text_command_root_artifact(args: &[String]) {
+    let Some(output_dir) = args.get(2) else {
+        eprintln!("missing output directory for --text-command-root-artifact");
+        process::exit(2);
+    };
+    if let Err(error) = StorybookVisual::write_text_command_root_artifact(Path::new(output_dir)) {
+        eprintln!("failed to write TextCommandRoot Storybook artifact: {error}");
+        process::exit(2);
+    }
+    println!("katana-ui-core-storybook-text-command-root-artifact: {output_dir}");
 }
 
 fn print_summary() {
@@ -312,6 +351,10 @@ mod tests {
     #[test]
     fn resolve_storybook_page_rejects_unknown_page_without_defaulting() {
         assert_eq!(Some("progress-bar"), resolve_storybook_page("progress-bar"));
+        assert_eq!(
+            Some("command-chrome"),
+            resolve_storybook_page("command-chrome")
+        );
         assert_eq!(None, resolve_storybook_page("progress"));
     }
 

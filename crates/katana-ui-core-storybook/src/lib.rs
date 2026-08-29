@@ -16,6 +16,8 @@ pub use catalog::{
 };
 use katana_ui_core::theme::ThemeSnapshot;
 pub use panel::StorybookPanel;
+pub use visual::FullRootArtifactError;
+pub use visual::TextSurfaceArtifactError;
 pub use visual::{
     Canvas, CanvasBlitRequest, RgbaBlitRequest, SelectableTextRun, StorybookPresentation,
     StorybookRuntimeReport, StorybookVisual, StorybookVisualError, StorybookWindowRun,
@@ -39,11 +41,17 @@ pub struct StorybookRoutes;
 impl StorybookRoutes {
     #[must_use]
     pub fn default_routes(self) -> Vec<StorybookRoute> {
-        requirements::StoryRequirements::required_pages()
+        let mut pages = Vec::new();
+        for page in requirements::StoryRequirements::required_pages()
             .iter()
-            .copied()
-            .map(Self::route)
-            .collect()
+            .chain(requirements::StoryRequirements::interactive_runtime_pages().iter())
+        {
+            if !pages.contains(page) {
+                pages.push(*page);
+            }
+        }
+
+        pages.iter().copied().map(Self::route).collect()
     }
 
     fn route(page: &'static str) -> StorybookRoute {
@@ -95,7 +103,7 @@ mod tests {
     #[test]
     fn storybook_routes_cover_core_and_legacy_targets() {
         let routes = StorybookRoutes.default_routes();
-        assert_eq!(77, routes.len());
+        assert_eq!(79, routes.len());
         assert!(
             routes
                 .iter()
@@ -116,6 +124,14 @@ mod tests {
             routes
                 .iter()
                 .any(|route| route.page == "search-control-strip")
+        );
+        assert!(routes.iter().any(|route| route.page == "command-chrome"));
+        assert_eq!(
+            1,
+            routes
+                .iter()
+                .filter(|route| route.page == "command-chrome")
+                .count()
         );
         assert!(routes.iter().any(|route| route.page == "grid"));
     }
