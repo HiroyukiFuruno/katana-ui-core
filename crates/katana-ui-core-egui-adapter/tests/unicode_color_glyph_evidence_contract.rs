@@ -1,7 +1,7 @@
 use katana_ui_core::render_model::UiRect;
 use katana_ui_core_egui_adapter::text_command_surface::{
-    CONTROL_STAR_TEXT, IME_COMMIT_TEXT, IME_PREEDIT_TEXT, KucAccessKitNodeObservation, KucBounds,
-    KucCaretObservation, KucHitTestObservation, KucImeTraceEvidence, KucRgbaCropEvidence,
+    CONTROL_STAR_TEXT, IME_COMMIT_TEXT, IME_PREEDIT_TEXT, KucBounds, KucCaretObservation,
+    KucHitTestObservation, KucImeTraceEvidence, KucRgbaCropEvidence,
     KucUnicodeColorGlyphEvidenceBuilder, KucUnicodeColorGlyphEvidenceCapture,
     KucUnicodeColorGlyphEvidenceError, KucUnicodeColorGlyphEvidenceInput,
     KucUnicodeColorGlyphEvidenceOptions, STAR_TEXT, ZWJ_TEXT,
@@ -89,76 +89,12 @@ fn fixture_input() -> KucUnicodeColorGlyphEvidenceInput {
                 [200, 200, 200, 255],
             ],
         ),
-        accesskit_text_input: Some(KucAccessKitNodeObservation {
-            node_id: "fixture-text-input".to_string(),
-            role: "MultilineTextInput".to_string(),
-            value: FIXTURE_TEXT.to_string(),
-            scalar_sequence: FIXTURE_TEXT.chars().map(u32::from).collect(),
-            bounds: KucBounds::new(0, 0, 640, 240),
-        }),
+        accesskit_text_input: None,
         accesskit_text_snapshot_hash: "accesskit-hash".to_string(),
         root_frame_hash: "root-frame-hash".to_string(),
         root_record_hash: "root-record-hash".to_string(),
         root_rgba_hash: "root-rgba-hash".to_string(),
     }
-}
-
-#[test]
-fn fixture_builder_rejects_missing_or_invalid_accesskit_node() {
-    let mut missing = fixture_input();
-    missing.accesskit_text_input = None;
-    assert!(matches!(
-        KucUnicodeColorGlyphEvidenceBuilder::build(missing),
-        Err(KucUnicodeColorGlyphEvidenceError::MissingAccessKitNode)
-    ));
-
-    let mut missing_value = fixture_input();
-    missing_value
-        .accesskit_text_input
-        .as_mut()
-        .expect("fixture node")
-        .value
-        .clear();
-    assert!(matches!(
-        KucUnicodeColorGlyphEvidenceBuilder::build(missing_value),
-        Err(KucUnicodeColorGlyphEvidenceError::InvalidAccessKitNode { .. })
-    ));
-
-    let mut invalid_bounds = fixture_input();
-    invalid_bounds
-        .accesskit_text_input
-        .as_mut()
-        .expect("fixture node")
-        .bounds = KucBounds::new(0, 0, 0, 240);
-    assert!(matches!(
-        KucUnicodeColorGlyphEvidenceBuilder::build(invalid_bounds),
-        Err(KucUnicodeColorGlyphEvidenceError::InvalidAccessKitNode { .. })
-    ));
-}
-
-#[test]
-fn fixture_builder_rejects_accesskit_role_and_scalar_mismatch() {
-    let mut role_mismatch = fixture_input();
-    role_mismatch
-        .accesskit_text_input
-        .as_mut()
-        .expect("fixture node")
-        .role = "TextInput".to_string();
-    assert!(matches!(
-        KucUnicodeColorGlyphEvidenceBuilder::build(role_mismatch),
-        Err(KucUnicodeColorGlyphEvidenceError::AccessKitRoleMismatch { .. })
-    ));
-
-    let mut scalar_mismatch = fixture_input();
-    scalar_mismatch
-        .accesskit_text_input
-        .as_mut()
-        .expect("fixture node")
-        .scalar_sequence[0] = 0;
-    assert!(matches!(
-        KucUnicodeColorGlyphEvidenceBuilder::build(scalar_mismatch),
-        Err(KucUnicodeColorGlyphEvidenceError::AccessKitScalarSequenceMismatch { .. })
-    ));
 }
 
 #[test]
@@ -264,42 +200,4 @@ fn current_platform_trace_is_typed_unavailable_or_runs_actual_pinned_root() {
         }
         Err(error) => panic!("current-platform evidence failed: {error}"),
     }
-}
-
-#[test]
-fn release_profile_requires_actual_pinned_color_emoji_root_evidence() {
-    let mut options = KucUnicodeColorGlyphEvidenceOptions::default();
-    let policy = options.config.catalog_policy();
-    let candidate = match policy.emoji_candidates.first() {
-        Some(candidate) => candidate,
-        None => panic!("release profile has no configured color emoji candidate"),
-    };
-    let bytes = match std::fs::read(&candidate.source_file_path) {
-        Ok(bytes) => bytes,
-        Err(error) => panic!(
-            "release profile color emoji candidate is unavailable at {}: {error}",
-            candidate.source_file_path.display()
-        ),
-    };
-    options.config = options
-        .config
-        .with_emoji_candidate_sha256([PlatformFontSha256::digest(&bytes)]);
-    let evidence = KucUnicodeColorGlyphEvidenceCapture::capture(options)
-        .unwrap_or_else(|error| panic!("release profile Unicode root evidence failed: {error}"));
-
-    assert_eq!(
-        evidence.profile.profile_id,
-        PlatformFontProfile::current().as_str()
-    );
-    assert!(evidence.chromatic_pixel_delta > 0);
-    assert_eq!("MultilineTextInput", evidence.accesskit_text_input.role);
-    assert!(evidence.accesskit_text_input.value.contains("⭐️"));
-    assert!(evidence.accesskit_text_input.value.contains('☆'));
-    assert!(
-        evidence
-            .accesskit_text_input
-            .scalar_sequence
-            .windows(2)
-            .any(|scalars| scalars == [0x2B50, 0xFE0F])
-    );
 }

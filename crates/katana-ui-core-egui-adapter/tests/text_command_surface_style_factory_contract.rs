@@ -2,9 +2,9 @@ use katana_ui_core::theme::ThemeSnapshot;
 use katana_ui_core_egui_adapter::text_command_surface::TextCommandSurfaceStyle;
 
 #[test]
-fn public_factory_is_deterministic_and_produces_required_dimensions() -> Result<(), String> {
-    let first = TextCommandSurfaceStyle::standard().map_err(|error| error.to_string())?;
-    let second = TextCommandSurfaceStyle::standard().map_err(|error| error.to_string())?;
+fn public_factory_is_deterministic_and_produces_required_dimensions() {
+    let first = TextCommandSurfaceStyle::standard().expect("standard style");
+    let second = TextCommandSurfaceStyle::standard().expect("standard style");
 
     assert_eq!(first, second);
     assert!(first.text_raster.line_height_px.is_finite());
@@ -15,15 +15,12 @@ fn public_factory_is_deterministic_and_produces_required_dimensions() -> Result<
     assert!(first.search.input_height_px > 0);
     assert!(first.search.gap_px > 0);
     assert!(first.search.control_padding_px > 0);
-    Ok(())
 }
 
 #[test]
-fn public_factory_reads_generic_theme_tokens() -> Result<(), String> {
-    let light = TextCommandSurfaceStyle::from_theme(&ThemeSnapshot::light())
-        .map_err(|error| error.to_string())?;
-    let dark = TextCommandSurfaceStyle::from_theme(&ThemeSnapshot::dark())
-        .map_err(|error| error.to_string())?;
+fn public_factory_reads_generic_theme_tokens() {
+    let light = TextCommandSurfaceStyle::from_theme(&ThemeSnapshot::light()).expect("light style");
+    let dark = TextCommandSurfaceStyle::from_theme(&ThemeSnapshot::dark()).expect("dark style");
 
     assert_ne!(
         light.text_paint.background_rgba,
@@ -33,7 +30,6 @@ fn public_factory_reads_generic_theme_tokens() -> Result<(), String> {
         light.chrome_paint.action_rgba,
         dark.chrome_paint.action_rgba
     );
-    Ok(())
 }
 
 #[test]

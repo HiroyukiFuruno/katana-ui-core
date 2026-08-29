@@ -12,7 +12,7 @@ pub(super) struct TextSurfaceStorybookApp {
     surface: TextSurface,
     raster_style: TextSurfaceRasterStyle,
     paint_style: TextSurfacePaintStyle,
-    frames_remaining: Option<usize>,
+    pub(super) frames_remaining: Option<usize>,
     pub(super) last_record: Option<EguiTextSurfaceFrameRecord>,
     pub(super) last_artifact: Option<TextSurfaceArtifactFrame>,
     pub(super) last_pixels: Option<TextSurfacePlanPixels>,
@@ -78,5 +78,37 @@ impl eframe::App for TextSurfaceStorybookApp {
         if *remaining == 0 {
             ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn app_retains_adapter_errors() {
+        let context = egui::Context::default();
+        let mut app = TextSurfaceStorybookApp::new(1);
+        app.raster_style.font.size = f32::INFINITY;
+        app.raster_style.line_height_px = f32::INFINITY;
+        let mut output = context.run_ui(egui::RawInput::default(), |ui| app.show(ui));
+        output.textures_delta.clear();
+        assert!(app.last_error.is_some());
+    }
+
+    #[test]
+    fn app_rejects_an_empty_composite_canvas() {
+        let context = egui::Context::default();
+        let mut app = TextSurfaceStorybookApp::new(1);
+        let input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::Vec2::ZERO,
+            )),
+            ..egui::RawInput::default()
+        };
+        let mut output = context.run_ui(input, |ui| app.show(ui));
+        output.textures_delta.clear();
+        assert!(app.last_error.is_some());
     }
 }

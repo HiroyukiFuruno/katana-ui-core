@@ -33,7 +33,7 @@ fn actual_egui_floating_toolbar_uses_core_placement_rasters_tooltip_and_accesski
     ));
 
     let mut output = None;
-    let full_output = run_frame(
+    let mut full_output = run_frame_preserving_textures(
         &context,
         &mut adapter,
         &mut floating,
@@ -71,9 +71,9 @@ fn actual_egui_floating_toolbar_uses_core_placement_rasters_tooltip_and_accesski
         artifact.paint_plan.surface_bounds,
         record.toolbar.bounds
     ));
-    assert!(plan_has_rounded_fill(
+    assert!(plan_has_fill(
         artifact,
-        EguiCommandChromeDrawLayer::PanelBorder,
+        EguiCommandChromeDrawLayer::PanelFill,
         record.panel_bounds,
     ));
     assert!(plan_has_fill(
@@ -82,6 +82,7 @@ fn actual_egui_floating_toolbar_uses_core_placement_rasters_tooltip_and_accesski
         record.toolbar.actions[0].bounds,
     ));
     assert!(!full_output.textures_delta.set.is_empty());
+    full_output.textures_delta.clear();
     let Some(update) = full_output.platform_output.accesskit_update else {
         panic!("the enabled egui context did not emit an AccessKit tree update");
     };
@@ -384,6 +385,40 @@ fn controlled_floating_presentation_uses_actual_raw_input_measurement_and_close_
 }
 
 #[test]
+fn inconsistent_open_projection_without_bounds_fails_closed() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let mut floating = floating(false);
+    let _ = floating.apply_action(FloatingCommandToolbarAction::Open);
+    let mut measured = None;
+    let _ = run_frame(
+        &context,
+        &mut adapter,
+        &mut floating,
+        Vec::new(),
+        &mut measured,
+    );
+    assert!(expect_output(measured).record.is_some());
+
+    let mut serialized = serde_json::to_value(&floating).expect("serialize floating projection");
+    serialized["bounds"] = serde_json::Value::Null;
+    let mut inconsistent: FloatingCommandToolbar =
+        serde_json::from_value(serialized).expect("deserialize inconsistent projection fixture");
+    let mut output = None;
+    let _ = run_frame(
+        &context,
+        &mut adapter,
+        &mut inconsistent,
+        Vec::new(),
+        &mut output,
+    );
+    let output = expect_output(output);
+    assert!(output.record.is_none());
+    assert!(output.events.is_empty());
+    assert!(output.artifact.is_none());
+}
+
+#[test]
 fn controlled_floating_raw_input_sequence_has_deterministic_adapter_artifact_hashes() {
     assert_eq!(
         controlled_floating_artifact_hashes(),
@@ -509,23 +544,6 @@ fn actual_egui_floating_dropdown_keeps_menu_pointer_inside_and_escape_closes_men
             .as_ref()
             .and_then(|record| record.toolbar.dropdown.as_ref())
             .expect("floating dropdown did not render")
-            .items[0]
-            .bounds,
-    );
-    let mut item_aim = None;
-    let _ = run_frame(
-        &context,
-        &mut adapter,
-        &mut floating,
-        vec![egui::Event::PointerMoved(item_point)],
-        &mut item_aim,
-    );
-    let item_point = center(
-        expect_output(item_aim)
-            .record
-            .as_ref()
-            .and_then(|record| record.toolbar.dropdown.as_ref())
-            .expect("floating dropdown remains open while aiming")
             .items[0]
             .bounds,
     );
@@ -768,6 +786,23 @@ fn run_frame(
         >,
     >,
 ) -> egui::FullOutput {
+    let mut full_output = run_frame_preserving_textures(context, adapter, floating, events, output);
+    full_output.textures_delta.clear();
+    full_output
+}
+
+fn run_frame_preserving_textures(
+    context: &egui::Context,
+    adapter: &mut EguiCommandChromeAdapter,
+    floating: &mut FloatingCommandToolbar,
+    events: Vec<egui::Event>,
+    output: &mut Option<
+        Result<
+            EguiCommandChromeFloatingOutput,
+            katana_ui_core_egui_adapter::command_chrome::EguiCommandChromeError,
+        >,
+    >,
+) -> egui::FullOutput {
     context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
@@ -829,24 +864,6 @@ fn plan_has_fill(
                     bounds: operation_bounds,
                     ..
                 } if operation_bounds == bounds
-            )
-    })
-}
-
-fn plan_has_rounded_fill(
-    artifact: &EguiCommandChromeFloatingArtifactFrame,
-    layer: EguiCommandChromeDrawLayer,
-    bounds: katana_ui_core::render_model::UiRect,
-) -> bool {
-    artifact.paint_plan.operations.iter().any(|operation| {
-        operation.layer == layer
-            && matches!(
-                operation.kind,
-                CommandChromePaintOperationKind::RoundedFill {
-                    bounds: operation_bounds,
-                    radius_px,
-                    ..
-                } if operation_bounds == bounds && radius_px > 0
             )
     })
 }

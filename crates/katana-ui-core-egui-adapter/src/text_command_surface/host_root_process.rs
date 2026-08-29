@@ -13,7 +13,7 @@ pub(crate) struct HostRootProcess {
     identity: String,
     style: TextCommandSurfaceStyle,
     presentation: super::super::types::EguiTextCommandSurfacePresentation,
-    command_families: EguiTextCommandSurfaceCommandFamilyProjection,
+    command_families: Option<EguiTextCommandSurfaceCommandFamilyProjection>,
     presentation_revision: u64,
     effect_router: Option<Box<dyn KucRootEffectRouter>>,
 }
@@ -31,7 +31,7 @@ impl HostRootProcess {
         let surface = surface_from_presentation(
             &decoded.identity,
             &decoded.presentation,
-            &decoded.command_families,
+            decoded.command_families.as_ref(),
         );
         let mut root = EguiTextCommandSurfaceRoot::with_identity(decoded.identity.clone(), surface)
             .map_err(|error| EguiTextCommandSurfaceRootFactoryError::Root(error.to_string()))?;
@@ -105,10 +105,10 @@ impl HostRootProcess {
         let mut changed = self
             .root
             .synchronize_presentation(decoded.presentation.clone());
-        if family_changed {
+        if family_changed && let Some(command_families) = decoded.command_families.as_ref() {
             changed |= self.root.synchronize_command_families(
-                decoded.command_families.primary().cloned(),
-                decoded.command_families.floating().cloned(),
+                command_families.primary().cloned(),
+                command_families.floating().cloned(),
             );
         }
         /* WHY: A newer plain token has no tab lease, so it must not retain an

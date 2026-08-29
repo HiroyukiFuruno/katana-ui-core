@@ -2,13 +2,14 @@ use katana_ui_core::molecule::RgbaColor;
 use katana_ui_core::molecule::command_chrome::{
     CommandChromeAction, CommandChromeCapability, CommandChromeDisplayMode,
     CommandChromeSearchEvent, CommandChromeSearchPresentation, CommandChromeSearchStrip,
-    CommandChromeText, CommandChromeToolbar, SearchControlCapabilities, SearchControlIcons,
-    SearchControlStrings, SearchResultSummaryTemplate,
+    CommandChromeText, CommandChromeToolbar, SearchControlCapabilities, SearchControlIconSlot,
+    SearchControlIcons, SearchControlStrings, SearchResultSummaryTemplate,
 };
 use katana_ui_core::molecule::structured::{
     ReplaceMode, SearchControlStrip, SearchControlStripEvent, SearchNavigationDirection,
     SearchOptionKind, SearchReplaceScope,
 };
+use katana_ui_core::render_model::UiIconProps;
 use katana_ui_core::theme::{FontFamily, FontToken};
 use katana_ui_core_egui_adapter::command_chrome::{
     CommandChromePaintOperationKind, CommandChromePaintStyle, CommandChromeRasterStyle,
@@ -16,9 +17,63 @@ use katana_ui_core_egui_adapter::command_chrome::{
     EguiCommandChromeSearchStyle,
 };
 use katana_ui_core_egui_adapter::text_surface::{TextSurfacePaintStyle, TextSurfaceRasterStyle};
+use katana_ui_core_svg_raster::UiSvgRasterConfig;
+use katana_ui_core_text_raster::PlatformTextRasterConfig;
 
 const SCREEN_WIDTH: f32 = 1440.0;
 const SCREEN_HEIGHT: f32 = 320.0;
+
+#[test]
+fn invalid_first_control_icon_fails_closed_before_later_controls_render() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let icons = SearchControlIcons::default().icon(
+        SearchControlIconSlot::MatchCase,
+        UiIconProps::new("not-an-svg"),
+    );
+    let mut strip = strip(SearchControlCapabilities::all_available()).icons(icons);
+    let (_, output) = run_frame(&context, &mut adapter, &mut strip, Vec::new());
+    assert!(output.is_err());
+}
+
+#[test]
+fn valid_control_icon_reaches_icon_paint_layer() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let icons = SearchControlIcons::default().icon(
+        SearchControlIconSlot::MatchCase,
+        UiIconProps::new("<svg viewBox=\"0 0 8 8\"><path d=\"M1 1h6v6H1z\"/></svg>"),
+    );
+    let mut strip = strip(SearchControlCapabilities::all_available()).icons(icons);
+    let (_, output) = run_frame(&context, &mut adapter, &mut strip, Vec::new());
+    let output = expect_output(output);
+    assert!(
+        output
+            .artifact
+            .paint_plan
+            .operations
+            .iter()
+            .any(|operation| { operation.layer == EguiCommandChromeDrawLayer::IconTexture })
+    );
+}
+
+#[test]
+fn missing_search_font_fails_closed_at_query_surface() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::new(
+        PlatformTextRasterConfig {
+            proportional_candidates: Vec::new(),
+            monospace_candidates: Vec::new(),
+            emoji_candidates: Vec::new(),
+            emoji_candidate_sha256: Vec::new(),
+            cache_capacity: 1,
+        },
+        UiSvgRasterConfig::default(),
+    );
+    let mut strip = strip(SearchControlCapabilities::all_available());
+    let (_, output) = run_frame(&context, &mut adapter, &mut strip, Vec::new());
+    assert!(output.is_err());
+}
 
 #[test]
 fn actual_egui_search_strip_uses_shared_text_surface_for_placeholder_ime_and_katana_keys() {
@@ -27,12 +82,14 @@ fn actual_egui_search_strip_uses_shared_text_surface_for_placeholder_ime_and_kat
     let mut adapter = EguiCommandChromeAdapter::default();
     let mut strip = strip(SearchControlCapabilities::all_available());
 
-    let (first_frame, first) = run_frame(&context, &mut adapter, &mut strip, Vec::new());
+    let (mut first_frame, first) =
+        run_frame_preserving_textures(&context, &mut adapter, &mut strip, Vec::new());
     let first = expect_output(first);
     assert!(first.record.query.placeholder_raster_identity.is_some());
     assert!(first.record.replace.is_some());
     assert_eq!(9, first.record.controls.len());
     assert!(first_frame.textures_delta.set.len() >= 3);
+    first_frame.textures_delta.clear();
     let Some(update) = first_frame.platform_output.accesskit_update else {
         panic!("the enabled egui context did not emit an AccessKit tree update");
     };
@@ -84,9 +141,10 @@ fn actual_egui_search_strip_uses_shared_text_surface_for_placeholder_ime_and_kat
         &context,
         &mut adapter,
         &mut strip,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-            "かな".to_string(),
-        ))],
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "かな".to_string(),
+            active_range_chars: None,
+        })],
     );
     assert!(expect_output(preedit).events.is_empty());
     let (_, committed) = run_frame(
@@ -702,8 +760,25 @@ fn run_frame(
         katana_ui_core_egui_adapter::command_chrome::EguiCommandChromeError,
     >,
 ) {
+    let (mut frame, output) = run_frame_preserving_textures(context, adapter, strip, events);
+    frame.textures_delta.clear();
+    (frame, output)
+}
+
+fn run_frame_preserving_textures(
+    context: &egui::Context,
+    adapter: &mut EguiCommandChromeAdapter,
+    strip: &mut CommandChromeSearchStrip,
+    events: Vec<egui::Event>,
+) -> (
+    egui::FullOutput,
+    Result<
+        EguiCommandChromeSearchOutput,
+        katana_ui_core_egui_adapter::command_chrome::EguiCommandChromeError,
+    >,
+) {
     let mut output = None;
-    let frame = context.run_ui(
+    let mut frame = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -723,6 +798,7 @@ fn run_frame(
         },
     );
     let Some(output) = output else {
+        frame.textures_delta.clear();
         panic!("the search strip did not produce an egui frame");
     };
     (frame, output)
@@ -747,7 +823,7 @@ fn run_frame_with_toolbar(
 ) {
     let mut toolbar_output = None;
     let mut search_output = None;
-    let frame = context.run_ui(
+    let mut frame = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -769,11 +845,14 @@ fn run_frame_with_toolbar(
         },
     );
     let Some(toolbar_output) = toolbar_output else {
+        frame.textures_delta.clear();
         panic!("the toolbar did not produce an egui frame");
     };
     let Some(search_output) = search_output else {
+        frame.textures_delta.clear();
         panic!("the search strip did not produce an egui frame");
     };
+    frame.textures_delta.clear();
     (frame, toolbar_output, search_output)
 }
 

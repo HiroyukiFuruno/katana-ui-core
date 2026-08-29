@@ -9,12 +9,15 @@ use katana_ui_core::text_surface::{
 pub(super) fn surface_from_presentation(
     identity: &str,
     presentation: &EguiTextCommandSurfacePresentation,
-    command_families: &EguiTextCommandSurfaceCommandFamilyProjection,
+    command_families: Option<&EguiTextCommandSurfaceCommandFamilyProjection>,
 ) -> EguiTextCommandSurface {
     let text = text_surface_from_presentation(identity, presentation);
     let mut surface = EguiTextCommandSurface::new(text);
     let _ = surface.synchronize_presentation(presentation.clone());
-    apply_command_families(&mut surface, command_families);
+    let compatibility = command_families
+        .cloned()
+        .unwrap_or_else(EguiTextCommandSurfaceCommandFamilyProjection::legacy_compatibility);
+    apply_command_families(&mut surface, &compatibility);
     surface
 }
 

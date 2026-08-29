@@ -43,7 +43,7 @@ fn frame(
             ..egui::RawInput::default()
         },
         |ui| {
-            egui::CentralPanel::default().show_inside(ui, |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 receipt = Some(adapter.show(ui, status));
             });
         },

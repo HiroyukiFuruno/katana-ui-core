@@ -9,6 +9,7 @@ mod context_menu_props;
 mod host_action_plan;
 mod host_action_settings;
 mod host_action_task;
+mod host_action_task_types;
 mod host_action_text;
 mod host_action_tree;
 mod host_action_types;
@@ -27,6 +28,7 @@ mod tree_builder;
 mod tree_model;
 mod tree_props;
 mod tree_semantics;
+mod tree_semantics_types;
 mod typed;
 
 pub use adapter_coverage_plan::UiAdapterCoveragePlan;
@@ -44,7 +46,8 @@ pub use context_menu_props::{
     UiContextMenuAnchor, UiContextMenuPlacement, UiContextMenuProps, UiContextMenuRect,
 };
 pub use host_action_settings::{UiSettingsFieldControlTarget, UiSettingsSectionToggleTarget};
-pub use host_action_task::{UiTaskControlAction, UiTaskControlMenuItem, UiTaskMarker};
+pub use host_action_task_types::{UiTaskControlAction, UiTaskControlMenuItem, UiTaskMarker};
+pub(crate) use host_action_task_types::{UiTaskControlStateAction, UiTaskControlTarget};
 pub use host_action_text::{UiAccordionToggleAction, UiTextSpanAction};
 pub use host_action_tree::UiTreeRowActionTarget;
 pub use host_action_types::{
@@ -79,14 +82,17 @@ pub use tree_model::UiTree;
 pub use tree_props::{
     UiTreeLineStyle, UiTreeNodeKind, UiTreeNodeProps, UiTreeProps, UiTreeToggleTriggerArea,
 };
-pub use tree_semantics::UiTreeSemantics;
+pub use tree_semantics_types::UiTreeSemantics;
 pub use typed::{
     APPLE_COLOR_EMOJI_FONT_FAMILY, LINUX_COLOR_EMOJI_FONT_FAMILY, RGBA_CHANNEL_COUNT,
     UiAnimationState, UiButtonProps, UiClearActionSpec, UiColorBlendingMode, UiColorPickerProps,
     UiColorPickerTriggerKind, UiColorSwatchProps, UiCommandResultProps,
     UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea, UiDismissAction,
     UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps, UiEmojiTextSegment,
-    UiEmojiTextSegments, UiFormFieldProps, UiIconProps, UiLoadingProps, UiModalParentInteraction,
+    UiEmojiTextSegments, UiFormFieldProps, UiGridCell, UiGridCellAppearance, UiGridCellSpan,
+    UiGridCoordinate, UiGridDataBar, UiGridHorizontalAlignment, UiGridIcon, UiGridIndexRange,
+    UiGridProps, UiGridRating, UiGridSelection, UiGridValidationError, UiGridVerticalAlignment,
+    UiGridViewport, UiGridVisibleRange, UiIconProps, UiLoadingProps, UiModalParentInteraction,
     UiModalPlacement, UiModalPresentation, UiModalProps, UiModalSize, UiPanelProps,
     UiPlatformEmojiFontFamily, UiPopoverFocusManagement, UiPopoverPlacement, UiPopoverProps,
     UiProgressMode, UiRect, UiScrollAreaAxis, UiScrollAreaProps, UiScrollbarDragState,

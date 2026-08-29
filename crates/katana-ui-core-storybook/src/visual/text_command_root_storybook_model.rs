@@ -1,52 +1,10 @@
+pub use super::error::FullRootArtifactError;
 use super::{PAGE, ROOT_IDENTITY};
 use katana_ui_core_egui_adapter::{
     FullRootArtifact, text_command_surface::EguiTextCommandSurfaceHostRootFrame,
 };
 use serde::Serialize;
 use std::path::Path;
-
-#[derive(Debug)]
-pub enum FullRootArtifactError {
-    Adapter(String),
-    Contract(String),
-    Video(String),
-    Image(image::ImageError),
-    Io(std::io::Error),
-    Json(serde_json::Error),
-}
-
-impl std::fmt::Display for FullRootArtifactError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Adapter(error) => write!(formatter, "full-root adapter error: {error}"),
-            Self::Contract(error) => write!(formatter, "full-root contract error: {error}"),
-            Self::Video(error) => write!(formatter, "full-root video error: {error}"),
-            Self::Image(error) => write!(formatter, "full-root image error: {error}"),
-            Self::Io(error) => write!(formatter, "full-root I/O error: {error}"),
-            Self::Json(error) => write!(formatter, "full-root JSON error: {error}"),
-        }
-    }
-}
-
-impl std::error::Error for FullRootArtifactError {}
-
-impl From<image::ImageError> for FullRootArtifactError {
-    fn from(error: image::ImageError) -> Self {
-        Self::Image(error)
-    }
-}
-
-impl From<std::io::Error> for FullRootArtifactError {
-    fn from(error: std::io::Error) -> Self {
-        Self::Io(error)
-    }
-}
-
-impl From<serde_json::Error> for FullRootArtifactError {
-    fn from(error: serde_json::Error) -> Self {
-        Self::Json(error)
-    }
-}
 
 #[derive(Debug)]
 pub(super) struct FullRootStep {
@@ -282,4 +240,48 @@ pub(super) fn current_profile(current_os: &str) -> &'static str {
 
 pub(super) fn absolute_path(path: &Path) -> String {
     path.to_string_lossy().into_owned()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core_egui_adapter::text_command_surface::{
+        EguiTextCommandSurfaceRootEventBatchForwardError, EguiTextCommandSurfaceRootFactoryError,
+    };
+
+    #[test]
+    fn full_root_error_and_platform_helpers_cover_each_closed_variant() {
+        for error in [
+            FullRootArtifactError::Adapter("adapter".to_string()),
+            FullRootArtifactError::Contract("contract".to_string()),
+            FullRootArtifactError::Video("video".to_string()),
+        ] {
+            assert!(error.to_string().contains("full-root"));
+        }
+
+        let image =
+            FullRootArtifactError::from(image::ImageError::IoError(std::io::Error::other("image")));
+        assert!(image.to_string().contains("image error"));
+        let io = FullRootArtifactError::from(std::io::Error::other("io"));
+        assert!(io.to_string().contains("I/O error"));
+        let json = serde_json::from_str::<serde_json::Value>("{")
+            .err()
+            .map(FullRootArtifactError::from)
+            .map(|error| error.to_string());
+        assert!(json.is_some_and(|error| error.contains("JSON error")));
+        let root = FullRootArtifactError::from(
+            EguiTextCommandSurfaceRootFactoryError::InvalidToken("opaque"),
+        );
+        assert!(root.to_string().contains("adapter error"));
+        let forwarding = FullRootArtifactError::from(
+            EguiTextCommandSurfaceRootEventBatchForwardError::<std::convert::Infallible>::AlreadyConsumed,
+        );
+        assert!(forwarding.to_string().contains("forwarding failed"));
+
+        assert_eq!(current_profile("macos"), "macos");
+        assert_eq!(current_profile("windows"), "windows");
+        assert_eq!(current_profile("linux"), "linux");
+        assert_eq!(current_profile("other"), "unknown");
+        assert_eq!(absolute_path(Path::new("opaque/path")), "opaque/path");
+    }
 }

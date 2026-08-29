@@ -95,3 +95,34 @@ fn toolbar_event_names(events: &[molecule::toolbar::ToolbarEvent]) -> String {
         .collect::<Vec<_>>()
         .join(",")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn toolbar_event_names_cover_every_public_event_variant() {
+        let events = [
+            molecule::toolbar::ToolbarEvent::Command {
+                action_id: "save".into(),
+            },
+            molecule::toolbar::ToolbarEvent::OverflowOpened,
+            molecule::toolbar::ToolbarEvent::SplitDropdownOpened {
+                action_id: "save-as".into(),
+                placement: molecule::toolbar::ToolbarPlacementRequest::Menu,
+            },
+            molecule::toolbar::ToolbarEvent::AcceleratorTriggered {
+                action_id: "search".into(),
+                combo: molecule::toolbar::KeyCombo::command_or_control("f"),
+            },
+            molecule::toolbar::ToolbarEvent::GroupCollapseToggled {
+                group_id: "editing".into(),
+            },
+        ];
+
+        assert_eq!(
+            "command,overflow_opened,split_dropdown_opened,accelerator_triggered,group_collapse_toggled",
+            toolbar_event_names(&events)
+        );
+    }
+}

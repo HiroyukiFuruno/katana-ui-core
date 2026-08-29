@@ -102,6 +102,27 @@ fn point_outside_rendered_canvas_returns_none() {
     );
 }
 
+#[test]
+fn zero_extent_and_vertical_letterbox_paths_are_explicit() {
+    let point = WindowSurfacePoint::new(25.0, 100.0);
+    assert_eq!(
+        None,
+        WindowInputNormalizer::canvas_point_for_surface_point(
+            point,
+            WindowSurfaceSize::new(0, 200),
+            WindowSurfaceSize::new(200, 100),
+        )
+    );
+    assert_eq!(
+        Some(WindowCanvasPoint { x: 50, y: 50 }),
+        WindowInputNormalizer::canvas_point_for_surface_point(
+            point,
+            WindowSurfaceSize::new(100, 200),
+            WindowSurfaceSize::new(200, 100),
+        )
+    );
+}
+
 fn surface_point_for_canvas_point(
     point: WindowCanvasPoint,
     surface: WindowSurfaceSize,

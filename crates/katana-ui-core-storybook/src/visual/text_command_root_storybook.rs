@@ -1,5 +1,7 @@
 #[path = "text_command_root_storybook_artifact.rs"]
 mod artifact;
+#[path = "text_command_root_storybook_error.rs"]
+mod error;
 #[path = "text_command_root_storybook_model.rs"]
 mod model;
 #[path = "text_command_root_storybook_process.rs"]
@@ -21,10 +23,10 @@ use katana_ui_core_egui_adapter::context_menu::{
     ContextMenuPresentation, ContextMenuPresentationItem,
 };
 use katana_ui_core_egui_adapter::text_command_surface::{
-    EguiTextCommandSurfaceCommandFamilyProjection, EguiTextCommandSurfaceFloatingPresentation,
-    EguiTextCommandSurfaceHostProjectionEncoder, EguiTextCommandSurfaceHostRoot,
-    EguiTextCommandSurfacePresentation, EguiTextCommandSurfaceRootFactory,
-    EguiTextCommandSurfaceSearchPresentation, TextCommandSurfaceStyle,
+    EguiTextCommandSurfaceFloatingPresentation, EguiTextCommandSurfaceHostProjectionEncoder,
+    EguiTextCommandSurfaceHostRoot, EguiTextCommandSurfacePresentation,
+    EguiTextCommandSurfaceRootFactory, EguiTextCommandSurfaceSearchPresentation,
+    TextCommandSurfaceStyle,
 };
 use std::path::Path;
 
@@ -83,14 +85,7 @@ pub(super) fn open_window(frames: usize) -> Result<(), eframe::Error> {
     eframe::run_native(
         WINDOW_TITLE,
         native_options,
-        Box::new(move |_| {
-            TextCommandRootStorybookApp::new(frames)
-                .map(|app| Box::new(app) as Box<dyn eframe::App>)
-                .map_err(|error| {
-                    Box::new(std::io::Error::other(error))
-                        as Box<dyn std::error::Error + Send + Sync>
-                })
-        }),
+        Box::new(move |_| Ok(Box::new(TextCommandRootStorybookApp::new(frames)?))),
     )
 }
 
@@ -115,7 +110,7 @@ struct TextCommandRootStorybookApp {
 }
 
 impl TextCommandRootStorybookApp {
-    fn new(frames: usize) -> Result<Self, String> {
+    fn new(frames: usize) -> Result<Self, FullRootArtifactError> {
         Ok(Self {
             root: build_root()?,
             frames_remaining: (frames > 0).then_some(frames),
@@ -136,7 +131,7 @@ impl eframe::App for TextCommandRootStorybookApp {
     }
 }
 
-fn build_root() -> Result<EguiTextCommandSurfaceHostRoot, String> {
+fn build_root() -> Result<EguiTextCommandSurfaceHostRoot, FullRootArtifactError> {
     let presentation = EguiTextCommandSurfacePresentation {
         text_state_id: Some(ROOT_IDENTITY.into()),
         text: text_presentation(),
@@ -153,29 +148,14 @@ fn build_root() -> Result<EguiTextCommandSurfaceHostRoot, String> {
         }),
         context_menu: Some(context_menu_fixture()),
     };
-    let families = EguiTextCommandSurfaceCommandFamilyProjection::new(
-        Some(
-            katana_ui_core::molecule::command_chrome::CommandChromeFamilyId::new(
-                "storybook-primary",
-            ),
-        ),
-        Some(
-            katana_ui_core::molecule::command_chrome::CommandChromeFamilyId::new(
-                "storybook-floating",
-            ),
-        ),
-    );
-    let token = EguiTextCommandSurfaceHostProjectionEncoder::token_with_command_families(
+    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
         1,
         ROOT_IDENTITY.as_bytes().to_vec(),
         presentation,
         style(),
-        families,
-    )
-    .map_err(|error| error.to_string())?;
-    EguiTextCommandSurfaceRootFactory::new()
-        .retain(token)
-        .map_err(|error| error.to_string())
+    );
+    let token = token?;
+    Ok(EguiTextCommandSurfaceRootFactory::new().retain(token)?)
 }
 
 fn style() -> TextCommandSurfaceStyle {

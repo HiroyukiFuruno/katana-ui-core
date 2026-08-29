@@ -97,7 +97,7 @@ fn run_actual_integrated_frame() -> Result<IntegratedArtifactFacts, Box<dyn std:
 
     let mut chrome = command_chrome_surface_fixture(false);
     let mut result = None;
-    let full_output = context.run_ui(raw_input, |ui| {
+    let mut full_output = context.run_ui(raw_input, |ui| {
         result = Some((|| -> Result<IntegratedArtifactFacts, io::Error> {
             let text = text_adapter
                 .show(
@@ -173,6 +173,7 @@ fn run_actual_integrated_frame() -> Result<IntegratedArtifactFacts, Box<dyn std:
             })
         })());
     });
+    full_output.textures_delta.clear();
     let mut facts =
         result.ok_or_else(|| io::Error::other("actual egui frame was not produced"))??;
     facts.accesskit_labels = accesskit_labels(full_output);
@@ -229,6 +230,8 @@ fn text_plan_has_colored_star(
 fn is_colored_star_texture(identity: &str, pixels: &[u8]) -> bool {
     identity.contains(STAR)
         && pixels
-            .chunks_exact(RGBA_CHANNELS)
+            .as_chunks::<RGBA_CHANNELS>()
+            .0
+            .iter()
             .any(|rgba| rgba[ALPHA_CHANNEL] > 0 && (rgba[0] != rgba[1] || rgba[1] != rgba[2]))
 }

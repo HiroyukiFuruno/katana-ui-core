@@ -202,7 +202,10 @@ fn mix_channel(left: u32, right: u32, ratio: f32, shift: u32) -> u32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{present_frame, present_frame_for_window};
+    use super::{
+        present_frame, present_frame_for_window, present_frame_for_window_into,
+        present_frame_region_for_window_into,
+    };
     use crate::visual::canvas::Canvas;
 
     const BACKGROUND: u32 = 0x111111;
@@ -294,5 +297,63 @@ mod tests {
         let presented = present_frame(&source, 1, 1, BACKGROUND);
 
         assert_eq!(0xbfbfbf, presented.pixels()[0]);
+    }
+
+    #[test]
+    fn presentation_into_and_region_cover_empty_exact_and_fallback_boundaries() {
+        let source = Canvas::new(2, 2, WHITE);
+        let mut target = Canvas::new(4, 4, BLACK);
+
+        present_frame_for_window_into(&source, &mut target, 0, 4, BACKGROUND);
+        assert_eq!((1, 1), (target.width(), target.height()));
+        assert_eq!(BACKGROUND, target.pixels()[0]);
+
+        let empty = Canvas::new(0, 0, WHITE);
+        present_frame_for_window_into(&empty, &mut target, 3, 2, BACKGROUND);
+        assert_eq!((3, 2), (target.width(), target.height()));
+        assert!(target.pixels().iter().all(|pixel| *pixel == BACKGROUND));
+
+        present_frame_for_window_into(&source, &mut target, 4, 4, BACKGROUND);
+        assert_eq!((4, 4), (target.width(), target.height()));
+        assert!(target.pixels().iter().all(|pixel| *pixel == WHITE));
+
+        present_frame_for_window_into(&source, &mut target, 5, 4, BACKGROUND);
+        assert_eq!((5, 4), (target.width(), target.height()));
+        assert!(target.pixels().contains(&WHITE));
+
+        assert!(present_frame_region_for_window_into(
+            &source,
+            &mut target,
+            0,
+            0,
+            0,
+            1
+        ));
+        assert!(!present_frame_region_for_window_into(
+            &empty,
+            &mut target,
+            0,
+            0,
+            1,
+            1
+        ));
+        let mut empty_target = Canvas::new(0, 0, BLACK);
+        assert!(!present_frame_region_for_window_into(
+            &source,
+            &mut empty_target,
+            0,
+            0,
+            1,
+            1
+        ));
+
+        assert_eq!((1, 1), {
+            let frame = present_frame(&source, 0, 2, BACKGROUND);
+            (frame.width(), frame.height())
+        });
+        let same = present_frame(&source, 2, 2, BACKGROUND);
+        assert_eq!(source.pixels(), same.pixels());
+        let from_empty = present_frame(&empty, 3, 2, BACKGROUND);
+        assert!(from_empty.pixels().iter().all(|pixel| *pixel == BACKGROUND));
     }
 }

@@ -48,8 +48,8 @@ pub use root::{
     EguiTextCommandSurfaceRootEventBatchForwardError, EguiTextCommandSurfaceRootEventChildClass,
     EguiTextCommandSurfaceRootEventClassDispatch, EguiTextCommandSurfaceRootEventDispatchReceipt,
     EguiTextCommandSurfaceRootEventForwardingReceipt, EguiTextCommandSurfaceRootEventTransport,
-    EguiTextCommandSurfaceRootFrame, EguiTextCommandSurfaceRootOutput, KucRootEventBatchDispatcher,
-    KucRootEventBatchForwarder,
+    EguiTextCommandSurfaceRootFrame, EguiTextCommandSurfaceRootOutput,
+    KucOpaqueHostEffectAttachError, KucRootEventBatchDispatcher, KucRootEventBatchForwarder,
 };
 pub use root::{
     KucInteractionActionClass, KucInteractionLocator, KucInteractionLocatorError,

@@ -14,7 +14,9 @@ mod text_command_surface_contract {
     use super::{fixtures, harness};
     use katana_ui_core::atom::TextArea;
     use katana_ui_core::text_surface::{TextSurface, TextSurfaceProps, TextSurfaceViewport};
-    use katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurface;
+    use katana_ui_core_egui_adapter::text_command_surface::{
+        EguiTextCommandSurface, EguiTextCommandSurfaceAdapter,
+    };
 
     #[test]
     fn actual_egui_text_command_surface_composes_full_interaction_sequence()
@@ -44,7 +46,10 @@ mod text_command_surface_contract {
     fn root_overrides_fixed_provider_viewport_with_allocated_text_rect()
     -> Result<(), Box<dyn std::error::Error>> {
         let context = egui::Context::default();
-        let mut adapter = harness::adapter()?;
+        let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+        )
+        .expect("text command adapter");
         let mut surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture())
             .with_toolbar(fixtures::toolbar_fixture())
             .with_search_strip(fixtures::search_fixture(false));
@@ -85,7 +90,10 @@ mod text_command_surface_contract {
     fn root_measurement_preserves_scroll_and_updates_after_resize()
     -> Result<(), Box<dyn std::error::Error>> {
         let context = egui::Context::default();
-        let mut adapter = harness::adapter()?;
+        let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+        )
+        .expect("text command adapter");
         let source = (0..32)
             .map(|index| format!("line {index}: 日本語 ⭐️"))
             .collect::<Vec<_>>()
@@ -164,7 +172,10 @@ mod text_command_surface_contract {
     fn root_without_chrome_matches_the_full_allocated_rect()
     -> Result<(), Box<dyn std::error::Error>> {
         let context = egui::Context::default();
-        let mut adapter = harness::adapter()?;
+        let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+        )
+        .expect("text command adapter");
         let mut surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture());
         let (_, output) = harness::run_frame_sized(
             &context,

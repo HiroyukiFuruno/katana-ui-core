@@ -137,10 +137,10 @@ impl ComponentAction for ModalOverlay {
         if action.target() != &self.state.state_id || self.state.disabled {
             return UiActionResult::ignored(self.state.state_id.clone(), before);
         }
-        if !self.is_lifecycle_action(action) {
+        let Some(lifecycle_action) = ModalOverlayLifecycleAction::from_ui_action(action) else {
             return self.state.apply_action(action, false);
-        }
-        if !self.apply_lifecycle_action(action) {
+        };
+        if !self.apply_lifecycle_action(lifecycle_action) {
             return UiActionResult::ignored(self.state.state_id.clone(), before);
         }
         UiActionResult::handled(
@@ -174,27 +174,36 @@ impl From<ModalOverlay> for UiNode {
     }
 }
 
-impl ModalOverlay {
-    fn apply_lifecycle_action(&mut self, action: &UiAction) -> bool {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ModalOverlayLifecycleAction {
+    Escape,
+    Backdrop,
+}
+
+impl ModalOverlayLifecycleAction {
+    fn from_ui_action(action: &UiAction) -> Option<Self> {
         match action {
-            UiAction::Press { source, .. } if *source == UiActionSource::ModalEscape => {
-                self.dismiss_if_allowed(self.escape_dismiss)
-            }
-            UiAction::Press { source, .. } if *source == UiActionSource::ModalBackdrop => {
-                self.dismiss_if_allowed(self.outside_click_dismiss)
-            }
-            _ => false,
+            UiAction::Press {
+                source: UiActionSource::ModalEscape,
+                ..
+            } => Some(Self::Escape),
+            UiAction::Press {
+                source: UiActionSource::ModalBackdrop,
+                ..
+            } => Some(Self::Backdrop),
+            _ => None,
         }
     }
+}
 
-    fn is_lifecycle_action(&self, action: &UiAction) -> bool {
-        matches!(
-            action,
-            UiAction::Press {
-                source: UiActionSource::ModalEscape | UiActionSource::ModalBackdrop,
-                ..
+impl ModalOverlay {
+    fn apply_lifecycle_action(&mut self, action: ModalOverlayLifecycleAction) -> bool {
+        match action {
+            ModalOverlayLifecycleAction::Escape => self.dismiss_if_allowed(self.escape_dismiss),
+            ModalOverlayLifecycleAction::Backdrop => {
+                self.dismiss_if_allowed(self.outside_click_dismiss)
             }
-        )
+        }
     }
 
     fn dismiss_if_allowed(&mut self, allowed: bool) -> bool {
@@ -207,5 +216,21 @@ impl ModalOverlay {
             self.state.value = format!("focus_return={}", self.focus_return);
         }
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lifecycle_dispatch_rejects_unrelated_action() {
+        let overlay = ModalOverlay::new("Modal");
+        assert_eq!(
+            None,
+            ModalOverlayLifecycleAction::from_ui_action(&UiAction::focus(
+                overlay.state_id().clone()
+            ))
+        );
     }
 }

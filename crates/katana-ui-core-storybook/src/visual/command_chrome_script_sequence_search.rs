@@ -1,7 +1,8 @@
+use super::CommandChromeScriptError;
+use super::CommandChromeScriptFrame;
 use super::command_chrome_script_frame::{
     center, click_events, push_events, query_bounds, replace_bounds, search_control,
 };
-use super::{CommandChromeScriptError, CommandChromeScriptFrame};
 use katana_ui_core::interaction::placement::Rect;
 use katana_ui_core::molecule::command_chrome::{
     CommandChromeSearchPresentation, CommandChromeSearchStrip, CommandChromeToolbar,
@@ -26,7 +27,7 @@ pub(super) fn run_search_and_controlled_floating_sequence(
     search: &mut CommandChromeSearchStrip,
 ) -> Result<(), CommandChromeScriptError> {
     let query = query_bounds(frames)?;
-    push_events(
+    let pushed = push_events(
         context,
         frames,
         adapter,
@@ -34,8 +35,9 @@ pub(super) fn run_search_and_controlled_floating_sequence(
         floating,
         search,
         click_events(center(query)),
-    )?;
-    push_events(
+    );
+    pushed?;
+    let pushed = push_events(
         context,
         frames,
         adapter,
@@ -43,18 +45,21 @@ pub(super) fn run_search_and_controlled_floating_sequence(
         floating,
         search,
         vec![egui::Event::Text("日本語 ⭐️".to_string())],
-    )?;
-    push_events(
+    );
+    pushed?;
+    let pushed = push_events(
         context,
         frames,
         adapter,
         toolbar,
         floating,
         search,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-            "ほし".to_string(),
-        ))],
-    )?;
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "ほし".to_string(),
+            active_range_chars: None,
+        })],
+    );
+    pushed?;
     let synchronized_search = CommandChromeSearchPresentation {
         query: "同期検索 ⭐️".to_string(),
         options: *search.options_model(),
@@ -67,7 +72,7 @@ pub(super) fn run_search_and_controlled_floating_sequence(
         icons: SearchControlIcons::default(),
     };
     let _ = search.synchronize_presentation(synchronized_search);
-    push_events(
+    let pushed = push_events(
         context,
         frames,
         adapter,
@@ -75,8 +80,9 @@ pub(super) fn run_search_and_controlled_floating_sequence(
         floating,
         search,
         Vec::new(),
-    )?;
-    push_events(
+    );
+    pushed?;
+    let pushed = push_events(
         context,
         frames,
         adapter,
@@ -84,11 +90,12 @@ pub(super) fn run_search_and_controlled_floating_sequence(
         floating,
         search,
         vec![egui::Event::Ime(egui::ImeEvent::Commit("⭐️".to_string()))],
-    )?;
+    );
+    pushed?;
 
     for control in ["match-case", "whole-word"] {
         let target = center(search_control(frames, control)?);
-        push_events(
+        let pushed = push_events(
             context,
             frames,
             adapter,
@@ -96,11 +103,12 @@ pub(super) fn run_search_and_controlled_floating_sequence(
             floating,
             search,
             click_events(target),
-        )?;
+        );
+        pushed?;
     }
 
     let replace = replace_bounds(frames)?;
-    push_events(
+    let pushed = push_events(
         context,
         frames,
         adapter,
@@ -108,8 +116,9 @@ pub(super) fn run_search_and_controlled_floating_sequence(
         floating,
         search,
         click_events(center(replace)),
-    )?;
-    push_events(
+    );
+    pushed?;
+    let pushed = push_events(
         context,
         frames,
         adapter,
@@ -117,11 +126,12 @@ pub(super) fn run_search_and_controlled_floating_sequence(
         floating,
         search,
         vec![egui::Event::Text("置換 ⭐️".to_string())],
-    )?;
+    );
+    pushed?;
 
     for control in ["replace-one", "replace-all", "use-regex"] {
         let target = center(search_control(frames, control)?);
-        push_events(
+        let pushed = push_events(
             context,
             frames,
             adapter,
@@ -129,10 +139,11 @@ pub(super) fn run_search_and_controlled_floating_sequence(
             floating,
             search,
             click_events(target),
-        )?;
+        );
+        pushed?;
     }
     let target = center(search_control(frames, "close")?);
-    push_events(
+    let pushed = push_events(
         context,
         frames,
         adapter,
@@ -140,7 +151,8 @@ pub(super) fn run_search_and_controlled_floating_sequence(
         floating,
         search,
         click_events(target),
-    )?;
+    );
+    pushed?;
 
     let _ = floating.synchronize_presentation(FloatingCommandToolbarPresentation::new(
         Rect::new(
@@ -152,7 +164,7 @@ pub(super) fn run_search_and_controlled_floating_sequence(
         Rect::new(0, 0, CONTROLLED_VIEWPORT_WIDTH, CONTROLLED_VIEWPORT_HEIGHT),
         FloatingCommandToolbarVisibility::Visible,
     ));
-    push_events(
+    let pushed = push_events(
         context,
         frames,
         adapter,
@@ -160,6 +172,7 @@ pub(super) fn run_search_and_controlled_floating_sequence(
         floating,
         search,
         Vec::new(),
-    )?;
+    );
+    pushed?;
     Ok(())
 }

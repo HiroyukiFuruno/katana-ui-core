@@ -1,10 +1,10 @@
 use super::{
     UiButtonProps, UiColorPickerProps, UiColorSwatchProps, UiCommandResultProps,
-    UiContextMenuProps, UiDisclosureProps, UiFormFieldProps, UiIconProps, UiImageSurfaceProps,
-    UiInteractionState, UiLoadingProps, UiModalProps, UiNode, UiPanelProps, UiPopoverProps,
-    UiScrollAreaProps, UiSearchControlProps, UiShortcutProps, UiSize, UiSkeletonProps,
-    UiSplitPaneProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps, UiTextProps, UiTone,
-    UiTreeProps, UiVariant, UiVisualRole,
+    UiContextMenuProps, UiDisclosureProps, UiFormFieldProps, UiGridProps, UiIconProps,
+    UiImageSurfaceProps, UiInteractionState, UiLoadingProps, UiModalProps, UiNode, UiPanelProps,
+    UiPopoverProps, UiScrollAreaProps, UiSearchControlProps, UiShortcutProps, UiSize,
+    UiSkeletonProps, UiSplitPaneProps, UiStatusProps, UiTextAreaProps, UiTextEntryProps,
+    UiTextProps, UiTone, UiTreeProps, UiVariant, UiVisualRole,
 };
 use crate::theme::ThemeSnapshot;
 
@@ -211,6 +211,12 @@ impl UiNode {
     #[must_use]
     pub fn tree(mut self, value: UiTreeProps) -> Self {
         self.props.tree = value;
+        self
+    }
+
+    #[must_use]
+    pub fn grid(mut self, value: UiGridProps) -> Self {
+        self.props.grid = value;
         self
     }
 

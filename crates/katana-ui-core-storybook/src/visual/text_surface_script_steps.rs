@@ -122,7 +122,10 @@ pub(super) fn scripted_steps() -> Vec<TextSurfaceScriptStep> {
         },
         TextSurfaceScriptStep {
             name: "ime-preedit-star",
-            events: vec![egui::Event::Ime(egui::ImeEvent::Preedit("⭐️".to_string()))],
+            events: vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+                text: "⭐️".to_string(),
+                active_range_chars: None,
+            })],
         },
         TextSurfaceScriptStep {
             name: "ime-commit-star",

@@ -129,10 +129,8 @@ impl CommandChromeToolbar {
                 .map(|item| self.select_dropdown_item(&action_id, item.id()))
                 .unwrap_or_default();
         }
-        let next = next_focus_index(&enabled, focused, key);
-        let Some(next) = next else {
-            return Vec::new();
-        };
+        let next =
+            next_focus_index(&enabled, focused, key).unwrap_or(focused.unwrap_or(enabled[0]));
         if focused == Some(next) {
             return Vec::new();
         }
@@ -214,5 +212,267 @@ fn next_focus_index(
         CommandChromeDropdownKey::Enter
         | CommandChromeDropdownKey::Space
         | CommandChromeDropdownKey::Escape => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interaction::placement::{Rect, Size};
+    use crate::molecule::command_chrome::{
+        CommandChromeAction, CommandChromeDropdownItem, CommandChromeDropdownTrigger,
+    };
+
+    fn layout(x: i32) -> CommandChromeDropdownLayout {
+        CommandChromeDropdownLayout::new(
+            Rect::new(x, 0, 20, 20),
+            Rect::new(0, 0, 200, 100),
+            Size::new(80, 60),
+        )
+    }
+
+    fn dropdown(trigger: CommandChromeDropdownTrigger, disabled: bool) -> CommandChromeDropdown {
+        CommandChromeDropdown::new(trigger)
+            .item(CommandChromeDropdownItem::new("disabled", "Disabled").disabled(true))
+            .item(CommandChromeDropdownItem::new("enabled", "Enabled").disabled(disabled))
+            .item(CommandChromeDropdownItem::new("enabled-two", "Enabled two").disabled(disabled))
+    }
+
+    #[test]
+    fn dropdown_fail_closed_paths_and_keyboard_boundaries_are_total() {
+        let mut toolbar = CommandChromeToolbar::new()
+            .action(CommandChromeAction::new("plain", "Plain"))
+            .action(
+                CommandChromeAction::new("menu", "Menu")
+                    .dropdown(dropdown(CommandChromeDropdownTrigger::Primary, false)),
+            );
+        toolbar.update_dropdown_layout("missing".into(), layout(0));
+        toolbar.update_dropdown_layout("plain".into(), layout(0));
+        assert!(
+            toolbar
+                .select_dropdown_item(&"menu".into(), &"enabled".into())
+                .is_empty()
+        );
+        assert!(
+            toolbar
+                .apply_dropdown_key(CommandChromeDropdownKey::ArrowDown)
+                .is_empty()
+        );
+
+        toolbar.update_dropdown_layout("menu".into(), layout(0));
+        assert!(toolbar.open_primary_dropdown(&"menu".into()).is_some());
+        assert!(
+            toolbar
+                .select_dropdown_item(&"other".into(), &"enabled".into())
+                .is_empty()
+        );
+        assert!(
+            toolbar
+                .select_dropdown_item(&"menu".into(), &"disabled".into())
+                .is_empty()
+        );
+        assert!(
+            !toolbar
+                .apply_dropdown_key(CommandChromeDropdownKey::End)
+                .is_empty()
+        );
+        assert!(
+            toolbar
+                .apply_dropdown_key(CommandChromeDropdownKey::End)
+                .is_empty()
+        );
+        assert!(
+            !toolbar
+                .apply_dropdown_key(CommandChromeDropdownKey::Enter)
+                .is_empty()
+        );
+        assert!(
+            toolbar
+                .apply_dropdown_key(CommandChromeDropdownKey::Escape)
+                .is_empty()
+        );
+
+        assert_eq!(
+            next_focus_index(&[1], Some(1), CommandChromeDropdownKey::Enter),
+            None
+        );
+        assert_eq!(
+            next_focus_index(&[1, 3], Some(1), CommandChromeDropdownKey::ArrowUp),
+            Some(3)
+        );
+        assert_eq!(
+            next_focus_index(&[1, 3], Some(1), CommandChromeDropdownKey::ArrowDown),
+            Some(3)
+        );
+        assert_eq!(
+            next_focus_index(&[1, 3], Some(3), CommandChromeDropdownKey::Home),
+            Some(1)
+        );
+    }
+
+    #[test]
+    fn dropdown_switching_missing_models_and_disabled_items_fail_closed() {
+        let mut toolbar = CommandChromeToolbar::new()
+            .action(
+                CommandChromeAction::new("first", "First")
+                    .dropdown(dropdown(CommandChromeDropdownTrigger::Primary, false)),
+            )
+            .action(
+                CommandChromeAction::new("second", "Second")
+                    .dropdown(dropdown(CommandChromeDropdownTrigger::Primary, false)),
+            )
+            .action(
+                CommandChromeAction::new("all-disabled", "All disabled")
+                    .dropdown(dropdown(CommandChromeDropdownTrigger::Primary, true)),
+            );
+        for (index, id) in ["first", "second", "all-disabled"].into_iter().enumerate() {
+            toolbar.update_dropdown_layout(id.into(), layout(index as i32 * 20));
+        }
+        assert!(toolbar.open_primary_dropdown(&"first".into()).is_some());
+        let switched = toolbar.open_primary_dropdown(&"second".into());
+        assert!(matches!(
+            switched.as_ref().and_then(|events| events.first()),
+            Some(CommandChromeToolbarEvent::DropdownClosed { .. })
+        ));
+
+        toolbar.open_dropdown = Some(CommandChromeOpenDropdown::new(
+            "missing".into(),
+            layout(0),
+            Some(0),
+        ));
+        assert!(
+            toolbar
+                .select_dropdown_item(&"missing".into(), &"enabled".into())
+                .is_empty()
+        );
+        assert!(
+            toolbar
+                .apply_dropdown_key(CommandChromeDropdownKey::ArrowDown)
+                .is_empty()
+        );
+
+        toolbar.open_dropdown = Some(CommandChromeOpenDropdown::new(
+            "all-disabled".into(),
+            layout(0),
+            None,
+        ));
+        assert!(
+            toolbar
+                .apply_dropdown_key(CommandChromeDropdownKey::ArrowDown)
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn trigger_and_layout_paths_cover_split_dropdown_and_layout_updates() {
+        let mut toolbar = CommandChromeToolbar::new()
+            .action(
+                CommandChromeAction::new("primary", "Primary")
+                    .dropdown(dropdown(CommandChromeDropdownTrigger::Primary, false)),
+            )
+            .action(
+                CommandChromeAction::new("split", "Split").dropdown(dropdown(
+                    CommandChromeDropdownTrigger::SplitSecondary,
+                    false,
+                )),
+            );
+
+        assert!(toolbar.open_primary_dropdown(&"split".into()).is_none());
+        assert!(
+            toolbar
+                .open_split_secondary_dropdown(&"primary".into())
+                .is_none()
+        );
+
+        assert!(toolbar.open_primary_dropdown(&"primary".into()).is_none());
+        toolbar.update_dropdown_layout("primary".into(), layout(11));
+        toolbar.update_dropdown_layout("split".into(), layout(21));
+
+        let split_events = toolbar.open_split_secondary_dropdown(&"split".into());
+        assert!(split_events.is_some());
+        let before = toolbar.open_dropdown.as_ref().map(|it| it.placement());
+        toolbar.update_dropdown_layout("split".into(), layout(31));
+        let after = toolbar.open_dropdown.as_ref().map(|it| it.placement());
+        assert!(before.is_some());
+        assert!(after.is_some());
+        assert_ne!(before, after);
+
+        assert_eq!(
+            1,
+            toolbar
+                .apply_dropdown_key(CommandChromeDropdownKey::ArrowUp)
+                .len()
+        );
+    }
+
+    #[test]
+    fn dropdown_open_fail_closed_when_layout_or_trigger_mismatch() {
+        let mut toolbar = CommandChromeToolbar::new().action(
+            CommandChromeAction::new("action", "Action").dropdown(
+                CommandChromeDropdown::new(CommandChromeDropdownTrigger::SplitSecondary)
+                    .item(CommandChromeDropdownItem::new("item", "Item")),
+            ),
+        );
+
+        assert!(toolbar.open_primary_dropdown(&"action".into()).is_none());
+
+        toolbar.update_dropdown_layout("action".into(), layout(9));
+        assert!(toolbar.open_primary_dropdown(&"action".into()).is_none());
+        assert!(
+            toolbar
+                .open_split_secondary_dropdown(&"action".into())
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn dropdown_navigation_with_single_enabled_item_covers_noop_focus_move_path() {
+        let mut toolbar = CommandChromeToolbar::new().action(
+            CommandChromeAction::new("single", "Single").dropdown(
+                CommandChromeDropdown::new(CommandChromeDropdownTrigger::Primary)
+                    .item(CommandChromeDropdownItem::new("only", "Only")),
+            ),
+        );
+        toolbar.update_dropdown_layout("single".into(), layout(1));
+
+        assert!(toolbar.open_primary_dropdown(&"single".into()).is_some());
+        assert_eq!(
+            0,
+            toolbar
+                .apply_dropdown_key(CommandChromeDropdownKey::ArrowDown)
+                .len()
+        );
+        assert_eq!(
+            0,
+            toolbar
+                .apply_dropdown_key(CommandChromeDropdownKey::Home)
+                .len()
+        );
+    }
+
+    #[test]
+    fn dropdown_open_reopen_reuses_existing_entry_with_no_duplicate_focus_change() {
+        let mut toolbar = CommandChromeToolbar::new().action(
+            CommandChromeAction::new("menu", "Menu").dropdown(
+                CommandChromeDropdown::new(CommandChromeDropdownTrigger::Primary)
+                    .item(CommandChromeDropdownItem::new("item", "Item")),
+            ),
+        );
+        toolbar.update_dropdown_layout("menu".into(), layout(0));
+
+        let first_open = toolbar.open_primary_dropdown(&"menu".into());
+        assert_eq!(Some(2), first_open.as_ref().map(Vec::len));
+
+        let second_open = toolbar.open_primary_dropdown(&"menu".into());
+        assert!(
+            second_open
+                .as_ref()
+                .is_some_and(|events| !events.is_empty())
+        );
+        assert_eq!(
+            first_open.as_ref().and_then(|events| events.last()),
+            second_open.as_ref().and_then(|events| events.last()),
+            "reopening same action should avoid explicit dropdown-close event"
+        );
     }
 }

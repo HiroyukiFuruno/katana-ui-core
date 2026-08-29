@@ -53,7 +53,7 @@ mod tests {
     ) -> crate::text_command_surface::EguiTextCommandSurfaceHostRootFrame {
         let mut frame = None;
         let _ = context.run_ui(input, |ui| {
-            egui::CentralPanel::default().show_inside(ui, |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 frame = Some(root.show(ui));
             });
         });
@@ -340,7 +340,7 @@ mod tests {
         );
         assert!(matches!(
             stages[5].input.events.as_slice(),
-            [egui::Event::Ime(egui::ImeEvent::Preedit(value))] if value == "かな"
+            [egui::Event::Ime(egui::ImeEvent::Preedit { text: value, .. })] if value == "かな"
         ));
         assert!(matches!(
             stages[6].input.events.as_slice(),

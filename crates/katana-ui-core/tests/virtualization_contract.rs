@@ -112,6 +112,35 @@ fn focused_row_outside_range_is_returned_as_sentinel() {
 }
 
 #[test]
+fn focused_row_inside_or_outside_total_count_is_not_duplicated() {
+    let base = VirtualizationConfig {
+        enabled: true,
+        total_count: 10,
+        viewport_offset: 0,
+        viewport_height: 60,
+        overscan: 0,
+        row_height_provider: RowHeightProvider::Fixed { height: 20 },
+        keep_focused_in_window: true,
+        focused_index: Some(1),
+    };
+    let outside = VirtualizationConfig {
+        focused_index: Some(10),
+        ..base.clone()
+    };
+
+    assert!(
+        VirtualizationPlanner::compute_visible_range(&base)
+            .focused_row
+            .is_none()
+    );
+    assert!(
+        VirtualizationPlanner::compute_visible_range(&outside)
+            .focused_row
+            .is_none()
+    );
+}
+
+#[test]
 fn measured_override_merge_and_scroll_correction_are_pure() {
     let before = RowHeightProvider::Estimated {
         estimated_height: 10,
@@ -186,4 +215,29 @@ fn disabled_config_returns_full_range_for_backward_compatibility() {
     assert_eq!(TOTAL_ROWS, range.end);
     assert_eq!(TOTAL_ROWS, range.rows.len());
     assert_eq!(None, range.focused_row);
+}
+
+#[test]
+fn default_empty_config_and_announcement_are_stable() {
+    let config = VirtualizationConfig::default();
+    let range = VirtualizationPlanner::compute_visible_range(&config);
+
+    assert_eq!(0, range.start);
+    assert_eq!(0, range.end);
+    assert!(range.rows.is_empty());
+    assert_eq!("Row, 1 of 0", range.announce_row("Row", 0));
+}
+
+#[test]
+fn merge_ignores_measurements_for_non_estimated_provider() {
+    let fixed = RowHeightProvider::Fixed { height: ROW_HEIGHT };
+    let merged = VirtualizationPlanner::merge_measured_overrides(
+        &fixed,
+        &[RowHeightOverride {
+            index: 0,
+            height: 99,
+        }],
+    );
+
+    assert_eq!(fixed, merged);
 }

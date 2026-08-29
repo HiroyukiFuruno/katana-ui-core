@@ -256,3 +256,35 @@ pub(super) fn effective_setting_value_for_test(
     let text = TextRenderer::load(&facade, facade.default_font_role());
     effective_setting_value(&text, scenario, control)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        Canvas, LayoutRect, ROW_WIDTH, StorybookButtonOptionControl, StorybookButtonOptions,
+        VisualPalette, draw_toggle,
+    };
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn non_toggle_control_uses_the_disabled_switch_fallback() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let palette = VisualPalette::from_theme(facade.theme());
+        let mut canvas = Canvas::new(ROW_WIDTH, 40, palette.background);
+
+        draw_toggle(
+            &mut canvas,
+            &palette,
+            StorybookButtonOptions::default(),
+            LayoutRect::new(0, 0, ROW_WIDTH, 40),
+            StorybookButtonOptionControl::AriaLabel,
+        );
+
+        assert!(
+            canvas
+                .pixels()
+                .iter()
+                .any(|pixel| *pixel != palette.background)
+        );
+    }
+}

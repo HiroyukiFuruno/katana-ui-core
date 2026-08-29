@@ -24,6 +24,7 @@ permissions:
   contents: write
 
 env:
+  CARGO_BUILD_JOBS: 1
   CARGO_INCREMENTAL: 0
   CARGO_TERM_COLOR: always
 
@@ -62,6 +63,20 @@ jobs:
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
+
+      - name: Install headless display
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes ffmpeg fonts-noto-cjk fonts-noto-color-emoji fonts-noto-mono xauth xvfb
+          mono_font=/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf
+          emoji_font=/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf
+          expected_hash=93cdc4ee9aa40e2afceecc63da0ca05ec7aab4bec991ece51a6b52389f48a477
+          actual_hash="$(sha256sum "${emoji_font}" | cut -d ' ' -f 1)"
+          test "${actual_hash}" = "${expected_hash}"
+          echo "KUC_PINNED_LINUX_EMOJI_SHA256=${expected_hash}" >> "${GITHUB_ENV}"
+          expected_mono_hash=6b692c4b6d15ccf59f1c1fe8d11cb8a92f51960f3e9f1f523781755a3af7e29f
+          actual_mono_hash="$(sha256sum "${mono_font}" | cut -d ' ' -f 1)"
+          test "${actual_mono_hash}" = "${expected_mono_hash}"
 
       - name: Resolve version
         id: version

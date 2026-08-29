@@ -180,8 +180,8 @@ fn count_color_in_rect(canvas: &Canvas, rect: LayoutRect, color: u32) -> usize {
 }
 
 fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {
-    if x >= canvas.width() || y >= canvas.height() {
-        return None;
-    }
-    Some(canvas.pixels()[y * canvas.width() + x])
+    (x < canvas.width() && y < canvas.height())
+        .then(|| y * canvas.width() + x)
+        .and_then(|index| canvas.pixels().get(index))
+        .copied()
 }

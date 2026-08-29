@@ -180,6 +180,6 @@ pub(super) fn build_frame(
 
 fn hash_serialized(value: &impl Serialize) -> Result<String, String> {
     serde_json::to_vec(value)
-        .map(|bytes| format!("{:x}", Sha256::digest(bytes)))
+        .map(|bytes| hex::encode(Sha256::digest(bytes)))
         .map_err(|error| error.to_string())
 }

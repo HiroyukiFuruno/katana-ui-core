@@ -203,7 +203,7 @@ fn event_correlation(root_identity_fingerprint: &str, revision: u64) -> String {
     hasher.update(b"kuc.sanitized-command-correlation/v1");
     hasher.update(root_identity_fingerprint.as_bytes());
     hasher.update(revision.to_le_bytes());
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }
 
 #[cfg(test)]
@@ -226,7 +226,10 @@ mod tests {
         let floating_calls = Rc::new(RefCell::new(0_u32));
         let top_bytes = b"top-target-secret";
         let floating_bytes = b"floating-target-secret";
-        let floating_action_id = format!("kuc-command-{:x}", Sha256::digest(floating_bytes));
+        let floating_action_id = format!(
+            concat!("kuc-command-", "{}"),
+            hex::encode(Sha256::digest(floating_bytes))
+        );
 
         let target = |bytes: &[u8], calls: Rc<RefCell<u32>>| {
             SanitizedCommandTarget::from_opaque_bytes(bytes.to_vec()).with_unit_capability(

@@ -1,5 +1,6 @@
 use super::super::{assertions, facts, harness};
 use crate::visual::{command_chrome_fixture, text_surface_fixture};
+use katana_ui_core::molecule::command_chrome::CommandChromeFamilyId;
 use katana_ui_core::text_surface::TextSurfaceEvent;
 
 const FRAME_BOUNDARY_OFFSET: f32 = 8.0;
@@ -45,54 +46,60 @@ impl RepeatableChildrenScenario {
         let context = egui::Context::default();
         context.enable_accesskit();
         let mut adapter =
-            katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceAdapter::with_text_raster_config(
-                katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
-            )?;
+            katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceAdapter::with_text_raster_config(katana_ui_core_text_raster::PlatformTextRasterConfig::default()).expect("text command adapter");
         let mut surface =
             katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurface::new(
                 text_surface_fixture::text_surface_fixture(),
             )
-            .with_toolbar(super::super::harness::Harness::primary_toolbar_fixture())
+            .with_toolbar(
+                command_chrome_fixture::toolbar_fixture()
+                    .command_family(CommandChromeFamilyId::new("primary")),
+            )
             .with_floating_toolbar(
-                super::super::harness::Harness::floating_toolbar_fixture(),
+                command_chrome_fixture::floating_toolbar_fixture()
+                    .command_family(CommandChromeFamilyId::new("floating")),
                 katana_ui_core::molecule::command_chrome::FloatingCommandToolbarVisibility::Closed,
             )
             .with_search_strip(command_chrome_fixture::search_fixture(false));
-        let style = harness::Harness::style()?;
+        let style = harness::Harness::style();
         let (_initial_full, initial_output) =
             harness::Harness::run_frame(&context, &mut adapter, &mut surface, &style, Vec::new())?;
         let text_point = inside_text_content_point(initial_output.text.record.frame.content_bounds);
 
-        let (_press_full, _press_output) = harness::Harness::run_frame(
+        let press = harness::Harness::run_frame(
             &context,
             &mut adapter,
             &mut surface,
             &style,
             vec![harness::Harness::button(text_point, true)],
-        )?;
-        let (_focus_full, focus_output) = harness::Harness::run_frame(
+        );
+        let (_press_full, _press_output) = press?;
+        let focus = harness::Harness::run_frame(
             &context,
             &mut adapter,
             &mut surface,
             &style,
             vec![harness::Harness::button(text_point, false)],
-        )?;
+        );
+        let (_focus_full, focus_output) = focus?;
         let _ = focus_output;
 
-        let _ = harness::Harness::run_frame(
+        let typed = harness::Harness::run_frame(
             &context,
             &mut adapter,
             &mut surface,
             &style,
             vec![egui::Event::Text("storybook storybook".into())],
-        )?;
-        let (open_full, open_output) = harness::Harness::run_frame(
+        );
+        let _ = typed?;
+        let opened = harness::Harness::run_frame(
             &context,
             &mut adapter,
             &mut surface,
             &style,
             vec![harness::Harness::key(egui::Key::ArrowRight, true)],
-        )?;
+        );
+        let (open_full, open_output) = opened?;
         assert!(
             open_output
                 .text
@@ -108,10 +115,10 @@ impl RepeatableChildrenScenario {
         let open_floating = open_output
             .floating
             .as_ref()
-            .ok_or_else(|| std::io::Error::other("floating output was absent"))?;
+            .ok_or(std::io::Error::other("floating output was absent"))?;
         assert!(open_floating.record.is_some());
 
-        assertions::Assertions::assert_accesskit(
+        let accesskit = assertions::Assertions::assert_accesskit(
             &open_full,
             open_output.root_bounds,
             &[
@@ -123,12 +130,13 @@ impl RepeatableChildrenScenario {
                 "選択コード",
             ],
             &[],
-        )?;
+        );
+        accesskit?;
 
         let floating_record = open_floating
             .record
             .as_ref()
-            .ok_or_else(|| std::io::Error::other("floating record was absent"))?;
+            .ok_or(std::io::Error::other("floating record was absent"))?;
         assertions::Assertions::assert_inside(
             "floating",
             floating_record.toolbar.bounds,
@@ -178,35 +186,38 @@ impl RepeatableChildrenScenario {
             command_chrome_fixture::FRAME_WIDTH - FRAME_BOUNDARY_OFFSET,
             command_chrome_fixture::FRAME_HEIGHT - FRAME_BOUNDARY_OFFSET,
         );
-        let (_outside_press_full, _outside_press_output) = harness::Harness::run_frame(
+        let outside_press = harness::Harness::run_frame(
             &context,
             &mut adapter,
             &mut surface,
             &style,
             vec![harness::Harness::button(outside, true)],
-        )?;
-        let (outside_full, outside_closed) = harness::Harness::run_frame(
+        );
+        let (_outside_press_full, _outside_press_output) = outside_press?;
+        let outside_release = harness::Harness::run_frame(
             &context,
             &mut adapter,
             &mut surface,
             &style,
             vec![harness::Harness::button(outside, false)],
-        )?;
+        );
+        let (outside_full, outside_closed) = outside_release?;
         let outside_floating = outside_closed
             .floating
             .as_ref()
-            .ok_or_else(|| std::io::Error::other("floating output was absent"))?;
+            .ok_or(std::io::Error::other("floating output was absent"))?;
         assert!(outside_floating.record.is_none());
         assert_eq!(
             outside_closed.artifact_order(),
             facts::FrameFacts::expected_artifact_order(&outside_closed)
         );
-        assertions::Assertions::assert_accesskit(
+        let accesskit = assertions::Assertions::assert_accesskit(
             &outside_full,
             outside_closed.root_bounds,
             &["TextSurface story", "太字", "検索", "置換"],
             &["floating"],
-        )?;
+        );
+        accesskit?;
 
         let hash_once = facts::FrameFacts::composite_hash(&outside_closed)?;
         let (_, repeat_output) =

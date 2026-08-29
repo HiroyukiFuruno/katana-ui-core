@@ -188,7 +188,7 @@ pub(super) struct RootChildOutputs {
     pub context_menu: Option<EguiContextMenuOutput>,
     pub source_address: Option<SourceAddressRootOutput>,
     pub accesskit_evidence: Vec<super::accesskit_evidence::AccessKitEvidence>,
-    pub artifact_order: Vec<EguiTextCommandSurfaceChild>,
+    pub(super) ordered_artifacts: Vec<EguiTextCommandSurfaceChild>,
     pub status_bar: Option<crate::status_bar::EguiStatusBarOutput>,
     pub diagnostics_list: Option<crate::diagnostics_list::EguiDiagnosticsListOutput>,
 }
@@ -211,7 +211,7 @@ impl EguiTextCommandSurfaceOutput {
             status_bar: children.status_bar,
             diagnostics_list: children.diagnostics_list,
             accesskit_evidence: children.accesskit_evidence,
-            artifact_order: children.artifact_order,
+            artifact_order: children.ordered_artifacts,
         }
     }
 

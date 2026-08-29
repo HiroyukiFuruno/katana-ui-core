@@ -128,6 +128,33 @@ fn canvas_blit_preserves_selectable_text_runs() {
     );
 }
 
+#[test]
+fn canvas_text_and_blit_cover_roles_clipping_and_source_bounds() {
+    let mut source = Canvas::new(4, 4, BACKGROUND);
+    source.fill_rect(0, 0, 4, 4, 0x123456);
+    source.record_text_run("outside", 0, 0, 4, 1);
+    let mut target = Canvas::new(4, 4, BACKGROUND);
+
+    target.draw_text(0, 0, "body", 0xffffff);
+    target.draw_text_with_role("code", 0, 1, "code", 0xffffff);
+    assert!(target.text_width_with_role("body", "body") > 0);
+    assert!(target.text_width_with_role("code", "code") > 0);
+
+    target.with_clip(1, 1, 2, 2, &mut |canvas| {
+        canvas.blit_canvas(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 0,
+                dest_y: 0,
+                width: 8,
+                height: 8,
+                source_y: 2,
+            },
+        );
+    });
+    assert!(target.non_background_pixels(BACKGROUND) > 0);
+}
+
 fn vertical_row_rgba(width: u32, height: u32) -> Vec<u8> {
     const ROW_RED_STEP: u32 = 20;
     let mut rgba = Vec::new();

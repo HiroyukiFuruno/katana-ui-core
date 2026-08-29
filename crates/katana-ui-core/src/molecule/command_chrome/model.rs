@@ -161,6 +161,124 @@ impl Default for CommandChromeToolbar {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interaction::placement::{Rect, Size};
+    use crate::molecule::command_chrome::CommandChromeIcon;
+    use crate::molecule::command_chrome::{
+        CommandChromeDisplayMode, CommandChromeOpenDropdown, CommandChromeToolbarAction,
+        CommandChromeToolbarPresentation,
+    };
+    use crate::molecule::toolbar::{ToolbarDensity, ToolbarKeyboardInput, ToolbarStrategy};
+
+    #[test]
+    fn new_toolbar_defaults_are_stable() {
+        let toolbar = CommandChromeToolbar::new();
+        assert_eq!(toolbar, CommandChromeToolbar::default());
+        assert_eq!(
+            CommandChromeDisplayMode::IconLeading,
+            toolbar.display_mode_model()
+        );
+        assert_eq!(
+            CommandChromeFamilyId::default(),
+            *toolbar.command_family_id()
+        );
+        assert_eq!(0, toolbar.actions.len());
+        assert!(toolbar.focused_index.is_none());
+        assert!(toolbar.open_dropdown.is_none());
+        assert!(toolbar.groups.is_empty());
+        assert_eq!(toolbar.overflow_strategy, ToolbarStrategy::default());
+        assert_eq!(toolbar.density, ToolbarDensity::default());
+    }
+
+    #[test]
+    fn command_family_id_is_mutable_and_display_mode_resets_focus() {
+        let icon = CommandChromeIcon::EmphasisStrong.icon_props();
+        let mut toolbar = CommandChromeToolbar::new()
+            .action(CommandChromeAction::new("one", "One").icon(icon.clone()))
+            .action(CommandChromeAction::new("two", "Two").icon(icon));
+        let _ = toolbar.apply_action(CommandChromeToolbarAction::Keyboard {
+            input: ToolbarKeyboardInput::Home,
+        });
+
+        assert_eq!(
+            Some("one"),
+            toolbar
+                .focused_action_id_model()
+                .as_ref()
+                .map(|value| value.as_str())
+        );
+
+        let toolbar = toolbar
+            .command_family(CommandChromeFamilyId::new("workspace"))
+            .display_mode(CommandChromeDisplayMode::IconOnly);
+
+        assert_eq!("workspace", toolbar.command_family_id().as_str());
+        assert!(toolbar.focused_action_id_model().is_none());
+    }
+
+    #[test]
+    fn synchronize_presentation_reports_changed_and_unchanged_states() {
+        let mut toolbar =
+            CommandChromeToolbar::new().action(CommandChromeAction::new("one", "One"));
+        let same = CommandChromeToolbarPresentation {
+            actions: toolbar.actions.clone(),
+            groups: toolbar.groups.clone(),
+            display_mode: toolbar.display_mode,
+            density: toolbar.density,
+            overflow_strategy: toolbar.overflow_strategy,
+        };
+        assert!(!toolbar.synchronize_presentation(same));
+
+        let updated = CommandChromeToolbarPresentation {
+            actions: vec![CommandChromeAction::new("one", "Uno")],
+            groups: Vec::new(),
+            display_mode: CommandChromeDisplayMode::IconLeading,
+            density: toolbar.density,
+            overflow_strategy: toolbar.overflow_strategy,
+        };
+        assert!(toolbar.synchronize_presentation(updated));
+        assert_eq!("Uno", toolbar.actions[0].label_model());
+
+        toolbar.open_dropdown = Some(CommandChromeOpenDropdown::new(
+            "one".into(),
+            CommandChromeDropdownLayout::new(
+                Rect::new(0, 0, 10, 10),
+                Rect::new(0, 0, 100, 100),
+                Size::new(50, 40),
+            ),
+            None,
+        ));
+        assert!(
+            toolbar.synchronize_presentation(CommandChromeToolbarPresentation {
+                actions: vec![CommandChromeAction::new("two", "Two")],
+                groups: vec![ToolbarGroup::new("editing")],
+                display_mode: CommandChromeDisplayMode::IconOnly,
+                density: ToolbarDensity::Compact,
+                overflow_strategy: ToolbarStrategy::Custom,
+            })
+        );
+        assert!(toolbar.open_dropdown_model().is_none());
+        assert!(toolbar.focused_action_id_model().is_none());
+        assert_eq!(
+            toolbar.display_mode_model(),
+            CommandChromeDisplayMode::IconOnly
+        );
+    }
+
+    #[test]
+    fn builder_retains_group_density_and_overflow_strategy() {
+        let toolbar = CommandChromeToolbar::new()
+            .group(ToolbarGroup::new("editing"))
+            .density(ToolbarDensity::Spacious)
+            .overflow_strategy(ToolbarStrategy::Custom);
+        assert_eq!(toolbar.groups[0].id().as_str(), "editing");
+        assert_eq!(toolbar.density, ToolbarDensity::Spacious);
+        assert_eq!(toolbar.overflow_strategy, ToolbarStrategy::Custom);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CommandChromeContractViolation {
     MissingIconOnlyIcon { action_id: ToolbarActionId },

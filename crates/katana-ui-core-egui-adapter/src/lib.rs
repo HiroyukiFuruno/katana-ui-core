@@ -4,6 +4,8 @@
 //! texture upload, input conversion, and accessibility projection stay here.
 
 mod closeable_tab_strip_adapter;
+#[cfg(feature = "storybook-artifacts")]
+mod system;
 mod texture_cache;
 
 pub mod artifact_compositor;
@@ -36,3 +38,13 @@ pub use opaque_motion_receipt::{
     OpaqueMotionReceiptSequence, OpaqueMotionReceiptSequenceError, OpaqueRootArtifactReceipt,
     OpaqueRootArtifactReceiptError, OpaqueRootArtifactReceiptWriter,
 };
+
+#[cfg(test)]
+fn run_ui_discard(
+    context: &egui::Context,
+    input: egui::RawInput,
+    run_ui: impl FnMut(&mut egui::Ui),
+) {
+    let mut output = context.run_ui(input, run_ui);
+    output.textures_delta.clear();
+}

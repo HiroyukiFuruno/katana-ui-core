@@ -192,3 +192,24 @@ fn virtualization_settings_line(example: &StoryExample, marker: &str) -> String 
         "{marker} settings: virtualization enabled=true->false overscan=2->4 row_height_provider=Fixed->Variable visible_range={range} -> virtualization disabled"
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::catalog::StoryCatalog;
+
+    #[test]
+    fn settings_lines_cover_every_catalog_page_adapter() {
+        for example in StoryCatalog.examples() {
+            let line = settings_line(
+                &example,
+                "marker",
+                "fallback.option",
+                "String",
+                "before",
+                "after",
+            );
+            assert!(line.starts_with("marker settings:"));
+        }
+    }
+}

@@ -34,9 +34,10 @@ pub(super) fn ime_preedit() -> Scenario {
     scenario(
         "ime-preedit",
         ["ime-preedit-japanese-vs16"],
-        [egui::Event::Ime(egui::ImeEvent::Preedit(
-            "かな⭐️".to_string(),
-        ))],
+        [egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "かな⭐️".to_string(),
+            active_range_chars: None,
+        })],
     )
 }
 

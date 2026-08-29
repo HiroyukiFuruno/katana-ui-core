@@ -72,16 +72,73 @@ fn non_finite_wrap_width_uses_the_safe_fallback_width() -> Result<(), Box<dyn st
 }
 
 #[test]
-fn non_finite_scale_factor_is_rejected_before_pixel_buffer_allocation()
--> Result<(), Box<dyn std::error::Error>> {
+fn non_finite_scale_factor_is_rejected_before_pixel_buffer_allocation() {
     let mut request = PlatformTextRasterRequest::from_text("safe scale", font(), TEXT_COLOR);
     request.scale_factor = f32::INFINITY;
     let mut rasterizer = PlatformTextRasterizer::new(PlatformTextRasterConfig::default());
 
-    match rasterizer.rasterize(&request) {
-        Ok(_) => return Err("non-finite scale factor was accepted".into()),
-        Err(error) => assert_eq!(error, PlatformTextRasterError::NonFiniteLayoutExtent),
-    }
+    assert_eq!(
+        rasterizer.rasterize(&request).unwrap_err(),
+        PlatformTextRasterError::NonFiniteLayoutExtent
+    );
+}
+
+#[test]
+fn empty_text_is_rejected_without_changing_rasterizer_stats() {
+    let request = PlatformTextRasterRequest::from_text("", font(), TEXT_COLOR);
+    let mut rasterizer = PlatformTextRasterizer::new(PlatformTextRasterConfig::default());
+    let before = rasterizer.stats();
+
+    assert_eq!(
+        rasterizer.rasterize(&request).unwrap_err(),
+        PlatformTextRasterError::EmptyText
+    );
+    assert_eq!(rasterizer.stats(), before);
+}
+
+#[test]
+fn raster_hit_crop_color_and_hash_contracts_cover_valid_and_rejected_bounds()
+-> Result<(), Box<dyn std::error::Error>> {
+    let request = PlatformTextRasterRequest::from_text("ab", font(), TEXT_COLOR);
+    let mut rasterizer = PlatformTextRasterizer::new(PlatformTextRasterConfig::default());
+    let raster = rasterizer.rasterize(&request)?;
+    let first = raster
+        .grapheme_bounds
+        .first()
+        .ok_or("text raster must expose first grapheme bounds")?;
+
+    let hit = raster
+        .hit_test(first.x + first.width / 2.0, first.y + first.height / 2.0)
+        .ok_or("point inside grapheme must hit")?;
+    assert_eq!(
+        (hit.byte_start, hit.byte_end),
+        (first.byte_start, first.byte_end)
+    );
+    assert!(raster.hit_test(-1.0, -1.0).is_none());
+    assert!(raster.grapheme_crop(first, f32::NAN).is_none());
+    assert!(raster.grapheme_crop(first, 0.0).is_none());
+
+    let crop = raster
+        .grapheme_crop(first, request.scale_factor)
+        .ok_or("visible grapheme must produce a crop")?;
+    assert!(crop.width > 0);
+    assert!(crop.height > 0);
+    assert_eq!(crop.pixels.len(), crop.width * crop.height);
+    assert_ne!(crop.sha256(), [0; 32]);
+    let _ = crop.chromatic_pixel_count();
+
+    let mut colored = raster.clone();
+    colored.rgba_pixels[0] = [255, 0, 0, 255];
+    assert!(colored.chromatic_pixel_count() >= 1);
+    let outside = crate::PlatformTextGraphemeBounds {
+        byte_start: 0,
+        byte_end: 1,
+        x: colored.width as f32 + 10.0,
+        y: colored.height as f32 + 10.0,
+        width: 1.0,
+        height: 1.0,
+    };
+    assert!(colored.grapheme_crop(&outside, 1.0).is_none());
     Ok(())
 }
 
@@ -108,21 +165,57 @@ fn missing_color_emoji_is_typed_and_does_not_replace_regular_text_family()
     assert!(!regular.text.is_empty());
     assert!(!regular.report.color_emoji_font_available);
 
-    let error = match rasterizer.rasterize(&PlatformTextRasterRequest::from_text(
-        "⭐️",
-        font(),
-        TEXT_COLOR,
-    )) {
-        Ok(_) => return Err("emoji silently fell back to SansSerif".into()),
-        Err(error) => error,
-    };
+    let error = rasterizer
+        .rasterize(&PlatformTextRasterRequest::from_text(
+            "⭐️",
+            font(),
+            TEXT_COLOR,
+        ))
+        .expect_err("emoji must not silently fall back to SansSerif");
     let PlatformTextRasterError::ColorEmojiUnavailable { face } = error else {
         return Err("missing color emoji must return a typed availability error".into());
     };
+    assert!(
+        PlatformTextRasterError::ColorEmojiUnavailable { face: face.clone() }
+            .to_string()
+            .contains("unavailable")
+    );
     assert!(!face.is_available());
     assert!(matches!(
         face.availability,
         crate::PlatformColorEmojiAvailability::Unavailable(_)
     ));
     Ok(())
+}
+
+#[test]
+fn raster_error_display_contract_covers_every_public_variant() {
+    let errors = [
+        PlatformTextRasterError::EmptyText,
+        PlatformTextRasterError::NonFiniteLayoutExtent,
+        PlatformTextRasterError::CatalogAccess,
+        PlatformTextRasterError::ColorEmojiUnavailable {
+            face: Box::new(crate::PlatformColorEmojiFaceRecord {
+                platform_profile: crate::PlatformFontProfile::Unsupported,
+                family_identity: String::new(),
+                source_file_path: None,
+                raw_file_sha256: None,
+                catalog_fingerprint: crate::PlatformFontCatalogFingerprint::from_bytes([0; 32]),
+                availability: crate::PlatformColorEmojiAvailability::Unavailable(
+                    crate::PlatformColorEmojiUnavailableReason::NoCandidates,
+                ),
+            }),
+        },
+        PlatformTextRasterError::CatalogConfigurationMismatch,
+        PlatformTextRasterError::CatalogAccess,
+        PlatformTextRasterError::RasterTooLarge {
+            width: 10,
+            height: 20,
+            max_pixels: 100,
+        },
+    ];
+    for error in errors {
+        assert!(!error.to_string().is_empty());
+        let _: &dyn std::error::Error = &error;
+    }
 }

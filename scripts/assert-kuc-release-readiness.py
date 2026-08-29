@@ -726,12 +726,12 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
     if not justfile.exists():
         return [f"{path_label(justfile, root)}: Justfile is missing"]
     source = justfile.read_text(encoding="utf-8")
-    required = (
+    justfile_required = (
         "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked",
-        "{{CARGO}} llvm-cov {{KUC_WORKSPACE_PACKAGES}} --all-features --locked --summary-only --fail-under-lines {{COVERAGE_MIN_LINES}}",
+        "bash scripts/run-strict-coverage.sh",
         "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --locked",
     )
-    forbidden = (
+    justfile_forbidden = (
         "{{CARGO}} test --workspace",
         "{{CARGO}} llvm-cov --workspace",
         'RUSTFLAGS="-D warnings" cargo test --workspace',
@@ -739,13 +739,39 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
     )
     failures = [
         f"{path_label(justfile, root)}: Rust test gate must scope execution to KUC workspace packages with `{token}`"
-        for token in required
+        for token in justfile_required
         if token not in source
     ]
     failures.extend(
         f"{path_label(justfile, root)}: Rust test gate must not execute path dependency tests with `{token}`"
-        for token in forbidden
+        for token in justfile_forbidden
         if token in source
+    )
+    coverage_script = root / "scripts" / "run-strict-coverage.sh"
+    if not coverage_script.exists():
+        failures.append(
+            f"{path_label(coverage_script, root)}: strict coverage script is missing"
+        )
+        return failures
+    coverage_source = coverage_script.read_text(encoding="utf-8")
+    coverage_required = (
+        "-p katana-ui-core",
+        "-p katana-ui-core-storybook",
+        "-p kuc-consumer-app",
+        "--all-targets",
+        "--include-ignored",
+        "export CARGO_PROFILE_TEST_OPT_LEVEL=0",
+        'run_cargo clean --target-dir "$coverage_target_dir"',
+        "run_cargo llvm-cov report",
+        "--fail-under-functions 100",
+        "--fail-under-lines 100",
+        "--fail-uncovered-functions 0",
+        "--fail-uncovered-lines 0",
+    )
+    failures.extend(
+        f"{path_label(coverage_script, root)}: strict coverage gate must include `{token}`"
+        for token in coverage_required
+        if token not in coverage_source
     )
     return failures
 
@@ -1539,7 +1565,7 @@ def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bo
         "    {{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked\n"
         "\n"
         "coverage:\n"
-        "    {{CARGO}} llvm-cov {{KUC_WORKSPACE_PACKAGES}} --all-features --locked --summary-only --fail-under-lines {{COVERAGE_MIN_LINES}}\n"
+        "    CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh\n"
         "\n"
         "cargo-test:\n"
         "    {{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --locked\n"
@@ -1556,6 +1582,29 @@ def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bo
     )
     source = scoped_packages if use_scoped_packages else dependency_wide
     (root / "Justfile").write_text(source, encoding="utf-8")
+    scripts = root / "scripts"
+    scripts.mkdir(parents=True, exist_ok=True)
+    coverage_source = (
+        "export CARGO_PROFILE_TEST_OPT_LEVEL=0\n"
+        'coverage_target_dir="${CARGO_TARGET_DIR:-target}/llvm-cov-target"\n'
+        'run_cargo clean --target-dir "$coverage_target_dir"\n'
+        "run_cargo llvm-cov \\\n"
+        "  -p katana-ui-core \\\n"
+        "  -p katana-ui-core-storybook \\\n"
+        "  -p kuc-consumer-app \\\n"
+        "  --all-targets --all-features --locked --no-report \\\n"
+        "  -- --include-ignored\n"
+        "run_cargo llvm-cov report \\\n"
+        "  --summary-only \\\n"
+        "  --fail-under-functions 100 \\\n"
+        "  --fail-under-lines 100 \\\n"
+        "  --fail-uncovered-functions 0 \\\n"
+        "  --fail-uncovered-lines 0\n"
+    )
+    (scripts / "run-strict-coverage.sh").write_text(
+        coverage_source,
+        encoding="utf-8",
+    )
 
 
 def write_justfile_storybook_command_self_test_file(

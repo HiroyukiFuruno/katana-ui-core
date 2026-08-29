@@ -182,3 +182,29 @@ pub(in crate::visual) fn context_update(
 ) -> TabsScreenUpdate {
     tabs_update(action, event, "tabs.context_menu", value, state)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{TabsContextMenuCommand, TabsScreenState};
+
+    #[test]
+    fn tab_context_reports_missing_menu_invalid_group_command_and_removed_tab() {
+        let mut state = TabsScreenState::default();
+        let missing = state.open_context_menu_for_tab("missing", 10, 20);
+        assert_eq!("closeable_tab_context_menu_missing", missing.event);
+        assert!(state.context_menu.is_none());
+
+        let no_menu = state.apply_context_command(TabsContextMenuCommand::Close);
+        assert_eq!("closeable_tab_context_command_missing", no_menu.event);
+
+        let tab_id = state.tabs[0].id.clone();
+        state.open_context_menu_for_tab(tab_id.as_str(), 10, 20);
+        let invalid = state.apply_context_command(TabsContextMenuCommand::GroupRename);
+        assert_eq!("tabs.command=invalid", invalid.state);
+
+        state.open_context_menu_for_tab(tab_id.as_str(), 10, 20);
+        state.tabs.clear();
+        let removed = state.apply_context_command(TabsContextMenuCommand::Pin);
+        assert_eq!("tabs.tab=missing", removed.state);
+    }
+}

@@ -38,16 +38,19 @@ impl PlatformFontCatalogCandidates {
     }
 
     pub(crate) fn emoji_for(profile: PlatformFontProfile) -> Vec<PlatformEmojiFontCandidate> {
-        let Some(family) = profile.expected_emoji_family() else {
-            return Vec::new();
-        };
-        let paths = match profile {
-            PlatformFontProfile::MacOs => paths(&["/System/Library/Fonts/Apple Color Emoji.ttc"]),
-            PlatformFontProfile::Windows => paths(&["C:/Windows/Fonts/seguiemj.ttf"]),
-            PlatformFontProfile::Linux => {
-                paths(&["/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"])
+        let (paths, family) = match profile {
+            PlatformFontProfile::MacOs => (
+                paths(&["/System/Library/Fonts/Apple Color Emoji.ttc"]),
+                "Apple Color Emoji",
+            ),
+            PlatformFontProfile::Windows => {
+                (paths(&["C:/Windows/Fonts/seguiemj.ttf"]), "Segoe UI Emoji")
             }
-            PlatformFontProfile::Unsupported => Vec::new(),
+            PlatformFontProfile::Linux => (
+                paths(&["/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"]),
+                "Noto Color Emoji",
+            ),
+            PlatformFontProfile::Unsupported => return Vec::new(),
         };
         paths
             .into_iter()
@@ -58,4 +61,50 @@ impl PlatformFontCatalogCandidates {
 
 fn paths(paths: &[&str]) -> Vec<PathBuf> {
     paths.iter().map(PathBuf::from).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn supported_profiles_expose_their_platform_font_candidates() {
+        for (profile, proportional_count, monospace_count) in [
+            (PlatformFontProfile::MacOs, 2, 2),
+            (PlatformFontProfile::Windows, 2, 1),
+            (PlatformFontProfile::Linux, 2, 2),
+        ] {
+            assert_eq!(
+                PlatformFontCatalogCandidates::proportional_for(profile).len(),
+                proportional_count
+            );
+            assert_eq!(
+                PlatformFontCatalogCandidates::monospace_for(profile).len(),
+                monospace_count
+            );
+            let emoji = PlatformFontCatalogCandidates::emoji_for(profile);
+            assert_eq!(emoji.len(), 1);
+            assert_eq!(
+                emoji[0].expected_family,
+                profile
+                    .expected_emoji_family()
+                    .expect("supported profiles have an emoji family")
+            );
+        }
+    }
+
+    #[test]
+    fn unsupported_profile_has_no_platform_font_candidates() {
+        assert!(
+            PlatformFontCatalogCandidates::proportional_for(PlatformFontProfile::Unsupported)
+                .is_empty()
+        );
+        assert!(
+            PlatformFontCatalogCandidates::monospace_for(PlatformFontProfile::Unsupported)
+                .is_empty()
+        );
+        assert!(
+            PlatformFontCatalogCandidates::emoji_for(PlatformFontProfile::Unsupported).is_empty()
+        );
+    }
 }

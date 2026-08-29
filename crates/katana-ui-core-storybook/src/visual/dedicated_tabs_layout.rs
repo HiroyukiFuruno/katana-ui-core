@@ -278,3 +278,19 @@ fn has_visible_group_tabs(state: &TabsScreenState, group_id: &str) -> bool {
         .iter()
         .any(|tab| !tab.pinned && tab.group_id.as_deref() == Some(group_id))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn typed_rect_lookup_rejects_unknown_and_unpinned_targets() {
+        let state = TabsScreenState::default();
+
+        assert_eq!(None, tab_rect_for_id(0, 0, &state, "missing"));
+        assert_eq!(None, group_rect_for_id(0, 0, &state, "missing"));
+        assert_eq!(None, pin_icon_rect_for_id(0, 0, &state, "missing"));
+        assert_eq!(None, pin_icon_rect_for_id(0, 0, &state, "main.rs"));
+        assert!(pin_icon_rect_for_id(0, 0, &state, "readme.md").is_some());
+    }
+}

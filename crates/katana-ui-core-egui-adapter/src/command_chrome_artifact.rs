@@ -129,5 +129,5 @@ impl EguiCommandChromeSearchArtifactFrame {
 fn artifact_hash(value: &impl Serialize) -> Result<String, EguiCommandChromeError> {
     let bytes = serde_json::to_vec(value)
         .map_err(|error| EguiCommandChromeError::ArtifactSerialization(error.to_string()))?;
-    Ok(format!("{:x}", Sha256::digest(bytes)))
+    Ok(hex::encode(Sha256::digest(bytes)))
 }

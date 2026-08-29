@@ -102,7 +102,7 @@ impl RootEventDispatcher {
         Ok(
             EguiTextCommandSurfaceRootEventBatch::with_source_address_port(
                 payload,
-                format!("{:x}", Sha256::digest(fingerprint_bytes)),
+                hex::encode(Sha256::digest(fingerprint_bytes)),
                 source_address_submission_port,
             ),
         )
@@ -124,7 +124,7 @@ impl RootEventFingerprint {
         hasher.update(state_revision.to_le_bytes());
         hasher.update([0]);
         hasher.update(event_batch_fingerprint.as_bytes());
-        format!("{:x}", hasher.finalize())
+        hex::encode(hasher.finalize())
     }
 }
 
@@ -141,6 +141,6 @@ impl RootEventFingerprint {
             status_bar: payload.status_bar.as_deref(),
             diagnostics_list: payload.diagnostics_list.as_deref(),
         };
-        serde_json::to_vec(&envelope).map(|bytes| format!("{:x}", Sha256::digest(bytes)))
+        serde_json::to_vec(&envelope).map(|bytes| hex::encode(Sha256::digest(bytes)))
     }
 }

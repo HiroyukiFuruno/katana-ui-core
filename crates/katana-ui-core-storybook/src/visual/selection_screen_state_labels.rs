@@ -135,3 +135,67 @@ pub(super) fn selection_list_state(
         _ => "single=none multi=none focus=none",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selection_labels_cover_every_declared_state() {
+        for index in [
+            0,
+            LIGHT_OPTION_INDEX,
+            DARK_OPTION_INDEX,
+            SYSTEM_OPTION_INDEX,
+        ] {
+            assert!(!select_state(index).is_empty());
+        }
+        for open in [false, true] {
+            for selected in [
+                None,
+                Some(LIGHT_OPTION_INDEX),
+                Some(DARK_OPTION_INDEX),
+                Some(SYSTEM_OPTION_INDEX),
+            ] {
+                assert!(!select_read_state(open, selected).is_empty());
+            }
+        }
+        for offset in 0..=3 {
+            assert!(!select_scroll_state(offset).is_empty());
+        }
+        for index in [0, COMBO_TWO_INDEX] {
+            assert!(!combo_state(index).is_empty());
+        }
+        for state in [
+            (true, true, Some(COMBO_TWO_INDEX)),
+            (true, true, None),
+            (false, false, Some(COMBO_TWO_INDEX)),
+            (false, false, None),
+            (true, false, Some(COMBO_TWO_INDEX)),
+        ] {
+            assert!(!combo_read_state(state.0, state.1, state.2).is_empty());
+        }
+
+        for state in [
+            (None, 0, None),
+            (None, 0, Some(0)),
+            (Some(0), 0, Some(0)),
+            (Some(1), 0, Some(1)),
+            (Some(2), 0, Some(2)),
+            (Some(3), 0, Some(3)),
+            (Some(1), 0b0010, Some(1)),
+            (Some(1), 0b0110, Some(2)),
+            (Some(2), 0b0110, Some(2)),
+            (Some(2), 0b0110, Some(3)),
+            (Some(3), 0b0110, Some(3)),
+            (Some(3), 0b0110, Some(0)),
+            (Some(0), 0b0110, Some(0)),
+            (Some(2), 0b0010, Some(2)),
+            (Some(3), 0b0010, Some(3)),
+            (Some(0), 0b0010, Some(0)),
+            (Some(9), 0b1111, Some(9)),
+        ] {
+            assert!(!selection_list_state(state.0, state.1, state.2).is_empty());
+        }
+    }
+}

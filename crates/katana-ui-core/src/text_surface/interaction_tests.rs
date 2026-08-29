@@ -80,6 +80,74 @@ fn pointer_drag_uses_layout_geometry_to_select_the_full_star_grapheme() {
 }
 
 #[test]
+fn disabled_and_unanchored_layout_actions_fail_closed_without_state_mutation() {
+    let text = "日本⭐️A";
+    let mut disabled_surface = TextSurface::new(TextSurfaceProps::new(
+        TextArea::new("disabled-editor").value(text).disabled(true),
+        vec![UiTextSpan::plain(text)],
+        TextSurfaceViewport::new(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
+    ));
+    let layout = layout();
+
+    let scroll = disabled_surface.apply_action(TextSurfaceAction::ScrollBy {
+        delta_x: 3,
+        delta_y: 17,
+    });
+    let context = disabled_surface.apply_action(TextSurfaceAction::RequestContextTarget {
+        selection: UiTextSelectionRange::new(1, 2),
+    });
+    let press = disabled_surface.apply_layout_action(
+        &layout,
+        TextSurfaceLayoutAction::PointerPress {
+            point: TextSurfacePoint::new(26, 8),
+            extend_selection: false,
+        },
+    );
+
+    assert!(!scroll.handled);
+    assert!(!context.handled);
+    assert!(!press.handled);
+    assert_eq!(0, disabled_surface.state().scroll_x);
+    assert_eq!(0, disabled_surface.state().scroll_y);
+
+    let mut enabled = surface();
+    let drag = enabled.apply_layout_action(
+        &layout,
+        TextSurfaceLayoutAction::PointerDrag {
+            point: TextSurfacePoint::new(34, 8),
+        },
+    );
+    let release = enabled.apply_layout_action(&layout, TextSurfaceLayoutAction::PointerRelease);
+    assert!(!drag.handled);
+    assert!(!release.handled);
+}
+
+#[test]
+fn extended_pointer_press_keeps_the_existing_selection_anchor() {
+    let mut surface = surface();
+    let layout = layout();
+    let star_start = "日本".len();
+    let _ = surface.apply_action(TextSurfaceAction::TextArea(TextAreaAction::Select(
+        crate::atom::TextAreaSelection {
+            start: star_start,
+            end: star_start,
+        },
+    )));
+
+    let extended = surface.apply_layout_action(
+        &layout,
+        TextSurfaceLayoutAction::PointerPress {
+            point: TextSurfacePoint::new(46, 8),
+            extend_selection: true,
+        },
+    );
+
+    assert!(extended.handled);
+    assert_eq!(star_start, extended.state.text_area.selection.start);
+    assert_eq!("日本⭐️A".len(), extended.state.text_area.selection.end);
+}
+
+#[test]
 fn scroll_context_and_composition_cancel_stay_in_the_text_surface_contract() {
     let mut surface = surface();
     let layout = layout();
@@ -176,6 +244,22 @@ fn key_chords_preserve_the_embedded_text_area_submit_and_newline_contract() {
     assert_eq!("日本⭐️A\n", surface.state().text_area.value);
 }
 
+#[test]
+fn invalid_text_area_options_emit_typed_key_validation_failure() {
+    let mut surface = TextSurface::new(TextSurfaceProps::new(
+        TextArea::new("invalid-editor").min_rows(0),
+        Vec::new(),
+        TextSurfaceViewport::new(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
+    ));
+    let key = TextAreaKeyChord::enter();
+    let outcome = surface.apply_action(TextSurfaceAction::Key(key));
+    assert!(!outcome.handled);
+    assert!(matches!(
+        outcome.events.as_slice(),
+        [TextSurfaceEvent::KeyValidationFailed { key: actual, .. }] if *actual == key
+    ));
+}
+
 fn surface() -> TextSurface {
     let text = "日本⭐️A";
     TextSurface::new(TextSurfaceProps::new(
@@ -200,7 +284,7 @@ fn layout() -> TextSurfaceLayout {
                 byte_start: offsets[0],
                 byte_end: offsets[1],
                 bounds: UiRect::new(
-                    i32::try_from(index).map_or(0, |value| value) * GRAPHEME_WIDTH as i32,
+                    i32::try_from(index).unwrap_or(0) * GRAPHEME_WIDTH as i32,
                     0,
                     GRAPHEME_WIDTH,
                     LINE_HEIGHT,

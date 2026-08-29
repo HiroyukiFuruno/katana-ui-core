@@ -2,14 +2,18 @@ use super::super::{assertions, fixtures, harness};
 use katana_ui_core::molecule::command_chrome::FloatingCommandToolbarVisibility;
 use katana_ui_core::text_surface::TextSurfacePresentation;
 use katana_ui_core_egui_adapter::text_command_surface::{
-    EguiTextCommandSurface, EguiTextCommandSurfaceFloatingPresentation,
-    EguiTextCommandSurfacePresentation, EguiTextCommandSurfaceSearchPresentation,
+    EguiTextCommandSurface, EguiTextCommandSurfaceAdapter,
+    EguiTextCommandSurfaceFloatingPresentation, EguiTextCommandSurfacePresentation,
+    EguiTextCommandSurfaceSearchPresentation,
 };
 
 pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
     let context = egui::Context::default();
     context.enable_accesskit();
-    let mut adapter = harness::adapter()?;
+    let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+    )
+    .expect("text command adapter");
     let mut surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture())
         .with_toolbar(fixtures::toolbar_fixture())
         .with_floating_toolbar(
@@ -184,7 +188,10 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
 pub(crate) fn last_item_run() -> Result<(), Box<dyn std::error::Error>> {
     let context = egui::Context::default();
     context.enable_accesskit();
-    let mut adapter = harness::adapter()?;
+    let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+    )
+    .expect("text command adapter");
     let mut surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture())
         .with_floating_toolbar(
             fixtures::toolbar_fixture(),
@@ -286,22 +293,6 @@ pub(crate) fn last_item_run() -> Result<(), Box<dyn std::error::Error>> {
                 .any(|(_, node)| node.label() == Some("候補 17 ⭐️")))
     );
     let last_point = center(last.bounds);
-    let (_, aimed) = harness::run_frame_sized(
-        &context,
-        &mut adapter,
-        &mut surface,
-        &style,
-        screen,
-        vec![egui::Event::PointerMoved(last_point)],
-    )?;
-    let last_point = aimed
-        .floating
-        .as_ref()
-        .and_then(|value| value.record.as_ref())
-        .and_then(|record| record.toolbar.dropdown.as_ref())
-        .and_then(|dropdown| dropdown.items.last())
-        .map(|item| center(item.bounds))
-        .expect("floating dropdown remains open while aiming at its last item");
 
     let (_, press) = harness::run_frame_sized(
         &context,

@@ -346,3 +346,44 @@ fn semantic_node_id(node: &UiNode) -> Option<UiNodeId> {
     }
     Some(value.to_string().into())
 }
+
+#[cfg(test)]
+mod viewport_clip_tests {
+    use super::{UiTreeHitRect, UiTreeRenderArea, clip_document_rect_to_viewport};
+
+    #[test]
+    fn empty_document_rect_is_not_hittable() {
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 20,
+            height: 20,
+            scroll_y: 0.0,
+        };
+
+        assert_eq!(
+            None,
+            clip_document_rect_to_viewport(
+                UiTreeHitRect {
+                    x: 20,
+                    y: 0,
+                    width: 0,
+                    height: 10,
+                },
+                area
+            )
+        );
+        assert_eq!(
+            None,
+            clip_document_rect_to_viewport(
+                UiTreeHitRect {
+                    x: 0,
+                    y: 20,
+                    width: 10,
+                    height: 0,
+                },
+                area
+            )
+        );
+    }
+}

@@ -173,3 +173,74 @@ fn linux_default_emoji_candidate_requires_explicit_hash() {
         PlatformColorEmojiAvailability::Error(PlatformColorEmojiError::MissingExpectedHash { .. })
     ));
 }
+
+#[test]
+fn unsupported_profile_is_typed_unavailable() {
+    let policy = PlatformFontCatalogPolicy::new(
+        PlatformFontProfile::Unsupported,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
+    let mut loader = FakeLoader {
+        result: Err(PlatformEmojiFontLoadError::Missing {
+            source_file_path: std::path::PathBuf::from("/unsupported-font.ttf"),
+        }),
+    };
+    let record = PlatformColorEmojiFaceResolver::resolve(&policy, &mut loader);
+
+    assert!(matches!(
+        record.availability,
+        PlatformColorEmojiAvailability::Unavailable(
+            PlatformColorEmojiUnavailableReason::UnsupportedPlatformProfile
+        )
+    ));
+}
+
+#[test]
+fn no_emoji_candidate_is_typed_unavailable() {
+    let policy = PlatformFontCatalogPolicy::new(
+        PlatformFontProfile::MacOs,
+        Vec::new(),
+        Vec::new(),
+        Vec::new(),
+    );
+    let mut loader = FakeLoader {
+        result: Err(PlatformEmojiFontLoadError::Io {
+            source_file_path: std::path::PathBuf::from("/unused-font.ttf"),
+            message: "unused".to_string(),
+        }),
+    };
+    let record = PlatformColorEmojiFaceResolver::resolve(&policy, &mut loader);
+
+    assert!(matches!(
+        record.availability,
+        PlatformColorEmojiAvailability::Unavailable(
+            PlatformColorEmojiUnavailableReason::NoCandidates
+        )
+    ));
+}
+
+#[test]
+fn candidate_load_error_is_typed() {
+    let policy = PlatformFontCatalogPolicy::for_profile(PlatformFontProfile::Windows);
+    let source_file_path = policy.emoji_candidates[0].source_file_path.clone();
+    let mut loader = FakeLoader {
+        result: Err(PlatformEmojiFontLoadError::Io {
+            source_file_path: source_file_path.clone(),
+            message: "load failed".to_string(),
+        }),
+    };
+    let record = PlatformColorEmojiFaceResolver::resolve(&policy, &mut loader);
+
+    assert!(matches!(
+        record.availability,
+        PlatformColorEmojiAvailability::Error(PlatformColorEmojiError::CandidateLoad {
+            source_file_path,
+            error: PlatformEmojiFontLoadError::Io {
+                source_file_path: source_file_path_again,
+                message,
+            },
+        }) if source_file_path_again == source_file_path && message == "load failed"
+    ));
+}

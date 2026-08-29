@@ -18,6 +18,14 @@ const TEXT_ORIGIN_X: i32 = GUTTER_WIDTH as i32;
 const CONTENT_WIDTH: u32 = 96;
 
 #[test]
+fn accessibility_labels_default_to_the_empty_closed_set() {
+    assert_eq!(
+        TextSurfaceAccessibilityLabels::default(),
+        TextSurfaceAccessibilityLabels::new()
+    );
+}
+
+#[test]
 fn accessibility_tree_projects_selection_gutter_context_and_readonly_actions() {
     let text = "日本⭐️A";
     let mut surface = TextSurface::new(
@@ -181,8 +189,7 @@ fn layout(text: &str) -> TextSurfaceLayout {
                 byte_start,
                 byte_end: byte_start + grapheme.len(),
                 bounds: UiRect::new(
-                    TEXT_ORIGIN_X
-                        + i32::try_from(index).map_or(0, |value| value) * GRAPHEME_WIDTH as i32,
+                    TEXT_ORIGIN_X + i32::try_from(index).unwrap_or(0) * GRAPHEME_WIDTH as i32,
                     0,
                     GRAPHEME_WIDTH,
                     LINE_HEIGHT,

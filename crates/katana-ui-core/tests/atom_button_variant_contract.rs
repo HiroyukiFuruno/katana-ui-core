@@ -112,6 +112,21 @@ fn button_layout_accepts_flexible_spec_entrypoints() {
 }
 
 #[test]
+fn button_layout_spec_constructors_resolve_custom_default_and_from_contracts() {
+    let custom = custom_layout();
+    assert_eq!(
+        UiButtonLayoutPreset::Classic.to_dto(),
+        UiButtonLayoutSpec::preset(UiButtonLayoutPreset::Classic).resolve()
+    );
+    assert_eq!(custom, UiButtonLayoutSpec::custom(custom.clone()).resolve());
+    assert_eq!(
+        UiButtonLayoutPreset::Modern.to_dto(),
+        UiButtonLayoutSpec::default().resolve()
+    );
+    assert_eq!(custom, UiButtonLayoutSpec::from(custom.clone()).resolve());
+}
+
+#[test]
 fn button_layout_label_align_center_is_part_of_core_dto_contract() {
     let default_button = UiNode::from(Button::new("Save"));
     let left_patch = UiNode::from(Button::new("Save").layout_patch(
@@ -149,6 +164,59 @@ fn button_layout_width_mode_is_part_of_the_core_dto_contract() {
     assert_eq!(0, fill.props().button.layout.width_value);
     assert_eq!("px", patch.props().button.layout.width_mode);
     assert_eq!(CUSTOM_WIDTH, patch.props().button.layout.width_value);
+}
+
+#[test]
+fn button_layout_dto_and_patch_cover_every_public_field() {
+    let dto = UiButtonLayoutDto::from_preset(UiButtonLayoutPreset::Basic)
+        .with_min_size(101, 31)
+        .with_width_auto()
+        .with_padding(12, 7)
+        .with_border(2, 5)
+        .with_icon_gap(9)
+        .with_label_align("left");
+    assert_eq!(101, dto.min_width);
+    assert_eq!(31, dto.min_height);
+    assert_eq!("auto", dto.width_mode);
+    assert_eq!(0, dto.width_value);
+    assert_eq!(12, dto.padding_x);
+    assert_eq!(7, dto.padding_y);
+    assert_eq!(2, dto.border_width);
+    assert_eq!(5, dto.radius);
+    assert_eq!(9, dto.icon_gap);
+    assert_eq!("left", dto.label_align);
+    assert_eq!(
+        UiButtonLayoutPreset::Modern.to_dto(),
+        UiButtonLayoutDto::default()
+    );
+
+    let patched = UiButtonLayoutPatchDto::default()
+        .with_min_size(110, 32)
+        .with_width_percent(80)
+        .with_padding(14, 8)
+        .with_border(3, 6)
+        .with_icon_gap(10)
+        .with_label_align("right")
+        .apply_to(UiButtonLayoutDto::default());
+    assert_eq!(110, patched.min_width);
+    assert_eq!(32, patched.min_height);
+    assert_eq!("percent", patched.width_mode);
+    assert_eq!(80, patched.width_value);
+    assert_eq!(14, patched.padding_x);
+    assert_eq!(8, patched.padding_y);
+    assert_eq!(3, patched.border_width);
+    assert_eq!(6, patched.radius);
+    assert_eq!(10, patched.icon_gap);
+    assert_eq!("right", patched.label_align);
+
+    let auto = UiButtonLayoutPatchDto::default()
+        .with_width_auto()
+        .apply_to(patched.clone());
+    assert_eq!(("auto", 0), (auto.width_mode.as_str(), auto.width_value));
+    let fill = UiButtonLayoutPatchDto::default()
+        .with_width_fill()
+        .apply_to(patched);
+    assert_eq!(("fill", 0), (fill.width_mode.as_str(), fill.width_value));
 }
 
 fn custom_layout() -> UiButtonLayoutDto {

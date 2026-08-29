@@ -133,3 +133,18 @@ impl WorkspaceTabBar {
             .collect()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bulk_close_skips_ids_that_are_not_in_the_workspace() {
+        let mut bar = WorkspaceTabBar::new("Workspace").tab(WorkspaceTab::new("one", "One"));
+
+        assert!(
+            bar.close_tab_ids(vec![WorkspaceTabId::new("missing")], None)
+                .is_empty()
+        );
+    }
+}

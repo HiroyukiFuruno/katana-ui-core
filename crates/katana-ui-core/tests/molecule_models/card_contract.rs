@@ -14,6 +14,7 @@ fn card_owns_layout_options_and_named_regions() {
         .child(Text::new("Body"))
         .footer(Button::new("Open"));
 
+    assert_eq!(1, card.children().len());
     let tree = UiTree::new(card);
 
     assert_eq!(UiNodeKind::Card, tree.root().kind());
@@ -50,4 +51,14 @@ fn non_interactive_card_ignores_click_without_selection_mutation() {
     assert!(!result.after.has_selection);
     assert!(!tree.root().props().interaction.has_selection);
     assert!(!tree.root().props().focusable);
+}
+
+#[test]
+fn interactive_card_ignores_non_press_action() {
+    let mut card = Card::new("Summary").interactive(true);
+
+    let result = card.apply_action(&UiAction::focus(card.state_id().clone()));
+
+    assert!(!result.handled);
+    assert!(!result.after.has_selection);
 }

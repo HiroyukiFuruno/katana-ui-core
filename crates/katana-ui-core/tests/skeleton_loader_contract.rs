@@ -1,4 +1,6 @@
 use katana_ui_core::atom::{Skeleton, SkeletonAnimation, SkeletonShape, SkeletonSize};
+use katana_ui_core::component::ComponentAction;
+use katana_ui_core::interaction::UiAction;
 use katana_ui_core::molecule::{SkeletonCluster, SkeletonClusterPreset};
 use katana_ui_core::render_model::{
     UiDimension, UiNode, UiNodeKind, UiSkeletonAnimation, UiSkeletonShape, UiTone, UiTree,
@@ -110,14 +112,13 @@ fn cluster_presets_emit_stable_children_and_single_live_region() {
     ];
 
     for (preset, child_count, style_class) in expectations {
-        let tree = UiTree::new(SkeletonCluster::new("messages").preset(preset));
+        let cluster = SkeletonCluster::new("messages").preset(preset);
+        assert!(!cluster.state_id().as_str().is_empty());
+        let tree = UiTree::new(cluster);
         let root = tree.root();
 
         assert_eq!(UiNodeKind::SkeletonCluster, root.kind());
-        assert_eq!(
-            format!("Loading messages"),
-            root.props().accessibility_label
-        );
+        assert_eq!("Loading messages", root.props().accessibility_label);
         assert_eq!(child_count, root.children().len(), "{preset:?}");
         assert!(
             root.props()
@@ -130,6 +131,45 @@ fn cluster_presets_emit_stable_children_and_single_live_region() {
                 .all(|it| it.props().accessibility_label.is_empty())
         );
     }
+}
+
+#[test]
+fn skeleton_identity_accessibility_aspect_default_and_actions_are_typed() {
+    assert!(matches!(
+        SkeletonShape::default(),
+        SkeletonShape::Text {
+            lines: 1,
+            last_line_ratio: 1.0,
+        }
+    ));
+
+    let mut skeleton = Skeleton::new("media", SkeletonShape::Rect)
+        .accessibility_label("Loading preview")
+        .aspect_ratio(16, 9);
+    let state_id = skeleton.state_id().clone();
+    let other = Skeleton::new("other", SkeletonShape::Circle);
+
+    assert!(
+        !skeleton
+            .apply_action(&UiAction::reduced_motion(other.state_id().clone(), true))
+            .handled
+    );
+    assert!(
+        !skeleton
+            .apply_action(&UiAction::focus(state_id.clone()))
+            .handled
+    );
+    assert!(
+        skeleton
+            .apply_action(&UiAction::reduced_motion(state_id, true))
+            .handled
+    );
+
+    let node = UiNode::from(skeleton);
+    assert_eq!("Loading preview", node.props().accessibility_label);
+    assert_eq!(16, node.props().skeleton.aspect_ratio_width);
+    assert_eq!(9, node.props().skeleton.aspect_ratio_height);
+    assert_eq!(UiSkeletonAnimation::None, node.props().skeleton.animation);
 }
 
 #[test]

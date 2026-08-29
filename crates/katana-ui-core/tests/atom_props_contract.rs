@@ -4,13 +4,38 @@ use katana_ui_core::atom::{
 };
 use katana_ui_core::render_model::{
     UiAlignItems, UiAnimationState, UiBorder, UiCommonProps, UiCursor, UiDimension,
-    UiDismissAction, UiDisplay, UiEdgeInsets, UiIconProps, UiJustifyContent, UiNode, UiNodeKind,
-    UiPointerEvents, UiPosition, UiProgressMode, UiSize, UiSlotPlacement, UiSvgPaintPolicy, UiTone,
-    UiVariant, UiVisualRole, UiZIndex,
+    UiDismissAction, UiDisplay, UiEdgeInsets, UiHostActionSpec, UiIconProps, UiJustifyContent,
+    UiNode, UiNodeKind, UiPointerEvents, UiPosition, UiProgressMode, UiSize, UiSlotPlacement,
+    UiSvgPaintPolicy, UiTone, UiVariant, UiVisualRole, UiZIndex,
 };
 
 const SEARCH_ICON_SVG: &str = "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"7\" cy=\"7\" r=\"4\"/><line x1=\"10\" y1=\"10\" x2=\"14\" y2=\"14\"/></svg>";
 const CLEAR_ICON_SVG: &str = "<svg viewBox=\"0 0 16 16\"><path d=\"M4 4l8 8M12 4l-8 8\"/></svg>";
+
+#[test]
+fn input_reserved_leading_and_plain_trailing_slots_keep_typed_placement() {
+    let reserved = UiNode::from(Input::new("Search").leading_slot_reserved("Search icon"));
+    let trailing = UiNode::from(Input::new("Search").trailing_slot("Result count"));
+
+    assert_eq!(
+        Some(UiSlotPlacement::Leading),
+        reserved
+            .props()
+            .text_entry
+            .leading_slot
+            .as_ref()
+            .map(|slot| slot.placement)
+    );
+    assert_eq!(
+        Some(UiSlotPlacement::Trailing),
+        trailing
+            .props()
+            .text_entry
+            .trailing_slot
+            .as_ref()
+            .map(|slot| slot.placement)
+    );
+}
 
 #[test]
 fn text_icon_and_keycap_carry_accessibility_and_visual_roles() {
@@ -46,6 +71,72 @@ fn button_props_are_typed_and_action_ready() {
     assert!(node.props().loading);
     assert!(node.props().focusable);
     assert_eq!(UiCursor::Pointer, node.props().common.cursor);
+}
+
+#[test]
+fn atom_builder_exposes_the_complete_neutral_host_contract() {
+    let node = UiNode::from(
+        Button::new("Run")
+            .theme_slot("primary")
+            .visible(false)
+            .width(UiDimension::Fill)
+            .height(UiDimension::px(36))
+            .display(UiDisplay::Inline)
+            .position(UiPosition::Sticky)
+            .tab_index(2)
+            .z_index(UiZIndex::value(9))
+            .cursor(UiCursor::Move)
+            .pointer_events(UiPointerEvents::None)
+            .host_action(UiHostActionSpec::command("run", "Run"))
+            .command_action("stop", "Stop")
+            .surface_control_action("zoom", "Zoom", "preview")
+            .task_control_action("Retry", "task-7", 7)
+            .selectable(true)
+            .selected(true)
+            .value("running")
+            .font_role("button")
+            .visual_role(UiVisualRole::Control)
+            .variant(UiVariant::Outline)
+            .tone(UiTone::Warning)
+            .size(UiSize::Small)
+            .loading(true)
+            .readonly(true),
+    );
+
+    assert!(!node.props().common.visible);
+    assert_eq!(UiDimension::Fill, node.props().common.width);
+    assert_eq!(UiDisplay::Inline, node.props().common.display);
+    assert_eq!(UiPosition::Sticky, node.props().common.position);
+    assert_eq!(Some(2), node.props().common.tab_index);
+    assert_eq!(UiZIndex::value(9), node.props().common.z_index);
+    assert_eq!(UiCursor::Move, node.props().common.cursor);
+    assert_eq!(UiPointerEvents::None, node.props().common.pointer_events);
+    assert_eq!(4, node.props().common.host_actions.len());
+    assert!(node.props().common.selectable);
+    assert!(node.props().checked);
+    assert_eq!("running", node.props().interaction.value);
+    assert_eq!("button", node.props().font_role);
+    assert_eq!(UiVisualRole::Control, node.props().visual_role);
+    assert_eq!(UiVariant::Outline, node.props().variant);
+    assert_eq!(UiTone::Warning, node.props().tone);
+    assert!(node.props().loading);
+    assert!(node.props().readonly);
+}
+
+#[test]
+fn ui_node_builder_projects_surface_control_target_and_multiple_style_classes() {
+    let node = UiNode::new(UiNodeKind::Button, "Run")
+        .surface_control_target_id("preview")
+        .style_classes(["compact".to_string(), "selected".to_string()]);
+
+    assert_eq!(
+        "preview",
+        node.props().interaction.surface_control_target_id
+    );
+    assert_eq!(
+        vec!["compact".to_string(), "selected".to_string()],
+        node.props().style_classes
+    );
 }
 
 #[test]

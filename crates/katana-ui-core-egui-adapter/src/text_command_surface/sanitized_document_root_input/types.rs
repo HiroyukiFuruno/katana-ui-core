@@ -26,7 +26,7 @@ impl SanitizedDocumentRootIdentity {
     }
 
     pub(crate) fn stable_fingerprint(&self) -> String {
-        format!("{:x}", Sha256::digest(&self.bytes))
+        hex::encode(Sha256::digest(&self.bytes))
     }
 }
 

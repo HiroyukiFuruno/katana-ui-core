@@ -191,3 +191,86 @@ impl FloatingCommandToolbar {
         self.bounds
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interaction::placement::{Placement, Rect, Size};
+    use crate::molecule::command_chrome::{
+        CommandChromeAction, CommandChromeFamilyId, CommandChromeIcon,
+    };
+    use crate::render_model::UiNodeId;
+
+    fn toolbar() -> CommandChromeToolbar {
+        CommandChromeToolbar::new().action(
+            CommandChromeAction::new("format", "Format")
+                .icon(CommandChromeIcon::EmphasisStrong.icon_props()),
+        )
+    }
+
+    fn layout() -> FloatingCommandToolbarLayout {
+        FloatingCommandToolbarLayout::new(
+            Rect::new(20, 20, 8, 8),
+            Size::new(40, 24),
+            Rect::new(0, 0, 120, 120),
+        )
+    }
+
+    #[test]
+    fn new_toolbar_defaults_and_visibility_are_closed() {
+        let toolbar = FloatingCommandToolbar::new(toolbar(), layout());
+
+        assert_eq!(
+            FloatingCommandToolbarVisibility::Closed,
+            toolbar.visibility_model()
+        );
+        assert!(!toolbar.is_open());
+        assert_eq!(2, toolbar.placement_priority.len());
+        assert_eq!(Placement::BottomStart, toolbar.placement_priority[0]);
+        assert!(toolbar.focus_return_target.is_none());
+        assert!(toolbar.placement_model().is_none());
+    }
+
+    #[test]
+    fn new_adapter_measured_keeps_panel_size_zero_until_measured() {
+        let toolbar = FloatingCommandToolbar::new_adapter_measured(
+            toolbar(),
+            Rect::new(10, 10, 8, 8),
+            Rect::new(0, 0, 120, 120),
+        );
+
+        assert_eq!(Size::new(0, 0), toolbar.layout_model().panel_size);
+    }
+
+    #[test]
+    fn updates_family_and_mutators() {
+        let toolbar = FloatingCommandToolbar::new(toolbar(), layout())
+            .command_family(CommandChromeFamilyId::new("workspace"))
+            .placement_priority(vec![Placement::TopStart])
+            .clamp_margin(4)
+            .focus_return_target(UiNodeId::new("surface"));
+
+        assert_eq!("workspace", toolbar.command_family_id().as_str());
+        assert_eq!(vec![Placement::TopStart], toolbar.placement_priority);
+        assert_eq!(4, toolbar.clamp_margin);
+        assert_eq!(Some(UiNodeId::new("surface")), toolbar.focus_return_target);
+        assert_eq!(
+            FloatingCommandToolbarVisibility::Closed,
+            toolbar.visibility_model()
+        );
+    }
+
+    #[test]
+    fn initial_visibility_resolves_open_state() {
+        let toolbar = FloatingCommandToolbar::new(toolbar(), layout())
+            .initial_visibility(FloatingCommandToolbarVisibility::Visible);
+
+        assert_eq!(
+            FloatingCommandToolbarVisibility::Visible,
+            toolbar.visibility_model()
+        );
+        assert!(toolbar.is_open());
+        assert!(toolbar.placement_model().is_some());
+        assert!(toolbar.bounds_model().is_some());
+    }
+}

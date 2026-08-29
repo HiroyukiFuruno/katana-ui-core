@@ -22,6 +22,6 @@ pub(super) fn artifact_frame(
 
 fn hash(value: &impl Serialize) -> Result<String, ContextMenuAdapterError> {
     serde_json::to_vec(value)
-        .map(|bytes| format!("{:x}", Sha256::digest(bytes)))
+        .map(|bytes| hex::encode(Sha256::digest(bytes)))
         .map_err(|error| ContextMenuAdapterError::ArtifactSerialization(error.to_string()))
 }

@@ -79,7 +79,13 @@ pub(super) fn floating_action(
         .floating
         .record
         .as_ref()
-        .and_then(|record| record.toolbar.actions.first())
+        .and_then(|record| {
+            record
+                .toolbar
+                .actions
+                .iter()
+                .find(|action| action.action_id == "floating-bold")
+        })
         .map(|action| action.bounds)
         .ok_or_else(|| {
             CommandChromeScriptError::message(
@@ -97,13 +103,12 @@ pub(super) fn query_bounds(
 pub(super) fn replace_bounds(
     frames: &[CommandChromeScriptFrame],
 ) -> Result<UiRect, CommandChromeScriptError> {
-    last(frames)?
-        .search
-        .record
-        .replace
-        .as_ref()
-        .map(|record| record.frame.content_bounds)
-        .ok_or_else(|| CommandChromeScriptError::message("replace input did not expose bounds"))
+    match last(frames)?.search.record.replace.as_ref() {
+        Some(record) => Ok(record.frame.content_bounds),
+        None => Err(CommandChromeScriptError::message(
+            "replace input did not expose bounds",
+        )),
+    }
 }
 
 pub(super) fn search_control(
@@ -173,7 +178,7 @@ pub(super) fn run_frame(
     events: Vec<egui::Event>,
 ) -> Result<CommandChromeScriptFrame, CommandChromeScriptError> {
     let mut result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -184,9 +189,15 @@ pub(super) fn run_frame(
         },
         |ui| result = Some(show_command_chrome(ui, adapter, toolbar, floating, search)),
     );
-    let surface_frame = result
-        .ok_or_else(|| CommandChromeScriptError::message("actual egui frame was not produced"))?
-        .map_err(|error| CommandChromeScriptError::message(error.to_string()))?;
+    full_output.textures_delta.clear();
+    let result = result.ok_or(CommandChromeScriptError::message(
+        "egui did not execute the scripted command-chrome closure",
+    ));
+    let result = result?;
+    let surface_frame = match result {
+        Ok(frame) => frame,
+        Err(error) => return Err(CommandChromeScriptError::message(error.to_string())),
+    };
     let mut accesskit_labels: Vec<String> = full_output
         .platform_output
         .accesskit_update
@@ -210,10 +221,78 @@ pub(super) fn run_frame(
     })
 }
 
+#[cfg(test)]
+mod error_tests {
+    use super::*;
+    use crate::visual::command_chrome_fixture::{floating_fixture, search_fixture};
+    use katana_ui_core::molecule::command_chrome::CommandChromeAction;
+    use katana_ui_core::render_model::UiIconProps;
+
+    #[test]
+    fn invalid_svg_failure_propagates_through_frame_push() {
+        let context = egui::Context::default();
+        let mut adapter = EguiCommandChromeAdapter::default();
+        let mut toolbar = CommandChromeToolbar::new().action(
+            CommandChromeAction::new("invalid", "Invalid").icon(UiIconProps::new("not valid svg")),
+        );
+        let mut floating = floating_fixture();
+        let mut search = search_fixture(false);
+        let mut frames = Vec::new();
+        assert!(
+            push(
+                &mut frames,
+                &context,
+                &mut adapter,
+                &mut toolbar,
+                &mut floating,
+                &mut search,
+                Vec::new(),
+            )
+            .is_err()
+        );
+        assert!(frames.is_empty());
+    }
+}
+
 fn last(
     frames: &[CommandChromeScriptFrame],
 ) -> Result<&CommandChromeScriptFrame, CommandChromeScriptError> {
     frames
         .last()
         .ok_or_else(|| CommandChromeScriptError::message("script has no frame"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::command_chrome_script::run_scripted_sequence;
+
+    #[test]
+    fn bounds_helpers_fail_closed_for_absent_script_targets() -> Result<(), CommandChromeScriptError>
+    {
+        let mut sequence = run_scripted_sequence()?;
+        assert!(toolbar_action(&sequence.frames, "absent-toolbar").is_err());
+        assert!(toolbar_secondary(&sequence.frames, "toolbar-bold").is_err());
+        assert!(search_control(&sequence.frames, "absent-control").is_err());
+        assert!(toolbar_action(&[], "absent-frame").is_err());
+
+        let frame = sequence
+            .frames
+            .last_mut()
+            .ok_or(CommandChromeScriptError::message("script has no frame"));
+        frame?.search.record.replace = None;
+        assert!(replace_bounds(&sequence.frames).is_err());
+
+        let closed_indices = sequence
+            .frames
+            .iter()
+            .enumerate()
+            .filter_map(|(index, frame)| frame.floating.record.is_none().then_some(index))
+            .collect::<Vec<_>>();
+        assert!(!closed_indices.is_empty());
+        for closed_index in closed_indices {
+            assert!(floating_action(&sequence.frames[..=closed_index]).is_err());
+        }
+        Ok(())
+    }
 }

@@ -49,19 +49,8 @@ pub(super) fn preview_scroll_y(scenario: ScenarioContext<'_>) -> usize {
     }
 }
 
-pub(super) fn preview_scroll_x(scenario: ScenarioContext<'_>) -> usize {
-    let max_scroll = panel_scroll_state::PanelScrollOverflowModel::max_scroll_x_for(
-        PanelScrollRegion::Preview,
-        scenario.selected_page,
-        scenario.tree_expansion,
-    );
-    if max_scroll > 0 {
-        scenario
-            .panel_scroll
-            .offset_x_with_max(PanelScrollRegion::Preview, max_scroll)
-    } else {
-        0
-    }
+pub(super) const fn preview_scroll_x(_scenario: ScenarioContext<'_>) -> usize {
+    0
 }
 
 pub(super) fn draw_runtime_state(
@@ -80,9 +69,7 @@ pub(super) fn draw_runtime_state(
     }
 
     let rect = component_action_hit_rect(scenario.selected_page);
-    if rect.width == 0 {
-        return;
-    }
+    debug_assert!(rect.width > 0);
 
     if scenario.screen_state.has_settings_override() {
         canvas.stroke_rect(

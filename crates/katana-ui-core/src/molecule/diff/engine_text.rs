@@ -2,10 +2,7 @@ use super::types::{CodeDiffLine, CodeDiffLineKind, CodeDiffWhitespace, Collapsed
 
 const MIN_COLLAPSIBLE_CONTEXT_LINES: usize = 4;
 
-pub(super) fn changed_character_range(text: &str, paired_text: &str) -> Option<(usize, usize)> {
-    if text == paired_text {
-        return None;
-    }
+pub(super) fn changed_character_range(text: &str, paired_text: &str) -> (usize, usize) {
     let text_chars: Vec<char> = text.chars().collect();
     let paired_chars: Vec<char> = paired_text.chars().collect();
     let mut start = 0;
@@ -15,7 +12,7 @@ pub(super) fn changed_character_range(text: &str, paired_text: &str) -> Option<(
     {
         start += 1;
     }
-    Some((start, changed_range_end(start, &text_chars, &paired_chars)))
+    (start, changed_range_end(start, &text_chars, &paired_chars))
 }
 
 fn changed_range_end(start: usize, text_chars: &[char], paired_chars: &[char]) -> usize {
@@ -70,4 +67,20 @@ fn push_block(blocks: &mut Vec<CollapsedBlock>, start_index: Option<usize>, end_
         start_line,
         line_count,
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn equal_text_and_hidden_whitespace_keep_original_text() {
+        assert_eq!((4, 4), changed_character_range("same", "same"));
+        let whitespace = CodeDiffWhitespace {
+            visible: false,
+            space_symbol: "·".to_string(),
+            tab_symbol: "→".to_string(),
+        };
+        assert_eq!("a b", render_text("a b", Some(&whitespace)));
+    }
 }

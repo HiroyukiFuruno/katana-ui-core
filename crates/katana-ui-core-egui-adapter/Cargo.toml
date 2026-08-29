@@ -14,6 +14,7 @@ storybook-artifacts = ["dep:image"]
 
 [dependencies]
 egui.workspace = true
+hex.workspace = true
 image = { workspace = true, optional = true }
 katana-ui-core.workspace = true
 katana-ui-core-svg-raster.workspace = true

@@ -9,7 +9,9 @@ use katana_ui_core::molecule::{
     HoverCardEvent, Menu, MenuButton, Popover, PopoverActionSlot, PopoverArrowSpec,
     PopoverFocusManagement, PopoverSlots, SelectBox, Tooltip,
 };
-use katana_ui_core::render_model::UiNodeId;
+use katana_ui_core::render_model::{
+    UiNode, UiNodeId, UiPopoverFocusManagement, UiPopoverPlacement,
+};
 
 const OPEN_DELAY_MS: u16 = 100;
 const CLOSE_DELAY_MS: u16 = 50;
@@ -141,6 +143,26 @@ fn disclosure_and_selection_molecules_delegate_panel_placement_to_shared_engine(
 }
 
 #[test]
+fn tooltip_toggle_action_opens_and_closes_without_hover_or_focus_policy() {
+    let mut tooltip = Tooltip::new("Tooltip").open(false);
+    let opened = tooltip.apply_action(&UiAction::tooltip_toggle(tooltip.state_id().clone()));
+    let closed = tooltip.apply_action(&UiAction::tooltip_toggle(tooltip.state_id().clone()));
+
+    assert!(opened.handled);
+    assert!(opened.after.open);
+    assert!(closed.handled);
+    assert!(!closed.after.open);
+}
+
+#[test]
+fn tooltip_delegates_non_tooltip_press_to_generic_state_handling() {
+    let mut tooltip = Tooltip::new("Tooltip");
+    let result = tooltip.apply_action(&UiAction::popover_toggle(tooltip.state_id().clone()));
+
+    assert!(result.handled);
+}
+
+#[test]
 fn context_menu_resolver_uses_shared_placement_engine_defaults() {
     let result = ContextMenuPlacementResolver::resolve(
         &ContextMenuAnchor::VirtualRect(katana_ui_core::molecule::ContextMenuRect::new(
@@ -169,10 +191,14 @@ fn placement_engine_covers_anchor_and_placement_matrix() {
         Placement::TopStart,
         Placement::TopEnd,
         Placement::Right,
+        Placement::RightStart,
+        Placement::RightEnd,
         Placement::Bottom,
         Placement::BottomStart,
         Placement::BottomEnd,
         Placement::Left,
+        Placement::LeftStart,
+        Placement::LeftEnd,
     ];
 
     for anchor in anchors {
@@ -188,6 +214,18 @@ fn placement_engine_covers_anchor_and_placement_matrix() {
             assert!(result.arrow_offset.is_some());
         }
     }
+
+    let oversized = PlacementRequest::new(
+        AnchorKind::pointer(Point::new(2, 2)),
+        Placement::Top,
+        Size::new(100, 100),
+        Rect::new(0, 0, 20, 20),
+    )
+    .clamp_margin(8);
+    assert_eq!(
+        Point::new(8, 8),
+        PlacementEngine::resolve(&oversized).position
+    );
 }
 
 #[test]
@@ -265,6 +303,84 @@ fn hover_card_exposes_typed_content_slots() {
 }
 
 #[test]
+fn hover_card_render_uses_default_preview_when_all_slots_are_empty() {
+    let node = UiNode::from(HoverCard::new("Diagnostic"));
+
+    assert_eq!("Diagnostic", node.props().label);
+    assert!(!node.props().interaction.open);
+    assert_eq!(2, node.children().len());
+    assert_eq!("Anchor", node.children()[0].props().label);
+    assert_eq!("Rich preview", node.children()[1].props().label);
+}
+
+#[test]
+fn hover_card_render_projects_rich_slots_and_both_action_sources() {
+    let card = HoverCard::new("Diagnostic")
+        .slots(
+            PopoverSlots::new()
+                .heading("Heading")
+                .body("Body")
+                .footer("Footer")
+                .action(PopoverActionSlot::new("slot-action", "Slot action")),
+        )
+        .slot_action(PopoverActionSlot::new("legacy-action", "Legacy action"));
+    let node = UiNode::from(card);
+    let labels = node
+        .children()
+        .iter()
+        .map(|child| child.props().label.as_str())
+        .collect::<Vec<_>>();
+
+    assert_eq!(
+        vec![
+            "Anchor",
+            "Heading: Heading",
+            "Body: Body",
+            "Footer: Footer",
+            "Slot action",
+            "Legacy action",
+        ],
+        labels
+    );
+}
+
+#[test]
+fn hover_card_covers_pointer_focus_leave_and_idle_timer_paths() {
+    let point = Point::new(12, 24);
+    let mut static_card = HoverCard::new("Static");
+    assert_eq!(
+        HoverCardEvent::Ignored,
+        static_card.apply_hover_card_action(HoverCardAction::PointerMoved(point))
+    );
+    assert_eq!(
+        HoverCardEvent::DelayPending,
+        static_card.apply_hover_card_action(HoverCardAction::TimerElapsed(1))
+    );
+
+    let mut following = HoverCard::new("Following")
+        .pointer_follow(true)
+        .close_delay_ms(CLOSE_DELAY_MS);
+    assert_eq!(
+        HoverCardEvent::PointerAnchorUpdated,
+        following.apply_hover_card_action(HoverCardAction::PointerMoved(point))
+    );
+    for action in [
+        HoverCardAction::CardPointerLeft,
+        HoverCardAction::AnchorBlurred,
+        HoverCardAction::InnerFocusLeft(UiNodeId::new("inner")),
+    ] {
+        assert_eq!(
+            HoverCardEvent::CloseScheduled,
+            following.apply_hover_card_action(action)
+        );
+    }
+    assert_eq!(
+        HoverCardEvent::Opened,
+        following.apply_hover_card_action(HoverCardAction::AnchorFocused)
+    );
+}
+
+#[test]
 fn popover_focus_arrow_slots_and_keep_open_are_contract_options() {
     let anchor = UiNodeId::new("toolbar-anchor");
     let first_action = PopoverActionSlot::new("copy-action", "Copy");
@@ -294,4 +410,66 @@ fn popover_focus_arrow_slots_and_keep_open_are_contract_options() {
     assert!(focus.handled);
     assert!(dismiss.handled);
     assert!(dismiss.after.open);
+}
+
+#[test]
+fn popover_focus_and_render_mapping_cover_all_remaining_typed_variants() {
+    let node_focus = UiNodeId::new("explicit-focus");
+    let explicit = Popover::new("Explicit")
+        .focus_management(PopoverFocusManagement::NodeId(node_focus.clone()))
+        .keep_open_on_inner_focus(true);
+    assert_eq!(Some(node_focus), explicit.open_focus_target());
+    assert!(matches!(
+        explicit.focus_management_model(),
+        PopoverFocusManagement::NodeId(_)
+    ));
+    assert!(explicit.keeps_open_on_inner_focus());
+    assert_eq!(
+        None,
+        Popover::new("None")
+            .focus_management(PopoverFocusManagement::None)
+            .open_focus_target()
+    );
+
+    for (value, expected) in [
+        ("top", UiPopoverPlacement::Top),
+        ("top-start", UiPopoverPlacement::TopStart),
+        ("top-end", UiPopoverPlacement::TopEnd),
+        ("right", UiPopoverPlacement::Right),
+        ("right-start", UiPopoverPlacement::RightStart),
+        ("right-end", UiPopoverPlacement::RightEnd),
+        ("bottom", UiPopoverPlacement::Bottom),
+        ("bottom-end", UiPopoverPlacement::BottomEnd),
+        ("left", UiPopoverPlacement::Left),
+        ("left-start", UiPopoverPlacement::LeftStart),
+        ("left-end", UiPopoverPlacement::LeftEnd),
+    ] {
+        let node = UiNode::from(Popover::new("Mapped").placement(value));
+        assert_eq!(expected, node.props().popover.placement);
+    }
+
+    let all_engine_placements = [
+        Placement::Top,
+        Placement::TopStart,
+        Placement::TopEnd,
+        Placement::Right,
+        Placement::RightStart,
+        Placement::RightEnd,
+        Placement::Bottom,
+        Placement::BottomStart,
+        Placement::BottomEnd,
+        Placement::Left,
+        Placement::LeftStart,
+        Placement::LeftEnd,
+    ];
+    let node = UiNode::from(
+        Popover::new("Mapped")
+            .focus_management(PopoverFocusManagement::NodeId(UiNodeId::new("focus")))
+            .auto_flip_priority(all_engine_placements),
+    );
+    assert_eq!(
+        UiPopoverFocusManagement::NodeId,
+        node.props().popover.focus_management
+    );
+    assert_eq!(12, node.props().popover.auto_flip_priority.len());
 }

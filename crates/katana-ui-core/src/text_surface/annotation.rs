@@ -48,3 +48,23 @@ impl TextSurfaceAnnotation {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{TextSurfaceAnnotation, TextSurfaceAnnotationStyle};
+    use crate::text_selection::UiTextSelectionRange;
+
+    #[test]
+    fn builders_preserve_priority_and_tooltip() {
+        let annotation = TextSurfaceAnnotation::new(
+            "diagnostic",
+            UiTextSelectionRange::new(1, 2),
+            "warning",
+            TextSurfaceAnnotationStyle::Underline,
+        )
+        .priority(7)
+        .tooltip("details");
+        assert_eq!(annotation.priority, 7);
+        assert_eq!(annotation.tooltip, "details");
+    }
+}

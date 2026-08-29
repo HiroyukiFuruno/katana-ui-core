@@ -16,9 +16,10 @@ const POPOVER_ARROW_SIZE: u16 = 10;
 impl StorybookScreenState {
     pub(in crate::visual) fn register_popover_open(&mut self) {
         let result = popover_open_result();
-        if !result.handled || !result.after.open {
-            return;
-        }
+        assert!(
+            result.handled && result.after.open,
+            "the popover toggle action must open the fixture"
+        );
         self.action_count += 1;
         self.last_action = "popover_open";
         self.last_event = "popover_opened";
@@ -29,9 +30,10 @@ impl StorybookScreenState {
 
     pub(in crate::visual) fn register_popover_hover(&mut self) {
         let result = popover_action_result(|target| UiAction::hover(target, true));
-        if !result.handled || !result.after.hovered {
-            return;
-        }
+        assert!(
+            result.handled && result.after.hovered,
+            "the popover hover action must update hover state"
+        );
         self.action_count += 1;
         self.preview_hovered = true;
         self.last_action = "popover_hover";
@@ -43,9 +45,10 @@ impl StorybookScreenState {
 
     pub(in crate::visual) fn register_popover_focus(&mut self) {
         let result = popover_action_result(UiAction::focus);
-        if !result.handled || !result.after.focused {
-            return;
-        }
+        assert!(
+            result.handled && result.after.focused,
+            "the popover focus action must update focus state"
+        );
         self.action_count += 1;
         self.button_focused = true;
         self.last_action = "popover_focus";
@@ -63,9 +66,10 @@ impl StorybookScreenState {
             return;
         }
         let result = popover_action_result(UiAction::modal_escape);
-        if !result.handled || result.after.open {
-            return;
-        }
+        assert!(
+            result.handled && !result.after.open,
+            "the popover escape action must close the fixture"
+        );
         self.action_count += 1;
         self.last_action = "popover_keyboard_escape";
         self.last_event = "popover_closed";
@@ -116,4 +120,19 @@ fn popover_fixture() -> Popover {
         .auto_flip_priority([Placement::BottomStart, Placement::TopStart])
         .child(Button::new("Copy"))
         .child(Text::new("Complex content"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn popover_keyboard_requires_focus_before_escape() {
+        let mut state = StorybookScreenState::default();
+        state.register_popover_keyboard_escape();
+        assert_eq!("popover_keyboard_ignored", state.last_event);
+        state.register_popover_focus();
+        state.register_popover_keyboard_escape();
+        assert_eq!("popover_closed", state.last_event);
+    }
 }

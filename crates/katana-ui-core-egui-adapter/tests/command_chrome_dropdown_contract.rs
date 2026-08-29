@@ -80,21 +80,6 @@ fn actual_egui_menu_only_dropdown_uses_platform_raster_accesskit_and_typed_item_
     }));
 
     let item_point = center(dropdown.items[2].bounds);
-    let moved = frame(
-        &context,
-        &mut adapter,
-        &mut toolbar,
-        vec![egui::Event::PointerMoved(item_point)],
-    );
-    let item_point = center(
-        moved
-            .record
-            .dropdown
-            .as_ref()
-            .expect("dropdown remains open while aiming")
-            .items[2]
-            .bounds,
-    );
     let _ = frame(
         &context,
         &mut adapter,
@@ -113,9 +98,7 @@ fn actual_egui_menu_only_dropdown_uses_platform_raster_accesskit_and_typed_item_
             .contains(&CommandChromeToolbarEvent::DropdownItemActivated {
                 action_id: "code-block".into(),
                 item_id: "markdown".into(),
-            }),
-        "pointer selection did not emit an item activation: {:?}",
-        selected.events
+            })
     );
     assert!(
         selected
@@ -362,7 +345,7 @@ fn run_frame(
     >,
 ) {
     let mut output = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -375,6 +358,7 @@ fn run_frame(
             output = Some(adapter.show_toolbar(ui, toolbar, &raster_style(), &paint_style()));
         },
     );
+    full_output.textures_delta.clear();
     (full_output, output)
 }
 

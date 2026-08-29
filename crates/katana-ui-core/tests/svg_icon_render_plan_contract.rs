@@ -1,8 +1,9 @@
 use katana_ui_core::atom::{Icon, Input, TextArea};
 use katana_ui_core::layout::Column;
 use katana_ui_core::render_model::{
-    UiIconProps, UiNodeKind, UiSlotPlacement, UiSvgIconPixelPlan, UiSvgIconRenderPlan,
-    UiSvgIconViewBox, UiSvgPaintPolicy, UiTree, UiTreeSemantics,
+    UiIconProps, UiNode, UiNodeKind, UiSlotPlacement, UiSlotSpec, UiSvgIconPixelPlan,
+    UiSvgIconRenderPlan, UiSvgIconViewBox, UiSvgPaintPolicy, UiTextEntryProps, UiTree,
+    UiTreeSemantics,
 };
 
 const CALLER_FOLDER_SVG: &str = "<svg data-caller-icon=\"folder\"/>";
@@ -118,6 +119,62 @@ fn svg_icon_pixel_plan_preserves_viewbox_scale_and_paint_contract() -> Result<()
     assert_eq!("input.foreground", plan.color_token);
     assert_eq!("input.icon", plan.theme_token);
     Ok(())
+}
+
+#[test]
+fn svg_plan_ignores_missing_sources_and_handles_invalid_viewbox() {
+    let empty_tree = UiTree::new(
+        Column::new()
+            .child(Icon::new("No source"))
+            .child(Input::new("Text prefix").leading_slot("Prefix"))
+            .child(Icon::new("Blank source").svg_source("   ")),
+    );
+    assert!(UiSvgIconRenderPlan::collect_from_tree(&empty_tree).is_empty());
+
+    let invalid_tree = UiTree::new(
+        Icon::new("Invalid viewbox")
+            .svg_source(CALLER_FOLDER_SVG)
+            .icon_view_box("0 0 0 16"),
+    );
+    let plans = UiSvgIconPixelPlan::collect_from_tree(&invalid_tree);
+    assert_eq!(1, plans.len());
+    assert!(!plans[0].pixel_ready);
+    assert_eq!(0, plans[0].scale_x_milli);
+    assert_eq!(0, plans[0].scale_y_milli);
+    assert_eq!(None, plans[0].view_box);
+
+    for invalid_view_box in [
+        "",
+        "x 0 24 24",
+        "0 y 24 24",
+        "0 0 width 24",
+        "0 0 24 height",
+        "0 0 24 24 extra",
+        "0 0 24 0",
+    ] {
+        let tree = UiTree::new(
+            Icon::new("Invalid")
+                .svg_source(CALLER_FOLDER_SVG)
+                .icon_view_box(invalid_view_box),
+        );
+        assert_eq!(
+            None,
+            UiSvgIconPixelPlan::collect_from_tree(&tree)[0].view_box
+        );
+    }
+
+    let trailing_icon =
+        UiNode::new(UiNodeKind::Input, "Trailing icon").text_entry(UiTextEntryProps {
+            trailing_slot: Some(UiSlotSpec::icon(
+                UiSlotPlacement::Trailing,
+                "Trailing",
+                UiIconProps::new(CALLER_CLEAR_SVG),
+            )),
+            ..UiTextEntryProps::default()
+        });
+    let trailing_plans = UiSvgIconRenderPlan::collect_from_tree(&UiTree::new(trailing_icon));
+    assert_eq!(1, trailing_plans.len());
+    assert_eq!("Trailing", trailing_plans[0].slot_label);
 }
 
 #[test]

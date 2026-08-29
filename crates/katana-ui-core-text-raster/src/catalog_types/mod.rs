@@ -3,6 +3,8 @@ mod resolver;
 mod resolver_types;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_fallback;
 mod types;
 
 pub use policy::PlatformFontCatalogPolicy;

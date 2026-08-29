@@ -50,7 +50,10 @@ fn target_id(item: &SanitizedContextMenuItem) -> String {
     let mut digest = Sha256::new();
     digest.update((item.target().opaque().len() as u64).to_le_bytes());
     digest.update(item.target().opaque());
-    format!("kuc-context-menu-{:x}", digest.finalize())
+    format!(
+        concat!("kuc-context-menu-", "{}"),
+        hex::encode(digest.finalize())
+    )
 }
 
 #[cfg(test)]

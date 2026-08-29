@@ -211,6 +211,73 @@ impl CommandChromeDropdownLayout {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::interaction::placement::Placement;
+    use crate::molecule::command_chrome::CommandChromeIcon;
+
+    #[test]
+    fn item_builder_and_accessors_round_trip_expected_fields() {
+        let item = CommandChromeDropdownItem::new("format", "フォーマット")
+            .accessibility_label("format action")
+            .tooltip("format tooltip")
+            .icon(CommandChromeIcon::EmphasisStrong.icon_props())
+            .disabled(true)
+            .selected(true);
+
+        assert_eq!("format", item.id().as_str());
+        assert_eq!("フォーマット", item.label_model());
+        assert_eq!(
+            Some(&"format action".to_string()),
+            item.accessibility_label_model()
+        );
+        assert_eq!(Some(&"format tooltip".to_string()), item.tooltip_model());
+        assert!(item.icon_model().is_some());
+        assert!(item.disabled_model());
+        assert!(item.selected_model());
+    }
+
+    #[test]
+    fn dropdown_layout_resolves_with_bottom_start_when_it_fits() {
+        let layout = CommandChromeDropdownLayout::new(
+            Rect::new(16, 12, 18, 18),
+            Rect::new(0, 0, 240, 180),
+            Size::new(120, 48),
+        );
+        let result = layout.resolve();
+
+        assert_eq!(layout.viewport(), Rect::new(0, 0, 240, 180));
+        assert_eq!(Placement::BottomStart, result.placement_used);
+        assert!(result.position.x >= 16);
+        assert!(result.position.y >= 16);
+    }
+
+    #[test]
+    fn dropdown_collection_constructors_preserve_order_and_trigger() {
+        let item = CommandChromeDropdownItem::new("item", "Item");
+        let dropdown = CommandChromeDropdown::new(CommandChromeDropdownTrigger::Primary)
+            .item(item.clone())
+            .item(CommandChromeDropdownItem::new("item-2", "Item2"));
+
+        assert_eq!(
+            CommandChromeDropdownTrigger::Primary,
+            dropdown.trigger_model()
+        );
+        assert_eq!(2, dropdown.items().len());
+        assert_eq!("item", dropdown.items()[0].id().as_str());
+        assert_eq!("item-2", dropdown.items()[1].id().as_str());
+        assert_eq!(
+            CommandChromeDropdownItem::new("item", "Item"),
+            dropdown.items()[0]
+        );
+        assert_eq!(
+            CommandChromeDropdownTrigger::Primary,
+            dropdown.trigger_model()
+        );
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CommandChromeDropdownCloseReason {
     OutsideClick,

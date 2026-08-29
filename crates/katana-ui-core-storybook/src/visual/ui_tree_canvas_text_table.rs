@@ -189,3 +189,55 @@ fn text_start_offset(line_height: usize, row_height: usize, lines: usize) -> usi
     let line_height = line_height.saturating_mul(lines.max(1));
     row_height.saturating_sub(line_height) / 2
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::render_model::UiNodeKind;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn table_draw_handles_empty_rows_missing_cells_and_zero_grid_geometry() {
+        let renderer = TextRenderer::load(&UiCoreFacade::default(), "body");
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 120,
+            scroll_y: 0.0,
+        };
+        let mut canvas = Canvas::new(240, 120, 0);
+
+        for label in ["", "| A | B |\n| C |"] {
+            let node = UiNode::new(UiNodeKind::Text, label);
+            UiTreeTextTable::draw(
+                &mut canvas,
+                UiTreeTextTableContext {
+                    renderer: &renderer,
+                    node: &node,
+                    area,
+                    palette,
+                    metrics: UiTreeTextMetrics::for_node(&node),
+                },
+                0,
+                0,
+            );
+        }
+
+        let empty_layout = UiTreeCanvasTableLayout {
+            rows: Vec::new(),
+            alignments: Vec::new(),
+            column_count: 0,
+            table_width: 0,
+            column_widths: Vec::new(),
+        };
+        draw_grid_lines(&mut canvas, 0, 0, &empty_layout, 0, 0);
+        assert_eq!(
+            ASCII_CELL_CHAR_WIDTH + WIDE_CELL_CHAR_WIDTH,
+            estimated_cell_text_width("A界")
+        );
+    }
+}

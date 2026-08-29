@@ -111,12 +111,9 @@ impl SplitPaneStoryState {
             SplitPaneStoryAction::Hover => {
                 let mut pane = split_pane().ratio_percent(self.ratio_percent);
                 let result = pane.apply_action(&UiAction::hover(state_id(), true));
+                debug_assert!(result.handled);
                 self.hovered = true;
-                self.callback = if result.handled {
-                    "callback=split_pane"
-                } else {
-                    "callback=hover"
-                };
+                self.callback = "callback=split_pane";
                 SplitPaneStoryUpdate::new("split_pane_hover", "hover_start", "hover=handle")
             }
         }
@@ -155,12 +152,9 @@ impl SplitPaneStoryState {
     ) -> SplitPaneStoryUpdate {
         let mut pane = split_pane().ratio_percent(self.ratio_percent);
         let result = pane.apply_action(&action);
+        debug_assert!(result.handled);
         self.ratio_percent = pane.ratio_percent_value();
-        self.callback = if result.handled {
-            "callback=split_pane"
-        } else {
-            "callback=ignored"
-        };
+        self.callback = "callback=split_pane";
         SplitPaneStoryUpdate::new(action_label, event_label, state_label)
     }
 }
@@ -211,4 +205,17 @@ pub(super) fn operation_at(
         return Some(SplitPaneStoryAction::Drag);
     }
     None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keyboard_resize_requires_focus() {
+        let mut state = SplitPaneStoryState::default();
+        let update = state.apply_action(SplitPaneStoryAction::Keyboard);
+        assert_eq!("split_pane_keyboard_without_focus", update.action);
+        assert_eq!("focused=false", update.state);
+    }
 }

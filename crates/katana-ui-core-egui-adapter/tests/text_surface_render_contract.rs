@@ -11,6 +11,7 @@ use katana_ui_core_egui_adapter::text_surface::{
     EguiTextSurfaceAdapter, EguiTextSurfaceDrawLayer, TextSurfaceGutterPaint,
     TextSurfacePaintOperationKind, TextSurfacePaintStyle, TextSurfaceRasterStyle,
 };
+use katana_ui_core_text_raster::PlatformTextRasterConfig;
 
 const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 360.0;
@@ -28,12 +29,31 @@ const GUTTER_CLICK_X: f32 = 16.0;
 const SURFACE_CLICK_Y: f32 = 8.0;
 
 #[test]
+fn missing_font_catalog_fails_closed_before_surface_paint() {
+    let context = egui::Context::default();
+    let mut adapter = EguiTextSurfaceAdapter::new(PlatformTextRasterConfig {
+        proportional_candidates: Vec::new(),
+        monospace_candidates: Vec::new(),
+        emoji_candidates: Vec::new(),
+        emoji_candidate_sha256: Vec::new(),
+        cache_capacity: 1,
+    });
+    let mut surface = surface();
+    let mut result = None;
+    let mut output = context.run_ui(egui::RawInput::default(), |ui| {
+        result = Some(adapter.show(ui, &mut surface, &raster_style(), &paint_style()));
+    });
+    output.textures_delta.clear();
+    assert!(result.is_some_and(|value| value.is_err()));
+}
+
+#[test]
 fn actual_egui_surface_uses_kuc_raster_texture_and_one_frame_record() {
     let context = egui::Context::default();
     let mut adapter = EguiTextSurfaceAdapter::default();
     let mut surface = surface();
     let mut render_result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -55,6 +75,7 @@ fn actual_egui_surface_uses_kuc_raster_texture_and_one_frame_record() {
         return;
     };
     assert!(!full_output.textures_delta.set.is_empty());
+    full_output.textures_delta.clear();
     assert_eq!(
         vec![
             EguiTextSurfaceDrawLayer::Background,
@@ -165,7 +186,7 @@ fn empty_single_line_surface_rasterizes_japanese_emoji_placeholder_and_exposes_i
         .accessibility_label("検索語"),
     );
     let mut render_result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -196,6 +217,7 @@ fn empty_single_line_surface_rasterizes_japanese_emoji_placeholder_and_exposes_i
             .contains(&EguiTextSurfaceDrawLayer::PlaceholderTexture)
     );
     assert!(full_output.textures_delta.set.len() >= 2);
+    full_output.textures_delta.clear();
     let Some(update) = full_output.platform_output.accesskit_update else {
         panic!("the enabled egui context did not emit an AccessKit tree update");
     };
@@ -223,7 +245,7 @@ fn actual_accesskit_tree_exposes_surface_text_gutter_and_context() {
         }),
     ));
     let mut render_result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -235,6 +257,7 @@ fn actual_accesskit_tree_exposes_surface_text_gutter_and_context() {
             render_result = Some(adapter.show(ui, &mut surface, &raster_style(), &paint_style()));
         },
     );
+    full_output.textures_delta.clear();
 
     assert!(render_result.is_some());
     let Some(render_result) = render_result else {
@@ -317,6 +340,69 @@ fn actual_accesskit_tree_exposes_surface_text_gutter_and_context() {
 }
 
 #[test]
+fn actual_accesskit_tree_exposes_disabled_root_and_gutter_reasons() {
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let mut adapter = EguiTextSurfaceAdapter::default();
+    let text = "一\n二";
+    let mut surface = TextSurface::new(
+        TextSurfaceProps::new(
+            TextArea::new("disabled-editor").value(text).disabled(true),
+            UiTextSpan::emoji_marked_spans(text, Default::default()),
+            TextSurfaceViewport::new(0, 0, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32),
+        )
+        .accessibility_label("編集領域")
+        .disabled_reason("読み込み中")
+        .gutter(
+            TextSurfaceGutter::new(GUTTER_WIDTH)
+                .row(
+                    TextSurfaceGutterRow::new(0, "1")
+                        .accessibility_label("1 行目")
+                        .accessibility_description("明示的な説明"),
+                )
+                .row(TextSurfaceGutterRow::new(1, "2").accessibility_label("2 行目")),
+        ),
+    );
+    let mut render_result = None;
+    let mut full_output = context.run_ui(egui::RawInput::default(), |ui| {
+        render_result = Some(adapter.show(ui, &mut surface, &raster_style(), &paint_style()));
+    });
+    assert!(render_result.is_some_and(|result| result.is_ok()));
+    full_output.textures_delta.clear();
+    let update = full_output
+        .platform_output
+        .accesskit_update
+        .expect("the disabled surface did not emit an AccessKit update");
+
+    let root = update
+        .nodes
+        .iter()
+        .map(|(_, node)| node)
+        .find(|node| node.role() == egui::accesskit::Role::MultilineTextInput)
+        .expect("the disabled surface did not expose its root node");
+    assert!(root.is_disabled());
+    assert_eq!(Some("読み込み中"), root.description());
+
+    let first_row = update
+        .nodes
+        .iter()
+        .map(|(_, node)| node)
+        .find(|node| node.role() == egui::accesskit::Role::Button && node.label() == Some("1 行目"))
+        .expect("the first gutter row was not exposed");
+    assert!(first_row.is_disabled());
+    assert_eq!(Some("明示的な説明"), first_row.description());
+
+    let second_row = update
+        .nodes
+        .iter()
+        .map(|(_, node)| node)
+        .find(|node| node.role() == egui::accesskit::Role::Button && node.label() == Some("2 行目"))
+        .expect("the second gutter row was not exposed");
+    assert!(second_row.is_disabled());
+    assert_eq!(Some("読み込み中"), second_row.description());
+}
+
+#[test]
 fn actual_accesskit_root_reports_focus_and_readonly_state() {
     let context = egui::Context::default();
     context.enable_accesskit();
@@ -324,7 +410,7 @@ fn actual_accesskit_root_reports_focus_and_readonly_state() {
     let mut surface = readonly_surface();
     let _ = surface.apply_action(TextSurfaceAction::SetFocus(true));
     let mut render_result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -336,6 +422,7 @@ fn actual_accesskit_root_reports_focus_and_readonly_state() {
             render_result = Some(adapter.show(ui, &mut surface, &raster_style(), &paint_style()));
         },
     );
+    full_output.textures_delta.clear();
 
     assert!(render_result.is_some());
     let Some(render_result) = render_result else {
@@ -373,7 +460,7 @@ fn actual_accesskit_text_run_bounds_follow_the_scrolled_surface_layout() {
         .expect("the initial accessible text surface did not render");
 
     let mut render_result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -391,6 +478,7 @@ fn actual_accesskit_text_run_bounds_follow_the_scrolled_surface_layout() {
             render_result = Some(adapter.show(ui, &mut surface, &raster_style(), &paint_style()));
         },
     );
+    full_output.textures_delta.clear();
     let rendered = render_result
         .expect("the scrolled accessible text surface did not produce a result")
         .expect("the scrolled accessible text surface did not render");
@@ -438,6 +526,18 @@ fn actual_egui_scroll_uses_one_coordinate_system_for_gutter_annotation_selection
             "review-marker",
             TextSurfaceAnnotationStyle::Underline,
         ))
+        .annotation(TextSurfaceAnnotation::new(
+            "third-line-outline",
+            katana_ui_core::text_selection::UiTextSelectionRange::new(8, 11),
+            "review-outline",
+            TextSurfaceAnnotationStyle::Outline,
+        ))
+        .annotation(TextSurfaceAnnotation::new(
+            "third-line-fill",
+            katana_ui_core::text_selection::UiTextSelectionRange::new(8, 11),
+            "review-fill",
+            TextSurfaceAnnotationStyle::Fill,
+        ))
         .gutter(
             TextSurfaceGutter::new(GUTTER_WIDTH)
                 .row(TextSurfaceGutterRow::new(0, "1").visual_role("first-line"))
@@ -456,7 +556,7 @@ fn actual_egui_scroll_uses_one_coordinate_system_for_gutter_annotation_selection
         .expect("the initial scroll-coordinate surface did not render");
 
     let mut render_result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -474,6 +574,7 @@ fn actual_egui_scroll_uses_one_coordinate_system_for_gutter_annotation_selection
             render_result = Some(adapter.show(ui, &mut surface, &raster_style(), &paint_style()));
         },
     );
+    full_output.textures_delta.clear();
     let rendered = render_result
         .expect("the scrolled coordinate-system surface did not produce a result")
         .expect("the scrolled coordinate-system surface did not render");
@@ -552,9 +653,10 @@ fn actual_egui_text_ime_clipboard_and_history_events_stay_typed() {
         &context,
         &mut adapter,
         &mut surface,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-            "かな".to_string(),
-        ))],
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "かな".to_string(),
+            active_range_chars: None,
+        })],
     );
     assert!(preedit.is_ok());
     let Some(preedit) = preedit.ok() else {
@@ -765,7 +867,7 @@ fn run_frame(
     katana_ui_core_egui_adapter::text_surface::EguiTextSurfaceError,
 > {
     let mut result = None;
-    let _ = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -778,6 +880,7 @@ fn run_frame(
             result = Some(adapter.show(ui, surface, &raster_style(), &paint_style()));
         },
     );
+    full_output.textures_delta.clear();
     result
         .ok_or(katana_ui_core_egui_adapter::text_surface::EguiTextSurfaceError::FrameNotProduced)?
 }

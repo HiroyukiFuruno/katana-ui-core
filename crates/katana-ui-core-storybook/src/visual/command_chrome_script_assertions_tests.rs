@@ -106,19 +106,15 @@ pub(super) fn assert_dropdown_focus(frame: &CommandChromeScriptFrame, item_id: &
 }
 
 pub(super) fn assert_dropdown_item_activated(frame: &CommandChromeScriptFrame, item_id: &str) {
-    assert!(
-        frame.toolbar.events.iter().any(|event| {
-            matches!(
-                event,
-                CommandChromeToolbarEvent::DropdownItemActivated {
-                    action_id,
-                    item_id: actual,
-                } if action_id.as_str() == "code-block" && actual.as_str() == item_id
-            )
-        }),
-        "dropdown activation events: {:?}",
-        frame.toolbar.events
-    );
+    assert!(frame.toolbar.events.iter().any(|event| {
+        matches!(
+            event,
+            CommandChromeToolbarEvent::DropdownItemActivated {
+                action_id,
+                item_id: actual,
+            } if action_id.as_str() == "code-block" && actual.as_str() == item_id
+        )
+    }));
 }
 
 pub(super) fn assert_dropdown_closed(

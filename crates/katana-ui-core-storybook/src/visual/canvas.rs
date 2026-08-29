@@ -101,10 +101,14 @@ impl Canvas {
         }
     }
 
-    pub(crate) fn with_clip<F>(&mut self, x: usize, y: usize, width: usize, height: usize, draw: F)
-    where
-        F: FnOnce(&mut Self),
-    {
+    pub(crate) fn with_clip(
+        &mut self,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        draw: &mut dyn FnMut(&mut Self),
+    ) {
         let Some(next) = self.to_physical_clip(x, y, width, height) else {
             return;
         };

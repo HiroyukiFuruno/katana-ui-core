@@ -42,6 +42,11 @@ fn actual_root_canvas() -> UiRect {
 pub(super) fn assert_sequence_contract(
     sequence: &TextSurfaceScriptResult,
 ) -> Result<(), TextSurfaceArtifactError> {
+    let Some(first) = sequence.steps.first() else {
+        return Err(TextSurfaceArtifactError::Contract(
+            "the scripted sequence produced no frames".to_string(),
+        ));
+    };
     let names = sequence
         .steps
         .iter()
@@ -52,42 +57,42 @@ pub(super) fn assert_sequence_contract(
             "the scripted actual-egui steps changed".to_string(),
         ));
     }
-    let Some(first) = sequence.steps.first() else {
-        return Err(TextSurfaceArtifactError::Contract(
-            "the scripted sequence produced no frames".to_string(),
-        ));
-    };
     for step in &sequence.steps {
         verify_stable_frame(first, step)?;
     }
-    require_event(sequence, "focus-release", |event| {
-        matches!(event, TextSurfaceEvent::FocusChanged(true))
-    })?;
-    require_event(
-        sequence,
-        "select-all",
-        |event| matches!(event, TextSurfaceEvent::SelectionChanged { selection_start: 0, selection_end } if *selection_end > 0),
-    )?;
+    require_event(sequence, "focus-release", is_focus_release_event)?;
+    require_event(sequence, "select-all", is_select_all_event)?;
     verify_scrolled(sequence)?;
     verify_ime(sequence)?;
-    require_event(sequence, "copy", |event| {
-        matches!(
-            event,
-            TextSurfaceEvent::ClipboardRequested {
-                operation: TextSurfaceClipboardOperation::Copy,
-                ..
-            }
-        )
-    })?;
-    require_event(sequence, "history-undo", |event| {
-        matches!(
-            event,
-            TextSurfaceEvent::HistoryRequested(TextSurfaceHistoryOperation::Undo)
-        )
-    })?;
-    require_event(sequence, "context-target", |event| {
-        matches!(event, TextSurfaceEvent::ContextTargetRequested { .. })
-    })
+    require_event(sequence, "copy", is_copy_event)?;
+    require_event(sequence, "history-undo", is_undo_event)?;
+    require_event(sequence, "context-target", is_context_target_event)
+}
+
+fn is_focus_release_event(event: &TextSurfaceEvent) -> bool {
+    *event == TextSurfaceEvent::FocusChanged(true)
+}
+
+fn is_select_all_event(event: &TextSurfaceEvent) -> bool {
+    matches!(event, TextSurfaceEvent::SelectionChanged { selection_start: 0, selection_end } if *selection_end > 0)
+}
+
+fn is_copy_event(event: &TextSurfaceEvent) -> bool {
+    matches!(
+        event,
+        TextSurfaceEvent::ClipboardRequested {
+            operation: TextSurfaceClipboardOperation::Copy,
+            ..
+        }
+    )
+}
+
+fn is_undo_event(event: &TextSurfaceEvent) -> bool {
+    *event == TextSurfaceEvent::HistoryRequested(TextSurfaceHistoryOperation::Undo)
+}
+
+fn is_context_target_event(event: &TextSurfaceEvent) -> bool {
+    matches!(event, TextSurfaceEvent::ContextTargetRequested { .. })
 }
 
 fn run_scripted_frame(
@@ -97,7 +102,7 @@ fn run_scripted_frame(
     events: Vec<egui::Event>,
 ) -> Result<ScriptedEguiFrame, EguiTextSurfaceError> {
     let mut output = None;
-    let _ = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -115,6 +120,7 @@ fn run_scripted_frame(
             );
         },
     );
+    full_output.textures_delta.clear();
     output.ok_or(EguiTextSurfaceError::FrameNotProduced)?
 }
 
@@ -200,11 +206,12 @@ fn step<'a>(
     sequence: &'a TextSurfaceScriptResult,
     name: &str,
 ) -> Result<&'a TextSurfaceArtifactStep, TextSurfaceArtifactError> {
-    sequence
-        .steps
-        .iter()
-        .find(|step| step.name == name)
-        .ok_or_else(|| TextSurfaceArtifactError::Contract(format!("missing {name} scripted frame")))
+    match sequence.steps.iter().find(|step| step.name == name) {
+        Some(step) => Ok(step),
+        None => Err(TextSurfaceArtifactError::Contract(format!(
+            "missing {name} scripted frame"
+        ))),
+    }
 }
 
 fn require_event(
@@ -220,5 +227,239 @@ fn require_event(
             "{name} did not produce its typed event: focused={} raw={:?} typed={:?}",
             artifact_step.surface_focused, artifact_step.raw_events, artifact_step.events
         )))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::render_model::UiRect;
+
+    #[test]
+    fn event_predicates_reject_unrelated_events() {
+        let event = TextSurfaceEvent::FocusChanged(false);
+        assert!(!is_focus_release_event(&event));
+        assert!(!is_select_all_event(&event));
+        assert!(!is_copy_event(&event));
+        assert!(!is_undo_event(&event));
+        assert!(!is_context_target_event(&event));
+    }
+
+    #[test]
+    fn assert_sequence_contract_rejects_reordered_steps() -> Result<(), TextSurfaceArtifactError> {
+        let mut sequence = run_scripted_sequence()?;
+        sequence.steps[0].name = "wrong-first";
+        let error = assert_sequence_contract(&sequence);
+        assert!(matches!(
+            error,
+            Err(TextSurfaceArtifactError::Contract(error))
+                if error.contains("the scripted actual-egui steps changed")
+        ));
+        assert_eq!("wrong-first", sequence.steps[0].name);
+        Ok(())
+    }
+
+    #[test]
+    fn assert_sequence_contract_rejects_missing_focus_release_event()
+    -> Result<(), TextSurfaceArtifactError> {
+        let mut sequence = run_scripted_sequence()?;
+        assert_eq!(
+            sequence
+                .steps
+                .iter()
+                .filter(|step| step.name == "focus-release")
+                .count(),
+            1
+        );
+        sequence
+            .steps
+            .iter_mut()
+            .filter(|step| step.name == "focus-release")
+            .for_each(|step| step.events.clear());
+        let result = assert_sequence_contract(&sequence);
+        assert!(matches!(
+            result,
+            Err(TextSurfaceArtifactError::Contract(error))
+                if error.contains("focus-release did not produce its typed event")
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn assert_sequence_contract_rejects_missing_ime_preedit_evidence()
+    -> Result<(), TextSurfaceArtifactError> {
+        let mut sequence = run_scripted_sequence()?;
+        assert_eq!(
+            sequence
+                .steps
+                .iter()
+                .filter(|step| step.name == "ime-preedit-star")
+                .count(),
+            1
+        );
+        sequence
+            .steps
+            .iter_mut()
+            .filter(|step| step.name == "ime-preedit-star")
+            .for_each(|step| step.artifact.record.frame.preedit = None);
+        let result = assert_sequence_contract(&sequence);
+        assert!(matches!(
+            result,
+            Err(TextSurfaceArtifactError::Contract(error))
+                if error.contains("IME preedit did not retain the star variation selector")
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn assert_sequence_contract_rejects_unstable_viewport_bounds()
+    -> Result<(), TextSurfaceArtifactError> {
+        let mut sequence = run_scripted_sequence()?;
+        let first_surface_bounds = sequence.steps[0].artifact.record.frame.surface_bounds;
+        sequence.steps[0].artifact.record.frame.surface_bounds = UiRect::new(
+            first_surface_bounds.x + 1,
+            first_surface_bounds.y,
+            first_surface_bounds.width,
+            first_surface_bounds.height,
+        );
+        let result = assert_sequence_contract(&sequence);
+        assert!(matches!(
+            result,
+            Err(TextSurfaceArtifactError::Contract(error))
+                if error.contains("changed stable surface or viewport bounds")
+        ));
+        Ok(())
+    }
+
+    #[test]
+    fn assert_sequence_contract_verifies_expected_raw_input_traces()
+    -> Result<(), TextSurfaceArtifactError> {
+        let sequence = run_scripted_sequence()?;
+        assert_sequence_contract(&sequence)?;
+
+        let copy_step = step(&sequence, "copy")?;
+        assert!(
+            copy_step
+                .raw_events
+                .iter()
+                .any(|event| matches!(event, egui::Event::Copy))
+        );
+        assert!(copy_step.surface_focused);
+
+        let undo_step = step(&sequence, "history-undo")?;
+        assert!(undo_step.raw_events.iter().any(|event| {
+            matches!(
+                event,
+                egui::Event::Key {
+                    key: egui::Key::Z,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers,
+                } if modifiers.command
+            )
+        }));
+
+        let ime_preedit = step(&sequence, "ime-preedit-star")?;
+        assert!(ime_preedit.raw_events.iter().any(|event| {
+            matches!(
+                event,
+                egui::Event::Ime(egui::ImeEvent::Preedit { text: value, .. })
+                    if value == "⭐️"
+            )
+        }));
+
+        let ime_commit = step(&sequence, "ime-commit-star")?;
+        assert!(ime_commit.raw_events.iter().any(|event| {
+            matches!(
+                event,
+                egui::Event::Ime(egui::ImeEvent::Commit(value))
+                    if value == "⭐️"
+            )
+        }));
+
+        let context_target = step(&sequence, "context-target")?;
+        assert!(context_target.raw_events.iter().any(|event| matches!(
+            event,
+            egui::Event::PointerButton {
+                button: egui::PointerButton::Secondary,
+                ..
+            }
+        )));
+
+        assert!(
+            sequence
+                .steps
+                .iter()
+                .all(|step| !step.pixels.rgba.is_empty()),
+            "each step must render non-empty paint plan raster"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn assert_sequence_contract_rejects_each_remaining_invalid_frame_fact()
+    -> Result<(), TextSurfaceArtifactError> {
+        let base = run_scripted_sequence()?;
+
+        assert!(matches!(
+            step(&base, "missing"),
+            Err(TextSurfaceArtifactError::Contract(error)) if error.contains("missing missing")
+        ));
+
+        let empty = TextSurfaceScriptResult { steps: Vec::new() };
+        assert!(matches!(
+            assert_sequence_contract(&empty),
+            Err(TextSurfaceArtifactError::Contract(error))
+                if error.contains("produced no frames")
+        ));
+
+        let mut invalid_pixels = base.clone();
+        invalid_pixels.steps[0].pixels.rgba.clear();
+        assert!(matches!(
+            assert_sequence_contract(&invalid_pixels),
+            Err(TextSurfaceArtifactError::Contract(error))
+                if error.contains("does not preserve the adapter paint plan pixels")
+        ));
+
+        let mut invalid_scroll = base.clone();
+        invalid_scroll
+            .steps
+            .iter_mut()
+            .filter(|step| step.name == "wheel-scroll")
+            .for_each(|step| step.artifact.record.frame.viewport.scroll_y = 0);
+        assert!(matches!(
+            assert_sequence_contract(&invalid_scroll),
+            Err(TextSurfaceArtifactError::Contract(error))
+                if error.contains("did not produce a scrolled actual-egui frame")
+        ));
+
+        let mut invalid_caret = base.clone();
+        invalid_caret
+            .steps
+            .iter_mut()
+            .filter(|step| step.name == "ime-caret-release")
+            .for_each(|step| {
+                step.artifact.record.frame.selection_end =
+                    step.artifact.record.frame.selection_start.saturating_add(1);
+            });
+        assert!(matches!(
+            assert_sequence_contract(&invalid_caret),
+            Err(TextSurfaceArtifactError::Contract(error))
+                if error.contains("did not collapse the selection")
+        ));
+
+        let mut invalid_commit = base;
+        invalid_commit
+            .steps
+            .iter_mut()
+            .filter(|step| step.name == "ime-commit-star")
+            .for_each(|step| step.artifact.record.raster_identity.clear());
+        assert!(matches!(
+            assert_sequence_contract(&invalid_commit),
+            Err(TextSurfaceArtifactError::Contract(error))
+                if error.contains("IME commit did not reach")
+        ));
+        Ok(())
     }
 }

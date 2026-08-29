@@ -12,6 +12,7 @@ publish = false
 [dependencies]
 eframe.workspace = true
 egui.workspace = true
+hex.workspace = true
 image.workspace = true
 katana-ui-core.workspace = true
 katana-ui-core-egui-adapter = { workspace = true, features = ["storybook-artifacts"] }

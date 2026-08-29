@@ -160,7 +160,37 @@ pub(super) fn has_colored_star_texture(frame: &TextSurfaceArtifactFrame) -> bool
         texture.identity.contains("⭐️")
             && texture
                 .rgba_pixels
-                .chunks_exact(RGBA_CHANNELS)
+                .as_chunks::<RGBA_CHANNELS>()
+                .0
+                .iter()
                 .any(|rgba| rgba[ALPHA_CHANNEL] > 0 && (rgba[0] != rgba[1] || rgba[1] != rgba[2]))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn artifact_error_display_covers_each_typed_source() {
+        let adapter = TextSurfaceArtifactError::from(EguiTextSurfaceError::FrameNotProduced);
+        assert!(adapter.to_string().contains("adapter error"));
+
+        let image = TextSurfaceArtifactError::Image(image::ImageError::IoError(
+            std::io::Error::other("image"),
+        ));
+        assert!(image.to_string().contains("artifact image error"));
+
+        let io = TextSurfaceArtifactError::Io(std::io::Error::other("io"));
+        assert!(io.to_string().contains("artifact I/O error"));
+
+        let json = serde_json::from_str::<serde_json::Value>("{")
+            .err()
+            .map(TextSurfaceArtifactError::Json)
+            .map(|error| error.to_string());
+        assert!(json.is_some_and(|error| error.contains("artifact JSON error")));
+
+        let contract = TextSurfaceArtifactError::Contract("contract".to_string());
+        assert!(contract.to_string().contains("artifact contract failed"));
+    }
 }

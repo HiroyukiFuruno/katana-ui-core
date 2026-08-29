@@ -1,7 +1,10 @@
+use katana_ui_core::interaction::placement::{Rect, Size};
 use katana_ui_core::molecule::RgbaColor;
 use katana_ui_core::molecule::command_chrome::CommandChromeIcon;
 use katana_ui_core::molecule::command_chrome::{
-    CommandChromeAction, CommandChromeDisplayMode, CommandChromeToolbar, CommandChromeToolbarEvent,
+    CommandChromeAction, CommandChromeDisplayMode, CommandChromeDropdown,
+    CommandChromeDropdownItem, CommandChromeDropdownTrigger, CommandChromeToolbar,
+    CommandChromeToolbarAction, CommandChromeToolbarEvent,
 };
 use katana_ui_core::render_model::RGBA_CHANNEL_COUNT;
 use katana_ui_core::render_model::UiIconProps;
@@ -18,13 +21,119 @@ const LINE_HEIGHT: f32 = 24.0;
 const FONT_WEIGHT: u16 = 400;
 
 #[test]
+fn invalid_action_icon_fails_closed() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let mut toolbar = CommandChromeToolbar::new().action(
+        CommandChromeAction::new("invalid", "Invalid").icon(UiIconProps::new("not-an-svg")),
+    );
+    let mut output = None;
+    let _ = run_frame(
+        &context,
+        &mut adapter,
+        &mut toolbar,
+        Vec::new(),
+        &mut output,
+    );
+    assert!(output.is_some_and(|result| result.is_err()));
+}
+
+#[test]
+fn invalid_dropdown_item_icon_fails_closed_during_layout() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let dropdown = CommandChromeDropdown::new(CommandChromeDropdownTrigger::Primary).item(
+        CommandChromeDropdownItem::new("invalid", "Invalid").icon(UiIconProps::new("not-an-svg")),
+    );
+    let mut toolbar = CommandChromeToolbar::new()
+        .action(CommandChromeAction::new("menu", "Menu").dropdown(dropdown));
+    let mut output = None;
+    let _ = run_frame(
+        &context,
+        &mut adapter,
+        &mut toolbar,
+        Vec::new(),
+        &mut output,
+    );
+    assert!(output.is_some_and(|result| result.is_err()));
+}
+
+#[test]
+fn invalid_open_dropdown_item_fails_closed_during_presentation() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let dropdown = CommandChromeDropdown::new(CommandChromeDropdownTrigger::Primary)
+        .item(CommandChromeDropdownItem::new("invalid", "Invalid"));
+    let mut toolbar = CommandChromeToolbar::new()
+        .action(CommandChromeAction::new("menu", "Menu").dropdown(dropdown));
+    let _ = toolbar.apply_action(CommandChromeToolbarAction::update_dropdown_layout(
+        "menu",
+        katana_ui_core::molecule::command_chrome::CommandChromeDropdownLayout::new(
+            Rect::new(0, 0, 20, 20),
+            Rect::new(0, 0, 200, 100),
+            Size::new(80, 30),
+        ),
+    ));
+    let _ = toolbar.apply_action(CommandChromeToolbarAction::activate("menu"));
+    let mut value = serde_json::to_value(&toolbar).expect("toolbar serialization");
+    value["actions"][0]["dropdown"]["items"][0]["icon"] =
+        serde_json::to_value(UiIconProps::new("not-an-svg")).expect("invalid icon serialization");
+    let mut toolbar: CommandChromeToolbar =
+        serde_json::from_value(value).expect("open invalid dropdown fixture");
+    let mut output = None;
+    let _ = run_frame(
+        &context,
+        &mut adapter,
+        &mut toolbar,
+        Vec::new(),
+        &mut output,
+    );
+    assert!(output.is_some_and(|result| result.is_err()));
+}
+
+#[test]
+fn stale_open_dropdown_without_its_action_fails_closed_without_presentation() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let dropdown = CommandChromeDropdown::new(CommandChromeDropdownTrigger::Primary)
+        .item(CommandChromeDropdownItem::new("item", "Item"));
+    let mut toolbar = CommandChromeToolbar::new()
+        .action(CommandChromeAction::new("menu", "Menu").dropdown(dropdown));
+    let _ = toolbar.apply_action(CommandChromeToolbarAction::update_dropdown_layout(
+        "menu",
+        katana_ui_core::molecule::command_chrome::CommandChromeDropdownLayout::new(
+            Rect::new(0, 0, 20, 20),
+            Rect::new(0, 0, 200, 100),
+            Size::new(80, 30),
+        ),
+    ));
+    let _ = toolbar.apply_action(CommandChromeToolbarAction::activate("menu"));
+    let mut value = serde_json::to_value(&toolbar).expect("toolbar serialization");
+    value["actions"] = serde_json::json!([]);
+    let mut toolbar: CommandChromeToolbar =
+        serde_json::from_value(value).expect("stale open dropdown fixture");
+    let mut output = None;
+    let _ = run_frame(
+        &context,
+        &mut adapter,
+        &mut toolbar,
+        Vec::new(),
+        &mut output,
+    );
+    let output = output
+        .expect("toolbar output")
+        .expect("stale dropdown fails closed");
+    assert!(output.record.dropdown.is_none());
+}
+
+#[test]
 fn actual_egui_toolbar_uses_kuc_rasters_accesskit_and_typed_events() {
     let context = egui::Context::default();
     context.enable_accesskit();
     let mut adapter = EguiCommandChromeAdapter::default();
     let mut toolbar = toolbar(false);
     let mut output = None;
-    let full_output = run_frame(
+    let mut full_output = run_frame_preserving_textures(
         &context,
         &mut adapter,
         &mut toolbar,
@@ -62,6 +171,7 @@ fn actual_egui_toolbar_uses_kuc_rasters_accesskit_and_typed_events() {
             })
     );
     assert!(!full_output.textures_delta.set.is_empty());
+    full_output.textures_delta.clear();
     let Some(update) = full_output.platform_output.accesskit_update else {
         panic!("the enabled egui context did not emit an AccessKit tree update");
     };
@@ -185,7 +295,8 @@ fn actual_egui_toolbar_emits_an_immutable_plan_from_its_final_rasters_and_bounds
     let mut adapter = EguiCommandChromeAdapter::default();
     let mut toolbar = toolbar(false);
     let mut first = None;
-    let first_full_output = run_frame(&context, &mut adapter, &mut toolbar, Vec::new(), &mut first);
+    let mut first_full_output =
+        run_frame_preserving_textures(&context, &mut adapter, &mut toolbar, Vec::new(), &mut first);
     let Some(first) = first else {
         panic!("the actual egui toolbar did not produce an output");
     };
@@ -229,6 +340,7 @@ fn actual_egui_toolbar_emits_an_immutable_plan_from_its_final_rasters_and_bounds
             .any(|rgba| rgba[3] > 0 && (rgba[0] != rgba[1] || rgba[1] != rgba[2]))
     );
     assert!(!first_full_output.textures_delta.set.is_empty());
+    first_full_output.textures_delta.clear();
 
     let mut second = None;
     let _ = run_frame(
@@ -296,6 +408,23 @@ fn paint_style() -> CommandChromePaintStyle {
 }
 
 fn run_frame(
+    context: &egui::Context,
+    adapter: &mut EguiCommandChromeAdapter,
+    toolbar: &mut CommandChromeToolbar,
+    events: Vec<egui::Event>,
+    output: &mut Option<
+        Result<
+            katana_ui_core_egui_adapter::command_chrome::EguiCommandChromeOutput,
+            katana_ui_core_egui_adapter::command_chrome::EguiCommandChromeError,
+        >,
+    >,
+) -> egui::FullOutput {
+    let mut full_output = run_frame_preserving_textures(context, adapter, toolbar, events, output);
+    full_output.textures_delta.clear();
+    full_output
+}
+
+fn run_frame_preserving_textures(
     context: &egui::Context,
     adapter: &mut EguiCommandChromeAdapter,
     toolbar: &mut CommandChromeToolbar,

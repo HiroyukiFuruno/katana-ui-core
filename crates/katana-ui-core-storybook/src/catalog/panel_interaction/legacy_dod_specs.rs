@@ -38,3 +38,27 @@ pub(super) const fn spec(
         presets,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn spec_constructor_preserves_every_runtime_contract_field() {
+        let value = spec(
+            "page",
+            "marker",
+            "option",
+            "type",
+            "after",
+            ["one", "two", "three", "four"],
+        );
+
+        assert_eq!("page", value.page);
+        assert_eq!("marker", value.marker);
+        assert_eq!("option", value.option);
+        assert_eq!("type", value.value_type);
+        assert_eq!("after", value.after);
+        assert_eq!(["one", "two", "three", "four"], value.presets);
+    }
+}

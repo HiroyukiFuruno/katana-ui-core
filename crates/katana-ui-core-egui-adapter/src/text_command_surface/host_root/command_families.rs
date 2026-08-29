@@ -12,8 +12,8 @@ impl EguiTextCommandSurfaceCommandFamilyProjection {
 
     pub(crate) fn legacy_compatibility() -> Self {
         Self {
-            primary: Some(CommandChromeFamilyId::default()),
-            floating: Some(CommandChromeFamilyId::default()),
+            primary: Some(CommandChromeFamilyId::new("kuc-family-0")),
+            floating: Some(CommandChromeFamilyId::new("kuc-family-1")),
         }
     }
 }

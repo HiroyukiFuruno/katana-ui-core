@@ -65,6 +65,6 @@ fn custom_size(value: &str) -> UiModalSize {
         .trim_end_matches("px")
         .parse::<u16>()
         .ok()
-        .map_or(0, |parsed| parsed);
+        .unwrap_or(0);
     UiModalSize::Custom { width_px }
 }

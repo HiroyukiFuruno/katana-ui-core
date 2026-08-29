@@ -123,3 +123,27 @@ impl UiPlatformEmojiFontFamily {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        APPLE_COLOR_EMOJI_FONT_FAMILY, LINUX_COLOR_EMOJI_FONT_FAMILY, UiPlatformEmojiFontFamily,
+    };
+
+    #[test]
+    fn platform_emoji_family_names_cover_every_profile() {
+        assert_eq!(
+            UiPlatformEmojiFontFamily::AppleColorEmoji.as_str(),
+            Some(APPLE_COLOR_EMOJI_FONT_FAMILY)
+        );
+        assert_eq!(
+            UiPlatformEmojiFontFamily::SegoeUiEmoji.as_str(),
+            Some("Segoe UI Emoji")
+        );
+        assert_eq!(
+            UiPlatformEmojiFontFamily::NotoColorEmoji.as_str(),
+            Some(LINUX_COLOR_EMOJI_FONT_FAMILY)
+        );
+        assert_eq!(UiPlatformEmojiFontFamily::None.as_str(), None);
+    }
+}

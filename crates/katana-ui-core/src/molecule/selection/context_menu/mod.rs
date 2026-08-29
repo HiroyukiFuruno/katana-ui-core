@@ -7,6 +7,8 @@ mod placement;
 mod state;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_additional;
 mod types;
 
 use crate::component::ComponentAction;

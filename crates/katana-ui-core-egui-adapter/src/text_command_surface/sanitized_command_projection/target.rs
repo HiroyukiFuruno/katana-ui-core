@@ -43,7 +43,7 @@ impl SanitizedCommandTarget {
 
     #[must_use]
     pub(crate) fn stable_fingerprint(&self) -> String {
-        format!("{:x}", Sha256::digest(&self.opaque))
+        hex::encode(Sha256::digest(&self.opaque))
     }
 
     pub(crate) fn capability(&self) -> Option<CommandCapability> {

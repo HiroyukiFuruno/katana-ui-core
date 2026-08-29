@@ -95,6 +95,11 @@ mod tests {
     use super::UiEmojiTextSegments;
 
     #[test]
+    fn split_empty_text_has_no_segments() {
+        assert!(UiEmojiTextSegments::split("").is_empty());
+    }
+
+    #[test]
     fn split_marks_raw_emoji_runs_without_marking_surrounding_text() {
         let segments = UiEmojiTextSegments::split("Emoji: 🦀 text ⚠️");
 

@@ -373,6 +373,12 @@ mod tests {
     #[test]
     fn invalid_requests_are_typed_errors_without_glyph_fallback() {
         let mut rasterizer = UiSvgRasterizer::default();
+        let mut empty = request(8, 8);
+        empty.icon.svg_source = "  ".to_string();
+        assert!(matches!(
+            rasterizer.rasterize(&empty),
+            Err(UiSvgRasterError::EmptySource)
+        ));
         assert!(matches!(
             rasterizer.rasterize(&request(0, 8)),
             Err(UiSvgRasterError::InvalidDimensions { .. })
@@ -388,5 +394,67 @@ mod tests {
             rasterizer.rasterize(&invalid),
             Err(UiSvgRasterError::InvalidSvg(_))
         ));
+    }
+
+    #[test]
+    fn invalid_configuration_is_typed_error() {
+        let mut rasterizer = UiSvgRasterizer::new(UiSvgRasterConfig {
+            cache_capacity: 0,
+            max_dimension_px: 0,
+        });
+        assert!(matches!(
+            rasterizer.rasterize(&request(8, 8)),
+            Err(UiSvgRasterError::InvalidConfiguration {
+                cache_capacity: 0,
+                max_dimension_px: 0,
+            })
+        ));
+    }
+
+    #[test]
+    fn impossible_pixel_buffer_allocation_is_detected_before_render() {
+        let mut rasterizer = UiSvgRasterizer::new(UiSvgRasterConfig {
+            cache_capacity: 8,
+            max_dimension_px: u32::MAX,
+        });
+        let oversized = request(u32::MAX, u32::MAX);
+        assert!(matches!(
+            rasterizer.rasterize(&oversized),
+            Err(UiSvgRasterError::PixelBufferOverflow {
+                width_px: u32::MAX,
+                height_px: u32::MAX,
+            })
+        ));
+    }
+
+    #[test]
+    fn render_reports_pixmap_allocation_failure_for_an_unrepresentable_axis() {
+        let oversized = request(u32::MAX, 1);
+        assert!(matches!(
+            render(&oversized, "oversized".to_string()),
+            Err(UiSvgRasterError::AllocationFailed {
+                width_px: u32::MAX,
+                height_px: 1,
+            })
+        ));
+    }
+
+    #[test]
+    fn paint_processor_handles_alpha_math_and_unpremultiply() {
+        let source = vec![0, 0, 0, 0, 64, 32, 16, 128, 255, 255, 255, 255];
+        let unpremultiplied = SvgPaintProcessor::unpremultiply(&source);
+        assert_eq!(
+            unpremultiplied,
+            vec![0, 0, 0, 0, 127, 63, 31, 128, 255, 255, 255, 255]
+        );
+        let half_alpha = SvgPaintProcessor::apply_alpha(unpremultiplied.clone(), 128);
+        assert_eq!(
+            half_alpha,
+            vec![0, 0, 0, 0, 127, 63, 31, 64, 255, 255, 255, 128]
+        );
+        assert_eq!(
+            SvgPaintProcessor::apply_alpha(half_alpha, u8::MAX),
+            vec![0, 0, 0, 0, 127, 63, 31, 64, 255, 255, 255, 128]
+        );
     }
 }

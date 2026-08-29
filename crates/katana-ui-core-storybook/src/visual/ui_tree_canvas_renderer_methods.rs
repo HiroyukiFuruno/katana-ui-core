@@ -33,18 +33,24 @@ impl UiTreeCanvasRenderer {
         let requested_height = dimension_px(&node.props().common.height);
         if requested_height > 0 {
             let clip_height = hover_surface_child_clip_height(node, requested_height);
-            canvas.with_clip(x, *y, remaining_width(area, x), clip_height, |canvas| {
-                for (index, child) in node.children().iter().enumerate() {
-                    self.draw_container_child(canvas, child, child_x, y, child_area, palette);
-                    if index + 1 < node.children().len() {
-                        *y = y.saturating_add(gap_after_child(
-                            node,
-                            child,
-                            &node.children()[index + 1],
-                        ));
+            canvas.with_clip(
+                x,
+                *y,
+                remaining_width(area, x),
+                clip_height,
+                &mut |canvas| {
+                    for (index, child) in node.children().iter().enumerate() {
+                        self.draw_container_child(canvas, child, child_x, y, child_area, palette);
+                        if index + 1 < node.children().len() {
+                            *y = y.saturating_add(gap_after_child(
+                                node,
+                                child,
+                                &node.children()[index + 1],
+                            ));
+                        }
                     }
-                }
-            });
+                },
+            );
         } else {
             for (index, child) in node.children().iter().enumerate() {
                 self.draw_container_child(canvas, child, child_x, y, child_area, palette);
@@ -123,7 +129,7 @@ impl UiTreeCanvasRenderer {
             return;
         }
         let scroll_y = area.scroll_y.round().max(0.0) as usize;
-        canvas.with_clip(x, visible_top, frame_width, visible_height, |canvas| {
+        canvas.with_clip(x, visible_top, frame_width, visible_height, &mut |canvas| {
             if matches!(
                 node.props().visual_role,
                 UiVisualRole::MediaFrame | UiVisualRole::ExportMediaFrame
@@ -214,4 +220,138 @@ fn hover_surface_child_clip_height(node: &UiNode, requested_height: usize) -> us
         return requested_height.saturating_add(TEXT_HEIGHT);
     }
     requested_height
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::render_model::{UiDimension, UiInteractionState, UiPosition, UiTextProps};
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn container_renderer_covers_fixed_clip_offscreen_child_and_invisible_overlay() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::new(theme);
+        let mut canvas = Canvas::new(180, 80, palette.background);
+        let fixed = UiNode::new(UiNodeKind::Column, "fixed")
+            .height(UiDimension::px(24))
+            .child(UiNode::new(UiNodeKind::Text, "first"))
+            .child(UiNode::new(UiNodeKind::Text, "second"));
+        let mut y = 0;
+        renderer.draw_container(
+            &mut canvas,
+            &fixed,
+            0,
+            &mut y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 24,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+
+        let labeled = UiNode::new(UiNodeKind::Card, "labeled");
+        let mut labeled_y = 0;
+        renderer.draw_container(
+            &mut canvas,
+            &labeled,
+            0,
+            &mut labeled_y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 40,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+        assert!(labeled_y >= TEXT_HEIGHT);
+
+        let offscreen =
+            UiNode::new(UiNodeKind::Column, "").child(UiNode::new(UiNodeKind::Text, "outside"));
+        let mut offscreen_y = 0;
+        renderer.draw_container(
+            &mut canvas,
+            &offscreen,
+            0,
+            &mut offscreen_y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 70,
+                width: 180,
+                height: 5,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+        assert!(offscreen_y > 0);
+
+        let overlay = UiNode::new(UiNodeKind::Stack, "")
+            .height(UiDimension::px(20))
+            .child(UiNode::new(UiNodeKind::Button, "absolute").position(UiPosition::Absolute));
+        let mut overlay_y = 100;
+        renderer.draw_overlay_stack(
+            &mut canvas,
+            &overlay,
+            0,
+            &mut overlay_y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 20,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+        assert_eq!(120, overlay_y);
+    }
+
+    #[test]
+    fn accordion_renderer_covers_document_and_storybook_open_states() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::new(theme);
+        let mut canvas = Canvas::new(240, 180, palette.background);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 180,
+            scroll_y: 0.0,
+        };
+        let open = UiInteractionState {
+            open: true,
+            ..UiInteractionState::default()
+        };
+        let document = UiNode::new(UiNodeKind::Accordion, "Document")
+            .text(UiTextProps {
+                role: "html-accordion".to_string(),
+                ..UiTextProps::default()
+            })
+            .interaction(open.clone())
+            .child(UiNode::new(UiNodeKind::Text, "Body"));
+        let storybook_open = UiNode::new(UiNodeKind::Accordion, "Story")
+            .interaction(open)
+            .child(UiNode::new(UiNodeKind::Text, "Body"));
+        let storybook_closed = UiNode::new(UiNodeKind::Accordion, "Closed");
+        let mut y = 0;
+
+        renderer.draw_accordion(&mut canvas, &document, 0, &mut y, area, palette);
+        renderer.draw_accordion(&mut canvas, &storybook_open, 0, &mut y, area, palette);
+        renderer.draw_accordion(&mut canvas, &storybook_closed, 0, &mut y, area, palette);
+        let _ = renderer.settings_context(area, palette);
+
+        assert!(
+            canvas
+                .pixels()
+                .iter()
+                .any(|pixel| *pixel != palette.background)
+        );
+    }
 }

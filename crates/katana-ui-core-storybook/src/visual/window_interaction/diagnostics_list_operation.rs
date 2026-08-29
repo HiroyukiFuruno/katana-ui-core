@@ -33,3 +33,34 @@ pub(super) fn operation_at(
         _ => DiagnosticsListStoryAction::ToggleFixPreview,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn diagnostics_list_preset_selects_the_matching_primary_action() {
+        let rect = preview_detail::component_action_hit_rect(PAGE);
+        let point = (rect.x.saturating_add(1), rect.y.saturating_add(1));
+
+        let tool = StorybookWindowState {
+            selected_page: PAGE,
+            preset_index: TOOL_PRESET_INDEX,
+            ..StorybookWindowState::default()
+        };
+        assert_eq!(
+            Some(DiagnosticsListStoryAction::SelectItem),
+            operation_at(&tool, point.0, point.1)
+        );
+
+        let bulk = StorybookWindowState {
+            selected_page: PAGE,
+            preset_index: BULK_PRESET_INDEX,
+            ..StorybookWindowState::default()
+        };
+        assert_eq!(
+            Some(DiagnosticsListStoryAction::OpenBulkPreview),
+            operation_at(&bulk, point.0, point.1)
+        );
+    }
+}

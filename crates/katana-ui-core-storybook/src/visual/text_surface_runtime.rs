@@ -36,17 +36,30 @@ mod tests {
         TextSurfaceStorybookApp, assert_sequence_contract, handles_page, run_scripted_sequence,
         write_scripted_artifact,
     };
+    use eframe::App as _;
     use sha2::{Digest, Sha256};
     use std::error::Error;
     use std::fs;
     use std::path::Path;
 
     #[test]
+    fn text_surface_app_covers_bounded_and_unbounded_frame_lifecycles() {
+        for (frames, expected_remaining) in [(0, None), (1, Some(0))] {
+            let context = egui::Context::default();
+            let mut app = TextSurfaceStorybookApp::new(frames);
+            let mut frame = eframe::Frame::_new_kittest();
+            let mut output = context.run_ui(Default::default(), |ui| app.ui(ui, &mut frame));
+            output.textures_delta.clear();
+            assert_eq!(expected_remaining, app.frames_remaining);
+        }
+    }
+
+    #[test]
     fn text_surface_story_fixture_is_rendered_by_the_actual_adapter() -> Result<(), Box<dyn Error>>
     {
         let context = egui::Context::default();
         let mut app = TextSurfaceStorybookApp::new(0);
-        let _ = context.run_ui(
+        let mut full_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -56,34 +69,30 @@ mod tests {
             },
             |ui| app.show(ui),
         );
+        full_output.textures_delta.clear();
 
-        let record = app.last_record.as_ref().ok_or_else(|| {
-            std::io::Error::other(
-                "the TextSurface Storybook fixture did not produce an adapter frame",
-            )
-        })?;
         assert!(app.last_error.is_none());
+        assert!(app.last_record.as_ref().is_some_and(|record| {
+            record.frame.surface_bounds == record.frame.accessibility.root.bounds
+                && record.raster_identity.contains("⭐️")
+                && record.frame.gutter.len() == STORY_LINE_COUNT
+                && record.frame.annotations.len() == 1
+        }));
         assert_eq!(
-            record.frame.surface_bounds,
-            record.frame.accessibility.root.bounds
+            app.last_artifact.as_ref().map(|artifact| &artifact.record),
+            app.last_record.as_ref()
         );
-        assert!(record.raster_identity.contains("⭐️"));
-        assert_eq!(STORY_LINE_COUNT, record.frame.gutter.len());
-        assert_eq!(1, record.frame.annotations.len());
-        let artifact = app.last_artifact.as_ref().ok_or_else(|| {
-            std::io::Error::other(
-                "the TextSurface Storybook fixture did not produce an artifact frame",
-            )
-        })?;
-        let pixels = app.last_pixels.as_ref().ok_or_else(|| {
-            std::io::Error::other(
-                "the TextSurface Storybook fixture did not consume its artifact frame",
-            )
-        })?;
-        assert_eq!(artifact.record, *record);
-        assert_eq!(artifact.paint_plan_hash, pixels.paint_plan_hash);
-        assert_eq!(64, pixels.pixel_hash.len());
-        assert!(pixels.rgba.iter().any(|component| *component != 0));
+        assert_eq!(
+            app.last_artifact
+                .as_ref()
+                .map(|artifact| artifact.paint_plan_hash.as_str()),
+            app.last_pixels
+                .as_ref()
+                .map(|pixels| pixels.paint_plan_hash.as_str())
+        );
+        assert!(app.last_pixels.as_ref().is_some_and(|pixels| {
+            pixels.pixel_hash.len() == 64 && pixels.rgba.iter().any(|component| *component != 0)
+        }));
         Ok(())
     }
 
@@ -129,6 +138,58 @@ mod tests {
     }
 
     #[test]
+    fn text_surface_runtime_first_frame_matches_scripted_contract() -> Result<(), Box<dyn Error>> {
+        let sequence = run_scripted_sequence()?;
+        let scripted_first = sequence.steps.first();
+        assert!(scripted_first.is_some());
+
+        let context = egui::Context::default();
+        let mut app = TextSurfaceStorybookApp::new(0);
+        let mut full_output = context.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(SURFACE_WIDTH, SURFACE_HEIGHT),
+                )),
+                ..egui::RawInput::default()
+            },
+            |ui| app.show(ui),
+        );
+        full_output.textures_delta.clear();
+
+        assert!(app.last_error.is_none());
+        assert_eq!(
+            app.last_record.as_ref(),
+            scripted_first.map(|step| &step.artifact.record)
+        );
+        assert_eq!(
+            app.last_artifact
+                .as_ref()
+                .map(|artifact| artifact.frame_record_hash.as_str()),
+            scripted_first.map(|step| step.artifact.frame_record_hash.as_str())
+        );
+        assert_eq!(
+            app.last_artifact
+                .as_ref()
+                .map(|artifact| artifact.paint_plan_hash.as_str()),
+            scripted_first.map(|step| step.artifact.paint_plan_hash.as_str())
+        );
+        assert_eq!(
+            app.last_pixels
+                .as_ref()
+                .map(|pixels| (pixels.pixel_hash.as_str(), pixels.rgba.len())),
+            scripted_first.map(|step| (step.pixels.pixel_hash.as_str(), step.pixels.rgba.len()))
+        );
+        assert_eq!(
+            app.last_record
+                .as_ref()
+                .map(|record| record.frame.accessibility.root.focused),
+            scripted_first.map(|step| step.surface_focused)
+        );
+        Ok(())
+    }
+
+    #[test]
     fn scripted_artifact_writes_plan_only_png_gif_and_manifest() -> Result<(), Box<dyn Error>> {
         let output_dir = Path::new("target/text-surface-storybook-test-artifact");
         write_scripted_artifact(output_dir)?;
@@ -159,6 +220,6 @@ mod tests {
     }
 
     fn digest(bytes: &[u8]) -> String {
-        format!("{:x}", Sha256::digest(bytes))
+        hex::encode(Sha256::digest(bytes))
     }
 }

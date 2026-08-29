@@ -10,6 +10,10 @@ mod typed_command;
 mod typed_disclosure;
 #[path = "typed_drag.rs"]
 mod typed_drag;
+#[path = "typed_grid.rs"]
+mod typed_grid;
+#[path = "typed_grid_types.rs"]
+mod typed_grid_types;
 #[path = "typed_icon.rs"]
 mod typed_icon;
 #[path = "typed_modal.rs"]
@@ -36,6 +40,12 @@ pub use typed_disclosure::{
     UiDisclosureIndicatorPosition, UiDisclosureProps, UiDisclosureTriggerArea,
 };
 pub use typed_drag::{UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps};
+pub use typed_grid::{
+    UiGridCell, UiGridCellAppearance, UiGridCellSpan, UiGridCoordinate, UiGridDataBar,
+    UiGridHorizontalAlignment, UiGridIcon, UiGridIndexRange, UiGridProps, UiGridRating,
+    UiGridSelection, UiGridValidationError, UiGridVerticalAlignment, UiGridViewport,
+    UiGridVisibleRange,
+};
 pub use typed_icon::{UiIconProps, UiSvgPaintPolicy};
 pub use typed_modal::{
     UiModalParentInteraction, UiModalPlacement, UiModalPresentation, UiModalProps, UiModalSize,

@@ -1,64 +1,46 @@
 use crate::visual::command_chrome_fixture::{
-    FRAME_HEIGHT, FRAME_WIDTH, floating_toolbar_fixture as base_floating_toolbar_fixture,
-    paint_style as chrome_paint, raster_style as chrome_raster, search_fixture, search_style,
-    toolbar_fixture,
+    FRAME_HEIGHT, FRAME_WIDTH, floating_toolbar_fixture, paint_style as chrome_paint,
+    raster_style as chrome_raster, search_fixture, search_style, toolbar_fixture,
 };
 use crate::visual::text_surface_fixture::{
     paint_style as text_paint, raster_style as text_raster, text_surface_fixture,
 };
 
 use super::facts;
+use katana_ui_core::molecule::command_chrome::CommandChromeFamilyId;
 use katana_ui_core_egui_adapter::text_command_surface::{
     EguiTextCommandSurface, EguiTextCommandSurfaceAdapter, EguiTextCommandSurfaceOutput,
     TextCommandSurfaceStyle,
 };
-use katana_ui_core_text_raster::PlatformTextRasterConfig;
 
 pub(crate) struct Harness;
 
 impl Harness {
-    pub(crate) fn primary_toolbar_fixture()
-    -> katana_ui_core::molecule::command_chrome::CommandChromeToolbar {
-        toolbar_fixture().command_family(
-            katana_ui_core::molecule::command_chrome::CommandChromeFamilyId::new(
-                "storybook.text.primary",
-            ),
-        )
-    }
-
-    pub(crate) fn floating_toolbar_fixture()
-    -> katana_ui_core::molecule::command_chrome::CommandChromeToolbar {
-        base_floating_toolbar_fixture().command_family(
-            katana_ui_core::molecule::command_chrome::CommandChromeFamilyId::new(
-                "storybook.text.floating",
-            ),
-        )
-    }
-
-    pub(crate) fn style() -> Result<TextCommandSurfaceStyle, Box<dyn std::error::Error>> {
-        Ok(TextCommandSurfaceStyle {
+    pub(crate) fn style() -> TextCommandSurfaceStyle {
+        TextCommandSurfaceStyle {
             text_raster: text_raster(),
             text_paint: text_paint(),
             chrome_raster: chrome_raster(),
             chrome_paint: chrome_paint(),
             search: search_style(),
-        })
+        }
     }
 
     pub(crate) fn run_frame_for_fact(
         events: Vec<egui::Event>,
     ) -> Result<facts::FrameFacts, Box<dyn std::error::Error>> {
         let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
-            PlatformTextRasterConfig::default(),
-        )?;
+            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+        )
+        .expect("text command adapter");
         let mut surface = EguiTextCommandSurface::new(text_surface_fixture())
-            .with_toolbar(Self::primary_toolbar_fixture())
+            .with_toolbar(toolbar_fixture().command_family(CommandChromeFamilyId::new("primary")))
             .with_floating_toolbar(
-                Self::floating_toolbar_fixture(),
+                floating_toolbar_fixture().command_family(CommandChromeFamilyId::new("floating")),
                 katana_ui_core::molecule::command_chrome::FloatingCommandToolbarVisibility::Closed,
             )
             .with_search_strip(search_fixture(false));
-        let style = Self::style()?;
+        let style = Self::style();
         let context = egui::Context::default();
         context.enable_accesskit();
         let (full, output) = Self::run_frame(&context, &mut adapter, &mut surface, &style, events)?;
@@ -73,7 +55,7 @@ impl Harness {
         events: Vec<egui::Event>,
     ) -> Result<(egui::FullOutput, EguiTextCommandSurfaceOutput), Box<dyn std::error::Error>> {
         let mut output = None;
-        let full = context.run_ui(
+        let mut full = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -84,8 +66,8 @@ impl Harness {
             },
             |ui| output = Some(adapter.show(ui, surface, style)),
         );
-        let output =
-            output.ok_or_else(|| std::io::Error::other("actual root did not produce a frame"))?;
+        full.textures_delta.clear();
+        let output = output.ok_or(std::io::Error::other("actual root did not produce a frame"))?;
         Ok((full, output?))
     }
 

@@ -24,6 +24,17 @@ fn emoji_style_can_be_combined_with_existing_text_styles() {
 }
 
 #[test]
+fn plain_and_inline_math_spans_keep_typed_style_contracts() {
+    let plain = UiTextSpan::plain("plain");
+    let math = UiTextSpanStyle::default().inline_math();
+
+    assert_eq!("plain", plain.text);
+    assert_eq!(UiTextSpanStyle::default(), plain.style);
+    assert!(plain.link_target.is_empty());
+    assert!(math.inline_math);
+}
+
+#[test]
 fn emoji_text_segments_split_star_and_text_with_variation_selector() {
     let segments = UiEmojiTextSegments::split("Star ⭐️ mark");
 

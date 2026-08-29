@@ -93,6 +93,22 @@ impl CommandChromeToolbarAction {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::CommandChromeToolbarAction;
+    use crate::molecule::toolbar::ToolbarActionId;
+
+    #[test]
+    fn press_constructor_preserves_the_action_identity() {
+        assert_eq!(
+            CommandChromeToolbarAction::press("bold"),
+            CommandChromeToolbarAction::Press {
+                action_id: ToolbarActionId::new("bold"),
+            }
+        );
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CommandChromeToolbarEvent {
     CommandActivated {

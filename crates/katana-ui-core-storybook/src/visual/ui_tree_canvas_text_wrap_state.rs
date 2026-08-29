@@ -79,9 +79,10 @@ impl SpanWrapState {
         segment: UiTextSpan,
         metrics: UiTreeTextMetrics,
     ) {
-        if self.current_width > 0 {
-            self.start_new_line();
-        }
+        debug_assert_eq!(
+            0, self.current_width,
+            "oversized segments must start on a fresh line"
+        );
         let mut chunk = String::new();
         for character in segment.text.chars() {
             let mut candidate = chunk.clone();
@@ -161,4 +162,99 @@ fn segment_with_text(span: &UiTextSpan, text: &str) -> UiTextSpan {
     let mut segment = span.clone();
     segment.text = text.to_string();
     segment
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::text::TextRenderer;
+    use katana_ui_core::atom::Text;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::render_model::UiNode;
+
+    fn text_context() -> (TextRenderer, TextRenderer, UiTreeTextMetrics) {
+        let facade = UiCoreFacade::default();
+        let text = TextRenderer::load(&facade, "body");
+        let code = TextRenderer::load(&facade, "code");
+        let node: UiNode = Text::new("sample").into();
+        (text, code, UiTreeTextMetrics::for_node(&node))
+    }
+
+    #[test]
+    fn span_segments_preserve_word_spacing_newlines_and_trailing_space() {
+        let span = UiTextSpan::plain(" alpha  beta\n gamma ");
+        let segments = span_segments(&span);
+        let text = segments
+            .iter()
+            .map(|segment| segment.text.as_str())
+            .collect::<Vec<_>>();
+
+        assert_eq!(text, vec![" alpha", "  beta", "\n", " gamma", " "]);
+        assert!(span_segments(&UiTextSpan::plain("")).is_empty());
+    }
+
+    #[test]
+    fn wrap_state_handles_empty_newline_whitespace_and_oversized_segments() {
+        let (text, code, metrics) = text_context();
+        let renderers = SpanTextRenderers::new(&text, &code);
+        let mut state = SpanWrapState::new(12, false);
+
+        state.start_new_line();
+        state.push(renderers, UiTextSpan::plain("   "), metrics);
+        state.push(renderers, UiTextSpan::plain("a"), metrics);
+        state.push(renderers, UiTextSpan::plain("\n"), metrics);
+        state.push(renderers, UiTextSpan::plain("oversized"), metrics);
+        let lines = state.finish();
+
+        assert!(lines.len() > 2);
+        assert_eq!(lines[0][0].text, "a");
+        assert_eq!(
+            lines
+                .iter()
+                .flatten()
+                .map(|segment| segment.text.as_str())
+                .collect::<String>(),
+            "aoversized"
+        );
+
+        let first = UiTextSpan::plain("a");
+        let first_width = span_part_width(renderers, &first, metrics, false);
+        let mut wrapped_whitespace = SpanWrapState::new(first_width, false);
+        wrapped_whitespace.push(renderers, first, metrics);
+        wrapped_whitespace.push(renderers, UiTextSpan::plain("   "), metrics);
+        assert_eq!(
+            "a",
+            wrapped_whitespace
+                .finish()
+                .into_iter()
+                .flatten()
+                .map(|segment| segment.text)
+                .collect::<String>()
+        );
+    }
+
+    #[test]
+    fn wrap_state_preserves_whitespace_and_wraps_between_segments() {
+        let (text, code, metrics) = text_context();
+        let renderers = SpanTextRenderers::new(&text, &code);
+        let mut state = SpanWrapState::new(30, true);
+
+        state.push(renderers, UiTextSpan::plain("  "), metrics);
+        state.push(renderers, UiTextSpan::plain("abc"), metrics);
+        state.push(renderers, UiTextSpan::plain("def"), metrics);
+        let lines = state.finish();
+
+        assert!(lines.len() >= 2);
+        assert_eq!(lines[0][0].text, "  ");
+
+        let mut empty_chunk = String::new();
+        let mut direct = SpanWrapState::new(30, false);
+        direct.push_current_chunk(
+            &UiTextSpan::plain("x"),
+            &mut empty_chunk,
+            renderers,
+            metrics,
+        );
+        assert_eq!(direct.finish(), vec![Vec::new()]);
+    }
 }

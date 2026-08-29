@@ -298,11 +298,9 @@ fn frame(
             ..egui::RawInput::default()
         },
         |ctx| {
-            egui::CentralPanel::default().show_inside(ctx, |ui| {
-                match adapter.show(ui, diagnostics) {
-                    Ok(output) => output_events.extend(output.events().iter().cloned()),
-                    Err(error) => show_error = Some(error.to_string()),
-                }
+            egui::CentralPanel::default().show(ctx, |ui| match adapter.show(ui, diagnostics) {
+                Ok(output) => output_events.extend(output.events().iter().cloned()),
+                Err(error) => show_error = Some(error.to_string()),
             });
         },
     );

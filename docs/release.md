@@ -5,7 +5,7 @@
 `release/vX.Y.Z` ブランチから `master` へ取り込み依頼（Pull Request）を作る。
 取り込み依頼では通常の品質ゲート（quality gate）とリリース前検査を必須にする。
 取り込み（merge）後は自動実行基盤（GitHub Actions）がタグ（tag）、GitHubリリース（GitHub Release）、crates.io公開を実行する。
-Storybook は `katana-ui-core` の core-only 確認だけを必須にする。
+4つの公開crate、private Storybook、consumer contractを同じrelease gateで検証する。
 
 ## 必須検査
 
@@ -24,12 +24,12 @@ GitHub のブランチ保護（branch protection）では、KUC repo 内で次�
 内容は次の通り。
 
 - 整形確認（format）、静的検査（lint）、単体テスト（unit test）、抽象構文木検査（AST lint）
-- カバレッジ（coverage）。現状の下限は行カバレッジ（line coverage）64%
+- カバレッジ（coverage）。関数・行ともに100%を必須にする
 - `Cargo.toml` の版番号（version）とブランチ版番号（branch version）の一致
 - 対象版番号（version）が公開済みrelease lineから自然な次版であること
-- 対象版番号（version）がcrates.ioに未公開であること
+- 4つの公開crateについて、対象版番号（version）がcrates.ioに未公開であること
 - `katana-ui-core` の梱包（package）と公開の事前実行（publish dry-run）
-外部変換層 crate の梱包や公開は、この repository の release gate に含めない。
+- 依存する3 crateの梱包内容確認。未公開の同版coreを事前解決できないため、通常の検証付きpublishは公開時に依存順で行う
 
 ## 公開順序
 
@@ -39,7 +39,9 @@ GitHub のブランチ保護（branch protection）では、KUC repo 内で次�
 1. `just VERSION=vX.Y.Z release-check`
 2. リリースタグ（release tag）作成
 3. GitHubリリース（GitHub Release）作成
-4. `katana-ui-core` をcrates.ioに公開
+4. `katana-ui-core` をcrates.ioに公開し、レジストリ反映を確認
+5. `katana-ui-core-text-raster` と `katana-ui-core-svg-raster` を公開し、各反映を確認
+6. `katana-ui-core-egui-adapter` を公開し、反映を確認
 
 ## 必要な秘匿値
 

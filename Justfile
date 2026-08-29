@@ -18,7 +18,8 @@ CARGO := env_var_or_default("CARGO", RTK_CMD + "cargo")
 KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"
 VERSION := env_var_or_default("VERSION", `awk -F '"' '/^version = / { print $2; exit }' Cargo.toml`)
 VERSION_BARE := replace(VERSION, "v", "")
-COVERAGE_MIN_LINES := env_var_or_default("COVERAGE_MIN_LINES", "64")
+COVERAGE_MIN_LINES := "100"
+COVERAGE_IMAGE := "katana-ui-core-coverage:rust-1.97.1"
 RELEASE_REPO := env_var_or_default("RELEASE_REPO", "HiroyukiFuruno/katana-ui-core")
 KAL_VERSION := env_var_or_default("KAL_VERSION", "0.5.1")
 
@@ -136,7 +137,16 @@ test: unit-test
 
 # Run coverage as a release confidence gate
 coverage:
-    {{CARGO}} llvm-cov {{KUC_WORKSPACE_PACKAGES}} --all-features --locked --summary-only --fail-under-lines {{COVERAGE_MIN_LINES}}
+    just coverage-container
+
+# Run the Linux/Xvfb coverage implementation directly
+coverage-linux:
+    CARGO="{{CARGO}}" bash scripts/run-strict-coverage.sh
+
+# Run strict Linux/Xvfb coverage from macOS or Windows without opening a window
+coverage-container:
+    docker build --tag "{{COVERAGE_IMAGE}}" --file scripts/coverage/Dockerfile scripts/coverage
+    docker run --rm --volume "{{REPO_ROOT}}:/source:ro" --volume kuc-coverage-cargo-registry:/usr/local/cargo/registry --volume kuc-coverage-target:/tmp/kuc-target --workdir /source --env CARGO_BUILD_JOBS=1 --env CARGO_INCREMENTAL=0 --env CARGO_TARGET_DIR=/tmp/kuc-target "{{COVERAGE_IMAGE}}" bash scripts/coverage/run-in-container.sh
 
 # Run the local quality gate
 check: fmt-check check-types lint unit-test ast-lint kuc-guardrails overlay-lifecycle-lint menu-button-contract
@@ -203,6 +213,12 @@ release-verify: check coverage
     bash scripts/release/verify-version.sh "{{VERSION}}"
     {{CARGO}} package -p katana-ui-core --locked --allow-dirty
     {{CARGO}} publish -p katana-ui-core --dry-run --locked --allow-dirty
+    # Dependent crates cannot resolve this release from crates.io before core is published.
+    # Validate their package file sets here; the release workflow performs normal verified
+    # packaging and publishing after each prerequisite appears in the registry.
+    {{CARGO}} package -p katana-ui-core-text-raster --locked --allow-dirty --list >/dev/null
+    {{CARGO}} package -p katana-ui-core-svg-raster --locked --allow-dirty --list >/dev/null
+    {{CARGO}} package -p katana-ui-core-egui-adapter --locked --allow-dirty --list >/dev/null
     bash scripts/release/verify-core-release-scope.sh "{{VERSION}}"
 
 # Verify release branch readiness before merging

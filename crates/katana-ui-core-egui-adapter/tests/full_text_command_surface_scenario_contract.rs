@@ -825,7 +825,7 @@ fn custom_router_receives_one_actual_scenario_context_without_projection_readbac
     let mut input = egui::RawInput::default();
     stage.apply_to(&mut input);
     let _ = context.run_ui(input, |ui| {
-        egui::CentralPanel::default().show_inside(ui, |ui| {
+        egui::CentralPanel::default().show(ui, |ui| {
             root.show(ui).expect("scenario root renders");
         });
     });

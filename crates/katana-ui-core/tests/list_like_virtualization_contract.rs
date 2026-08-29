@@ -5,7 +5,7 @@ use katana_ui_core::molecule::{
     DiagnosticSeverity, DiagnosticsList, DiagnosticsListAction, List, SelectionList, TreeNode,
     TreeView,
 };
-use katana_ui_core::render_model::UiTree;
+use katana_ui_core::render_model::{UiCommonProps, UiTree};
 
 const TOTAL_ROWS: usize = 100;
 const ROW_HEIGHT: u32 = 10;
@@ -88,6 +88,18 @@ fn list_public_props_expose_selection_and_virtual_range_state() {
     assert_eq!(3, interaction.selection_start);
     assert_eq!(9, interaction.selection_end);
     assert_eq!("aria-setsize=100", interaction.dismiss_reason);
+}
+
+#[test]
+fn list_common_and_children_accessors_preserve_consumer_rows() {
+    let list = List::new("Rows")
+        .common(UiCommonProps::default().accessibility_label("Result rows"))
+        .child(Text::new("first"))
+        .child(Text::new("second"));
+
+    assert_eq!(2, list.children().len());
+    let tree = UiTree::new(list);
+    assert_eq!("Result rows", tree.root().props().accessibility_label);
 }
 
 #[test]

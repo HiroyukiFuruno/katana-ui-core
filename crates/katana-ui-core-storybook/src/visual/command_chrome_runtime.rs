@@ -26,6 +26,7 @@ mod tests {
     use super::super::command_chrome_script::run_scripted_sequence;
     use super::super::command_chrome_surface::CommandChromeSurfaceFrame;
     use super::{CommandChromeStorybookApp, FRAME_HEIGHT, FRAME_WIDTH, handles_page};
+    use eframe::App as _;
     use std::error::Error;
 
     #[test]
@@ -35,12 +36,24 @@ mod tests {
     }
 
     #[test]
+    fn eframe_app_covers_bounded_and_unbounded_frame_lifecycles() {
+        for (frames, expected_remaining) in [(0, None), (1, Some(0))] {
+            let context = egui::Context::default();
+            let mut app = CommandChromeStorybookApp::new(frames);
+            let mut frame = eframe::Frame::_new_kittest();
+            let mut output = context.run_ui(Default::default(), |ui| app.ui(ui, &mut frame));
+            output.textures_delta.clear();
+            assert_eq!(expected_remaining, app.frames_remaining);
+        }
+    }
+
+    #[test]
     fn eframe_app_uses_the_same_surface_output_as_the_actual_raw_input_script()
     -> Result<(), Box<dyn Error>> {
         let context = egui::Context::default();
         context.enable_accesskit();
         let mut app = CommandChromeStorybookApp::new(0);
-        let _ = context.run_ui(
+        let mut full_output = context.run_ui(
             egui::RawInput {
                 screen_rect: Some(egui::Rect::from_min_size(
                     egui::Pos2::ZERO,
@@ -50,25 +63,24 @@ mod tests {
             },
             |ui| app.show(ui),
         );
+        full_output.textures_delta.clear();
 
         assert!(app.last_error.is_none());
-        let app_frame = app.last_frame.as_ref().ok_or_else(|| {
-            std::io::Error::other("the eframe app did not produce a CommandChrome surface frame")
-        })?;
         let scripted = run_scripted_sequence()?;
-        assert_same_artifacts(
-            app_frame,
-            scripted.frames.first().ok_or_else(|| {
-                std::io::Error::other("the RawInput script must contain its initial frame")
-            })?,
-        )?;
+        assert!(app.last_frame.is_some());
+        assert!(!scripted.frames.is_empty());
+        app.last_frame.iter().zip(scripted.frames.first()).for_each(
+            |(app_frame, scripted_frame)| {
+                assert_same_artifacts(app_frame, scripted_frame);
+            },
+        );
         Ok(())
     }
 
     fn assert_same_artifacts(
         app: &CommandChromeSurfaceFrame,
         scripted: &super::super::command_chrome_script::CommandChromeScriptFrame,
-    ) -> Result<(), Box<dyn Error>> {
+    ) {
         assert_eq!(
             app.toolbar.artifact.frame_record_hash,
             scripted.toolbar.artifact.frame_record_hash
@@ -85,20 +97,28 @@ mod tests {
             app.search.artifact.paint_plan_hash,
             scripted.search.artifact.paint_plan_hash
         );
-        let app_floating = app.floating.artifact.as_ref().ok_or_else(|| {
-            std::io::Error::other("the eframe app must render the initial floating toolbar")
-        })?;
-        let scripted_floating = scripted.floating.artifact.as_ref().ok_or_else(|| {
-            std::io::Error::other("the RawInput script must render the initial floating toolbar")
-        })?;
         assert_eq!(
-            app_floating.frame_record_hash,
-            scripted_floating.frame_record_hash
+            app.floating
+                .artifact
+                .as_ref()
+                .map(|artifact| artifact.frame_record_hash.as_str()),
+            scripted
+                .floating
+                .artifact
+                .as_ref()
+                .map(|artifact| artifact.frame_record_hash.as_str())
         );
         assert_eq!(
-            app_floating.paint_plan_hash,
-            scripted_floating.paint_plan_hash
+            app.floating
+                .artifact
+                .as_ref()
+                .map(|artifact| artifact.paint_plan_hash.as_str()),
+            scripted
+                .floating
+                .artifact
+                .as_ref()
+                .map(|artifact| artifact.paint_plan_hash.as_str())
         );
-        Ok(())
+        assert!(app.floating.artifact.is_some());
     }
 }

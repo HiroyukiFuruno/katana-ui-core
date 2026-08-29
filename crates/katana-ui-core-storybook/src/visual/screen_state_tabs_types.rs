@@ -213,3 +213,24 @@ pub(super) const fn tabs_update(
         state,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn core_tab_conversion_preserves_optional_presentation_metadata() {
+        let mut tab = TabsScreenTab::new("report", "Report");
+        tab.icon_visible = true;
+        tab.tooltip = Some("Quarterly report".to_string());
+        tab.accessibility_label = Some("Quarterly report tab".to_string());
+
+        let core = tab.to_core_tab();
+        assert!(core.icon.is_some());
+        assert_eq!(Some("Quarterly report"), core.tooltip.as_deref());
+        assert_eq!(
+            Some("Quarterly report tab"),
+            core.accessibility_label.as_deref()
+        );
+    }
+}

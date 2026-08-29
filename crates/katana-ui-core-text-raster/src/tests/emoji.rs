@@ -3,6 +3,7 @@ use crate::{
     PlatformTextGraphemeRange, PlatformTextRasterConfig, PlatformTextRasterError,
     PlatformTextRasterRequest, PlatformTextRasterizer,
 };
+#[cfg(target_os = "macos")]
 use std::path::Path;
 
 #[test]
@@ -44,10 +45,9 @@ fn star_variation_selector_has_one_grapheme_bound_and_hit_range()
 }
 
 #[test]
-fn grapheme_edit_boundaries_keep_star_variation_selector_atomic()
--> Result<(), Box<dyn std::error::Error>> {
+fn grapheme_edit_boundaries_keep_star_variation_selector_atomic() {
     let text = "かな⭐️";
-    let star_start = text.find('⭐').ok_or("star byte offset")?;
+    let star_start = text.find('⭐').expect("star byte offset");
     let star_end = text.len();
 
     assert_eq!(
@@ -64,7 +64,6 @@ fn grapheme_edit_boundaries_keep_star_variation_selector_atomic()
             byte_end: star_end,
         })
     );
-    Ok(())
 }
 
 #[test]
@@ -90,18 +89,18 @@ fn editor_fixture_japanese_and_star_rasterize_with_bounded_line_positions()
     let japanese_y = bounds
         .iter()
         .find_map(|(text, y)| (*text == "日").then_some(*y))
-        .ok_or("Japanese bound")?;
+        .expect("Japanese bound");
     let star_y = bounds
         .iter()
         .find_map(|(text, y)| (*text == "⭐️").then_some(*y))
-        .ok_or("star bound")?;
+        .expect("star bound");
     assert!(japanese_y < 100.0, "Japanese y drifted: {japanese_y}");
     assert!(star_y < 160.0, "star y drifted: {star_y}");
     let japanese = raster
         .grapheme_bounds
         .iter()
         .find(|bounds| text.get(bounds.byte_start..bounds.byte_end) == Some("日"))
-        .ok_or("Japanese bound")?;
+        .expect("Japanese bound");
     assert!(has_alpha_pixels(&raster, japanese, request.scale_factor));
     Ok(())
 }
@@ -171,10 +170,10 @@ fn platform_emoji_uses_color_pixels_when_apple_color_emoji_is_available()
         .grapheme_bounds
         .iter()
         .find(|bounds| raster.text.get(bounds.byte_start..bounds.byte_end) == Some("⭐️"))
-        .ok_or("isolated color star grapheme bound")?;
+        .expect("isolated color star grapheme bound");
     let star_crop = raster
         .grapheme_crop(star_bounds, 1.0)
-        .ok_or("isolated color star crop")?;
+        .expect("isolated color star crop");
     assert!(star_crop.chromatic_pixel_count() > 0);
 
     let outline = rasterizer.rasterize(&PlatformTextRasterRequest::from_text(
@@ -186,10 +185,10 @@ fn platform_emoji_uses_color_pixels_when_apple_color_emoji_is_available()
         .grapheme_bounds
         .iter()
         .find(|bounds| outline.text.get(bounds.byte_start..bounds.byte_end) == Some("☆"))
-        .ok_or("isolated outline star grapheme bound")?;
+        .expect("isolated outline star grapheme bound");
     let outline_crop = outline
         .grapheme_crop(outline_bounds, 1.0)
-        .ok_or("isolated outline star crop")?;
+        .expect("isolated outline star crop");
     assert_eq!(0, outline_crop.chromatic_pixel_count());
     assert_ne!(star_crop.sha256(), outline_crop.sha256());
     Ok(())

@@ -101,11 +101,10 @@ impl KucOpaqueSearchTraceContinuation {
                 .apply_to_raw_input_once(input)
                 .map_err(KucSearchTraceContinuationError::Request)?,
             SearchTracePhase::Preedit => {
-                input
-                    .events
-                    .push(egui::Event::Ime(egui::ImeEvent::Preedit(String::from(
-                        "かな",
-                    ))))
+                input.events.push(egui::Event::Ime(egui::ImeEvent::Preedit {
+                    text: String::from("かな"),
+                    active_range_chars: None,
+                }))
             }
             SearchTracePhase::Commit => {
                 input

@@ -16,7 +16,6 @@ mod options;
 mod ordering;
 mod overflow;
 mod overflow_action;
-mod render;
 mod scroll;
 mod state;
 

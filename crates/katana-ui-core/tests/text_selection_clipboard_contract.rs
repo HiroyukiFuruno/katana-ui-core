@@ -50,6 +50,7 @@ fn point_to_caret_uses_exact_grapheme_boundaries_for_variable_width_text() {
     assert_eq!(2, model.point_to_caret(29, 28));
     assert_eq!(3, model.point_to_caret(48, 28));
     assert_eq!(4, model.point_to_caret(63, 28));
+    assert_eq!(4, model.point_to_caret(10_000, 28));
 }
 
 #[test]
@@ -135,4 +136,66 @@ fn input_and_text_area_paste_replace_selection_but_readonly_and_disabled_block_m
         "ZZ",
     ));
     assert!(!disabled_paste.handled);
+}
+
+#[test]
+fn monospace_selection_maps_empty_multiline_and_outside_points() {
+    let empty = UiTextSelectionModel::new("", Vec::new());
+    assert_eq!("", empty.text());
+    assert_eq!(0, empty.point_to_caret(10, 10));
+    assert_eq!(
+        UiRect::default(),
+        empty.caret_rect(UiTextSelectionRange::caret(0))
+    );
+
+    let empty_line = UiTextSelectionModel::new("", vec![UiTextLineBox::new(0..0, Vec::new())]);
+    assert_eq!(0, empty_line.point_to_caret(10, 10));
+
+    let model = UiTextSelectionModel::from_monospace_text("ab\n日", 10, 20, 8, 16);
+    assert_eq!("ab\n日", model.text());
+    assert_eq!(0, model.point_to_caret(9, 20));
+    assert_eq!(0, model.point_to_caret(13, 20));
+    assert_eq!(1, model.point_to_caret(14, 20));
+    assert_eq!(2, model.point_to_caret(26, 20));
+    assert_eq!(0, model.point_to_caret(10, 36));
+    assert_eq!(0, model.point_to_caret(10, -100));
+}
+
+#[test]
+fn selection_handles_collapsed_reversed_fallback_and_end_carets() {
+    let fallback = UiTextSelectionModel::new(
+        "ab",
+        vec![UiTextLineBox::new(
+            0..2,
+            vec![
+                UiTextGlyphBox::new(0, 0..1, rect(0, 0, 8, 16), 16),
+                UiTextGlyphBox::new(1, 1..2, rect(8, 0, 8, 16), 16),
+            ],
+        )],
+    );
+
+    assert!(
+        fallback
+            .highlight_rects(UiTextSelectionRange::caret(1))
+            .is_empty()
+    );
+    assert_eq!("", fallback.selected_text(UiTextSelectionRange::caret(1)));
+    assert_eq!(
+        "ab",
+        fallback.selected_text(UiTextSelectionRange::new(2, 0))
+    );
+    assert_eq!(
+        rect(16, 0, 1, 16),
+        fallback.caret_rect(UiTextSelectionRange::caret(2))
+    );
+    assert_eq!(
+        UiRect::default(),
+        fallback.caret_rect(UiTextSelectionRange::caret(99))
+    );
+
+    let inserted = fallback.replace_selection(UiTextSelectionRange::caret(1), "🔷");
+    assert_eq!("a🔷b", inserted.text);
+    assert_eq!(UiTextSelectionRange::caret(2), inserted.selection);
+    let appended = fallback.replace_selection(UiTextSelectionRange::caret(99), "z");
+    assert_eq!("abz", appended.text);
 }

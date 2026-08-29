@@ -61,6 +61,27 @@ fn host_icon_is_preserved_and_activation_emits_only_generic_action_id() {
 }
 
 #[test]
+fn trailing_icon_press_and_overflow_routes_retain_toolbar_semantics() {
+    let mut toolbar = CommandChromeToolbar::new()
+        .display_mode(CommandChromeDisplayMode::IconTrailing)
+        .action(CommandChromeAction::new("run", "Run"));
+
+    assert!(format!("{:?}", toolbar.toolbar_options()).contains("IconTrailing"));
+    assert_eq!(
+        vec![CommandChromeToolbarEvent::CommandActivated {
+            action_id: "run".into(),
+        }],
+        toolbar.apply_action(CommandChromeToolbarAction::Press {
+            action_id: "run".into(),
+        })
+    );
+    assert_eq!(
+        vec![CommandChromeToolbarEvent::OverflowOpened],
+        toolbar.apply_action(CommandChromeToolbarAction::OpenOverflow)
+    );
+}
+
+#[test]
 fn renderer_accessors_expose_injected_chrome_data_without_host_semantics() {
     let split = SplitAction::new(SplitActionPart::new(), SplitActionPart::new());
     let action = CommandChromeAction::new("command-id", "ホスト注入ラベル")

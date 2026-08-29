@@ -5,13 +5,13 @@ use sha2::{Digest, Sha256};
 
 pub(super) fn hash_pixels(pixels: &[[u8; RGBA_CHANNEL_COUNT]]) -> String {
     let bytes = pixels.iter().flatten().copied().collect::<Vec<_>>();
-    format!("{:x}", Sha256::digest(bytes))
+    hex::encode(Sha256::digest(bytes))
 }
 
 pub(super) fn canonical_hash(
     artifact: &KucUnicodeColorGlyphEvidence,
 ) -> Result<String, KucUnicodeColorGlyphEvidenceError> {
     serde_json::to_vec(artifact)
-        .map(|bytes| format!("{:x}", Sha256::digest(bytes)))
+        .map(|bytes| hex::encode(Sha256::digest(bytes)))
         .map_err(|error| KucUnicodeColorGlyphEvidenceError::Serialization(error.to_string()))
 }

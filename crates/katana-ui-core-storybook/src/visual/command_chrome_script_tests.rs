@@ -30,7 +30,7 @@ fn command_chrome_script_covers_the_complete_actual_egui_raw_input_contract()
     assert_hover_tooltip(&frames[1])?;
 
     assert_floating_event(&frames[2], FloatingCommandToolbarEvent::FocusRetained);
-    assert_floating_command(&frames[2], "floating-code");
+    assert_floating_command(&frames[2], "floating-bold");
     assert_floating_closed(&frames[3], FloatingCommandToolbarCloseReason::OutsideClick);
     assert_no_toolbar_command(&frames[3]);
 

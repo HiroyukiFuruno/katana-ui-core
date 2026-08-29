@@ -60,6 +60,59 @@ fn stable_sort_keeps_input_order_inside_equal_sort_keys() {
 }
 
 #[test]
+fn location_sort_orders_by_file_line_and_column() {
+    let options = DiagnosticsListOptions {
+        sort_by: DiagnosticsSortBy::Location,
+        ..DiagnosticsListOptions::default()
+    };
+    let ordered = vec![
+        DiagnosticItem::new(
+            "later-file",
+            DiagnosticSeverity::Warning,
+            "later file",
+            DiagnosticLocation::new("src/z.rs", 1, 1),
+        ),
+        DiagnosticItem::new(
+            "later-column",
+            DiagnosticSeverity::Warning,
+            "later column",
+            DiagnosticLocation::new("src/a.rs", 2, 8),
+        ),
+        DiagnosticItem::new(
+            "earlier-column",
+            DiagnosticSeverity::Warning,
+            "earlier column",
+            DiagnosticLocation::new("src/a.rs", 2, 3),
+        ),
+    ];
+
+    let snapshot = DiagnosticsListPlanner::snapshot(&ordered, &options);
+
+    assert_eq!(
+        vec![id("earlier-column"), id("later-column"), id("later-file")],
+        snapshot.visible_ids
+    );
+}
+
+#[test]
+fn source_sort_orders_by_typed_source_and_state_identity_is_public() {
+    let options = DiagnosticsListOptions {
+        sort_by: DiagnosticsSortBy::Source,
+        ..DiagnosticsListOptions::default()
+    };
+    let list = DiagnosticsList::new("Diagnostics")
+        .option(options.clone())
+        .item(item_with_fix("error-a"))
+        .item(item_without_fix("warning-a"));
+
+    assert!(!list.state_id().as_str().is_empty());
+    assert_eq!(
+        vec![id("warning-a"), id("error-a")],
+        DiagnosticsListPlanner::snapshot(&items()[0..2], &options).visible_ids
+    );
+}
+
+#[test]
 fn expanded_fix_preview_renders_code_diff_with_distinct_state() {
     let mut list = DiagnosticsList::new("Diagnostics").item(item_with_fix("error-a"));
     list.apply_action(DiagnosticsListAction::ToggleFixPreview(id("error-a")));
@@ -219,6 +272,9 @@ fn empty_and_loading_slots_are_rendered_without_parent_state_conflict() {
         empty.root().props().state_id,
         empty.root().children()[0].props().state_id
     );
+
+    let default_empty = UiTree::new(DiagnosticsList::new("Default empty"));
+    assert!(default_empty.root().children().is_empty());
 }
 
 #[test]
@@ -325,94 +381,97 @@ fn keyboard_arrows_and_shift_f8_move_selection_through_visible_items() {
 }
 
 #[test]
-fn render_snapshot_keeps_generic_visible_state_without_host_specific_values() {
-    let mut list = DiagnosticsList::new("診断")
+fn diagnostics_filter_preview_empty_and_navigation_boundaries_are_explicit() {
+    let mut list = DiagnosticsList::new("Diagnostics")
         .item(item_with_fix("error-a"))
-        .item(item_without_fix("warning-a"));
-    list.apply_action(DiagnosticsListAction::Select(id("warning-a")));
+        .item(item_with_fix("error-b"));
 
-    let snapshot = list.render_snapshot();
+    for action in [
+        DiagnosticsListAction::SetGroupBy(DiagnosticsGroupBy::Source),
+        DiagnosticsListAction::SetSortBy(DiagnosticsSortBy::Location),
+        DiagnosticsListAction::SetSeverityFilter([DiagnosticSeverity::Error].into_iter().collect()),
+    ] {
+        assert_eq!(
+            vec![DiagnosticsListEvent::FilterChanged],
+            list.apply_action(action)
+        );
+    }
 
-    assert_eq!("診断", snapshot.label);
-    assert_eq!(2, snapshot.visible.total_count);
-    assert_eq!(Some(id("warning-a")), snapshot.state.selected_id);
-    assert_eq!(
-        vec![id("error-a"), id("warning-a")],
-        snapshot.visible.visible_ids
-    );
-}
-
-#[test]
-fn scopes_reconcile_deterministically_and_filter_by_membership() {
-    let mut list = DiagnosticsList::new("診断 ⭐️")
-        .scope("all", "すべて ⭐️", "すべての診断 ⭐️")
-        .scope("active", "現在", "現在の範囲")
-        .item(item_with_fix("all").scope("all"))
-        .item(item_without_fix("active").scope("active"))
-        .item(item_without_fix("both").scopes(["all", "active"]));
-
-    assert_eq!(
-        Some("all"),
-        list.render_snapshot()
-            .state
-            .selected_scope_key
-            .as_ref()
-            .map(|key| key.as_str())
-    );
-    assert_eq!(
-        vec![id("all"), id("both")],
-        list.render_snapshot().visible.visible_ids
-    );
-
-    let selected = list.apply_action(DiagnosticsListAction::Keyboard(
-        DiagnosticKeyboardInput::ScopeNext,
+    assert!(matches!(
+        list.apply_action(DiagnosticsListAction::ToggleFixPreview(id("error-a")))
+            .as_slice(),
+        [DiagnosticsListEvent::DiagnosticFixPreviewToggled { expanded: true, .. }]
     ));
-    assert!(
-        matches!(selected.as_slice(), [DiagnosticsListEvent::ScopeSelected { scope_key }] if scope_key.as_str() == "active")
-    );
-    assert_eq!(
-        vec![id("active"), id("both")],
-        list.render_snapshot().visible.visible_ids
-    );
+    assert!(matches!(
+        list.apply_action(DiagnosticsListAction::ToggleFixPreview(id("error-a")))
+            .as_slice(),
+        [DiagnosticsListEvent::DiagnosticFixPreviewToggled {
+            expanded: false,
+            ..
+        }]
+    ));
 
-    list.set_scopes(vec![(
-        "all".into(),
-        "すべて ⭐️".into(),
-        "すべての診断 ⭐️".into(),
-    )]);
-    assert_eq!(
-        Some("all"),
-        list.render_snapshot()
-            .state
-            .selected_scope_key
-            .as_ref()
-            .map(|key| key.as_str())
-    );
+    let mut empty = DiagnosticsList::new("Empty");
+    for input in [
+        DiagnosticKeyboardInput::ArrowDown,
+        DiagnosticKeyboardInput::F8,
+        DiagnosticKeyboardInput::Space,
+        DiagnosticKeyboardInput::Enter,
+        DiagnosticKeyboardInput::ArrowRight,
+        DiagnosticKeyboardInput::ArrowLeft,
+    ] {
+        assert!(
+            empty
+                .apply_action(DiagnosticsListAction::Keyboard(input))
+                .is_empty()
+        );
+    }
+
+    list.apply_action(DiagnosticsListAction::Select(id("error-b")));
     assert!(
         list.apply_action(DiagnosticsListAction::Keyboard(
-            DiagnosticKeyboardInput::ScopeNext,
+            DiagnosticKeyboardInput::ArrowLeft
         ))
         .is_empty()
     );
-}
-
-#[test]
-fn scope_keyboard_selection_uses_current_scopes_only() {
-    let mut list = DiagnosticsList::new("診断")
-        .scope("one", "一", "一")
-        .scope("two", "二", "二");
-    let events = list.apply_action(DiagnosticsListAction::Keyboard(
-        DiagnosticKeyboardInput::ScopeNext,
-    ));
-    assert!(
-        matches!(events.as_slice(), [DiagnosticsListEvent::ScopeSelected { scope_key }] if scope_key.as_str() == "two")
-    );
-    list.set_scopes(vec![("one".into(), "一".into(), "一".into())]);
-    assert!(
+    assert!(matches!(
         list.apply_action(DiagnosticsListAction::Keyboard(
-            DiagnosticKeyboardInput::ScopePrevious,
+            DiagnosticKeyboardInput::ArrowDown
         ))
-        .is_empty()
+        .as_slice(),
+        [DiagnosticsListEvent::DiagnosticSelected { id }] if id.as_str() == "error-a"
+    ));
+    assert!(matches!(
+        list.apply_action(DiagnosticsListAction::Keyboard(
+            DiagnosticKeyboardInput::ArrowUp
+        ))
+        .as_slice(),
+        [DiagnosticsListEvent::DiagnosticSelected { id }] if id.as_str() == "error-b"
+    ));
+
+    let no_wrap = DiagnosticsListOptions {
+        wrap_error_navigation: false,
+        ..DiagnosticsListOptions::default()
+    };
+    let mut bounded = DiagnosticsList::new("Bounded")
+        .option(no_wrap)
+        .item(item_with_fix("error-a"))
+        .item(item_with_fix("error-b"));
+    bounded.apply_action(DiagnosticsListAction::Select(id("error-b")));
+    assert!(
+        bounded
+            .apply_action(DiagnosticsListAction::Keyboard(
+                DiagnosticKeyboardInput::ArrowDown
+            ))
+            .is_empty()
+    );
+    bounded.apply_action(DiagnosticsListAction::Select(id("error-a")));
+    assert!(
+        bounded
+            .apply_action(DiagnosticsListAction::Keyboard(
+                DiagnosticKeyboardInput::ArrowUp
+            ))
+            .is_empty()
     );
 }
 

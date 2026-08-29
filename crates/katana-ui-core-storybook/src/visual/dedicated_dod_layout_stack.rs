@@ -209,3 +209,23 @@ fn status_labels(scenario: ScenarioContext<'_>) -> [&'static str; STATUS_LABEL_C
     }
     ["action ready", "event ready", "state idle"]
 }
+
+#[cfg(test)]
+mod tests {
+    use super::status_labels;
+    use crate::visual::render_context::ScenarioContext;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn settings_override_is_reported_outside_the_active_page() {
+        let state = StorybookScreenState {
+            settings_revision: 1,
+            ..StorybookScreenState::default()
+        };
+
+        assert_eq!(
+            ["action stack", "event z-order", "state override"],
+            status_labels(ScenarioContext::for_test("other", 0, &state))
+        );
+    }
+}

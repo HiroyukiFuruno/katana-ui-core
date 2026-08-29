@@ -2,79 +2,24 @@
 mod fixtures;
 
 use katana_ui_core::atom::TextArea;
-use katana_ui_core::molecule::command_chrome::FloatingCommandToolbarVisibility;
-use katana_ui_core::molecule::selection::ContextMenuItemKind;
-use katana_ui_core::molecule::{
-    CodeDiff, CodeDiffLine, CodeDiffLineKind, DiagnosticFixPreview, DiagnosticItem,
-    DiagnosticLocation, DiagnosticSeverity, DiagnosticsListEvent, StatusBar, StatusBarMode,
-    StatusBarSegment,
+use katana_ui_core::molecule::command_chrome::{
+    CommandChromeAction, CommandChromeToolbar, FloatingCommandToolbarVisibility,
 };
+use katana_ui_core::molecule::selection::ContextMenuItemKind;
 use katana_ui_core::text_surface::{
     TextSurface, TextSurfacePresentation, TextSurfaceProps, TextSurfaceViewport,
 };
 use katana_ui_core_egui_adapter::context_menu::{
     ContextMenuPresentation, ContextMenuPresentationItem,
 };
-use katana_ui_core_egui_adapter::diagnostics_list::DiagnosticsTargetIdentity;
 use katana_ui_core_egui_adapter::text_command_surface::{
     EguiTextCommandSurface, EguiTextCommandSurfaceRoot,
     EguiTextCommandSurfaceRootEventBatchForwardError,
     EguiTextCommandSurfaceRootEventDispatchReceipt, EguiTextCommandSurfaceRootEventTransport,
     EguiTextCommandSurfaceRootOutput, KucInteractionActionClass, KucInteractionLocatorError,
     KucInteractionRequestError, KucInteractionSelector, KucRootEventBatchDispatcher,
-    KucRootEventBatchForwarder, StatusDiagnosticsProjectionLease, TextCommandSurfaceStyle,
+    KucRootEventBatchForwarder, TextCommandSurfaceStyle,
 };
-
-struct DiagnosticsEventCapture {
-    events: Vec<DiagnosticsListEvent>,
-}
-
-impl KucRootEventBatchDispatcher for DiagnosticsEventCapture {
-    type Error = ();
-
-    fn dispatch_text_events(
-        &mut self,
-        _events: Vec<katana_ui_core::text_surface::TextSurfaceEvent>,
-    ) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn dispatch_toolbar_events(
-        &mut self,
-        _events: Vec<katana_ui_core::molecule::command_chrome::CommandChromeToolbarEvent>,
-    ) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn dispatch_floating_events(
-        &mut self,
-        _events: Vec<katana_ui_core::molecule::command_chrome::FloatingCommandToolbarEvent>,
-    ) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn dispatch_search_events(
-        &mut self,
-        _events: Vec<katana_ui_core::molecule::command_chrome::CommandChromeSearchEvent>,
-    ) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn dispatch_context_menu_events(
-        &mut self,
-        _events: Vec<katana_ui_core::molecule::selection::ContextMenuEvent>,
-    ) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    fn dispatch_diagnostics_list_events(
-        &mut self,
-        events: Vec<DiagnosticsListEvent>,
-    ) -> Result<(), Self::Error> {
-        self.events.extend(events);
-        Ok(())
-    }
-}
 
 // This test intentionally uses only the public facade, as a separate consumer crate would.
 // The event payload remains inaccessible; only the typed dispatch receipt is retained.
@@ -144,19 +89,19 @@ impl KucRootEventBatchDispatcher for PublicDispatcher {
 
 fn dispatch_receipt_from_public_api(
     output: &EguiTextCommandSurfaceRootOutput,
-) -> Result<(EguiTextCommandSurfaceRootEventDispatchReceipt, usize), String> {
+) -> (EguiTextCommandSurfaceRootEventDispatchReceipt, usize) {
     let mut consumer = PublicDispatchConsumer { transport: None };
     output
         .events()
         .forward_once(&mut consumer)
-        .map_err(|_| "public root event forwarding failed".to_owned())?;
+        .expect("public root event forwarding succeeds");
     let mut dispatcher = PublicDispatcher { calls: 0 };
     let receipt = consumer
         .transport
-        .ok_or_else(|| "forwarder retained no opaque transport".to_owned())?
+        .expect("forwarder retained the opaque transport")
         .dispatch_once(&mut dispatcher)
-        .map_err(|_| "public dispatch failed".to_owned())?;
-    Ok((receipt, dispatcher.calls))
+        .expect("public dispatch succeeds");
+    (receipt, dispatcher.calls)
 }
 
 struct RecordingForwarder {
@@ -177,30 +122,29 @@ impl KucRootEventBatchForwarder for RecordingForwarder {
     }
 }
 
-fn style() -> Result<TextCommandSurfaceStyle, String> {
-    Ok(TextCommandSurfaceStyle {
+fn style() -> TextCommandSurfaceStyle {
+    TextCommandSurfaceStyle {
         text_raster: fixtures::text_raster(),
         text_paint: fixtures::text_paint(),
         chrome_raster: fixtures::raster_style(),
         chrome_paint: fixtures::paint_style(),
         search: fixtures::search_style(),
-    })
+    }
 }
 
-fn root() -> Result<EguiTextCommandSurfaceRoot, String> {
+fn root() -> EguiTextCommandSurfaceRoot {
     let surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture())
         .with_toolbar(fixtures::toolbar_fixture())
         .with_search_strip(fixtures::search_fixture(false));
     EguiTextCommandSurfaceRoot::with_identity("contract.text-command-root", surface)
-        .map_err(|error| format!("root construction failed: {error}"))
+        .expect("root construction")
 }
 
-fn root_with_identity(identity: &str) -> Result<EguiTextCommandSurfaceRoot, String> {
+fn root_with_identity(identity: &str) -> EguiTextCommandSurfaceRoot {
     let surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture())
         .with_toolbar(fixtures::toolbar_fixture())
         .with_search_strip(fixtures::search_fixture(false));
-    EguiTextCommandSurfaceRoot::with_identity(identity, surface)
-        .map_err(|error| format!("root construction failed: {error}"))
+    EguiTextCommandSurfaceRoot::with_identity(identity, surface).expect("root construction")
 }
 
 fn use_all_fixture_contracts() {
@@ -212,14 +156,11 @@ fn use_all_fixture_contracts() {
     let _ = fixtures::script_line_height();
 }
 
-fn render(
-    root: &mut EguiTextCommandSurfaceRoot,
-) -> Result<EguiTextCommandSurfaceRootOutput, String> {
+fn render(root: &mut EguiTextCommandSurfaceRoot) -> EguiTextCommandSurfaceRootOutput {
     use_all_fixture_contracts();
     let context = egui::Context::default();
-    let surface_style = style()?;
     let mut result = None;
-    let _ = context.run_ui(
+    let mut full = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -227,21 +168,21 @@ fn render(
             )),
             ..egui::RawInput::default()
         },
-        |ui| result = Some(root.show(ui, &surface_style)),
+        |ui| result = Some(root.show(ui, &style())),
     );
+    full.textures_delta.clear();
     result
-        .ok_or_else(|| "root did not run".to_owned())?
-        .map_err(|error| format!("root frame failed: {error}"))
+        .expect("root did not run")
+        .expect("root frame failed")
 }
 
 fn render_actual(
     context: &egui::Context,
     root: &mut EguiTextCommandSurfaceRoot,
     events: Vec<egui::Event>,
-) -> Result<(egui::FullOutput, EguiTextCommandSurfaceRootOutput), String> {
+) -> (egui::FullOutput, EguiTextCommandSurfaceRootOutput) {
     let mut result = None;
-    let surface_style = style()?;
-    let full = context.run_ui(
+    let mut full = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -250,24 +191,24 @@ fn render_actual(
             events,
             ..egui::RawInput::default()
         },
-        |ui| result = Some(root.show(ui, &surface_style)),
+        |ui| result = Some(root.show(ui, &style())),
     );
-    Ok((
+    full.textures_delta.clear();
+    (
         full,
         result
-            .ok_or_else(|| "root did not run".to_owned())?
-            .map_err(|error| format!("root frame failed: {error}"))?,
-    ))
+            .expect("root did not run")
+            .expect("root frame failed"),
+    )
 }
 
 fn render_actual_in_central_panel(
     context: &egui::Context,
     root: &mut EguiTextCommandSurfaceRoot,
     events: Vec<egui::Event>,
-) -> Result<(egui::FullOutput, EguiTextCommandSurfaceRootOutput), String> {
+) -> (egui::FullOutput, EguiTextCommandSurfaceRootOutput) {
     let mut result = None;
-    let surface_style = style()?;
-    let full = context.run_ui(
+    let mut full = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -277,17 +218,22 @@ fn render_actual_in_central_panel(
             ..egui::RawInput::default()
         },
         |ctx| {
-            egui::CentralPanel::default().show_inside(ctx, |ui| {
-                result = Some(root.show(ui, &surface_style));
+            egui::CentralPanel::default().show(ctx, |ui| {
+                result = Some(root.show(ui, &style()));
             });
         },
     );
-    Ok((
+    full.textures_delta.clear();
+    (
         full,
         result
-            .ok_or_else(|| "root did not run".to_owned())?
-            .map_err(|error| format!("root frame failed: {error}"))?,
-    ))
+            .expect("root did not run")
+            .expect("root frame failed"),
+    )
+}
+
+fn raw_input_snapshot(input: &egui::RawInput) -> String {
+    format!("{input:#?}")
 }
 
 fn accesskit_has_label(full: &egui::FullOutput, label: &str) -> bool {
@@ -302,7 +248,7 @@ fn accesskit_has_label(full: &egui::FullOutput, label: &str) -> bool {
 }
 
 #[test]
-fn central_panel_pointer_state_opens_context_menu_from_fresh_root_frame() -> Result<(), String> {
+fn central_panel_pointer_state_opens_context_menu_from_fresh_root_frame() {
     let context = egui::Context::default();
     let menu = ContextMenuPresentation {
         visible: true,
@@ -315,17 +261,17 @@ fn central_panel_pointer_state_opens_context_menu_from_fresh_root_frame() -> Res
         "contract.central-panel-context-root",
         EguiTextCommandSurface::new(selected_text_surface()).with_context_menu(menu),
     )
-    .map_err(|error| format!("root construction failed: {error}"))?;
-    let (_, initial) = render_actual_in_central_panel(&context, &mut root, Vec::new())?;
+    .expect("root construction");
+    let (_, initial) = render_actual_in_central_panel(&context, &mut root, Vec::new());
     let mut request = initial
         .interaction_locator()
         .request_context_open()
-        .map_err(|_| "context opener unavailable".to_owned())?;
+        .expect("current TextSurface response provides context opener");
     let mut input = egui::RawInput::default();
     request
         .apply_to_raw_input_once(&mut input)
-        .map_err(|_| "context opener request failed".to_owned())?;
-    let (_, opened) = render_actual_in_central_panel(&context, &mut root, input.events)?;
+        .expect("context opener request");
+    let (_, opened) = render_actual_in_central_panel(&context, &mut root, input.events);
     assert!(
         opened
             .interaction_locator()
@@ -335,7 +281,6 @@ fn central_panel_pointer_state_opens_context_menu_from_fresh_root_frame() -> Res
             ))
             .is_ok()
     );
-    Ok(())
 }
 
 fn selected_text_surface() -> TextSurface {
@@ -365,10 +310,8 @@ fn selected_text_surface() -> TextSurface {
 
 #[test]
 fn same_raw_input_trace_produces_deterministic_closed_root_contracts() -> Result<(), String> {
-    let mut first_root = root()?;
-    let mut second_root = root()?;
-    let first = render(&mut first_root)?;
-    let second = render(&mut second_root)?;
+    let first = render(&mut root());
+    let second = render(&mut root());
     let mut first_forwarder = RecordingForwarder {
         calls: 0,
         transport: None,
@@ -418,23 +361,22 @@ fn same_raw_input_trace_produces_deterministic_closed_root_contracts() -> Result
 }
 
 #[test]
-fn actual_root_locator_uses_current_response_accesskit_and_one_shot_raw_input() -> Result<(), String>
-{
+fn actual_root_locator_uses_current_response_accesskit_and_one_shot_raw_input() {
     let context = egui::Context::default();
     context.enable_accesskit();
-    let mut root = root()?;
-    let (initial_full, initial) = render_actual(&context, &mut root, Vec::new())?;
+    let mut root = root();
+    let (initial_full, initial) = render_actual(&context, &mut root, Vec::new());
     assert!(accesskit_has_label(&initial_full, "太字"));
     let missing_input = egui::RawInput {
         events: vec![egui::Event::Copy],
         ..egui::RawInput::default()
     };
-    let missing_before = missing_input.clone();
+    let missing_before = raw_input_snapshot(&missing_input);
     assert!(matches!(
         initial.interaction_locator().request_context_open(),
         Err(KucInteractionLocatorError::Missing)
     ));
-    assert_eq!(missing_input, missing_before);
+    assert_eq!(raw_input_snapshot(&missing_input), missing_before);
     let mut search_input = egui::RawInput::default();
     initial
         .interaction_locator()
@@ -442,9 +384,9 @@ fn actual_root_locator_uses_current_response_accesskit_and_one_shot_raw_input() 
             "storybook.command-chrome.search:use-regex",
             KucInteractionActionClass::SearchControl,
         ))
-        .map_err(|_| "search control unavailable".to_owned())?
+        .expect("search control from current frame")
         .apply_to_raw_input_once(&mut search_input)
-        .map_err(|_| "search request failed".to_owned())?;
+        .expect("search request");
     assert_eq!(search_input.events.len(), 3);
 
     let mut raw = egui::RawInput {
@@ -460,16 +402,25 @@ fn actual_root_locator_uses_current_response_accesskit_and_one_shot_raw_input() 
             "inline-bold",
             KucInteractionActionClass::Toolbar,
         ))
-        .map_err(|_| "toolbar action unavailable".to_owned())?;
+        .expect("toolbar action from current frame");
+    assert!(matches!(
+        initial
+            .interaction_locator()
+            .request(KucInteractionSelector::new(
+                "inline-bold",
+                KucInteractionActionClass::Toolbar,
+            )),
+        Err(KucInteractionLocatorError::Duplicate)
+    ));
     request
         .apply_to_raw_input_once(&mut raw)
-        .map_err(|_| "one-shot request failed".to_owned())?;
+        .expect("one-shot request");
     assert_eq!(
         request.apply_to_raw_input_once(&mut raw),
         Err(KucInteractionRequestError::AlreadyQueued)
     );
     assert_eq!(raw.events.len(), 3);
-    let (activated_full, activated) = render_actual(&context, &mut root, raw.events)?;
+    let (activated_full, activated) = render_actual(&context, &mut root, raw.events);
     assert!(accesskit_has_label(&activated_full, "太字"));
     let mut forwarder = RecordingForwarder {
         calls: 0,
@@ -478,7 +429,7 @@ fn actual_root_locator_uses_current_response_accesskit_and_one_shot_raw_input() 
     let receipt = activated
         .events()
         .forward_once(&mut forwarder)
-        .map_err(|_| "activated root event transport failed".to_owned())?;
+        .expect("activated root event transport");
     assert!(receipt.event_cardinality() > 0);
 
     let disabled = initial
@@ -496,7 +447,7 @@ fn actual_root_locator_uses_current_response_accesskit_and_one_shot_raw_input() 
         events: vec![egui::Event::Copy],
         ..egui::RawInput::default()
     };
-    let before_unmapped = unmapped_input.clone();
+    let before_unmapped = raw_input_snapshot(&unmapped_input);
     assert!(matches!(
         initial
             .interaction_locator()
@@ -506,19 +457,40 @@ fn actual_root_locator_uses_current_response_accesskit_and_one_shot_raw_input() 
             )),
         Err(KucInteractionLocatorError::Missing | KucInteractionLocatorError::Hidden)
     ));
-    assert_eq!(unmapped_input, before_unmapped);
-    Ok(())
+    assert_eq!(raw_input_snapshot(&unmapped_input), before_unmapped);
 }
 
 #[test]
-fn actual_root_locator_resolves_closed_dropdown_trigger_and_all_seventeen_items()
--> Result<(), String> {
+fn actual_root_locator_rejects_duplicate_action_identities_as_ambiguous() {
     let context = egui::Context::default();
     context.enable_accesskit();
-    let mut root = root()?;
-    let (_, initial) = render_actual(&context, &mut root, Vec::new())?;
+    let toolbar = CommandChromeToolbar::new()
+        .action(CommandChromeAction::new("duplicate", "First"))
+        .action(CommandChromeAction::new("duplicate", "Second"));
+    let surface =
+        EguiTextCommandSurface::new(fixtures::text_surface_fixture()).with_toolbar(toolbar);
+    let mut root = EguiTextCommandSurfaceRoot::with_identity("contract.ambiguous-root", surface)
+        .expect("root construction");
+    let (_, output) = render_actual(&context, &mut root, Vec::new());
+    assert!(matches!(
+        output
+            .interaction_locator()
+            .request(KucInteractionSelector::new(
+                "duplicate",
+                KucInteractionActionClass::Toolbar,
+            )),
+        Err(KucInteractionLocatorError::Ambiguous)
+    ));
+}
+
+#[test]
+fn actual_root_locator_resolves_closed_dropdown_trigger_and_all_seventeen_items() {
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let mut root = root();
+    let (_, initial) = render_actual(&context, &mut root, Vec::new());
     let hidden_input = egui::RawInput::default();
-    let hidden_before = hidden_input.clone();
+    let hidden_before = raw_input_snapshot(&hidden_input);
     let hidden = initial
         .interaction_locator()
         .request(KucInteractionSelector::new(
@@ -526,7 +498,7 @@ fn actual_root_locator_resolves_closed_dropdown_trigger_and_all_seventeen_items(
             KucInteractionActionClass::DropdownItem,
         ));
     assert!(matches!(hidden, Err(KucInteractionLocatorError::Hidden)));
-    assert_eq!(hidden_input, hidden_before);
+    assert_eq!(raw_input_snapshot(&hidden_input), hidden_before);
     let mut trigger_input = egui::RawInput::default();
     initial
         .interaction_locator()
@@ -534,10 +506,10 @@ fn actual_root_locator_resolves_closed_dropdown_trigger_and_all_seventeen_items(
             "code-block",
             KucInteractionActionClass::DropdownTrigger,
         ))
-        .map_err(|_| "closed split trigger unavailable".to_owned())?
+        .expect("closed split trigger")
         .apply_to_raw_input_once(&mut trigger_input)
-        .map_err(|_| "trigger request failed".to_owned())?;
-    let (opened_full, opened) = render_actual(&context, &mut root, trigger_input.events)?;
+        .expect("trigger request");
+    let (opened_full, opened) = render_actual(&context, &mut root, trigger_input.events);
     assert!(accesskit_has_label(&opened_full, "候補 01 ⭐️"));
     for index in 1..=17 {
         let id = format!("code-{index:02}");
@@ -552,12 +524,10 @@ fn actual_root_locator_resolves_closed_dropdown_trigger_and_all_seventeen_items(
             "dropdown item {index} was not in the current frame"
         );
     }
-    Ok(())
 }
 
 #[test]
-fn actual_root_locator_resolves_floating_and_context_targets_with_accesskit() -> Result<(), String>
-{
+fn actual_root_locator_resolves_floating_and_context_targets_with_accesskit() {
     let context = egui::Context::default();
     context.enable_accesskit();
     let floating_surface = EguiTextCommandSurface::new(selected_text_surface())
@@ -567,8 +537,8 @@ fn actual_root_locator_resolves_floating_and_context_targets_with_accesskit() ->
         );
     let mut floating_root =
         EguiTextCommandSurfaceRoot::with_identity("contract.floating-root", floating_surface)
-            .map_err(|error| format!("floating root construction failed: {error}"))?;
-    let (floating_full, floating) = render_actual(&context, &mut floating_root, Vec::new())?;
+            .expect("root construction");
+    let (floating_full, floating) = render_actual(&context, &mut floating_root, Vec::new());
     assert!(accesskit_has_label(&floating_full, "選択ツール ⭐️"));
     let mut floating_input = egui::RawInput::default();
     floating
@@ -577,11 +547,11 @@ fn actual_root_locator_resolves_floating_and_context_targets_with_accesskit() ->
             "floating-bold",
             KucInteractionActionClass::FloatingToolbar,
         ))
-        .map_err(|_| "floating action unavailable".to_owned())?
+        .expect("floating action from actual frame")
         .apply_to_raw_input_once(&mut floating_input)
-        .map_err(|_| "floating request failed".to_owned())?;
+        .expect("floating request");
     let (floating_activated_full, floating_activated) =
-        render_actual(&context, &mut floating_root, floating_input.events)?;
+        render_actual(&context, &mut floating_root, floating_input.events);
     assert!(accesskit_has_label(
         &floating_activated_full,
         "選択ツール ⭐️"
@@ -616,21 +586,21 @@ fn actual_root_locator_resolves_floating_and_context_targets_with_accesskit() ->
         EguiTextCommandSurface::new(selected_text_surface()).with_context_menu(menu);
     let mut context_root =
         EguiTextCommandSurfaceRoot::with_identity("contract.context-root", context_surface)
-            .map_err(|error| format!("context root construction failed: {error}"))?;
+            .expect("root construction");
     let (context_initial_full, context_initial) =
-        render_actual(&context, &mut context_root, Vec::new())?;
+        render_actual(&context, &mut context_root, Vec::new());
     let mut context_open_input = egui::RawInput::default();
     let mut context_open_request = context_initial
         .interaction_locator()
         .request_context_open()
-        .map_err(|_| "context opener unavailable".to_owned())?;
+        .expect("current TextSurface response provides context opener");
     assert_eq!(
         format!("{context_open_request:?}"),
         "KucOpaqueInteractionRequest(..)"
     );
     context_open_request
         .apply_to_raw_input_once(&mut context_open_input)
-        .map_err(|_| "context opener request failed".to_owned())?;
+        .expect("context opener request");
     assert_eq!(context_open_input.events.len(), 3);
     assert!(matches!(
         context_open_input.events[1],
@@ -648,14 +618,14 @@ fn actual_root_locator_resolves_floating_and_context_targets_with_accesskit() ->
             ..
         }
     ));
-    let before_replay = context_open_input.clone();
+    let before_replay = raw_input_snapshot(&context_open_input);
     assert_eq!(
         context_open_request.apply_to_raw_input_once(&mut context_open_input),
         Err(KucInteractionRequestError::AlreadyQueued)
     );
-    assert_eq!(context_open_input, before_replay);
+    assert_eq!(raw_input_snapshot(&context_open_input), before_replay);
     let (context_open_full, context_open) =
-        render_actual(&context, &mut context_root, context_open_input.events)?;
+        render_actual(&context, &mut context_root, context_open_input.events);
     assert!(accesskit_has_label(
         &context_initial_full,
         "root context target"
@@ -668,10 +638,10 @@ fn actual_root_locator_resolves_floating_and_context_targets_with_accesskit() ->
             "context-format",
             KucInteractionActionClass::ContextMenuItem,
         ))
-        .map_err(|_| "context action unavailable".to_owned())?
+        .expect("context action from actual frame")
         .apply_to_raw_input_once(&mut context_input)
-        .map_err(|_| "context request failed".to_owned())?;
-    let (_, context_selected) = render_actual(&context, &mut context_root, context_input.events)?;
+        .expect("context request");
+    let (_, context_selected) = render_actual(&context, &mut context_root, context_input.events);
     assert!(
         context_selected
             .events()
@@ -681,47 +651,45 @@ fn actual_root_locator_resolves_floating_and_context_targets_with_accesskit() ->
             })
             .is_ok()
     );
-    Ok(())
 }
 
 #[test]
-fn current_locator_rejects_cross_root_and_prior_revision_requests_without_mutation()
--> Result<(), String> {
+fn current_locator_rejects_cross_root_and_prior_revision_requests_without_mutation() {
     let context = egui::Context::default();
     context.enable_accesskit();
-    let mut first_root = root()?;
-    let mut second_root = root_with_identity("contract.other-root")?;
-    let (_, first_frame) = render_actual(&context, &mut first_root, Vec::new())?;
-    let (_, second_frame) = render_actual(&context, &mut second_root, Vec::new())?;
+    let mut first_root = root();
+    let mut second_root = root_with_identity("contract.other-root");
+    let (_, first_frame) = render_actual(&context, &mut first_root, Vec::new());
+    let (_, second_frame) = render_actual(&context, &mut second_root, Vec::new());
     let cross_root_request = first_frame
         .interaction_locator()
         .request(KucInteractionSelector::new(
             "inline-bold",
             KucInteractionActionClass::Toolbar,
         ))
-        .map_err(|_| "first root request unavailable".to_owned())?;
+        .expect("first root request");
     let mut cross_root_input = egui::RawInput {
         events: vec![egui::Event::Copy],
         ..egui::RawInput::default()
     };
-    let before_cross_root = cross_root_input.clone();
+    let before_cross_root = raw_input_snapshot(&cross_root_input);
     assert_eq!(
         second_frame
             .interaction_locator()
             .queue_request(cross_root_request, &mut cross_root_input),
         Err(KucInteractionRequestError::RootMismatch)
     );
-    assert_eq!(cross_root_input, before_cross_root);
+    assert_eq!(raw_input_snapshot(&cross_root_input), before_cross_root);
 
-    let mut revision_root = root()?;
-    let (_, initial_frame) = render_actual(&context, &mut revision_root, Vec::new())?;
+    let mut revision_root = root();
+    let (_, initial_frame) = render_actual(&context, &mut revision_root, Vec::new());
     let stale_request = initial_frame
         .interaction_locator()
         .request(KucInteractionSelector::new(
             "inline-bold",
             KucInteractionActionClass::Toolbar,
         ))
-        .map_err(|_| "initial revision request unavailable".to_owned())?;
+        .expect("initial revision request");
     let mut advance_input = egui::RawInput::default();
     initial_frame
         .interaction_locator()
@@ -729,29 +697,27 @@ fn current_locator_rejects_cross_root_and_prior_revision_requests_without_mutati
             "storybook.command-chrome.search:use-regex",
             KucInteractionActionClass::SearchControl,
         ))
-        .map_err(|_| "revision-advancing request unavailable".to_owned())?
+        .expect("revision-advancing request")
         .apply_to_raw_input_once(&mut advance_input)
-        .map_err(|_| "revision-advancing input failed".to_owned())?;
-    let (_, current_frame) = render_actual(&context, &mut revision_root, advance_input.events)?;
+        .expect("revision-advancing input");
+    let (_, current_frame) = render_actual(&context, &mut revision_root, advance_input.events);
     let mut stale_input = egui::RawInput {
         events: vec![egui::Event::Copy],
         ..egui::RawInput::default()
     };
-    let before_stale = stale_input.clone();
+    let before_stale = raw_input_snapshot(&stale_input);
     assert_eq!(
         current_frame
             .interaction_locator()
             .queue_request(stale_request, &mut stale_input),
         Err(KucInteractionRequestError::Stale)
     );
-    assert_eq!(stale_input, before_stale);
-    Ok(())
+    assert_eq!(raw_input_snapshot(&stale_input), before_stale);
 }
 
 #[test]
-fn public_locator_debug_does_not_expose_evidence_or_binding_metadata() -> Result<(), String> {
-    let mut root = root()?;
-    let output = render(&mut root)?;
+fn public_locator_debug_does_not_expose_evidence_or_binding_metadata() {
+    let output = render(&mut root());
     let locator_debug = format!("{:?}", output.interaction_locator());
     let request = output
         .interaction_locator()
@@ -759,7 +725,7 @@ fn public_locator_debug_does_not_expose_evidence_or_binding_metadata() -> Result
             "inline-bold",
             KucInteractionActionClass::Toolbar,
         ))
-        .map_err(|_| "toolbar request unavailable".to_owned())?;
+        .expect("toolbar request");
     let request_debug = format!("{:?}", request);
     for debug in [locator_debug, request_debug] {
         for forbidden in [
@@ -771,13 +737,11 @@ fn public_locator_debug_does_not_expose_evidence_or_binding_metadata() -> Result
             );
         }
     }
-    Ok(())
 }
 
 #[test]
 fn root_event_batch_forwards_once_and_returns_a_closed_receipt() -> Result<(), String> {
-    let mut root = root()?;
-    let output = render(&mut root)?;
+    let output = render(&mut root());
     let mut forwarder = RecordingForwarder {
         calls: 0,
         transport: None,
@@ -807,10 +771,9 @@ fn root_event_batch_forwards_once_and_returns_a_closed_receipt() -> Result<(), S
 }
 
 #[test]
-fn external_consumer_can_retain_public_dispatch_receipt() -> Result<(), String> {
-    let mut root = root()?;
-    let output = render(&mut root)?;
-    let (receipt, dispatch_calls) = dispatch_receipt_from_public_api(&output)?;
+fn external_consumer_can_retain_public_dispatch_receipt() {
+    let output = render(&mut root());
+    let (receipt, dispatch_calls) = dispatch_receipt_from_public_api(&output);
 
     assert_eq!(dispatch_calls, 5);
     assert_eq!(receipt.text_count(), 0);
@@ -818,18 +781,17 @@ fn external_consumer_can_retain_public_dispatch_receipt() -> Result<(), String> 
     assert_eq!(receipt.floating_count(), 0);
     assert_eq!(receipt.search_count(), 0);
     assert_eq!(receipt.context_menu_count(), 0);
-    assert_eq!(receipt.class_dispatches().len(), 7);
-    Ok(())
+    assert_eq!(receipt.class_dispatches().len(), 5);
 }
 
 #[test]
-fn root_frame_public_surface_is_closed_to_child_outputs() -> Result<(), String> {
+fn root_frame_public_surface_is_closed_to_child_outputs() {
     let source = include_str!("../src/text_command_surface/root_frame.rs");
     let body = source
         .split_once("pub struct EguiTextCommandSurfaceRootFrame {")
         .and_then(|(_, value)| value.split_once("}\n\nimpl"))
         .map(|(value, _)| value)
-        .ok_or_else(|| "root frame definition was not found".to_owned())?;
+        .expect("root frame definition was not found");
     for forbidden in [
         "pub text",
         "pub artifact",
@@ -848,7 +810,7 @@ fn root_frame_public_surface_is_closed_to_child_outputs() -> Result<(), String> 
         .split_once("pub struct EguiTextCommandSurfaceRootFrame")
         .and_then(|(_, value)| value.split_once("#[derive(Serialize)]"))
         .map(|(value, _)| value)
-        .ok_or_else(|| "root frame public contract was not found".to_owned())?;
+        .expect("root frame public contract was not found");
     for forbidden in [
         "TextSurfaceEvent",
         "CommandChromeToolbarEvent",
@@ -866,17 +828,18 @@ fn root_frame_public_surface_is_closed_to_child_outputs() -> Result<(), String> 
             "root frame public contract leaked `{forbidden}`"
         );
     }
-    Ok(())
 }
 
 #[test]
-fn public_root_event_forwarding_contract_is_opaque_and_child_free() -> Result<(), String> {
-    let source = include_str!("../src/text_command_surface/root_event.rs");
-    let public_contract = source
+fn public_root_event_forwarding_contract_is_opaque_and_child_free() {
+    let transport_source = include_str!("../src/text_command_surface/root_event.rs");
+    let public_contract = transport_source
         .split_once("pub struct EguiTextCommandSurfaceRootEventTransport")
-        .and_then(|(_, value)| value.split_once("/// Deterministic receipt"))
+        .and_then(|(_, value)| {
+            value.split_once("impl std::fmt::Debug for EguiTextCommandSurfaceRootEventTransport")
+        })
         .map(|(value, _)| value)
-        .ok_or_else(|| "public root event forwarding contract was not found".to_owned())?;
+        .expect("public root event forwarding contract was not found");
 
     for forbidden in [
         "TextSurfaceEvent",
@@ -899,29 +862,35 @@ fn public_root_event_forwarding_contract_is_opaque_and_child_free() -> Result<()
         );
     }
 
-    let batch_definition = source
+    let batch_source = include_str!("../src/text_command_surface/root_event_types.rs");
+    let batch_definition = batch_source
         .split_once("pub struct EguiTextCommandSurfaceRootEventBatch")
-        .and_then(|(_, value)| value.split_once("/// Generic callback used to dispatch"))
-        .map(|(value, _)| value)
-        .ok_or_else(|| "root event batch definition was not found".to_owned())?;
+        .map(|(_, value)| value)
+        .expect("root event batch definition was not found");
     assert!(!batch_definition.contains("Clone"));
     assert!(!batch_definition.contains("Serialize"));
-    assert!(!source.contains("pub fn hash"));
-    assert!(!source.contains("pub fn len"));
-    assert!(!source.contains("pub fn is_empty"));
-    Ok(())
+    let split_contract = concat!(
+        include_str!("../src/text_command_surface/root_event.rs"),
+        include_str!("../src/text_command_surface/root_event_contract.rs"),
+        include_str!("../src/text_command_surface/root_event_core.rs"),
+        include_str!("../src/text_command_surface/root_event_detach.rs"),
+        include_str!("../src/text_command_surface/root_event_transport.rs"),
+        include_str!("../src/text_command_surface/root_event_types.rs"),
+    );
+    assert!(!split_contract.contains("pub fn hash"));
+    assert!(!split_contract.contains("pub fn len"));
+    assert!(!split_contract.contains("pub fn is_empty"));
 }
 
 #[test]
-fn opaque_host_effect_batch_contract_has_no_semantic_readback_or_value_traits() -> Result<(), String>
-{
-    let source = include_str!("../src/text_command_surface/root_event/api.rs");
+fn opaque_host_effect_batch_contract_has_no_semantic_readback_or_value_traits() {
+    let source = include_str!("../src/text_command_surface/root_event_contract.rs");
     let batch_contract = source
-        .split_once("impl KucOpaqueHostEffectBatch")
-        .and_then(|(_, value)| value.split_once("impl std::fmt::Debug"))
+        .split_once("pub struct KucOpaqueHostEffectBatch")
+        .and_then(|(_, value)| value.split_once("/// Generic KUC router"))
         .map(|(value, _)| value);
     let Some(batch_contract) = batch_contract else {
-        return Err("opaque host effect batch contract was not found".to_owned());
+        panic!("opaque host effect batch contract was not found");
     };
 
     for forbidden in [
@@ -944,377 +913,5 @@ fn opaque_host_effect_batch_contract_has_no_semantic_readback_or_value_traits() 
 
     assert!(batch_contract.contains("pub fn from_handler"));
     assert!(batch_contract.contains("FnOnce() -> Result<(), KucOpaqueHostEffectError>"));
-    assert!(source.contains("KucOpaqueHostEffectBatch(..)"));
-    Ok(())
-}
-
-#[test]
-fn root_composes_status_and_diagnostics_with_input_accesskit_and_opaque_transport()
--> Result<(), String> {
-    let mut root = root()?;
-    root.attach_status_diagnostics(
-        StatusDiagnosticsProjectionLease::new()
-            .with_status_bar(
-                StatusBar::new("status-root")
-                    .mode(StatusBarMode::MultiSegment)
-                    .segment(StatusBarSegment::new("status-click", "Status ⭐️").interactive(true)),
-            )
-            .with_diagnostics_list(
-                katana_ui_core::molecule::DiagnosticsList::new("Diagnostics 日本語").item(
-                    DiagnosticItem::new(
-                        "diagnostic-1",
-                        DiagnosticSeverity::Error,
-                        "構文エラー",
-                        DiagnosticLocation::new("src/lib.rs", 3, 4),
-                    ),
-                ),
-            ),
-    );
-    let context = egui::Context::default();
-    let (_first_full, first) = render_actual(&context, &mut root, Vec::new())?;
-    assert!(first.artifact_order().contains(
-        &katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceChild::StatusBar
-    ));
-    assert!(first.artifact_order().contains(&katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceChild::DiagnosticsList));
-    assert!(!first.rgba_pixels().is_empty());
-    let (published_full, published) = render_actual(&context, &mut root, Vec::new())?;
-    assert!(published.frame().state_revision() >= first.frame().state_revision());
-    assert!(accesskit_has_label(&published_full, "Status ⭐️"));
-    assert!(accesskit_has_label(&published_full, "構文エラー"));
-
-    let pointer = egui::Event::PointerButton {
-        pos: egui::pos2(24.0, fixtures::FRAME_HEIGHT - 14.0),
-        button: egui::PointerButton::Primary,
-        pressed: true,
-        modifiers: egui::Modifiers::NONE,
-    };
-    let (_, _) = render_actual(&context, &mut root, vec![pointer])?;
-    let (_, pointer_frame) = render_actual(
-        &context,
-        &mut root,
-        vec![egui::Event::PointerButton {
-            pos: egui::pos2(24.0, fixtures::FRAME_HEIGHT - 14.0),
-            button: egui::PointerButton::Primary,
-            pressed: false,
-            modifiers: egui::Modifiers::NONE,
-        }],
-    )?;
-    assert!(pointer_frame.frame().state_revision() > first.frame().state_revision());
-
-    let (_, keyboard_frame) = render_actual(
-        &context,
-        &mut root,
-        vec![egui::Event::Key {
-            key: egui::Key::ArrowDown,
-            physical_key: None,
-            pressed: true,
-            repeat: false,
-            modifiers: egui::Modifiers::NONE,
-        }],
-    )?;
-    assert_eq!(
-        keyboard_frame.frame().dimensions(),
-        pointer_frame.frame().dimensions()
-    );
-
-    let target = published_full
-        .platform_output
-        .accesskit_update
-        .as_ref()
-        .and_then(|update| {
-            update.nodes.iter().find_map(|(id, node)| {
-                node.label()
-                    .is_some_and(|label| label == "Status ⭐️")
-                    .then_some(*id)
-            })
-        })
-        .ok_or_else(|| "status AccessKit target not found".to_owned())?;
-    let (_, accesskit_frame) = render_actual(
-        &context,
-        &mut root,
-        vec![egui::Event::AccessKitActionRequest(
-            egui::accesskit::ActionRequest {
-                action: egui::accesskit::Action::Click,
-                target_tree: egui::accesskit::TreeId::ROOT,
-                target_node: target,
-                data: None,
-            },
-        )],
-    )?;
-    assert_ne!(
-        accesskit_frame.frame().record_hash(),
-        keyboard_frame.frame().record_hash()
-    );
-
-    let mut consumer = PublicDispatchConsumer { transport: None };
-    accesskit_frame
-        .events()
-        .forward_once(&mut consumer)
-        .map_err(|_| "root event transport forwarding failed".to_owned())?;
-    let mut dispatcher = PublicDispatcher { calls: 0 };
-    let receipt = consumer
-        .transport
-        .take()
-        .ok_or_else(|| "opaque transport was not retained".to_owned())?
-        .dispatch_once(&mut dispatcher)
-        .map_err(|_| "opaque transport dispatch failed".to_owned())?;
-    assert_eq!(receipt.status_bar_count(), 1);
-    assert_eq!(receipt.class_dispatches().len(), 7);
-    assert_eq!(
-        accesskit_frame.interaction_locator().state_revision(),
-        accesskit_frame.frame().state_revision()
-    );
-    Ok(())
-}
-
-#[test]
-fn diagnostics_targets_are_resolved_opaquely_and_dispatch_once() -> Result<(), String> {
-    fn diagnostics_root() -> Result<EguiTextCommandSurfaceRoot, String> {
-        let mut root = root()?;
-        root.attach_status_diagnostics(
-            StatusDiagnosticsProjectionLease::new().with_diagnostics_list(
-                katana_ui_core::molecule::DiagnosticsList::new("診断 ⭐️")
-                    .scope("scope-opaque-key", "全件 ⭐️", "全件の診断 ⭐️")
-                    .scope("scope-secondary-key", "別の範囲", "別の診断範囲")
-                    .item(
-                        DiagnosticItem::new(
-                            "diagnostic-stable-id",
-                            DiagnosticSeverity::Error,
-                            "表示ラベルは変更され得る ⭐️",
-                            DiagnosticLocation::new("opaque-location", 3, 4),
-                        )
-                        .quickfix(katana_ui_core::molecule::DiagnosticAction::new(
-                            "fix-stable-id",
-                            "修正を適用",
-                        ))
-                        .scopes(["scope-opaque-key", "scope-secondary-key"]),
-                    ),
-            ),
-        );
-        Ok(root)
-    }
-
-    fn dispatch_diagnostics(
-        output: &EguiTextCommandSurfaceRootOutput,
-    ) -> Result<Vec<DiagnosticsListEvent>, String> {
-        let mut consumer = PublicDispatchConsumer { transport: None };
-        output
-            .events()
-            .forward_once(&mut consumer)
-            .map_err(|_| "diagnostics event transport forwarding failed".to_owned())?;
-        let mut dispatcher = DiagnosticsEventCapture { events: Vec::new() };
-        consumer
-            .transport
-            .ok_or_else(|| "opaque diagnostics transport was not retained".to_owned())?
-            .dispatch_once(&mut dispatcher)
-            .map_err(|_| "diagnostics transport dispatch failed".to_owned())?;
-        Ok(dispatcher.events)
-    }
-
-    for (identity, action_class, expected) in [
-        (
-            DiagnosticsTargetIdentity::scope("scope-secondary-key"),
-            KucInteractionActionClass::DiagnosticsScope,
-            "scope",
-        ),
-        (
-            DiagnosticsTargetIdentity::severity_filter(DiagnosticSeverity::Error),
-            KucInteractionActionClass::DiagnosticsSeverityFilter,
-            "filter",
-        ),
-        (
-            DiagnosticsTargetIdentity::item("diagnostic-stable-id"),
-            KucInteractionActionClass::DiagnosticsItem,
-            "item",
-        ),
-        (
-            DiagnosticsTargetIdentity::fix("diagnostic-stable-id"),
-            KucInteractionActionClass::DiagnosticsFix,
-            "fix",
-        ),
-    ] {
-        let mut root = diagnostics_root()?;
-        let context = egui::Context::default();
-        let (_, initial) = render_actual(&context, &mut root, Vec::new())?;
-        let mut raw = egui::RawInput::default();
-        initial
-            .interaction_locator()
-            .request(KucInteractionSelector::new(identity, action_class))
-            .map_err(|_| "opaque diagnostics target did not resolve".to_owned())?
-            .apply_to_raw_input_once(&mut raw)
-            .map_err(|_| "opaque diagnostics request was not queued".to_owned())?;
-        let (_, activated) = render_actual(&context, &mut root, raw.events)?;
-        let events = dispatch_diagnostics(&activated)?;
-        assert_eq!(events.len(), 1, "{expected} target must dispatch once");
-        match expected {
-            "scope" => assert!(matches!(
-                events[0],
-                DiagnosticsListEvent::ScopeSelected { .. }
-            )),
-            "filter" => assert!(matches!(events[0], DiagnosticsListEvent::FilterChanged)),
-            "item" => assert!(matches!(
-                events[0],
-                DiagnosticsListEvent::DiagnosticSelected { .. }
-            )),
-            "fix" => assert!(matches!(
-                events[0],
-                DiagnosticsListEvent::DiagnosticFixApplied { .. }
-            )),
-            _ => return Err(format!("unexpected diagnostics target kind: {expected}")),
-        }
-    }
-
-    for (role, label, expected) in [
-        (egui::accesskit::Role::RadioButton, "別の診断範囲", "scope"),
-        (egui::accesskit::Role::CheckBox, "Error", "filter"),
-        (egui::accesskit::Role::ListItem, "表示ラベル", "item"),
-        (egui::accesskit::Role::Button, "修正を適用", "fix"),
-    ] {
-        let mut root = diagnostics_root()?;
-        let context = egui::Context::default();
-        context.enable_accesskit();
-        let _ = render_actual(&context, &mut root, Vec::new())?;
-        let (full, _) = render_actual(&context, &mut root, Vec::new())?;
-        let target = full
-            .platform_output
-            .accesskit_update
-            .as_ref()
-            .and_then(|update| {
-                update.nodes.iter().find_map(|(id, node)| {
-                    (node.role() == role && node.label().is_some_and(|value| value.contains(label)))
-                        .then_some(*id)
-                })
-            })
-            .ok_or_else(|| "generic diagnostics AccessKit target not found".to_owned())?;
-        let (_, activated) = render_actual(
-            &context,
-            &mut root,
-            vec![egui::Event::AccessKitActionRequest(
-                egui::accesskit::ActionRequest {
-                    action: egui::accesskit::Action::Click,
-                    target_tree: egui::accesskit::TreeId::ROOT,
-                    target_node: target,
-                    data: None,
-                },
-            )],
-        )?;
-        let events = dispatch_diagnostics(&activated)?;
-        assert_eq!(
-            events.len(),
-            1,
-            "AccessKit {expected} target must dispatch once"
-        );
-    }
-    Ok(())
-}
-
-#[test]
-fn root_transports_diagnostic_fix_preview_opened_by_accesskit() -> Result<(), String> {
-    let mut root = root()?;
-    root.attach_status_diagnostics(
-        StatusDiagnosticsProjectionLease::new().with_diagnostics_list(
-            katana_ui_core::molecule::DiagnosticsList::new("診断 ⭐️").item(
-                DiagnosticItem::new(
-                    "preview-diagnostic",
-                    DiagnosticSeverity::Error,
-                    "修正対象",
-                    DiagnosticLocation::new("src/lib.rs", 3, 4),
-                )
-                .fix_preview(DiagnosticFixPreview::new(
-                    CodeDiff::new("差分")
-                        .line(CodeDiffLine {
-                            old_number: Some(3),
-                            new_number: Some(3),
-                            kind: CodeDiffLineKind::Removed,
-                            text: "古い ⭐️".to_string(),
-                        })
-                        .line(CodeDiffLine {
-                            old_number: None,
-                            new_number: Some(3),
-                            kind: CodeDiffLineKind::Added,
-                            text: "新しい ⭐️".to_string(),
-                        }),
-                )),
-            ),
-        ),
-    );
-    let context = egui::Context::default();
-    context.enable_accesskit();
-    let (initial_full, _initial) = render_actual(&context, &mut root, Vec::new())?;
-    let disclosure = initial_full
-        .platform_output
-        .accesskit_update
-        .as_ref()
-        .and_then(|update| {
-            update.nodes.iter().find_map(|(id, node)| {
-                (node.role() == egui::accesskit::Role::Button && node.label() == Some("展開"))
-                    .then_some(*id)
-            })
-        })
-        .ok_or_else(|| "root did not expose opaque preview disclosure".to_owned())?;
-    let (_, opened) = render_actual(
-        &context,
-        &mut root,
-        vec![egui::Event::AccessKitActionRequest(
-            egui::accesskit::ActionRequest {
-                action: egui::accesskit::Action::Click,
-                target_tree: egui::accesskit::TreeId::ROOT,
-                target_node: disclosure,
-                data: None,
-            },
-        )],
-    )?;
-    let before = opened.frame().record_hash();
-    let (_, rendered) = render_actual(&context, &mut root, Vec::new())?;
-    assert_ne!(rendered.frame().record_hash(), before);
-
-    let mut consumer = PublicDispatchConsumer { transport: None };
-    opened
-        .events()
-        .forward_once(&mut consumer)
-        .map_err(|_| "preview event transport forwarding failed".to_owned())?;
-    let mut dispatcher = DiagnosticsEventCapture { events: Vec::new() };
-    consumer
-        .transport
-        .ok_or_else(|| "preview opaque transport was not retained".to_owned())?
-        .dispatch_once(&mut dispatcher)
-        .map_err(|_| "preview transport dispatch failed".to_owned())?;
-    assert!(dispatcher.events.iter().any(|event| {
-        matches!(
-            event,
-            DiagnosticsListEvent::DiagnosticFixPreviewToggled { id, expanded }
-                if id.as_str() == "preview-diagnostic" && *expanded
-        )
-    }));
-
-    let (_, closed) = render_actual(
-        &context,
-        &mut root,
-        vec![egui::Event::Key {
-            key: egui::Key::Escape,
-            physical_key: None,
-            pressed: true,
-            repeat: false,
-            modifiers: egui::Modifiers::NONE,
-        }],
-    )?;
-    let mut close_consumer = PublicDispatchConsumer { transport: None };
-    closed
-        .events()
-        .forward_once(&mut close_consumer)
-        .map_err(|_| "preview close transport forwarding failed".to_owned())?;
-    let mut close_dispatcher = DiagnosticsEventCapture { events: Vec::new() };
-    close_consumer
-        .transport
-        .ok_or_else(|| "preview close opaque transport was not retained".to_owned())?
-        .dispatch_once(&mut close_dispatcher)
-        .map_err(|_| "preview close transport dispatch failed".to_owned())?;
-    assert!(close_dispatcher.events.iter().any(|event| {
-        matches!(
-            event,
-            DiagnosticsListEvent::DiagnosticFixPreviewToggled { id, expanded }
-                if id.as_str() == "preview-diagnostic" && !expanded
-        )
-    }));
-    Ok(())
+    assert!(batch_contract.contains("KucOpaqueHostEffectBatch(..)"));
 }

@@ -10,7 +10,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 impl EguiSourceAddressStripAdapter {
-    pub fn new(id_source: impl std::hash::Hash) -> Result<Self, EguiSourceAddressStripError> {
+    pub fn new(id_source: impl egui::AsId) -> Result<Self, EguiSourceAddressStripError> {
         let config = PlatformTextRasterConfig::default();
         let catalog = Arc::new(katana_ui_core_text_raster::PlatformFontCatalog::new(
             config.catalog_policy().clone(),
@@ -22,7 +22,7 @@ impl EguiSourceAddressStripAdapter {
     }
 
     pub fn with_catalog_and_metrics(
-        id_source: impl std::hash::Hash,
+        id_source: impl egui::AsId,
         catalog: Arc<katana_ui_core_text_raster::PlatformFontCatalog>,
         config: PlatformTextRasterConfig,
         metrics: SharedTextMetrics,

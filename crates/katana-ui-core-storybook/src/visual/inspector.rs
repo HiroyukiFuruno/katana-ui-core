@@ -73,7 +73,7 @@ pub(super) fn draw(
         viewport.y,
         viewport.width,
         viewport.height,
-        |canvas| {
+        &mut |canvas| {
             let max_inspector_y = panel_scroll_state::PanelScrollOverflowModel::max_scroll_y_for(
                 PanelScrollRegion::Inspector,
                 scenario.selected_page,

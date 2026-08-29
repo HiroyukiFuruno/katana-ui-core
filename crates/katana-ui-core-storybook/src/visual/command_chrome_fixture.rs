@@ -3,8 +3,8 @@ use katana_ui_core::molecule::command_chrome::{
     CommandChromeAction, CommandChromeCapability, CommandChromeDropdown, CommandChromeDropdownItem,
     CommandChromeDropdownTrigger, CommandChromeSearchPresentation, CommandChromeSearchStrip,
     CommandChromeText, CommandChromeToolbar, CommandChromeToolbarPresentation,
-    FloatingCommandToolbar, FloatingCommandToolbarVisibility, SearchControlCapabilities,
-    SearchControlStrings, SearchResultSummaryTemplate,
+    FloatingCommandToolbar, SearchControlCapabilities, SearchControlStrings,
+    SearchResultSummaryTemplate,
 };
 use katana_ui_core::molecule::structured::{ReplaceMode, SearchControlStrip, SearchOptions};
 use katana_ui_core::render_model::UiNodeId;
@@ -107,7 +107,9 @@ pub(super) fn floating_fixture() -> FloatingCommandToolbar {
         ),
         Rect::new(0, 0, FRAME_WIDTH as u32, FRAME_HEIGHT as u32),
     )
-    .initial_visibility(FloatingCommandToolbarVisibility::Visible)
+    .initial_visibility(
+        katana_ui_core::molecule::command_chrome::FloatingCommandToolbarVisibility::Visible,
+    )
     .focus_return_target(UiNodeId::new("storybook-return-target"))
 }
 

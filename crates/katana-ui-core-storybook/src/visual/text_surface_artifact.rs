@@ -26,11 +26,13 @@ pub(super) fn render_artifact_frame(
 ) -> Result<TextSurfacePlanPixels, String> {
     let plan = &frame.paint_plan;
     let plans = [ArtifactPaintPlanRef::TextSurface(plan)];
-    let composite = ArtifactCompositor::compose(ArtifactCompositeRequest {
+    let composite = match ArtifactCompositor::compose(ArtifactCompositeRequest {
         canvas: ArtifactCanvasBounds::new(canvas),
         plans: &plans,
-    })
-    .map_err(|error| error.to_string())?;
+    }) {
+        Ok(composite) => composite,
+        Err(error) => return Err(error.to_string()),
+    };
     Ok(TextSurfacePlanPixels {
         width: canvas.width,
         height: canvas.height,
@@ -67,4 +69,32 @@ fn image_for_pixels(pixels: &TextSurfacePlanPixels) -> image::ImageResult<RgbaIm
             image::error::ParameterErrorKind::DimensionMismatch,
         ))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::text_surface_script::run_scripted_sequence;
+
+    #[test]
+    fn invalid_pixel_dimensions_fail_closed_before_encoding() {
+        let pixels = TextSurfacePlanPixels {
+            width: 2,
+            height: 2,
+            rgba: vec![255],
+            paint_plan_hash: "paint".to_string(),
+            pixel_hash: "pixel".to_string(),
+        };
+        assert!(image_for_pixels(&pixels).is_err());
+    }
+
+    #[test]
+    fn empty_composite_canvas_fails_closed()
+    -> Result<(), crate::visual::text_surface_script_types::TextSurfaceArtifactError> {
+        let sequence = run_scripted_sequence()?;
+        assert!(
+            render_artifact_frame(&sequence.steps[0].artifact, UiRect::new(0, 0, 0, 0),).is_err()
+        );
+        Ok(())
+    }
 }

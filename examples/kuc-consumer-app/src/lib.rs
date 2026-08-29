@@ -5,7 +5,7 @@ use katana_ui_core::render_model::{UiNodeKind, UiTree};
 use katana_ui_core::theme::ThemeSnapshot;
 use katana_ui_core::widget::atoms::{ImageSurface, Input, TextArea};
 use katana_ui_core::widget::molecules::{
-    CloseableTabStrip, ComboBox, SearchBox, SelectBox, SelectionList,
+    CloseableTabStrip, ComboBox, GenericGrid, SearchBox, SelectBox, SelectionList,
 };
 
 mod actions;
@@ -26,6 +26,7 @@ pub struct ConsumerApp {
     navigation: SelectionList,
     navigation_scroll: ScrollArea,
     split: SplitPane,
+    data_grid: GenericGrid,
 }
 
 impl ConsumerApp {
@@ -47,6 +48,7 @@ impl ConsumerApp {
                 .min_percent(18)
                 .max_percent(50)
                 .resize_mode(SplitPaneResizeMode::PointerAndKeyboard),
+            data_grid: fixtures::data_grid(),
         }
     }
 
@@ -78,6 +80,7 @@ impl ConsumerApp {
             self.symbol_combo.clone(),
             self.notes.clone(),
             self.preview.clone(),
+            self.data_grid.clone(),
         )
     }
 }

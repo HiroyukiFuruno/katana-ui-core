@@ -51,5 +51,8 @@ fn opaque_target_identity(kind: &str, stable_key: &str) -> String {
     digest.update(kind.as_bytes());
     digest.update([0]);
     digest.update(stable_key.as_bytes());
-    format!("{TARGET_IDENTITY_DOMAIN}.{kind}.{:x}", digest.finalize())
+    format!(
+        "{TARGET_IDENTITY_DOMAIN}.{kind}.{}",
+        hex::encode(digest.finalize())
+    )
 }

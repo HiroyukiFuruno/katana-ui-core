@@ -1,9 +1,10 @@
 use katana_ui_core::atom::{
-    Badge, Button, Checkbox, ColorSwatch, Input, ProgressBar, Radio, SlideControl, Toggle,
+    Badge, Button, Checkbox, ColorSwatch, Input, LoadingDots, ProgressBar, Radio, SlideControl,
+    Toggle,
 };
-use katana_ui_core::component::ComponentAction;
-use katana_ui_core::interaction::{RgbaActionValue, UiAction};
-use katana_ui_core::render_model::UiNode;
+use katana_ui_core::component::{ComponentAction, ComponentStateBinding};
+use katana_ui_core::interaction::{RgbaActionValue, UiAction, UiActionSource};
+use katana_ui_core::render_model::{UiNode, UiProgressMode};
 use katana_ui_core::state::UiStateHandle;
 
 const PROGRESS_PERCENT: u8 = 64;
@@ -27,6 +28,35 @@ fn action_targets_only_the_matching_component_state() {
     assert!(!second_result.handled);
     assert_eq!(1, first_result.callback_log.len());
     assert_eq!("button_press", first_result.callback_log[0].action);
+}
+
+#[test]
+fn specialized_press_names_and_non_checkable_selection_are_public_contracts() {
+    let target = katana_ui_core::render_model::UiStateId::new("specialized");
+    assert_eq!(
+        "color_picker_toggle",
+        UiAction::Press {
+            target: target.clone(),
+            source: UiActionSource::ColorPickerOpen,
+        }
+        .name()
+    );
+    assert_eq!(
+        "scroll_area_press",
+        UiAction::Press {
+            target,
+            source: UiActionSource::ScrollArea,
+        }
+        .name()
+    );
+
+    let mut checkbox = Checkbox::new("Keep checked").checked(true);
+    let result = checkbox.apply_action(&UiAction::select_box_selected(
+        checkbox.state_id().clone(),
+        0,
+    ));
+    assert!(result.handled);
+    assert!(UiNode::from(checkbox).props().checked);
 }
 
 #[test]
@@ -60,6 +90,38 @@ fn app_global_state_updates_component_owned_state_via_handle() {
     let press_after_loading = UiAction::button_press(button.state_id().clone());
 
     assert!(button.apply_action(&press_after_loading).handled);
+}
+
+#[test]
+fn component_state_binding_defaults_and_atom_update_state_keep_snapshot_in_sync() {
+    let mut button = Button::new("Save");
+    let handle = ComponentStateBinding::state_handle(&button);
+    handle.update(|state| state.interaction.value = "from-handle".to_string());
+    ComponentStateBinding::sync_state(&mut button, &handle);
+    assert_eq!(
+        "from-handle",
+        ComponentStateBinding::state_snapshot(&button)
+            .interaction
+            .value
+    );
+
+    ComponentStateBinding::update_state(&mut button, |state| {
+        state.loading = true;
+    });
+    assert!(ComponentStateBinding::state_snapshot(&button).loading);
+
+    let updated = Button::new("Updated").update_state(|state| {
+        state.interaction.value = "from-builder".to_string();
+    });
+    assert_eq!("from-builder", updated.state_snapshot().interaction.value);
+
+    let mut replacement = Button::new("Replacement").state_snapshot();
+    replacement.interaction.value = "from-set-state".to_string();
+    let replaced = Button::new("Replaced").set_state(replacement);
+    assert_eq!(
+        "from-set-state",
+        replaced.state_snapshot().interaction.value
+    );
 }
 
 #[test]
@@ -261,6 +323,30 @@ fn progress_action_updates_typed_progress_props() {
     assert!(node.props().determinate);
     assert_eq!(PROGRESS_PERCENT, node.props().progress_percent);
     assert_eq!("progress_changed", result.callback_log[0].action);
+
+    let mut indeterminate = ProgressBar::new("Pending");
+    let result = indeterminate.apply_action(&UiAction::progress_changed(
+        indeterminate.state_id().clone(),
+        false,
+        0,
+    ));
+    let node = UiNode::from(indeterminate);
+    assert!(result.handled);
+    assert_eq!(
+        UiProgressMode::Indeterminate,
+        node.props().loading_indicator.mode
+    );
+}
+
+#[test]
+fn loading_atom_applies_reduced_motion_to_interaction_and_indicator() {
+    let mut loading = LoadingDots::new("Loading");
+    let result = loading.apply_action(&UiAction::reduced_motion(loading.state_id().clone(), true));
+    let node = UiNode::from(loading);
+
+    assert!(result.handled);
+    assert!(node.props().interaction.reduced_motion);
+    assert!(node.props().loading_indicator.reduced_motion);
 }
 
 #[test]

@@ -72,3 +72,15 @@ impl ToolbarKeyboardNavigator {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn escape_preserves_the_current_focus_without_activation() {
+        let result = ToolbarKeyboardNavigator::apply(Some(2), 4, ToolbarKeyboardInput::Escape);
+        assert_eq!(result.focused_index(), Some(2));
+        assert_eq!(result.activated_index(), None);
+    }
+}

@@ -96,3 +96,14 @@ fn state_for_setting(setting: &str) -> &'static str {
         _ => "changed",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{state_for_setting, value_for_setting};
+
+    #[test]
+    fn unknown_tab_setting_uses_changed_fallbacks() {
+        assert_eq!("changed", value_for_setting("unknown"));
+        assert_eq!("changed", state_for_setting("unknown"));
+    }
+}

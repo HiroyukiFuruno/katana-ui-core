@@ -21,17 +21,18 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         mut search,
     } = command_chrome_surface_fixture(true);
 
-    let mut frames = vec![run_frame(
+    let initial_frame = run_frame(
         &context,
         &mut adapter,
         &mut toolbar,
         &mut floating,
         &mut search,
         Vec::new(),
-    )?];
+    );
+    let mut frames = vec![initial_frame?];
 
     let target = center(floating_action(&frames)?);
-    push_events(
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -39,8 +40,9 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         vec![egui::Event::PointerMoved(target)],
-    )?;
-    push_events(
+    );
+    pushed?;
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -48,10 +50,11 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         click_events(target),
-    )?;
+    );
+    pushed?;
 
     let target = outside_target(&frames)?;
-    push_events(
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -59,10 +62,11 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         click_events(target),
-    )?;
+    );
+    pushed?;
 
     let target = center(toolbar_action(&frames, "disabled")?);
-    push_events(
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -70,10 +74,11 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         click_events(target),
-    )?;
+    );
+    pushed?;
 
     let target = center(toolbar_action(&frames, "inline-bold")?);
-    push_events(
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -81,11 +86,12 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         click_events(target),
-    )?;
+    );
+    pushed?;
 
     let split = toolbar_secondary(&frames, "code-block")?;
     let target = outside_target(&frames)?;
-    push_events(
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -93,7 +99,8 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         click_events(center(split)),
-    )?;
+    );
+    pushed?;
 
     for key in [
         egui::Key::ArrowDown,
@@ -102,7 +109,7 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         egui::Key::End,
         egui::Key::Space,
     ] {
-        push_events(
+        let pushed = push_events(
             &context,
             &mut frames,
             &mut adapter,
@@ -110,11 +117,12 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
             &mut floating,
             &mut search,
             vec![key_event(key)],
-        )?;
+        );
+        pushed?;
     }
 
     let split = toolbar_secondary(&frames, "code-block")?;
-    push_events(
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -122,8 +130,9 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         click_events(center(split)),
-    )?;
-    push_events(
+    );
+    pushed?;
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -131,10 +140,11 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         vec![key_event(egui::Key::Enter)],
-    )?;
+    );
+    pushed?;
 
     let split = toolbar_secondary(&frames, "code-block")?;
-    push_events(
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -142,8 +152,9 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         click_events(center(split)),
-    )?;
-    push_events(
+    );
+    pushed?;
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -151,10 +162,11 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         click_events(target),
-    )?;
+    );
+    pushed?;
 
     let split = toolbar_secondary(&frames, "code-block")?;
-    push_events(
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -162,8 +174,9 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         click_events(center(split)),
-    )?;
-    push_events(
+    );
+    pushed?;
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -171,10 +184,11 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         vec![key_event(egui::Key::Escape)],
-    )?;
+    );
+    pushed?;
 
     floating = floating_fixture();
-    push_events(
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -182,8 +196,9 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         Vec::new(),
-    )?;
-    push_events(
+    );
+    pushed?;
+    let pushed = push_events(
         &context,
         &mut frames,
         &mut adapter,
@@ -191,16 +206,18 @@ pub(super) fn run_scripted_sequence() -> Result<CommandChromeScriptResult, Comma
         &mut floating,
         &mut search,
         vec![key_event(egui::Key::Escape)],
-    )?;
+    );
+    pushed?;
 
-    run_search_and_controlled_floating_sequence(
+    let search_sequence = run_search_and_controlled_floating_sequence(
         &context,
         &mut frames,
         &mut adapter,
         &mut toolbar,
         &mut floating,
         &mut search,
-    )?;
+    );
+    search_sequence?;
 
     Ok(CommandChromeScriptResult { frames })
 }

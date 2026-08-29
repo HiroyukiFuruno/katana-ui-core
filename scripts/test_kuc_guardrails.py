@@ -132,6 +132,50 @@ def write_storybook_live_component_contract(root: Path) -> None:
 
 
 class KucGuardrailsTest(unittest.TestCase):
+    def test_rejects_format_or_framework_tokens_in_generic_grid(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            grid = root / "crates/katana-ui-core/src/molecule/generic_grid"
+            write_text(grid / "mod.rs", "struct Grid { formula: String }\n")
+            write_text(
+                root / "crates/katana-ui-core/src/render_model/typed_grid.rs",
+                "struct Props;\n",
+            )
+
+            failures = KucGuardrails(root).generic_grid_boundary_failures()
+
+            self.assertTrue(
+                any("forbidden format or framework token `formula`" in it for it in failures),
+                failures,
+            )
+
+    def test_accepts_neutral_generic_grid_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            grid = root / "crates/katana-ui-core/src/molecule/generic_grid"
+            required = (
+                grid / "mod.rs",
+                grid / "axis.rs",
+                grid / "axis_types.rs",
+                grid / "component.rs",
+                grid / "component_types.rs",
+                grid / "geometry.rs",
+                grid / "selection.rs",
+                root / "crates/katana-ui-core/src/render_model/typed_grid.rs",
+                root / "crates/katana-ui-core/src/render_model/typed_grid_types.rs",
+                root / "crates/katana-ui-core/tests/generic_grid_axis_contract.rs",
+                root / "crates/katana-ui-core/tests/generic_grid_component_contract.rs",
+                root / "examples/kuc-consumer-app/tests/generic_public_contract.rs",
+            )
+            for path in required:
+                write_text(path, "struct NeutralGrid;\n")
+            write_text(root / "Cargo.toml", "[workspace]\n")
+            write_text(root / "crates/katana-ui-core/Cargo.toml", "[dependencies]\n")
+
+            failures = KucGuardrails(root).generic_grid_boundary_failures()
+
+            self.assertEqual([], failures)
+
     def test_rejects_preset_tab_scroll_clip_hit_guard_gap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -3784,6 +3828,36 @@ class KucGuardrailsTest(unittest.TestCase):
             self.assertTrue(
                 any("blend_texture(" in failure for failure in failures), failures
             )
+
+    def test_release_publish_script_uses_dependency_order_and_registry_waits(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "scripts/release/publish-crates.sh").read_text(encoding="utf-8")
+        packages = [
+            "katana-ui-core",
+            "katana-ui-core-text-raster",
+            "katana-ui-core-svg-raster",
+            "katana-ui-core-egui-adapter",
+        ]
+        positions = [source.index(f"  {package}\n") for package in packages]
+
+        self.assertEqual(sorted(positions), positions)
+        self.assertIn('wait_until_available "${package}"', source)
+        self.assertIn('cargo publish -p "${package}" --locked', source)
+
+    def test_release_scope_guard_lists_exactly_four_public_crates(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "scripts/release/verify-core-release-scope.sh").read_text(
+            encoding="utf-8"
+        )
+        expected = (
+            "expected_publishable=$'katana-ui-core\\n"
+            "katana-ui-core-egui-adapter\\n"
+            "katana-ui-core-svg-raster\\n"
+            "katana-ui-core-text-raster'"
+        )
+
+        self.assertIn(expected, source)
+        self.assertIn('p["publish"] != []', source)
 
 
 if __name__ == "__main__":

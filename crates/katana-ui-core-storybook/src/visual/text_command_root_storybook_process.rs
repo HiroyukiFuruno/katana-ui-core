@@ -48,3 +48,37 @@ pub(super) fn write_mp4(
         gif_sha256: evidence.gif_sha256.clone(),
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn write_mp4_requires_input_receipts_and_reports_video_error()
+    -> Result<(), FullRootArtifactError> {
+        let root = std::env::temp_dir().join(format!(
+            "kuc-text-command-root-mp4-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&root).map_err(FullRootArtifactError::Io)?;
+        let result = write_mp4(&[], Path::new(&root));
+        assert!(matches!(
+            result,
+            Err(FullRootArtifactError::Video(error)) if !error.is_empty()
+        ));
+        std::fs::remove_dir_all(root).map_err(FullRootArtifactError::Io)?;
+        Ok(())
+    }
+
+    #[test]
+    fn process_and_codec_constants_are_declared() {
+        assert_eq!("mpeg4", VIDEO_ENCODER);
+        assert_eq!("mp4", VIDEO_MUXER);
+        assert_eq!("yuv420p", VIDEO_PIXEL_FORMAT);
+    }
+}

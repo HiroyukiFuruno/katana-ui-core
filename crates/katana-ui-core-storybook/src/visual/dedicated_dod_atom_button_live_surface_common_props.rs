@@ -150,16 +150,10 @@ pub(super) fn draw_tab_index_marker(
     scenario: ScenarioContext<'_>,
     rect: Rect,
 ) {
-    if matches!(
-        scenario.screen_state.button_options.tab_index,
-        StorybookButtonTabIndex::Zero
-    ) {
-        return;
-    }
     let color = match scenario.screen_state.button_options.tab_index {
         StorybookButtonTabIndex::One => palette.background,
         StorybookButtonTabIndex::Disabled => palette.muted,
-        StorybookButtonTabIndex::Zero => palette.border,
+        StorybookButtonTabIndex::Zero => return,
     };
     canvas.stroke_rect(
         rect.x + m::PX_4,
@@ -176,16 +170,10 @@ pub(super) fn draw_z_index_marker(
     scenario: ScenarioContext<'_>,
     rect: Rect,
 ) {
-    if matches!(
-        scenario.screen_state.button_options.z_index,
-        StorybookButtonZIndex::Auto
-    ) {
-        return;
-    }
     let inset = match scenario.screen_state.button_options.z_index {
         StorybookButtonZIndex::Raised => m::PX_6,
         StorybookButtonZIndex::Overlay => m::PX_10,
-        StorybookButtonZIndex::Auto => m::PX_0,
+        StorybookButtonZIndex::Auto => return,
     };
     canvas.fill_rect(
         rect.x + inset,
@@ -209,13 +197,10 @@ pub(super) fn draw_z_index_shadow(
     rect: Rect,
     z_index: StorybookButtonZIndex,
 ) {
-    if matches!(z_index, StorybookButtonZIndex::Auto) {
-        return;
-    }
     let offset = match z_index {
         StorybookButtonZIndex::Raised => SHADOW_OFFSET,
         StorybookButtonZIndex::Overlay => SHADOW_OFFSET * m::PX_2,
-        StorybookButtonZIndex::Auto => m::PX_0,
+        StorybookButtonZIndex::Auto => return,
     };
     canvas.fill_rect(
         rect.x + offset,
@@ -224,4 +209,42 @@ pub(super) fn draw_z_index_shadow(
         rect.height,
         palette.code_background,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        Canvas, Rect, ScenarioContext, StorybookButtonTabIndex, StorybookButtonZIndex,
+        VisualPalette, draw_tab_index_marker, draw_z_index_marker, draw_z_index_shadow,
+    };
+    use crate::visual::screen_state::StorybookScreenState;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn disabled_tab_index_and_overlay_z_index_draw_their_distinct_markers() {
+        let palette = VisualPalette::from_theme(&ThemeSnapshot::dark());
+        let mut canvas = Canvas::new(80, 80, palette.surface);
+        let rect = Rect::new(16, 16, 40, 40);
+        let mut state = StorybookScreenState::default();
+        state.button_options.tab_index = StorybookButtonTabIndex::Disabled;
+        state.button_options.z_index = StorybookButtonZIndex::Overlay;
+        let scenario = ScenarioContext {
+            selected_page: "button",
+            selected_instance_id: "button.preview",
+            preset_index: 0,
+            preset_tab_scroll_x: 0,
+            tree_expansion: Default::default(),
+            scrollbar_visible: true,
+            panel_scroll: Default::default(),
+            screen_state: &state,
+            show_navigation_lines: true,
+            show_navigation_text_connectors: false,
+        };
+
+        draw_tab_index_marker(&mut canvas, &palette, scenario, rect);
+        draw_z_index_marker(&mut canvas, &palette, scenario, rect);
+        draw_z_index_shadow(&mut canvas, &palette, rect, StorybookButtonZIndex::Overlay);
+
+        assert!(canvas.non_background_pixels(palette.surface) > 0);
+    }
 }

@@ -31,7 +31,6 @@ const SELECTION_COLOR: [u8; 4] = [64, 96, 160, 180];
 const PREEDIT_COLOR: [u8; 4] = [255, 196, 64, 255];
 const CARET_COLOR: [u8; 4] = [255, 255, 255, 255];
 const TEXT_START_X: f32 = 40.0;
-const TEXT_DRAG_X: f32 = 88.0;
 const TEXT_Y: f32 = 8.0;
 const SCROLL_DELTA_Y: f32 = 24.0;
 
@@ -41,15 +40,33 @@ fn real_egui_pointer_keyboard_scroll_and_clipboard_history_are_typed()
     let context = egui::Context::default();
     let mut adapter = EguiTextSurfaceAdapter::default();
     let mut surface = surface();
-    let start = egui::pos2(TEXT_START_X, TEXT_Y);
-    let end = egui::pos2(TEXT_DRAG_X, TEXT_Y);
 
-    let _ = run_frame(&context, &mut adapter, &mut surface, Vec::new())?;
+    let initial = run_frame(&context, &mut adapter, &mut surface, Vec::new())?;
+    let caret = initial.record.frame.selection.caret;
+    let content = initial.record.frame.content_bounds;
+    let start = egui::pos2(caret.x.saturating_sub(1) as f32, (caret.y + 1) as f32);
+    let end = egui::pos2((content.x + 1) as f32, (caret.y + 1) as f32);
+    let drag_start = egui::pos2((start.x + end.x) / 2.0, start.y);
+    let keyboard_target = initial.keyboard_context_target();
+    assert_eq!(
+        keyboard_target.selection(),
+        initial.record.frame.selection.range
+    );
+    assert_eq!(
+        keyboard_target.viewport_bounds(),
+        initial.record.frame.viewport_bounds
+    );
     let _ = run_frame(
         &context,
         &mut adapter,
         &mut surface,
         vec![pointer_button(start, true)],
+    )?;
+    let _ = run_frame(
+        &context,
+        &mut adapter,
+        &mut surface,
+        vec![egui::Event::PointerMoved(drag_start)],
     )?;
     let drag = run_frame(
         &context,
@@ -57,7 +74,7 @@ fn real_egui_pointer_keyboard_scroll_and_clipboard_history_are_typed()
         &mut surface,
         vec![egui::Event::PointerMoved(end)],
     )?;
-    let _ = run_frame(
+    let released = run_frame(
         &context,
         &mut adapter,
         &mut surface,
@@ -67,7 +84,28 @@ fn real_egui_pointer_keyboard_scroll_and_clipboard_history_are_typed()
     assert!(
         drag.events
             .iter()
+            .any(|event| matches!(event, TextSurfaceEvent::SelectionChanged { .. })),
+        "drag events={:?} start={start:?} end={end:?} content={content:?} caret={caret:?}",
+        drag.events
+    );
+    assert!(
+        released
+            .events
+            .iter()
             .any(|event| matches!(event, TextSurfaceEvent::SelectionChanged { .. }))
+    );
+    let after_release = run_frame(
+        &context,
+        &mut adapter,
+        &mut surface,
+        vec![egui::Event::PointerMoved(start)],
+    )?;
+    assert!(
+        !after_release
+            .events
+            .iter()
+            .any(|event| matches!(event, TextSurfaceEvent::SelectionChanged { .. })),
+        "release must stop the physical drag"
     );
     let keyboard = run_frame(
         &context,
@@ -326,10 +364,10 @@ fn actual_egui_wheel_scroll_clamps_to_content_extents_without_moving_the_viewpor
     .unwrap_or(i32::MAX);
 
     assert!(maximum_y > 0);
-    assert!(surface.state().scroll_y >= maximum_y);
+    assert_eq!(maximum_y, surface.state().scroll_y);
     assert!(lower.events.contains(&TextSurfaceEvent::Scrolled {
         scroll_x: 0,
-        scroll_y: surface.state().scroll_y,
+        scroll_y: maximum_y,
     }));
     assert_eq!(
         first.record.frame.surface_bounds,
@@ -399,9 +437,10 @@ fn actual_egui_scroll_shares_coordinates_with_ime_preedit() -> Result<(), EguiTe
         &context,
         &mut adapter,
         &mut surface,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-            "かな".to_string(),
-        ))],
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "かな".to_string(),
+            active_range_chars: None,
+        })],
     )?;
     let Some(preedit_frame) = preedit.record.frame.preedit else {
         panic!("the scrolled text surface did not expose its IME preedit frame");
@@ -495,9 +534,10 @@ fn actual_egui_viewport_measurement_uses_available_region_and_preserves_interact
         &context,
         &mut adapter,
         &mut surface,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-            "かな⭐️".to_string(),
-        ))],
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "かな⭐️".to_string(),
+            active_range_chars: None,
+        })],
         egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(640.0, 64.0)),
     )?;
 
@@ -596,9 +636,10 @@ fn actual_egui_viewport_measurement_with_pointer_focus_preserves_scroll_ime_acce
         &context,
         &mut adapter,
         &mut surface,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-            "かな⭐️".to_string(),
-        ))],
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "かな⭐️".to_string(),
+            active_range_chars: None,
+        })],
         screen_rect,
     )?;
 
@@ -691,7 +732,10 @@ fn actual_egui_scrolled_pointer_hit_test_and_ime_commit_share_one_surface_layout
         &context,
         &mut adapter,
         &mut surface,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit("⭐️".to_string()))],
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "⭐️".to_string(),
+            active_range_chars: None,
+        })],
     )?;
     let Some(preedit_frame) = preedit.record.frame.preedit else {
         panic!("the pointer-selected scrolled text surface did not expose its IME preedit");
@@ -768,9 +812,10 @@ fn controlled_text_surface_sync_preserves_raw_input_ime_focus_scroll_and_accessk
         &context,
         &mut adapter,
         &mut surface,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-            preedit_value.to_string(),
-        ))],
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: preedit_value.to_string(),
+            active_range_chars: None,
+        })],
     )?;
     assert_eq!(
         preedit
@@ -837,7 +882,7 @@ fn controlled_automatic_gutter_uses_raw_input_layout_for_scroll_and_accesskit()
     let context = egui::Context::default();
     context.enable_accesskit();
     let mut adapter = EguiTextSurfaceAdapter::default();
-    let text = "一行目\n二行目\n三行目\n四行目";
+    let text = "一行目\n二行目\n三行目\n四行目\n五行目\n六行目\n七行目\n八行目\n九行目\n十行目\n十一行目\n十二行目";
     let mut surface = TextSurface::new(TextSurfaceProps::new(
         TextArea::new("controlled-gutter").value(text),
         UiTextSpan::emoji_marked_spans(text, Default::default()),
@@ -933,6 +978,67 @@ fn controlled_automatic_gutter_uses_raw_input_layout_for_scroll_and_accesskit()
             f64::from(row.bounds.y.saturating_add_unsigned(row.bounds.height))
         );
     }
+    Ok(())
+}
+
+#[test]
+fn controlled_automatic_gutter_handles_input_crossing_a_digit_boundary()
+-> Result<(), EguiTextSurfaceError> {
+    let context = egui::Context::default();
+    let mut adapter = EguiTextSurfaceAdapter::default();
+    let text = (1..=99)
+        .map(|line| line.to_string())
+        .collect::<Vec<_>>()
+        .join("\n");
+    let mut surface = TextSurface::new(TextSurfaceProps::new(
+        TextArea::new("controlled-gutter-digit-boundary").value(text.clone()),
+        UiTextSpan::emoji_marked_spans(&text, Default::default()),
+        TextSurfaceViewport::new(0, 0, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32),
+    ));
+    let mut presentation = TextSurfacePresentation::from_props(surface.props());
+    presentation.automatic_gutter = Some(TextSurfaceAutomaticGutterPresentation::new());
+    assert!(surface.synchronize_presentation(presentation));
+
+    let compact_style = TextSurfaceRasterStyle::new(
+        FontToken {
+            name: "compact-editor".to_string(),
+            family: FontFamily::Monospace,
+            size: 12.0,
+            weight: FONT_WEIGHT,
+        },
+        TEXT_COLOR,
+        8.0,
+    );
+    let initial = run_frame_with_raster_style(
+        &context,
+        &mut adapter,
+        &mut surface,
+        Vec::new(),
+        &compact_style,
+    )?;
+    let point = center_bounds(initial.record.frame.viewport_bounds);
+    let _ = run_frame_with_raster_style(
+        &context,
+        &mut adapter,
+        &mut surface,
+        vec![pointer_button(point, true), pointer_button(point, false)],
+        &compact_style,
+    )?;
+    let updated = run_frame_with_raster_style(
+        &context,
+        &mut adapter,
+        &mut surface,
+        vec![egui::Event::Text("\n100".to_string())],
+        &compact_style,
+    )?;
+
+    assert_eq!(surface.state().text_area.value.lines().count(), 100);
+    assert!(surface.state().text_area.value.contains("100"));
+    assert!(updated.record.frame.viewport_bounds.x >= initial.record.frame.viewport_bounds.x);
+    assert!(
+        updated.record.frame.viewport_bounds.width <= initial.record.frame.viewport_bounds.width
+    );
+    assert!(!updated.record.frame.layout_identity.is_empty());
     Ok(())
 }
 
@@ -1122,6 +1228,24 @@ fn actual_egui_automatic_gutter_active_hover_state_tracks_caret_controlled_hover
         .find(|node| {
             node.role() == egui::accesskit::Role::Button
                 && node.label() == Some(active_target.label.as_str())
+                && node.bounds().is_some_and(|bounds| {
+                    bounds.x0 == f64::from(active_row.bounds.x)
+                        && bounds.y0 == f64::from(active_row.bounds.y)
+                        && bounds.x1
+                            == f64::from(
+                                active_row
+                                    .bounds
+                                    .x
+                                    .saturating_add_unsigned(active_row.bounds.width),
+                            )
+                        && bounds.y1
+                            == f64::from(
+                                active_row
+                                    .bounds
+                                    .y
+                                    .saturating_add_unsigned(active_row.bounds.height),
+                            )
+                })
         })
         .expect("active gutter row must be published as an AccessKit node");
     let matching_bounds = matching_node
@@ -1349,11 +1473,7 @@ fn actual_egui_range_icon_marker_owns_bounds_hits_accesskit_and_artifact()
         .iter()
         .map(|(_, node)| node)
         .find(|node| {
-            node.role() == egui::accesskit::Role::Button
-                && node.label() == Some("範囲 marker ⭐️")
-                && node
-                    .bounds()
-                    .is_some_and(|bounds| bounds.x0 == f64::from(marker_bounds.x))
+            node.role() == egui::accesskit::Role::Button && node.label() == Some("範囲 marker ⭐️")
         })
         .expect("marker-specific AccessKit node was not published");
     let accesskit_bounds = accesskit_marker
@@ -1677,9 +1797,10 @@ fn invalid_controlled_scroll_request_preserves_actual_raw_input_interaction_and_
         &context,
         &mut adapter,
         &mut surface,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-            "かな⭐️".to_string(),
-        ))],
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "かな⭐️".to_string(),
+            active_range_chars: None,
+        })],
         screen,
     )?;
     let before = surface.state().clone();
@@ -1838,6 +1959,31 @@ fn run_frame(
     )
 }
 
+fn run_frame_with_raster_style(
+    context: &egui::Context,
+    adapter: &mut EguiTextSurfaceAdapter,
+    surface: &mut TextSurface,
+    events: Vec<egui::Event>,
+    style: &TextSurfaceRasterStyle,
+) -> Result<EguiTextSurfaceOutput, EguiTextSurfaceError> {
+    let mut result = None;
+    let mut full_output = context.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(SCREEN_WIDTH, SCREEN_HEIGHT),
+            )),
+            events,
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            result = Some(adapter.show(ui, surface, style, &paint_style()));
+        },
+    );
+    full_output.textures_delta.clear();
+    result.ok_or(EguiTextSurfaceError::FrameNotProduced)?
+}
+
 fn run_frame_with_paint_style(
     context: &egui::Context,
     adapter: &mut EguiTextSurfaceAdapter,
@@ -1846,7 +1992,7 @@ fn run_frame_with_paint_style(
     style: &TextSurfacePaintStyle,
 ) -> Result<EguiTextSurfaceOutput, EguiTextSurfaceError> {
     let mut result = None;
-    let _ = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -1859,6 +2005,7 @@ fn run_frame_with_paint_style(
             result = Some(adapter.show(ui, surface, &raster_style(), style));
         },
     );
+    full_output.textures_delta.clear();
     result.ok_or(EguiTextSurfaceError::FrameNotProduced)?
 }
 
@@ -1870,7 +2017,7 @@ fn run_frame_with_policy(
     input_policy: &EguiTextSurfaceInputPolicy,
 ) -> Result<EguiTextSurfaceOutput, EguiTextSurfaceError> {
     let mut result = None;
-    let _ = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -1889,6 +2036,7 @@ fn run_frame_with_policy(
             ));
         },
     );
+    full_output.textures_delta.clear();
     result.ok_or(EguiTextSurfaceError::FrameNotProduced)?
 }
 
@@ -1900,7 +2048,7 @@ fn run_frame_with_screen_rect(
     screen_rect: egui::Rect,
 ) -> Result<EguiTextSurfaceOutput, EguiTextSurfaceError> {
     let mut result = None;
-    let _ = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(screen_rect),
             events,
@@ -1916,6 +2064,7 @@ fn run_frame_with_screen_rect(
             ));
         },
     );
+    full_output.textures_delta.clear();
     result.ok_or(EguiTextSurfaceError::FrameNotProduced)?
 }
 
@@ -1926,7 +2075,7 @@ fn run_frame_with_full_output(
     events: Vec<egui::Event>,
 ) -> Result<(egui::FullOutput, EguiTextSurfaceOutput), EguiTextSurfaceError> {
     let mut result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -1939,6 +2088,7 @@ fn run_frame_with_full_output(
             result = Some(adapter.show(ui, surface, &raster_style(), &paint_style()));
         },
     );
+    full_output.textures_delta.clear();
     Ok((
         full_output,
         result.ok_or(EguiTextSurfaceError::FrameNotProduced)??,
@@ -1953,7 +2103,7 @@ fn run_frame_with_full_output_and_paint_style(
     style: &TextSurfacePaintStyle,
 ) -> Result<(egui::FullOutput, EguiTextSurfaceOutput), EguiTextSurfaceError> {
     let mut result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -1966,6 +2116,7 @@ fn run_frame_with_full_output_and_paint_style(
             result = Some(adapter.show(ui, surface, &raster_style(), style));
         },
     );
+    full_output.textures_delta.clear();
     Ok((
         full_output,
         result.ok_or(EguiTextSurfaceError::FrameNotProduced)??,
@@ -2006,7 +2157,7 @@ fn run_frame_with_full_output_and_screen_rect(
     screen_rect: egui::Rect,
 ) -> Result<(egui::FullOutput, EguiTextSurfaceOutput), EguiTextSurfaceError> {
     let mut result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(screen_rect),
             events,
@@ -2016,6 +2167,7 @@ fn run_frame_with_full_output_and_screen_rect(
             result = Some(adapter.show(ui, surface, &raster_style(), &paint_style()));
         },
     );
+    full_output.textures_delta.clear();
     Ok((
         full_output,
         result.ok_or(EguiTextSurfaceError::FrameNotProduced)??,

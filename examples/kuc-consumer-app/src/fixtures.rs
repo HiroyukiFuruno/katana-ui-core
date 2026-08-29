@@ -7,7 +7,8 @@ use katana_ui_core::widget::atoms::{
 };
 use katana_ui_core::widget::molecules::{
     Accordion, ChoiceItem, CloseableTab, CloseableTabGroup, CloseableTabStrip, ComboBox,
-    ContextMenu, ContextMenuItem, MenuButton, SearchBox, SelectBox, SelectionList, Toolbar,
+    ContextMenu, ContextMenuItem, GenericGrid, GridCoordinate, GridTrackSizeProvider, GridViewport,
+    MenuButton, SearchBox, SelectBox, SelectionList, Toolbar,
 };
 
 const SEARCH_SVG: &str =
@@ -112,6 +113,16 @@ pub(crate) fn navigation_scroll() -> ScrollArea {
         .scrollbar_visibility(ScrollbarVisibility::Auto)
 }
 
+pub(crate) fn data_grid() -> GenericGrid {
+    GenericGrid::new("Large data grid", 1_000, 100)
+        .row_tracks(GridTrackSizeProvider::fixed(24))
+        .column_tracks(GridTrackSizeProvider::fixed(96))
+        .viewport(GridViewport::new(480, 240).scroll(192, 240))
+        .overscan(2, 1)
+        .frozen(1, 1)
+        .active_cell(GridCoordinate::new(10, 2))
+}
+
 pub(crate) fn main_panel(
     tabs: CloseableTabStrip,
     search: Input,
@@ -120,6 +131,7 @@ pub(crate) fn main_panel(
     symbol_combo: ComboBox,
     notes: TextArea,
     preview: ImageSurface,
+    data_grid: GenericGrid,
 ) -> Column {
     Column::new()
         .gap(Length::px(8.0))
@@ -145,6 +157,7 @@ pub(crate) fn main_panel(
         )
         .child(notes)
         .child(preview)
+        .child(data_grid)
         .child(Accordion::new("Details").child(Text::new("Open document metadata")))
         .child(ContextMenu::new("Tab context").item(ContextMenuItem::action("close", "Close")))
 }

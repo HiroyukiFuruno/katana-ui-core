@@ -127,3 +127,17 @@ fn child_groups<'a>(
         .filter(|group| group.parent_group_id.as_ref() == Some(parent_group_id))
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn duplicate_group_identity_is_visited_only_once() {
+        let groups = vec![
+            WorkspaceTabGroup::new("duplicate", "First"),
+            WorkspaceTabGroup::new("duplicate", "Second"),
+        ];
+        assert!(ordered_tabs(&[], &groups).is_empty());
+    }
+}

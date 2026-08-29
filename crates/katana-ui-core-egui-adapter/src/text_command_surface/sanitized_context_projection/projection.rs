@@ -40,6 +40,6 @@ impl SanitizedContextMenuProjection {
         for item in &self.items {
             item.update_fingerprint(&mut digest);
         }
-        format!("{:x}", digest.finalize())
+        hex::encode(digest.finalize())
     }
 }

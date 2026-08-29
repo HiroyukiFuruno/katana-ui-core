@@ -449,11 +449,42 @@ mod tests {
             );
             assert_eq!(
                 None,
-                pixel_at(&canvas, x, row_center_y + 1).filter(|&color| color == palette.border),
-                "horizontal connector should not bleed vertically at ({x}, {})",
-                row_center_y + 1
+                pixel_at(&canvas, x, row_center_y + 1).filter(|&color| color == palette.border)
             );
         }
+    }
+
+    #[test]
+    fn tree_view_draws_focus_outline_for_the_focused_row() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let palette = VisualPalette::from_theme(facade.theme());
+        let text = TextRenderer::load(&facade, facade.default_font_role());
+        let node = sample_tree(true, TreeLineStyle::Solid, 1, true, &[(0, "root", true)]);
+        let mut unfocused = Canvas::new(220, 130, palette.background);
+        let mut focused = Canvas::new(220, 130, palette.background);
+        let base_state = TreeViewRenderState {
+            scroll_offset_y: 0,
+            selected_id: DEFAULT_TREE_SELECTED_ID,
+            focused_id: "",
+            keyboard_committed: false,
+        };
+        tree_view(&mut unfocused, &text, &node, &palette, base_state, 0, 0);
+        tree_view(
+            &mut focused,
+            &text,
+            &node,
+            &palette,
+            TreeViewRenderState {
+                scroll_offset_y: 0,
+                selected_id: DEFAULT_TREE_SELECTED_ID,
+                focused_id: "id-0",
+                keyboard_committed: false,
+            },
+            0,
+            0,
+        );
+
+        assert_ne!(unfocused.pixels(), focused.pixels());
     }
 
     #[test]

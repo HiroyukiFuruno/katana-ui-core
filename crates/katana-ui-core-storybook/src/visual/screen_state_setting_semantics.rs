@@ -109,3 +109,15 @@ pub(in crate::visual) fn semantic_setting_state(
         _ => option.setting,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{StorybookUiOptionContract, semantic_setting_state};
+
+    #[test]
+    fn unknown_page_preserves_the_setting_name() {
+        let option = StorybookUiOptionContract::new("custom.setting", "before", "after");
+
+        assert_eq!("custom.setting", semantic_setting_state("unknown", option));
+    }
+}

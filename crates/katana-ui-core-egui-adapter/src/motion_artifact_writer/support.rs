@@ -45,7 +45,7 @@ impl MotionSupport {
     }
 
     pub(crate) fn sha256(bytes: &[u8]) -> String {
-        format!("{:x}", Sha256::digest(bytes))
+        hex::encode(Sha256::digest(bytes))
     }
 
     pub(crate) fn encode_rgba_png(

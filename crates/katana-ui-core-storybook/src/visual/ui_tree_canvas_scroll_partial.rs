@@ -233,3 +233,137 @@ fn hover_surface_width(node: &UiNode, x: usize, area: UiTreeRenderArea) -> usize
         _ => remaining_width(area, x),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::atom::Text;
+    use katana_ui_core::render_model::UiPosition;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    fn render_context() -> (UiTreeCanvasRenderer, UiTreeCanvasPalette, UiTreeRenderArea) {
+        let theme = ThemeSnapshot::dark();
+        (
+            UiTreeCanvasRenderer::new(theme.clone()),
+            UiTreeCanvasPalette::from_theme(&theme),
+            UiTreeRenderArea {
+                x: 4,
+                y: 3,
+                width: 80,
+                height: 40,
+                scroll_y: 0.0,
+            },
+        )
+    }
+
+    #[test]
+    fn partial_renderer_covers_noop_image_hover_and_generic_nodes() {
+        let (renderer, palette, area) = render_context();
+        let mut canvas = Canvas::new(96, 48, palette.background);
+        let text: UiNode = Text::new("partial text").into();
+
+        draw_partially_visible_node(&renderer, &mut canvas, &text, 8, 20, 20, area, palette);
+        assert!(
+            canvas
+                .pixels()
+                .iter()
+                .all(|pixel| *pixel == palette.background)
+        );
+
+        let image = UiNode::new(UiNodeKind::ImageSurface, "");
+        draw_partially_visible_node(&renderer, &mut canvas, &image, 8, 20, 1, area, palette);
+
+        let hover = UiNode::new(UiNodeKind::Stack, "")
+            .visual_role(UiVisualRole::HoverSurface)
+            .width(UiDimension::Px(30))
+            .child(Text::new("hover"));
+        draw_partially_visible_node(&renderer, &mut canvas, &hover, 8, 24, 4, area, palette);
+        assert!(
+            canvas
+                .pixels()
+                .iter()
+                .any(|pixel| *pixel != palette.background)
+        );
+
+        let generic_hover = UiNode::new(UiNodeKind::Stack, "")
+            .visual_role(UiVisualRole::HoverSurface)
+            .child(UiNode::new(UiNodeKind::Divider, ""));
+        draw_partially_visible_node(
+            &renderer,
+            &mut canvas,
+            &generic_hover,
+            8,
+            24,
+            4,
+            area,
+            palette,
+        );
+        draw_partially_visible_node(&renderer, &mut canvas, &text, 8, 24, 4, area, palette);
+
+        let empty_hover =
+            UiNode::new(UiNodeKind::Stack, "").visual_role(UiVisualRole::HoverSurface);
+        draw_partially_visible_hover_text_surface(
+            &renderer,
+            &mut canvas,
+            &empty_hover,
+            8,
+            0,
+            area,
+            palette,
+            0,
+        );
+        draw_partially_visible_hover_text_surface(
+            &renderer,
+            &mut canvas,
+            &hover,
+            8,
+            0,
+            area,
+            palette,
+            0,
+        );
+    }
+
+    #[test]
+    fn partial_renderer_covers_absolute_media_frame_and_helpers() {
+        let (renderer, palette, area) = render_context();
+        let mut canvas = Canvas::new(96, 48, palette.background);
+        let overlay = UiNode::new(UiNodeKind::Button, "overlay")
+            .position(UiPosition::Absolute)
+            .width(UiDimension::Px(10))
+            .height(UiDimension::Px(10));
+        let media_frame = UiNode::new(UiNodeKind::Stack, "")
+            .visual_role(UiVisualRole::MediaFrame)
+            .child(Text::new("body"))
+            .child(overlay);
+
+        assert!(can_render_partial_node_in_viewport(&media_frame));
+        draw_partially_visible_node(
+            &renderer,
+            &mut canvas,
+            &media_frame,
+            8,
+            30,
+            5,
+            area,
+            palette,
+        );
+        assert!(
+            canvas
+                .pixels()
+                .iter()
+                .any(|pixel| *pixel != palette.background)
+        );
+
+        assert_eq!(partial_node_temp_height(&media_frame, 30, 40), 40);
+        assert_eq!(partial_node_inner_scroll_y(&media_frame, 7), 7.0);
+        let plain = UiNode::new(UiNodeKind::Column, "");
+        assert_eq!(partial_node_temp_height(&plain, 30, 40), 30);
+        assert_eq!(partial_node_inner_scroll_y(&plain, 7), 0.0);
+        let hover = UiNode::new(UiNodeKind::Stack, "").visual_role(UiVisualRole::HoverSurface);
+        assert_eq!(partial_node_temp_height(&hover, 30, 40), 50);
+        assert_eq!(hover_surface_width(&hover, 10, area), 74);
+        let fixed = hover.width(UiDimension::Px(32));
+        assert_eq!(hover_surface_width(&fixed, 10, area), 32);
+    }
+}

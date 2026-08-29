@@ -1,6 +1,4 @@
-use super::{UiNode, UiNodeKind, UiTree};
-
-pub struct UiTreeSemantics;
+use super::{UiNode, UiNodeKind, UiTree, UiTreeSemantics};
 
 impl UiTreeSemantics {
     #[must_use]
@@ -196,8 +194,11 @@ impl UiTreeSemantics {
 #[cfg(test)]
 mod tests {
     use super::UiTreeSemantics;
-    use crate::atom::{Icon, Text};
-    use crate::render_model::{UiTextSpan, UiTextSpanStyle, UiTree};
+    use crate::atom::{Icon, Input, Text};
+    use crate::render_model::{
+        UiContextMenuItem, UiContextMenuProps, UiIconProps, UiNode, UiNodeKind, UiSlotPlacement,
+        UiSlotSpec, UiTextEntryProps, UiTextSpan, UiTextSpanStyle, UiTree,
+    };
 
     #[test]
     fn fingerprint_changes_when_link_target_changes() {
@@ -226,6 +227,52 @@ mod tests {
             UiTreeSemantics::fingerprint(&left),
             UiTreeSemantics::fingerprint(&right)
         );
+    }
+
+    #[test]
+    fn tree_counts_recurse_and_ignore_blank_semantic_text() {
+        let root = UiNode::new(UiNodeKind::Panel, "root")
+            .child(Text::new("visible"))
+            .child(Text::new("   "))
+            .child(
+                UiNode::new(UiNodeKind::Stack, "nested")
+                    .child(Text::new("child").text_spans(vec![UiTextSpan::emoji("🙂")])),
+            );
+
+        assert_eq!(5, UiTreeSemantics::node_count(&root));
+        assert_eq!(3, UiTreeSemantics::kind_count(&root, UiNodeKind::Text));
+        assert_eq!(2, UiTreeSemantics::semantic_text_count(&root));
+        assert_eq!(1, UiTreeSemantics::emoji_span_count(&root));
+        assert!(UiTreeSemantics::fingerprint(&UiTree::new(root)).contains("nested"));
+    }
+
+    #[test]
+    fn fingerprint_includes_context_menu_and_slot_icons_and_skips_empty_slots() {
+        let context_menu = UiContextMenuProps {
+            items: vec![UiContextMenuItem::action("open", "Open").checked(true)],
+            ..UiContextMenuProps::default()
+        };
+        let icon = UiIconProps::new("<svg data-icon=\"search\"/>");
+        let text_entry = UiTextEntryProps {
+            leading_slot: Some(UiSlotSpec::new(UiSlotPlacement::Leading, "reserved")),
+            trailing_icon_buttons: vec![UiSlotSpec::icon_button(
+                UiSlotPlacement::Trailing,
+                "Search",
+                icon,
+                "search",
+            )],
+            ..UiTextEntryProps::default()
+        };
+        let tree = UiTree::new(
+            UiNode::from(Input::new("query"))
+                .context_menu(context_menu)
+                .text_entry(text_entry),
+        );
+        let fingerprint = UiTreeSemantics::fingerprint(&tree);
+
+        assert!(fingerprint.contains("open:Open:true"));
+        assert!(fingerprint.contains("trailing:Search:<svg data-icon=\"search\"/>"));
+        assert!(!fingerprint.contains("leading:reserved"));
     }
 
     fn link_span(target: &str) -> UiTextSpan {

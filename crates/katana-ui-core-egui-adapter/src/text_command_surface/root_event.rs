@@ -90,7 +90,7 @@ struct RootEventPayload {
 
 /// Opaque one-shot transport token. It has no consumer-visible semantic accessors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum KucOpaqueHostEffectAttachError {
+pub enum KucOpaqueHostEffectAttachError {
     AlreadyConsumed,
     AlreadyAttached,
 }
@@ -1218,7 +1218,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ctx| {
-                egui::CentralPanel::default().show_inside(ctx, |ui| {
+                egui::CentralPanel::default().show(ctx, |ui| {
                     let _ = root.show(ui);
                 });
             },
@@ -1248,7 +1248,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ctx| {
-                egui::CentralPanel::default().show_inside(ctx, |ui| {
+                egui::CentralPanel::default().show(ctx, |ui| {
                     frame = Some(root.show(ui));
                 });
             },

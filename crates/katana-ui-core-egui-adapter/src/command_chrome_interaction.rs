@@ -145,7 +145,7 @@ mod tests {
                         ..egui::RawInput::default()
                     },
                     |ctx| {
-                        egui::CentralPanel::default().show_inside(ctx, |ui| {
+                        egui::CentralPanel::default().show(ctx, |ui| {
                             events = Some(keyboard_events(ui, &mut toolbar, true));
                         });
                     },
@@ -185,7 +185,7 @@ mod tests {
                     ..egui::RawInput::default()
                 },
                 |ctx| {
-                    egui::CentralPanel::default().show_inside(ctx, |ui| {
+                    egui::CentralPanel::default().show(ctx, |ui| {
                         events = Some(keyboard_events(ui, &mut toolbar, false));
                     });
                 },

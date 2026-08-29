@@ -235,3 +235,14 @@ impl TextAreaActionOutcome {
         }
     }
 }
+
+#[cfg(test)]
+mod coverage_tests {
+    use super::*;
+
+    #[test]
+    fn cancelling_without_an_ime_composition_is_ignored() {
+        let mut area = TextArea::new("area");
+        assert!(!area.cancel_ime_composition().handled);
+    }
+}

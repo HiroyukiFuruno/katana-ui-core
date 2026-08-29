@@ -162,3 +162,29 @@ impl StorybookScreenState {
         self.state_label = update.state;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keyboard_actions_require_focus_for_every_selection_surface() {
+        let mut state = StorybookScreenState::default();
+
+        state.register_virtualization_action(VirtualizationStoryAction::KeyboardFocus);
+        assert_eq!("virtualized_keyboard_ignored", state.last_event);
+
+        state.register_collapsible_panel_action(CollapsiblePanelStoryAction::KeyboardToggle);
+        assert_eq!("collapsible_panel_keyboard_ignored", state.last_event);
+
+        state.register_shortcut_cheatsheet_keyboard_select();
+        assert_eq!("shortcut_cheatsheet_keyboard_ignored", state.last_event);
+
+        state.register_shortcut_combo_keyboard_preview();
+        assert_eq!("shortcut_combo_keyboard_ignored", state.last_event);
+
+        state.register_side_menu_action(SideMenuScreenAction::KeyboardNext);
+        assert_eq!("side_menu_keyboard_ignored", state.last_event);
+        assert_eq!(0, state.action_count);
+    }
+}

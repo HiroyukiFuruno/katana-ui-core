@@ -32,8 +32,9 @@ pub use root_event::{
     EguiTextCommandSurfaceRootEventBatchForwardError, EguiTextCommandSurfaceRootEventChildClass,
     EguiTextCommandSurfaceRootEventClassDispatch, EguiTextCommandSurfaceRootEventDispatchReceipt,
     EguiTextCommandSurfaceRootEventForwardingReceipt, EguiTextCommandSurfaceRootEventTransport,
-    KucOpaqueHostEffectBatch, KucOpaqueHostEffectError, KucRootEffectRouter,
-    KucRootEventBatchContext, KucRootEventBatchDispatcher, KucRootEventBatchForwarder,
+    KucOpaqueHostEffectAttachError, KucOpaqueHostEffectBatch, KucOpaqueHostEffectError,
+    KucRootEffectRouter, KucRootEventBatchContext, KucRootEventBatchDispatcher,
+    KucRootEventBatchForwarder,
 };
 pub use root_frame::{
     EguiTextCommandSurfaceRootAccessKitReference, EguiTextCommandSurfaceRootDimensions,
@@ -976,9 +977,10 @@ mod tests {
             &context,
             &mut root,
             egui::RawInput {
-                events: vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-                    "変更 ⭐️".to_owned(),
-                ))],
+                events: vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+                    text: "変更 ⭐️".to_owned(),
+                    active_range_chars: None,
+                })],
                 ..egui::RawInput::default()
             },
         )?;
@@ -2081,7 +2083,6 @@ mod tests {
         let output = render(&context, &mut root)?;
         let before_context = output.events().current_context();
         let input = egui::RawInput::default();
-        let before_input = input.clone();
         for identity in ["collision-left", "collision-right"] {
             assert!(matches!(
                 output
@@ -2092,7 +2093,7 @@ mod tests {
                     )),
                 Err(KucInteractionLocatorError::Ambiguous)
             ));
-            assert_eq!(input, before_input);
+            assert!(input.events.is_empty());
         }
         let unknown = output
             .interaction_locator()
@@ -2101,7 +2102,7 @@ mod tests {
                 KucInteractionActionClass::Toolbar,
             ));
         assert!(matches!(unknown, Err(KucInteractionLocatorError::Missing)));
-        assert_eq!(input, before_input);
+        assert!(input.events.is_empty());
         assert_eq!(output.events().current_context(), before_context);
 
         let effect_count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));

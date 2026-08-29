@@ -11,14 +11,11 @@ impl Canvas {
         if left >= self.width() {
             return None;
         }
-        let mut right = self
+        let right = self
             .to_physical_x(x.saturating_add(1))
             .saturating_sub(left)
             .max(1)
             .saturating_add(left);
-        if right > self.width() {
-            right = self.width();
-        }
         Some((left, right))
     }
 
@@ -27,14 +24,11 @@ impl Canvas {
         if top >= self.height() {
             return None;
         }
-        let mut bottom = self
+        let bottom = self
             .to_physical_y(y.saturating_add(1))
             .saturating_sub(top)
             .max(1)
             .saturating_add(top);
-        if bottom > self.height() {
-            bottom = self.height();
-        }
         Some((top, bottom))
     }
 
@@ -58,9 +52,6 @@ impl Canvas {
         height: usize,
     ) -> Option<CanvasClip> {
         let rect = self.visible_logical_span(x, y, width, height)?;
-        if rect.0 >= rect.2 || rect.1 >= rect.3 {
-            return None;
-        }
         CanvasClip::from_rect(
             rect.0,
             rect.1,

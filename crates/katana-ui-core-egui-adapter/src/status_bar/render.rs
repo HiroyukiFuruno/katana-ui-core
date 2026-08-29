@@ -179,14 +179,14 @@ impl EguiStatusBarAdapter {
             scale_factor: scale,
         })?;
         let pixels: Vec<u8> = raster.rgba_pixels.iter().flatten().copied().collect();
-        let fingerprint = format!("{:x}", Sha256::digest(label.as_bytes()));
+        let fingerprint = hex::encode(Sha256::digest(label.as_bytes()));
         let identity = format!("status-bar-label:{fingerprint}:{:?}:{scale}", style.font);
         self.last_label_rasters.push(StatusBarLabelRasterEvidence {
             label_fingerprint: fingerprint,
             width: raster.width as u32,
             height: raster.height as u32,
             chromatic_pixel_count: raster.chromatic_pixel_count(),
-            sha256: format!("{:x}", Sha256::digest(&pixels)),
+            sha256: hex::encode(Sha256::digest(&pixels)),
         });
         let image = egui::Rect::from_center_size(
             bounds.center(),

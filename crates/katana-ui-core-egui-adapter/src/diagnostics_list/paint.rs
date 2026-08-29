@@ -96,7 +96,7 @@ impl EguiDiagnosticsListAdapter {
             width: raster.width as u32,
             height: raster.height as u32,
             chromatic_pixel_count: raster.chromatic_pixel_count(),
-            sha256: format!("{:x}", Sha256::digest(&pixels)),
+            sha256: hex::encode(Sha256::digest(&pixels)),
         });
         let image = egui::Rect::from_min_size(
             bounds.left_top() + egui::vec2(DIAGNOSTICS_SMALL_INSET, DIAGNOSTICS_SMALL_INSET),
@@ -107,7 +107,10 @@ impl EguiDiagnosticsListAdapter {
             kind: DiagnosticsListPaintOperationKind::Texture {
                 bounds: DiagnosticsPaint::ui_rect(image),
                 texture: DiagnosticsListPaintTexture {
-                    identity: format!("diagnostics-text:{:x}", Sha256::digest(text.as_bytes())),
+                    identity: format!(
+                        concat!("diagnostics-text:", "{}"),
+                        hex::encode(Sha256::digest(text.as_bytes()))
+                    ),
                     width: raster.width as u32,
                     height: raster.height as u32,
                     rgba_pixels: pixels,

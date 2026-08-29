@@ -23,7 +23,7 @@ pub(super) fn draw(canvas: &mut Canvas, render: RenderContext<'_>, scenario: Sce
         viewport.y,
         viewport.width,
         viewport.height,
-        |canvas| {
+        &mut |canvas| {
             for index in visible_range.clone() {
                 draw_tab(
                     canvas,
@@ -161,14 +161,62 @@ fn draw_tab_label(
     };
     let text_x = rect.x + PRESET_TEXT_X_OFFSET;
     let label = preset_tab_label::fit(render.text, rect, label);
-    canvas.with_clip(text_x, rect.y, label.clip_width, rect.height, |canvas| {
-        render.text.draw_centered(
-            canvas,
-            label.text.as_ref(),
-            text_x,
-            TextVerticalBox::new(rect.y, rect.height as f32),
-            label.size,
-            color,
+    canvas.with_clip(
+        text_x,
+        rect.y,
+        label.clip_width,
+        rect.height,
+        &mut |canvas| {
+            render.text.draw_centered(
+                canvas,
+                label.text.as_ref(),
+                text_x,
+                TextVerticalBox::new(rect.y, rect.height as f32),
+                label.size,
+                color,
+            );
+        },
+    );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Canvas, RenderContext, ScenarioContext, draw_tab};
+    use crate::visual::palette::VisualPalette;
+    use crate::visual::screen_state::StorybookScreenState;
+    use crate::visual::text::TextRenderer;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn invalid_tab_index_does_not_draw() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let text = TextRenderer::load(&facade, facade.default_font_role());
+        let palette = VisualPalette::from_theme(facade.theme());
+        let render = RenderContext {
+            text: &text,
+            code_text: &text,
+            examples: &[],
+            palette: &palette,
+        };
+        let state = StorybookScreenState::default();
+        let mut canvas = Canvas::new(320, 80, palette.background);
+
+        draw_tab(
+            &mut canvas,
+            render,
+            "invalid",
+            false,
+            usize::MAX,
+            false,
+            ScenarioContext::for_test("button", 0, &state),
         );
-    });
+
+        assert!(
+            canvas
+                .pixels()
+                .iter()
+                .all(|pixel| *pixel == palette.background)
+        );
+    }
 }

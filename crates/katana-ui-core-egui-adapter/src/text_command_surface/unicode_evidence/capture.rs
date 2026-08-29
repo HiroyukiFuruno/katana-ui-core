@@ -55,9 +55,10 @@ impl KucUnicodeColorGlyphEvidenceCapture {
             &context,
             &mut root,
             &style,
-            vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-                IME_PREEDIT_TEXT.to_string(),
-            ))],
+            vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+                text: IME_PREEDIT_TEXT.to_string(),
+                active_range_chars: None,
+            })],
         )?;
         let committed = runner::run_frame(
             &context,

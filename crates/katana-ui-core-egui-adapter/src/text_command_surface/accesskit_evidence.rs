@@ -150,7 +150,7 @@ impl AccessKitEvidenceLedger {
             })
             .collect();
         serde_json::to_vec(&material)
-            .map(|bytes| format!("{:x}", Sha256::digest(bytes)))
+            .map(|bytes| hex::encode(Sha256::digest(bytes)))
             .map_err(|error| error.to_string())
     }
 }

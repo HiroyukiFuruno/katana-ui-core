@@ -8,6 +8,32 @@ pub(super) struct RgbaTextureCache {
     textures: HashMap<String, egui::TextureHandle>,
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cache_recovers_from_missing_order_entry_and_evicts_oldest_texture() {
+        let context = egui::Context::default();
+        let pixels = [255, 255, 255, 255];
+        let mut cache = RgbaTextureCache::new(1);
+        let orphan = context.load_texture(
+            "orphan",
+            egui::ColorImage::from_rgba_unmultiplied([1, 1], &pixels),
+            egui::TextureOptions::NEAREST,
+        );
+        cache.textures.insert("orphan".to_owned(), orphan);
+        let _ = cache.texture_for_rgba(&context, "replacement", 1, 1, &pixels);
+        assert!(cache.textures.contains_key("orphan"));
+        assert!(cache.textures.contains_key("replacement"));
+
+        cache.order.push_front("orphan".to_owned());
+        let _ = cache.texture_for_rgba(&context, "newest", 1, 1, &pixels);
+        assert!(!cache.textures.contains_key("orphan"));
+        assert!(cache.textures.contains_key("newest"));
+    }
+}
+
 impl RgbaTextureCache {
     pub(super) fn new(capacity: usize) -> Self {
         Self {

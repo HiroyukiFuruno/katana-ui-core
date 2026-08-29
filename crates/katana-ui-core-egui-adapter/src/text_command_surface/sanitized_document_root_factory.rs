@@ -640,7 +640,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     frame = Some(root.show(ui).expect("root show succeeds"));
                 });
             },
@@ -1566,9 +1566,10 @@ mod tests {
         );
         for events in [
             vec![egui::Event::Text("追加入力 ⭐️".to_string())],
-            vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-                "下書き ⭐️".to_string(),
-            ))],
+            vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+                text: "下書き ⭐️".to_string(),
+                active_range_chars: None,
+            })],
             vec![egui::Event::Ime(egui::ImeEvent::Commit(
                 "確定 ⭐️".to_string(),
             ))],
@@ -1678,7 +1679,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     frame = Some(root.show(ui).expect("root show succeeds"));
                 });
             },
@@ -1773,9 +1774,10 @@ mod tests {
         let (_, preedit) = run_search_root_frame(
             &context,
             &mut root,
-            vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-                "かな".to_string(),
-            ))],
+            vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+                text: "かな".to_string(),
+                active_range_chars: None,
+            })],
         );
         assert_eq!(preedit.output.events().event_cardinality(), 0);
         assert_ne!(
@@ -1862,9 +1864,10 @@ mod tests {
         let _ = run_search_root_frame(
             &context,
             &mut root,
-            vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-                "かな".to_string(),
-            ))],
+            vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+                text: "かな".to_string(),
+                active_range_chars: None,
+            })],
         );
         let (_, committed) = run_search_root_frame(
             &context,
@@ -2180,7 +2183,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     first = Some(root.show(ui).expect("root show succeeds"));
                 });
             },
@@ -2218,7 +2221,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     pressed = Some(root.show(ui).expect("root show succeeds"));
                 });
             },
@@ -2250,7 +2253,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     released = Some(root.show(ui).expect("root show succeeds"));
                 });
             },
@@ -2333,7 +2336,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     frame = Some(root.show(ui).expect("root show succeeds"));
                 });
             },
@@ -2368,7 +2371,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     first = Some(root.show(ui).expect("root show succeeds"));
                 });
             },
@@ -2493,7 +2496,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     first_frame = Some(root.show(ui).expect("root show succeeds"));
                 });
             },
@@ -2538,7 +2541,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     accesskit_frame = Some(root.show(ui).expect("root show succeeds"));
                 });
             },
@@ -2875,7 +2878,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     frame = Some(root.show(ui));
                 });
             },
@@ -3259,7 +3262,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     frame = Some(root.show(ui).expect("root show succeeds"));
                 });
             },
@@ -3283,7 +3286,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     frame = Some(root.show(ui).expect("root show succeeds"));
                 });
             },
@@ -3335,7 +3338,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     frame = Some(root.show(ui));
                 });
             },

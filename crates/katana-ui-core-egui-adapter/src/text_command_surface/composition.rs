@@ -288,7 +288,7 @@ impl EguiTextCommandSurfaceAdapter {
                     _ => return Err(crate::source_address_strip::EguiSourceAddressStripError::PaintPlanNotProduced.into()),
                 },
                 accesskit_evidence: super::accesskit_evidence::finish_frame(ui.ctx()),
-                artifact_order,
+                ordered_artifacts: artifact_order,
                 status_bar,
                 diagnostics_list,
             },

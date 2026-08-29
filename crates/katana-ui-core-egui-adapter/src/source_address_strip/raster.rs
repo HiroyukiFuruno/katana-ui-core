@@ -74,7 +74,7 @@ impl Raster {
                 width: raster.width as u32,
                 height: raster.height as u32,
                 chromatic_pixel_count: raster.chromatic_pixel_count(),
-                sha256: format!("{:x}", hasher.finalize()),
+                sha256: hex::encode(hasher.finalize()),
             });
         let image_size = egui::vec2(raster.width as f32 / scale, raster.height as f32 / scale);
         let image_rect = egui::Rect::from_center_size(rect.center(), image_size);
@@ -103,7 +103,7 @@ impl Raster {
     }
 
     fn source_address_label_fingerprint(label: &str) -> String {
-        format!("{:x}", Sha256::digest(label.as_bytes()))
+        hex::encode(Sha256::digest(label.as_bytes()))
     }
 
     pub(crate) fn sanitize_input_kind(
@@ -118,8 +118,8 @@ impl Raster {
                 mut texture,
             } => {
                 texture.identity = format!(
-                    "source-address-input:{:x}",
-                    Sha256::digest(texture.identity)
+                    "source-address-input:{}",
+                    hex::encode(Sha256::digest(texture.identity))
                 );
                 TextSurfacePaintOperationKind::Texture { bounds, texture }
             }

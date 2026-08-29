@@ -267,3 +267,146 @@ fn menu_button_selected_label(index: usize) -> &'static str {
         _ => "selected=unknown",
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn list_and_selection_actions_cover_focus_hover_keyboard_and_reset_paths() {
+        let mut state = StorybookScreenState::default();
+        state.register_list_keyboard_next();
+        assert_eq!(state.last_event, "list_keyboard_ignored");
+        state.register_list_select(2);
+        state.register_list_focus();
+        state.register_list_keyboard_next();
+        state.register_list_scroll();
+
+        state.button_focused = false;
+        state.register_selection_action(SelectionScreenAction::ComboKeyboardSelect);
+        assert_eq!(state.last_event, "selection_keyboard_ignored");
+        state.register_selection_action(SelectionScreenAction::SelectKeyboardSelect);
+        assert_eq!(state.last_event, "selection_keyboard_ignored");
+
+        let actions = [
+            SelectionScreenAction::SelectStateRead,
+            SelectionScreenAction::SelectOpen,
+            SelectionScreenAction::SelectClose,
+            SelectionScreenAction::SelectOption(2),
+            SelectionScreenAction::SelectFocus,
+            SelectionScreenAction::SelectHover,
+            SelectionScreenAction::SelectKeyboardSelect,
+            SelectionScreenAction::SelectScroll,
+            SelectionScreenAction::SelectReset,
+            SelectionScreenAction::ComboStateRead,
+            SelectionScreenAction::ComboFilter,
+            SelectionScreenAction::ComboOption(2),
+            SelectionScreenAction::ComboFocus,
+            SelectionScreenAction::ComboHover,
+            SelectionScreenAction::ComboKeyboardSelect,
+            SelectionScreenAction::ComboReset,
+            SelectionScreenAction::SelectionListStateRead,
+            SelectionScreenAction::SelectionListSelectRow(2),
+            SelectionScreenAction::SelectionListMultiToggle(7),
+            SelectionScreenAction::SelectionListFocus,
+            SelectionScreenAction::SelectionListHover,
+            SelectionScreenAction::SelectionListKeyboardNext,
+            SelectionScreenAction::SelectionListScroll,
+            SelectionScreenAction::SelectionListReset,
+            SelectionScreenAction::SelectionListToggle(1),
+        ];
+        for action in actions {
+            state.register_selection_action(action);
+        }
+
+        assert!(state.button_focused);
+        assert!(state.preview_hovered);
+        assert!(state.action_count >= actions.len());
+    }
+
+    #[test]
+    fn search_and_segment_actions_cover_rejected_and_accepted_keyboard_paths() {
+        let mut search_box = StorybookScreenState::default();
+        search_box.register_search_box_action(SearchBoxScreenAction::KeyboardSubmit);
+        assert_eq!(search_box.last_event, "search_keyboard_ignored");
+        for action in [
+            SearchBoxScreenAction::StateRead,
+            SearchBoxScreenAction::TypeQuery,
+            SearchBoxScreenAction::Submit,
+            SearchBoxScreenAction::Clear,
+            SearchBoxScreenAction::Focus,
+            SearchBoxScreenAction::KeyboardSubmit,
+            SearchBoxScreenAction::ToggleCase,
+            SearchBoxScreenAction::ToggleRegex,
+        ] {
+            search_box.register_search_box_action(action);
+        }
+        assert!(search_box.button_focused);
+
+        let mut search_control = StorybookScreenState::default();
+        search_control.register_search_control_action(SearchControlScreenAction::KeyboardNext);
+        assert_eq!(search_control.last_event, "search_control_keyboard_ignored");
+        for action in [
+            SearchControlScreenAction::Query,
+            SearchControlScreenAction::ToggleRegex,
+            SearchControlScreenAction::Focus,
+            SearchControlScreenAction::Hover,
+            SearchControlScreenAction::KeyboardNext,
+        ] {
+            search_control.register_search_control_action(action);
+        }
+        assert!(search_control.button_focused);
+        assert!(search_control.preview_hovered);
+
+        let mut segmented = StorybookScreenState::default();
+        segmented.register_segmented_toggle_action(SegmentedToggleScreenAction::KeyboardSelect);
+        assert_eq!(segmented.last_event, "segment_keyboard_ignored");
+        for action in [
+            SegmentedToggleScreenAction::Select,
+            SegmentedToggleScreenAction::Focus,
+            SegmentedToggleScreenAction::Hover,
+            SegmentedToggleScreenAction::KeyboardSelect,
+            SegmentedToggleScreenAction::DisabledSelect,
+        ] {
+            segmented.register_segmented_toggle_action(action);
+        }
+        assert!(segmented.button_focused);
+        assert!(segmented.preview_hovered);
+    }
+
+    #[test]
+    fn menu_actions_cover_focus_open_select_close_context_and_disabled_paths() {
+        let mut state = StorybookScreenState::default();
+        state.register_menu_keyboard_open();
+        assert_eq!(state.last_event, "menu_keyboard_ignored");
+        state.register_menu_focus();
+        state.register_menu_keyboard_open();
+        state.register_menu_context_dismiss();
+
+        state.register_menu_button_focus(true);
+        assert_eq!(state.last_event, "menu_button_focus_ignored");
+        state.register_menu_button_keyboard_open(true);
+        assert_eq!(state.last_event, "menu_button_keyboard_ignored");
+        state.register_menu_button_context_open(true);
+        assert_eq!(state.last_event, "menu_button_context_ignored");
+        state.register_menu_button_disabled_trigger();
+
+        state.button_focused = false;
+        state.register_menu_button_keyboard_open(false);
+        assert_eq!(state.state_label, "focused=false");
+        state.register_menu_button_focus(false);
+        state.register_menu_button_open();
+        state.register_menu_button_select(0);
+        state.register_menu_button_select(1);
+        state.register_menu_button_select(9);
+        state.register_menu_button_close();
+        state.register_menu_button_keyboard_open(false);
+        state.register_menu_button_context_open(false);
+
+        assert!(state.button_focused);
+        assert!(state.selection.select_open);
+        assert_eq!(menu_button_selected_label(0), "selected=new-file");
+        assert_eq!(menu_button_selected_label(1), "selected=rename");
+        assert_eq!(menu_button_selected_label(2), "selected=unknown");
+    }
+}

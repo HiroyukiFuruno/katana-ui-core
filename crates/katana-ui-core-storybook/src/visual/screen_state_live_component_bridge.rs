@@ -291,3 +291,174 @@ impl StorybookScreenState {
         self.state_label = update.state;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn palette_color_array_settings_and_diagnostics_cover_every_action() {
+        let mut state = StorybookScreenState::default();
+        state.register_command_palette_action(CommandPaletteStoryAction::KeyboardExecute);
+        state.register_command_palette_action(CommandPaletteStoryAction::KeyboardClose);
+        assert_eq!(state.last_event, "command_palette_keyboard_ignored");
+        for action in [
+            CommandPaletteStoryAction::Hover,
+            CommandPaletteStoryAction::Focus,
+            CommandPaletteStoryAction::KeyboardExecute,
+            CommandPaletteStoryAction::KeyboardClose,
+        ] {
+            state.register_command_palette_action(action);
+        }
+
+        for action in [
+            ColorPickerAction::Drag,
+            ColorPickerAction::HueDrag,
+            ColorPickerAction::AlphaDrag,
+            ColorPickerAction::Eyedropper,
+            ColorPickerAction::Focus,
+            ColorPickerAction::Hover,
+            ColorPickerAction::ReadonlyBlocked,
+            ColorPickerAction::DisabledBlocked,
+        ] {
+            state.register_color_picker_action(action);
+        }
+
+        state.button_focused = false;
+        state.register_dynamic_array_editor_action(DynamicArrayEditorAction::KeyboardEdit);
+        assert_eq!(state.last_event, "array_keyboard_ignored");
+        for action in [
+            DynamicArrayEditorAction::Add,
+            DynamicArrayEditorAction::Remove,
+            DynamicArrayEditorAction::Reorder,
+            DynamicArrayEditorAction::Hover,
+            DynamicArrayEditorAction::Focus,
+            DynamicArrayEditorAction::KeyboardEdit,
+        ] {
+            state.register_dynamic_array_editor_action(action);
+        }
+
+        state.button_focused = false;
+        state.register_settings_list_action(SettingsListStoryAction::KeyboardNext);
+        assert_eq!(state.last_event, "settings_keyboard_ignored");
+        for action in [
+            SettingsListStoryAction::UpdateField,
+            SettingsListStoryAction::SetQuery,
+            SettingsListStoryAction::ToggleSection,
+            SettingsListStoryAction::ResetField,
+            SettingsListStoryAction::FocusField,
+            SettingsListStoryAction::HoverField,
+            SettingsListStoryAction::KeyboardNext,
+            SettingsListStoryAction::Scroll,
+        ] {
+            state.register_settings_list_action(action);
+        }
+
+        state.button_focused = false;
+        state.register_diagnostics_list_action(DiagnosticsListStoryAction::KeyboardNavigate);
+        assert_eq!(state.last_event, "diagnostic_keyboard_ignored");
+        for action in [
+            DiagnosticsListStoryAction::ToggleFixPreview,
+            DiagnosticsListStoryAction::OpenBulkPreview,
+            DiagnosticsListStoryAction::SelectItem,
+            DiagnosticsListStoryAction::FocusList,
+            DiagnosticsListStoryAction::HoverItem,
+            DiagnosticsListStoryAction::KeyboardNavigate,
+            DiagnosticsListStoryAction::ScrollRetention,
+        ] {
+            state.register_diagnostics_list_action(action);
+        }
+
+        assert!(state.action_count > 20);
+        assert!(state.preview_hovered);
+    }
+
+    #[test]
+    fn drag_layout_scroll_split_and_theme_cover_every_action() {
+        let mut state = StorybookScreenState::default();
+        for action in [
+            DragAndDropAction::StartPointer,
+            DragAndDropAction::DropPointer,
+            DragAndDropAction::KeyboardCancel,
+            DragAndDropAction::HoverTarget,
+            DragAndDropAction::FocusSource,
+            DragAndDropAction::KeyboardDrop,
+            DragAndDropAction::ScrollEdge,
+            DragAndDropAction::ResizeTarget,
+        ] {
+            state.register_drag_and_drop_action(action);
+        }
+
+        for action in [
+            LayoutStoryAction::RowAlign,
+            LayoutStoryAction::RowHover,
+            LayoutStoryAction::RowFocus,
+            LayoutStoryAction::RowKeyboard,
+            LayoutStoryAction::RowResize,
+            LayoutStoryAction::ColumnAlign,
+            LayoutStoryAction::ColumnHover,
+            LayoutStoryAction::ColumnFocus,
+            LayoutStoryAction::ColumnKeyboard,
+            LayoutStoryAction::ColumnResize,
+            LayoutStoryAction::StackReorder,
+            LayoutStoryAction::StackHover,
+            LayoutStoryAction::StackFocus,
+            LayoutStoryAction::StackKeyboard,
+            LayoutStoryAction::StackResize,
+            LayoutStoryAction::GridSelect,
+            LayoutStoryAction::GridHover,
+            LayoutStoryAction::GridFocus,
+            LayoutStoryAction::GridKeyboard,
+            LayoutStoryAction::GridResize,
+            LayoutStoryAction::AlignCenterHover,
+            LayoutStoryAction::AlignCenterFocus,
+            LayoutStoryAction::AlignCenterKeyboard,
+            LayoutStoryAction::AlignCenterResize,
+        ] {
+            state.register_layout_action(action);
+        }
+
+        state.button_focused = false;
+        state.register_scroll_area_action(ScrollAreaStoryAction::Keyboard);
+        assert_eq!(state.last_event, "scroll_area_keyboard_ignored");
+        for action in [
+            ScrollAreaStoryAction::Scroll,
+            ScrollAreaStoryAction::Drag,
+            ScrollAreaStoryAction::Focus,
+            ScrollAreaStoryAction::Hover,
+            ScrollAreaStoryAction::Keyboard,
+            ScrollAreaStoryAction::Resize,
+        ] {
+            state.register_scroll_area_action(action);
+        }
+
+        state.button_focused = false;
+        state.register_split_pane_action(SplitPaneStoryAction::Keyboard);
+        assert_eq!(state.last_event, "split_pane_keyboard_ignored");
+        for action in [
+            SplitPaneStoryAction::Drag,
+            SplitPaneStoryAction::Focus,
+            SplitPaneStoryAction::Hover,
+            SplitPaneStoryAction::Keyboard,
+            SplitPaneStoryAction::Resize,
+        ] {
+            state.register_split_pane_action(action);
+        }
+
+        state.button_focused = false;
+        state.register_theme_tokens_action(ThemeTokensStoryAction::Keyboard);
+        assert_eq!(state.last_event, "theme_token_keyboard_ignored");
+        for action in [
+            ThemeTokensStoryAction::Hover,
+            ThemeTokensStoryAction::Focus,
+            ThemeTokensStoryAction::Keyboard,
+            ThemeTokensStoryAction::Resize,
+        ] {
+            state.register_theme_tokens_action(action);
+        }
+
+        assert!(state.button_focused);
+        assert!(state.preview_hovered);
+        assert!(state.action_count > 40);
+    }
+}

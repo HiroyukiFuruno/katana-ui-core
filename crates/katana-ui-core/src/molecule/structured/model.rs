@@ -252,3 +252,17 @@ impl ComponentAction for DynamicArrayEditor {
         self.state.apply_action(action, false)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn disabled_tree_ignores_targeted_press() {
+        let mut tree = TreeView::new("Tree");
+        tree.state.disabled = true;
+        let action = UiAction::click(tree.state.state_id.clone());
+
+        assert!(!tree.apply_action(&action).handled);
+    }
+}

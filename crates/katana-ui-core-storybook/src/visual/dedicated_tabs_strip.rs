@@ -44,7 +44,7 @@ pub(super) fn draw_strip(
             palette.hover_border,
         );
     }
-    canvas.with_clip(strip.x, strip.y, strip.width, strip.height, |canvas| {
+    canvas.with_clip(strip.x, strip.y, strip.width, strip.height, &mut |canvas| {
         for item in layout_items(x, y, state) {
             match item {
                 TabsLayoutItem::GroupHeader {
@@ -204,7 +204,7 @@ fn draw_tab_label(
         TAB_LABEL_X
     };
     let label_width = width.saturating_sub(TAB_CLOSE_AREA + label_x);
-    canvas.with_clip(x + label_x, y, label_width, TAB_HEIGHT, |canvas| {
+    canvas.with_clip(x + label_x, y, label_width, TAB_HEIGHT, &mut |canvas| {
         text.draw_in_box(
             canvas,
             tab.title.as_str(),

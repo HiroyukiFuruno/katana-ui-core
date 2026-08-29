@@ -58,3 +58,16 @@ pub(super) fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {
     }
     Some(canvas.pixels()[y * canvas.width() + x])
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Canvas, pixel_at};
+
+    #[test]
+    fn pixel_lookup_rejects_each_out_of_bounds_axis() {
+        let canvas = Canvas::new(2, 2, 0);
+
+        assert_eq!(None, pixel_at(&canvas, 2, 0));
+        assert_eq!(None, pixel_at(&canvas, 0, 2));
+    }
+}

@@ -7,13 +7,6 @@ use katana_ui_core_egui_adapter::text_command_surface::{
     TextCommandSurfaceStyle,
 };
 
-pub(crate) fn adapter() -> Result<EguiTextCommandSurfaceAdapter, Box<dyn std::error::Error>> {
-    EguiTextCommandSurfaceAdapter::with_text_raster_config(
-        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
-    )
-    .map_err(Into::into)
-}
-
 pub(crate) fn style() -> TextCommandSurfaceStyle {
     TextCommandSurfaceStyle {
         text_raster: text_raster(),
@@ -50,7 +43,7 @@ pub(crate) fn run_frame_sized(
     events: Vec<egui::Event>,
 ) -> Result<(egui::FullOutput, EguiTextCommandSurfaceOutput), Box<dyn std::error::Error>> {
     let mut result = None;
-    let full = context.run_ui(
+    let mut full = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, screen_size)),
             events,
@@ -58,6 +51,7 @@ pub(crate) fn run_frame_sized(
         },
         |ui| result = Some(adapter.show(ui, surface, style)),
     );
+    full.textures_delta.clear();
     let output = result.ok_or_else(|| std::io::Error::other("missing adapter output"))?;
     Ok((full, output?))
 }

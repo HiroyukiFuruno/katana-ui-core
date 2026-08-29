@@ -1,14 +1,13 @@
 use crate::visual::navigation_tree::TreeExpansionState;
 use crate::visual::panel_scroll_state::{PanelScrollOffsets, PanelScrollRegion};
-use crate::visual::panel_scrollbar_hit_test::{
-    horizontal_region_from_thumb_for, region_from_thumb_for,
-};
+#[cfg(test)]
+use crate::visual::panel_scrollbar_hit_test::horizontal_region_from_thumb_for;
+use crate::visual::panel_scrollbar_hit_test::region_from_thumb_for;
 use crate::visual::panel_scrollbars;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::visual) enum PanelScrollDragTarget {
     Vertical(PanelScrollRegion),
-    Horizontal(PanelScrollRegion),
 }
 
 pub(super) fn vertical_region_at(
@@ -24,6 +23,7 @@ pub(super) fn vertical_region_at(
     })
 }
 
+#[cfg(test)]
 pub(super) fn horizontal_region_at(
     x: usize,
     y: usize,

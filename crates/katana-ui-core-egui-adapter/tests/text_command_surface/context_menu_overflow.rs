@@ -43,7 +43,7 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn select_direct_terminal(route: ContextMenuOpenRoute) -> Result<(), Box<dyn std::error::Error>> {
-    let mut fixture = Fixture::new()?;
+    let mut fixture = Fixture::new();
     let (_, opened) = fixture.open(route)?;
     let (_, edit) = fixture.open_submenu(&opened, ROOT_ID)?;
     let (scroll_full, scrolled) = fixture.scroll_to_end(&edit)?;
@@ -59,7 +59,7 @@ fn select_direct_terminal(route: ContextMenuOpenRoute) -> Result<(), Box<dyn std
 }
 
 fn select_code_terminal(route: ContextMenuOpenRoute) -> Result<(), Box<dyn std::error::Error>> {
-    let mut fixture = Fixture::new()?;
+    let mut fixture = Fixture::new();
     let (_, opened) = fixture.open(route)?;
     let (_, edit) = fixture.open_submenu(&opened, ROOT_ID)?;
     let (_, scrolled_edit) = fixture.scroll_to_end(&edit)?;
@@ -78,7 +78,7 @@ fn select_code_terminal(route: ContextMenuOpenRoute) -> Result<(), Box<dyn std::
 fn select_code_terminal_by_keyboard(
     route: ContextMenuOpenRoute,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut fixture = Fixture::new()?;
+    let mut fixture = Fixture::new();
     let (_, opened) = fixture.open(route)?;
     let (_, edit) = fixture.open_submenu(&opened, ROOT_ID)?;
     let (_, scrolled_edit) = fixture.scroll_to_end(&edit)?;
@@ -102,7 +102,7 @@ fn select_code_terminal_by_keyboard(
 }
 
 fn assert_disabled_leaf_and_dismissal() -> Result<(), Box<dyn std::error::Error>> {
-    let mut fixture = Fixture::new()?;
+    let mut fixture = Fixture::new();
     let (_, opened) = fixture.open(ContextMenuOpenRoute::Secondary)?;
     let (_, edit) = fixture.open_submenu(&opened, ROOT_ID)?;
     let (_, scrolled) = fixture.scroll_to_end(&edit)?;
@@ -147,15 +147,18 @@ struct Fixture {
 }
 
 impl Fixture {
-    fn new() -> Result<Self, Box<dyn std::error::Error>> {
+    fn new() -> Self {
         let context = egui::Context::default();
         context.enable_accesskit();
-        Ok(Self {
+        Self {
             context,
-            adapter: harness::adapter()?,
+            adapter: EguiTextCommandSurfaceAdapter::with_text_raster_config(
+                katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+            )
+            .expect("text command adapter"),
             surface: EguiTextCommandSurface::new(overflow_text_surface())
                 .with_context_menu(overflow_presentation()),
-        })
+        }
     }
 
     fn frame(

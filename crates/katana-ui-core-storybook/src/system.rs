@@ -22,9 +22,11 @@ impl ProcessCommand {
         let mut child = ProcessService::create_command(program)
             .stdin(Stdio::piped())
             .spawn()?;
-        if let Some(stdin) = child.stdin.as_mut() {
-            stdin.write_all(payload)?;
-        }
+        child
+            .stdin
+            .as_mut()
+            .into_iter()
+            .try_for_each(|stdin| stdin.write_all(payload))?;
         let status = child.wait()?;
         if status.success() {
             Ok(())
@@ -50,13 +52,10 @@ impl ProcessCommand {
     }
 }
 
-#[cfg(test)]
 const _: ProcessCommand = ProcessCommand;
 
-#[cfg(test)]
 const _: fn(&str, &[u8]) -> Result<(), io::Error> = ProcessCommand::write_stdin;
 
-#[cfg(test)]
 const _: fn(&str) -> Result<String, io::Error> = ProcessCommand::read_stdout;
 
 #[cfg(windows)]
@@ -69,3 +68,23 @@ fn apply_silent_policy(command: &mut StdCommand) {
 
 #[cfg(not(windows))]
 fn apply_silent_policy(_command: &mut StdCommand) {}
+
+#[cfg(test)]
+mod tests {
+    use super::ProcessCommand;
+    use crate::test_assert::KucTestExpect;
+
+    #[test]
+    fn process_command_covers_success_failure_and_spawn_errors() {
+        assert!(ProcessCommand::write_stdin("/bin/cat", b"payload").is_ok());
+        assert!(ProcessCommand::write_stdin("/usr/bin/false", b"").is_err());
+        assert!(ProcessCommand::write_stdin("/missing/kuc-command", b"").is_err());
+
+        assert_eq!(
+            "",
+            ProcessCommand::read_stdout("/usr/bin/true").kuc_unwrap()
+        );
+        assert!(ProcessCommand::read_stdout("/usr/bin/false").is_err());
+        assert!(ProcessCommand::read_stdout("/missing/kuc-command").is_err());
+    }
+}

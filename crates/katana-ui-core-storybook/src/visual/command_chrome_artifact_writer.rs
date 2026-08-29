@@ -3,7 +3,7 @@ mod command_chrome_artifact_writer_composite;
 #[path = "command_chrome_artifact_writer_io.rs"]
 mod command_chrome_artifact_writer_io;
 
-use super::command_chrome_artifact::{RGBA_CHANNELS, render_command_chrome_plan};
+use super::command_chrome_artifact::render_command_chrome_plan;
 use super::command_chrome_fixture::{FRAME_HEIGHT, FRAME_WIDTH};
 use super::command_chrome_script::run_scripted_sequence;
 use super::command_chrome_script_types::{
@@ -110,6 +110,12 @@ pub(super) fn run_command_chrome_artifact_sequence()
         });
     }
 
+    finish_artifact_sequence(frames)
+}
+
+fn finish_artifact_sequence(
+    frames: Vec<CommandChromeArtifactFrame>,
+) -> Result<CommandChromeArtifactSequence, CommandChromeArtifactError> {
     if frames.is_empty() {
         return Err(CommandChromeArtifactError::Contract(
             "command-chrome artifact sequence was empty".to_string(),
@@ -194,27 +200,9 @@ fn assert_command_chrome_sequence_contract(
                 frame.index
             )));
         }
-        if frame.composite_pixels.pixel_hash.is_empty() {
-            return Err(CommandChromeArtifactError::Contract(format!(
-                "composite pixel hash missing on frame {}",
-                frame.index
-            )));
-        }
         if !composite::has_non_zero_pixel(&frame.composite_pixels.rgba) {
             return Err(CommandChromeArtifactError::Contract(format!(
                 "frame {} is fully blank",
-                frame.index
-            )));
-        }
-        if frame
-            .composite_pixels
-            .rgba
-            .len()
-            .checked_div(RGBA_CHANNELS)
-            .is_some_and(|pixels| pixels == 0)
-        {
-            return Err(CommandChromeArtifactError::Contract(format!(
-                "composite rgba invalid on frame {}",
                 frame.index
             )));
         }
@@ -225,12 +213,12 @@ fn assert_command_chrome_sequence_contract(
 
 #[cfg(test)]
 mod tests {
-    use super::super::command_chrome_script_types::StorybookCommandChromeTypedEvent;
+    use super::super::command_chrome_script::run_scripted_sequence;
     use super::{
-        ARTIFACT_GIF_FILE, ARTIFACT_MANIFEST_FILE, run_command_chrome_artifact_sequence,
-        write_scripted_artifact,
+        ARTIFACT_GIF_FILE, ARTIFACT_MANIFEST_FILE, assert_command_chrome_sequence_contract,
+        finish_artifact_sequence, run_command_chrome_artifact_sequence, write_scripted_artifact,
     };
-    use katana_ui_core::molecule::command_chrome::CommandChromeToolbarEvent;
+    use serde::Deserialize;
     use sha2::{Digest, Sha256};
     use std::error::Error;
     use std::fs;
@@ -239,6 +227,63 @@ mod tests {
 
     const EXPECTED_FRAME_COUNT: usize = 34;
 
+    #[derive(Deserialize)]
+    struct TestManifest {
+        frames: Vec<TestManifestFrame>,
+    }
+
+    #[derive(Deserialize)]
+    struct TestManifestFrame {
+        png: String,
+        frame_bounds: katana_ui_core::render_model::UiRect,
+    }
+
+    #[test]
+    fn command_chrome_artifact_sequence_rejects_empty_input() {
+        assert!(finish_artifact_sequence(Vec::new()).is_err());
+    }
+
+    #[test]
+    fn command_chrome_artifact_sequence_rejects_missing_composite_payload()
+    -> Result<(), Box<dyn Error>> {
+        let mut sequence = run_command_chrome_artifact_sequence()?;
+        sequence.frames[0].composite_pixels.pixel_hash.clear();
+        assert!(assert_command_chrome_sequence_contract(&sequence).is_err());
+
+        let mut sequence = run_command_chrome_artifact_sequence()?;
+        sequence.frames[0].composite_pixels.rgba.clear();
+        assert!(assert_command_chrome_sequence_contract(&sequence).is_err());
+
+        let mut sequence = run_command_chrome_artifact_sequence()?;
+        sequence.frames[0].composite_pixels.rgba = vec![1];
+        assert!(assert_command_chrome_sequence_contract(&sequence).is_err());
+        Ok(())
+    }
+
+    #[test]
+    fn command_chrome_manifest_frame_rejects_missing_required_identity_fields()
+    -> Result<(), Box<dyn Error>> {
+        let sequence = run_command_chrome_artifact_sequence()?;
+        let valid = sequence.frames[0].manifest_entry();
+
+        let mut missing_name = valid.clone();
+        missing_name.name.clear();
+        assert!(missing_name.validate_contract().is_err());
+
+        let mut missing_toolbar_hash = valid.clone();
+        missing_toolbar_hash.toolbar_pixel_hash.clear();
+        assert!(missing_toolbar_hash.validate_contract().is_err());
+
+        let mut missing_search_hash = valid.clone();
+        missing_search_hash.search_pixel_hash.clear();
+        assert!(missing_search_hash.validate_contract().is_err());
+
+        let mut missing_composite_hash = valid;
+        missing_composite_hash.composite_pixel_hash.clear();
+        assert!(missing_composite_hash.validate_contract().is_err());
+        Ok(())
+    }
+
     #[test]
     fn command_chrome_artifact_sequence_has_full_length_and_visible_frames()
     -> Result<(), Box<dyn Error>> {
@@ -246,10 +291,7 @@ mod tests {
         write_scripted_artifact(&output_dir)?;
 
         let manifest = read_manifest(&output_dir)?;
-        let frames = manifest
-            .get("frames")
-            .and_then(|value| value.as_array())
-            .ok_or_else(|| std::io::Error::other("manifest frames should be an array"))?;
+        let frames = &manifest.frames;
         assert_eq!(EXPECTED_FRAME_COUNT, frames.len());
 
         let frame_png_count = fs::read_dir(&output_dir)?
@@ -264,31 +306,13 @@ mod tests {
         assert_eq!(EXPECTED_FRAME_COUNT, frame_png_count);
 
         for frame in frames {
-            let frame_png = frame
-                .get("png")
-                .and_then(|value| value.as_str())
-                .ok_or_else(|| std::io::Error::other("manifest frame should contain png"))?;
-            let frame_bounds = frame
-                .get("frame_bounds")
-                .and_then(|value| value.as_object())
-                .ok_or_else(|| std::io::Error::other("manifest frame should contain bounds"))?;
-            let image = image::open(output_dir.join(frame_png))?;
+            let image = image::open(output_dir.join(&frame.png))?;
             assert!(
                 image.to_rgba8().pixels().any(|pixel| pixel[3] > 0),
                 "composed frame pixels should be non-blank",
             );
-            assert!(
-                frame_bounds
-                    .get("width")
-                    .and_then(|value| value.as_u64())
-                    .is_some_and(|width| width > 0)
-            );
-            assert!(
-                frame_bounds
-                    .get("height")
-                    .and_then(|value| value.as_u64())
-                    .is_some_and(|height| height > 0)
-            );
+            assert!(frame.frame_bounds.width > 0);
+            assert!(frame.frame_bounds.height > 0);
         }
         Ok(())
     }
@@ -324,21 +348,11 @@ mod tests {
             .map(|frame| frame.manifest_entry())
             .collect::<Vec<_>>();
 
-        let disabled_frame = manifest_frames
-            .iter()
-            .find(|frame| frame.name == "frame-04")
-            .ok_or_else(|| std::io::Error::other("disabled action frame should exist"))?;
-        let has_command_activate = disabled_frame.typed_events.iter().any(|event| {
-            matches!(
-                event,
-                StorybookCommandChromeTypedEvent::Toolbar(
-                    CommandChromeToolbarEvent::CommandActivated { .. }
-                )
-            )
-        });
+        let disabled_frame = &manifest_frames[4];
+        assert_eq!(disabled_frame.name, "frame-04");
         assert!(
-            !has_command_activate,
-            "disabled frame should not emit command activation events"
+            disabled_frame.typed_events.is_empty(),
+            "disabled frame should not emit typed events"
         );
 
         assert!(
@@ -369,12 +383,14 @@ mod tests {
                 frame.search.artifact.paint_plan_hash
             );
             if let Some(pixels) = &frame.floating_pixels {
-                let artifact = frame
-                    .floating
-                    .as_ref()
-                    .and_then(|floating| floating.artifact.as_ref())
-                    .ok_or_else(|| std::io::Error::other("floating artifact should exist"))?;
-                assert_eq!(pixels.paint_plan_hash, artifact.paint_plan_hash);
+                assert_eq!(
+                    Some(pixels.paint_plan_hash.as_str()),
+                    frame
+                        .floating
+                        .as_ref()
+                        .and_then(|floating| floating.artifact.as_ref())
+                        .map(|artifact| artifact.paint_plan_hash.as_str())
+                );
             }
         }
         Ok(())
@@ -411,7 +427,161 @@ mod tests {
         Ok(())
     }
 
-    fn read_manifest(path: &Path) -> Result<serde_json::Value, Box<dyn Error>> {
+    #[test]
+    fn command_chrome_artifact_sequence_tracks_raw_script_contract_hashes()
+    -> Result<(), Box<dyn Error>> {
+        let script = run_scripted_sequence()?;
+        let artifact_sequence = run_command_chrome_artifact_sequence()?;
+
+        assert_eq!(script.frames.len(), artifact_sequence.frames.len());
+        for (index, (script_frame, artifact_frame)) in script
+            .frames
+            .iter()
+            .zip(&artifact_sequence.frames)
+            .enumerate()
+        {
+            assert_eq!(index, artifact_frame.index);
+            assert_eq!(artifact_frame.name, format!("frame-{index:02}"));
+
+            let manifest = artifact_frame.manifest_entry();
+            assert_eq!(
+                manifest.toolbar_frame_record_hash,
+                script_frame.toolbar.artifact.frame_record_hash
+            );
+            assert_eq!(
+                manifest.toolbar_paint_plan_hash,
+                script_frame.toolbar.artifact.paint_plan_hash
+            );
+            assert_eq!(
+                manifest.search_frame_record_hash,
+                script_frame.search.artifact.frame_record_hash
+            );
+            assert_eq!(
+                manifest.search_paint_plan_hash,
+                script_frame.search.artifact.paint_plan_hash
+            );
+
+            let has_floating_fidelity = script_frame.floating.record.is_some()
+                || script_frame.floating.artifact.is_some()
+                || !script_frame.floating.events.is_empty();
+            assert_eq!(
+                has_floating_fidelity,
+                artifact_frame.floating.is_some(),
+                "frame {index} floating artifact visibility mismatch"
+            );
+            if let (Some(script_floating_artifact), Some(artifact_floating)) = (
+                script_frame.floating.artifact.as_ref(),
+                artifact_frame.floating.as_ref(),
+            ) {
+                assert_eq!(
+                    Some(script_floating_artifact.frame_record_hash.as_str()),
+                    artifact_floating
+                        .artifact
+                        .as_ref()
+                        .map(|artifact| artifact.frame_record_hash.as_str())
+                );
+                assert_eq!(
+                    Some(script_floating_artifact.frame_record_hash.as_str()),
+                    manifest.floating_frame_record_hash.as_deref()
+                );
+                assert_eq!(
+                    Some(script_floating_artifact.paint_plan_hash.as_str()),
+                    manifest.floating_paint_plan_hash.as_deref()
+                );
+            }
+
+            let mut script_labels = script_frame.accesskit_labels.clone();
+            script_labels.sort();
+            script_labels.dedup();
+            assert_eq!(script_labels, manifest.accessibility_labels);
+
+            assert!(!manifest.toolbar_pixel_hash.is_empty());
+            assert!(!manifest.search_pixel_hash.is_empty());
+            assert!(!manifest.composite_pixel_hash.is_empty());
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn command_chrome_sequence_contract_rejects_corrupted_render_evidence()
+    -> Result<(), Box<dyn Error>> {
+        let sequence = run_command_chrome_artifact_sequence()?;
+
+        let mut corrupted = sequence.clone();
+        corrupted.frames[0].toolbar_pixels.paint_plan_hash = "mismatch".to_owned();
+        assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+
+        let mut corrupted = sequence.clone();
+        corrupted.frames[0].search_pixels.paint_plan_hash = "mismatch".to_owned();
+        assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+
+        let floating_indices = sequence
+            .frames
+            .iter()
+            .enumerate()
+            .filter_map(|(index, frame)| {
+                (frame.floating_pixels.is_some()
+                    && frame
+                        .floating
+                        .as_ref()
+                        .and_then(|floating| floating.artifact.as_ref())
+                        .is_some())
+                .then_some(index)
+            })
+            .collect::<Vec<_>>();
+        assert!(!floating_indices.is_empty());
+        for floating_index in floating_indices {
+            let mut corrupted = sequence.clone();
+            corrupted.frames[floating_index]
+                .floating
+                .iter_mut()
+                .for_each(|floating| floating.artifact = None);
+            assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+
+            let mut corrupted = sequence.clone();
+            corrupted.frames[floating_index]
+                .floating_pixels
+                .iter_mut()
+                .for_each(|pixels| pixels.paint_plan_hash = "mismatch".to_owned());
+            assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+        }
+
+        let mut corrupted = sequence.clone();
+        corrupted.frames[0].toolbar_pixels.width = 0;
+        assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+
+        let mut corrupted = sequence.clone();
+        corrupted.frames[0].search_pixels.height = 0;
+        assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+
+        let mut corrupted = sequence.clone();
+        corrupted.frames[0].toolbar_pixels.rgba.clear();
+        assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+
+        let mut corrupted = sequence.clone();
+        corrupted.frames[0].search_pixels.rgba.clear();
+        assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+
+        let mut corrupted = sequence.clone();
+        corrupted.frames[0].search.record.bounds.width = 0;
+        assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+
+        let mut corrupted = sequence.clone();
+        corrupted.frames[0].composite_pixels.pixel_hash.clear();
+        assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+
+        let mut corrupted = sequence.clone();
+        corrupted.frames[0].composite_pixels.rgba.fill(0);
+        assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+
+        let mut corrupted = sequence;
+        corrupted.frames[0].composite_pixels.rgba = vec![1];
+        assert!(assert_command_chrome_sequence_contract(&corrupted).is_err());
+        Ok(())
+    }
+
+    fn read_manifest(path: &Path) -> Result<TestManifest, Box<dyn Error>> {
         let manifest_file = std::fs::File::open(path.join(ARTIFACT_MANIFEST_FILE))?;
         Ok(serde_json::from_reader(manifest_file)?)
     }

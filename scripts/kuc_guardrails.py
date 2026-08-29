@@ -56,6 +56,7 @@ class KucGuardrails:
         failures.extend(self.storybook_reflection_audit_policy_failures())
         failures.extend(self.repo_local_guardrail_policy_failures())
         failures.extend(self.generic_rust_ui_boundary_failures())
+        failures.extend(self.generic_grid_boundary_failures())
         failures.extend(self.adapter_svg_render_plan_failures())
         failures.extend(self.host_action_render_plan_failures())
         failures.extend(self.adapter_coverage_plan_failures())
@@ -411,6 +412,76 @@ class KucGuardrails:
             for token in required_doc_tokens
             if token not in docs
         )
+        return failures
+
+    def generic_grid_boundary_failures(self) -> list[str]:
+        grid_dir = self.root / "crates/katana-ui-core/src/molecule/generic_grid"
+        grid_props = self.root / "crates/katana-ui-core/src/render_model/typed_grid.rs"
+        grid_prop_types = (
+            self.root / "crates/katana-ui-core/src/render_model/typed_grid_types.rs"
+        )
+        change = self.root / "openspec/changes/v0-2-0-generic-2d-grid"
+        if not grid_dir.exists() and not grid_props.exists() and not change.exists():
+            return []
+
+        failures: list[str] = []
+        required = (
+            grid_dir / "mod.rs",
+            grid_dir / "axis.rs",
+            grid_dir / "axis_types.rs",
+            grid_dir / "component.rs",
+            grid_dir / "component_types.rs",
+            grid_dir / "geometry.rs",
+            grid_dir / "selection.rs",
+            grid_props,
+            grid_prop_types,
+            self.root / "crates/katana-ui-core/tests/generic_grid_axis_contract.rs",
+            self.root / "crates/katana-ui-core/tests/generic_grid_component_contract.rs",
+            self.root / "examples/kuc-consumer-app/tests/generic_public_contract.rs",
+        )
+        for path in required:
+            if not path.exists():
+                failures.append(f"{self.relative(path)}: generic grid contract file is missing")
+
+        forbidden_tokens = (
+            "xlsx",
+            "docx",
+            "pptx",
+            "spreadsheet",
+            "formula",
+            "pivot",
+            "katana-document-viewer",
+            "katana_document_viewer",
+            "egui",
+            "gpui",
+            "iced",
+            "tauri",
+            "winit",
+            "gtk",
+        )
+        sources = [
+            *self.rust_files(grid_dir),
+            *([grid_props] if grid_props.exists() else []),
+            *([grid_prop_types] if grid_prop_types.exists() else []),
+        ]
+        for path in sources:
+            source = self.read(path).lower()
+            for token in forbidden_tokens:
+                if token in source:
+                    failures.append(
+                        f"{self.relative(path)}: generic grid contains forbidden format or framework token `{token}`"
+                    )
+
+        dependency_files = (self.root / "crates/katana-ui-core/Cargo.toml",)
+        for path in dependency_files:
+            if not path.exists():
+                continue
+            source = self.read(path).lower()
+            for token in forbidden_tokens:
+                if re.search(rf"(?m)^\s*{re.escape(token)}\s*=", source):
+                    failures.append(
+                        f"{self.relative(path)}: generic grid must not add dependency `{token}`"
+                    )
         return failures
 
     def adapter_svg_render_plan_failures(self) -> list[str]:
@@ -1307,14 +1378,9 @@ class KucGuardrails:
             return []
         source = self.read(types)
         failures: list[str] = []
-        output_match = re.search(
-            r"(?s)\bstruct\s+EguiTextCommandSurfaceOutput\s*\{(?P<body>.*?)\n\}",
-            source,
-        )
-        output_body = output_match.group("body") if output_match else ""
         if re.search(
             r"(?m)^\s*pub(?:\([^)]*\))?\s+artifact_order\s*:\s*Vec<EguiTextCommandSurfaceChild>",
-            output_body,
+            source,
         ):
             failures.append(
                 f"{self.relative(types)}: EguiTextCommandSurfaceOutput must not expose mutable public artifact_order storage"
@@ -1365,16 +1431,21 @@ class KucGuardrails:
                 failures.append(f"{self.relative(path)}: text-command surface path is incomplete")
         if not adapter.exists() or not storybook.exists():
             return failures
+        adapter_modules = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface"
+        adapter_module_paths = (
+            path
+            for path in self.rust_files(adapter_modules)
+            if not path.stem.endswith("_tests") and "tests" not in path.parts
+        )
         adapter_source = "\n".join(
-            self.read(path)
-            for path in (
-                adapter,
-                adapter_artifact,
-                adapter_composition,
-                adapter_model,
-                adapter_synchronization,
-                adapter_types,
-            )
+            self.production_source(self.read(path))
+            for path in (adapter, *adapter_module_paths)
+            if path.exists()
+        )
+        adapter_production_source = "\n".join(
+            self.read(path).split("\n#[cfg(test)]\n", maxsplit=1)[0]
+            for path in (adapter, *adapter_module_paths)
+            if path.exists()
         )
         required_adapter_tokens = (
             "EguiTextCommandSurfaceAdapter",
@@ -1465,7 +1536,7 @@ class KucGuardrails:
         failures.extend(
             f"{self.relative(adapter)}: text-command adapter must not contain `{token}`"
             for token in forbidden_adapter_tokens
-            if token in adapter_source
+            if token in adapter_production_source
         )
         floating_source = self.read(floating_adapter) if floating_adapter.exists() else ""
         dropdown_source = self.read(dropdown_adapter) if dropdown_adapter.exists() else ""
@@ -1817,27 +1888,21 @@ class KucGuardrails:
                 )
 
         if core_bar.exists():
-            source = self.read(core_bar)
-            group_index = source.find("for group in &options.groups")
-            pinned_index = source.find("for tab in options.tabs.iter().filter(|tab| tab.pinned)")
-            ordering = core_bar.parent / "ordering.rs"
-            ordering_source = self.read(ordering) if ordering.exists() else ""
-            delegated_order = (
-                "pub fn visual_tabs" in source
-                and "ordered_visible_tabs(&self.options.tabs, &self.options.groups)" in source
+            bar_modules = core_bar.parent / "bar"
+            source = "\n".join(
+                self.read(path)
+                for path in (core_bar, *self.rust_files(bar_modules))
+                if path.exists()
             )
-            if delegated_order:
-                order_contract_active = True
-                if not ordering_source or not self._ordering_has_pinned_before_groups(ordering_source):
-                    failures.append(
-                        f"{self.relative(core_bar)}: CloseableTabStrip delegated visual order must expose pinned tabs before group blocks"
-                    )
-            else:
-                order_contract_active = order_contract_active or group_index >= 0 or pinned_index >= 0
-                if group_index < 0 or pinned_index < 0 or pinned_index > group_index:
-                    failures.append(
-                        f"{self.relative(core_bar)}: CloseableTabStrip render tree must expose pinned tabs before group blocks"
-                    )
+            group_index = source.find("for group in &options.groups")
+            if group_index < 0:
+                group_index = source.find("for group in root_groups(&options.groups)")
+            pinned_index = source.find("for tab in options.tabs.iter().filter(|tab| tab.pinned)")
+            order_contract_active = order_contract_active or group_index >= 0 or pinned_index >= 0
+            if group_index < 0 or pinned_index < 0 or pinned_index > group_index:
+                failures.append(
+                    f"{self.relative(core_bar)}: CloseableTabStrip render tree must expose pinned tabs before group blocks"
+                )
 
         if not order_contract_active:
             return failures
@@ -1864,25 +1929,6 @@ class KucGuardrails:
                 f"{self.relative(core_tests)}: CloseableTabStrip pinned-before-group render contract test is missing"
             )
         return failures
-
-    @staticmethod
-    def _ordering_has_pinned_before_groups(source: str) -> bool:
-        pinned = source.find("push_pinned_tabs")
-        grouped = source.find("append_grouped_tabs")
-        unknown = source.find("push_unknown_group_tabs")
-        ungrouped = source.find("filter(|tab| !tab.pinned && tab.group_id.is_none())")
-        declared_group_evidence = (
-            "groups: &[WorkspaceTabGroup]" in source
-            and "for group in root_groups" in source
-            and "tab.group_id.as_ref() == Some(&group.id)" in source
-        )
-        return (
-            pinned >= 0
-            and grouped > pinned
-            and unknown > grouped
-            and ungrouped > unknown
-            and declared_group_evidence
-        )
 
     def storybook_input_core_bridge_failures(self, storybook_src: Path) -> list[str]:
         failures: list[str] = []

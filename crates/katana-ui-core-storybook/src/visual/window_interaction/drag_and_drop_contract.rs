@@ -66,3 +66,86 @@ pub(in crate::visual::window_interaction) fn drag_event_name(event: &DragEvent) 
 fn target_node_id() -> UiNodeId {
     UiNodeId::new(TARGET_NODE_ID)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::interaction::drag_and_drop::DropAcceptance;
+
+    #[test]
+    fn drag_event_names_cover_every_public_event_variant() {
+        let source = source_node_id();
+        let target = target_node_id();
+        let position = target_point();
+        let cases = [
+            (
+                DragEvent::DragStart {
+                    source: source.clone(),
+                    data: drag_data(),
+                },
+                "drag_start",
+            ),
+            (
+                DragEvent::DragMove {
+                    source: source.clone(),
+                    position,
+                },
+                "drag_move",
+            ),
+            (
+                DragEvent::DragEnter {
+                    target: target.clone(),
+                    data: drag_data(),
+                },
+                "drag_enter",
+            ),
+            (
+                DragEvent::DragLeave {
+                    target: target.clone(),
+                },
+                "drag_leave",
+            ),
+            (
+                DragEvent::DragOver {
+                    target: target.clone(),
+                    position,
+                    acceptance: DropAcceptance::Reject,
+                },
+                "drag_over",
+            ),
+            (
+                DragEvent::Drop {
+                    target: target.clone(),
+                    data: drag_data(),
+                    effect: DropEffect::Move,
+                },
+                "drop",
+            ),
+            (
+                DragEvent::DragCancel {
+                    source: source.clone(),
+                    reason: "cancelled".to_string(),
+                },
+                "drag_cancel",
+            ),
+            (
+                DragEvent::DragEnd {
+                    source: source.clone(),
+                    committed: true,
+                },
+                "drag_end(committed=true)",
+            ),
+            (
+                DragEvent::DragEnd {
+                    source,
+                    committed: false,
+                },
+                "drag_end(committed=false)",
+            ),
+        ];
+
+        for (event, expected_name) in cases {
+            assert_eq!(expected_name, drag_event_name(&event));
+        }
+    }
+}

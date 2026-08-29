@@ -41,7 +41,7 @@ const TABLE_LINE_HEIGHT: usize = 34;
 
 const DOCUMENT_BODY_FONT_ROLE: &str = "document-body";
 const DOCUMENT_CODE_FONT_ROLE: &str = "document-code";
-const MARKDOWN_HEADING_1_RASTER_VERTICAL_SCALE: f32 = 7.0 / 6.0;
+const MARKDOWN_HEADING_1_RASTER_VERTICAL_SCALE: f32 = 7.0 / 5.0;
 const KATANA_LONG_HEADING_2_TOP_MARGIN_PX: usize = 15;
 
 #[path = "ui_tree_canvas_text_document_typography.rs"]
@@ -280,7 +280,7 @@ mod tests {
 
         assert_eq!(24.0, metrics.font_size);
         assert_eq!(34, metrics.line_height);
-        assert_eq!(29, metrics.underline_offset);
+        assert_eq!(31, metrics.underline_offset);
         assert_eq!(17, metrics.strikethrough_offset);
         assert!(metrics.strikethrough_offset < metrics.underline_offset);
     }
@@ -504,6 +504,34 @@ mod tests {
 
         assert!((metrics.font_size - 16.33).abs() < 0.02);
         assert_eq!(30, metrics.line_height);
+    }
+
+    #[test]
+    fn export_surface_heading_1_and_2_roles_use_their_dedicated_metrics() {
+        let heading_1: UiNode = Text::new("Heading").text_role("heading-export").into();
+        let heading_2: UiNode = Text::new("Heading").text_role("heading-2-export").into();
+
+        let heading_1_metrics = UiTreeTextMetrics::for_node(&heading_1);
+        let heading_2_metrics = UiTreeTextMetrics::for_node(&heading_2);
+
+        assert!(heading_1_metrics.font_size > heading_2_metrics.font_size);
+        assert!(heading_1_metrics.line_height > heading_2_metrics.line_height);
+    }
+
+    #[test]
+    fn invalid_typography_scales_leave_text_metrics_unchanged() {
+        let mut metrics = UiTreeTextMetrics::for_role("body");
+        let original = metrics;
+
+        metrics.add_scaled_top_margin(f32::NAN);
+        metrics.add_scaled_long_heading_2_top_margin(0.0);
+        metrics.scale_document_text_font(-1.0, 20);
+        metrics.scale_document_font(f32::INFINITY);
+
+        assert_eq!(original.font_size, metrics.font_size);
+        assert_eq!(original.line_height, metrics.line_height);
+        assert_eq!(original.top_margin, metrics.top_margin);
+        assert_eq!(original.background_height, metrics.background_height);
     }
 
     #[test]

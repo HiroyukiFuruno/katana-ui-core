@@ -35,9 +35,10 @@ fn is_managed_artifact_file(path: &Path, name: &str) -> bool {
 }
 
 fn has_frame_prefix(name: &str) -> bool {
-    let Some(prefix) = name.as_bytes().get(..FRAME_NAME_PREFIX_LENGTH) else {
+    if name.len() < FRAME_NAME_PREFIX_LENGTH {
         return false;
-    };
+    }
+    let prefix = &name.as_bytes()[..FRAME_NAME_PREFIX_LENGTH];
     prefix[FRAME_TENS_INDEX].is_ascii_digit()
         && prefix[FRAME_ONES_INDEX].is_ascii_digit()
         && prefix[FRAME_SEPARATOR_INDEX] == b'-'
@@ -70,4 +71,95 @@ fn image_for_pixels(pixels: &CommandChromePlanPixels) -> image::ImageResult<Rgba
             image::error::ParameterErrorKind::DimensionMismatch,
         ))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::env;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+    #[cfg(target_os = "linux")]
+    use std::{ffi::OsString, os::unix::ffi::OsStringExt};
+
+    #[test]
+    fn frame_prefix_predicate_matches_only_expected_names() {
+        assert!(has_frame_prefix("12-frame.png"));
+        assert!(has_frame_prefix("00-foo.png"));
+        assert!(!has_frame_prefix("1x-foo.png"));
+        assert!(!has_frame_prefix("12_foo"));
+        assert!(!has_frame_prefix("foo"));
+        assert!(!has_frame_prefix("x"));
+    }
+
+    #[test]
+    fn clear_previous_artifact_files_keeps_only_managed_artifact_files()
+    -> Result<(), CommandChromeArtifactError> {
+        let output_dir = temp_dir("command-chrome-artifact-writer-io")?;
+        let files = [
+            ARTIFACT_GIF_FILE,
+            ARTIFACT_MANIFEST_FILE,
+            "00-frame.png",
+            "01-frame.png",
+            "note.txt",
+            "00-keep.png.tmp",
+        ];
+        for file in files {
+            let path = output_dir.join(file);
+            fs::write(&path, b"data")?;
+        }
+
+        clear_previous_artifact_files(&output_dir)?;
+
+        assert!(!output_dir.join(ARTIFACT_GIF_FILE).exists());
+        assert!(!output_dir.join(ARTIFACT_MANIFEST_FILE).exists());
+        assert!(!output_dir.join("00-frame.png").exists());
+        assert!(!output_dir.join("01-frame.png").exists());
+        assert!(output_dir.join("note.txt").exists());
+        assert!(output_dir.join("00-keep.png.tmp").exists());
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn clear_previous_artifact_files_ignores_non_utf8_names()
+    -> Result<(), CommandChromeArtifactError> {
+        let output_dir = temp_dir("command-chrome-artifact-writer-io-non-utf8")?;
+        let path = output_dir.join(OsString::from_vec(vec![0xff]));
+        fs::write(&path, b"data")?;
+        clear_previous_artifact_files(&output_dir)?;
+        assert!(path.exists());
+        Ok(())
+    }
+
+    #[test]
+    fn write_png_fails_for_invalid_pixel_dimensions() -> Result<(), CommandChromeArtifactError> {
+        let output_dir = temp_dir("command-chrome-artifact-writer-io-invalid")?;
+        let path = output_dir.join("invalid.png");
+        let pixels = CommandChromePlanPixels {
+            width: 2,
+            height: 2,
+            rgba: vec![255, 255, 255, 255, 255],
+            paint_plan_hash: "hash".to_string(),
+            pixel_hash: "hash".to_string(),
+        };
+        let result = write_png(&pixels, &path);
+        assert!(result.is_err());
+        Ok(())
+    }
+
+    fn temp_dir(prefix: &str) -> Result<PathBuf, CommandChromeArtifactError> {
+        let mut path = env::temp_dir();
+        path.push("katana-storybook-command-chrome-artifact-writer");
+        path.push(format!(
+            "{prefix}-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&path).map_err(CommandChromeArtifactError::Io)?;
+        Ok(path)
+    }
 }

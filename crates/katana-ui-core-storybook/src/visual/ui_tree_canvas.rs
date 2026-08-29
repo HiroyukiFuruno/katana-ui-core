@@ -54,7 +54,7 @@ impl UiTreeCanvasRenderer {
     }
 
     pub fn render(&self, canvas: &mut Canvas, root: &UiNode, area: UiTreeRenderArea) {
-        canvas.with_clip(area.x, area.y, area.width, area.height, |canvas| {
+        canvas.with_clip(area.x, area.y, area.width, area.height, &mut |canvas| {
             let mut y = render_origin_y(root, area);
             self.render_node(canvas, root, area.x, &mut y, area, self.palette);
         });
@@ -180,7 +180,7 @@ impl UiTreeCanvasRenderer {
                         start_y,
                         remaining_width(area, x),
                         requested_height,
-                        |canvas| {
+                        &mut |canvas| {
                             UiTreeTextRenderer::draw_node(canvas, text_context, node, x, y, area);
                         },
                     );
@@ -193,5 +193,41 @@ impl UiTreeCanvasRenderer {
         if requested_height > 0 {
             *y = start_y.saturating_add(requested_height);
         }
+    }
+}
+
+#[cfg(test)]
+mod direct_render_tests {
+    use super::*;
+    use katana_ui_core::molecule::Accordion;
+
+    #[test]
+    fn render_node_skips_offscreen_fixed_height_and_dispatches_accordion() {
+        let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark());
+        let mut canvas = Canvas::new(200, 100, 0);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 200,
+            height: 100,
+            scroll_y: 0.0,
+        };
+
+        let fixed = UiNode::new(UiNodeKind::Text, "outside").height(UiDimension::Px(20));
+        let mut y = 120;
+        renderer.render_node(&mut canvas, &fixed, 0, &mut y, area, renderer.palette);
+        assert_eq!(140, y);
+
+        let accordion = UiNode::from(Accordion::new("Details").open(true));
+        let mut accordion_y = 0;
+        renderer.render_node(
+            &mut canvas,
+            &accordion,
+            0,
+            &mut accordion_y,
+            area,
+            renderer.palette,
+        );
+        assert!(accordion_y > 0);
     }
 }

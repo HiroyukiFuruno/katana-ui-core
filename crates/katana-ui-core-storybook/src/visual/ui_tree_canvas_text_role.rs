@@ -225,7 +225,10 @@ fn alignment_width(node: &UiNode, area: UiTreeRenderArea) -> usize {
 #[cfg(test)]
 mod tests {
     use super::list::list_marker_center_y;
-    use super::{UiTreeDocumentTypography, UiTreeTextMetrics, UiTreeTextRoleRenderer};
+    use super::{
+        DIAGRAM_CONTROL_SPACER_Y_OFFSET, UiTreeDocumentTypography, UiTreeTextMetrics,
+        UiTreeTextRoleRenderer, html_alignment_origin_offset,
+    };
     use crate::visual::canvas::Canvas;
     use crate::visual::ui_tree_canvas_palette::UiTreeCanvasPalette;
     use crate::visual::ui_tree_canvas_types::UiTreeRenderArea;
@@ -338,6 +341,54 @@ mod tests {
         assert_eq!(0, canvas.non_background_pixels(palette.background));
     }
 
+    #[test]
+    fn media_pending_and_diagram_spacer_paint_their_contract_colors() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 80,
+            height: 60,
+            scroll_y: 0.0,
+        };
+
+        let pending = text_role_node("media-pending");
+        let pending_metrics = UiTreeTextMetrics::for_node(&pending);
+        let mut pending_canvas = Canvas::new(80, 60, palette.background);
+        UiTreeTextRoleRenderer::draw_background(
+            &mut pending_canvas,
+            &pending,
+            4,
+            3,
+            area,
+            palette,
+            pending_metrics,
+        );
+        assert_eq!(
+            palette.pending_background,
+            pending_canvas.pixels()[3 * 80 + 4]
+        );
+
+        let spacer = text_role_node("diagram-control-spacer");
+        let spacer_metrics = UiTreeTextMetrics::for_node(&spacer);
+        let mut spacer_canvas = Canvas::new(80, 60, palette.background);
+        UiTreeTextRoleRenderer::draw_background(
+            &mut spacer_canvas,
+            &spacer,
+            4,
+            3,
+            area,
+            palette,
+            spacer_metrics,
+        );
+        assert_eq!(
+            palette.muted_border,
+            spacer_canvas.pixels()[(3 + DIAGRAM_CONTROL_SPACER_Y_OFFSET) * 80 + 4]
+        );
+        assert_eq!(0, html_alignment_origin_offset("body"));
+    }
+
     fn color_token(name: &str, rgb: u32) -> ColorToken {
         ColorToken {
             name: name.to_string(),
@@ -348,5 +399,12 @@ mod tests {
                 255,
             ],
         }
+    }
+
+    fn text_role_node(role: &str) -> UiNode {
+        UiNode::new(UiNodeKind::Text, role).text(UiTextProps {
+            role: role.to_string(),
+            ..UiTextProps::default()
+        })
     }
 }

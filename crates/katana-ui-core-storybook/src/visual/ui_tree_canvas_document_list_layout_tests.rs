@@ -210,7 +210,8 @@ fn layout_container_respects_explicit_padding_for_document_surface() {
         },
     );
 
-    let first_x = first_content_x(&canvas).kuc_expect("padded child text should render");
+    let first_x = leftmost_content_x(&canvas, palette.background)
+        .kuc_expect("padded child text should render");
     assert!(
         (24..=32).contains(&first_x),
         "padding left must not be ignored: {first_x}"

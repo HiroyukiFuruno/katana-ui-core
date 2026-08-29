@@ -250,3 +250,36 @@ fn text_slot_width(text: &str) -> usize {
         .saturating_add(TEXT_SLOT_PADDING)
         .max(TEXT_SLOT_PADDING)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_and_nested_metrics_cover_unrequested_control_dimensions() {
+        let child = UiNode::new(UiNodeKind::Text, "child").height(UiDimension::Px(37));
+        let frame = UiNode::new(UiNodeKind::Stack, "").child(child);
+        assert_eq!(37, frame_height(&frame));
+        assert_eq!(
+            TEXT_HEIGHT,
+            frame_height(&UiNode::new(UiNodeKind::Stack, ""))
+        );
+
+        let button = UiNode::new(UiNodeKind::Button, "button");
+        assert_eq!((BUTTON_DRAW_WIDTH, TEXT_HEIGHT), button_dimensions(&button));
+        assert_eq!(BUTTON_SLOT_WIDTH, button_slot_width(&button));
+        assert_eq!(BUTTON_SLOT_WIDTH, slot_width(&button));
+
+        let explicit = UiNode::new(UiNodeKind::Button, "explicit").width(UiDimension::Px(42));
+        assert_eq!(42, button_slot_width(&explicit));
+        let hover = UiNode::new(UiNodeKind::Stack, "")
+            .visual_role(UiVisualRole::HoverSurface)
+            .child(explicit);
+        assert_eq!(42, slot_width(&hover));
+
+        let text = UiNode::new(UiNodeKind::Text, "text");
+        assert_eq!(26, child_container_x(&text, 10));
+        let row = UiNode::new(UiNodeKind::Row, "");
+        assert_eq!(10, child_container_x(&row, 10));
+    }
+}

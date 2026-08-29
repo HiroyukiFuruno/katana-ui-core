@@ -82,10 +82,7 @@ impl StorybookPanelInteractionReport {
             .build_selected(examples, DEFAULT_STORYBOOK_PAGE);
         let root = tree.root();
         let preview = panel_child(root, PREVIEW_LABEL);
-        let selected_story = examples
-            .iter()
-            .find(|it| it.page == DEFAULT_STORYBOOK_PAGE)
-            .or_else(|| examples.first());
+        let selected_story = selected_story(examples);
         let selected_label = selected_story.map(|it| it.tree.root().props().label.as_str());
         let callback_log = selected_story
             .map(|it| report_callback_logs(&it.callback_logs))
@@ -143,6 +140,13 @@ impl StorybookPanelInteractionReport {
     }
 }
 
+fn selected_story(examples: &[StoryExample]) -> Option<&StoryExample> {
+    match examples.iter().find(|it| it.page == DEFAULT_STORYBOOK_PAGE) {
+        Some(story) => Some(story),
+        None => examples.first(),
+    }
+}
+
 fn operation_sequence(callback_log: &[CallbackLogReport]) -> Vec<OperationStepReport> {
     callback_log
         .iter()
@@ -179,11 +183,14 @@ fn story_root_theme(preview: Option<&UiNode>, selected_label: Option<&str>) -> O
 
 fn story_child<'a>(preview: &'a UiNode, selected_label: Option<&str>) -> Option<&'a UiNode> {
     let selected_label = selected_label?;
-    preview
+    match preview
         .children()
         .iter()
         .find(|it| it.props().label == selected_label)
-        .or_else(|| preview.children().first())
+    {
+        Some(story) => Some(story),
+        None => preview.children().first(),
+    }
 }
 
 fn report_callback_logs(callback_logs: &[UiCallbackLog]) -> Vec<CallbackLogReport> {

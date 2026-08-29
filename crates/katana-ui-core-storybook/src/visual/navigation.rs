@@ -41,7 +41,7 @@ pub(super) fn draw(
         viewport.y,
         viewport.width,
         viewport.height,
-        |canvas| {
+        &mut |canvas| {
             let first_index = options.scroll_y / NAV_ROW_STEP;
             let row_offset = options.scroll_y % NAV_ROW_STEP;
             let mut row_y = NAV_FIRST_ROW_Y.saturating_sub(row_offset);

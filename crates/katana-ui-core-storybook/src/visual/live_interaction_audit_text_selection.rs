@@ -12,6 +12,12 @@ const TEXT_INPUT_PASTE_SELECTION_START: usize = 1;
 const TEXT_INPUT_PASTE_SELECTION_END: usize = 4;
 const TEXT_AREA_PASTE_SELECTION_START: usize = 1;
 const TEXT_AREA_PASTE_SELECTION_END: usize = 3;
+const EMPTY_SELECTION_RECT: LayoutRect = LayoutRect {
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+};
 
 pub(in crate::visual) fn scenarios(page: &'static str) -> Vec<StorybookLiveInteractionScenario> {
     let mut scenarios = match page {
@@ -115,9 +121,7 @@ fn text_drag_selection_scenario(page: &'static str) -> StorybookLiveInteractionS
     let mut state = page_state(page);
     let before = render_state(page, &state);
     let frame = before.clone();
-    let Some(rect) = first_selectable_text_rect(page, &frame) else {
-        return scenario(page, "text_drag_selection", "drag", false, false, 0, &state);
-    };
+    let rect = selectable_text_rect(page, &frame);
     let dragged = apply_text_selection_drag_for_audit(
         &mut state,
         &frame,
@@ -143,17 +147,7 @@ fn text_drag_selection_scenario(page: &'static str) -> StorybookLiveInteractionS
 fn text_keyboard_copy_scenario(page: &'static str) -> StorybookLiveInteractionScenario {
     let mut state = page_state(page);
     let frame = render_state(page, &state);
-    let Some(rect) = first_selectable_text_rect(page, &frame) else {
-        return scenario(
-            page,
-            "text_keyboard_copy",
-            "keyboard",
-            false,
-            false,
-            0,
-            &state,
-        );
-    };
+    let rect = selectable_text_rect(page, &frame);
     let dragged = apply_text_selection_drag_for_audit(
         &mut state,
         &frame,
@@ -177,17 +171,7 @@ fn text_zero_distance_drag_scenario(page: &'static str) -> StorybookLiveInteract
     let mut state = page_state(page);
     let before = render_state(page, &state);
     let frame = before.clone();
-    let Some(rect) = first_selectable_text_rect(page, &frame) else {
-        return scenario(
-            page,
-            "text_zero_distance_drag_no_selection",
-            "drag",
-            false,
-            false,
-            0,
-            &state,
-        );
-    };
+    let rect = selectable_text_rect(page, &frame);
     let dragged =
         apply_text_selection_drag_for_audit(&mut state, &frame, (rect.x, rect.y), (rect.x, rect.y));
     let copied = apply_text_copy_shortcut_for_audit(&mut state, &frame);
@@ -240,6 +224,10 @@ fn first_selectable_text_rect(
         })
 }
 
+fn selectable_text_rect(page: &'static str, frame: &super::super::Canvas) -> LayoutRect {
+    first_selectable_text_rect(page, frame).unwrap_or(EMPTY_SELECTION_RECT)
+}
+
 fn rect_overlaps(a: LayoutRect, b: LayoutRect) -> bool {
     a.x < b.right() && a.right() > b.x && a.y < b.bottom() && a.bottom() > b.y
 }
@@ -276,4 +264,76 @@ fn render_text_selection_state(
         colors.selection,
     );
     frame
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        EMPTY_SELECTION_RECT, first_selectable_text_rect, rect_overlaps, selectable_text_rect,
+        selection_pixel_diff, text_keyboard_paste_scenario,
+    };
+    use crate::test_assert::KucTestExpect;
+    use crate::visual::Canvas;
+    use crate::visual::layout_metrics::LayoutRect;
+
+    #[test]
+    fn text_selection_audit_rejects_paste_for_non_text_pages() {
+        let scenario = text_keyboard_paste_scenario("button");
+
+        assert!(!scenario.passed);
+    }
+
+    #[test]
+    fn selectable_text_lookup_and_pixel_diff_cover_empty_and_fallback_paths() {
+        let blank = Canvas::new(16, 16, 0);
+        assert!(first_selectable_text_rect("button", &blank).is_none());
+        assert_eq!(EMPTY_SELECTION_RECT, selectable_text_rect("button", &blank));
+        assert_eq!(0, selection_pixel_diff("button", &blank, &blank));
+
+        let before = Canvas::new(16, 16, 0);
+        let after = Canvas::new(16, 16, 1);
+        assert_eq!(16 * 16, selection_pixel_diff("button", &before, &after));
+
+        let mut fallback = Canvas::new(16, 16, 0);
+        fallback.record_text_run("fallback", 0, 0, 8, 8);
+        assert_eq!(
+            LayoutRect {
+                x: 0,
+                y: 0,
+                width: 8,
+                height: 8,
+            },
+            first_selectable_text_rect("button", &fallback)
+                .kuc_expect("fallback text run must be selectable")
+        );
+
+        assert!(rect_overlaps(
+            LayoutRect {
+                x: 0,
+                y: 0,
+                width: 10,
+                height: 10,
+            },
+            LayoutRect {
+                x: 9,
+                y: 9,
+                width: 10,
+                height: 10,
+            },
+        ));
+        assert!(!rect_overlaps(
+            LayoutRect {
+                x: 0,
+                y: 0,
+                width: 10,
+                height: 10,
+            },
+            LayoutRect {
+                x: 10,
+                y: 10,
+                width: 10,
+                height: 10,
+            },
+        ));
+    }
 }

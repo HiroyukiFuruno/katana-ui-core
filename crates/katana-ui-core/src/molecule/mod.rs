@@ -11,6 +11,7 @@ mod disclosure;
 mod disclosure_foundation;
 mod drag_preview;
 mod empty_state;
+mod generic_grid;
 mod motion_defaults;
 mod segmented_toggle;
 pub mod selection;
@@ -65,6 +66,13 @@ pub use empty_state::{
     EmptyState, EmptyStateAction, EmptyStateActionId, EmptyStateAlignment,
     EmptyStateContractViolation, EmptyStateEvent, EmptyStateLayoutRect, EmptyStateLayoutSnapshot,
     EmptyStateSize, EmptyStateTone,
+};
+pub use generic_grid::{
+    GenericGrid, GridAction, GridAxisConfig, GridAxisPlan, GridAxisPlanner, GridCellAppearance,
+    GridCellContent, GridCellLayout, GridCellSpan, GridCoordinate, GridDataBar, GridEvent,
+    GridHitTest, GridHorizontalAlignment, GridIcon, GridIndexRange, GridLayout,
+    GridNavigationIntent, GridRating, GridSelection, GridTrackSizeProvider, GridVerticalAlignment,
+    GridViewport,
 };
 pub use motion_defaults::{MotionDefaults, MotionTarget};
 pub use segmented_toggle::SegmentedToggle;

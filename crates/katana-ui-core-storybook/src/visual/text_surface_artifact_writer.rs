@@ -60,10 +60,86 @@ fn is_managed_artifact_file(path: &Path, name: &str) -> bool {
 }
 
 fn has_frame_prefix(name: &str) -> bool {
-    let Some(prefix) = name.as_bytes().get(..FRAME_NAME_PREFIX_LENGTH) else {
+    if name.len() < FRAME_NAME_PREFIX_LENGTH {
         return false;
-    };
+    }
+    let prefix = &name.as_bytes()[..FRAME_NAME_PREFIX_LENGTH];
     prefix[FRAME_TENS_INDEX].is_ascii_digit()
         && prefix[FRAME_ONES_INDEX].is_ascii_digit()
         && prefix[FRAME_SEPARATOR_INDEX] == b'-'
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::text_surface_script_types::TextSurfaceArtifactError;
+    use std::env;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+    #[cfg(target_os = "linux")]
+    use std::{ffi::OsString, os::unix::ffi::OsStringExt};
+
+    #[test]
+    fn frame_prefix_predicate_matches_only_expected_names() {
+        assert!(has_frame_prefix("08-anything.png"));
+        assert!(has_frame_prefix("00-any.png"));
+        assert!(!has_frame_prefix("a1-any.png"));
+        assert!(!has_frame_prefix("0x-any"));
+        assert!(!has_frame_prefix("abc"));
+        assert!(!has_frame_prefix("x"));
+    }
+
+    #[test]
+    fn clear_previous_artifact_files_removes_managed_outputs_only()
+    -> Result<(), TextSurfaceArtifactError> {
+        let output_dir = temp_dir("text-surface-artifact-writer")?;
+        let files = [
+            ARTIFACT_GIF_FILE,
+            ARTIFACT_MANIFEST_FILE,
+            "00-frame.png",
+            "01-frame.png",
+            "note.txt",
+            "00-keep.txt",
+        ];
+        for file in files {
+            fs::write(output_dir.join(file), b"data").map_err(TextSurfaceArtifactError::Io)?;
+        }
+
+        clear_previous_artifact_files(&output_dir)?;
+
+        assert!(!output_dir.join(ARTIFACT_GIF_FILE).exists());
+        assert!(!output_dir.join(ARTIFACT_MANIFEST_FILE).exists());
+        assert!(!output_dir.join("00-frame.png").exists());
+        assert!(!output_dir.join("01-frame.png").exists());
+        assert!(output_dir.join("note.txt").exists());
+        assert!(output_dir.join("00-keep.txt").exists());
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn clear_previous_artifact_files_ignores_non_utf8_names() -> Result<(), TextSurfaceArtifactError>
+    {
+        let output_dir = temp_dir("text-surface-artifact-writer-non-utf8")?;
+        let path = output_dir.join(OsString::from_vec(vec![0xff]));
+        fs::write(&path, b"data").map_err(TextSurfaceArtifactError::Io)?;
+        clear_previous_artifact_files(&output_dir)?;
+        assert!(path.exists());
+        Ok(())
+    }
+
+    fn temp_dir(prefix: &str) -> Result<PathBuf, TextSurfaceArtifactError> {
+        let mut path = env::temp_dir();
+        path.push("katana-storybook-text-surface-artifact-writer");
+        path.push(format!(
+            "{prefix}-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&path).map_err(TextSurfaceArtifactError::Io)?;
+        Ok(path)
+    }
 }

@@ -155,8 +155,10 @@ pub(super) fn publish_ime_output(
     ui.output_mut(|output| {
         output.mutable_text_under_cursor = true;
         output.ime = Some(egui::output::IMEOutput {
+            purpose: egui::IMEPurpose::Normal,
             rect: egui_rect(record.frame.content_bounds),
             cursor_rect: egui_rect(record.frame.selection.caret),
+            should_interrupt_composition: false,
         });
     });
 }
@@ -269,5 +271,5 @@ impl std::error::Error for EguiTextSurfaceError {}
 fn artifact_hash(value: &impl Serialize) -> Result<String, EguiTextSurfaceError> {
     let bytes = serde_json::to_vec(value)
         .map_err(|error| EguiTextSurfaceError::ArtifactSerialization(error.to_string()))?;
-    Ok(format!("{:x}", Sha256::digest(bytes)))
+    Ok(hex::encode(Sha256::digest(bytes)))
 }

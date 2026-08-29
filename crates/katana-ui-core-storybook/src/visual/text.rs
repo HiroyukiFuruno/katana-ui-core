@@ -301,14 +301,18 @@ impl TextRenderer {
     }
 
     fn measure_request(&self, spans: Vec<UiTextSpan>, size: f32, scale_factor: f32) -> usize {
-        self.rasterize(
+        if spans.iter().all(|span| span.text.is_empty()) {
+            return 0;
+        }
+        match self.rasterize(
             spans,
             self.font_with_size(size),
             scale_factor,
             default_line_height(size),
-        )
-        .map(|raster| visible_raster_width(&raster, scale_factor))
-        .unwrap_or_else(|| size.ceil().max(1.0) as usize)
+        ) {
+            Some(raster) => visible_raster_width(&raster, scale_factor),
+            None => size.ceil().max(1.0) as usize,
+        }
     }
 
     fn rasterize(
@@ -591,5 +595,26 @@ fn resolve_font(facade: &UiCoreFacade, role: &str) -> FontToken {
         family: FontFamily::Proportional,
         size: FALLBACK_FONT_SIZE,
         weight: REGULAR_WEIGHT,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn scale_and_font_resolution_cover_invalid_and_empty_theme_fallbacks() {
+        assert_eq!(1.0, normalized_scale_factor(f32::NAN));
+        assert_eq!(1.0, normalized_scale_factor(0.5));
+        assert_eq!(2.0, normalized_scale_factor(2.0));
+
+        let mut theme = ThemeSnapshot::dark();
+        theme.fonts.clear();
+        let font = resolve_font(&UiCoreFacade::new(theme), "missing");
+        assert_eq!(FALLBACK_FONT_NAME, font.name);
+        assert_eq!(FontFamily::Proportional, font.family);
+        assert_eq!(FALLBACK_FONT_SIZE, font.size);
+        assert_eq!(REGULAR_WEIGHT, font.weight);
     }
 }

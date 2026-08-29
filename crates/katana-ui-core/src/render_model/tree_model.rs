@@ -126,6 +126,14 @@ mod tests {
     }
 
     #[test]
+    fn missing_hover_targets_preserve_the_tree() {
+        let tree = UiTree::new(UiNode::new(UiNodeKind::Button, "target"));
+
+        assert_eq!(tree, tree.with_hovered_node_id(None));
+        assert_eq!(tree, tree.with_hover_surface_for_node_id(None));
+    }
+
+    #[test]
     fn with_hovered_node_id_clears_stale_hover_on_non_matching_nodes() {
         let stale = UiNode::new(UiNodeKind::Button, "stale")
             .stable_node_id("stale-node")

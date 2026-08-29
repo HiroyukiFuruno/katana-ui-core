@@ -10,7 +10,6 @@ authors.workspace = true
 
 [dependencies]
 cosmic-text.workspace = true
-fontdb.workspace = true
 katana-ui-core.workspace = true
 sha2.workspace = true
 unicode-segmentation.workspace = true

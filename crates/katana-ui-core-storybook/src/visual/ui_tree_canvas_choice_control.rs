@@ -142,3 +142,30 @@ fn row_width(text: &TextRenderer, node: &UiNode) -> usize {
         .saturating_add(text.measure_width(&node.props().label, TEXT_SIZE))
         .max(CONTROL_SIZE)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::atom::Radio;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn checked_radio_draws_dot_and_empty_label_uses_control_width() {
+        let palette = UiTreeCanvasPalette::from_theme(&ThemeSnapshot::dark());
+        let text = TextRenderer::load(&UiCoreFacade::default(), "body");
+        let checked: UiNode = Radio::new("").selected(true).into();
+        let mut canvas = Canvas::new(100, 40, palette.background);
+        let mut y = 4;
+
+        UiTreeChoiceControlRenderer::draw_radio(&mut canvas, &text, &checked, 4, &mut y, palette);
+
+        assert_eq!(4 + ROW_HEIGHT, y);
+        assert_eq!(
+            palette.selection,
+            canvas.pixels()[(4 + RADIO_DOT_INSET) * canvas.width() + 4 + RADIO_DOT_INSET]
+        );
+        assert_eq!(SLIDE_WIDTH, row_width(&text, &checked));
+        assert!(canvas.text_runs().is_empty());
+    }
+}

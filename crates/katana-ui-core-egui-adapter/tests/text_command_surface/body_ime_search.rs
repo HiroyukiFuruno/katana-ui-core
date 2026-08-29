@@ -2,14 +2,18 @@ use super::super::{assertions, fixtures, harness, support};
 use katana_ui_core::molecule::command_chrome::FloatingCommandToolbarVisibility;
 use katana_ui_core::text_surface::TextSurfacePresentation;
 use katana_ui_core_egui_adapter::text_command_surface::{
-    EguiTextCommandSurface, EguiTextCommandSurfaceFloatingPresentation,
-    EguiTextCommandSurfacePresentation, EguiTextCommandSurfaceSearchPresentation,
+    EguiTextCommandSurface, EguiTextCommandSurfaceAdapter,
+    EguiTextCommandSurfaceFloatingPresentation, EguiTextCommandSurfacePresentation,
+    EguiTextCommandSurfaceSearchPresentation,
 };
 
 pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
     let context = egui::Context::default();
     context.enable_accesskit();
-    let mut adapter = harness::adapter()?;
+    let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+    )
+    .expect("text command adapter");
     let mut surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture())
         .with_toolbar(fixtures::toolbar_fixture())
         .with_floating_toolbar(
@@ -105,7 +109,10 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
         &mut adapter,
         &mut surface,
         &style,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit("かな".into()))],
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "かな".into(),
+            active_range_chars: None,
+        })],
     )?;
     assert!(preedit.text.record.frame.preedit.is_some());
     assert_eq!(surface.text().state().text_area.value, before_preedit);

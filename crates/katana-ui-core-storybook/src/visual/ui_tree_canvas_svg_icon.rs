@@ -30,10 +30,7 @@ impl SvgIconRaster {
     ) -> bool {
         let physical_left = canvas.to_physical_x(left);
         let physical_top = canvas.to_physical_y(top);
-        let physical_size = canvas.logical_scale(size).max(1);
-        let Ok(physical_size) = u32::try_from(physical_size) else {
-            return false;
-        };
+        let physical_size = canvas.logical_scale(size).max(1).min(u32::MAX as usize) as u32;
         let request = UiSvgRasterRequest {
             icon: icon.clone(),
             width_px: physical_size,
@@ -45,21 +42,12 @@ impl SvgIconRaster {
             return false;
         };
 
-        let Ok(raster_width) = usize::try_from(raster.width_px) else {
-            return false;
-        };
-        let Ok(raster_height) = usize::try_from(raster.height_px) else {
-            return false;
-        };
+        let raster_width = raster.width_px as usize;
+        let raster_height = raster.height_px as usize;
         for y in 0..raster_height {
             for x in 0..raster_width {
                 let index = (y * raster_width + x) * RGBA_CHANNEL_COUNT;
-                let Some(pixel) = raster
-                    .rgba_unmultiplied
-                    .get(index..index + RGBA_CHANNEL_COUNT)
-                else {
-                    return false;
-                };
+                let pixel = &raster.rgba_unmultiplied[index..index + RGBA_CHANNEL_COUNT];
                 if pixel[ALPHA_CHANNEL_INDEX] == 0 {
                     continue;
                 }
@@ -149,6 +137,15 @@ mod tests {
             anti_aliased_pixel_count(&canvas, BACKGROUND, TEXT) > 0,
             "2x icon should keep SVG antialias pixels instead of blocky logical expansion"
         );
+    }
+
+    #[test]
+    fn invalid_svg_returns_false_without_mutating_the_canvas() {
+        let icon = UiIconProps::new("<svg");
+        let mut canvas = Canvas::new(8, 8, BACKGROUND);
+
+        assert!(!SvgIconRaster::draw(&mut canvas, &icon, 0, 0, 8, TEXT));
+        assert!(canvas.pixels().iter().all(|pixel| *pixel == BACKGROUND));
     }
 
     #[derive(Debug)]

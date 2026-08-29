@@ -96,3 +96,66 @@ fn modal_backdrop_respects_dismiss_policy() {
     assert!(!result.handled);
     assert!(result.after.open);
 }
+
+#[test]
+fn modal_overlay_delegates_non_lifecycle_press() {
+    let mut modal = ModalOverlay::new("Overlay");
+    let result = modal.apply_action(&UiAction::press(modal.state_id().clone()));
+
+    assert!(result.handled);
+}
+
+#[test]
+fn modal_custom_size_parent_allow_accessors_and_selection_state_are_typed() {
+    let modal = Modal::new("Dialog")
+        .selected_index(2)
+        .item_count(4)
+        .backdrop("transparent")
+        .dismiss_policy("explicit")
+        .panel_size("custom:640px")
+        .parent_interaction(ModalParentInteraction::Allow);
+    assert_eq!("transparent", modal.backdrop_model());
+    assert_eq!("explicit", modal.dismiss_policy_model());
+    assert_eq!(
+        ModalParentInteraction::Allow,
+        modal.parent_interaction_model()
+    );
+    let tree = UiTree::new(modal);
+    assert_eq!(
+        UiModalSize::Custom { width_px: 640 },
+        tree.root().props().modal.size
+    );
+    assert_eq!(
+        UiModalParentInteraction::Allow,
+        tree.root().props().modal.parent_interaction
+    );
+    assert_eq!(2, tree.root().props().interaction.selected_index);
+    assert_eq!(4, tree.root().props().interaction.item_count);
+
+    let invalid = UiTree::new(Modal::new("Dialog").panel_size("custom:invalid"));
+    assert_eq!(
+        UiModalSize::Custom { width_px: 0 },
+        invalid.root().props().modal.size
+    );
+}
+
+#[test]
+fn modal_denied_lifecycle_actions_and_unrelated_actions_are_ignored() {
+    let mut modal = Modal::new("Dialog")
+        .open(true)
+        .escape_dismiss(false)
+        .outside_click_dismiss(false);
+    assert!(
+        !modal
+            .apply_action(&UiAction::modal_escape(modal.state_id().clone()))
+            .handled
+    );
+    assert!(
+        !modal
+            .apply_action(&UiAction::modal_backdrop_click(modal.state_id().clone()))
+            .handled
+    );
+    let value = modal.apply_action(&UiAction::set_value(modal.state_id().clone(), "generic"));
+    assert!(value.handled);
+    assert_eq!("generic", value.after.value);
+}

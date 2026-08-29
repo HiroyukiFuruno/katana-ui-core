@@ -12,11 +12,11 @@ pub(super) fn paint_plan_hash(
         hasher.update(plan_kind(plan));
         hasher.update(serialized_plan(plan)?);
     }
-    Ok(format!("{:x}", hasher.finalize()))
+    Ok(hex::encode(hasher.finalize()))
 }
 
 pub(super) fn hash_bytes(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
+    hex::encode(Sha256::digest(bytes))
 }
 
 fn serialized_plan(plan: &ArtifactPaintPlanRef<'_>) -> Result<Vec<u8>, ArtifactCompositeError> {

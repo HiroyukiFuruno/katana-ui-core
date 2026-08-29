@@ -57,7 +57,7 @@ fn frame_with_events(
             ..egui::RawInput::default()
         },
         |ui| {
-            egui::CentralPanel::default().show_inside(ui, |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
                 receipt = Some(adapter.show(ui, strip));
             });
         },
@@ -326,7 +326,7 @@ fn rendered_input_and_labels_use_kuc_raster_artifacts_with_exact_emoji_variants(
     assert!(evidence.input_has_text_texture());
     assert_eq!(evidence.input_paint_plan_hash().len(), 64);
 
-    let fingerprint = |value: &str| format!("{:x}", Sha256::digest(value.as_bytes()));
+    let fingerprint = |value: &str| hex::encode(Sha256::digest(value.as_bytes()));
     let emoji = evidence
         .label_rasters()
         .iter()

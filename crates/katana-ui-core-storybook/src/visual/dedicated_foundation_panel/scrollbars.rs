@@ -124,3 +124,14 @@ fn thumb_offset(
     let travel = track_length.saturating_sub(thumb_length);
     track_start + travel * offset as usize / max_offset
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{thumb_length, thumb_offset};
+
+    #[test]
+    fn empty_content_and_non_scrollable_content_pin_the_thumb() {
+        assert_eq!(40, thumb_length(40, 20, 0));
+        assert_eq!(7, thumb_offset(7, 40, 40, 99, 20, 20));
+    }
+}

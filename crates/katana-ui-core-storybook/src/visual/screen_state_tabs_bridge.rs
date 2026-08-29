@@ -195,3 +195,30 @@ fn tabs_action_for_setting(setting: &str) -> Option<TabsScreenAction> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tabs_bridge_reports_unknown_settings_missing_tabs_and_existing_contract_tabs() {
+        let mut screen = StorybookScreenState::default();
+        assert!(
+            !screen.register_tabs_contract_setting(StorybookUiOptionContract::new(
+                "tabs.unknown",
+                "before",
+                "after"
+            ))
+        );
+
+        screen.register_closeable_tab_strip_select("missing");
+        assert_eq!("tabs.active=missing", screen.state_label);
+
+        let mut tabs = super::super::screen_state_tabs::TabsScreenState::default();
+        let existing_id = tabs.tabs[0].id.clone();
+        let initial_len = tabs.tabs.len();
+        ensure_closeable_contract_tab(&mut tabs, &existing_id);
+        assert_eq!(initial_len, tabs.tabs.len());
+        assert_eq!(None, tabs_action_for_setting("tabs.unknown"));
+    }
+}

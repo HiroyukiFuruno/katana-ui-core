@@ -60,7 +60,7 @@ impl SanitizedCommandProjection {
             }
         }
 
-        format!("{:x}", digest.finalize())
+        hex::encode(digest.finalize())
     }
 }
 

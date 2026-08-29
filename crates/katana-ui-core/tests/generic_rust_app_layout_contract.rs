@@ -2,12 +2,13 @@ use katana_ui_core::component::{ComponentAction, ComponentTree};
 use katana_ui_core::facade::{UiCoreFacade, UiGlobalState};
 use katana_ui_core::interaction::UiAction;
 use katana_ui_core::layout::{
-    Column, Length, Row, ScrollArea, ScrollAxis, ScrollbarVisibility, SplitPane, SplitPaneAxis,
-    SplitPaneResizeMode, SplitPaneResizeSource,
+    AlignCenter, AlignNode, Column, Grid, Length, Row, ScrollArea, ScrollAxis, ScrollbarVisibility,
+    SplitPane, SplitPaneAxis, SplitPaneResizeMode, SplitPaneResizeSource, Stack,
 };
 use katana_ui_core::panel::{Panel, PanelRegion};
 use katana_ui_core::render_model::{
-    UiNodeKind, UiScrollAreaAxis, UiScrollbarVisibility, UiSplitPaneAxis, UiSplitPaneResizeMode,
+    UiNode, UiNodeKind, UiScrollAreaAxis, UiScrollbarVisibility, UiSplitPaneAxis,
+    UiSplitPaneResizeMode,
 };
 use katana_ui_core::theme::{ThemeId, ThemeSnapshot};
 use katana_ui_core::widget::atoms::{Button, Text};
@@ -145,6 +146,42 @@ fn generic_app_facade_exposes_theme_state_and_render_context() {
     assert_eq!("light", context.theme_id.as_str());
     assert_eq!(1280.0, context.viewport_width);
     assert_eq!(720.0, context.viewport_height);
+}
+
+#[test]
+fn generic_layout_models_keep_default_value_children_and_center_contracts() {
+    let nodes = [
+        UiNode::from(Row::default().value("row").child(Text::new("row child"))),
+        UiNode::from(
+            Column::default()
+                .value("column")
+                .child(Text::new("column child")),
+        ),
+        UiNode::from(
+            Stack::default()
+                .value("stack")
+                .child(Text::new("stack child")),
+        ),
+        UiNode::from(Grid::default().value("grid").child(Text::new("grid child"))),
+        UiNode::from(
+            AlignCenter::default()
+                .value("center")
+                .child(Text::new("center child")),
+        ),
+    ];
+
+    for (node, value) in nodes
+        .iter()
+        .zip(["row", "column", "stack", "grid", "center"])
+    {
+        assert_eq!(value, node.props().interaction.value);
+        assert_eq!(1, node.children().len());
+    }
+    assert_eq!(1, Row::new().child(Text::new("child")).children().len());
+
+    let centered = UiNode::from(AlignNode::center().child(Text::new("centered")));
+    assert_eq!(UiNodeKind::AlignNode, centered.kind());
+    assert_eq!(1, centered.children().len());
 }
 
 fn navigation_column() -> ScrollArea {

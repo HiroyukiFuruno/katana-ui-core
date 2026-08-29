@@ -103,7 +103,7 @@ impl SanitizedTabProjection {
         for group in &self.groups {
             update_group_fingerprint(&mut digest, group);
         }
-        format!("{:x}", digest.finalize())
+        hex::encode(digest.finalize())
     }
 }
 

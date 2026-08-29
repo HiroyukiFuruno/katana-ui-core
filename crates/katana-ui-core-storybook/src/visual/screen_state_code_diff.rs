@@ -13,9 +13,7 @@ const COLLAPSED_BLOCK_LINE_COUNT: usize = 4;
 impl StorybookScreenState {
     pub(in crate::visual) fn register_code_diff_mode_switch(&mut self) {
         let result = code_diff_action(|target| UiAction::code_diff_mode(target, "Split"));
-        if !result.handled {
-            return;
-        }
+        assert!(result.handled, "the code diff mode action must be handled");
         self.action_count += 1;
         self.last_action = "diff_mode_switch";
         self.last_event = "diff_mode_changed";
@@ -26,9 +24,10 @@ impl StorybookScreenState {
 
     pub(in crate::visual) fn register_code_diff_hover(&mut self) {
         let result = code_diff_action(|target| UiAction::hover(target, true));
-        if !result.handled || !result.after.hovered {
-            return;
-        }
+        assert!(
+            result.handled && result.after.hovered,
+            "the code diff hover action must update hover state"
+        );
         self.action_count += 1;
         self.last_action = "code_diff_hover";
         self.last_event = "code_diff_hovered";
@@ -39,9 +38,10 @@ impl StorybookScreenState {
 
     pub(in crate::visual) fn register_code_diff_focus(&mut self) {
         let result = code_diff_action(UiAction::focus);
-        if !result.handled || !result.after.focused {
-            return;
-        }
+        assert!(
+            result.handled && result.after.focused,
+            "the code diff focus action must update focus state"
+        );
         self.action_count += 1;
         self.button_focused = true;
         self.last_action = "code_diff_focus";
@@ -59,9 +59,10 @@ impl StorybookScreenState {
             return;
         }
         let result = code_diff_action(UiAction::code_diff_expand);
-        if !result.handled {
-            return;
-        }
+        assert!(
+            result.handled,
+            "the code diff expand action must be handled"
+        );
         self.action_count += 1;
         self.last_action = "code_diff_expand";
         self.last_event = "code_diff_block_expanded";
@@ -72,9 +73,10 @@ impl StorybookScreenState {
 
     pub(in crate::visual) fn register_code_diff_scroll_sync(&mut self) {
         let result = code_diff_action(UiAction::code_diff_scroll_sync);
-        if !result.handled || !result.after.active {
-            return;
-        }
+        assert!(
+            result.handled && result.after.active,
+            "the code diff scroll sync action must activate sync"
+        );
         self.action_count += 1;
         self.last_action = "code_diff_scroll_sync";
         self.last_event = "code_diff_scroll_sync_changed";
@@ -120,4 +122,19 @@ fn code_diff_contract_model() -> CodeDiff {
             start_line: COLLAPSED_BLOCK_START_LINE,
             line_count: COLLAPSED_BLOCK_LINE_COUNT,
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn code_diff_keyboard_requires_focus_before_expand() {
+        let mut state = StorybookScreenState::default();
+        state.register_code_diff_keyboard_expand();
+        assert_eq!("code_diff_keyboard_ignored", state.last_event);
+        state.register_code_diff_focus();
+        state.register_code_diff_keyboard_expand();
+        assert_eq!("code_diff_block_expanded", state.last_event);
+    }
 }

@@ -21,11 +21,10 @@ impl StorybookScreenStateStore {
             preset_index,
             instance_id,
         };
-        if state == StorybookScreenState::default() {
-            self.states.remove(&key);
-            return;
+        self.states.remove(&key);
+        if state != StorybookScreenState::default() {
+            self.states.insert(key, state);
         }
-        self.states.insert(key, state);
     }
 
     pub(super) fn restore_instance(
@@ -96,7 +95,7 @@ mod tests {
             "text",
             0,
             DEFAULT_INSTANCE_ID,
-            StorybookScreenState::default(),
+            std::hint::black_box(StorybookScreenState::default()),
         );
 
         assert_default_interaction_state(store.restore_instance("text", 0, DEFAULT_INSTANCE_ID));

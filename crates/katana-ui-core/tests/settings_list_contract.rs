@@ -1,8 +1,12 @@
 use katana_ui_core::atom::Text;
+use katana_ui_core::component::ComponentAction;
+use katana_ui_core::interaction::UiAction;
+use katana_ui_core::molecule::SettingsListLayoutMetrics;
 use katana_ui_core::molecule::{
     SettingsControl, SettingsControlOption, SettingsDirtyVisualization, SettingsField,
     SettingsKeyboardInput, SettingsList, SettingsListAction, SettingsListDensity,
-    SettingsListEvent, SettingsSection, SettingsValue,
+    SettingsListEvent, SettingsListHitTestInput, SettingsListHitTestResult, SettingsSection,
+    SettingsValue,
 };
 use katana_ui_core::render_model::{UiNode, UiNodeKind, UiSize, UiTree, UiVariant};
 
@@ -94,6 +98,69 @@ fn typed_controls_render_with_distinct_child_state_ids() {
 }
 
 #[test]
+fn settings_render_and_missing_updates_cover_optional_control_boundaries() {
+    let mut list = SettingsList::new("Settings").section(
+        SettingsSection::new("general", "General")
+            .field(field(
+                "combo-none",
+                SettingsControl::Combo {
+                    options: options(),
+                    query: String::new(),
+                    selected: None,
+                },
+            ))
+            .field(field(
+                "radio-match",
+                SettingsControl::Radio {
+                    options: options(),
+                    selected: "dark".to_string(),
+                },
+            ))
+            .field(field(
+                "radio-missing",
+                SettingsControl::Radio {
+                    options: options(),
+                    selected: "missing".to_string(),
+                },
+            ))
+            .field(field(
+                "no-default",
+                SettingsControl::Input {
+                    value: "value".to_string(),
+                },
+            )),
+    );
+    let node = UiNode::from(list.clone());
+    assert_eq!(UiNodeKind::SettingsList, node.kind());
+
+    assert_eq!(
+        vec![SettingsListEvent::FieldChanged {
+            field_id: "missing".to_string(),
+        }],
+        list.apply_settings_action(SettingsListAction::UpdateField {
+            field_id: "missing".to_string(),
+            value: SettingsValue::Text("ignored".to_string()),
+        })
+    );
+    assert_eq!(
+        vec![SettingsListEvent::FieldReset {
+            field_id: "missing".to_string(),
+        }],
+        list.apply_settings_action(SettingsListAction::ResetField {
+            field_id: "missing".to_string(),
+        })
+    );
+    assert_eq!(
+        vec![SettingsListEvent::FieldReset {
+            field_id: "no-default".to_string(),
+        }],
+        list.apply_settings_action(SettingsListAction::ResetField {
+            field_id: "no-default".to_string(),
+        })
+    );
+}
+
+#[test]
 fn query_matches_section_label_and_field_description() {
     let section = SettingsSection::new("editor", "Editor")
         .description("Text behavior")
@@ -158,6 +225,106 @@ fn collapse_reset_and_dirty_state_emit_typed_events() {
 }
 
 #[test]
+fn settings_keyboard_hover_focus_and_empty_navigation_are_explicit() {
+    let mut list = SettingsList::new("Settings").section(
+        SettingsSection::new("appearance", "Appearance")
+            .collapsible(true)
+            .field(field("theme", SettingsControl::Toggle { checked: true }))
+            .field(field(
+                "font",
+                SettingsControl::Input {
+                    value: "Inter".to_string(),
+                },
+            )),
+    );
+
+    assert!(
+        list.apply_settings_action(SettingsListAction::KeyboardSection {
+            section_id: "appearance".to_string(),
+            input: SettingsKeyboardInput::Tab,
+        })
+        .is_empty()
+    );
+    assert!(matches!(
+        list.apply_settings_action(SettingsListAction::HoverSection {
+            section_id: "appearance".to_string(),
+            hovered: true,
+        })
+        .as_slice(),
+        [SettingsListEvent::SectionHovered {
+            section_id,
+            hovered: true
+        }] if section_id == "appearance"
+    ));
+    assert!(matches!(
+        list.apply_settings_action(SettingsListAction::HoverField {
+            field_id: "theme".to_string(),
+            hovered: true,
+        })
+        .as_slice(),
+        [SettingsListEvent::FieldHovered {
+            field_id,
+            hovered: true
+        }] if field_id == "theme"
+    ));
+    assert!(matches!(
+        list.apply_settings_action(SettingsListAction::FocusField {
+            field_id: Some("missing".to_string()),
+        })
+        .as_slice(),
+        [SettingsListEvent::FieldFocused { field_id: None }]
+    ));
+    assert!(matches!(
+        list.apply_settings_action(SettingsListAction::KeyboardField {
+            field_id: "theme".to_string(),
+            input: SettingsKeyboardInput::Tab,
+        })
+        .as_slice(),
+        [SettingsListEvent::FieldFocused {
+            field_id: Some(field_id)
+        }] if field_id == "font"
+    ));
+
+    let mut empty = SettingsList::new("Empty");
+    assert!(matches!(
+        empty
+            .apply_settings_action(SettingsListAction::KeyboardField {
+                field_id: "missing".to_string(),
+                input: SettingsKeyboardInput::Tab,
+            })
+            .as_slice(),
+        [SettingsListEvent::FieldFocused { field_id: None }]
+    ));
+    assert!(
+        empty
+            .apply_settings_action(SettingsListAction::KeyboardField {
+                field_id: "missing".to_string(),
+                input: SettingsKeyboardInput::Enter,
+            })
+            .is_empty()
+    );
+}
+
+#[test]
+fn settings_layout_metrics_cover_footer_choice_toggle_and_custom_controls() {
+    let metrics = SettingsListLayoutMetrics::default();
+    let radio = SettingsControl::Radio {
+        options: options(),
+        selected: "dark".to_string(),
+    };
+    let toggle = SettingsControl::Toggle { checked: true };
+    let custom = SettingsControl::custom(Text::new("Custom"));
+
+    assert_eq!(22, metrics.footer_height());
+    assert_eq!(8, metrics.child_indent());
+    assert_eq!(112, metrics.field_label_width());
+    assert_eq!(132, metrics.choice_control_width());
+    assert_eq!(48, metrics.control_width(&toggle));
+    assert_eq!(132, metrics.control_width(&radio));
+    assert_eq!(132, metrics.control_width(&custom));
+}
+
+#[test]
 fn zero_query_result_renders_empty_state_with_distinct_state() {
     let list = SettingsList::new("Settings").query("missing").section(
         SettingsSection::new("general", "General")
@@ -191,6 +358,7 @@ fn density_section_icon_footer_and_dirty_visualization_render_contracts() {
                             selected: "dark".to_string(),
                         },
                     )
+                    .description("Applied to all windows")
                     .reset_to_default(SettingsValue::Text("light".to_string())),
                 ),
         );
@@ -207,7 +375,51 @@ fn density_section_icon_footer_and_dirty_visualization_render_contracts() {
     );
     assert!(contains_node(&tree, UiNodeKind::Icon, "settings"));
     assert!(contains_node(&tree, UiNodeKind::Text, "Restart required"));
+    assert!(contains_node(
+        &tree,
+        UiNodeKind::Text,
+        "Applied to all windows"
+    ));
     assert!(contains_node(&tree, UiNodeKind::Button, "Reset"));
+}
+
+#[test]
+fn footer_outside_hit_and_non_color_picker_value_are_safe() {
+    let list = SettingsList::new("Settings").section(
+        SettingsSection::new("appearance", "Appearance")
+            .footer("Restart required")
+            .field(field(
+                "color",
+                SettingsControl::ColorPicker {
+                    color: SettingsValue::Text("invalid".to_string()),
+                },
+            )),
+    );
+
+    assert_eq!(110, list.content_height());
+    assert_eq!(
+        SettingsListHitTestResult::None,
+        list.hit_test(SettingsListHitTestInput {
+            pointer_x: 10,
+            pointer_y: 100,
+            scroll_offset_y: 0,
+        })
+    );
+    let outside = list.interaction_for_hit(
+        SettingsListHitTestInput {
+            pointer_x: 10,
+            pointer_y: 500,
+            scroll_offset_y: 0,
+        },
+        320,
+    );
+    assert_eq!(SettingsListHitTestResult::None, outside.result);
+    assert!(outside.action.is_none());
+    assert!(outside.target.is_none());
+    assert!(list.hit_target_for_field("missing", 320).is_none());
+
+    let tree = UiTree::new(list);
+    assert!(contains_node(&tree, UiNodeKind::Text, "rgba(0, 0, 0, 0)"));
 }
 
 #[test]
@@ -298,6 +510,103 @@ fn update_focus_and_callback_log_are_stateful_and_typed() {
     ));
     assert_eq!(Some("input"), list.focused_field_id());
     assert_eq!(3, list.callback_log().len());
+}
+
+#[test]
+fn field_update_convenience_api_emits_the_same_typed_event() {
+    let mut list = SettingsList::new("Settings").section(
+        SettingsSection::new("general", "General")
+            .field(field("toggle", SettingsControl::Toggle { checked: false })),
+    );
+
+    let events = list.apply_field_update("toggle", SettingsValue::Bool(true));
+
+    assert!(matches!(
+        events.as_slice(),
+        [SettingsListEvent::FieldChanged { field_id }] if field_id == "toggle"
+    ));
+}
+
+#[test]
+fn settings_query_child_event_dirty_reset_and_selected_index_are_stateful() {
+    let mut list = SettingsList::new("Settings").section(
+        SettingsSection::new("general", "General").field(
+            field("toggle", SettingsControl::Toggle { checked: false })
+                .reset_to_default(SettingsValue::Bool(false)),
+        ),
+    );
+
+    assert!(matches!(
+        list.apply_settings_action(SettingsListAction::SetQuery(Some("toggle".to_string())))
+            .as_slice(),
+        [SettingsListEvent::QueryChanged(Some(query))] if query == "toggle"
+    ));
+    assert!(matches!(
+        list.apply_settings_action(SettingsListAction::RouteChildEvent {
+            field_id: "toggle".to_string(),
+            event: "pressed".to_string(),
+        })
+        .as_slice(),
+        [SettingsListEvent::ChildEventRouted { field_id, event }]
+            if field_id == "toggle" && event == "pressed"
+    ));
+
+    list.apply_settings_action(SettingsListAction::UpdateField {
+        field_id: "toggle".to_string(),
+        value: SettingsValue::Bool(true),
+    });
+    assert!(list.dirty_field_ids().contains("toggle"));
+    list.apply_settings_action(SettingsListAction::FocusField {
+        field_id: Some("toggle".to_string()),
+    });
+    let dirty_node = UiNode::from(list.clone());
+    assert!(dirty_node.props().interaction.has_selection);
+    assert_eq!(0, dirty_node.props().interaction.selected_index);
+
+    list.apply_settings_action(SettingsListAction::ResetField {
+        field_id: "toggle".to_string(),
+    });
+    assert!(!list.dirty_field_ids().contains("toggle"));
+    assert!(matches!(
+        list.apply_settings_action(SettingsListAction::SetQuery(Some(String::new())))
+            .as_slice(),
+        [SettingsListEvent::QueryChanged(None)]
+    ));
+}
+
+#[test]
+fn settings_component_action_handles_query_and_rejects_invalid_routes() {
+    let mut list = SettingsList::new("Settings").section(
+        SettingsSection::new("general", "General")
+            .field(field("toggle", SettingsControl::Toggle { checked: false })),
+    );
+    let target = list.state_id().clone();
+
+    assert!(
+        ComponentAction::apply_action(&mut list, &UiAction::set_value(target.clone(), "toggle"))
+            .handled
+    );
+    assert!(
+        !ComponentAction::apply_action(
+            &mut list,
+            &UiAction::set_value(
+                katana_ui_core::render_model::UiStateId::new("other-settings"),
+                "ignored",
+            )
+        )
+        .handled
+    );
+    assert!(
+        !ComponentAction::apply_action(
+            &mut list,
+            &UiAction::set_selected_index(target.clone(), 99)
+        )
+        .handled
+    );
+    assert!(
+        !ComponentAction::apply_action(&mut list, &UiAction::clear_value(target.clone())).handled
+    );
+    assert!(!ComponentAction::apply_action(&mut list, &UiAction::focus(target)).handled);
 }
 
 fn field(id: &str, control: SettingsControl) -> SettingsField {

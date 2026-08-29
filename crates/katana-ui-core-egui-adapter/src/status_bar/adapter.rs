@@ -19,7 +19,7 @@ pub struct EguiStatusBarAdapter {
 }
 
 impl EguiStatusBarAdapter {
-    pub fn new(id_source: impl std::hash::Hash) -> Result<Self, EguiStatusBarError> {
+    pub fn new(id_source: impl egui::AsId) -> Result<Self, EguiStatusBarError> {
         let config = PlatformTextRasterConfig::default();
         let catalog = std::sync::Arc::new(katana_ui_core_text_raster::PlatformFontCatalog::new(
             config.catalog_policy().clone(),

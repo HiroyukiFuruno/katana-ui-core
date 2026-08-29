@@ -1,3 +1,5 @@
+mod bar_render;
+
 use super::actions::WorkspaceTabBarAction;
 use super::events::WorkspaceTabBarEvent;
 use super::identifiers::WorkspaceTabId;
@@ -10,7 +12,12 @@ use super::overflow::{
     WorkspaceTabOverflowPlanner,
 };
 use super::state::WorkspaceTabBarState;
-use crate::render_model::UiStateId;
+use crate::render_model::{
+    UiCommonProps, UiDimension, UiNode, UiNodeKind, UiStateId, UiVisualRole,
+};
+use bar_render::append_workspace_tab_children;
+
+const WORKSPACE_TAB_BAR_HEIGHT_PX: u16 = 40;
 
 impl WorkspaceTabBar {
     #[must_use]
@@ -115,5 +122,24 @@ impl WorkspaceTabBar {
             visible_tab_ids,
         );
         action.map_or_else(Vec::new, |it| self.apply_action(it))
+    }
+}
+
+impl From<WorkspaceTabBar> for UiNode {
+    fn from(value: WorkspaceTabBar) -> Self {
+        let common = UiCommonProps::default()
+            .width(UiDimension::Fill)
+            .height(UiDimension::Px(WORKSPACE_TAB_BAR_HEIGHT_PX))
+            .selectable(false)
+            .accessibility_label(value.label.clone());
+        let interaction = value.state.interaction(value.options.tabs.len());
+        let state_id = value.state.state_id.clone();
+        let label = value.label.clone();
+        let node = UiNode::from_state(UiNodeKind::CloseableTabStrip, label, state_id)
+            .common(common)
+            .interaction(interaction)
+            .visual_role(UiVisualRole::Control)
+            .style_class("closeable-tab-strip");
+        append_workspace_tab_children(node, &value.options, &value.state)
     }
 }

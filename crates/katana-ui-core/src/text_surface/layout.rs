@@ -270,3 +270,15 @@ fn clamp_grapheme_boundary(text: &str, byte_offset: usize) -> usize {
         .last()
         .unwrap_or_default()
 }
+
+#[cfg(test)]
+mod composition_tests {
+    use super::composition_layout;
+
+    #[test]
+    fn invalid_composition_inputs_fail_closed() {
+        assert!(composition_layout("text", &[], 0, 0, String::new(), 0).is_none());
+        assert!(composition_layout("text", &[], 0, 0, "other".to_owned(), 0).is_none());
+        assert!(composition_layout("text", &[], 0, 0, "best".to_owned(), 0).is_none());
+    }
+}

@@ -201,5 +201,5 @@ fn event_correlation(root_identity_fingerprint: &str, revision: u64) -> String {
     hasher.update(b"kuc.sanitized-search-correlation/v1");
     hasher.update(root_identity_fingerprint.as_bytes());
     hasher.update(revision.to_le_bytes());
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }

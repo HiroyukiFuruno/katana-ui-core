@@ -2,10 +2,28 @@ use minifb::{CursorStyle, Window};
 
 use super::window_interaction::StorybookCursorStyle;
 
-pub(super) fn apply_cursor_style(window: &mut Window, cursor: StorybookCursorStyle) {
-    window.set_cursor_style(cursor.fallback_minifb_cursor());
-    if cursor == StorybookCursorStyle::PointingHand {
+pub(super) trait StorybookCursorPort {
+    fn set_fallback_cursor(&mut self, cursor: CursorStyle);
+    fn set_pointing_hand_cursor(&mut self);
+}
+
+impl StorybookCursorPort for Window {
+    fn set_fallback_cursor(&mut self, cursor: CursorStyle) {
+        self.set_cursor_style(cursor);
+    }
+
+    fn set_pointing_hand_cursor(&mut self) {
         platform_pointing_hand_cursor();
+    }
+}
+
+pub(super) fn apply_cursor_style(
+    window: &mut impl StorybookCursorPort,
+    cursor: StorybookCursorStyle,
+) {
+    window.set_fallback_cursor(cursor.fallback_minifb_cursor());
+    if cursor == StorybookCursorStyle::PointingHand {
+        window.set_pointing_hand_cursor();
     }
 }
 
@@ -58,6 +76,45 @@ mod macos {
             let cursor = objc_msg_send_id(class, selector);
             let set_selector = sel_registerName(SET_SELECTOR.as_ptr().cast::<c_char>());
             let _ = objc_msg_send_id(cursor, set_selector);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Default)]
+    struct FakeCursor {
+        fallback: Option<CursorStyle>,
+        pointing_hand: usize,
+    }
+
+    impl StorybookCursorPort for FakeCursor {
+        fn set_fallback_cursor(&mut self, cursor: CursorStyle) {
+            self.fallback = Some(cursor);
+        }
+
+        fn set_pointing_hand_cursor(&mut self) {
+            self.pointing_hand += 1;
+        }
+    }
+
+    #[test]
+    fn cursor_port_maps_every_storybook_cursor_without_native_window() {
+        for (cursor, expected) in [
+            (StorybookCursorStyle::Arrow, CursorStyle::Arrow),
+            (StorybookCursorStyle::Ibeam, CursorStyle::Ibeam),
+            (StorybookCursorStyle::ResizeAll, CursorStyle::ResizeAll),
+            (StorybookCursorStyle::PointingHand, CursorStyle::OpenHand),
+        ] {
+            let mut port = FakeCursor::default();
+            apply_cursor_style(&mut port, cursor);
+            assert_eq!(Some(expected), port.fallback);
+            assert_eq!(
+                usize::from(cursor == StorybookCursorStyle::PointingHand),
+                port.pointing_hand
+            );
         }
     }
 }

@@ -421,7 +421,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     output = Some(process.show(ui).map_err(|error| error.to_string()));
                 });
             },
@@ -780,7 +780,7 @@ mod tests {
                 ..egui::RawInput::default()
             },
             |ui| {
-                egui::CentralPanel::default().show_inside(ui, |ui| {
+                egui::CentralPanel::default().show(ui, |ui| {
                     output = Some(process.show(ui).map_err(|error| error.to_string()));
                 });
             },

@@ -82,9 +82,10 @@ fn actual_raw_input_controlled_focus_requests_are_idempotent_and_artifacted()
         &context,
         &mut adapter,
         &mut surface,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-            "入力中⭐️".to_string(),
-        ))],
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "入力中⭐️".to_string(),
+            active_range_chars: None,
+        })],
         false,
     )?
     .1;
@@ -202,7 +203,7 @@ fn run_frame(
     external_focus_target: bool,
 ) -> Result<(egui::FullOutput, EguiTextSurfaceOutput), EguiTextSurfaceError> {
     let mut rendered = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -222,6 +223,7 @@ fn run_frame(
             }
         },
     );
+    full_output.textures_delta.clear();
     Ok((
         full_output,
         rendered.ok_or(EguiTextSurfaceError::FrameNotProduced)??,

@@ -137,3 +137,19 @@ fn draw_row(
 fn rect_to_common(rect: LayoutRect) -> Rect {
     Rect::new(rect.x, rect.y, rect.width, rect.height)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{TabsScreenState, command_at, menu_rect};
+
+    #[test]
+    fn absent_and_outside_context_menu_coordinates_are_total() {
+        let state = TabsScreenState::default();
+        assert_eq!(0, menu_rect(4, 5, &state).width);
+
+        let mut opened = TabsScreenState::default();
+        let tab_id = opened.tabs[0].id.clone();
+        opened.open_context_menu_for_tab(tab_id.as_str(), 10, 20);
+        assert_eq!(None, command_at(0, 0, usize::MAX, usize::MAX, &opened));
+    }
+}

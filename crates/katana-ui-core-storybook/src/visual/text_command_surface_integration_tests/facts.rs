@@ -32,7 +32,7 @@ impl FrameFacts {
             .platform_output
             .accesskit_update
             .as_ref()
-            .ok_or_else(|| std::io::Error::other("accesskit update was absent"))?;
+            .ok_or(std::io::Error::other("accesskit update was absent"))?;
         let labels = update
             .nodes
             .iter()
@@ -50,13 +50,13 @@ impl FrameFacts {
             toolbar: output
                 .toolbar
                 .as_ref()
-                .ok_or_else(|| std::io::Error::other("toolbar output was absent"))?
+                .ok_or(std::io::Error::other("toolbar output was absent"))?
                 .record
                 .bounds,
             search: output
                 .search
                 .as_ref()
-                .ok_or_else(|| std::io::Error::other("search output was absent"))?
+                .ok_or(std::io::Error::other("search output was absent"))?
                 .record
                 .bounds,
             floating: output

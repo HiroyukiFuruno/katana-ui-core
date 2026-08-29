@@ -103,3 +103,47 @@ impl StorybookScreenState {
         true
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn panel_bridge_routes_every_operation_and_preserves_noop_scrolls() {
+        let mut state = StorybookScreenState::default();
+        state.register_panel_option(PanelOptionControl::ScrollbarVisible(false));
+        state.register_panel_active_child(PanelChildKey::Details);
+        state.register_panel_hover();
+        state.register_panel_focus();
+        state.register_panel_keyboard_scroll();
+        state.register_panel_resize();
+
+        while state.scroll_panel_vertical(PanelChildKey::Preview, 1.0) {}
+        while state.scroll_panel_horizontal(PanelChildKey::Preview, 1.0) {}
+        assert!(!state.scroll_panel_vertical(PanelChildKey::Preview, 1.0));
+        assert!(!state.scroll_panel_horizontal(PanelChildKey::Preview, 1.0));
+        assert!(state.scroll_panel_vertical(PanelChildKey::Preview, -1.0));
+        assert!(state.scroll_panel_horizontal(PanelChildKey::Preview, -1.0));
+
+        assert!(
+            state.register_panel_contract_setting(StorybookUiOptionContract::new(
+                "active_panel",
+                "preview",
+                "details"
+            ))
+        );
+        assert!(
+            state.register_panel_contract_setting(StorybookUiOptionContract::new(
+                "scrollbar_visibility",
+                "true",
+                "false"
+            ))
+        );
+        assert!(
+            !state.register_panel_contract_setting(StorybookUiOptionContract::new(
+                "unknown", "before", "after"
+            ))
+        );
+        assert_eq!("scrollbar_visibility", state.last_setting);
+    }
+}

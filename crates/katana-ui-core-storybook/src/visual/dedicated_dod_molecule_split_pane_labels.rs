@@ -106,6 +106,9 @@ fn status_labels(scenario: ScenarioContext<'_>) -> [&'static str; STATUS_LABEL_C
     if scenario.screen_state.split_pane.dragging() {
         return ["action drag", "event ratio", "state drag"];
     }
+    if scenario.screen_state.split_pane.resized() {
+        return ["action resize", "event ratio", "state clamp"];
+    }
     if scenario.screen_state.split_pane.ratio_percent() != DEFAULT_RATIO_PERCENT {
         return ["action key", "event ratio", "state ratio"];
     }
@@ -114,9 +117,6 @@ fn status_labels(scenario: ScenarioContext<'_>) -> [&'static str; STATUS_LABEL_C
     }
     if scenario.screen_state.split_pane.hovered() {
         return ["action hover", "event hover", "state handle"];
-    }
-    if scenario.screen_state.split_pane.resized() {
-        return ["action resize", "event ratio", "state clamp"];
     }
     if scenario.screen_state.has_widget_action() || scenario.screen_state.has_settings_override() {
         return ["action resize", "event ratio", "state changed"];
@@ -133,5 +133,37 @@ fn status_labels(scenario: ScenarioContext<'_>) -> [&'static str; STATUS_LABEL_C
         HANDLE_PRESET_INDEX => ["handle 10", "event hover", "state local"],
         KEYBOARD_PRESET_INDEX => ["key resize", "event ratio", "focus handle"],
         _ => ["action ready", "event ready", "state idle"],
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::screen_state::StorybookScreenState;
+    use crate::visual::window_interaction::split_pane_operation::SplitPaneStoryAction;
+
+    #[test]
+    fn split_labels_cover_fallback_focus_and_resize_runtime_states() {
+        let idle = StorybookScreenState::default();
+        let fallback = ScenarioContext::for_test("split-pane", usize::MAX, &idle);
+        assert_eq!("split pane", split_preset_label(fallback));
+        assert_eq!(
+            ["action ready", "event ready", "state idle"],
+            status_labels(fallback)
+        );
+
+        let mut focused = StorybookScreenState::default();
+        focused.register_split_pane_action(SplitPaneStoryAction::Focus);
+        assert_eq!(
+            ["action focus", "event focus", "state handle"],
+            status_labels(ScenarioContext::for_test("split-pane", 0, &focused))
+        );
+
+        let mut resized = StorybookScreenState::default();
+        resized.register_split_pane_action(SplitPaneStoryAction::Resize);
+        assert_eq!(
+            ["action resize", "event ratio", "state clamp"],
+            status_labels(ScenarioContext::for_test("split-pane", 0, &resized))
+        );
     }
 }

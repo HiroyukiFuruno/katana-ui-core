@@ -164,3 +164,15 @@ fn ink_vertical_bounds(canvas: &Canvas) -> VerticalBounds {
     }
     VerticalBounds { top, bottom }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Canvas, average_alpha_for_antialias_pixels};
+
+    #[test]
+    fn empty_antialias_sample_has_zero_intensity() {
+        let canvas = Canvas::new(2, 2, 0);
+
+        assert_eq!(0.0, average_alpha_for_antialias_pixels(&canvas, 0, 1));
+    }
+}

@@ -92,7 +92,7 @@ pub(super) fn input_value(scenario: ScenarioContext<'_>) -> &'static str {
     if selected_index(scenario) == Some(SELECTED_OPTION_INDEX) {
         return "Two";
     }
-    if scenario.preset_index == VALUE_PRESET_INDEX || contract.value_applied {
+    if contract.value_applied {
         return "Two";
     }
     if scenario.preset_index == FREE_INPUT_PRESET_INDEX || contract.free_input {
@@ -244,4 +244,19 @@ fn state_status(scenario: ScenarioContext<'_>) -> &'static str {
         return "free_input=true";
     }
     "query=empty"
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn combo_applied_value_is_visible_without_a_selected_index() {
+        let mut state = StorybookScreenState::default();
+        state.selection.combo_contract.value_applied = true;
+        let scenario = ScenarioContext::for_test("combo-box", 0, &state);
+
+        assert_eq!("Two", input_value(scenario));
+    }
 }

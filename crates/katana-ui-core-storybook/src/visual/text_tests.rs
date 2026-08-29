@@ -1,5 +1,5 @@
 use super::canvas::Canvas;
-use super::text::{TextRenderer, TextVerticalBox};
+use super::text::{RichTextStyle, TextRenderer, TextVerticalBox};
 use super::text_test_support::{
     ALIGN_BOX_HEIGHT, BACKGROUND, CANVAS_HEIGHT, CANVAS_WIDTH, MAX_CENTER_DELTA,
     MAX_CODE_GLYPH_CENTER_DELTA, SMALL_CODE_BOX_HEIGHT, SMALL_CODE_TEXT_SIZE, TEXT, TEXT_SIZE,
@@ -8,6 +8,12 @@ use super::text_test_support::{
 };
 use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::theme::FontFamily;
+
+#[test]
+fn measurement_falls_back_when_the_platform_request_is_invalid() {
+    let renderer = TextRenderer::load(&UiCoreFacade::default(), "body");
+    assert_eq!(renderer.measure_width("text", f32::INFINITY), usize::MAX);
+}
 
 #[test]
 fn draws_japanese_and_emoji_text() {
@@ -194,4 +200,53 @@ fn completed_widget_preview_text_boxes_keep_vertical_alignment() {
             "{sample} code center delta was {center_delta}"
         );
     }
+}
+
+#[test]
+fn emoji_entrypoints_draw_and_measure_the_same_content() {
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+    let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
+
+    renderer.draw_emoji(&mut canvas, "🔷", TEXT_X, TEXT_Y, TEXT_SIZE, TEXT);
+
+    assert!(renderer.measure_emoji_width("🔷", TEXT_SIZE) > 0);
+    assert!(canvas.non_background_pixels(BACKGROUND) > 0);
+}
+
+#[test]
+fn italic_rich_line_reuses_the_raster_cache() {
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+    let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
+    let spans = [renderer.rich_line_span(
+        "italic cache",
+        RichTextStyle::new(TEXT_SIZE, TEXT).italic(true),
+    )];
+
+    renderer.draw_rich_line_signed(&mut canvas, &spans, 0, TEXT_Y);
+    let first = renderer.cache_stats();
+    renderer.draw_rich_line_signed(&mut canvas, &spans, 0, TEXT_Y);
+    let second = renderer.cache_stats();
+
+    assert_eq!(first.raster_misses, second.raster_misses);
+    assert!(canvas.non_background_pixels(BACKGROUND) > 0);
+}
+
+#[test]
+fn signed_text_recording_rejects_negative_origins_and_empty_runs() {
+    let facade = UiCoreFacade::default();
+    let renderer = TextRenderer::load(&facade, "body");
+    let mut canvas = Canvas::new(CANVAS_WIDTH, CANVAS_HEIGHT, BACKGROUND);
+
+    renderer.draw_signed_styled(
+        &mut canvas,
+        "outside",
+        -1,
+        TEXT_Y,
+        RichTextStyle::new(TEXT_SIZE, TEXT),
+    );
+    renderer.draw_rich_line_signed(&mut canvas, &[], 0, TEXT_Y);
+
+    assert!(canvas.text_runs().is_empty());
 }

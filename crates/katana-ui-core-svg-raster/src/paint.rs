@@ -24,8 +24,9 @@ impl SvgPaintProcessor {
     }
 
     pub(crate) fn unpremultiply(pixels: &[u8]) -> Vec<u8> {
+        let (pixels, _) = pixels.as_chunks::<RGBA_CHANNEL_COUNT>();
         pixels
-            .chunks_exact(RGBA_CHANNEL_COUNT)
+            .iter()
             .flat_map(|pixel| {
                 let alpha = u32::from(pixel[ALPHA_CHANNEL_INDEX]);
                 if alpha == 0 {
@@ -45,7 +46,8 @@ impl SvgPaintProcessor {
         if alpha == u8::MAX {
             return pixels;
         }
-        for pixel in pixels.chunks_exact_mut(RGBA_CHANNEL_COUNT) {
+        let (pixel_chunks, _) = pixels.as_chunks_mut::<RGBA_CHANNEL_COUNT>();
+        for pixel in pixel_chunks {
             pixel[ALPHA_CHANNEL_INDEX] = ((u16::from(pixel[ALPHA_CHANNEL_INDEX])
                 * u16::from(alpha))
                 / u16::from(u8::MAX)) as u8;

@@ -88,3 +88,21 @@ pub(super) fn status_state(scenario: ScenarioContext<'_>) -> &'static str {
     }
     scenario.screen_state.state_label
 }
+
+#[cfg(test)]
+mod tests {
+    use super::search_value;
+    use crate::visual::render_context::ScenarioContext;
+    use crate::visual::screen_state::StorybookScreenState;
+
+    #[test]
+    fn cleared_search_value_is_empty() {
+        let mut state = StorybookScreenState::default();
+        state.search_box.cleared = true;
+
+        assert_eq!(
+            "",
+            search_value(ScenarioContext::for_test("search-box", 0, &state))
+        );
+    }
+}

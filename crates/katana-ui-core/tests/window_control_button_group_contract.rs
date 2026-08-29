@@ -16,6 +16,8 @@ fn options_expose_controls_position_size_and_visibility_only() {
         size: WindowControlSize::Compact,
     };
     let group = WindowControlButtonGroup::new("window-controls").options(options);
+    assert_eq!(2, group.options_ref().controls.len());
+    assert!(!group.state().state_id().as_str().is_empty());
     let node = UiNode::from(group);
 
     assert_eq!(UiNodeKind::WindowControlButtonGroup, node.kind());
@@ -122,11 +124,13 @@ fn adapter_dispatch_request_maps_all_control_events_to_window_commands() -> Resu
     ];
 
     for (control, command) in cases {
-        let request = WindowControlDispatchRequest::from_event(
-            WindowControlButtonGroupEvent::ControlPressed { which: control },
-            window_id.clone(),
-        )
-        .ok_or_else(|| "control press must become adapter dispatch request".to_string())?;
+        let event = WindowControlButtonGroupEvent::ControlPressed { which: control };
+        assert_eq!(
+            Some(command.clone()),
+            event.window_command(window_id.clone())
+        );
+        let request = WindowControlDispatchRequest::from_event(event, window_id.clone())
+            .ok_or_else(|| "control press must become adapter dispatch request".to_string())?;
 
         assert_eq!(window_id, request.window_id);
         assert_eq!(control, request.control);
@@ -145,6 +149,24 @@ fn adapter_extension_carries_window_control_without_owning_title_bar_layout() {
     assert_eq!(AdapterExtension::WindowControl(request), extension);
     assert!(!adapter_contract_source.contains("TitleBar"));
     assert!(!adapter_contract_source.contains("DraggableRegion"));
+}
+
+#[test]
+fn adapter_dispatch_ignores_state_only_window_control_events() {
+    let window_id = WindowId::new("main-window");
+    let visibility = WindowControlButtonGroupEvent::VisibilityChanged { visible: true };
+    let fullscreen = WindowControlButtonGroupEvent::FullscreenChanged { fullscreen: true };
+
+    assert_eq!(None, visibility.window_command(window_id.clone()));
+    assert_eq!(None, fullscreen.window_command(window_id.clone()));
+    assert_eq!(
+        None,
+        WindowControlDispatchRequest::from_event(visibility, window_id.clone())
+    );
+    assert_eq!(
+        None,
+        WindowControlDispatchRequest::from_event(fullscreen, window_id)
+    );
 }
 
 #[test]
@@ -170,6 +192,34 @@ fn hover_and_fullscreen_visibility_emit_state_events() {
         hover_events
     );
     assert!(group.state().visible());
+    assert!(
+        group
+            .apply_action(WindowControlButtonGroupAction::SetHover(true))
+            .is_empty()
+    );
+}
+
+#[test]
+fn hover_visibility_modes_render_stable_style_classes() {
+    for (visibility, style_class) in [
+        (WindowControlVisibility::Hover, "window-controls-hover"),
+        (
+            WindowControlVisibility::FullscreenHover,
+            "window-controls-fullscreen-hover",
+        ),
+    ] {
+        let node = UiNode::from(WindowControlButtonGroup::new("controls").options(
+            WindowControlButtonGroupOptions {
+                visibility,
+                ..WindowControlButtonGroupOptions::default()
+            },
+        ));
+        assert!(
+            node.props()
+                .style_classes
+                .contains(&style_class.to_string())
+        );
+    }
 }
 
 #[test]

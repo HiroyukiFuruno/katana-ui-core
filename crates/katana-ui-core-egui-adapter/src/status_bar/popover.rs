@@ -73,7 +73,10 @@ impl EguiStatusBarAdapter {
             scale_factor: scale,
         })?;
         let pixels: Vec<u8> = raster.rgba_pixels.iter().flatten().copied().collect();
-        let identity = format!("status-bar-overlay:{:x}", Sha256::digest(text.as_bytes()));
+        let identity = format!(
+            concat!("status-bar-overlay:", "{}"),
+            hex::encode(Sha256::digest(text.as_bytes()))
+        );
         if let Some(plan) = self.last_paint_plan.as_mut() {
             let bounds = katana_ui_core::render_model::UiRect::new(
                 POPOVER_OFFSET_PX as i32,

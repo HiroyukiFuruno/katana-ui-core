@@ -4,7 +4,7 @@ mod catalog;
 mod panel;
 mod requirements;
 mod storybook_svg_fixtures;
-#[cfg(all(not(test), target_os = "macos"))]
+#[cfg(target_os = "macos")]
 mod system;
 #[cfg(test)]
 mod test_assert;
@@ -19,9 +19,9 @@ pub use panel::StorybookPanel;
 pub use visual::FullRootArtifactError;
 pub use visual::TextSurfaceArtifactError;
 pub use visual::{
-    Canvas, CanvasBlitRequest, RgbaBlitRequest, SelectableTextRun, StorybookPresentation,
-    StorybookRuntimeReport, StorybookVisual, StorybookVisualError, StorybookWindowRun,
-    TextRenderer, UiTreeCanvasRenderer, UiTreeHitRect, UiTreeHostActionHit,
+    Canvas, CanvasBlitRequest, RgbaBlitRequest, SelectableTextRun, StorybookKeyboardRuntimeReport,
+    StorybookPresentation, StorybookRuntimeReport, StorybookVisual, StorybookVisualError,
+    StorybookWindowRun, TextRenderer, UiTreeCanvasRenderer, UiTreeHitRect, UiTreeHostActionHit,
     UiTreeHostActionHitQuery, UiTreeInteractionSurface, UiTreeInteractionTarget, UiTreeNodeHit,
     UiTreeRenderArea, UiTreeStorybookHost, UiTreeSurfaceHost,
 };

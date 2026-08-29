@@ -123,3 +123,52 @@ impl std::fmt::Display for OpaqueMotionReceiptSequenceError {
 }
 
 impl std::error::Error for OpaqueMotionReceiptSequenceError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn receipt(stage: &str) -> OpaqueRootArtifactReceipt {
+        FullRootArtifact::from_test_parts(
+            stage.to_owned(),
+            std::path::PathBuf::from(format!("{stage}.png")),
+            std::path::PathBuf::from(format!("{stage}.manifest.json")),
+            1,
+            1,
+            "record".to_owned(),
+            "pixel".to_owned(),
+            "png".to_owned(),
+        )
+        .into()
+    }
+
+    #[test]
+    fn opaque_receipt_sequence_preserves_order_and_rejects_stage_mismatch() {
+        let mut sequence = OpaqueMotionReceiptSequence::new();
+        assert!(sequence.is_empty());
+        sequence
+            .push("frame-000", receipt("frame-000"))
+            .expect("matching stage must append");
+        assert_eq!(sequence.len(), 1);
+        assert_eq!(sequence.receipts()[0].stage_id(), "frame-000");
+        assert_eq!(sequence.receipts()[0].artifact().width(), 1);
+
+        let error = sequence
+            .push("frame-001", receipt("wrong"))
+            .expect_err("mismatched stage must fail closed");
+        assert!(error.to_string().contains("frame-001"));
+        let _: &dyn std::error::Error = &error;
+    }
+
+    #[test]
+    fn opaque_receipt_writer_error_display_preserves_typed_source() {
+        let error = OpaqueRootArtifactReceiptError::Artifact(FullRootArtifactError::InvalidStageId);
+        assert!(
+            error
+                .to_string()
+                .contains("opaque root artifact receipt failed")
+        );
+        let _: &dyn std::error::Error = &error;
+        let _ = OpaqueRootArtifactReceiptWriter::new();
+    }
+}

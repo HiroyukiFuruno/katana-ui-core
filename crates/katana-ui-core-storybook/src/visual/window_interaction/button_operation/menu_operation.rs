@@ -72,3 +72,34 @@ fn second_row_operation(state: &StorybookWindowState) -> Option<StorybookButtonO
     }
     Some(StorybookButtonOperation::MenuClose)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn open_menu_rows_select_items_and_closed_second_row_closes() {
+        let mut open = StorybookWindowState {
+            selected_page: "menu",
+            ..StorybookWindowState::default()
+        };
+        open.screen_state.selection.select_open = true;
+        assert_eq!(
+            Some(StorybookButtonOperation::MenuSelect(OPEN_INDEX)),
+            first_row_operation(&open)
+        );
+        assert_eq!(
+            Some(StorybookButtonOperation::MenuSelect(CLOSE_INDEX)),
+            second_row_operation(&open)
+        );
+
+        let closed = StorybookWindowState {
+            selected_page: "menu",
+            ..StorybookWindowState::default()
+        };
+        assert_eq!(
+            Some(StorybookButtonOperation::MenuClose),
+            second_row_operation(&closed)
+        );
+    }
+}

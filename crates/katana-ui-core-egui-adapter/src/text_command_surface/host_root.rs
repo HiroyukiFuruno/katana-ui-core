@@ -177,7 +177,7 @@ impl EguiTextCommandSurfaceHostProjectionEncoder {
         presentation: EguiTextCommandSurfacePresentation,
         style: TextCommandSurfaceStyle,
     ) -> Result<EguiTextCommandSurfacePresentationToken, serde_json::Error> {
-        encode_presentation(revision, target, presentation, style)
+        encode_presentation(revision, target.into(), presentation, style)
     }
 
     pub fn encode(
@@ -199,7 +199,7 @@ impl EguiTextCommandSurfaceHostProjectionEncoder {
     ) -> Result<EguiTextCommandSurfacePresentationToken, serde_json::Error> {
         encode_presentation_with_command_families(
             revision,
-            target,
+            target.into(),
             presentation,
             style,
             command_families,

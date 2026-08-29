@@ -257,7 +257,7 @@ mod tests {
     use super::super::ui_tree_canvas::UiTreeCanvasRenderer;
     use super::super::ui_tree_canvas_palette::UiTreeCanvasPalette;
     use super::super::ui_tree_canvas_types::UiTreeRenderArea;
-    use katana_ui_core::atom::{Button, Spinner};
+    use katana_ui_core::atom::{Button, Spinner, Toggle};
     use katana_ui_core::facade::UiCoreFacade;
     use katana_ui_core::render_model::{
         UiDimension, UiIconProps, UiInteractionState, UiNode, UiTree, UiVariant,
@@ -322,6 +322,26 @@ mod tests {
             count_color(&canvas, palette.visual.border),
             "KatanA diagram controls do not draw a permanent square button border"
         );
+    }
+
+    #[test]
+    fn toggle_can_draw_its_label_for_embedded_control_hosts() {
+        let node: UiNode = Toggle::new("Enabled").into();
+        let mut canvas = Canvas::new(180, 48, BACKGROUND);
+        let text = TextRenderer::load(&UiCoreFacade::default(), "body");
+        let mut y = 6;
+
+        super::UiTreeControlRenderer::draw_toggle(
+            &mut canvas,
+            &text,
+            &node,
+            6,
+            &mut y,
+            palette(),
+            true,
+        );
+
+        assert!(canvas.text_runs().iter().any(|run| run.text() == "Enabled"));
     }
 
     fn render_spinner(phase: u16) -> Canvas {

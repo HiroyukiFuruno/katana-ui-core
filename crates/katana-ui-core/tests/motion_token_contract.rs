@@ -107,6 +107,29 @@ fn reduced_motion_query_downgrades_respect_policy_and_ignore_logs_override() {
 }
 
 #[test]
+fn force_reduced_uses_instant_duration_and_accelerate_easing_tokens() {
+    let theme = ThemeSnapshot::light();
+    let spec = MotionSpec::fade(
+        MotionDurationToken::Instant,
+        MotionEasingToken::Accelerate,
+        0.0,
+        1.0,
+    )
+    .policy(ReducedMotionPolicy::ForceReduced);
+
+    let snapshot = MotionResolver::compute_with_theme(
+        &spec,
+        MotionContext::for_test(false),
+        &theme.motion_tokens(),
+    );
+
+    assert!(snapshot.instant);
+    assert_eq!(0, snapshot.duration_ms);
+    assert_eq!("accelerate", snapshot.easing);
+    assert_eq!("policy=ForceReduced", snapshot.diagnostics);
+}
+
+#[test]
 fn overlay_inside_overlay_only_downgrades_inner_motion() {
     let theme = ThemeSnapshot::dark();
     let modal = MotionDefaults::for_target(MotionTarget::Modal);

@@ -64,9 +64,10 @@ fn actual_raw_input_relative_pixel_precision_nonfinite_and_visible_rows_are_arti
         &context,
         &mut adapter,
         &mut surface,
-        vec![egui::Event::Ime(egui::ImeEvent::Preedit(
-            "入力中 ⭐️".to_string(),
-        ))],
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "入力中 ⭐️".to_string(),
+            active_range_chars: None,
+        })],
         screen,
     )?;
     let before_first = surface.state().clone();
@@ -84,9 +85,7 @@ fn actual_raw_input_relative_pixel_precision_nonfinite_and_visible_rows_are_arti
         surface
             .state()
             .scroll_bounds
-            .expect("adapter must measure bounds")
-            .max_y
-            >= 42
+            .is_some_and(|bounds| bounds.max_y >= 42)
     );
 
     synchronize_relative_request(&mut surface, "fractional-1", 20.6);
@@ -222,16 +221,15 @@ fn is_scroll_request_event(event: &TextSurfaceEvent) -> bool {
 }
 
 fn assert_accesskit_text_input(full_output: &egui::FullOutput) {
-    let update = full_output
-        .platform_output
-        .accesskit_update
-        .as_ref()
-        .expect("actual RawInput frame must publish AccessKit");
     assert!(
-        update
-            .nodes
-            .iter()
-            .any(|(_, node)| node.role() == egui::accesskit::Role::MultilineTextInput)
+        full_output
+            .platform_output
+            .accesskit_update
+            .as_ref()
+            .is_some_and(|update| update
+                .nodes
+                .iter()
+                .any(|(_, node)| node.role() == egui::accesskit::Role::MultilineTextInput))
     );
 }
 
@@ -250,7 +248,7 @@ fn run_frame(
     screen_rect: egui::Rect,
 ) -> Result<(egui::FullOutput, EguiTextSurfaceOutput), EguiTextSurfaceError> {
     let mut result = None;
-    let full_output = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(screen_rect),
             events,
@@ -258,6 +256,7 @@ fn run_frame(
         },
         |ui| result = Some(adapter.show(ui, surface, &raster_style(), &paint_style())),
     );
+    full_output.textures_delta.clear();
     Ok((
         full_output,
         result.ok_or(EguiTextSurfaceError::FrameNotProduced)??,

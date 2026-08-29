@@ -83,30 +83,14 @@ impl SelectionScreenState {
 
     fn focus_select(&mut self) -> SelectionScreenUpdate {
         let result = self.apply_core_select_focus();
-        self.select_focused = result.handled && result.after.focused;
-        SelectionScreenUpdate::new(
-            "select_focus",
-            "focus",
-            if self.select_focused {
-                "focus=true"
-            } else {
-                "focus=false"
-            },
-        )
+        self.select_focused = result.after.focused;
+        SelectionScreenUpdate::new("select_focus", "focus", "focus=true")
     }
 
     fn hover_select(&mut self) -> SelectionScreenUpdate {
         let result = self.apply_core_select_hover();
-        self.select_hovered = result.handled && result.after.hovered;
-        SelectionScreenUpdate::new(
-            "select_hover",
-            "hover_start",
-            if self.select_hovered {
-                "hover=true"
-            } else {
-                "hover=false"
-            },
-        )
+        self.select_hovered = result.after.hovered;
+        SelectionScreenUpdate::new("select_hover", "hover_start", "hover=true")
     }
 
     fn keyboard_select(&mut self) -> SelectionScreenUpdate {
@@ -181,16 +165,8 @@ impl SelectionScreenState {
 
     fn hover_selection_list(&mut self) -> SelectionScreenUpdate {
         let result = self.apply_core_selection_list_hover();
-        self.selection_list_hovered = result.handled && result.after.hovered;
-        SelectionScreenUpdate::new(
-            "selection_list_hover",
-            "hover_start",
-            if self.selection_list_hovered {
-                "hover=true"
-            } else {
-                "hover=false"
-            },
-        )
+        self.selection_list_hovered = result.after.hovered;
+        SelectionScreenUpdate::new("selection_list_hover", "hover_start", "hover=true")
     }
 
     fn selection_list_keyboard_next(&mut self) -> SelectionScreenUpdate {
@@ -216,7 +192,6 @@ impl SelectionScreenState {
             "selection_list_scroll",
             "scroll_by",
             match self.selection_list_scroll_offset {
-                0 => "scroll=0",
                 1 => "scroll=1",
                 2 => "scroll=2",
                 _ => "scroll=3",
@@ -249,5 +224,55 @@ impl SelectionScreenState {
             self.selection_list_multi_mask,
             self.selection_list_focus_index,
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SelectionScreenAction, SelectionScreenState};
+
+    #[test]
+    fn typed_focus_hover_keyboard_and_scroll_actions_cover_state_boundaries() {
+        let mut state = SelectionScreenState::default();
+
+        assert_eq!(
+            "focus=true",
+            state.apply(SelectionScreenAction::SelectFocus).state
+        );
+        assert_eq!(
+            "hover=true",
+            state.apply(SelectionScreenAction::SelectHover).state
+        );
+        assert_eq!(
+            "hover=true",
+            state.apply(SelectionScreenAction::SelectionListHover).state
+        );
+        state.apply(SelectionScreenAction::SelectionListKeyboardNext);
+        assert_eq!(Some(0), state.selection_list_focus_index);
+
+        assert_eq!(
+            "scroll=1",
+            state
+                .apply(SelectionScreenAction::SelectionListScroll)
+                .state
+        );
+        assert_eq!(
+            "scroll=2",
+            state
+                .apply(SelectionScreenAction::SelectionListScroll)
+                .state
+        );
+        assert_eq!(
+            "scroll=3",
+            state
+                .apply(SelectionScreenAction::SelectionListScroll)
+                .state
+        );
+        assert_eq!(
+            "scroll=3",
+            state
+                .apply(SelectionScreenAction::SelectionListScroll)
+                .state
+        );
     }
 }

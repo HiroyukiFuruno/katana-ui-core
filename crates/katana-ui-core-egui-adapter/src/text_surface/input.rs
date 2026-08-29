@@ -70,13 +70,15 @@ fn input_event(
         egui::Event::Text(text) if text != "\n" && text != "\r" => {
             TextSurfaceAction::TextArea(TextAreaAction::Type(text))
         }
-        egui::Event::Ime(egui::ImeEvent::Preedit(text)) => TextSurfaceAction::TextArea(
+        egui::Event::Ime(egui::ImeEvent::Preedit { text, .. }) if text.is_empty() => {
+            TextSurfaceAction::CancelComposition
+        }
+        egui::Event::Ime(egui::ImeEvent::Preedit { text, .. }) => TextSurfaceAction::TextArea(
             TextAreaAction::composition(TextAreaCompositionPhase::Update, &text, text.len()),
         ),
         egui::Event::Ime(egui::ImeEvent::Commit(text)) => {
             TextSurfaceAction::TextArea(TextAreaAction::ime_commit(text))
         }
-        egui::Event::Ime(egui::ImeEvent::Disabled) => TextSurfaceAction::CancelComposition,
         egui::Event::Key {
             key,
             pressed: true,

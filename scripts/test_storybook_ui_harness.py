@@ -72,29 +72,9 @@ class StorybookUiHarnessTest(unittest.TestCase):
 
             self.assertEqual([], StorybookUiHarness(root).failures())
 
-    def test_rejects_text_command_root_without_split_facade_types_module(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            write_minimal_repo(root, option_arm='"button" => &BUTTON_OPTIONS,')
-            write_text_command_root_runtime_fixture(root)
-            (root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root/types.rs").unlink()
-
-            failures = StorybookUiHarness(root).failures()
-
-            self.assertIn(
-                "text-command-root: runtime contract missing `pub struct EguiTextCommandSurfacePresentationToken` "
-                "in crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root/types.rs",
-                failures,
-            )
-            self.assertIn(
-                "text-command-root: runtime contract missing `pub struct EguiTextCommandSurfaceHostProjectionEncoder` "
-                "in crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root/types.rs",
-                failures,
-            )
-
     def test_rejects_text_command_root_without_facade_mp4_or_manifest_evidence(self) -> None:
         required_tokens = (
-            "EguiTextCommandSurfaceHostProjectionEncoder::token_with_command_families",
+            "EguiTextCommandSurfaceHostProjectionEncoder::token",
             '"framemd5"',
             '"text-command-root-manifest.json"',
         )
@@ -2914,8 +2894,8 @@ def write_text_command_root_runtime_fixture(
 struct TextCommandRootStorybookApp;
 eframe::run_native;
 EguiTextCommandSurfaceHostRoot;
-let token = EguiTextCommandSurfaceHostProjectionEncoder::token_with_command_families(...);
-EguiTextCommandSurfaceRootFactory::new().retain(token);
+let token = EguiTextCommandSurfaceHostProjectionEncoder::token(...);
+EguiTextCommandSurfaceRootFactory::default().retain(token);
 root.show(ui);
 .forward_events_once(&mut forwarder);
 consumed_once: receipt.consumed_once(),
@@ -2941,13 +2921,10 @@ muxer_capability_verified;
     )
     write_text(
         root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root.rs",
-        "pub fn retain(\n"
-        "pub fn token_with_command_families(\n",
-    )
-    write_text(
-        root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root/types.rs",
         "pub struct EguiTextCommandSurfacePresentationToken;\n"
-        "pub struct EguiTextCommandSurfaceHostProjectionEncoder;\n",
+        "pub fn retain(\n"
+        "pub struct EguiTextCommandSurfaceHostProjectionEncoder;\n"
+        "pub fn token(\n",
     )
     write_text(
         root / "crates/katana-ui-core-egui-adapter/tests/host_root_facade_contract.rs",

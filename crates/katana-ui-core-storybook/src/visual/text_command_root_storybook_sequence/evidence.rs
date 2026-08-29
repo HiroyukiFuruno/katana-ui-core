@@ -37,7 +37,7 @@ pub(super) fn capture_step(
         events,
     } = step;
     let mut output = None;
-    let _ = context.run_ui(
+    let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
@@ -48,15 +48,12 @@ pub(super) fn capture_step(
         },
         |ui| output = Some(root.show(ui)),
     );
-    let output = output
-        .ok_or_else(|| FullRootArtifactError::Adapter("root frame was not produced".into()))?
-        .map_err(|error| FullRootArtifactError::Adapter(error.to_string()))?;
+    full_output.textures_delta.clear();
+    let output = output.ok_or(FullRootArtifactError::Contract(
+        "egui did not execute the root-frame UI closure".into(),
+    ))??;
     let mut forwarder = RootEventReceiptForwarder { calls: 0 };
-    let receipt = output
-        .forward_events_once(&mut forwarder)
-        .map_err(|error| {
-            FullRootArtifactError::Contract(format!("event receipt failed: {error:?}"))
-        })?;
+    let receipt = output.forward_events_once(&mut forwarder)?;
     let dimensions = output.record().dimensions();
     let evidence = RootEvidence {
         identity: output.record().identity().to_string(),
@@ -77,11 +74,10 @@ pub(super) fn capture_step(
             forwarder_calls: forwarder.calls,
         },
     };
-    if evidence.width == 0 || evidence.height == 0 {
-        return Err(FullRootArtifactError::Contract(format!(
-            "{name} produced an empty root frame"
-        )));
-    }
+    assert!(
+        evidence.width > 0 && evidence.height > 0,
+        "{name} must produce a non-empty root frame"
+    );
     Ok(FullRootStep {
         name,
         input,

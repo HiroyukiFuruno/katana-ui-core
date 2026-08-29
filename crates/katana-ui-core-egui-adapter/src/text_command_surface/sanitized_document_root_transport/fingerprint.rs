@@ -53,7 +53,7 @@ pub(super) fn compose_event_batch_fingerprint(
     });
     hasher.update(context_menu_event_count.to_le_bytes());
     hasher.update(context_menu_event_fingerprint.as_bytes());
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }
 
 pub(super) fn compose_correlation_fingerprint(
@@ -98,7 +98,7 @@ pub(super) fn compose_correlation_fingerprint(
     });
     hasher.update(context_menu_event_count.to_le_bytes());
     hasher.update(context_menu_event_fingerprint.as_bytes());
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }
 
 pub(super) fn tab_event_fingerprint(events: &[SanitizedTabProjectionClosedEvent]) -> String {
@@ -119,7 +119,7 @@ pub(super) fn tab_event_fingerprint(events: &[SanitizedTabProjectionClosedEvent]
             }
         }
     }
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }
 
 pub(super) fn search_event_fingerprint(events: &[SanitizedSearchEventTransport]) -> String {
@@ -146,7 +146,7 @@ where
     for event in events {
         event.fingerprint_into(&mut hasher);
     }
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }
 
 trait FingerprintEvent {

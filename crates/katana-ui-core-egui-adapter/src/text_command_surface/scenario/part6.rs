@@ -45,9 +45,10 @@ fn stages(id: FullTextCommandSurfaceScenarioId) -> Vec<FullTextCommandSurfaceRaw
                 egui::vec2(RESIZED_WIDTH, RESIZED_HEIGHT),
             ));
             stages.push(stage(
-                vec![egui::Event::Ime(egui::ImeEvent::Preedit(String::from(
-                    "かな",
-                )))],
+                vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+                    text: String::from("かな"),
+                    active_range_chars: None,
+                })],
                 IME_PIXELS_PER_POINT,
             ));
             stages.push(stage(
