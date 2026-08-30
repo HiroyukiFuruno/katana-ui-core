@@ -18,6 +18,7 @@ CARGO := env_var_or_default("CARGO", RTK_CMD + "cargo")
 COVERAGE_BUILD_JOBS := env_var_or_default("CARGO_BUILD_JOBS", JOBS)
 COVERAGE_TEST_THREADS := env_var_or_default("COVERAGE_TEST_THREADS", "4")
 KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"
+KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-text-raster -p katana-ui-core-svg-raster -p katana-ui-core-egui-adapter -p katana-ui-core-storybook -p kuc-consumer-app"
 VERSION := env_var_or_default("VERSION", `awk -F '"' '/^version = / { print $2; exit }' Cargo.toml`)
 VERSION_BARE := replace(VERSION, "v", "")
 COVERAGE_MIN_LINES := "100"
@@ -33,11 +34,11 @@ help:
 
 # Apply Rust formatting
 fmt:
-    {{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}}
+    {{CARGO}} fmt {{KUC_FORMAT_PACKAGES}}
 
 # Check Rust formatting
 fmt-check:
-    {{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}} -- --check
+    {{CARGO}} fmt {{KUC_FORMAT_PACKAGES}} -- --check
 
 # Check workspace type safety
 check-types:
@@ -142,11 +143,11 @@ smoke-test: storybook-smoke storybook-interaction-smoke
 test: unit-test
 
 # Run coverage as a release confidence gate
-coverage:
+coverage: fmt-check ast-lint
     just coverage-container
 
 # Run strict coverage while reusing unchanged coverage build artifacts during iteration.
-coverage-iterate:
+coverage-iterate: fmt-check ast-lint
     just coverage-container-iterate
 
 # Run the Linux/Xvfb coverage implementation directly
@@ -170,7 +171,7 @@ _coverage-container-run reuse:
     docker run --rm --volume "{{REPO_ROOT}}:/source:ro" --volume kuc-coverage-cargo-registry:/usr/local/cargo/registry --volume kuc-coverage-target:/tmp/kuc-target --workdir /source --env CARGO_BUILD_JOBS="{{COVERAGE_BUILD_JOBS}}" --env CARGO_INCREMENTAL=0 --env CARGO_TARGET_DIR=/tmp/kuc-target --env COVERAGE_TEST_THREADS="{{COVERAGE_TEST_THREADS}}" --env KUC_COVERAGE_REUSE="{{reuse}}" "{{COVERAGE_IMAGE}}" bash scripts/coverage/run-in-container.sh
 
 # Run the local quality gate
-check: fmt-check check-types lint unit-test ast-lint kuc-guardrails overlay-lifecycle-lint menu-button-contract
+check: fmt-check ast-lint check-types lint unit-test kuc-guardrails overlay-lifecycle-lint menu-button-contract
     @echo "checks passed"
 
 # Sweep old build artifacts locally (older than 7 days)
@@ -243,7 +244,7 @@ release-verify: check coverage
     bash scripts/release/verify-core-release-scope.sh "{{VERSION}}"
 
 # Verify release branch readiness before merging
-release-check: release-target-check release-readiness-check release-verify
+release-check: release-target-check fmt-check ast-lint release-readiness-check release-verify
     bash scripts/release/assert-crate-not-published.sh "{{VERSION}}"
 
 # Show recent Release workflow runs

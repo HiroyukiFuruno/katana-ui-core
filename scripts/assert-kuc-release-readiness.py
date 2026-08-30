@@ -670,9 +670,9 @@ def justfile_fmt_scope_failures(root: Path = ROOT) -> list[str]:
         return [f"{path_label(justfile, root)}: Justfile is missing"]
     source = justfile.read_text(encoding="utf-8")
     required = (
-        'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"',
-        "{{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}}",
-        "{{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}} -- --check",
+        'KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-text-raster -p katana-ui-core-svg-raster -p katana-ui-core-egui-adapter -p katana-ui-core-storybook -p kuc-consumer-app"',
+        "{{CARGO}} fmt {{KUC_FORMAT_PACKAGES}}",
+        "{{CARGO}} fmt {{KUC_FORMAT_PACKAGES}} -- --check",
     )
     forbidden = (
         "{{CARGO}} fmt --all",
@@ -730,9 +730,11 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked",
         "bash scripts/run-strict-coverage.sh",
         "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --locked",
-        "coverage:\n    just coverage-container",
-        "coverage-iterate:\n    just coverage-container-iterate",
+        "coverage: fmt-check ast-lint\n    just coverage-container",
+        "coverage-iterate: fmt-check ast-lint\n    just coverage-container-iterate",
         "KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh",
+        "check: fmt-check ast-lint check-types lint unit-test",
+        "release-check: release-target-check fmt-check ast-lint release-readiness-check release-verify",
     )
     justfile_forbidden = (
         "{{CARGO}} test --workspace",
@@ -1524,13 +1526,13 @@ def write_storybook_requirement_gate_self_test_files(
 def write_justfile_fmt_scope_self_test_file(root: Path, use_scoped_packages: bool) -> None:
     root.mkdir(parents=True, exist_ok=True)
     scoped_packages = (
-        'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"\n'
+        'KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-text-raster -p katana-ui-core-svg-raster -p katana-ui-core-egui-adapter -p katana-ui-core-storybook -p kuc-consumer-app"\n'
         "\n"
         "fmt:\n"
-        "    {{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}}\n"
+        "    {{CARGO}} fmt {{KUC_FORMAT_PACKAGES}}\n"
         "\n"
         "fmt-check:\n"
-        "    {{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}} -- --check\n"
+        "    {{CARGO}} fmt {{KUC_FORMAT_PACKAGES}} -- --check\n"
     )
     dependency_wide = (
         "fmt:\n"
@@ -1571,10 +1573,10 @@ def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bo
         "unit-test:\n"
         "    {{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked\n"
         "\n"
-        "coverage:\n"
+        "coverage: fmt-check ast-lint\n"
         "    just coverage-container\n"
         "\n"
-        "coverage-iterate:\n"
+        "coverage-iterate: fmt-check ast-lint\n"
         "    just coverage-container-iterate\n"
         "\n"
         "coverage-linux:\n"
@@ -1585,6 +1587,10 @@ def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bo
         "\n"
         "cargo-test:\n"
         "    {{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --locked\n"
+        "\n"
+        "check: fmt-check ast-lint check-types lint unit-test\n"
+        "\n"
+        "release-check: release-target-check fmt-check ast-lint release-readiness-check release-verify\n"
     )
     dependency_wide = (
         "unit-test:\n"
