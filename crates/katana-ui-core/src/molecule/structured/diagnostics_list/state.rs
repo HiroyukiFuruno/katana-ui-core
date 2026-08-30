@@ -143,7 +143,7 @@ impl DiagnosticsListState {
         options: &DiagnosticsListOptions,
         forward: bool,
     ) -> Vec<DiagnosticsListEvent> {
-        let ids = DiagnosticsListPlanner::visible_items(items, options)
+        let ids = visible_items(items, options, self.selected_scope_key.as_ref())
             .into_iter()
             .map(|it| it.id.clone())
             .collect::<Vec<_>>();
@@ -159,7 +159,7 @@ impl DiagnosticsListState {
         options: &DiagnosticsListOptions,
         forward: bool,
     ) -> Vec<DiagnosticsListEvent> {
-        let visible = DiagnosticsListPlanner::visible_items(items, options);
+        let visible = visible_items(items, options, self.selected_scope_key.as_ref());
         let errors = visible
             .into_iter()
             .filter(|it| it.severity.is_error())
@@ -201,6 +201,14 @@ impl DiagnosticsListState {
             expanded: false,
         }]
     }
+}
+
+fn visible_items<'a>(
+    items: &'a [DiagnosticItem],
+    options: &DiagnosticsListOptions,
+    scope_key: Option<&DiagnosticScopeKey>,
+) -> Vec<&'a DiagnosticItem> {
+    DiagnosticsListPlanner::visible_items_for_scope(items, options, scope_key)
 }
 
 fn apply_fix(items: &[DiagnosticItem], id: DiagnosticId) -> Vec<DiagnosticsListEvent> {

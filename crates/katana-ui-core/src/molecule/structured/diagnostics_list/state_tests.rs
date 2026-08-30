@@ -1,7 +1,20 @@
 use super::*;
+use crate::molecule::structured::diagnostics_list::{
+    DiagnosticAction, DiagnosticLocation, DiagnosticSeverity,
+};
 
 fn scope(key: &str) -> DiagnosticScopeInput {
     DiagnosticScopeInput::new(key, format!("label-{key}"), format!("a11y-{key}"))
+}
+
+fn item(id: &str, key: &str) -> DiagnosticItem {
+    DiagnosticItem::new(
+        id,
+        DiagnosticSeverity::Error,
+        format!("message-{id}"),
+        DiagnosticLocation::new("file.rs", 1, 1),
+    )
+    .scope(key)
 }
 
 #[test]
@@ -111,5 +124,58 @@ fn select_scope_relative_wraps_when_moving_around_list() {
         vec![DiagnosticsListEvent::ScopeSelected {
             scope_key: scopes[2].key.clone()
         }]
+    );
+}
+
+#[test]
+fn keyboard_navigation_respects_selected_scope_and_avoids_hidden_diagnostics() {
+    let first = scope("a");
+    let second = scope("b");
+    let hidden = item("hidden", "a").quickfix(DiagnosticAction::new("fix-a", "fix"));
+    let visible = item("visible-a", "b").quickfix(DiagnosticAction::new("fix-b", "fix"));
+    let visible_without_fix = item("visible-b", "b");
+
+    let mut state = DiagnosticsListState {
+        selected_scope_key: Some(second.key.clone()),
+        selected_id: Some(hidden.id.clone()),
+        ..DiagnosticsListState::default()
+    };
+    let items = vec![hidden.clone(), visible.clone(), visible_without_fix.clone()];
+    let visible_id = visible.id.clone();
+
+    assert_eq!(
+        state.apply_keyboard(
+            DiagnosticKeyboardInput::ArrowDown,
+            &items,
+            &[first.clone(), second.clone()],
+            &DiagnosticsListOptions::default(),
+        ),
+        vec![DiagnosticsListEvent::DiagnosticSelected {
+            id: visible_id.clone(),
+        }]
+    );
+    assert_eq!(state.selected_id, Some(visible_id.clone()));
+
+    state.selected_id = Some(hidden.id.clone());
+    assert_eq!(
+        state.apply_keyboard(
+            DiagnosticKeyboardInput::F8,
+            &items,
+            &[first.clone(), second.clone()],
+            &DiagnosticsListOptions::default(),
+        ),
+        vec![DiagnosticsListEvent::DiagnosticSelected {
+            id: visible_id.clone(),
+        }]
+    );
+
+    assert_eq!(
+        state.apply_keyboard(
+            DiagnosticKeyboardInput::Space,
+            &items,
+            &[first, second],
+            &DiagnosticsListOptions::default(),
+        ),
+        vec![DiagnosticsListEvent::DiagnosticFixApplied { id: visible_id }]
     );
 }
