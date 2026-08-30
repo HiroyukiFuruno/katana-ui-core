@@ -6,17 +6,13 @@ use super::types::{
     StatusBarPaintOperationKind, StatusBarPaintTexture, StatusBarRenderStyle,
 };
 use katana_ui_core::molecule::{
-    StatusBar, StatusBarAction, StatusBarSegment, StatusBarSegmentAlignment,
+    ProgressMeterShape, StatusBar, StatusBarAction, StatusBarSegment, StatusBarSegmentAlignment,
 };
 use katana_ui_core::render_model::{UiTextSpan, UiTextSpanStyle, UiTone};
 use katana_ui_core_text_raster::PlatformTextRasterRequest;
 use sha2::{Digest, Sha256};
 
 const LINE_HEIGHT_MULTIPLIER: f32 = 1.45;
-const PROGRESS_BOTTOM_OFFSET_PX: f32 = 4.0;
-const PROGRESS_HEIGHT_PX: f32 = 3.0;
-const PROGRESS_BACKGROUND_RGBA: [u8; katana_ui_core::render_model::RGBA_CHANNEL_COUNT] =
-    [80, 80, 80, 255];
 pub(super) const STATUS_ALIGNMENTS: [StatusBarSegmentAlignment; 3] = [
     StatusBarSegmentAlignment::Leading,
     StatusBarSegmentAlignment::Center,
@@ -34,6 +30,7 @@ pub(super) struct SegmentSnapshot {
     progress: Option<ProgressSnapshot>,
 }
 struct ProgressSnapshot {
+    shape: ProgressMeterShape,
     percent: u8,
     tone: UiTone,
 }
@@ -68,6 +65,7 @@ impl From<&StatusBarSegment> for SegmentSnapshot {
             icon: segment.icon_name().map(str::to_owned),
             tooltip: segment.tooltip_text().map(str::to_owned),
             progress: segment.progress_spec().map(|progress| ProgressSnapshot {
+                shape: progress.shape(),
                 percent: progress.percent(),
                 tone: progress.tone_value(),
             }),
@@ -105,11 +103,14 @@ impl EguiStatusBarAdapter {
             StatusBarSegmentAlignment::Trailing => root.right() - total,
         };
         for (segment, width) in segments.iter().zip(widths) {
-            let bounds = egui::Rect::from_min_size(
+            let requested_bounds = egui::Rect::from_min_size(
                 egui::pos2(x, root.top()),
                 egui::vec2(width, root.height()),
             );
-            self.paint_segment(ui, bounds, segment, style, out, status)?;
+            let bounds = requested_bounds.intersect(root);
+            if bounds.is_positive() {
+                self.paint_segment(ui, bounds, segment, style, out, status)?;
+            }
             x += width + gap;
         }
         Ok(())
@@ -124,7 +125,7 @@ impl EguiStatusBarAdapter {
         out: &mut EguiStatusBarOutput,
         status: &mut StatusBar,
     ) -> Result<(), EguiStatusBarError> {
-        let label = segment.display_label();
+        let label = self.elide_label(&segment.display_label(), style, bounds.width())?;
         let response = ui.interact(
             bounds,
             self.id.with(&segment.id),
@@ -134,16 +135,30 @@ impl EguiStatusBarAdapter {
                 egui::Sense::hover()
             },
         );
+        self.segment_bounds
+            .insert(segment.id.clone(), response.rect);
         if segment.interactive {
             publish_accessibility(ui, response.id, bounds, &segment.accessibility, &segment.id);
             let response_has_focus = response.has_focus();
-            if response.clicked()
-                || ui.input(|input| {
-                    input.has_accesskit_action_request(response.id, egui::accesskit::Action::Click)
-                        || (response_has_focus
+            let (pointer_within_bounds, accesskit_activation, keyboard_activation) =
+                ui.input(|input| {
+                    (
+                        input
+                            .pointer
+                            .interact_pos()
+                            .is_some_and(|position| bounds.contains(position)),
+                        input.has_accesskit_action_request(
+                            response.id,
+                            egui::accesskit::Action::Click,
+                        ),
+                        response_has_focus
                             && (input.key_pressed(egui::Key::Enter)
-                                || input.key_pressed(egui::Key::Space)))
-                })
+                                || input.key_pressed(egui::Key::Space)),
+                    )
+                });
+            if (response.clicked() && pointer_within_bounds)
+                || accesskit_activation
+                || keyboard_activation
             {
                 out.events
                     .extend(status.apply_action(&StatusBarAction::PressSegment {
@@ -162,7 +177,17 @@ impl EguiStatusBarAdapter {
             }
         }
         if let Some(progress) = segment.progress.as_ref() {
-            self.paint_progress(ui, bounds, progress.percent, progress.tone, style);
+            self.paint_progress(
+                ui,
+                bounds,
+                progress.shape,
+                progress.percent,
+                progress.tone,
+                style,
+            );
+        }
+        if label.is_empty() {
+            return Ok(());
         }
         let scale = ui.ctx().pixels_per_point();
         let tone = StatusBarPaint::tone_color(segment.tone, style.neutral_text_rgba);
@@ -211,45 +236,28 @@ impl EguiStatusBarAdapter {
         Ok(())
     }
 
-    fn paint_progress(
+    fn elide_label(
         &mut self,
-        ui: &egui::Ui,
-        bounds: egui::Rect,
-        percent: u8,
-        tone: UiTone,
+        label: &str,
         style: &StatusBarRenderStyle,
-    ) {
-        let bar = egui::Rect::from_min_size(
-            egui::pos2(bounds.left(), bounds.bottom() - PROGRESS_BOTTOM_OFFSET_PX),
-            egui::vec2(bounds.width(), PROGRESS_HEIGHT_PX),
-        );
-        let fill = egui::Rect::from_min_size(
-            bar.min,
-            egui::vec2(bar.width() * f32::from(percent) / 100.0, bar.height()),
-        );
-        let foreground = StatusBarPaint::tone_color(tone, style.neutral_text_rgba);
-        if let Some(plan) = self.last_paint_plan.as_mut() {
-            plan.operations.extend([
-                StatusBarPaintOperation {
-                    clip_bounds: StatusBarPaint::ui_rect(bar),
-                    kind: StatusBarPaintOperationKind::Fill {
-                        bounds: StatusBarPaint::ui_rect(bar),
-                        color_rgba: PROGRESS_BACKGROUND_RGBA,
-                    },
-                },
-                StatusBarPaintOperation {
-                    clip_bounds: StatusBarPaint::ui_rect(fill),
-                    kind: StatusBarPaintOperationKind::Fill {
-                        bounds: StatusBarPaint::ui_rect(fill),
-                        color_rgba: foreground,
-                    },
-                },
-            ]);
+        available_width: f32,
+    ) -> Result<String, EguiStatusBarError> {
+        if self.raster_width(label, style)? <= available_width {
+            return Ok(label.to_owned());
         }
-        ui.painter()
-            .rect_filled(bar, 1.0, StatusBarPaint::color(PROGRESS_BACKGROUND_RGBA));
-        ui.painter()
-            .rect_filled(fill, 1.0, StatusBarPaint::color(foreground));
+        let ellipsis = "…";
+        if self.raster_width(ellipsis, style)? > available_width {
+            return Ok(String::new());
+        }
+        let mut elided = String::new();
+        for character in label.chars() {
+            let candidate = format!("{elided}{character}{ellipsis}");
+            if self.raster_width(&candidate, style)? > available_width {
+                break;
+            }
+            elided.push(character);
+        }
+        Ok(format!("{elided}{ellipsis}"))
     }
 
     fn raster_width(

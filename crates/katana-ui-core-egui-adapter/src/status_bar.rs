@@ -5,6 +5,7 @@ mod adapter;
 mod paint;
 mod paint_plan;
 mod popover;
+mod progress;
 mod render;
 mod types;
 
@@ -17,3 +18,7 @@ pub use types::{
 #[cfg(test)]
 #[path = "status_bar_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "status_bar_layout_tests.rs"]
+mod layout_tests;

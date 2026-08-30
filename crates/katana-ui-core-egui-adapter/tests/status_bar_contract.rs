@@ -293,6 +293,51 @@ fn status_bar_open_popover_without_spec_is_noop() -> Result<(), String> {
 }
 
 #[test]
+fn status_bar_popover_is_placed_from_its_trailing_segment_anchor() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiStatusBarAdapter::new("status-popover-anchor-contract")
+        .map_err(|error| error.to_string())?;
+    let status = StatusBar::new("状態")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(
+            StatusBarSegment::new("leading", "左端").alignment(StatusBarSegmentAlignment::Leading),
+        )
+        .segment(
+            StatusBarSegment::new("target", "右端の詳細")
+                .alignment(StatusBarSegmentAlignment::Trailing)
+                .popover(StatusBarPopoverSpec::new("詳細", "対象セグメントの内容")),
+        );
+    let mut status = with_open_popover(status, "target")?;
+
+    let (_, events) = frame(&context, &mut adapter, &mut status, Vec::new())?;
+
+    assert!(events.is_empty());
+    let plan = adapter
+        .artifact_paint_plan()
+        .ok_or_else(|| "anchored popover keeps its paint plan".to_owned())?;
+    let overlay_bounds = plan
+        .operations
+        .iter()
+        .filter_map(|operation| match &operation.kind {
+            StatusBarPaintOperationKind::Texture { bounds, texture }
+                if texture.identity.starts_with("status-bar-overlay:") =>
+            {
+                Some(*bounds)
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(overlay_bounds.len(), 2);
+    let root_center_x = plan.surface_bounds.x + plan.surface_bounds.width as i32 / 2;
+    assert!(
+        overlay_bounds.iter().all(|bounds| bounds.x > root_center_x),
+        "popover textures must follow the trailing target instead of a fixed viewport origin: root={:?}, overlays={overlay_bounds:?}",
+        plan.surface_bounds,
+    );
+    Ok(())
+}
+
+#[test]
 fn progress_icon_tooltip_and_popover_are_rasterized_and_one_shot() -> Result<(), String> {
     let context = egui::Context::default();
     context.enable_accesskit();

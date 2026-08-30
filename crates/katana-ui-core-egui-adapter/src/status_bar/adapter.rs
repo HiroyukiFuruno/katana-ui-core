@@ -8,6 +8,7 @@ use katana_ui_core::molecule::{StatusBar, StatusBarDensity, StatusBarMode};
 use katana_ui_core_text_raster::{
     PlatformTextRasterConfig, PlatformTextRasterResources, PlatformTextRasterizer,
 };
+use std::collections::BTreeMap;
 
 const COMPACT_HEIGHT_REDUCTION_PX: u32 = 4;
 
@@ -18,6 +19,7 @@ pub struct EguiStatusBarAdapter {
     pub(super) last_paint_plan: Option<StatusBarPaintPlan>,
     pub(super) last_label_rasters: Vec<StatusBarLabelRasterEvidence>,
     pub(super) last_tooltip_segment: Option<String>,
+    pub(super) segment_bounds: BTreeMap<String, egui::Rect>,
 }
 
 impl EguiStatusBarAdapter {
@@ -37,6 +39,7 @@ impl EguiStatusBarAdapter {
             last_paint_plan: None,
             last_label_rasters: Vec::new(),
             last_tooltip_segment: None,
+            segment_bounds: BTreeMap::new(),
         }
     }
 
@@ -66,6 +69,7 @@ impl EguiStatusBarAdapter {
         style: &StatusBarRenderStyle,
     ) -> Result<EguiStatusBarOutput, EguiStatusBarError> {
         self.last_label_rasters.clear();
+        self.segment_bounds.clear();
         let width = ui.available_width().max(1.0);
         let height = match status.density_value() {
             StatusBarDensity::Compact => {
