@@ -1,9 +1,14 @@
 use super::*;
 use std::cell::Cell;
 
+const PAN_SURFACE_EXTENT: u32 = 20;
+
 fn pan_surface() -> UiGestureSurface {
-    UiGestureSurface::new("surface", UiRect::new(0, 0, 20, 20))
-        .capabilities(UiSurfaceGestureCapabilities::default().pointer_pan(true))
+    UiGestureSurface::new(
+        "surface",
+        UiRect::new(0, 0, PAN_SURFACE_EXTENT, PAN_SURFACE_EXTENT),
+    )
+    .capabilities(UiSurfaceGestureCapabilities::default().pointer_pan(true))
 }
 
 #[test]

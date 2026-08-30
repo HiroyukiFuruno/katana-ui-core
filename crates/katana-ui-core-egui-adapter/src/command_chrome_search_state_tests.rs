@@ -5,7 +5,20 @@ use katana_ui_core::molecule::command_chrome::{
     SearchResultSummaryTemplate,
 };
 use katana_ui_core::molecule::structured::SearchControlStrip;
+use katana_ui_core::render_model::RGBA_CHANNEL_COUNT;
 use katana_ui_core::theme::{FontFamily, FontToken};
+
+const SEARCH_FONT_SIZE: f32 = 14.0;
+const SEARCH_FONT_WEIGHT: u16 = 400;
+const SEARCH_LINE_HEIGHT_PX: f32 = 20.0;
+const SEARCH_TEXT_RGBA: [u8; RGBA_CHANNEL_COUNT] = [230, 230, 230, 255];
+const SEARCH_BACKGROUND_RGBA: [u8; RGBA_CHANNEL_COUNT] = [20, 20, 20, 255];
+const SEARCH_SELECTION_RGBA: [u8; RGBA_CHANNEL_COUNT] = [64, 96, 160, 180];
+const SEARCH_PREEDIT_RGBA: [u8; RGBA_CHANNEL_COUNT] = [255, 196, 64, 255];
+const SEARCH_CARET_RGBA: [u8; RGBA_CHANNEL_COUNT] = [255, 255, 255, 255];
+const SEARCH_CONTROL_GAP_PX: u32 = 8;
+const SEARCH_CONTROL_PADDING_PX: u32 = 6;
+const SEARCH_ACTIVE_CONTROL_RGBA: [u8; RGBA_CHANNEL_COUNT] = [64, 96, 160, 255];
 
 #[test]
 fn synchronization_rebuilds_surfaces_for_identity_presentation_and_size_changes() {
@@ -101,25 +114,25 @@ fn style(width: u32, height: u32) -> EguiCommandChromeSearchStyle {
             FontToken {
                 name: "search".to_string(),
                 family: FontFamily::Monospace,
-                size: 14.0,
-                weight: 400,
+                size: SEARCH_FONT_SIZE,
+                weight: SEARCH_FONT_WEIGHT,
             },
-            [230, 230, 230, 255],
-            20.0,
+            SEARCH_TEXT_RGBA,
+            SEARCH_LINE_HEIGHT_PX,
         ),
         input_paint: TextSurfacePaintStyle {
-            background_rgba: [20, 20, 20, 255],
-            gutter_background_rgba: [20, 20, 20, 255],
+            background_rgba: SEARCH_BACKGROUND_RGBA,
+            gutter_background_rgba: SEARCH_BACKGROUND_RGBA,
             gutter_paints: Vec::new(),
-            selection_rgba: [64, 96, 160, 180],
-            preedit_rgba: [255, 196, 64, 255],
-            caret_rgba: [255, 255, 255, 255],
+            selection_rgba: SEARCH_SELECTION_RGBA,
+            preedit_rgba: SEARCH_PREEDIT_RGBA,
+            caret_rgba: SEARCH_CARET_RGBA,
             annotation_paints: Vec::new(),
         },
         input_width_px: width,
         input_height_px: height,
-        gap_px: 8,
-        control_padding_px: 6,
-        active_control_rgba: [64, 96, 160, 255],
+        gap_px: SEARCH_CONTROL_GAP_PX,
+        control_padding_px: SEARCH_CONTROL_PADDING_PX,
+        active_control_rgba: SEARCH_ACTIVE_CONTROL_RGBA,
     }
 }

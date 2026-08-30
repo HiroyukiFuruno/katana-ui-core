@@ -10,6 +10,8 @@ use katana_ui_core::molecule::command_chrome::{
 };
 use katana_ui_core::text_surface::{TextSurface, TextSurfaceProps, TextSurfaceViewport};
 
+const TEST_VIEWPORT_EXTENT: u32 = 16;
+
 #[test]
 fn pointer_button_populates_button_fields() {
     let event = pointer_button(egui::pos2(12.5, 34.0), true);
@@ -28,7 +30,7 @@ fn text_surface() -> TextSurface {
     TextSurface::new(TextSurfaceProps::new(
         TextArea::new("kuc-unicode-runner-test").value("capture"),
         Vec::new(),
-        TextSurfaceViewport::new(0, 0, 16, 16),
+        TextSurfaceViewport::new(0, 0, TEST_VIEWPORT_EXTENT, TEST_VIEWPORT_EXTENT),
     ))
 }
 

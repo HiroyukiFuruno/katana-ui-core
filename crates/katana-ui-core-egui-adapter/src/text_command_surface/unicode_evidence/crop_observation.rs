@@ -3,6 +3,7 @@ use super::types::KucUnicodeColorGlyphEvidenceError;
 use katana_ui_core_text_raster::PlatformTextRaster;
 
 const RGBA_CHANNEL_COUNT: usize = 4;
+const ALPHA_CHANNEL_INDEX: usize = RGBA_CHANNEL_COUNT - 1;
 
 pub(super) fn find_range(text: &str, target: &str) -> Option<(usize, usize)> {
     katana_ui_core_text_raster::PlatformTextGraphemeRange::ranges(text)
@@ -52,7 +53,7 @@ pub(super) fn crop_for_composite(
             let pixel = rgba_pixels.get(index..end).ok_or_else(|| {
                 KucUnicodeColorGlyphEvidenceError::RootTrace("composite crop pixel missing".into())
             })?;
-            let pixel = [pixel[0], pixel[1], pixel[2], pixel[3]];
+            let pixel = [pixel[0], pixel[1], pixel[2], pixel[ALPHA_CHANNEL_INDEX]];
             pixels.push(pixel);
         }
     }

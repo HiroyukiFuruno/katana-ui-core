@@ -20,6 +20,14 @@ enum DropdownMotionTransition {
     BeginItem,
 }
 
+const DEFAULT_SCENARIO_REVISION: u64 = 1;
+const WORKSPACE_PREVIEW_DIMENSION: u32 = 2;
+const WORKSPACE_PREVIEW_DISPLAY_DIMENSION: u32 = 0;
+const WORKSPACE_PREVIEW_CONTENT_SCALE: u32 = 100;
+const WORKSPACE_PREVIEW_RGBA: &[u8] = &[
+    36, 42, 54, 255, 74, 85, 104, 255, 74, 85, 104, 255, 36, 42, 54, 255,
+];
+
 mod scenario_factory;
 
 pub use scenario_factory::FullTextCommandSurfaceScenarioFactory;
@@ -32,7 +40,7 @@ pub(super) fn issue_lease<R>(
 where
     R: super::KucRootEffectRouter + 'static,
 {
-    issue_lease_at_revision(id, presentation, 1, router)
+    issue_lease_at_revision(id, presentation, DEFAULT_SCENARIO_REVISION, router)
 }
 
 pub(super) fn issue_lease_at_revision<R>(
@@ -139,7 +147,7 @@ fn workspace_tabs_lease() -> TabStripProjectionLease {
         .selectable(true)
         .accepts_tab_drop(true);
     let projection = TabStripProjection::new(
-        1,
+        DEFAULT_SCENARIO_REVISION,
         TabStripCorrelation::from_opaque_bytes(b"kuc-scenario-workspace-tabs"),
     )
     .capabilities(TabStripSurfaceCapabilities::new().tab_drop_at_end_available(true))
@@ -202,19 +210,17 @@ fn workspace_tabs_status_diagnostics_lease() -> StatusDiagnosticsProjectionLease
 }
 
 fn workspace_tabs_editor_viewport_lease() -> EditorViewportProjectionLease {
-    // 固定の 2x2 fixture は構築時点で検証済みのため、実行時に到達不能な失敗境界を持たせない。
+    /* WHY: 固定fixtureは構築時点で検証済みのため、実行時に到達不能な失敗境界を持たせない。 */
     let preview = UiImageSurfaceProps {
         fingerprint: "generic-workspace-preview".to_string(),
-        width: 2,
-        height: 2,
-        display_width: 0,
-        display_height: 0,
-        display_width_milli: 0,
-        display_height_milli: 0,
-        rgba: vec![
-            36, 42, 54, 255, 74, 85, 104, 255, 74, 85, 104, 255, 36, 42, 54, 255,
-        ],
-        content_scale: 100,
+        width: WORKSPACE_PREVIEW_DIMENSION,
+        height: WORKSPACE_PREVIEW_DIMENSION,
+        display_width: WORKSPACE_PREVIEW_DISPLAY_DIMENSION,
+        display_height: WORKSPACE_PREVIEW_DISPLAY_DIMENSION,
+        display_width_milli: WORKSPACE_PREVIEW_DISPLAY_DIMENSION,
+        display_height_milli: WORKSPACE_PREVIEW_DISPLAY_DIMENSION,
+        rgba: WORKSPACE_PREVIEW_RGBA.to_vec(),
+        content_scale: WORKSPACE_PREVIEW_CONTENT_SCALE,
         fit: UiImageSurfaceFit::Contain,
         accessibility_label: "Generic preview".to_string(),
         selection_text: String::new(),

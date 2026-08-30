@@ -7,12 +7,21 @@ use crate::text_command_surface::{
 };
 use std::sync::Arc;
 
+const RETAINED_TEST_VIEWPORT_WIDTH_PX: f32 = 260.0;
+const RETAINED_TEST_VIEWPORT_HEIGHT_PX: f32 = 80.0;
+
+#[path = "retained_state_tests/navigation.rs"]
+mod navigation;
+
 fn retained_input(events: Vec<egui::Event>) -> egui::RawInput {
     egui::RawInput {
         events,
         screen_rect: Some(egui::Rect::from_min_size(
             egui::Pos2::ZERO,
-            egui::vec2(260.0, 80.0),
+            egui::vec2(
+                RETAINED_TEST_VIEWPORT_WIDTH_PX,
+                RETAINED_TEST_VIEWPORT_HEIGHT_PX,
+            ),
         )),
         ..Default::default()
     }
@@ -126,7 +135,10 @@ fn show_projection_renders_navigation_and_preserves_scroll_state() {
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
-                egui::vec2(260.0, 80.0),
+                egui::vec2(
+                    RETAINED_TEST_VIEWPORT_WIDTH_PX,
+                    RETAINED_TEST_VIEWPORT_HEIGHT_PX,
+                ),
             )),
             ..Default::default()
         },
@@ -268,34 +280,4 @@ fn show_projection_propagates_real_drag_release_without_a_port() {
         observed.expect("drag release frame should execute"),
         Err(TabStripRetainedError::MissingPort)
     ));
-}
-
-#[test]
-fn navigation_controls_propagate_real_missing_port_for_previous_and_next_frames() {
-    for label in ["previous", "next"] {
-        let projection = build_projection_with_navigation();
-        let mut state = build_state_with_projection(build_projection_with_navigation());
-        let context = egui::Context::default();
-        context.enable_accesskit();
-        let mut first_result = None;
-        let mut output = context.run_ui(retained_input(Vec::new()), |ui| {
-            first_result = Some(state.show_projection(ui, &projection, &mut false, 0.0));
-        });
-        first_result
-            .expect("initial navigation frame should execute")
-            .expect("initial navigation frame should render");
-        let node = accesskit_button(&output, label);
-        output.textures_delta.clear();
-
-        let mut observed = None;
-        let mut output = context.run_ui(retained_input(vec![accesskit_click(node)]), |ui| {
-            observed = Some(state.show_projection(ui, &projection, &mut false, 0.0));
-        });
-        output.textures_delta.clear();
-
-        assert!(matches!(
-            observed.expect("navigation activation frame should execute"),
-            Err(TabStripRetainedError::MissingPort)
-        ));
-    }
 }

@@ -6,6 +6,8 @@ use katana_ui_core::text_surface::{
     TextSurface, TextSurfaceAction, TextSurfaceProps, TextSurfaceViewport,
 };
 
+const TEST_VIEWPORT_HEIGHT: u32 = 20;
+
 fn composing_surface(value: &str, start: usize, end: usize) -> TextSurface {
     let mut text_area = TextArea::new("test").value(value);
     let target = text_area.state_id().clone();
@@ -14,7 +16,7 @@ fn composing_surface(value: &str, start: usize, end: usize) -> TextSurface {
     let mut surface = TextSurface::new(TextSurfaceProps::new(
         text_area,
         Vec::new(),
-        TextSurfaceViewport::new(0, 0, 100, 20),
+        TextSurfaceViewport::new(0, 0, 100, TEST_VIEWPORT_HEIGHT),
     ));
     let _ = surface.apply_action(TextSurfaceAction::TextArea(TextAreaAction::composition(
         TextAreaCompositionPhase::Update,

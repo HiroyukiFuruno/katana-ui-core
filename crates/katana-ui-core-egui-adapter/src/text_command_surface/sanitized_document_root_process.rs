@@ -186,7 +186,7 @@ pub(super) enum SanitizedDocumentRootProcessError {
 #[path = "sanitized_document_root_process_test_support_tests.rs"]
 mod test_support;
 #[cfg(test)]
-pub(crate) use test_support::search_projection_for_ime;
+pub(crate) use test_support::SearchProjectionForIme;
 
 #[cfg(test)]
 #[path = "sanitized_document_root_process_inline_tests.rs"]

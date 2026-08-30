@@ -152,7 +152,12 @@ fn nearest_texture_pixel<T: TextureRef>(
             actual: texture.rgba_pixels().len(),
         }
     })?;
-    Ok([pixels[0], pixels[1], pixels[2], pixels[3]])
+    Ok([
+        pixels[0],
+        pixels[GREEN_CHANNEL],
+        pixels[BLUE_CHANNEL],
+        pixels[ALPHA_CHANNEL],
+    ])
 }
 
 fn source_over(

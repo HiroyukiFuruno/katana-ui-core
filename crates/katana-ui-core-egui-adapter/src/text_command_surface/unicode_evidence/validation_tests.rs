@@ -5,6 +5,8 @@ use super::super::model::{
 use super::*;
 use katana_ui_core::render_model::UiRect;
 
+const SHA256_BYTE_COUNT: usize = 32;
+
 fn input() -> KucUnicodeColorGlyphEvidenceInput {
     KucUnicodeColorGlyphEvidenceInput {
         profile: katana_ui_core_text_raster::PlatformFontProfile::Linux,
@@ -20,7 +22,9 @@ fn input() -> KucUnicodeColorGlyphEvidenceInput {
             source_file_path: None,
             raw_file_sha256: None,
             catalog_fingerprint:
-                katana_ui_core_text_raster::PlatformFontCatalogFingerprint::from_bytes([0; 32]),
+                katana_ui_core_text_raster::PlatformFontCatalogFingerprint::from_bytes(
+                    [0; SHA256_BYTE_COUNT],
+                ),
             availability: katana_ui_core_text_raster::PlatformColorEmojiAvailability::Resolved,
         },
         final_text: "text".to_owned(),
