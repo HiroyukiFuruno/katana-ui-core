@@ -195,6 +195,114 @@ fn status_bar_single_message_uses_single_message_path_and_rasterizes() -> Result
 }
 
 #[test]
+fn empty_status_segment_fails_closed_without_retaining_a_partial_plan() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiStatusBarAdapter::new("status-empty-segment-contract")
+        .map_err(|error| error.to_string())?;
+    let mut status = StatusBar::new("空の状態")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(StatusBarSegment::new("empty", ""));
+
+    let error = match frame(&context, &mut adapter, &mut status, Vec::new()) {
+        Ok(_) => return Err("an empty segment must fail closed".to_owned()),
+        Err(error) => error,
+    };
+    assert_eq!(
+        error,
+        "status-bar raster failed: platform text raster request must not be empty"
+    );
+    assert!(adapter.artifact_paint_plan().is_none());
+    assert!(adapter.raster_evidence().is_empty());
+
+    let mut empty_message = StatusBar::new("空のメッセージ")
+        .mode(StatusBarMode::SingleMessage)
+        .message("");
+    let message_error = match frame(&context, &mut adapter, &mut empty_message, Vec::new()) {
+        Ok(_) => return Err("an empty single message must fail closed".to_owned()),
+        Err(error) => error,
+    };
+    assert_eq!(message_error, error);
+    assert!(adapter.artifact_paint_plan().is_none());
+    assert!(adapter.raster_evidence().is_empty());
+
+    let oversized_context = egui::Context::default();
+    oversized_context.set_pixels_per_point(2.0);
+    let mut oversized = StatusBar::new("高DPIの長い状態")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(StatusBarSegment::new("oversized", "W"));
+    let mut oversized_style = StatusBarRenderStyle::standard();
+    oversized_style.font.size = 2_900.0;
+    let mut oversized_result = None;
+    let mut oversized_output = oversized_context.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(10_000.0, 80.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
+                oversized_result =
+                    Some(adapter.show_with_style(ui, &mut oversized, &oversized_style));
+            });
+        },
+    );
+    oversized_output.textures_delta.clear();
+    let oversized_error = match oversized_result
+        .ok_or_else(|| "oversized status-bar receipt was not produced".to_owned())?
+    {
+        Ok(_) => return Err("a high-DPI oversized label must fail closed".to_owned()),
+        Err(error) => error.to_string(),
+    };
+    assert!(oversized_error.contains("exceeds 16777216 pixel limit"));
+    assert!(adapter.artifact_paint_plan().is_none());
+    assert!(adapter.raster_evidence().is_empty());
+    Ok(())
+}
+
+#[test]
+fn fully_elided_status_label_is_omitted_without_a_raster_error() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiStatusBarAdapter::new("status-empty-elision-contract")
+        .map_err(|error| error.to_string())?;
+    let mut status = StatusBar::new("省略された状態")
+        .mode(StatusBarMode::SingleMessage)
+        .message("A label that cannot fit into a one-pixel status bar");
+    let mut result = None;
+    let mut output = context.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1.0, 60.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
+                result = Some(adapter.show(ui, &mut status));
+            });
+        },
+    );
+    output.textures_delta.clear();
+    result
+        .ok_or_else(|| "fully-elided status-bar receipt was not produced".to_owned())?
+        .map_err(|error| error.to_string())?;
+
+    assert!(adapter.raster_evidence().is_empty());
+    let plan = adapter
+        .artifact_paint_plan()
+        .ok_or_else(|| "fully-elided status-bar keeps its paint plan".to_owned())?;
+    assert!(
+        plan.operations
+            .iter()
+            .all(|operation| matches!(operation.kind, StatusBarPaintOperationKind::Fill { .. })),
+        "a fully elided label must not create an empty texture"
+    );
+    Ok(())
+}
+
+#[test]
 fn compact_status_bar_uses_the_reduced_public_frame_height() -> Result<(), String> {
     let context = egui::Context::default();
     let mut adapter =
@@ -293,6 +401,42 @@ fn status_bar_open_popover_without_spec_is_noop() -> Result<(), String> {
 }
 
 #[test]
+fn fully_clipped_popover_segment_does_not_render_a_detached_overlay() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiStatusBarAdapter::new("status-popover-clipped-anchor-contract")
+        .map_err(|error| error.to_string())?;
+    let status = StatusBar::new("状態")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(
+            StatusBarSegment::new("blocking", "幅を占有するセグメント ".repeat(256))
+                .alignment(StatusBarSegmentAlignment::Leading),
+        )
+        .segment(
+            StatusBarSegment::new("clipped", "画面外の詳細")
+                .alignment(StatusBarSegmentAlignment::Leading)
+                .popover(StatusBarPopoverSpec::new("詳細", "アンカーのない内容")),
+        );
+    let mut status = with_open_popover(status, "clipped")?;
+
+    let (_, events) = frame(&context, &mut adapter, &mut status, Vec::new())?;
+    assert!(events.is_empty());
+    let plan = adapter
+        .artifact_paint_plan()
+        .ok_or_else(|| "clipped status-bar keeps its paint plan".to_owned())?;
+    assert!(
+        !plan.operations.iter().any(|operation| {
+            matches!(
+                &operation.kind,
+                StatusBarPaintOperationKind::Texture { texture, .. }
+                    if texture.identity.starts_with("status-bar-overlay:")
+            )
+        }),
+        "a fully clipped segment must not render a detached popover"
+    );
+    Ok(())
+}
+
+#[test]
 fn status_bar_popover_is_placed_from_its_trailing_segment_anchor() -> Result<(), String> {
     let context = egui::Context::default();
     let mut adapter = EguiStatusBarAdapter::new("status-popover-anchor-contract")
@@ -343,21 +487,28 @@ fn progress_icon_tooltip_and_popover_are_rasterized_and_one_shot() -> Result<(),
     context.enable_accesskit();
     let mut adapter =
         EguiStatusBarAdapter::new("status-full-contract").map_err(|error| error.to_string())?;
-    let mut status = StatusBar::new("状態")
-        .mode(StatusBarMode::MultiSegment)
-        .segment(
-            StatusBarSegment::new("build", "⭐️ 進捗")
-                .icon("⚙️")
-                .tooltip("ビルドの状態")
-                .progress(
-                    ProgressMeterSpec::new(ProgressMeterShape::Linear, 65)
-                        .label("65%")
-                        .tone(UiTone::Accent)
-                        .tooltip("進捗率"),
-                )
-                .popover(StatusBarPopoverSpec::new("ビルド", "日本語の詳細 ⭐️")),
-        )
-        .segment(StatusBarSegment::new("disabled", "無効").interactive(false));
+    let mut status =
+        StatusBar::new("状態")
+            .mode(StatusBarMode::MultiSegment)
+            .segment(
+                StatusBarSegment::new("build", "⭐️ 進捗")
+                    .icon("⚙️")
+                    .tooltip("ビルドの状態")
+                    .progress(
+                        ProgressMeterSpec::new(ProgressMeterShape::Linear, 65)
+                            .label("65%")
+                            .tone(UiTone::Accent)
+                            .tooltip("進捗率"),
+                    )
+                    .popover(StatusBarPopoverSpec::new("ビルド", "日本語の詳細 ⭐️")),
+            )
+            .segment(StatusBarSegment::new("disabled", "無効").interactive(false))
+            .segment(StatusBarSegment::new("ring", "リング").progress(
+                ProgressMeterSpec::new(ProgressMeterShape::Ring, 75).tone(UiTone::Success),
+            ))
+            .segment(StatusBarSegment::new("pie", "円形").progress(
+                ProgressMeterSpec::new(ProgressMeterShape::Pie, 40).tone(UiTone::Warning),
+            ));
 
     let (first, first_events) = frame(
         &context,
@@ -391,6 +542,16 @@ fn progress_icon_tooltip_and_popover_are_rasterized_and_one_shot() -> Result<(),
             .iter()
             .any(|(_, color)| *color == [100, 175, 255, 255])
     );
+    assert!(plan.operations.iter().any(|operation| matches!(
+        &operation.kind,
+        StatusBarPaintOperationKind::Texture { texture, .. }
+            if texture.identity.starts_with("status-bar-progress:ring:")
+    )));
+    assert!(plan.operations.iter().any(|operation| matches!(
+        &operation.kind,
+        StatusBarPaintOperationKind::Texture { texture, .. }
+            if texture.identity.starts_with("status-bar-progress:pie:")
+    )));
     assert!(first.platform_output.accesskit_update.is_some());
 
     let target = first

@@ -1,8 +1,8 @@
 use super::adapter::EguiStatusBarAdapter;
 use super::paint::StatusBarPaint;
 use super::types::{
-    StatusBarPaintOperation, StatusBarPaintOperationKind, StatusBarPaintTexture,
-    StatusBarRenderStyle,
+    StatusBarPaintOperation, StatusBarPaintOperationKind, StatusBarPaintPlan,
+    StatusBarPaintTexture, StatusBarRenderStyle,
 };
 use katana_ui_core::molecule::ProgressMeterShape;
 use katana_ui_core::render_model::{RGBA_CHANNEL_COUNT, UiTone};
@@ -17,6 +17,14 @@ const RING_STROKE_WIDTH_PX: f32 = 2.0;
 const RGBA_COMPONENT_COUNT: usize = RGBA_CHANNEL_COUNT;
 const PROGRESS_BACKGROUND_RGBA: [u8; RGBA_CHANNEL_COUNT] = [80, 80, 80, 255];
 
+struct ProgressPaint<'a> {
+    bounds: egui::Rect,
+    percent: u8,
+    tone: UiTone,
+    style: &'a StatusBarRenderStyle,
+    paint_plan: &'a mut StatusBarPaintPlan,
+}
+
 impl EguiStatusBarAdapter {
     pub(super) fn paint_progress(
         &mut self,
@@ -26,24 +34,30 @@ impl EguiStatusBarAdapter {
         percent: u8,
         tone: UiTone,
         style: &StatusBarRenderStyle,
+        paint_plan: &mut StatusBarPaintPlan,
     ) {
+        let paint = ProgressPaint {
+            bounds,
+            percent,
+            tone,
+            style,
+            paint_plan,
+        };
         match shape {
-            ProgressMeterShape::Linear => {
-                self.paint_linear_progress(ui, bounds, percent, tone, style);
-            }
-            ProgressMeterShape::Ring => self.paint_ring_progress(bounds, percent, tone, style),
-            ProgressMeterShape::Pie => self.paint_pie_progress(bounds, percent, tone, style),
+            ProgressMeterShape::Linear => self.paint_linear_progress(ui, paint),
+            ProgressMeterShape::Ring => self.paint_radial_progress(paint, "ring", false),
+            ProgressMeterShape::Pie => self.paint_radial_progress(paint, "pie", true),
         }
     }
 
-    fn paint_linear_progress(
-        &mut self,
-        ui: &egui::Ui,
-        bounds: egui::Rect,
-        percent: u8,
-        tone: UiTone,
-        style: &StatusBarRenderStyle,
-    ) {
+    fn paint_linear_progress(&mut self, ui: &egui::Ui, paint: ProgressPaint<'_>) {
+        let ProgressPaint {
+            bounds,
+            percent,
+            tone,
+            style,
+            paint_plan,
+        } = paint;
         let bar = egui::Rect::from_min_size(
             egui::pos2(bounds.left(), bounds.bottom() - PROGRESS_BOTTOM_OFFSET_PX),
             egui::vec2(bounds.width(), PROGRESS_HEIGHT_PX),
@@ -56,77 +70,52 @@ impl EguiStatusBarAdapter {
             ),
         );
         let foreground = StatusBarPaint::tone_color(tone, style.neutral_text_rgba);
-        if let Some(plan) = self.last_paint_plan.as_mut() {
-            plan.operations.extend([
-                StatusBarPaintOperation {
-                    clip_bounds: StatusBarPaint::ui_rect(bar),
-                    kind: StatusBarPaintOperationKind::Fill {
-                        bounds: StatusBarPaint::ui_rect(bar),
-                        color_rgba: PROGRESS_BACKGROUND_RGBA,
-                    },
+        paint_plan.operations.extend([
+            StatusBarPaintOperation {
+                clip_bounds: StatusBarPaint::ui_rect(bar),
+                kind: StatusBarPaintOperationKind::Fill {
+                    bounds: StatusBarPaint::ui_rect(bar),
+                    color_rgba: PROGRESS_BACKGROUND_RGBA,
                 },
-                StatusBarPaintOperation {
-                    clip_bounds: StatusBarPaint::ui_rect(fill),
-                    kind: StatusBarPaintOperationKind::Fill {
-                        bounds: StatusBarPaint::ui_rect(fill),
-                        color_rgba: foreground,
-                    },
+            },
+            StatusBarPaintOperation {
+                clip_bounds: StatusBarPaint::ui_rect(fill),
+                kind: StatusBarPaintOperationKind::Fill {
+                    bounds: StatusBarPaint::ui_rect(fill),
+                    color_rgba: foreground,
                 },
-            ]);
-        }
+            },
+        ]);
         ui.painter()
             .rect_filled(bar, 1.0, StatusBarPaint::color(PROGRESS_BACKGROUND_RGBA));
         ui.painter()
             .rect_filled(fill, 1.0, StatusBarPaint::color(foreground));
     }
 
-    fn paint_ring_progress(
-        &mut self,
-        bounds: egui::Rect,
-        percent: u8,
-        tone: UiTone,
-        style: &StatusBarRenderStyle,
-    ) {
-        self.paint_radial_progress(bounds, "ring", percent, tone, style, false);
-    }
-
-    fn paint_pie_progress(
-        &mut self,
-        bounds: egui::Rect,
-        percent: u8,
-        tone: UiTone,
-        style: &StatusBarRenderStyle,
-    ) {
-        self.paint_radial_progress(bounds, "pie", percent, tone, style, true);
-    }
-
-    fn paint_radial_progress(
-        &mut self,
-        bounds: egui::Rect,
-        shape: &str,
-        percent: u8,
-        tone: UiTone,
-        style: &StatusBarRenderStyle,
-        filled: bool,
-    ) {
+    fn paint_radial_progress(&mut self, paint: ProgressPaint<'_>, shape: &str, filled: bool) {
+        let ProgressPaint {
+            bounds,
+            percent,
+            tone,
+            style,
+            paint_plan,
+        } = paint;
         let meter = progress_meter_bounds(bounds);
         let foreground = StatusBarPaint::tone_color(tone, style.neutral_text_rgba);
-        if let Some(plan) = self.last_paint_plan.as_mut() {
-            plan.operations.push(StatusBarPaintOperation {
-                clip_bounds: StatusBarPaint::ui_rect(bounds),
-                kind: StatusBarPaintOperationKind::Texture {
-                    bounds: StatusBarPaint::ui_rect(meter),
-                    texture: progress_texture(
-                        shape,
-                        meter,
-                        percent,
-                        PROGRESS_BACKGROUND_RGBA,
-                        foreground,
-                        filled,
-                    ),
-                },
-            });
-        }
+        paint_plan.operations.push(StatusBarPaintOperation {
+            clip_bounds: StatusBarPaint::ui_rect(bounds),
+            kind: StatusBarPaintOperationKind::Texture {
+                bounds: StatusBarPaint::ui_rect(meter),
+                texture: progress_texture(
+                    shape,
+                    meter,
+                    percent,
+                    PROGRESS_BACKGROUND_RGBA,
+                    foreground,
+                    filled,
+                ),
+            },
+        });
     }
 }
 

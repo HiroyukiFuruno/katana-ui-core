@@ -70,6 +70,7 @@ impl EguiStatusBarAdapter {
     ) -> Result<EguiStatusBarOutput, EguiStatusBarError> {
         self.last_label_rasters.clear();
         self.segment_bounds.clear();
+        self.last_paint_plan = None;
         let width = ui.available_width().max(1.0);
         let height = match status.density_value() {
             StatusBarDensity::Compact => {
@@ -79,7 +80,7 @@ impl EguiStatusBarAdapter {
         } as f32;
         let (rect, _) = ui.allocate_exact_size(egui::vec2(width, height), egui::Sense::hover());
         let bounds = StatusBarPaint::ui_rect(rect);
-        self.last_paint_plan = Some(StatusBarPaintPlan {
+        let mut paint_plan = StatusBarPaintPlan {
             surface_bounds: bounds,
             operations: vec![StatusBarPaintOperation {
                 clip_bounds: bounds,
@@ -88,7 +89,7 @@ impl EguiStatusBarAdapter {
                     color_rgba: style.background_rgba,
                 },
             }],
-        });
+        };
         let mut out = EguiStatusBarOutput {
             events: Vec::new(),
             paint_plan: StatusBarPaintPlan {
@@ -96,28 +97,49 @@ impl EguiStatusBarAdapter {
                 operations: Vec::new(),
             },
         };
-        if status.mode_value() == StatusBarMode::SingleMessage {
-            if let Some(message) = status.single_message().map(str::to_owned) {
-                let snapshot =
-                    super::render::SegmentSnapshot::single_message(message, status.label());
-                self.paint_segment(ui, rect, &snapshot, style, &mut out, status)?;
+        let render_result: Result<(), EguiStatusBarError> = (|| {
+            if status.mode_value() == StatusBarMode::SingleMessage {
+                if let Some(message) = status.single_message().map(str::to_owned) {
+                    let snapshot =
+                        super::render::SegmentSnapshot::single_message(message, status.label());
+                    self.paint_segment(
+                        ui,
+                        rect,
+                        &snapshot,
+                        style,
+                        &mut paint_plan,
+                        &mut out,
+                        status,
+                    )?;
+                }
+            } else {
+                for alignment in super::render::STATUS_ALIGNMENTS {
+                    self.paint_alignment(
+                        ui,
+                        rect,
+                        status,
+                        alignment,
+                        style,
+                        &mut paint_plan,
+                        &mut out,
+                    )?;
+                }
             }
-        } else {
-            for alignment in super::render::STATUS_ALIGNMENTS {
-                self.paint_alignment(ui, rect, status, alignment, style, &mut out)?;
+            if ui.input(|input| input.key_pressed(egui::Key::Escape))
+                && let Some(id) = status.state().open_popover().cloned()
+            {
+                self.close_popover(ui, status, &id, &mut out);
             }
+            self.paint_open_popover(ui, status, &mut paint_plan)
+        })();
+        if let Err(error) = render_result {
+            self.last_label_rasters.clear();
+            self.segment_bounds.clear();
+            return Err(error);
         }
-        if ui.input(|input| input.key_pressed(egui::Key::Escape))
-            && let Some(id) = status.state().open_popover().cloned()
-        {
-            self.close_popover(ui, status, &id, &mut out);
-        }
-        self.paint_open_popover(ui, status)?;
-        self.paint_plan(ui);
-        out.paint_plan = self
-            .last_paint_plan
-            .clone()
-            .ok_or(EguiStatusBarError::PaintPlanNotProduced)?;
+        self.paint_plan(ui, &paint_plan);
+        self.last_paint_plan = Some(paint_plan.clone());
+        out.paint_plan = paint_plan;
         Ok(out)
     }
 }

@@ -1,12 +1,9 @@
 use super::adapter::EguiStatusBarAdapter;
 use super::paint::StatusBarPaint;
-use super::types::StatusBarPaintOperationKind;
+use super::types::{StatusBarPaintOperationKind, StatusBarPaintPlan};
 
 impl EguiStatusBarAdapter {
-    pub(super) fn paint_plan(&mut self, ui: &egui::Ui) {
-        let Some(plan) = self.last_paint_plan.as_ref() else {
-            return;
-        };
+    pub(super) fn paint_plan(&mut self, ui: &egui::Ui, plan: &StatusBarPaintPlan) {
         for operation in &plan.operations {
             let painter = ui
                 .painter()
@@ -46,14 +43,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn paint_plan_is_noop_when_missing() {
+    fn paint_plan_is_noop_when_empty() {
         let mut adapter =
             super::super::adapter::EguiStatusBarAdapter::new("status-paint-plan-noop")
                 .expect("status bar adapter should construct");
-        adapter.last_paint_plan = None;
+        let plan = super::super::types::StatusBarPaintPlan {
+            surface_bounds: UiRect::new(0, 0, 10, 10),
+            operations: Vec::new(),
+        };
         let context = egui::Context::default();
         let mut output = context.run_ui(egui::RawInput::default(), |ui| {
-            adapter.paint_plan(ui);
+            adapter.paint_plan(ui, &plan);
         });
         output.textures_delta.clear();
     }
@@ -63,7 +63,7 @@ mod tests {
         let mut adapter =
             super::super::adapter::EguiStatusBarAdapter::new("status-paint-plan-path")
                 .expect("status bar adapter should construct");
-        adapter.last_paint_plan = Some(super::super::types::StatusBarPaintPlan {
+        let plan = super::super::types::StatusBarPaintPlan {
             surface_bounds: UiRect::new(0, 0, 10, 10),
             operations: vec![
                 super::super::types::StatusBarPaintOperation {
@@ -88,10 +88,10 @@ mod tests {
                     },
                 },
             ],
-        });
+        };
         let context = egui::Context::default();
         let mut output = context.run_ui(egui::RawInput::default(), |ui| {
-            adapter.paint_plan(ui);
+            adapter.paint_plan(ui, &plan);
         });
         output.textures_delta.clear();
     }

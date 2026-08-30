@@ -8,15 +8,6 @@ use katana_ui_core::render_model::UiTone;
 use crate::status_bar::StatusBarPaintOperationKind;
 
 #[test]
-fn fresh_adapter_exposes_empty_artifact_and_raster_evidence() {
-    let adapter = EguiStatusBarAdapter::new("status-bar-default-evidence")
-        .expect("status bar adapter should retain its platform rasterizer");
-
-    assert!(adapter.artifact_paint_plan().is_none());
-    assert!(adapter.raster_evidence().is_empty());
-}
-
-#[test]
 fn unit_adapter_renders_single_message_and_closes_an_open_popover_from_escape() {
     let context = egui::Context::default();
     let mut adapter = EguiStatusBarAdapter::new("status-bar-unit-render")
@@ -158,13 +149,16 @@ fn unit_adapter_only_activates_interactive_segment_when_it_has_focus() {
 }
 
 #[test]
-fn unit_adapter_records_shape_specific_ring_and_pie_progress_paint_contracts() {
+fn unit_adapter_records_all_progress_shape_paint_contracts() {
     let context = egui::Context::default();
     let mut adapter = EguiStatusBarAdapter::new("status-bar-progress-shapes")
         .expect("status bar adapter should retain its platform rasterizer");
     let mut status =
         StatusBar::new("progress-shapes")
             .mode(StatusBarMode::MultiSegment)
+            .segment(StatusBarSegment::new("linear", "Linear").progress(
+                ProgressMeterSpec::new(ProgressMeterShape::Linear, 50).tone(UiTone::Accent),
+            ))
             .segment(StatusBarSegment::new("ring", "Ring").progress(
                 ProgressMeterSpec::new(ProgressMeterShape::Ring, 75).tone(UiTone::Success),
             ))
@@ -240,35 +234,16 @@ fn unit_adapter_records_shape_specific_ring_and_pie_progress_paint_contracts() {
                 .any(|pixel| pixel == [80, 80, 80, 255])
         );
     }
-    assert!(!operations.iter().any(|operation| matches!(
-        operation.kind,
-        StatusBarPaintOperationKind::Fill { bounds, .. }
-            if bounds.height == 3 && bounds.width > 3
-    )));
-}
-
-#[test]
-fn unit_adapter_omits_an_empty_elided_label_without_a_raster_error() {
-    let context = egui::Context::default();
-    let mut adapter = EguiStatusBarAdapter::new("status-bar-empty-elision")
-        .expect("status bar adapter should retain its platform rasterizer");
-    let mut status = StatusBar::new("empty-elision")
-        .mode(StatusBarMode::SingleMessage)
-        .message("A label that cannot fit into a one-pixel status bar");
-    crate::run_ui_discard(
-        &context,
-        egui::RawInput {
-            screen_rect: Some(egui::Rect::from_min_size(
-                egui::Pos2::ZERO,
-                egui::vec2(1.0, 60.0),
-            )),
-            ..egui::RawInput::default()
-        },
-        |ui| {
-            adapter
-                .show(ui, &mut status)
-                .expect("empty elision must render");
-        },
+    assert_eq!(
+        operations
+            .iter()
+            .filter(|operation| matches!(
+                operation.kind,
+                StatusBarPaintOperationKind::Fill { bounds, .. }
+                    if bounds.height == 3 && bounds.width > 3
+            ))
+            .count(),
+        2,
+        "linear progress records its background and foreground fills"
     );
-    assert!(adapter.raster_evidence().is_empty());
 }

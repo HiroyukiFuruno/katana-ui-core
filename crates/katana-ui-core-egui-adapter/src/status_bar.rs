@@ -22,3 +22,7 @@ mod tests;
 #[cfg(test)]
 #[path = "status_bar_layout_tests.rs"]
 mod layout_tests;
+
+#[cfg(test)]
+#[path = "status_bar_failure_tests.rs"]
+mod failure_tests;

@@ -2,9 +2,11 @@ use super::adapter::EguiStatusBarAdapter;
 use super::paint::StatusBarPaint;
 use super::types::{
     EguiStatusBarError, EguiStatusBarOutput, StatusBarPaintOperation, StatusBarPaintOperationKind,
-    StatusBarPaintTexture, StatusBarRenderStyle,
+    StatusBarPaintPlan, StatusBarPaintTexture, StatusBarRenderStyle,
 };
-use katana_ui_core::interaction::placement::{AnchorKind, Placement, PlacementRequest, Rect, Size};
+use katana_ui_core::interaction::placement::{
+    AnchorKind, Placement, PlacementConsumer, PlacementEngine, PlacementRequest, Rect, Size,
+};
 use katana_ui_core::molecule::{StatusBar, StatusBarAction};
 use katana_ui_core::render_model::{RGBA_CHANNEL_COUNT, UiNodeId, UiTextSpan, UiTextSpanStyle};
 use katana_ui_core_text_raster::PlatformTextRasterRequest;
@@ -20,6 +22,7 @@ impl EguiStatusBarAdapter {
         &mut self,
         ui: &egui::Ui,
         status: &StatusBar,
+        paint_plan: &mut StatusBarPaintPlan,
     ) -> Result<(), EguiStatusBarError> {
         let Some(id) = status.state().open_popover().cloned() else {
             return Ok(());
@@ -53,9 +56,7 @@ impl EguiStatusBarAdapter {
             placement_rect(viewport),
         )
         .offset(POPOVER_OFFSET_PX.round() as i32);
-        let Some(placement) = status.resolve_popover_placement(&id, &request) else {
-            return Ok(());
-        };
+        let placement = PlacementEngine::resolve_for(PlacementConsumer::Popover, &request);
         egui::Area::new(self.id.with(("popover", id.as_str())))
             .order(egui::Order::Foreground)
             .default_size(panel_size)
@@ -71,22 +72,20 @@ impl EguiStatusBarAdapter {
                             ui.add(egui::Image::from_texture(title).fit_to_original_size(1.0));
                         let body =
                             ui.add(egui::Image::from_texture(body).fit_to_original_size(1.0));
-                        if let Some(plan) = self.last_paint_plan.as_mut() {
-                            plan.operations.push(StatusBarPaintOperation {
-                                clip_bounds: StatusBarPaint::ui_rect(title.rect),
-                                kind: StatusBarPaintOperationKind::Texture {
-                                    bounds: StatusBarPaint::ui_rect(title.rect),
-                                    texture: title_texture,
-                                },
-                            });
-                            plan.operations.push(StatusBarPaintOperation {
-                                clip_bounds: StatusBarPaint::ui_rect(body.rect),
-                                kind: StatusBarPaintOperationKind::Texture {
-                                    bounds: StatusBarPaint::ui_rect(body.rect),
-                                    texture: body_texture,
-                                },
-                            });
-                        }
+                        paint_plan.operations.push(StatusBarPaintOperation {
+                            clip_bounds: StatusBarPaint::ui_rect(title.rect),
+                            kind: StatusBarPaintOperationKind::Texture {
+                                bounds: StatusBarPaint::ui_rect(title.rect),
+                                texture: title_texture,
+                            },
+                        });
+                        paint_plan.operations.push(StatusBarPaintOperation {
+                            clip_bounds: StatusBarPaint::ui_rect(body.rect),
+                            kind: StatusBarPaintOperationKind::Texture {
+                                bounds: StatusBarPaint::ui_rect(body.rect),
+                                texture: body_texture,
+                            },
+                        });
                     })
                     .inner
             });

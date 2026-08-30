@@ -3,7 +3,7 @@ use super::adapter::EguiStatusBarAdapter;
 use super::paint::StatusBarPaint;
 use super::types::{
     EguiStatusBarError, EguiStatusBarOutput, StatusBarLabelRasterEvidence, StatusBarPaintOperation,
-    StatusBarPaintOperationKind, StatusBarPaintTexture, StatusBarRenderStyle,
+    StatusBarPaintOperationKind, StatusBarPaintPlan, StatusBarPaintTexture, StatusBarRenderStyle,
 };
 use katana_ui_core::molecule::{
     ProgressMeterShape, StatusBar, StatusBarAction, StatusBarSegment, StatusBarSegmentAlignment,
@@ -81,6 +81,7 @@ impl EguiStatusBarAdapter {
         status: &mut StatusBar,
         alignment: StatusBarSegmentAlignment,
         style: &StatusBarRenderStyle,
+        paint_plan: &mut StatusBarPaintPlan,
         out: &mut EguiStatusBarOutput,
     ) -> Result<(), EguiStatusBarError> {
         let segments: Vec<_> = status
@@ -102,18 +103,22 @@ impl EguiStatusBarAdapter {
             StatusBarSegmentAlignment::Center => root.center().x - total / 2.0,
             StatusBarSegmentAlignment::Trailing => root.right() - total,
         };
-        for (segment, width) in segments.iter().zip(widths) {
-            let requested_bounds = egui::Rect::from_min_size(
-                egui::pos2(x, root.top()),
-                egui::vec2(width, root.height()),
-            );
-            let bounds = requested_bounds.intersect(root);
-            if bounds.is_positive() {
-                self.paint_segment(ui, bounds, segment, style, out, status)?;
-            }
-            x += width + gap;
-        }
-        Ok(())
+        segments
+            .iter()
+            .zip(widths)
+            .try_for_each(|(segment, width)| {
+                let requested_bounds = egui::Rect::from_min_size(
+                    egui::pos2(x, root.top()),
+                    egui::vec2(width, root.height()),
+                );
+                let bounds = requested_bounds.intersect(root);
+                x += width + gap;
+                if bounds.is_positive() {
+                    self.paint_segment(ui, bounds, segment, style, paint_plan, out, status)
+                } else {
+                    Ok(())
+                }
+            })
     }
 
     pub(super) fn paint_segment(
@@ -122,6 +127,7 @@ impl EguiStatusBarAdapter {
         bounds: egui::Rect,
         segment: &SegmentSnapshot,
         style: &StatusBarRenderStyle,
+        paint_plan: &mut StatusBarPaintPlan,
         out: &mut EguiStatusBarOutput,
         status: &mut StatusBar,
     ) -> Result<(), EguiStatusBarError> {
@@ -184,6 +190,7 @@ impl EguiStatusBarAdapter {
                 progress.percent,
                 progress.tone,
                 style,
+                paint_plan,
             );
         }
         if label.is_empty() {
@@ -219,20 +226,18 @@ impl EguiStatusBarAdapter {
             bounds.center(),
             egui::vec2(raster.width as f32 / scale, raster.height as f32 / scale),
         );
-        if let Some(plan) = self.last_paint_plan.as_mut() {
-            plan.operations.push(StatusBarPaintOperation {
-                clip_bounds: StatusBarPaint::ui_rect(bounds),
-                kind: StatusBarPaintOperationKind::Texture {
-                    bounds: StatusBarPaint::ui_rect(image),
-                    texture: StatusBarPaintTexture {
-                        identity,
-                        width: raster.width as u32,
-                        height: raster.height as u32,
-                        rgba_pixels: pixels,
-                    },
+        paint_plan.operations.push(StatusBarPaintOperation {
+            clip_bounds: StatusBarPaint::ui_rect(bounds),
+            kind: StatusBarPaintOperationKind::Texture {
+                bounds: StatusBarPaint::ui_rect(image),
+                texture: StatusBarPaintTexture {
+                    identity,
+                    width: raster.width as u32,
+                    height: raster.height as u32,
+                    rgba_pixels: pixels,
                 },
-            });
-        }
+            },
+        });
         Ok(())
     }
 
