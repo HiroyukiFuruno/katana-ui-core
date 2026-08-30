@@ -77,6 +77,17 @@ impl EguiDiagnosticsListAdapter {
                 self.id.with(item.id.as_str()),
                 egui::Sense::click(),
             );
+            ui.memory_mut(|memory| {
+                memory.set_focus_lock_filter(
+                    response.id,
+                    egui::EventFilter {
+                        horizontal_arrows: true,
+                        vertical_arrows: true,
+                        escape: true,
+                        ..egui::EventFilter::default()
+                    },
+                );
+            });
             DiagnosticsAccessibility::publish_accessibility(
                 ui,
                 response.id,
@@ -89,6 +100,7 @@ impl EguiDiagnosticsListAdapter {
             let item_clicked = DiagnosticsAccessibility::pointer_click_requested(ui, &response)
                 || DiagnosticsAccessibility::accesskit_click_requested(ui, response.id);
             if item_clicked {
+                self.focused_scope = None;
                 self.focused_item = Some(item.id.as_str().to_string());
                 response.request_focus();
             }
@@ -205,8 +217,9 @@ impl EguiDiagnosticsListAdapter {
         let clicked = DiagnosticsAccessibility::pointer_click_requested(ui, &response)
             || DiagnosticsAccessibility::accesskit_click_requested(ui, response.id);
         if clicked {
+            self.focused_scope = None;
             self.focused_item = Some(item.id.as_str().to_string());
-            response.request_focus();
+            ui.memory_mut(|memory| memory.request_focus(self.id.with(item.id.as_str())));
             output.events.extend(
                 diagnostics.apply_action(DiagnosticsListAction::ToggleFixPreview(item.id.clone())),
             );

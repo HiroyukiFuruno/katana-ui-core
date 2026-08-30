@@ -30,19 +30,43 @@ impl EguiDiagnosticsListAdapter {
             .then(|| {
                 ui.input(|input| {
                     if input.key_pressed(egui::Key::ArrowRight) {
-                        Some(DiagnosticKeyboardInput::ScopeNext)
+                        Some((DiagnosticKeyboardInput::ScopeNext, egui::Key::ArrowRight))
                     } else if input.key_pressed(egui::Key::ArrowLeft) {
-                        Some(DiagnosticKeyboardInput::ScopePrevious)
+                        Some((DiagnosticKeyboardInput::ScopePrevious, egui::Key::ArrowLeft))
                     } else {
                         None
                     }
                 })
             })
             .flatten();
-        if let Some(keyboard) = scope_keyboard {
+        if let Some((keyboard, key)) = scope_keyboard {
+            ui.input_mut(|input| {
+                let modifiers = input.modifiers;
+                input.consume_key(modifiers, key);
+            });
+            ui.memory_mut(|memory| memory.move_focus(egui::FocusDirection::None));
             output
                 .events
                 .extend(diagnostics.apply_action(DiagnosticsListAction::Keyboard(keyboard)));
+            match diagnostics.render_snapshot().state.selected_scope_key {
+                Some(scope) => {
+                    self.focused_item = None;
+                    self.focused_scope = Some(scope.as_str().to_owned());
+                    ui.memory_mut(|memory| {
+                        memory.request_focus(
+                            self.id
+                                .with(DiagnosticsTargetIdentity::scope(scope.as_str())),
+                        );
+                    });
+                }
+                None => {
+                    self.focused_item = None;
+                    self.focused_scope = None;
+                    if let Some(focused_response) = focused_response {
+                        ui.memory_mut(|memory| memory.surrender_focus(focused_response));
+                    }
+                }
+            }
         }
         let keyboard = ui.input(|input| {
             let list_keyboard = is_diagnostics_focused
@@ -56,20 +80,34 @@ impl EguiDiagnosticsListAdapter {
                         (egui::Key::Space, DiagnosticKeyboardInput::Space),
                     ]
                     .into_iter()
-                    .find_map(|(key, action)| input.key_pressed(key).then_some(action))
+                    .find_map(|(key, action)| input.key_pressed(key).then_some((action, key)))
                 })
                 .flatten();
             list_keyboard.or_else(|| {
-                input
-                    .key_pressed(egui::Key::F8)
-                    .then_some(if input.modifiers.shift {
+                input.key_pressed(egui::Key::F8).then_some((
+                    if input.modifiers.shift {
                         DiagnosticKeyboardInput::ShiftF8
                     } else {
                         DiagnosticKeyboardInput::F8
-                    })
+                    },
+                    egui::Key::F8,
+                ))
             })
         });
-        if let Some(keyboard) = keyboard.filter(|_| scope_keyboard.is_none()) {
+        if let Some((keyboard, key)) = keyboard.filter(|_| scope_keyboard.is_none()) {
+            ui.input_mut(|input| {
+                let modifiers = input.modifiers;
+                input.consume_key(modifiers, key);
+            });
+            if matches!(
+                keyboard,
+                DiagnosticKeyboardInput::ArrowUp
+                    | DiagnosticKeyboardInput::ArrowDown
+                    | DiagnosticKeyboardInput::ArrowLeft
+                    | DiagnosticKeyboardInput::ArrowRight
+            ) {
+                ui.memory_mut(|memory| memory.move_focus(egui::FocusDirection::None));
+            }
             let disclosure_action = self.focused_item.as_deref().and_then(|id| {
                 let item_id = katana_ui_core::molecule::DiagnosticId::new(id);
                 let expanded = snapshot.state.expanded_ids.contains(&item_id);
@@ -88,7 +126,15 @@ impl EguiDiagnosticsListAdapter {
                     .events
                     .extend(diagnostics.apply_action(DiagnosticsListAction::Keyboard(keyboard)));
             }
-            if let Some(selected_id) = diagnostics.render_snapshot().state.selected_id
+            let selected_id = diagnostics.render_snapshot().state.selected_id;
+            if let Some(selected_id) = selected_id.as_ref() {
+                self.focused_scope = None;
+                self.focused_item = Some(selected_id.as_str().to_owned());
+                ui.memory_mut(|memory| {
+                    memory.request_focus(self.id.with(selected_id.as_str()));
+                });
+            }
+            if let Some(selected_id) = selected_id
                 && let Some(index) = snapshot
                     .visible
                     .visible_ids
@@ -118,8 +164,12 @@ impl EguiDiagnosticsListAdapter {
         diagnostics: &mut DiagnosticsList,
     ) {
         let snapshot = diagnostics.render_snapshot();
+        let item_has_focus = self
+            .focused_item
+            .as_deref()
+            .is_some_and(|id| ui.memory(|memory| memory.focused()) == Some(self.id.with(id)));
         let close_requested =
-            self.focused_item.is_some() && ui.input(|input| input.key_pressed(egui::Key::Escape));
+            item_has_focus && ui.input(|input| input.key_pressed(egui::Key::Escape));
         let outside_requested = DiagnosticsAccessibility::pointer_pressed_outside(ui, surface);
         if (close_requested || outside_requested)
             && let Some(id) = self.focused_item.take()

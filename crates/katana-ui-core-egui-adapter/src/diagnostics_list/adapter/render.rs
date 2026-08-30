@@ -195,6 +195,15 @@ impl EguiDiagnosticsListAdapter {
                         egui::Sense::hover()
                     },
                 );
+                ui.memory_mut(|memory| {
+                    memory.set_focus_lock_filter(
+                        response.id,
+                        egui::EventFilter {
+                            horizontal_arrows: true,
+                            ..egui::EventFilter::default()
+                        },
+                    );
+                });
                 DiagnosticsAccessibility::publish_accessibility_with_enabled(
                     ui,
                     response.id,
@@ -209,6 +218,7 @@ impl EguiDiagnosticsListAdapter {
                     && (DiagnosticsAccessibility::pointer_click_requested(ui, &response)
                         || DiagnosticsAccessibility::accesskit_click_requested(ui, response.id))
                 {
+                    self.focused_item = None;
                     self.focused_scope = Some(scope.key.as_str().to_string());
                     response.request_focus();
                     output.events.extend(

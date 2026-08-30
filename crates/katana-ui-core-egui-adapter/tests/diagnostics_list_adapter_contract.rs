@@ -255,6 +255,101 @@ fn scope_pointer_keyboard_and_stale_accesskit_use_current_resolver() -> Result<(
 }
 
 #[test]
+fn removed_focused_scope_rejects_keyboard_navigation_without_a_replacement() -> Result<(), String> {
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let mut adapter = EguiDiagnosticsListAdapter::new("removed-focused-scope")
+        .map_err(|error| error.to_string())?;
+    let mut diagnostics = scoped_diagnostics(2);
+    let (initial, _) = frame(&context, &mut adapter, &mut diagnostics, Vec::new())?;
+    let active_scope = initial
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .and_then(|update| {
+            update
+                .nodes
+                .iter()
+                .find_map(|(id, node)| (node.label() == Some("現在の範囲")).then_some(*id))
+        })
+        .ok_or_else(|| "active scope AccessKit node".to_owned())?;
+    let (_, selected) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::AccessKitActionRequest(
+            egui::accesskit::ActionRequest {
+                action: egui::accesskit::Action::Click,
+                target_tree: egui::accesskit::TreeId::ROOT,
+                target_node: active_scope,
+                data: None,
+            },
+        )],
+    )?;
+    assert!(matches!(
+        selected.as_slice(),
+        [DiagnosticsListEvent::ScopeSelected { scope_key }] if scope_key.as_str() == "active"
+    ));
+
+    diagnostics.set_scopes(Vec::<(String, String, String)>::new());
+    let (_, rejected) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::Key {
+            key: egui::Key::ArrowRight,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    )?;
+
+    assert!(rejected.is_empty());
+    assert!(
+        context.memory(|memory| memory.focused()).is_none(),
+        "removing the focused scope must surrender its egui focus"
+    );
+    assert!(
+        diagnostics
+            .render_snapshot()
+            .state
+            .selected_scope_key
+            .is_none()
+    );
+
+    diagnostics.set_scopes([
+        (
+            "all".to_owned(),
+            "すべて".to_owned(),
+            "すべての診断".to_owned(),
+        ),
+        (
+            "active".to_owned(),
+            "現在".to_owned(),
+            "現在の範囲".to_owned(),
+        ),
+    ]);
+    let (_, stale_focus_events) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::Key {
+            key: egui::Key::ArrowRight,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    )?;
+    assert!(
+        stale_focus_events.is_empty(),
+        "reintroducing the scope must not restore stale keyboard focus"
+    );
+    Ok(())
+}
+
+#[test]
 fn one_scope_is_visible_but_disabled_for_accesskit_activation() -> Result<(), String> {
     let context = egui::Context::default();
     context.enable_accesskit();
@@ -417,15 +512,47 @@ fn raster_plan_contains_japanese_emoji_location_and_quickfix_without_labels() ->
 #[test]
 fn raw_input_keyboard_actions_return_existing_core_events() -> Result<(), String> {
     let context = egui::Context::default();
+    context.enable_accesskit();
     let mut adapter = EguiDiagnosticsListAdapter::new("diagnostics-keyboard")
         .map_err(|error| error.to_string())?;
     let mut diagnostics = diagnostics();
+    let (initial, _) = frame(&context, &mut adapter, &mut diagnostics, Vec::new())?;
+    let warning = initial
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .and_then(|update| {
+            update.nodes.iter().find_map(|(id, node)| {
+                (node.role() == egui::accesskit::Role::ListItem
+                    && node
+                        .label()
+                        .is_some_and(|label| label.contains("未使用の値")))
+                .then_some(*id)
+            })
+        })
+        .ok_or_else(|| "warning diagnostics AccessKit node".to_string())?;
+    let (_, focused) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::AccessKitActionRequest(
+            egui::accesskit::ActionRequest {
+                action: egui::accesskit::Action::Click,
+                target_tree: egui::accesskit::TreeId::ROOT,
+                target_node: warning,
+                data: None,
+            },
+        )],
+    )?;
+    assert!(
+        matches!(focused.as_slice(), [DiagnosticsListEvent::DiagnosticSelected { id }] if id.as_str() == "warning")
+    );
     let (_, selected) = frame(
         &context,
         &mut adapter,
         &mut diagnostics,
         vec![egui::Event::Key {
-            key: egui::Key::ArrowDown,
+            key: egui::Key::ArrowUp,
             physical_key: None,
             pressed: true,
             repeat: false,
@@ -1009,6 +1136,28 @@ fn disclosure_supports_pointer_keyboard_accesskit_and_closes_outside() -> Result
         }]
     );
 
+    context.memory_mut(|memory| memory.request_focus(egui::Id::new("outside-control")));
+    let (_, ignored_escape) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::Key {
+            key: egui::Key::Escape,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    )?;
+    assert!(ignored_escape.is_empty());
+    assert!(
+        diagnostics
+            .render_snapshot()
+            .state
+            .expanded_ids
+            .contains(&katana_ui_core::molecule::DiagnosticId::new("error"))
+    );
+
     let (_, closed_outside) = frame(
         &context,
         &mut adapter,
@@ -1177,7 +1326,7 @@ fn retained_viewport_scrolls_many_items_and_republishes_only_visible_targets() -
         &mut adapter,
         &mut diagnostics,
         vec![egui::Event::Key {
-            key: egui::Key::ArrowDown,
+            key: egui::Key::F8,
             physical_key: None,
             pressed: true,
             repeat: false,
@@ -1217,8 +1366,26 @@ fn retained_viewport_scrolls_many_items_and_republishes_only_visible_targets() -
     )?;
     assert!(reset_events.is_empty());
     assert_eq!(adapter.scroll_y(), 0.0);
+    let (_, focus_events) = frame_at_pointer(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::AccessKitActionRequest(
+            egui::accesskit::ActionRequest {
+                action: egui::accesskit::Action::Click,
+                target_tree: egui::accesskit::TreeId::ROOT,
+                target_node: stale_item,
+                data: None,
+            },
+        )],
+    )?;
+    assert!(matches!(
+        focus_events.as_slice(),
+        [DiagnosticsListEvent::DiagnosticSelected { id }] if id.as_str() == "item-0"
+    ));
     let before_keyboard = adapter.scroll_y();
-    for _ in 0..8 {
+    for step in 0..8 {
+        let focus_before = context.memory(|memory| memory.focused());
         let (_, events) = frame_at_pointer(
             &context,
             &mut adapter,
@@ -1234,7 +1401,9 @@ fn retained_viewport_scrolls_many_items_and_republishes_only_visible_targets() -
         assert!(
             events
                 .iter()
-                .any(|event| { matches!(event, DiagnosticsListEvent::DiagnosticSelected { .. }) })
+                .any(|event| { matches!(event, DiagnosticsListEvent::DiagnosticSelected { .. }) }),
+            "keyboard step {step} must select a diagnostic: events={events:?}, focus_before={focus_before:?}, focus_after={:?}",
+            context.memory(|memory| memory.focused())
         );
     }
     assert!(adapter.scroll_y() > before_keyboard);
