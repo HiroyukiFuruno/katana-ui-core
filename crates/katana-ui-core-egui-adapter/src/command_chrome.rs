@@ -33,9 +33,12 @@ use katana_ui_core::interaction::placement::Size;
 use katana_ui_core::molecule::command_chrome::CommandChromeToolbar;
 use katana_ui_core::render_model::UiRect;
 use katana_ui_core_svg_raster::{UiSvgRasterConfig, UiSvgRasterizer};
-use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterizer};
+use katana_ui_core_text_raster::{
+    PlatformTextRasterConfig, PlatformTextRasterResources, PlatformTextRasterizer,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
+#[cfg(test)]
 use std::sync::Arc;
 
 pub use command_chrome_artifact::{
@@ -59,6 +62,7 @@ impl EguiCommandChromeAdapter {
         self.text_rasterizer.catalog()
     }
 
+    #[cfg(test)]
     pub(crate) fn with_catalog_and_metrics(
         catalog: Arc<katana_ui_core_text_raster::PlatformFontCatalog>,
         text: PlatformTextRasterConfig,
@@ -82,6 +86,29 @@ impl EguiCommandChromeAdapter {
             dropdown_primary_press: None,
             floating_pointer_exclusions: Vec::new(),
         })
+    }
+
+    pub(crate) fn with_resources_and_metrics(
+        resources: &PlatformTextRasterResources,
+        svg: UiSvgRasterConfig,
+        metrics: crate::text_surface::SharedTextMetrics,
+    ) -> Self {
+        Self {
+            text_surface_adapter:
+                crate::text_surface::EguiTextSurfaceAdapter::with_resources_and_metrics(
+                    resources,
+                    Rc::clone(&metrics),
+                ),
+            text_rasterizer: resources.rasterizer(),
+            svg_rasterizer: UiSvgRasterizer::new(svg),
+            textures: crate::texture_cache::RgbaTextureCache::new(
+                crate::texture_cache::DEFAULT_TEXTURE_CACHE_CAPACITY,
+            ),
+            search_surfaces: None,
+            metrics,
+            dropdown_primary_press: None,
+            floating_pointer_exclusions: Vec::new(),
+        }
     }
 
     pub(crate) fn measure_toolbar(

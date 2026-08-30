@@ -115,6 +115,17 @@ fn actual_egui_search_strip_uses_shared_text_surface_for_placeholder_ime_and_kat
     );
     assert!(expect_output(focused).record.focused_target.is_some());
 
+    let (_, ignored_key) = run_frame(
+        &context,
+        &mut adapter,
+        &mut strip,
+        vec![key_event(egui::Key::A, egui::Modifiers::default())],
+    );
+    let ignored_key = expect_output(ignored_key);
+    assert!(ignored_key.events.is_empty());
+    assert!(ignored_key.text_events.is_empty());
+    assert!(strip.query_model().is_empty());
+
     let (_, typed) = run_frame(
         &context,
         &mut adapter,

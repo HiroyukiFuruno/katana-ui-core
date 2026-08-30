@@ -1,6 +1,6 @@
 use super::command_chrome_types::{
-    EguiCommandChromeDrawLayer, EguiCommandChromeError, EguiCommandChromeFloatingFrameRecord,
-    EguiCommandChromeFrameRecord, EguiCommandChromeSearchFrameRecord,
+    EguiCommandChromeDrawLayer, EguiCommandChromeFloatingFrameRecord, EguiCommandChromeFrameRecord,
+    EguiCommandChromeSearchFrameRecord,
 };
 use katana_ui_core::molecule::command_chrome::{
     CommandChromeSearchEvent, CommandChromeToolbarEvent, FloatingCommandToolbarEvent,
@@ -8,7 +8,12 @@ use katana_ui_core::molecule::command_chrome::{
 use katana_ui_core::render_model::{RGBA_CHANNEL_COUNT, UiRect};
 use katana_ui_core::text_surface::TextSurfaceEvent;
 use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+
+#[path = "command_chrome_artifact_hash.rs"]
+mod artifact_hash;
+#[cfg(test)]
+use artifact_hash::paint_plan_json;
+use artifact_hash::{frame_record_hash, paint_plan_hash};
 
 #[cfg(test)]
 #[path = "command_chrome_artifact_tests.rs"]
@@ -66,14 +71,14 @@ impl CommandChromeArtifactFrame {
         record: EguiCommandChromeFrameRecord,
         paint_plan: CommandChromePaintPlan,
         events: Vec<CommandChromeToolbarEvent>,
-    ) -> Result<Self, EguiCommandChromeError> {
-        Ok(Self {
-            frame_record_hash: artifact_hash(&record)?,
-            paint_plan_hash: artifact_hash(&paint_plan)?,
+    ) -> Self {
+        Self {
+            frame_record_hash: frame_record_hash(&record),
+            paint_plan_hash: paint_plan_hash(&paint_plan),
             record,
             paint_plan,
             events,
-        })
+        }
     }
 }
 
@@ -91,14 +96,14 @@ impl EguiCommandChromeFloatingArtifactFrame {
         record: EguiCommandChromeFloatingFrameRecord,
         paint_plan: CommandChromePaintPlan,
         events: Vec<FloatingCommandToolbarEvent>,
-    ) -> Result<Self, EguiCommandChromeError> {
-        Ok(Self {
-            frame_record_hash: artifact_hash(&record)?,
-            paint_plan_hash: artifact_hash(&paint_plan)?,
+    ) -> Self {
+        Self {
+            frame_record_hash: frame_record_hash(&record),
+            paint_plan_hash: paint_plan_hash(&paint_plan),
             record,
             paint_plan,
             events,
-        })
+        }
     }
 }
 
@@ -118,20 +123,14 @@ impl EguiCommandChromeSearchArtifactFrame {
         paint_plan: CommandChromePaintPlan,
         events: Vec<CommandChromeSearchEvent>,
         text_events: Vec<TextSurfaceEvent>,
-    ) -> Result<Self, EguiCommandChromeError> {
-        Ok(Self {
-            frame_record_hash: artifact_hash(&record)?,
-            paint_plan_hash: artifact_hash(&paint_plan)?,
+    ) -> Self {
+        Self {
+            frame_record_hash: frame_record_hash(&record),
+            paint_plan_hash: paint_plan_hash(&paint_plan),
             record,
             paint_plan,
             events,
             text_events,
-        })
+        }
     }
-}
-
-fn artifact_hash(value: &impl Serialize) -> Result<String, EguiCommandChromeError> {
-    let bytes = serde_json::to_vec(value)
-        .map_err(|error| EguiCommandChromeError::ArtifactSerialization(error.to_string()))?;
-    Ok(hex::encode(Sha256::digest(bytes)))
 }

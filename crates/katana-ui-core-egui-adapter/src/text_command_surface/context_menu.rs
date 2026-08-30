@@ -41,11 +41,10 @@ impl EguiTextCommandSurfaceAdapter {
             }
             return Ok(Some(output));
         }
-        let adapter = EguiContextMenuAdapter::with_catalog_and_metrics(
-            std::sync::Arc::clone(&self.catalog),
-            self.text_raster_config.clone(),
+        let adapter = EguiContextMenuAdapter::with_resources_and_metrics(
+            &self.text_raster_resources,
             std::rc::Rc::clone(&self.metrics),
-        )?;
+        );
         self.context_menu = Some(adapter);
         self.show_context_menu(ui, surface, text, style)
     }

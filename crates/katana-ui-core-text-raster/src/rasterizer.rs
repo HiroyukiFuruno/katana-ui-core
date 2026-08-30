@@ -25,7 +25,7 @@ impl PlatformTextRasterizer {
     #[must_use]
     pub fn new(config: PlatformTextRasterConfig) -> Self {
         let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
-        Self::from_catalog(catalog, config)
+        Self::from_matching_catalog(catalog, config)
     }
 
     pub fn with_catalog(
@@ -35,7 +35,7 @@ impl PlatformTextRasterizer {
         if catalog.policy() != &config.catalog_policy() {
             return Err(PlatformTextRasterError::CatalogConfigurationMismatch);
         }
-        Ok(Self::from_catalog(catalog, config))
+        Ok(Self::from_matching_catalog(catalog, config))
     }
 
     #[must_use]
@@ -43,7 +43,10 @@ impl PlatformTextRasterizer {
         Arc::clone(&self.catalog)
     }
 
-    fn from_catalog(catalog: Arc<PlatformFontCatalog>, config: PlatformTextRasterConfig) -> Self {
+    pub(crate) fn from_matching_catalog(
+        catalog: Arc<PlatformFontCatalog>,
+        config: PlatformTextRasterConfig,
+    ) -> Self {
         Self {
             catalog,
             swash_cache: SwashCache::new(),

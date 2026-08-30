@@ -16,7 +16,9 @@ use katana_ui_core::molecule::selection::{
     ContextMenu, ContextMenuAction, ContextMenuCloseReason, ContextMenuTypeAheadBuffer,
 };
 use katana_ui_core_svg_raster::{UiSvgRasterConfig, UiSvgRasterizer};
-use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterizer};
+use katana_ui_core_text_raster::{
+    PlatformTextRasterConfig, PlatformTextRasterResources, PlatformTextRasterizer,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -61,6 +63,26 @@ impl EguiContextMenuAdapter {
             svg_rasterizer: UiSvgRasterizer::new(UiSvgRasterConfig::default()),
             textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
         })
+    }
+
+    pub(crate) fn with_resources_and_metrics(
+        resources: &PlatformTextRasterResources,
+        metrics: SharedTextMetrics,
+    ) -> Self {
+        Self {
+            menu: ContextMenu::new("kuc-context-menu"),
+            presentation: ContextMenuPresentation::default(),
+            anchor: None,
+            submenu_path: Vec::new(),
+            scroll_path: Vec::new(),
+            vertical_scroll_offset: 0.0,
+            focus_return: None,
+            type_ahead: ContextMenuTypeAheadBuffer::new(TYPE_AHEAD_TIMEOUT_MS),
+            text_rasterizer: resources.rasterizer(),
+            metrics,
+            svg_rasterizer: UiSvgRasterizer::new(UiSvgRasterConfig::default()),
+            textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
+        }
     }
 
     pub fn new(config: PlatformTextRasterConfig) -> Result<Self, ContextMenuAdapterError> {

@@ -1,5 +1,5 @@
 use super::{SanitizedTabGroup, SanitizedTabProjection};
-use crate::closeable_tab_strip_adapter::{CloseableTabStripAdapter, CloseableTabStripClosedFrame};
+use crate::closeable_tab_strip_adapter::CloseableTabStripAdapter;
 use katana_ui_core::molecule::structured::{
     CloseableTab, CloseableTabClosePresentation, CloseableTabGroup, CloseableTabStrip,
 };
@@ -17,7 +17,6 @@ pub(crate) struct SanitizedTabProjectionAdapter {
 }
 
 pub(crate) struct SanitizedTabProjectionFrame {
-    closed_frame: CloseableTabStripClosedFrame,
     widget_rect: egui::Rect,
     tab_rects: Vec<egui::Rect>,
     group_rects: Vec<egui::Rect>,
@@ -31,8 +30,9 @@ pub(crate) struct SanitizedTabProjectionFrame {
 }
 
 pub(crate) struct SanitizedTabProjectionBoundaryFacts<'a> {
-    pub(crate) closed_frame: &'a CloseableTabStripClosedFrame,
     pub(crate) widget_rect: egui::Rect,
+    pub(crate) rendered_tab_rects: &'a [egui::Rect],
+    pub(crate) rendered_group_rects: &'a [egui::Rect],
     #[cfg(test)]
     pub(crate) tab_rects: &'a [(String, egui::Rect)],
     #[cfg(test)]
@@ -57,18 +57,14 @@ impl SanitizedTabProjectionAdapter {
     pub(crate) fn show(
         &mut self,
         ui: &mut egui::Ui,
-    ) -> Result<
-        SanitizedTabProjectionFrame,
-        crate::closeable_tab_strip_adapter::CloseableTabStripAdapterError,
-    > {
-        let rendered = CloseableTabStripAdapter.show(ui, &mut self.strip)?;
+    ) -> SanitizedTabProjectionFrame {
+        let rendered = CloseableTabStripAdapter.show(ui, &mut self.strip);
         let closed_events = rendered
             .events()
             .iter()
             .filter_map(|event| self.routes.route_event(event))
             .collect();
-        Ok(SanitizedTabProjectionFrame {
-            closed_frame: rendered.closed_frame().clone(),
+        SanitizedTabProjectionFrame {
             widget_rect: rendered.widget_rect(),
             tab_rects: rendered.tab_rects().iter().map(|(_, rect)| *rect).collect(),
             group_rects: rendered
@@ -83,7 +79,7 @@ impl SanitizedTabProjectionAdapter {
             structural_close_rects: rendered.close_rects().to_vec(),
             #[cfg(test)]
             raw_events: rendered.events().to_vec(),
-        })
+        }
     }
 
     #[cfg(test)]
@@ -103,8 +99,9 @@ impl SanitizedTabProjectionFrame {
 
     pub(crate) fn boundary_facts(&self) -> SanitizedTabProjectionBoundaryFacts<'_> {
         SanitizedTabProjectionBoundaryFacts {
-            closed_frame: &self.closed_frame,
             widget_rect: self.widget_rect,
+            rendered_tab_rects: &self.tab_rects,
+            rendered_group_rects: &self.group_rects,
             #[cfg(test)]
             tab_rects: &self.structural_tab_rects,
             #[cfg(test)]
@@ -117,12 +114,18 @@ impl SanitizedTabProjectionFrame {
 
     pub(crate) fn has_render_facts(&self) -> bool {
         let facts = self.boundary_facts();
-        facts.closed_frame.has_closed_fact()
-            && facts.widget_rect.width() > 0.0
+        facts.widget_rect.width() > 0.0
             && facts.widget_rect.height() > 0.0
-            && self.tab_rects.iter().all(|rect| rect.width() > 0.0)
-            && self.group_rects.iter().all(|rect| rect.height() > 0.0)
-            && facts.closed_event_count <= self.tab_rects.len() + self.group_rects.len()
+            && facts
+                .rendered_tab_rects
+                .iter()
+                .all(|rect| rect.width() > 0.0)
+            && facts
+                .rendered_group_rects
+                .iter()
+                .all(|rect| rect.height() > 0.0)
+            && facts.closed_event_count
+                <= facts.rendered_tab_rects.len() + facts.rendered_group_rects.len()
     }
 }
 

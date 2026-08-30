@@ -4,7 +4,9 @@ use super::types::{
 };
 use crate::text_surface::{EguiTextSurfaceAdapter, SharedTextMetrics};
 use crate::texture_cache::{DEFAULT_TEXTURE_CACHE_CAPACITY, RgbaTextureCache};
-use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterizer};
+use katana_ui_core_text_raster::{
+    PlatformTextRasterConfig, PlatformTextRasterResources, PlatformTextRasterizer,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -42,6 +44,32 @@ impl EguiSourceAddressStripAdapter {
             last_label_rasters: Vec::new(),
             last_paint_plan: None,
         })
+    }
+
+    pub(crate) fn with_resources_and_metrics(
+        id_source: impl egui::AsId,
+        resources: &PlatformTextRasterResources,
+        metrics: SharedTextMetrics,
+    ) -> Self {
+        Self {
+            field_id: egui::Id::new(id_source),
+            text_surface_adapter: EguiTextSurfaceAdapter::with_resources_and_metrics(
+                resources,
+                Rc::clone(&metrics),
+            ),
+            text_rasterizer: resources.rasterizer(),
+            metrics,
+            textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
+            surface: None,
+            last_input_artifact: None,
+            last_label_rasters: Vec::new(),
+            last_paint_plan: None,
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn catalog(&self) -> Arc<katana_ui_core_text_raster::PlatformFontCatalog> {
+        self.text_rasterizer.catalog()
     }
 
     #[must_use]

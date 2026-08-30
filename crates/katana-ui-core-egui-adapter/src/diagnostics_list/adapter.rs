@@ -4,7 +4,9 @@ use super::types::{
     DiagnosticsListPaintPlan, DiagnosticsListRasterEvidence, EguiDiagnosticsListError,
 };
 use crate::texture_cache::{DEFAULT_TEXTURE_CACHE_CAPACITY, RgbaTextureCache};
-use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterizer};
+use katana_ui_core_text_raster::{
+    PlatformTextRasterConfig, PlatformTextRasterResources, PlatformTextRasterizer,
+};
 
 use super::types::DiagnosticsListStyle;
 
@@ -34,20 +36,24 @@ pub struct EguiDiagnosticsListAdapter {
 
 impl EguiDiagnosticsListAdapter {
     pub fn new(id_source: impl egui::AsId) -> Result<Self, EguiDiagnosticsListError> {
-        let config = PlatformTextRasterConfig::default();
-        let catalog = std::sync::Arc::new(katana_ui_core_text_raster::PlatformFontCatalog::new(
-            config.catalog_policy().clone(),
-        ));
-        Ok(Self {
+        let resources = PlatformTextRasterResources::new(PlatformTextRasterConfig::default());
+        Ok(Self::with_resources(id_source, &resources))
+    }
+
+    pub(crate) fn with_resources(
+        id_source: impl egui::AsId,
+        resources: &PlatformTextRasterResources,
+    ) -> Self {
+        Self {
             id: egui::Id::new(id_source),
-            text_rasterizer: PlatformTextRasterizer::with_catalog(catalog, config)?,
+            text_rasterizer: resources.rasterizer(),
             textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
             last_paint_plan: None,
             raster_evidence: Vec::new(),
             scroll_y: 0.0,
             focused_item: None,
             focused_scope: None,
-        })
+        }
     }
 
     #[must_use]

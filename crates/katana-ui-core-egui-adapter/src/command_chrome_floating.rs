@@ -101,11 +101,8 @@ impl EguiCommandChromeAdapter {
             tooltip.as_ref(),
             paint_style,
         );
-        let artifact = EguiCommandChromeFloatingArtifactFrame::new(
-            record.clone(),
-            paint_plan,
-            events.clone(),
-        )?;
+        let artifact =
+            EguiCommandChromeFloatingArtifactFrame::new(record.clone(), paint_plan, events.clone());
         paint_command_chrome(ui, &mut self.textures, &artifact.paint_plan);
         Ok(EguiCommandChromeFloatingOutput {
             record: Some(record),

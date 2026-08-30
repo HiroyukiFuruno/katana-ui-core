@@ -80,7 +80,8 @@ pub use sanitized_document_root::{
     SanitizedSearchResultSummaryPresentation, SanitizedSearchTarget, SanitizedSearchTextOperation,
     SanitizedSearchTextPresentation, SanitizedSearchUnavailablePresentation,
     SanitizedSearchUnitOperation, SanitizedTab, SanitizedTabCapabilities,
-    SanitizedTabClosePresentation, SanitizedTabGroup, SanitizedTabProjection, SanitizedTabTarget,
+    SanitizedTabClosePresentation, SanitizedTabGroup, SanitizedTabGroupCapabilities,
+    SanitizedTabGroupTarget, SanitizedTabProjection, SanitizedTabTarget,
 };
 pub use scenario::{
     FullTextCommandSurfaceMotionFrame, FullTextCommandSurfaceMotionPlan,

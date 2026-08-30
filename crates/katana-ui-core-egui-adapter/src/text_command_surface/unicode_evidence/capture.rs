@@ -13,6 +13,7 @@ use super::types::KucUnicodeColorGlyphEvidenceError;
 use crate::text_command_surface::{EguiTextCommandSurface, EguiTextCommandSurfaceRoot};
 use katana_ui_core_text_raster::{
     PlatformColorEmojiAvailability, PlatformFontCatalog, PlatformFontCatalogPolicy,
+    PlatformTextRasterResources,
 };
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -24,12 +25,11 @@ impl KucUnicodeColorGlyphEvidenceCapture {
     ) -> Result<KucUnicodeColorGlyphEvidence, KucUnicodeColorGlyphEvidenceError> {
         let policy = options.config.catalog_policy();
         let style = surface::trace_style();
-        let mut root = EguiTextCommandSurfaceRoot::with_text_raster_config(
+        let mut root = EguiTextCommandSurfaceRoot::with_text_raster_resources(
             options.root_identity,
             EguiTextCommandSurface::new(surface::evidence_surface()),
-            options.config.clone(),
-        )
-        .map_err(|error| KucUnicodeColorGlyphEvidenceError::RootTrace(error.to_string()))?;
+            PlatformTextRasterResources::new(options.config.clone()),
+        );
         let context = egui::Context::default();
         ensure_face_is_resolved_and_pinned(root.evidence_catalog(), &policy)?;
         let _initial = runner::run_frame(&context, &mut root, &style, Vec::new())?;

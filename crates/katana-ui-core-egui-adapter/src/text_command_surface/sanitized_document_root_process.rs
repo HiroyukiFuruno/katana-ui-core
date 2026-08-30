@@ -11,6 +11,7 @@ use super::sanitized_search_projection::SanitizedSearchProjection;
 use super::sanitized_tab_projection::adapter::{
     SanitizedTabProjectionAdapter, SanitizedTabProjectionClosedEvent, SanitizedTabProjectionFrame,
 };
+use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterResources};
 use std::cell::Cell;
 use std::rc::Rc;
 
@@ -33,10 +34,13 @@ impl SanitizedDocumentRootProcess {
         let (surface, presentation) = sanitized_document_root_surface::from_input(&input);
         let search_projection = input.search_projection.take();
         let identity = input.identity.stable_fingerprint();
-        let mut root = EguiTextCommandSurfaceRoot::with_identity(identity, surface)
-            .map_err(|error| error.to_string())?;
+        let mut root = EguiTextCommandSurfaceRoot::with_text_raster_resources(
+            identity,
+            surface,
+            PlatformTextRasterResources::new(PlatformTextRasterConfig::default()),
+        );
         let _ = root.synchronize_presentation(presentation);
-        let style = resolve_style(input.style).map_err(|error| error.to_string())?;
+        let style = resolve_style(input.style).map_err(render_style_error)?;
         let tab_adapter =
             SanitizedTabProjectionAdapter::from_projection(input.tab_projection.as_ref());
         Ok(Self {
@@ -85,8 +89,7 @@ impl SanitizedDocumentRootProcess {
         let presentation = sanitized_document_root_surface::presentation_from_input(&input);
         let search_projection = input.search_projection.take();
         let changed = self.root.synchronize_presentation(presentation);
-        self.style = resolve_style(input.style)
-            .map_err(|error| SanitizedDocumentRootProcessError::Style(error.to_string()))?;
+        self.style = resolve_style(input.style).map_err(SanitizedDocumentRootProcessError::from)?;
         self.tab_adapter
             .replace_projection(input.tab_projection.as_ref());
         self.tab_frame = None;
@@ -105,9 +108,7 @@ impl SanitizedDocumentRootProcess {
         let mut tab_frame = None;
         let output = ui
             .vertical(|ui| {
-                let frame = self.tab_adapter.show(ui).map_err(|error| {
-                    EguiTextCommandSurfaceRootError::Serialization(error.to_string())
-                })?;
+                let frame = self.tab_adapter.show(ui);
                 self.tab_rendered = frame.has_render_facts();
                 tab_frame = Some(frame);
                 self.root.show(ui, &self.style)
@@ -180,6 +181,18 @@ pub(super) enum SanitizedDocumentRootProcessError {
     StaleRevision { current: u64, received: u64 },
     RevisionConflict { revision: u64 },
     Style(String),
+}
+
+impl From<super::super::types::EguiTextCommandSurfaceError> for SanitizedDocumentRootProcessError {
+    fn from(value: super::super::types::EguiTextCommandSurfaceError) -> Self {
+        Self::Style(value.to_string())
+    }
+}
+
+pub(super) fn render_style_error(
+    error: super::super::types::EguiTextCommandSurfaceError,
+) -> String {
+    error.to_string()
 }
 
 #[cfg(test)]

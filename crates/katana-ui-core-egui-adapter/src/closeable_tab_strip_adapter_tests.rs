@@ -1,67 +1,10 @@
-use super::{CloseableTabStripAdapter, CloseableTabStripCapabilities};
+use super::CloseableTabStripAdapter;
 use katana_ui_core::molecule::structured::{
     CloseableTab, CloseableTabClosePresentation, CloseableTabGroup, CloseableTabStrip,
     CloseableTabStripEvent,
 };
 
 const SCREEN_SIZE: egui::Vec2 = egui::vec2(600.0, 100.0);
-
-#[test]
-fn closed_frame_keeps_only_opaque_revision_and_capability_facts() {
-    let strip = CloseableTabStrip::new("tabs")
-        .tab(
-            katana_ui_core::molecule::structured::CloseableTab::new("editor", "editor.md")
-                .dirty(true)
-                .pinned(true)
-                .closeable(false),
-        )
-        .tab(katana_ui_core::molecule::structured::CloseableTab::new(
-            "notes", "notes.md",
-        ))
-        .active_tab_id("editor")
-        .stable_state_id("editor-tabs");
-
-    let frame = CloseableTabStripAdapter
-        .close(&strip)
-        .expect("generic closeable tab strip is serializable");
-
-    assert_eq!(frame.revision, 8_656_249_122_570_525_215);
-    assert_eq!(frame.stable_hash.len(), 64);
-    assert_eq!(
-        frame.capabilities,
-        CloseableTabStripCapabilities {
-            can_activate: true,
-            can_close: true,
-            has_active_tab: true,
-            has_dirty_tab: true,
-            has_pinned_tab: true,
-        }
-    );
-}
-
-#[test]
-fn conversion_is_deterministic_for_equivalent_generic_strips() {
-    let build = || {
-        CloseableTabStrip::new("tabs")
-            .tab(katana_ui_core::molecule::structured::CloseableTab::new("a", "A").dirty(true))
-            .tab(
-                katana_ui_core::molecule::structured::CloseableTab::new("b", "B")
-                    .pinned(true)
-                    .closeable(false),
-            )
-            .active_tab_id("a")
-            .stable_state_id("stable-tabs")
-    };
-
-    let first = CloseableTabStripAdapter
-        .close(&build())
-        .expect("first conversion succeeds");
-    let second = CloseableTabStripAdapter
-        .close(&build())
-        .expect("second conversion succeeds");
-
-    assert_eq!(first, second);
-}
 
 #[test]
 fn pointer_click_selects_a_generic_tab_through_egui_response() {
@@ -118,7 +61,6 @@ fn real_egui_render_exposes_group_and_tab_widget_responses() {
 
     let rendered = run_frame(&context, &adapter, &mut strip, Vec::new());
 
-    assert!(rendered.closed_frame().revision > 0);
     assert!(rendered.widget_rect().height() > 0.0);
     assert_eq!(rendered.group_rects().len(), 1);
     assert_eq!(rendered.group_rects()[0].0, "documents");
@@ -257,7 +199,7 @@ fn run_frame(
             events,
             ..egui::RawInput::default()
         },
-        |ui| output = Some(adapter.show(ui, strip).expect("tab strip frame succeeds")),
+        |ui| output = Some(adapter.show(ui, strip)),
     );
     output.expect("tab strip frame is produced")
 }

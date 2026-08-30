@@ -153,7 +153,7 @@ impl EguiCommandChromeAdapter {
             paint_plan,
             events.clone(),
             text_events.clone(),
-        )?;
+        );
         paint_command_chrome(ui, &mut self.textures, &artifact.paint_plan);
         Ok(EguiCommandChromeSearchOutput {
             record,

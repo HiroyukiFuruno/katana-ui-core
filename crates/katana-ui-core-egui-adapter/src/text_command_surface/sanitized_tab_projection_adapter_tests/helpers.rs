@@ -63,7 +63,7 @@ fn run_frame(
             events,
             ..egui::RawInput::default()
         },
-        |ui| output = Some(adapter.show(ui).expect("sanitized tab render succeeds")),
+        |ui| output = Some(adapter.show(ui)),
     );
     platform_output.textures_delta.clear();
     output.expect("sanitized tab frame is produced")

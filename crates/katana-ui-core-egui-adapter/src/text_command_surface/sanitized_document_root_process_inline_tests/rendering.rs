@@ -97,7 +97,6 @@ fn physical_pointer_click_selects_tab_at_sanitized_root_boundary() -> Result<(),
         .ok_or_else(|| "release frame is not retained".to_owned())?;
     let facts = frame.boundary_facts();
     assert!(facts.widget_rect.width() > 0.0);
-    assert!(facts.closed_frame.has_closed_fact());
     assert!(facts.events.iter().any(|event| matches!(
         event,
         CloseableTabStripEvent::TabSelected { tab_id }

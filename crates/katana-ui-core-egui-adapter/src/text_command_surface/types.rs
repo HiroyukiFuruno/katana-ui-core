@@ -12,8 +12,8 @@ use crate::context_menu::{
 use crate::diagnostics_list::EguiDiagnosticsListAdapter;
 use crate::status_bar::EguiStatusBarAdapter;
 use crate::text_surface::{
-    EguiTextSurfaceAdapter, EguiTextSurfaceError, EguiTextSurfaceOutput,
-    TextSurfaceContextTargetAnchor, TextSurfacePaintStyle, TextSurfaceRasterStyle,
+    EguiTextSurfaceAdapter, EguiTextSurfaceOutput, TextSurfaceContextTargetAnchor,
+    TextSurfacePaintStyle, TextSurfaceRasterStyle,
 };
 use katana_ui_core::molecule::command_chrome::{
     CommandChromeFamilyId, CommandChromeSearchPresentation, CommandChromeSearchStrip,
@@ -24,8 +24,9 @@ use katana_ui_core::molecule::structured::source_address_strip::SourceAddressStr
 use katana_ui_core::render_model::{UiRect, UiStateId};
 use katana_ui_core::text_surface::{TextSurface, TextSurfacePresentation};
 use katana_ui_core_svg_raster::UiSvgRasterConfig;
-use katana_ui_core_text_raster::PlatformFontCatalog;
-use katana_ui_core_text_raster::PlatformTextRasterConfig;
+use katana_ui_core_text_raster::{
+    PlatformFontCatalog, PlatformTextRasterConfig, PlatformTextRasterResources,
+};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -76,6 +77,7 @@ pub struct EguiTextCommandSurfacePresentation {
 pub struct EguiTextCommandSurfaceAdapter {
     pub(crate) catalog: Arc<PlatformFontCatalog>,
     pub(crate) text_raster_config: PlatformTextRasterConfig,
+    pub(crate) text_raster_resources: PlatformTextRasterResources,
     pub(crate) text: EguiTextSurfaceAdapter,
     pub(crate) chrome: EguiCommandChromeAdapter,
     pub(crate) floating_selection: Option<(usize, usize)>,
@@ -93,36 +95,43 @@ impl EguiTextCommandSurfaceAdapter {
     pub fn with_text_raster_config(
         config: PlatformTextRasterConfig,
     ) -> Result<Self, EguiTextCommandSurfaceError> {
-        let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
+        Ok(Self::with_resources(PlatformTextRasterResources::new(
+            config,
+        )))
+    }
+
+    pub(crate) fn with_resources(text_raster_resources: PlatformTextRasterResources) -> Self {
+        let catalog = text_raster_resources.catalog();
         let metrics = Rc::new(RefCell::new(
             katana_ui_core_text_raster::PlatformTextMetricsFrame::new(),
         ));
-        let text = EguiTextSurfaceAdapter::with_catalog_and_metrics(
-            Arc::clone(&catalog),
-            config.clone(),
+        let text = EguiTextSurfaceAdapter::with_resources_and_metrics(
+            &text_raster_resources,
             Rc::clone(&metrics),
-        )
-        .map_err(EguiTextSurfaceError::from)?;
-        let chrome = EguiCommandChromeAdapter::with_catalog_and_metrics(
-            Arc::clone(&catalog),
-            config.clone(),
+        );
+        let chrome = EguiCommandChromeAdapter::with_resources_and_metrics(
+            &text_raster_resources,
             UiSvgRasterConfig::default(),
             Rc::clone(&metrics),
-        )?;
+        );
         let source_address =
-            crate::source_address_strip::EguiSourceAddressStripAdapter::with_catalog_and_metrics(
+            crate::source_address_strip::EguiSourceAddressStripAdapter::with_resources_and_metrics(
                 "source-address",
-                Arc::clone(&catalog),
-                config.clone(),
+                &text_raster_resources,
                 Rc::clone(&metrics),
-            )?;
-        let status_bar = EguiStatusBarAdapter::new("root-status-bar")?;
-        let diagnostics_list = EguiDiagnosticsListAdapter::new("root-diagnostics-list")?;
-        Ok(Self {
+            );
+        let status_bar =
+            EguiStatusBarAdapter::with_resources("root-status-bar", &text_raster_resources);
+        let diagnostics_list = EguiDiagnosticsListAdapter::with_resources(
+            "root-diagnostics-list",
+            &text_raster_resources,
+        );
+        Self {
             text,
             chrome,
             catalog: Arc::clone(&catalog),
-            text_raster_config: config.clone(),
+            text_raster_config: text_raster_resources.config().clone(),
+            text_raster_resources,
             floating_selection: None,
             closed_selection: None,
             context_menu: None,
@@ -132,7 +141,7 @@ impl EguiTextCommandSurfaceAdapter {
             status_bar,
             diagnostics_list,
             preview_texture: None,
-        })
+        }
     }
 }
 

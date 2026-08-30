@@ -9,16 +9,24 @@ fn real_invalid_theme_error_maps_to_the_public_render_error() {
     theme.colors.retain(|token| token.name != "accent");
     let style_error = crate::text_command_surface::TextCommandSurfaceStyle::from_theme(&theme)
         .expect_err("the actual style route rejects a missing accent token");
-    let process_error =
-        super::super::super::sanitized_document_root_process::SanitizedDocumentRootProcessError::Style(
-            style_error.to_string(),
-        );
+    let render_error =
+        super::super::super::sanitized_document_root_process::render_style_error(style_error);
+    let mut process_theme = katana_ui_core::theme::ThemeSnapshot::dark();
+    process_theme.colors.retain(|token| token.name != "accent");
+    let process_error = crate::text_command_surface::TextCommandSurfaceStyle::from_theme(
+        &process_theme,
+    )
+    .map_err(
+        super::super::super::sanitized_document_root_process::SanitizedDocumentRootProcessError::from,
+    )
+    .expect_err("the actual style route rejects a missing accent token");
 
     assert!(matches!(
         SanitizedDocumentRootFactoryError::from(process_error),
         SanitizedDocumentRootFactoryError::Render(message)
             if message.contains("accent")
     ));
+    assert!(render_error.contains("accent"));
 }
 #[test]
 fn physical_floating_failure_matrix_is_strict_and_stale_safe() {

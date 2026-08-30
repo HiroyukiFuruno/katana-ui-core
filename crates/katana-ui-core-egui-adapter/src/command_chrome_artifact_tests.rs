@@ -1,47 +1,27 @@
-use super::super::command_chrome_types::CommandChromePaintStyle;
 use super::*;
-use serde::{Serialize, ser::Serializer};
 
 #[test]
-fn artifact_hash_serializes_a_real_command_chrome_value() -> Result<(), EguiCommandChromeError> {
-    let paint_style = CommandChromePaintStyle {
-        action_rgba: [1, 2, 3, 255],
-        hovered_action_rgba: [4, 5, 6, 255],
-        disabled_action_rgba: [7, 8, 9, 255],
+fn artifact_hash_fingerprints_a_real_command_chrome_value_deterministically() {
+    let plan = CommandChromePaintPlan {
+        surface_bounds: UiRect::new(0, 0, 1, 1),
+        operations: vec![CommandChromePaintOperation {
+            layer: EguiCommandChromeDrawLayer::PanelFill,
+            clip_bounds: UiRect::new(0, 0, 1, 1),
+            kind: CommandChromePaintOperationKind::Fill {
+                bounds: UiRect::new(0, 0, 1, 1),
+                color_rgba: [1, 2, 3, 255],
+            },
+        }],
     };
+    let first = paint_plan_hash(&plan);
+    let second = paint_plan_hash(&plan);
 
-    let hash = artifact_hash(&paint_style)?;
-
-    assert_eq!(hash.len(), 64);
-    Ok(())
+    assert_eq!(first.len(), 64);
+    assert_eq!(first, second);
 }
 
 #[test]
-fn artifact_hash_propagates_serialization_error_without_hiding_root_cause() {
-    struct FailingSerialization;
-
-    impl Serialize for FailingSerialization {
-        fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            Err(serde::ser::Error::custom("intentional failure"))
-        }
-    }
-
-    let error = artifact_hash(&FailingSerialization)
-        .err()
-        .map(|error| error.to_string());
-
-    assert!(error.as_deref().is_some_and(|message| {
-        message.contains("intentional")
-            && message.contains("command chrome artifact serialization failed")
-    }));
-}
-
-#[test]
-fn command_chrome_artifact_frames_preserve_distinct_payload_hashes()
--> Result<(), EguiCommandChromeError> {
+fn command_chrome_artifact_frames_preserve_distinct_payload_hashes() {
     let plan = CommandChromePaintPlan {
         surface_bounds: UiRect::new(0, 0, 10, 10),
         operations: vec![CommandChromePaintOperation {
@@ -67,14 +47,65 @@ fn command_chrome_artifact_frames_preserve_distinct_payload_hashes()
         vec![CommandChromeToolbarEvent::CommandActivated {
             action_id: "focused".to_string().into(),
         }],
-    )?;
+    );
 
-    assert_eq!(frame.frame_record_hash, artifact_hash(&record)?);
-    assert_eq!(frame.paint_plan_hash, artifact_hash(&plan)?);
+    assert_eq!(frame.frame_record_hash, frame_record_hash(&record));
+    assert_eq!(frame.paint_plan_hash, paint_plan_hash(&plan));
     assert_eq!(frame.frame_record_hash.len(), 64);
     assert_eq!(frame.paint_plan_hash.len(), 64);
     assert_ne!(frame.frame_record_hash, frame.paint_plan_hash);
     assert_eq!(frame.record, record);
     assert_eq!(frame.paint_plan, plan);
+}
+
+#[test]
+fn paint_plan_json_matches_existing_serde_wire_for_all_layers_and_kinds()
+-> Result<(), serde_json::Error> {
+    let layers = [
+        EguiCommandChromeDrawLayer::PanelFill,
+        EguiCommandChromeDrawLayer::PanelBorder,
+        EguiCommandChromeDrawLayer::ActionFill,
+        EguiCommandChromeDrawLayer::IconTexture,
+        EguiCommandChromeDrawLayer::TextTexture,
+        EguiCommandChromeDrawLayer::FocusRing,
+        EguiCommandChromeDrawLayer::TooltipFill,
+        EguiCommandChromeDrawLayer::TooltipTexture,
+    ];
+    let mut operations = Vec::new();
+    for (index, layer) in layers.into_iter().enumerate() {
+        let bounds = UiRect::new(-(index as i32), index as i32, index as u32 + 1, 2);
+        let kind = match index % 3 {
+            0 => CommandChromePaintOperationKind::Fill {
+                bounds,
+                color_rgba: [0, 1, 2, 255],
+            },
+            1 => CommandChromePaintOperationKind::RoundedFill {
+                bounds,
+                color_rgba: [3, 4, 5, 255],
+                radius_px: index as u32,
+            },
+            _ => CommandChromePaintOperationKind::Texture {
+                bounds,
+                texture: CommandChromePaintTexture {
+                    identity: "quote:\" slash:\\ controls:\u{8}\u{c}\n\r\t\u{1} unicode:⭐️"
+                        .to_string(),
+                    width: 1,
+                    height: 2,
+                    rgba_pixels: vec![0, 127, 255],
+                },
+            },
+        };
+        operations.push(CommandChromePaintOperation {
+            layer,
+            clip_bounds: bounds,
+            kind,
+        });
+    }
+    let plan = CommandChromePaintPlan {
+        surface_bounds: UiRect::new(-10, 20, 300, 400),
+        operations,
+    };
+
+    assert_eq!(paint_plan_json(&plan), serde_json::to_vec(&plan)?);
     Ok(())
 }

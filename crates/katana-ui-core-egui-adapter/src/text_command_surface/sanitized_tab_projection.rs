@@ -6,10 +6,9 @@ mod model {
 
 pub use model::{
     SanitizedTab, SanitizedTabCapabilities, SanitizedTabClosePresentation, SanitizedTabGroup,
-    SanitizedTabGroupTarget, SanitizedTabProjection, SanitizedTabTarget,
+    SanitizedTabGroupCapabilities, SanitizedTabGroupTarget, SanitizedTabProjection,
+    SanitizedTabTarget,
 };
-#[cfg(test)]
-pub type SanitizedTabGroupCapabilities = model::SanitizedTabGroupCapabilities;
 
 #[cfg(test)]
 mod tests {

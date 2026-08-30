@@ -73,8 +73,8 @@ pub use sanitized_search_projection::{
 };
 
 pub use sanitized_tab_projection::{
-    SanitizedTab, SanitizedTabCapabilities, SanitizedTabGroup, SanitizedTabProjection,
-    SanitizedTabTarget,
+    SanitizedTab, SanitizedTabCapabilities, SanitizedTabGroup, SanitizedTabGroupCapabilities,
+    SanitizedTabGroupTarget, SanitizedTabProjection, SanitizedTabTarget,
 };
 pub type SanitizedTabClosePresentation = sanitized_tab_projection::SanitizedTabClosePresentation;
 

@@ -17,6 +17,7 @@ use super::types::{
 use crate::artifact_compositor::{
     ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor,
 };
+use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterResources};
 use root_event::build_event_batch;
 use root_frame::build_frame;
 
@@ -63,22 +64,34 @@ impl EguiTextCommandSurfaceRoot {
         identity: impl Into<String>,
         surface: EguiTextCommandSurface,
     ) -> Result<Self, EguiTextCommandSurfaceError> {
-        Self::with_text_raster_config(
+        Ok(Self::with_text_raster_resources(
             identity,
             surface,
-            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
-        )
+            PlatformTextRasterResources::new(PlatformTextRasterConfig::default()),
+        ))
     }
 
     /// Creates a root whose retained text children use one catalog policy.
     pub fn with_text_raster_config(
         identity: impl Into<String>,
         surface: EguiTextCommandSurface,
-        config: katana_ui_core_text_raster::PlatformTextRasterConfig,
+        config: PlatformTextRasterConfig,
     ) -> Result<Self, EguiTextCommandSurfaceError> {
-        Ok(Self {
+        Ok(Self::with_text_raster_resources(
+            identity,
             surface,
-            adapter: EguiTextCommandSurfaceAdapter::with_text_raster_config(config)?,
+            PlatformTextRasterResources::new(config),
+        ))
+    }
+
+    pub(crate) fn with_text_raster_resources(
+        identity: impl Into<String>,
+        surface: EguiTextCommandSurface,
+        resources: PlatformTextRasterResources,
+    ) -> Self {
+        Self {
+            surface,
+            adapter: EguiTextCommandSurfaceAdapter::with_resources(resources),
             identity: identity.into(),
             state_revision: 0,
             frame_serial: 0,
@@ -87,7 +100,7 @@ impl EguiTextCommandSurfaceRoot {
             status_bar: None,
             diagnostics_list: None,
             editor_viewport: None,
-        })
+        }
     }
 
     /// Synchronizes generic controlled presentation without exposing child models.

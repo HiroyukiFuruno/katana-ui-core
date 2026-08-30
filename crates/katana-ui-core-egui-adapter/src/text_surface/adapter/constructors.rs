@@ -7,7 +7,8 @@ use crate::texture_cache::{DEFAULT_TEXTURE_CACHE_CAPACITY, RgbaTextureCache};
 use katana_ui_core::text_surface::TextSurface;
 use katana_ui_core_svg_raster::{UiSvgRasterConfig, UiSvgRasterizer};
 use katana_ui_core_text_raster::{
-    PlatformTextRasterConfig, PlatformTextRasterError, PlatformTextRasterizer,
+    PlatformTextRasterConfig, PlatformTextRasterError, PlatformTextRasterResources,
+    PlatformTextRasterizer,
 };
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -46,6 +47,20 @@ impl EguiTextSurfaceAdapter {
             pointer_exclusion_bounds: Vec::new(),
             metrics,
         })
+    }
+
+    pub(crate) fn with_resources_and_metrics(
+        resources: &PlatformTextRasterResources,
+        metrics: super::super::model::SharedTextMetrics,
+    ) -> Self {
+        Self {
+            rasterizer: resources.rasterizer(),
+            svg_rasterizer: UiSvgRasterizer::new(UiSvgRasterConfig::default()),
+            textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
+            pending_focus_request: None,
+            pointer_exclusion_bounds: Vec::new(),
+            metrics,
+        }
     }
 
     pub fn show(

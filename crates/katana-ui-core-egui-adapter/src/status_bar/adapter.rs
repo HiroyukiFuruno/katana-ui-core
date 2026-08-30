@@ -5,7 +5,9 @@ use super::types::{
 };
 use crate::texture_cache::{DEFAULT_TEXTURE_CACHE_CAPACITY, RgbaTextureCache};
 use katana_ui_core::molecule::{StatusBar, StatusBarDensity, StatusBarMode};
-use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterizer};
+use katana_ui_core_text_raster::{
+    PlatformTextRasterConfig, PlatformTextRasterResources, PlatformTextRasterizer,
+};
 
 const COMPACT_HEIGHT_REDUCTION_PX: u32 = 4;
 
@@ -20,18 +22,22 @@ pub struct EguiStatusBarAdapter {
 
 impl EguiStatusBarAdapter {
     pub fn new(id_source: impl egui::AsId) -> Result<Self, EguiStatusBarError> {
-        let config = PlatformTextRasterConfig::default();
-        let catalog = std::sync::Arc::new(katana_ui_core_text_raster::PlatformFontCatalog::new(
-            config.catalog_policy().clone(),
-        ));
-        Ok(Self {
+        let resources = PlatformTextRasterResources::new(PlatformTextRasterConfig::default());
+        Ok(Self::with_resources(id_source, &resources))
+    }
+
+    pub(crate) fn with_resources(
+        id_source: impl egui::AsId,
+        resources: &PlatformTextRasterResources,
+    ) -> Self {
+        Self {
             id: egui::Id::new(id_source),
-            text_rasterizer: PlatformTextRasterizer::with_catalog(catalog, config)?,
+            text_rasterizer: resources.rasterizer(),
             textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
             last_paint_plan: None,
             last_label_rasters: Vec::new(),
             last_tooltip_segment: None,
-        })
+        }
     }
 
     #[must_use]

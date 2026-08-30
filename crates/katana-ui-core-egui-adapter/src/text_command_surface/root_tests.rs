@@ -344,6 +344,7 @@ mod tests {
         assert_eq!(root_catalog.stats().font_database_discoveries, 1);
         let text_catalog = root.adapter.text.catalog();
         let chrome_catalog = root.adapter.chrome.catalog();
+        let source_address_catalog = root.adapter.source_address.catalog();
         let menu_catalog = root
             .adapter
             .context_menu
@@ -351,10 +352,19 @@ mod tests {
             .expect("context-menu child is instantiated by the real frame")
             .catalog();
         assert!(std::sync::Arc::ptr_eq(&text_catalog, &chrome_catalog));
+        assert!(std::sync::Arc::ptr_eq(
+            &text_catalog,
+            &source_address_catalog
+        ));
         assert!(std::sync::Arc::ptr_eq(&text_catalog, &menu_catalog));
         assert!(std::sync::Arc::ptr_eq(&text_catalog, &root.adapter.catalog));
+        assert!(std::sync::Arc::ptr_eq(
+            &text_catalog,
+            &root.adapter.text_raster_resources.catalog(),
+        ));
         assert_eq!(text_catalog.stats().font_database_discoveries, 1);
         assert_eq!(chrome_catalog.stats().font_database_discoveries, 1);
+        assert_eq!(source_address_catalog.stats().font_database_discoveries, 1);
         assert_eq!(menu_catalog.stats().font_database_discoveries, 1);
         assert_eq!(text_catalog.fingerprint(), root_catalog.fingerprint());
         assert_eq!(chrome_catalog.fingerprint(), root_catalog.fingerprint());

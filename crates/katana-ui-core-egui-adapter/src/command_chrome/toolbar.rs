@@ -203,7 +203,7 @@ impl EguiCommandChromeAdapter {
         };
         let paint_plan =
             build_toolbar_paint_plan(&record, &paint_sources, dropdown.as_ref(), paint_style);
-        let artifact = CommandChromeArtifactFrame::new(record.clone(), paint_plan, events.clone())?;
+        let artifact = CommandChromeArtifactFrame::new(record.clone(), paint_plan, events.clone());
         Ok(EguiCommandChromeOutput {
             record,
             events,
