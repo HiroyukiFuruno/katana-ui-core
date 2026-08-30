@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${KUC_COVERAGE_RUNTIME:-}" != "container" ]]; then
+  echo "container coverage requires KUC_COVERAGE_RUNTIME=container" >&2
+  exit 1
+fi
+if [[ ! "${KUC_COVERAGE_IMAGE_ID:-}" =~ ^runtime-v1:sha256:[0-9a-f]{64}$ ]]; then
+  echo "container coverage requires a validated runtime image identity" >&2
+  exit 1
+fi
+
 workspace=/tmp/kuc-workspace
 readonly linux_emoji_font=/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf
 readonly pinned_linux_emoji_sha256=e5899ed38b8ed83e08bd3ac5de09791e9d19d288333a796de1d35ad17396f1ec

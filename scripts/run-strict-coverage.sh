@@ -36,7 +36,18 @@ cleanup_xvfb() {
   kill "${xvfb_pid}" 2>/dev/null || true
   wait "${xvfb_pid}" 2>/dev/null || true
 }
-trap cleanup_xvfb EXIT
+
+finalize_coverage_process() {
+  local exit_status=$?
+  trap - EXIT
+  if [[ "${coverage_transaction_active:-0}" == "1" ]]; then
+    write_coverage_profile_state invalid
+    write_coverage_strict_state invalid
+  fi
+  cleanup_xvfb
+  exit "${exit_status}"
+}
+trap finalize_coverage_process EXIT
 
 for _ in {1..100}; do
   if [[ -S "/tmp/.X11-unix/X${display_number}" ]]; then
@@ -64,25 +75,215 @@ export CARGO_PROFILE_TEST_OPT_LEVEL=0
 coverage_target_dir="${CARGO_TARGET_DIR:-target}/llvm-cov-target"
 coverage_reuse="${KUC_COVERAGE_REUSE:-0}"
 coverage_test_threads="${COVERAGE_TEST_THREADS:-4}"
+coverage_supplement_target="${KUC_COVERAGE_SUPPLEMENT_TARGET:-lib}"
+coverage_supplement_filter="${KUC_COVERAGE_SUPPLEMENT_FILTER:-}"
+coverage_runtime="${KUC_COVERAGE_RUNTIME:-native}"
+coverage_image_id="${KUC_COVERAGE_IMAGE_ID:-}"
+coverage_profile_path="${CARGO_TARGET_DIR:-target}/kuc-workspace-coverage-profile-v2.sha256"
+coverage_strict_state_path="${coverage_profile_path}.strict-state"
+coverage_report_path="${CARGO_TARGET_DIR:-target}/kuc-workspace-coverage-summary.json"
+coverage_supplement_report_path="${CARGO_TARGET_DIR:-target}/kuc-supplement-coverage-summary.json"
 coverage_started_at="${SECONDS}"
+coverage_transaction_active=0
+
+native_coverage_runtime_id() {
+  {
+    printf '%s\n' native-linux
+    uname -a
+    sha256sum "$(command -v Xvfb)"
+    if [[ -f /etc/os-release ]]; then
+      sha256sum /etc/os-release
+    fi
+    ldd --version 2>&1 | sed -n '1p'
+  } | sha256sum | awk '{ print $1 }'
+}
+
+case "${coverage_runtime}" in
+  container)
+    if [[ ! "${coverage_image_id}" =~ ^runtime-v1:sha256:[0-9a-f]{64}$ ]]; then
+      echo "container coverage requires a validated runtime image identity" >&2
+      exit 1
+    fi
+    ;;
+  native)
+    if [[ -n "${coverage_image_id}" ]]; then
+      echo "native coverage does not accept KUC_COVERAGE_IMAGE_ID" >&2
+      exit 1
+    fi
+    coverage_image_id="native-linux:$(native_coverage_runtime_id)"
+    ;;
+  *)
+    echo "KUC_COVERAGE_RUNTIME must be native or container" >&2
+    exit 1
+    ;;
+esac
+
+coverage_production_digest() {
+  find \
+    crates/katana-ui-core/src \
+    crates/katana-ui-core-egui-adapter/src \
+    crates/katana-ui-core-storybook/src \
+    crates/katana-ui-core-svg-raster/src \
+    crates/katana-ui-core-text-raster/src \
+    examples/kuc-consumer-app/src \
+    -type f \
+    -name '*.rs' \
+    ! -name 'tests.rs' \
+    ! -name '*_tests.rs' \
+    ! -path '*/tests/*' \
+    ! -path '*_tests/*' \
+    -print0 \
+    | sort -z \
+    | xargs -0 -r sha256sum \
+    | sha256sum \
+    | awk '{ print $1 }'
+}
+
+coverage_profile_signature() {
+  {
+    printf '%s\n' \
+      'version=2' \
+      'scope=full-workspace' \
+      'packages=katana-ui-core,katana-ui-core-egui-adapter,katana-ui-core-storybook,katana-ui-core-svg-raster,katana-ui-core-text-raster,kuc-consumer-app' \
+      'targets=all' \
+      'features=all' \
+      'profile-test-opt-level=0'
+    printf 'runtime-image-id=%s\n' "${coverage_image_id}"
+    printf 'production-digest=%s\n' "$(coverage_production_digest)"
+    sha256sum \
+      Cargo.toml \
+      Cargo.lock \
+      Justfile \
+      scripts/run-strict-coverage.sh \
+      scripts/assert-strict-coverage-json.py \
+      scripts/coverage/image-runtime-id.py \
+      scripts/coverage/run-container.sh \
+      scripts/coverage/run-in-container.sh \
+      scripts/coverage/Dockerfile \
+      crates/katana-ui-core/Cargo.toml \
+      crates/katana-ui-core-egui-adapter/Cargo.toml \
+      crates/katana-ui-core-storybook/Cargo.toml \
+      crates/katana-ui-core-svg-raster/Cargo.toml \
+      crates/katana-ui-core-text-raster/Cargo.toml \
+      examples/kuc-consumer-app/Cargo.toml
+    while IFS= read -r -d '' optional_input; do
+      sha256sum "${optional_input}"
+    done < <(
+      {
+        if [[ -d .cargo ]]; then
+          find .cargo -maxdepth 1 -type f \( -name config -o -name config.toml \) -print0
+        fi
+        find . -maxdepth 1 -type f \
+          \( -name rust-toolchain -o -name rust-toolchain.toml \) -print0
+      } | sort -z
+    )
+    rustc -vV
+    run_cargo llvm-cov --version
+  } | sha256sum | awk '{ print $1 }'
+}
+
+write_coverage_state() {
+  local path="$1"
+  local value="$2"
+  local temporary_path="${path}.tmp.${BASHPID}"
+  printf '%s\n' "${value}" >"${temporary_path}"
+  mv "${temporary_path}" "${path}"
+}
+
+write_coverage_profile_state() {
+  local value="$1"
+  write_coverage_state "${coverage_profile_path}" "${value}"
+}
+
+write_coverage_strict_state() {
+  local value="$1"
+  write_coverage_state "${coverage_strict_state_path}" "${value}"
+}
+
+invalidate_coverage_profile() {
+  coverage_transaction_active=1
+  write_coverage_profile_state in-progress
+  write_coverage_strict_state in-progress
+}
+
+coverage_packages=(
+  -p katana-ui-core
+  -p katana-ui-core-egui-adapter
+  -p katana-ui-core-storybook
+  -p katana-ui-core-svg-raster
+  -p katana-ui-core-text-raster
+  -p kuc-consumer-app
+)
+if [[ -n "${coverage_supplement_filter}" && "${coverage_reuse}" != "1" ]]; then
+  echo "KUC_COVERAGE_SUPPLEMENT_FILTER requires reuse enabled" >&2
+  exit 1
+fi
+if [[ -z "${coverage_supplement_filter}" && "${coverage_supplement_target}" != "lib" ]]; then
+  echo "KUC_COVERAGE_SUPPLEMENT_TARGET requires KUC_COVERAGE_SUPPLEMENT_FILTER" >&2
+  exit 1
+fi
+case "${coverage_supplement_target}" in
+  lib)
+    coverage_supplement_target_args=(--lib)
+    ;;
+  *[!a-zA-Z0-9_-]* | "")
+    echo "KUC_COVERAGE_SUPPLEMENT_TARGET must be lib or an integration test target" >&2
+    exit 1
+    ;;
+  *)
+    coverage_supplement_target_args=(--test "${coverage_supplement_target}")
+    ;;
+esac
 case "${coverage_reuse}" in
   0)
     coverage_mode="clean"
-    run_cargo clean --target-dir "$coverage_target_dir"
-    run_cargo llvm-cov clean --workspace
+    coverage_build_args=()
+    coverage_cleanup_mode="clean"
+    pending_profile_signature="$(coverage_profile_signature)"
     ;;
   1)
-    coverage_mode="reuse"
-    # WHY: 反復時も実行profileは再利用せず、compiler outputだけを保持する。
-    run_cargo llvm-cov clean --profraw-only
+    if [[ -n "${coverage_supplement_filter}" ]]; then
+      coverage_mode="supplement"
+      if [[ ! -f "${coverage_profile_path}" ]]; then
+        echo "coverage supplement requires a complete full-workspace profile" >&2
+        exit 1
+      fi
+      current_profile_signature="$(coverage_profile_signature)"
+      if [[ "$(<"${coverage_profile_path}")" != "${current_profile_signature}" ]]; then
+        echo "coverage profile is incomplete or its production inputs changed; rerun full coverage before supplementing" >&2
+        exit 1
+      fi
+      coverage_build_args=(--no-clean)
+      coverage_cleanup_mode="none"
+      pending_profile_signature="${current_profile_signature}"
+    else
+      pending_profile_signature="$(coverage_profile_signature)"
+      if [[ -f "${coverage_profile_path}" \
+        && "$(<"${coverage_profile_path}")" == "${pending_profile_signature}" ]]; then
+        coverage_mode="reuse"
+        coverage_build_args=(--no-clean)
+        coverage_cleanup_mode="profraw"
+      else
+        coverage_mode="rebuild"
+        coverage_build_args=()
+        coverage_cleanup_mode="workspace"
+      fi
+    fi
     ;;
   *)
     echo "KUC_COVERAGE_REUSE must be 0 or 1" >&2
     exit 1
     ;;
 esac
-if [[ ! "${coverage_test_threads}" =~ ^[1-9][0-9]*$ ]]; then
-  echo "COVERAGE_TEST_THREADS must be a positive integer" >&2
+if [[ "${coverage_test_threads}" == "auto" ]]; then
+  coverage_test_threads="$(getconf _NPROCESSORS_ONLN 2>/dev/null || true)"
+  if [[ ! "${coverage_test_threads}" =~ ^[1-9][0-9]*$ ]]; then
+    coverage_test_threads=4
+  elif ((coverage_test_threads > 12)); then
+    coverage_test_threads=12
+  fi
+elif [[ ! "${coverage_test_threads}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "COVERAGE_TEST_THREADS must be auto or a positive integer" >&2
   exit 1
 fi
 coverage_min_free_gib="${KUC_COVERAGE_MIN_FREE_GIB:-2}"
@@ -96,26 +297,69 @@ if ((coverage_available_kib < coverage_required_kib)); then
   echo "strict coverage requires at least ${coverage_min_free_gib} GiB free after cleanup" >&2
   exit 1
 fi
-echo "coverage mode: ${coverage_mode}; test threads: ${coverage_test_threads}"
-run_cargo llvm-cov \
-  -p katana-ui-core \
-  -p katana-ui-core-egui-adapter \
-  -p katana-ui-core-storybook \
-  -p katana-ui-core-svg-raster \
-  -p katana-ui-core-text-raster \
-  -p kuc-consumer-app \
-  --all-targets \
-  --all-features \
-  --locked \
-  --no-report \
-  -- \
-  --include-ignored \
-  --test-threads="${coverage_test_threads}"
-run_cargo llvm-cov report \
-  --summary-only \
-  --ignore-filename-regex '(^|/)(tests/|tests\.rs$|[^/]+_tests\.rs$)' \
-  --fail-under-functions 100 \
-  --fail-under-lines 100 \
-  --fail-uncovered-functions 0 \
-  --fail-uncovered-lines 0
+invalidate_coverage_profile
+case "${coverage_cleanup_mode}" in
+  clean)
+    run_cargo clean --target-dir "${coverage_target_dir}"
+    run_cargo llvm-cov clean --workspace
+    ;;
+  profraw)
+    run_cargo llvm-cov clean --profraw-only
+    ;;
+  workspace)
+    run_cargo llvm-cov clean --workspace
+    ;;
+  none)
+    ;;
+esac
+echo "coverage mode: ${coverage_mode}; scope: full; test threads: ${coverage_test_threads}"
+coverage_test_started_at="${SECONDS}"
+if [[ -n "${coverage_supplement_filter}" ]]; then
+  run_cargo llvm-cov test --quiet \
+    --no-clean \
+    -p katana-ui-core-egui-adapter \
+    "${coverage_supplement_target_args[@]}" \
+    --all-features \
+    --locked \
+    --json \
+    --summary-only \
+    --output-path "${coverage_supplement_report_path}" \
+    --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)' \
+    -- \
+    --include-ignored \
+    "${coverage_supplement_filter}" \
+    --test-threads="${coverage_test_threads}"
+  run_cargo llvm-cov report --quiet \
+    "${coverage_packages[@]}" \
+    --json \
+    --summary-only \
+    --output-path "${coverage_report_path}" \
+    --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)'
+else
+  run_cargo llvm-cov --quiet \
+    "${coverage_build_args[@]}" \
+    "${coverage_packages[@]}" \
+    --all-targets \
+    --all-features \
+    --locked \
+    --json \
+    --summary-only \
+    --output-path "${coverage_report_path}" \
+    --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)' \
+    -- \
+    --include-ignored \
+    --test-threads="${coverage_test_threads}"
+fi
+python3 scripts/assert-strict-coverage-json.py --validate-profile "${coverage_report_path}"
+write_coverage_profile_state "${pending_profile_signature}"
+coverage_transaction_active=0
+if python3 scripts/assert-strict-coverage-json.py "${coverage_report_path}"; then
+  write_coverage_strict_state "passed:${pending_profile_signature}"
+else
+  write_coverage_strict_state "failed:${pending_profile_signature}"
+  echo "coverage test and report elapsed seconds: $((SECONDS - coverage_test_started_at))"
+  echo "strict coverage elapsed seconds: $((SECONDS - coverage_started_at))"
+  exit 1
+fi
+echo "coverage test and report elapsed seconds: $((SECONDS - coverage_test_started_at))"
 echo "strict coverage elapsed seconds: $((SECONDS - coverage_started_at))"

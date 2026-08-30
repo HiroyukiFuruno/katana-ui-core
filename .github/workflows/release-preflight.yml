@@ -71,6 +71,8 @@ jobs:
         run: bash scripts/release/resolve-release-version.sh "${{ github.event_name }}" "" "${{ github.head_ref }}"
 
       - name: Quality gate
+        # WHY: release PR は直後の release-check が同じ check を内包するため二重実行しない。
+        if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release/v')
         run: just check
 
       - name: Release check
