@@ -140,3 +140,7 @@ impl EguiDiagnosticsListAdapter {
 #[cfg(test)]
 #[path = "input_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "input_focus_tests.rs"]
+mod focus_tests;
