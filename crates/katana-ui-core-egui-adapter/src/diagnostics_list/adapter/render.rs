@@ -76,23 +76,29 @@ impl EguiDiagnosticsListAdapter {
             input.has_accesskit_action_request(scroll_id, egui::accesskit::Action::ScrollUp)
         });
         let scroll_response = ui.interact(viewport, scroll_id, egui::Sense::hover());
+        let viewport_is_hovered =
+            scroll_response.hovered() || ui.rect_contains_pointer(scroll_response.rect);
         DiagnosticsAccessibility::publish_scroll_accessibility(
             ui,
             scroll_response.id,
             viewport,
             max_scroll_y > 0.0,
         );
-        let scroll_delta = ui.input(|input| {
-            input
-                .raw
-                .events
-                .iter()
-                .filter_map(|event| match event {
-                    egui::Event::MouseWheel { delta, .. } => Some(delta.y),
-                    _ => None,
-                })
-                .sum::<f32>()
-        });
+        let scroll_delta = if viewport_is_hovered {
+            ui.input(|input| {
+                input
+                    .raw
+                    .events
+                    .iter()
+                    .filter_map(|event| match event {
+                        egui::Event::MouseWheel { delta, .. } => Some(delta.y),
+                        _ => None,
+                    })
+                    .sum::<f32>()
+            })
+        } else {
+            0.0
+        };
         if scroll_delta != 0.0 {
             self.scroll_y = (self.scroll_y - scroll_delta).clamp(0.0, max_scroll_y);
         }

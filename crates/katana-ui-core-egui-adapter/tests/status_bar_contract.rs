@@ -2,7 +2,7 @@ use katana_ui_core::molecule::{
     ProgressMeterShape, ProgressMeterSpec, StatusBar, StatusBarDensity, StatusBarEvent,
     StatusBarMode, StatusBarPopoverSpec, StatusBarSegment, StatusBarSegmentAlignment,
 };
-use katana_ui_core::render_model::UiTone;
+use katana_ui_core::render_model::{UiRect, UiTone};
 use katana_ui_core_egui_adapter::artifact_compositor::{
     ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor, ArtifactPaintPlanRef,
 };
@@ -67,6 +67,18 @@ fn with_open_popover(mut status: StatusBar, id: &str) -> Result<StatusBar, Strin
     state.insert("open_popover".to_owned(), json!(id));
     status = serde_json::from_value(serialized).map_err(|error| error.to_string())?;
     Ok(status)
+}
+
+fn rects_overlap(a: UiRect, b: UiRect) -> bool {
+    let a_left = a.x;
+    let a_right = a.x + a.width as i32;
+    let a_top = a.y;
+    let a_bottom = a.y + a.height as i32;
+    let b_left = b.x;
+    let b_right = b.x + b.width as i32;
+    let b_top = b.y;
+    let b_bottom = b.y + b.height as i32;
+    a_left < b_right && b_left < a_right && a_top < b_bottom && b_top < a_bottom
 }
 
 #[test]
@@ -374,6 +386,32 @@ fn progress_icon_tooltip_and_popover_are_rasterized_and_one_shot() -> Result<(),
     assert!(opened_plan.operations.iter().any(|operation| {
         matches!(operation.kind, StatusBarPaintOperationKind::Texture { ref texture, .. } if texture.identity.starts_with("status-bar-overlay:"))
     }));
+    let mut overlay_bounds = opened_plan
+        .operations
+        .iter()
+        .filter_map(|operation| match &operation.kind {
+            StatusBarPaintOperationKind::Texture { bounds, texture }
+                if texture.identity.starts_with("status-bar-overlay:") =>
+            {
+                Some(*bounds)
+            }
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        overlay_bounds.len(),
+        2,
+        "opened popover must rasterize title and body"
+    );
+    overlay_bounds.sort_by_key(|rect| rect.y);
+    assert!(
+        !rects_overlap(overlay_bounds[0], overlay_bounds[1]),
+        "popover title/body textures must not overlap"
+    );
+    assert!(
+        overlay_bounds[0].y + overlay_bounds[0].height as i32 <= overlay_bounds[1].y,
+        "popover title/body should be stacked in layout order"
+    );
 
     let (_, close_events) = frame(
         &context,

@@ -164,8 +164,8 @@ impl EguiDiagnosticsListAdapter {
                     diagnostics,
                     item,
                     quickfix,
-                    bounds,
                     clipped_bounds,
+                    viewport,
                 );
             }
         }
@@ -222,8 +222,8 @@ impl EguiDiagnosticsListAdapter {
         diagnostics: &mut DiagnosticsList,
         item: &katana_ui_core::molecule::DiagnosticItem,
         quickfix: &katana_ui_core::molecule::DiagnosticAction,
-        bounds: egui::Rect,
         clipped_bounds: egui::Rect,
+        viewport: egui::Rect,
     ) {
         let fix_bounds = egui::Rect::from_min_size(
             egui::pos2(
@@ -232,9 +232,12 @@ impl EguiDiagnosticsListAdapter {
             ),
             egui::vec2(
                 super::super::paint::DIAGNOSTICS_QUICKFIX_WIDTH,
-                bounds.height() - super::super::paint::DIAGNOSTICS_DISCLOSURE_HEIGHT_INSET,
+                (clipped_bounds.height()
+                    - super::super::paint::DIAGNOSTICS_DISCLOSURE_HEIGHT_INSET)
+                    .max(1.0),
             ),
         );
+        let fix_bounds = fix_bounds.intersect(viewport);
         let response = ui.interact(
             fix_bounds,
             self.id.with((item.id.as_str(), "quickfix")),

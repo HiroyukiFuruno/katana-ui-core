@@ -108,7 +108,7 @@ impl EguiStatusBarAdapter {
         {
             self.close_popover(ui, status, &id, &mut out);
         }
-        self.paint_open_popover(ui, status, &mut out)?;
+        self.paint_open_popover(ui, status)?;
         self.paint_plan(ui);
         out.paint_plan = self
             .last_paint_plan

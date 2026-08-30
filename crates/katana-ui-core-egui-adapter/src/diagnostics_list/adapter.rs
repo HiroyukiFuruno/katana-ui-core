@@ -14,6 +14,10 @@ mod input;
 mod items;
 mod render;
 
+#[cfg(test)]
+#[path = "adapter/interaction_boundary_tests.rs"]
+mod interaction_boundary_tests;
+
 pub(super) struct DiagnosticsRenderLayout<'a> {
     pub(super) style: &'a DiagnosticsListStyle,
     pub(super) surface: egui::Rect,

@@ -1,4 +1,5 @@
 use super::adapter::EguiStatusBarAdapter;
+use super::paint::StatusBarPaint;
 use super::types::{
     EguiStatusBarError, EguiStatusBarOutput, StatusBarPaintOperation, StatusBarPaintOperationKind,
     StatusBarPaintTexture, StatusBarRenderStyle,
@@ -18,7 +19,6 @@ impl EguiStatusBarAdapter {
         &mut self,
         ui: &egui::Ui,
         status: &StatusBar,
-        out: &mut EguiStatusBarOutput,
     ) -> Result<(), EguiStatusBarError> {
         let Some(id) = status.state().open_popover().cloned() else {
             return Ok(());
@@ -29,23 +29,41 @@ impl EguiStatusBarAdapter {
         let Some(spec) = segment.popover_spec() else {
             return Ok(());
         };
-        let area = egui::Area::new(self.id.with(("popover", id.as_str())))
+        egui::Area::new(self.id.with(("popover", id.as_str())))
             .order(egui::Order::Foreground)
             .fixed_pos(egui::pos2(POPOVER_OFFSET_PX, POPOVER_OFFSET_PX))
             .show(ui.ctx(), |ui| {
                 egui::Frame::popup(ui.style())
                     .show(ui, |ui| -> Result<(), EguiStatusBarError> {
+                        let (title, title_texture) =
+                            self.rasterize_overlay(ui, spec.title(), POPOVER_TITLE_RGBA)?;
+                        let (body, body_texture) =
+                            self.rasterize_overlay(ui, spec.body(), POPOVER_BODY_RGBA)?;
                         let title =
-                            self.rasterize_overlay(ui, spec.title(), POPOVER_TITLE_RGBA, out)?;
+                            ui.add(egui::Image::from_texture(title).fit_to_original_size(1.0));
                         let body =
-                            self.rasterize_overlay(ui, spec.body(), POPOVER_BODY_RGBA, out)?;
-                        ui.add(egui::Image::from_texture(title).fit_to_original_size(1.0));
-                        ui.add(egui::Image::from_texture(body).fit_to_original_size(1.0));
+                            ui.add(egui::Image::from_texture(body).fit_to_original_size(1.0));
+                        if let Some(plan) = self.last_paint_plan.as_mut() {
+                            plan.operations.push(StatusBarPaintOperation {
+                                clip_bounds: StatusBarPaint::ui_rect(title.rect),
+                                kind: StatusBarPaintOperationKind::Texture {
+                                    bounds: StatusBarPaint::ui_rect(title.rect),
+                                    texture: title_texture,
+                                },
+                            });
+                            plan.operations.push(StatusBarPaintOperation {
+                                clip_bounds: StatusBarPaint::ui_rect(body.rect),
+                                kind: StatusBarPaintOperationKind::Texture {
+                                    bounds: StatusBarPaint::ui_rect(body.rect),
+                                    texture: body_texture,
+                                },
+                            });
+                        }
                         Ok(())
                     })
                     .inner
-            });
-        area.inner
+            })
+            .inner
     }
 
     fn rasterize_overlay(
@@ -53,8 +71,7 @@ impl EguiStatusBarAdapter {
         ui: &egui::Ui,
         text: &str,
         color_rgba: [u8; RGBA_CHANNEL_COUNT],
-        _out: &mut EguiStatusBarOutput,
-    ) -> Result<egui::load::SizedTexture, EguiStatusBarError> {
+    ) -> Result<(egui::load::SizedTexture, StatusBarPaintTexture), EguiStatusBarError> {
         let scale = ui.ctx().pixels_per_point();
         let style = StatusBarRenderStyle::standard();
         let raster = self.text_rasterizer.rasterize(&PlatformTextRasterRequest {
@@ -76,26 +93,12 @@ impl EguiStatusBarAdapter {
             concat!("status-bar-overlay:", "{}"),
             hex::encode(Sha256::digest(text.as_bytes()))
         );
-        if let Some(plan) = self.last_paint_plan.as_mut() {
-            let bounds = katana_ui_core::render_model::UiRect::new(
-                POPOVER_OFFSET_PX as i32,
-                POPOVER_OFFSET_PX as i32,
-                raster.width as u32,
-                raster.height as u32,
-            );
-            plan.operations.push(StatusBarPaintOperation {
-                clip_bounds: bounds,
-                kind: StatusBarPaintOperationKind::Texture {
-                    bounds,
-                    texture: StatusBarPaintTexture {
-                        identity: identity.clone(),
-                        width: raster.width as u32,
-                        height: raster.height as u32,
-                        rgba_pixels: pixels.clone(),
-                    },
-                },
-            });
-        }
+        let texture = StatusBarPaintTexture {
+            identity: identity.clone(),
+            width: raster.width as u32,
+            height: raster.height as u32,
+            rgba_pixels: pixels.clone(),
+        };
         let handle = self.textures.texture_for_rgba(
             ui.ctx(),
             &identity,
@@ -103,7 +106,7 @@ impl EguiStatusBarAdapter {
             raster.height,
             &pixels,
         );
-        Ok(egui::load::SizedTexture::from_handle(&handle))
+        Ok((egui::load::SizedTexture::from_handle(&handle), texture))
     }
 
     pub(super) fn close_popover(
