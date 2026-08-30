@@ -216,6 +216,46 @@ class KucHookPolicyTest(unittest.TestCase):
             )
             self.assertEqual(result_ok.returncode, 0, result_ok.stdout + result_ok.stderr)
 
+    def test_first_push_checks_all_commits_not_present_on_remote(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp) / "repo"
+            repo.mkdir()
+            git("init", "-b", "master", cwd=repo)
+            git("config", "user.name", "ci", cwd=repo)
+            git("config", "user.email", "ci@example.com", cwd=repo)
+            write_text(repo / "README.md", "initial\n")
+            git("add", "README.md", cwd=repo)
+            git("commit", "-m", "initial commit", cwd=repo)
+            remote_base = git("rev-parse", "HEAD", cwd=repo).stdout.strip()
+            git("update-ref", "refs/remotes/origin/master", remote_base, cwd=repo)
+
+            git("checkout", "-b", "feature/first-push", cwd=repo)
+            env = install_hooks(repo)
+            write_text(repo / "Cargo.lock", "[metadata]\n")
+            git("add", "Cargo.lock", cwd=repo)
+            git("commit", "-m", "update lock file", cwd=repo)
+            dependency_commit = git("rev-parse", "HEAD", cwd=repo).stdout.strip()
+
+            write_text(repo / "README.md", "initial\nfollow-up\n")
+            git("add", "README.md", cwd=repo)
+            git("commit", "-m", "docs: follow up #21", cwd=repo)
+            tip = git("rev-parse", "HEAD", cwd=repo).stdout.strip()
+            zero = "0" * 40
+
+            result = run(
+                [str(repo / ".githooks" / "pre-push"), "origin", "https://github.com/example/repo.git"],
+                cwd=repo,
+                input_text=f"refs/heads/feature/first-push {tip} refs/heads/feature/first-push {zero}\n",
+                env={**env, "KUC_PUSH_CONFIRMED": "1", "KUC_HOOK_TRACE": "1"},
+            )
+
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(dependency_commit, result.stderr)
+            self.assertIn(
+                "downstream dependency updates on pushed commits need repository issue reference",
+                result.stderr,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

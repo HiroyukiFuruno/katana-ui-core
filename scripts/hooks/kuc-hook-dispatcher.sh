@@ -2,6 +2,7 @@
 set -euo pipefail
 
 HOOK_NAME="${1:-${GIT_HOOK_NAME:-}}"
+PUSH_REMOTE_NAME="${2:-}"
 if [[ -z "$HOOK_NAME" ]]; then
     echo "KUC hook dispatcher: missing hook name" >&2
     exit 1
@@ -156,26 +157,25 @@ commit_has_dependency_updates() {
 }
 
 dispatch_pre_push() {
-    local line=""
     local local_sha=""
     local remote_sha=""
-    local parent_for_update=""
     local commit_list=""
+    local zero_sha="0000000000000000000000000000000000000000"
 
     while read -r _local_ref local_sha _remote_ref remote_sha; do
         trace "push local=$local_sha remote=$remote_sha"
-        if [[ -z "$local_sha" ]]; then
+        if [[ -z "$local_sha" || "$local_sha" == "$zero_sha" ]]; then
             continue
         fi
 
-        if [[ "$remote_sha" == "0000000000000000000000000000000000000000" ]]; then
-            parent_for_update="$local_sha"
-            if git cat-file -e "$local_sha"^"^{commit}" 2>/dev/null; then
-                parent_for_update="$local_sha^"
+        if [[ "$remote_sha" == "$zero_sha" ]]; then
+            if [[ -n "$PUSH_REMOTE_NAME" ]]; then
+                commit_list="$(git rev-list "$local_sha" --not --remotes="$PUSH_REMOTE_NAME")"
+            else
+                commit_list="$(git rev-list "$local_sha" --not --remotes)"
             fi
-            commit_list="$(git rev-list "$parent_for_update".."$local_sha" || true)"
         else
-            commit_list="$(git rev-list "$remote_sha".."$local_sha" || true)"
+            commit_list="$(git rev-list "$remote_sha".."$local_sha")"
         fi
         trace "commits=$commit_list"
 

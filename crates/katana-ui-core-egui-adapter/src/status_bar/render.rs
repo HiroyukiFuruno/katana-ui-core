@@ -136,11 +136,13 @@ impl EguiStatusBarAdapter {
         );
         if segment.interactive {
             publish_accessibility(ui, response.id, bounds, &segment.accessibility, &segment.id);
+            let response_has_focus = response.has_focus();
             if response.clicked()
                 || ui.input(|input| {
                     input.has_accesskit_action_request(response.id, egui::accesskit::Action::Click)
-                        || input.key_pressed(egui::Key::Enter)
-                        || input.key_pressed(egui::Key::Space)
+                        || (response_has_focus
+                            && (input.key_pressed(egui::Key::Enter)
+                                || input.key_pressed(egui::Key::Space)))
                 })
             {
                 out.events

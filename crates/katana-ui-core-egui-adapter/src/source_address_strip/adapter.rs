@@ -15,7 +15,7 @@ use katana_ui_core::molecule::structured::source_address_strip::{
 };
 use katana_ui_core::render_model::UiTextSpan;
 use katana_ui_core::text_surface::{
-    TextSurface, TextSurfaceEvent, TextSurfaceProps, TextSurfaceViewport,
+    TextSurface, TextSurfaceEvent, TextSurfacePresentation, TextSurfaceProps, TextSurfaceViewport,
 };
 use katana_ui_core_text_raster::PlatformTextRasterizer;
 
@@ -73,6 +73,9 @@ impl EguiSourceAddressStripAdapter {
                 .accessibility_label(accessibility_label.clone()),
             )
         });
+        let mut presentation = TextSurfacePresentation::from_props(surface.props());
+        presentation.disabled = !enabled;
+        let _ = surface.synchronize_presentation(presentation);
         surface.synchronize_value(strip.draft());
         let mut paint_plan = SourceAddressPaintPlan {
             surface_bounds: Paint::ui_rect(root_bounds),

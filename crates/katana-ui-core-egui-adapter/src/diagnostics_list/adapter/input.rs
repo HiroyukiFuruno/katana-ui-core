@@ -1,6 +1,7 @@
 //! Keyboard focus and one-shot closure handling for diagnostics.
 
 use super::super::accessibility::DiagnosticsAccessibility;
+use super::super::identity::DiagnosticsTargetIdentity;
 use super::super::types::EguiDiagnosticsListOutput;
 use super::EguiDiagnosticsListAdapter;
 use katana_ui_core::molecule::{DiagnosticKeyboardInput, DiagnosticsList, DiagnosticsListAction};
@@ -16,34 +17,49 @@ impl EguiDiagnosticsListAdapter {
         diagnostics: &mut DiagnosticsList,
     ) {
         let snapshot = diagnostics.render_snapshot();
-        let scope_keyboard = self.focused_scope.as_ref().and_then(|_| {
-            ui.input(|input| {
-                if input.key_pressed(egui::Key::ArrowRight) {
-                    Some(DiagnosticKeyboardInput::ScopeNext)
-                } else if input.key_pressed(egui::Key::ArrowLeft) {
-                    Some(DiagnosticKeyboardInput::ScopePrevious)
-                } else {
-                    None
-                }
-            })
+        let focused_response = ui.memory(|memory| memory.focused());
+        let item_has_focus = self
+            .focused_item
+            .as_deref()
+            .is_some_and(|id| focused_response == Some(self.id.with(id)));
+        let scope_has_focus = self.focused_scope.as_deref().is_some_and(|scope| {
+            focused_response == Some(self.id.with(DiagnosticsTargetIdentity::scope(scope)))
         });
+        let is_diagnostics_focused = item_has_focus || scope_has_focus;
+        let scope_keyboard = scope_has_focus
+            .then(|| {
+                ui.input(|input| {
+                    if input.key_pressed(egui::Key::ArrowRight) {
+                        Some(DiagnosticKeyboardInput::ScopeNext)
+                    } else if input.key_pressed(egui::Key::ArrowLeft) {
+                        Some(DiagnosticKeyboardInput::ScopePrevious)
+                    } else {
+                        None
+                    }
+                })
+            })
+            .flatten();
         if let Some(keyboard) = scope_keyboard {
             output
                 .events
                 .extend(diagnostics.apply_action(DiagnosticsListAction::Keyboard(keyboard)));
         }
         let keyboard = ui.input(|input| {
-            [
-                (egui::Key::ArrowUp, DiagnosticKeyboardInput::ArrowUp),
-                (egui::Key::ArrowDown, DiagnosticKeyboardInput::ArrowDown),
-                (egui::Key::ArrowLeft, DiagnosticKeyboardInput::ArrowLeft),
-                (egui::Key::ArrowRight, DiagnosticKeyboardInput::ArrowRight),
-                (egui::Key::Enter, DiagnosticKeyboardInput::Enter),
-                (egui::Key::Space, DiagnosticKeyboardInput::Space),
-            ]
-            .into_iter()
-            .find_map(|(key, action)| input.key_pressed(key).then_some(action))
-            .or_else(|| {
+            let list_keyboard = is_diagnostics_focused
+                .then(|| {
+                    [
+                        (egui::Key::ArrowUp, DiagnosticKeyboardInput::ArrowUp),
+                        (egui::Key::ArrowDown, DiagnosticKeyboardInput::ArrowDown),
+                        (egui::Key::ArrowLeft, DiagnosticKeyboardInput::ArrowLeft),
+                        (egui::Key::ArrowRight, DiagnosticKeyboardInput::ArrowRight),
+                        (egui::Key::Enter, DiagnosticKeyboardInput::Enter),
+                        (egui::Key::Space, DiagnosticKeyboardInput::Space),
+                    ]
+                    .into_iter()
+                    .find_map(|(key, action)| input.key_pressed(key).then_some(action))
+                })
+                .flatten();
+            list_keyboard.or_else(|| {
                 input
                     .key_pressed(egui::Key::F8)
                     .then_some(if input.modifiers.shift {

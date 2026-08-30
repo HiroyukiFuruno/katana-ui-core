@@ -2,9 +2,11 @@ use super::{EguiSourceAddressStripAdapter, EguiSourceAddressStripOutput};
 use crate::source_address_strip::SourceAddressFrameEventClass;
 use katana_ui_core::atom::{TextAreaEvent, TextAreaKeyChord, TextAreaValidationError};
 use katana_ui_core::molecule::structured::source_address_strip::{
-    SourceAddressPresentation, SourceAddressStrip,
+    SourceAddressAction, SourceAddressPresentation, SourceAddressStrip,
 };
 use katana_ui_core::text_surface::TextSurfaceEvent;
+
+const SCREEN_SIZE: egui::Vec2 = egui::vec2(420.0, 80.0);
 
 fn strip() -> SourceAddressStrip {
     SourceAddressStrip::new(SourceAddressPresentation::new(
@@ -12,6 +14,34 @@ fn strip() -> SourceAddressStrip {
         "ソースを入力",
         "ソースを入力",
     ))
+}
+
+fn render_source_address_strip(
+    context: &egui::Context,
+    adapter: &mut EguiSourceAddressStripAdapter,
+    strip: &mut SourceAddressStrip,
+) -> bool {
+    let mut disabled = false;
+    crate::run_ui_discard(
+        context,
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, SCREEN_SIZE)),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            adapter.show(ui, strip).expect("render succeeds");
+            disabled = adapter
+                .last_input_artifact
+                .as_ref()
+                .expect("input surface is produced")
+                .record
+                .frame
+                .accessibility
+                .root
+                .disabled;
+        },
+    );
+    disabled
 }
 
 #[test]
@@ -77,4 +107,59 @@ fn source_address_adapter_drops_non_text_surface_events_without_output() {
         }],
     );
     assert!(output.event_classes.is_empty());
+}
+
+#[test]
+fn source_address_adapter_displays_input_disabled_after_host_disables_input() {
+    let context = egui::Context::default();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-disabled-render-test")
+        .expect("adapter should initialize");
+    let mut strip = strip();
+
+    assert!(!render_source_address_strip(
+        &context,
+        &mut adapter,
+        &mut strip
+    ));
+
+    assert!(
+        strip
+            .apply_action(SourceAddressAction::SetEnabled(false))
+            .is_some()
+    );
+    assert!(render_source_address_strip(
+        &context,
+        &mut adapter,
+        &mut strip
+    ));
+}
+
+#[test]
+fn source_address_adapter_displays_input_enabled_after_host_enables_input() {
+    let context = egui::Context::default();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-enabled-render-test")
+        .expect("adapter should initialize");
+    let mut strip = strip();
+
+    assert!(
+        strip
+            .apply_action(SourceAddressAction::SetEnabled(false))
+            .is_some()
+    );
+    assert!(render_source_address_strip(
+        &context,
+        &mut adapter,
+        &mut strip
+    ));
+
+    assert!(
+        strip
+            .apply_action(SourceAddressAction::SetEnabled(true))
+            .is_some()
+    );
+    assert!(!render_source_address_strip(
+        &context,
+        &mut adapter,
+        &mut strip
+    ));
 }
