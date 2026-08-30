@@ -17,6 +17,25 @@ impl EguiDiagnosticsListAdapter {
         diagnostics: &mut DiagnosticsList,
     ) {
         let snapshot = diagnostics.render_snapshot();
+        let stale_focused_scope = self
+            .focused_scope
+            .as_deref()
+            .filter(|focused_scope| {
+                !snapshot
+                    .scopes
+                    .iter()
+                    .any(|scope| scope.key.as_str() == *focused_scope)
+            })
+            .map(str::to_owned);
+        if let Some(stale_focused_scope) = stale_focused_scope {
+            self.focused_scope = None;
+            ui.memory_mut(|memory| {
+                memory.surrender_focus(
+                    self.id
+                        .with(DiagnosticsTargetIdentity::scope(&stale_focused_scope)),
+                );
+            });
+        }
         let focused_response = ui.memory(|memory| memory.focused());
         let item_has_focus = self
             .focused_item
@@ -48,8 +67,12 @@ impl EguiDiagnosticsListAdapter {
             output
                 .events
                 .extend(diagnostics.apply_action(DiagnosticsListAction::Keyboard(keyboard)));
-            match diagnostics.render_snapshot().state.selected_scope_key {
-                Some(scope) => {
+            diagnostics
+                .render_snapshot()
+                .state
+                .selected_scope_key
+                .iter()
+                .for_each(|scope| {
                     self.focused_item = None;
                     self.focused_scope = Some(scope.as_str().to_owned());
                     ui.memory_mut(|memory| {
@@ -58,15 +81,7 @@ impl EguiDiagnosticsListAdapter {
                                 .with(DiagnosticsTargetIdentity::scope(scope.as_str())),
                         );
                     });
-                }
-                None => {
-                    self.focused_item = None;
-                    self.focused_scope = None;
-                    if let Some(focused_response) = focused_response {
-                        ui.memory_mut(|memory| memory.surrender_focus(focused_response));
-                    }
-                }
-            }
+                });
         }
         let keyboard = ui.input(|input| {
             let list_keyboard = is_diagnostics_focused
