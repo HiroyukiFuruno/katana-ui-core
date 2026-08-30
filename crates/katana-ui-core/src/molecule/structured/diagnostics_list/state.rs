@@ -39,7 +39,7 @@ impl DiagnosticsListState {
             DiagnosticsListAction::ToggleFixPreview(id) => self.toggle_fix_preview(id),
             DiagnosticsListAction::ApplyFix(id) => apply_fix(items, id),
             DiagnosticsListAction::OpenBulkPreview => self.open_bulk_preview(),
-            DiagnosticsListAction::ConfirmBulkApply => bulk_apply(items, options),
+            DiagnosticsListAction::ConfirmBulkApply => self.confirm_bulk_apply(items, options),
             DiagnosticsListAction::Keyboard(input) => {
                 self.apply_keyboard(input, items, scopes, options)
             }
@@ -91,6 +91,15 @@ impl DiagnosticsListState {
     fn open_bulk_preview(&mut self) -> Vec<DiagnosticsListEvent> {
         self.bulk_preview_open = true;
         vec![DiagnosticsListEvent::BulkFixPreviewOpened]
+    }
+
+    fn confirm_bulk_apply(
+        &mut self,
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+    ) -> Vec<DiagnosticsListEvent> {
+        self.bulk_preview_open = false;
+        bulk_apply(items, options)
     }
 
     fn apply_keyboard(
