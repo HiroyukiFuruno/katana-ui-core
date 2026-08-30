@@ -32,5 +32,8 @@ fn meter_and_segment_accessors_return_stored_values() {
     assert_eq!(segment.id(), "seg-1");
     assert_eq!(segment.label(), "Segment");
     assert_eq!(segment.icon_name(), None);
-    assert_eq!(segment.progress_spec().unwrap().percent(), 40);
+    assert_eq!(
+        segment.progress_spec().map(ProgressMeterSpec::percent),
+        Some(40)
+    );
 }

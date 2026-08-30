@@ -123,3 +123,39 @@ impl TextSurfacePaintStyle {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn gutter_paint_state_fallbacks_follow_active_hovered_priority() {
+        let paint = TextSurfaceGutterPaint::new("line", [1, 2, 3, 4])
+            .background([5, 6, 7, 8])
+            .active_background([9, 10, 11, 12])
+            .hovered_background([13, 14, 15, 16])
+            .active_foreground([17, 18, 19, 20])
+            .hovered_foreground([21, 22, 23, 24]);
+
+        assert_eq!(
+            paint.background_for_state(true, false),
+            Some([9, 10, 11, 12])
+        );
+        assert_eq!(
+            paint.background_for_state(false, true),
+            Some([13, 14, 15, 16])
+        );
+        assert_eq!(paint.background_for_state(false, false), Some([5, 6, 7, 8]));
+        assert_eq!(paint.foreground_for_state(true, false), [17, 18, 19, 20]);
+        assert_eq!(paint.foreground_for_state(false, true), [21, 22, 23, 24]);
+        assert_eq!(paint.foreground_for_state(false, false), [1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn gutter_paint_state_defaults_fall_back_to_none_or_base_foreground() {
+        let paint = TextSurfaceGutterPaint::new("line", [9, 8, 7, 6]);
+
+        assert_eq!(paint.background_for_state(false, false), None);
+        assert_eq!(paint.foreground_for_state(true, false), [9, 8, 7, 6]);
+    }
+}

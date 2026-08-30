@@ -211,3 +211,7 @@ fn base_span_style(style: &TextSurfaceRasterStyle) -> UiTextSpanStyle {
         ..UiTextSpanStyle::default()
     }
 }
+
+#[cfg(test)]
+#[path = "raster_tests.rs"]
+mod tests;

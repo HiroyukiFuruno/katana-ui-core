@@ -56,7 +56,7 @@ fn route_context_menu_events_supports_enabled_leaf_activation() {
         Some(&projection),
         &[ContextMenuEvent::ItemSelected {
             path: vec![0],
-            command: leaf_id,
+            command: leaf_id.clone(),
         }],
         7,
         "root",
@@ -64,6 +64,13 @@ fn route_context_menu_events_supports_enabled_leaf_activation() {
     .expect("leaf target should route");
 
     assert_eq!(transports.len(), 1);
+    let debug = format!("{:?}", transports[0]);
+    assert_eq!(
+        debug,
+        "SanitizedContextMenuActivationTransport { payload: \"<opaque>\" }"
+    );
+    assert!(!debug.contains("root"));
+    assert!(!debug.contains(&leaf_id));
     assert_eq!(transports[0].invoke_once(), Ok(()));
     assert!(*called.borrow());
     assert_eq!(

@@ -210,3 +210,7 @@ impl TabStripRetainedState {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "label_paint_tests.rs"]
+mod tests;

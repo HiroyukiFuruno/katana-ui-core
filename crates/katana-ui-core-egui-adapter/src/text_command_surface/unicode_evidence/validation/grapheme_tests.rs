@@ -1,3 +1,4 @@
+use super::super::super::model::KucGraphemeArtifact;
 use super::*;
 
 #[test]
@@ -25,4 +26,32 @@ fn required_range_fails_closed_for_missing_and_mismatched_boundaries() {
         Err(KucUnicodeColorGlyphEvidenceError::ExpectedScalarSequenceChanged { .. })
     ));
     assert_eq!(scalars(""), Vec::<u32>::new());
+}
+
+#[test]
+fn required_range_rejects_scalar_sequence_change_with_matching_byte_range() {
+    let ranges = vec![KucGraphemeArtifact {
+        byte_start: 0,
+        byte_end: 2,
+        scalar_sequence: vec![97],
+    }];
+    assert!(matches!(
+        required_range("ab", "a", &ranges),
+        Err(
+            KucUnicodeColorGlyphEvidenceError::ExpectedScalarSequenceChanged {
+                target,
+                expected,
+                actual
+            }
+        ) if target == "a" && expected == vec![97] && actual == vec![97, 98]
+    ));
+}
+
+#[test]
+fn validate_scalar_sequence_accepts_exact_expected_sequence() {
+    let target = "👩‍💻";
+    assert!(matches!(
+        validate_scalar_sequence(&scalars(target), target, &scalars(target)),
+        Ok(())
+    ));
 }

@@ -20,6 +20,10 @@ use katana_ui_core_svg_raster::{UiSvgRasterError, UiSvgRasterizer};
 use katana_ui_core_text_raster::{PlatformTextRasterError, PlatformTextRasterizer};
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+#[path = "command_chrome_types_tests.rs"]
+mod tests;
+
 pub struct EguiCommandChromeAdapter {
     pub(super) text_rasterizer: PlatformTextRasterizer,
     pub(super) svg_rasterizer: UiSvgRasterizer,

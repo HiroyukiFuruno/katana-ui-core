@@ -13,3 +13,7 @@ pub use types::{
     EguiStatusBarError, EguiStatusBarOutput, StatusBarLabelRasterEvidence, StatusBarPaintOperation,
     StatusBarPaintOperationKind, StatusBarPaintPlan, StatusBarPaintTexture, StatusBarRenderStyle,
 };
+
+#[cfg(test)]
+#[path = "status_bar_tests.rs"]
+mod tests;

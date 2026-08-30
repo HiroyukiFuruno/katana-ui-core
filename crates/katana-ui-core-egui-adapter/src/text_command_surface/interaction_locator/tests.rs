@@ -12,3 +12,6 @@ mod text_selection;
 
 #[cfg(test)]
 mod search_trace;
+
+#[cfg(test)]
+mod error_display;

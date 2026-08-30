@@ -219,3 +219,7 @@ fn egui_rect(value: UiRect) -> egui::Rect {
         egui::vec2(value.width as f32, value.height as f32),
     )
 }
+
+#[cfg(test)]
+#[path = "accessibility_tests.rs"]
+mod tests;

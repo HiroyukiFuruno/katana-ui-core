@@ -1,4 +1,5 @@
 use super::{ArtifactCompositeError, ArtifactPaintPlanRef};
+use serde::Serialize;
 use sha2::{Digest, Sha256};
 
 pub(super) fn paint_plan_hash(
@@ -21,15 +22,19 @@ pub(super) fn hash_bytes(bytes: &[u8]) -> String {
 
 fn serialized_plan(plan: &ArtifactPaintPlanRef<'_>) -> Result<Vec<u8>, ArtifactCompositeError> {
     match plan {
-        ArtifactPaintPlanRef::TextSurface(value) => serde_json::to_vec(value),
-        ArtifactPaintPlanRef::SourceAddress(value) => serde_json::to_vec(value),
-        ArtifactPaintPlanRef::StatusBar(value) => serde_json::to_vec(value),
-        ArtifactPaintPlanRef::DiagnosticsList(value) => serde_json::to_vec(value),
-        ArtifactPaintPlanRef::TabStrip(value) => serde_json::to_vec(value),
-        ArtifactPaintPlanRef::CommandChrome(value) => serde_json::to_vec(value),
-        ArtifactPaintPlanRef::ContextMenu(value) => serde_json::to_vec(value),
+        ArtifactPaintPlanRef::TextSurface(value) => serialize_value(value),
+        ArtifactPaintPlanRef::SourceAddress(value) => serialize_value(value),
+        ArtifactPaintPlanRef::StatusBar(value) => serialize_value(value),
+        ArtifactPaintPlanRef::DiagnosticsList(value) => serialize_value(value),
+        ArtifactPaintPlanRef::TabStrip(value) => serialize_value(value),
+        ArtifactPaintPlanRef::CommandChrome(value) => serialize_value(value),
+        ArtifactPaintPlanRef::ContextMenu(value) => serialize_value(value),
     }
-    .map_err(|error| ArtifactCompositeError::Serialization(error.to_string()))
+}
+
+pub(super) fn serialize_value(value: &impl Serialize) -> Result<Vec<u8>, ArtifactCompositeError> {
+    serde_json::to_vec(value)
+        .map_err(|error| ArtifactCompositeError::Serialization(error.to_string()))
 }
 
 const fn plan_kind(plan: &ArtifactPaintPlanRef<'_>) -> &'static [u8] {

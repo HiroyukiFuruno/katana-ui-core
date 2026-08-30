@@ -164,6 +164,18 @@ impl DiagnosticsList {
     }
 
     pub fn apply_action(&mut self, action: DiagnosticsListAction) -> Vec<DiagnosticsListEvent> {
+        match &action {
+            DiagnosticsListAction::SetGroupBy(group_by) => {
+                self.options.group_by = *group_by;
+            }
+            DiagnosticsListAction::SetSortBy(sort_by) => {
+                self.options.sort_by = *sort_by;
+            }
+            DiagnosticsListAction::SetSeverityFilter(severity_filter) => {
+                self.options.severity_filter.clone_from(severity_filter);
+            }
+            _ => {}
+        }
         self.state
             .apply_action(action, &self.items, &self.scopes, &self.options)
     }

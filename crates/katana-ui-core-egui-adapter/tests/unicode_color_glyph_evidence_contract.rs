@@ -7,7 +7,8 @@ use katana_ui_core_egui_adapter::text_command_surface::{
     KucUnicodeColorGlyphEvidenceOptions, STAR_TEXT, ZWJ_TEXT,
 };
 use katana_ui_core_text_raster::{
-    PlatformColorEmojiAvailability, PlatformColorEmojiFaceRecord, PlatformEmojiFontCandidate,
+    PlatformColorEmojiAvailability, PlatformColorEmojiError, PlatformColorEmojiFaceRecord,
+    PlatformColorEmojiUnavailableReason, PlatformEmojiFontCandidate, PlatformFontCatalog,
     PlatformFontCatalogPolicy, PlatformFontProfile, PlatformFontSha256, PlatformTextGraphemeRange,
 };
 use std::path::PathBuf;
@@ -140,6 +141,52 @@ fn fixture_builder_rejects_profile_and_catalog_fingerprint_mismatch() {
 }
 
 #[test]
+fn fixture_builder_rejects_unavailable_color_emoji_face() {
+    let mut unavailable_face = fixture_input();
+    unavailable_face.face.availability = PlatformColorEmojiAvailability::Unavailable(
+        PlatformColorEmojiUnavailableReason::MissingCandidates {
+            source_file_paths: vec![PathBuf::from("missing-color-emoji.ttf")],
+        },
+    );
+    assert!(matches!(
+        KucUnicodeColorGlyphEvidenceBuilder::build(unavailable_face),
+        Err(KucUnicodeColorGlyphEvidenceError::ColorEmojiUnavailable { .. })
+    ));
+}
+
+#[test]
+fn fixture_builder_rejects_font_error_as_fail_closed_path() {
+    let mut face_error = fixture_input();
+    face_error.face.availability =
+        PlatformColorEmojiAvailability::Error(PlatformColorEmojiError::HashMismatch {
+            source_file_path: PathBuf::from("mismatch.ttf"),
+            expected: PlatformFontSha256::digest(b"expected"),
+            actual: PlatformFontSha256::digest(b"actual"),
+        });
+    assert!(matches!(
+        KucUnicodeColorGlyphEvidenceBuilder::build(face_error),
+        Err(KucUnicodeColorGlyphEvidenceError::ColorEmojiFaceError { .. })
+    ));
+}
+
+#[test]
+fn fixture_builder_accepts_pinned_catalog_face_and_crop_signature() -> Result<(), String> {
+    let artifact = KucUnicodeColorGlyphEvidenceBuilder::build(fixture_input())
+        .map_err(|error| error.to_string())?;
+    assert_eq!(
+        artifact.profile.profile_id,
+        PlatformFontProfile::Linux.as_str()
+    );
+    assert_eq!(
+        artifact.catalog_face.catalog_fingerprint,
+        artifact.profile.catalog_fingerprint
+    );
+    assert!(artifact.chromatic_pixel_delta > 0);
+    assert_ne!(artifact.star.rgba_sha256, artifact.control_star.rgba_sha256);
+    Ok(())
+}
+
+#[test]
 fn fixture_builder_rejects_unpinned_vs16_and_invalid_crops() {
     let mut unpinned = fixture_input();
     unpinned.catalog_policy.emoji_candidates[0].expected_raw_file_sha256 = None;
@@ -169,6 +216,74 @@ fn fixture_builder_rejects_unpinned_vs16_and_invalid_crops() {
     assert!(matches!(
         KucUnicodeColorGlyphEvidenceBuilder::build(indistinguishable),
         Err(KucUnicodeColorGlyphEvidenceError::IndistinguishableCrops)
+    ));
+}
+
+#[test]
+fn fixture_builder_rejects_missing_catalog_pin_material() {
+    let mut missing_path = fixture_input();
+    missing_path.face.source_file_path = None;
+    assert!(matches!(
+        KucUnicodeColorGlyphEvidenceBuilder::build(missing_path),
+        Err(KucUnicodeColorGlyphEvidenceError::ColorEmojiUnpinned { .. })
+    ));
+
+    let mut missing_hash = fixture_input();
+    missing_hash.face.raw_file_sha256 = None;
+    assert!(matches!(
+        KucUnicodeColorGlyphEvidenceBuilder::build(missing_hash),
+        Err(KucUnicodeColorGlyphEvidenceError::ColorEmojiUnpinned { .. })
+    ));
+}
+
+#[test]
+fn fixture_builder_rejects_changed_ime_scalar_sequences() {
+    let mut changed_preedit = fixture_input();
+    changed_preedit.ime.preedit_scalars = vec![0x41];
+    assert!(matches!(
+        KucUnicodeColorGlyphEvidenceBuilder::build(changed_preedit),
+        Err(KucUnicodeColorGlyphEvidenceError::ExpectedScalarSequenceChanged { target, .. })
+            if target == IME_PREEDIT_TEXT
+    ));
+
+    let mut changed_commit = fixture_input();
+    changed_commit.ime.commit_scalars = vec![0x42];
+    assert!(matches!(
+        KucUnicodeColorGlyphEvidenceBuilder::build(changed_commit),
+        Err(KucUnicodeColorGlyphEvidenceError::ExpectedScalarSequenceChanged { target, .. })
+            if target == IME_COMMIT_TEXT
+    ));
+}
+
+#[test]
+fn fixture_builder_rejects_any_missing_evidence_hash() {
+    let mut no_accesskit_snapshot = fixture_input();
+    no_accesskit_snapshot.accesskit_text_snapshot_hash.clear();
+    assert!(matches!(
+        KucUnicodeColorGlyphEvidenceBuilder::build(no_accesskit_snapshot),
+        Err(KucUnicodeColorGlyphEvidenceError::EmptyEvidenceHash { field })
+            if field == "accesskit_text_snapshot_hash"
+    ));
+
+    let mut no_frame_hash = fixture_input();
+    no_frame_hash.root_frame_hash.clear();
+    assert!(matches!(
+        KucUnicodeColorGlyphEvidenceBuilder::build(no_frame_hash),
+        Err(KucUnicodeColorGlyphEvidenceError::EmptyEvidenceHash { field }) if field == "root_frame_hash"
+    ));
+
+    let mut no_record_hash = fixture_input();
+    no_record_hash.root_record_hash.clear();
+    assert!(matches!(
+        KucUnicodeColorGlyphEvidenceBuilder::build(no_record_hash),
+        Err(KucUnicodeColorGlyphEvidenceError::EmptyEvidenceHash { field }) if field == "root_record_hash"
+    ));
+
+    let mut no_rgba_hash = fixture_input();
+    no_rgba_hash.root_rgba_hash.clear();
+    assert!(matches!(
+        KucUnicodeColorGlyphEvidenceBuilder::build(no_rgba_hash),
+        Err(KucUnicodeColorGlyphEvidenceError::EmptyEvidenceHash { field }) if field == "root_rgba_hash"
     ));
 }
 
@@ -206,4 +321,76 @@ fn current_platform_trace_is_typed_unavailable_or_runs_actual_pinned_root() {
         }
         Err(error) => panic!("current-platform evidence failed: {error}"),
     }
+}
+
+#[test]
+fn current_platform_capture_runs_actual_pinned_root_when_a_compatible_candidate_exists() {
+    let mut options = KucUnicodeColorGlyphEvidenceOptions::default();
+    let policy = options.config.catalog_policy();
+
+    let mut configured = None;
+    for candidate in policy.emoji_candidates {
+        let Ok(bytes) = std::fs::read(&candidate.source_file_path) else {
+            continue;
+        };
+        let hash = PlatformFontSha256::digest(&bytes);
+        let mut config = options.config.clone();
+        config.emoji_candidates = vec![candidate.source_file_path.clone()];
+        config.emoji_candidate_sha256 = vec![hash];
+
+        let candidate_catalog = PlatformFontCatalog::new(config.catalog_policy());
+        if candidate_catalog.emoji_face().is_available() {
+            configured = Some(config);
+            break;
+        }
+    }
+
+    if let Some(config) = configured {
+        options.config = config;
+        let evidence = KucUnicodeColorGlyphEvidenceCapture::capture(options)
+            .expect("found a resolved local emoji candidate");
+        assert_eq!(
+            evidence.profile.profile_id,
+            PlatformFontProfile::current().as_str()
+        );
+        assert!(evidence.chromatic_pixel_delta > 0);
+        assert!(!evidence.accesskit_text_input.value.is_empty());
+    }
+}
+
+#[test]
+fn current_profile_capture_is_fail_closed_when_face_hash_is_wrong() {
+    let mut options = KucUnicodeColorGlyphEvidenceOptions::default();
+    let catalog_policy = options.config.catalog_policy();
+    let Some(candidate) = catalog_policy.emoji_candidates.first() else {
+        assert!(matches!(
+            KucUnicodeColorGlyphEvidenceCapture::capture(options),
+            Err(KucUnicodeColorGlyphEvidenceError::ColorEmojiUnavailable { .. })
+        ));
+        return;
+    };
+    options.config = options
+        .config
+        .with_emoji_candidate_sha256([PlatformFontSha256::digest(b"wrong emoji hash")]);
+    let _ = matches!(candidate.expected_raw_file_sha256, Some(_));
+    let error = KucUnicodeColorGlyphEvidenceCapture::capture(options)
+        .expect_err("pinned hash mismatch must fail");
+    assert!(matches!(
+        error,
+        KucUnicodeColorGlyphEvidenceError::ColorEmojiUnpinned { .. }
+            | KucUnicodeColorGlyphEvidenceError::ColorEmojiUnavailable { .. }
+            | KucUnicodeColorGlyphEvidenceError::ColorEmojiFaceError { .. }
+    ));
+}
+
+#[test]
+fn unicode_error_display_uses_debug_fallback_without_panic() {
+    let error = KucUnicodeColorGlyphEvidenceError::RootTrace("coverage".to_string());
+    let rendered = format!("{error}");
+    assert!(rendered.contains("RootTrace"));
+    let another = KucUnicodeColorGlyphEvidenceError::InvalidAccessKitNode {
+        reason: "node bounds are missing",
+    };
+    let rendered = format!("{another}");
+    assert!(rendered.contains("InvalidAccessKitNode"));
 }

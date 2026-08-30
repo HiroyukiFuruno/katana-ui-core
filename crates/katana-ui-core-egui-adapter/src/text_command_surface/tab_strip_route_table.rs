@@ -336,6 +336,47 @@ mod tests {
     }
 
     #[test]
+    fn routes_nested_group_controls_and_tabs_recursively() {
+        let nested = TabStripGroupDescriptor::new(
+            TabStripGroupTarget::from_opaque_bytes(b"nested-group"),
+            TabStripText::new("nested"),
+        )
+        .capabilities(TabStripGroupCapabilities::new().collapsible(true))
+        .tab(
+            TabStripTabDescriptor::new(
+                TabStripTabTarget::from_opaque_bytes(b"nested-tab"),
+                TabStripText::new("nested tab"),
+            )
+            .capabilities(TabStripTabCapabilities::new().selectable(true)),
+        );
+        let projection =
+            TabStripProjection::new(10, TabStripCorrelation::from_opaque_bytes(b"correlation"))
+                .group(
+                    TabStripGroupDescriptor::new(
+                        TabStripGroupTarget::from_opaque_bytes(b"parent-group"),
+                        TabStripText::new("parent"),
+                    )
+                    .group(nested),
+                );
+        let routes = TabStripRouteTable::from_projection(&projection);
+
+        assert!(matches!(
+            routes.proposal_for("root-group-0-group-0-header"),
+            Some((
+                _,
+                TabStripProposalOperation::SetGroupCollapsed {
+                    collapsed: true,
+                    ..
+                }
+            ))
+        ));
+        assert!(matches!(
+            routes.proposal_for("root-group-0-group-0-tab-0-label"),
+            Some((_, TabStripProposalOperation::SelectTab(_)))
+        ));
+    }
+
+    #[test]
     fn routes_include_overflow_and_navigation_controls_when_navigation_is_present() {
         let projection =
             TabStripProjection::new(1, TabStripCorrelation::from_opaque_bytes(b"correlation"))

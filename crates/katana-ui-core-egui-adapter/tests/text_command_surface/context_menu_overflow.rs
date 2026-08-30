@@ -38,6 +38,7 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
         select_code_terminal(route)?;
         select_code_terminal_by_keyboard(route)?;
     }
+    type_ahead_and_keyboard_close_submenu()?;
     assert_disabled_leaf_and_dismissal()?;
     Ok(())
 }
@@ -99,6 +100,35 @@ fn select_code_terminal_by_keyboard(
     )?;
     let (_, selected) = fixture.frame(vec![harness::key(egui::Key::Enter, false)])?;
     assert_selected_once(&selected, CODE_KEYBOARD_FINAL_ID)
+}
+
+fn type_ahead_and_keyboard_close_submenu() -> Result<(), Box<dyn std::error::Error>> {
+    let mut fixture = Fixture::new();
+    let _ = fixture.open(ContextMenuOpenRoute::Secondary)?;
+    let (_, highlighted) = fixture.frame(vec![egui::Event::Text("編".to_owned())])?;
+    require(
+        menu_record(&highlighted)?.highlighted_path == vec![2],
+        "type-ahead did not highlight the matching root submenu",
+    )?;
+
+    let _ = fixture.frame(vec![harness::key(egui::Key::ArrowRight, false)])?;
+    let (_, submenu) = fixture.frame(Vec::new())?;
+    require(
+        menu_record(&submenu)?
+            .items
+            .iter()
+            .any(|item| item.id == "direct.00"),
+        "keyboard activation did not open the highlighted submenu",
+    )?;
+    let _ = fixture.frame(vec![harness::key(egui::Key::ArrowLeft, false)])?;
+    let (_, root) = fixture.frame(Vec::new())?;
+    require(
+        menu_record(&root)?
+            .items
+            .iter()
+            .any(|item| item.id == ROOT_ID),
+        "ArrowLeft did not return from the submenu to the root menu",
+    )
 }
 
 fn assert_disabled_leaf_and_dismissal() -> Result<(), Box<dyn std::error::Error>> {

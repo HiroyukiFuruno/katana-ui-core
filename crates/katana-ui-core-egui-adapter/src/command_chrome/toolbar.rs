@@ -26,6 +26,7 @@ impl EguiCommandChromeAdapter {
         let mut pointer_activation_consumed = false;
         let mut paint_sources = Vec::new();
         let mut primary_focus_targets = Vec::new();
+        let mut prepared_dropdowns = Vec::new();
         let actions = toolbar.actions().to_vec();
         let display_mode = toolbar.display_mode_model();
         let rendered = actions
@@ -97,8 +98,10 @@ impl EguiCommandChromeAdapter {
                         } else {
                             primary_bounds
                         };
-                        let layout =
+                        let (layout, rendered_dropdown) =
                             dropdown_layout(self, ui, trigger_bounds, dropdown, raster_style)?;
+                        prepared_dropdowns
+                            .push((action.id().as_str().to_owned(), rendered_dropdown));
                         events.extend(toolbar.apply_action(
                             CommandChromeToolbarAction::update_dropdown_layout(
                                 action.id().clone(),
@@ -159,10 +162,10 @@ impl EguiCommandChromeAdapter {
             ui,
             toolbar,
             bounds,
-            raster_style,
+            &prepared_dropdowns,
             paint_style,
             &mut events,
-        )?;
+        );
         if toolbar_has_focus || toolbar.open_dropdown_model().is_some() {
             events.extend(keyboard_events(ui, toolbar, pointer_activation_consumed));
         }

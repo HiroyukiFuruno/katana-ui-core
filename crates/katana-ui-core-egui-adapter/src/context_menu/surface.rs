@@ -131,3 +131,67 @@ fn contains_rect(bounds: UiRect, item: UiRect) -> bool {
         && item.y.saturating_add_unsigned(item.height)
             <= bounds.y.saturating_add_unsigned(bounds.height)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::context_menu::types::{MENU_PADDING_PX, ROW_HEIGHT_PX};
+
+    #[test]
+    fn menu_item_bounds_advances_by_row_height_and_respects_vertical_scroll_offset() {
+        let bounds = UiRect::new(0, 0, 100, 100);
+        let first = menu_item_bounds(bounds, 0, 0.0);
+        let second = menu_item_bounds(bounds, 1, 0.0);
+        let row_height = ROW_HEIGHT_PX as i32;
+        assert_eq!(first.y + row_height, second.y);
+        assert!(contains_rect(bounds, first));
+        assert!(contains_rect(bounds, second));
+
+        let scrolled = menu_item_bounds(bounds, 0, 5.0);
+        assert_eq!(scrolled.y, bounds.y + MENU_PADDING_PX as i32 - 5);
+    }
+
+    #[test]
+    fn contains_rect_detects_out_of_range_items() {
+        let bounds = UiRect::new(10, 20, 40, 20);
+        assert!(contains(bounds, egui::Pos2::new(10.0, 20.0)));
+        assert!(!contains(bounds, egui::Pos2::new(51.0, 39.0)));
+        assert!(contains_rect(bounds, UiRect::new(10, 20, 20, 20),));
+        assert!(!contains_rect(bounds, UiRect::new(45, 20, 10, 10),));
+
+        let menu_bounds = UiRect::new(
+            0,
+            0,
+            100,
+            ROW_HEIGHT_PX.saturating_add(MENU_PADDING_PX.saturating_mul(2)),
+        );
+        let items = [
+            ContextMenuPresentationItem::action("visible", "Visible"),
+            ContextMenuPresentationItem::action("clipped", "Clipped"),
+        ];
+        let context = egui::Context::default();
+        let mut frames = None;
+        let mut output = context.run_ui(egui::RawInput::default(), |ui| {
+            frames = Some(
+                menu_items(
+                    ui,
+                    egui::Id::new("clipped-menu-items"),
+                    menu_bounds,
+                    &items,
+                    &[],
+                    0.0,
+                )
+                .item_frames,
+            );
+        });
+        output.textures_delta.clear();
+        assert_eq!(
+            frames
+                .expect("menu item frames")
+                .iter()
+                .map(|frame| frame.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["visible"]
+        );
+    }
+}

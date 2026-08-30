@@ -5,6 +5,7 @@ use katana_ui_core::molecule::command_chrome::{
     CommandChromeToolbar, CommandChromeToolbarEvent,
 };
 use katana_ui_core::molecule::toolbar::SplitAction;
+use katana_ui_core::render_model::UiIconProps;
 use katana_ui_core::theme::{FontFamily, FontToken};
 use katana_ui_core_egui_adapter::command_chrome::{
     CommandChromePaintStyle, CommandChromeRasterStyle, EguiCommandChromeAdapter,
@@ -44,6 +45,7 @@ fn actual_egui_menu_only_dropdown_uses_platform_raster_accesskit_and_typed_item_
         .expect("menu-only action did not render a dropdown");
     assert_eq!("code-block", dropdown.action_id);
     assert_eq!(3, dropdown.items.len());
+    assert!(dropdown.items[0].icon_raster_identity.is_some());
     assert!(
         dropdown.items[1]
             .label_raster_identity
@@ -114,6 +116,30 @@ fn actual_egui_menu_only_dropdown_uses_platform_raster_accesskit_and_typed_item_
             .dropdown
             .is_none()
     );
+}
+
+#[test]
+fn actual_egui_dropdown_icon_raster_failure_propagates_from_item_rendering() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let mut toolbar = CommandChromeToolbar::new()
+        .display_mode(CommandChromeDisplayMode::LabelOnly)
+        .action(
+            CommandChromeAction::new("invalid-icon", "Invalid icon").dropdown(
+                CommandChromeDropdown::new(CommandChromeDropdownTrigger::Primary).item(
+                    CommandChromeDropdownItem::new("broken", "Broken").icon(UiIconProps::new("")),
+                ),
+            ),
+        );
+
+    let (_, result) = run_frame(&context, &mut adapter, &mut toolbar, Vec::new());
+    let error = result
+        .expect("dropdown rendering should produce a result")
+        .expect_err("an empty item SVG must fail through the real raster route");
+    assert!(matches!(
+        error,
+        katana_ui_core_egui_adapter::command_chrome::EguiCommandChromeError::Svg(_)
+    ));
 }
 
 #[test]
@@ -204,6 +230,34 @@ fn actual_egui_dropdown_outside_pointer_closes_without_command_activation() {
 }
 
 #[test]
+fn disabled_dropdown_item_pointer_keeps_the_menu_open_without_activation() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let mut toolbar = menu_only_toolbar();
+    let opened = open_dropdown(&context, &mut adapter, &mut toolbar);
+    let disabled_item = opened
+        .record
+        .dropdown
+        .as_ref()
+        .and_then(|dropdown| dropdown.items.iter().find(|item| item.disabled))
+        .expect("the fixture must expose a disabled dropdown item");
+
+    let unchanged = frame(
+        &context,
+        &mut adapter,
+        &mut toolbar,
+        vec![pointer_button(center(disabled_item.bounds), true)],
+    );
+
+    assert!(unchanged.record.dropdown.is_some());
+    assert!(!unchanged.events.iter().any(|event| matches!(
+        event,
+        CommandChromeToolbarEvent::DropdownItemActivated { item_id, .. }
+            if item_id.as_str() == "rust"
+    )));
+}
+
+#[test]
 fn actual_egui_split_secondary_keeps_primary_command_and_opens_the_generic_menu() {
     let context = egui::Context::default();
     let mut adapter = EguiCommandChromeAdapter::default();
@@ -273,7 +327,11 @@ fn menu_only_toolbar() -> CommandChromeToolbar {
         .action(
             CommandChromeAction::new("code-block", "Code block").dropdown(
                 CommandChromeDropdown::new(CommandChromeDropdownTrigger::Primary)
-                    .item(CommandChromeDropdownItem::new("plain", "Plain Text"))
+                    .item(CommandChromeDropdownItem::new("plain", "Plain Text").icon(
+                        UiIconProps::new(
+                            "<svg viewBox=\"0 0 8 8\"><path d=\"M1 1h6v6H1z\"/></svg>",
+                        ),
+                    ))
                     .item(CommandChromeDropdownItem::new("rust", "⭐️ Rust").disabled(true))
                     .item(CommandChromeDropdownItem::new("markdown", "Markdown")),
             ),

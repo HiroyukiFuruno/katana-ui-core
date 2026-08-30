@@ -33,12 +33,8 @@ pub(super) fn intersect(
     Ok(Some(UiRect::new(
         x,
         y,
-        u32::try_from(end_x - x).map_err(|_| ArtifactCompositeError::Overflow {
-            context: "converting clipped width",
-        })?,
-        u32::try_from(end_y - y).map_err(|_| ArtifactCompositeError::Overflow {
-            context: "converting clipped height",
-        })?,
+        (end_x - x) as u32,
+        (end_y - y) as u32,
     )))
 }
 

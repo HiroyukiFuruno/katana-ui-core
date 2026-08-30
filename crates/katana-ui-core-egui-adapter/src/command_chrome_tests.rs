@@ -11,7 +11,7 @@ use katana_ui_core_text_raster::{
     PlatformFontCatalog, PlatformTextMetricsFrame, PlatformTextRasterConfig,
 };
 
-use super::{EguiCommandChromeAdapter, dropdown_focus_return_target};
+use super::{EguiCommandChromeAdapter, EguiCommandChromeError, dropdown_focus_return_target};
 
 #[test]
 fn dropdown_focus_return_target_prefers_last_matching_close_reason() {
@@ -100,4 +100,31 @@ fn command_chrome_adapter_with_catalog_and_metrics_configures_dependency_links()
 
     assert!(Rc::ptr_eq(&adapter.metrics, &metrics));
     assert!(Arc::ptr_eq(&adapter.text_rasterizer.catalog(), &catalog));
+}
+
+#[test]
+fn command_chrome_adapter_rejects_a_catalog_from_a_different_font_policy() {
+    let catalog_config = PlatformTextRasterConfig::default();
+    let catalog = Arc::new(PlatformFontCatalog::new(catalog_config.catalog_policy()));
+    let mut incompatible_config = catalog_config;
+    incompatible_config
+        .proportional_candidates
+        .push("/fonts/not-in-catalog.ttf".into());
+
+    let error = match EguiCommandChromeAdapter::with_catalog_and_metrics(
+        catalog,
+        incompatible_config,
+        UiSvgRasterConfig::default(),
+        Rc::new(RefCell::new(PlatformTextMetricsFrame::new())),
+    ) {
+        Ok(_) => panic!("a catalog/config policy mismatch must fail closed"),
+        Err(error) => error,
+    };
+
+    assert!(matches!(
+        error,
+        EguiCommandChromeError::Text(
+            katana_ui_core_text_raster::PlatformTextRasterError::CatalogConfigurationMismatch
+        )
+    ));
 }

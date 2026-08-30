@@ -69,6 +69,12 @@ impl EguiDiagnosticsListAdapter {
         let max_scroll_y = (content_height - viewport.height()).max(0.0);
         self.scroll_y = self.scroll_y.clamp(0.0, max_scroll_y);
         let scroll_id = self.id.with("viewport");
+        let has_accesskit_scroll_down = ui.input(|input| {
+            input.has_accesskit_action_request(scroll_id, egui::accesskit::Action::ScrollDown)
+        });
+        let has_accesskit_scroll_up = ui.input(|input| {
+            input.has_accesskit_action_request(scroll_id, egui::accesskit::Action::ScrollUp)
+        });
         let scroll_response = ui.interact(viewport, scroll_id, egui::Sense::hover());
         DiagnosticsAccessibility::publish_scroll_accessibility(
             ui,
@@ -90,20 +96,16 @@ impl EguiDiagnosticsListAdapter {
         if scroll_delta != 0.0 {
             self.scroll_y = (self.scroll_y - scroll_delta).clamp(0.0, max_scroll_y);
         }
-        if ui.input(|input| {
-            input.has_accesskit_action_request(scroll_id, egui::accesskit::Action::ScrollDown)
-        }) {
+        if has_accesskit_scroll_down {
             self.scroll_y = (self.scroll_y + style.accessibility_scroll_step).min(max_scroll_y);
         }
-        if ui.input(|input| {
-            input.has_accesskit_action_request(scroll_id, egui::accesskit::Action::ScrollUp)
-        }) {
+        if has_accesskit_scroll_up {
             self.scroll_y = (self.scroll_y - style.accessibility_scroll_step).max(0.0);
         }
         let title_bounds =
             egui::Rect::from_min_size(header.min, egui::vec2(header.width(), style.header_height));
         self.paint_text(&mut plan, title_bounds, &snapshot.label, &style, scale)?;
-        self.render_scopes_and_severity(
+        let scopes_result = self.render_scopes_and_severity(
             ui,
             &mut plan,
             &mut output,
@@ -111,8 +113,9 @@ impl EguiDiagnosticsListAdapter {
             &style,
             header,
             scale,
-        )?;
-        self.render_items(
+        );
+        scopes_result?;
+        let items_result = self.render_items(
             ui,
             &mut plan,
             &mut output,
@@ -125,7 +128,8 @@ impl EguiDiagnosticsListAdapter {
                 scale,
             },
             diagnostics,
-        )?;
+        );
+        items_result?;
         self.process_keyboard(
             ui,
             &mut output,

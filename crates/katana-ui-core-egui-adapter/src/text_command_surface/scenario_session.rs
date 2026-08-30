@@ -49,6 +49,7 @@ impl FullTextCommandSurfaceScenarioSession {
     ) -> Result<EguiTextCommandSurfaceHostProjectionLease, FullTextCommandSurfaceScenarioError>
     {
         let presentation = self.state.borrow().presentation(self.id);
+        let projected_text = presentation.text.value.clone();
         let revision = self.next_revision()?;
         let state = Rc::clone(&self.state);
         scenario::issue_lease_at_revision(self.id, presentation, revision, move |context| {
@@ -57,8 +58,9 @@ impl FullTextCommandSurfaceScenarioSession {
                 return Ok(None);
             }
             let state = Rc::clone(&state);
+            let projected_text = projected_text.clone();
             Ok(Some(KucOpaqueHostEffectBatch::from_handler(move || {
-                state.borrow_mut().apply(update);
+                state.borrow_mut().apply(update, &projected_text);
                 Ok(())
             })))
         })
@@ -101,15 +103,16 @@ impl ScenarioSessionState {
         presentation
     }
 
-    fn apply(&mut self, update: ScenarioSessionUpdate) {
+    fn apply(&mut self, update: ScenarioSessionUpdate, projected_text: &str) {
+        let selection_source = update.text.as_deref().unwrap_or(projected_text);
+        let accepted_selection = update
+            .selection
+            .filter(|selection| valid_selection(selection_source, selection.0, selection.1));
         if let Some(text) = update.text {
             self.text = Some(text);
         }
-        if let Some(selection) = update.selection {
-            let value = self.text.as_deref().unwrap_or_default();
-            if valid_selection(value, selection.0, selection.1) {
-                self.selection = Some(selection);
-            }
+        if let Some(selection) = accepted_selection {
+            self.selection = Some(selection);
         }
         if let Some(query) = update.search_query {
             self.search_query = Some(query);

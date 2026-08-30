@@ -199,13 +199,10 @@ impl EguiDiagnosticsListAdapter {
         plan: &mut DiagnosticsListPaintPlan,
         viewport: egui::Rect,
         bounds: egui::Rect,
-        item: &katana_ui_core::molecule::DiagnosticItem,
+        preview: &katana_ui_core::molecule::DiagnosticFixPreview,
         style: &DiagnosticsListStyle,
         scale: f32,
     ) -> Result<(), EguiDiagnosticsListError> {
-        let Some(preview) = item.fix_preview.as_ref() else {
-            return Ok(());
-        };
         let lines = preview.diff.lines();
         if lines.is_empty() {
             self.paint_text(plan, bounds, "差分なし", style, scale)?;
@@ -241,13 +238,8 @@ impl EguiDiagnosticsListAdapter {
                 CodeDiffLineKind::Context => " ",
                 CodeDiffLineKind::Placeholder => "…",
             };
-            self.paint_text(
-                plan,
-                line_bounds,
-                &format!("{old_number} {new_number} {prefix} {}", line.text),
-                style,
-                scale,
-            )?;
+            let line_text = format!("{old_number} {new_number} {prefix} {}", line.text);
+            self.paint_text(plan, line_bounds, &line_text, style, scale)?;
         }
         Ok(())
     }

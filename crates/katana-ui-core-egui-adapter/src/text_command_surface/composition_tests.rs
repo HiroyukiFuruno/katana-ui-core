@@ -1,40 +1,6 @@
 use super::*;
-use katana_ui_core::molecule::command_chrome::CommandChromeAction;
-
-pub(super) fn inject_same_bounds_test_overlay(
-    ui: &mut egui::Ui,
-    toolbar: Option<&mut crate::command_chrome::EguiCommandChromeOutput>,
-    chrome: &mut crate::command_chrome::EguiCommandChromeAdapter,
-    style: &TextCommandSurfaceStyle,
-) -> Result<(), EguiTextCommandSurfaceError> {
-    let Some(toolbar) = toolbar else {
-        return Ok(());
-    };
-    let bounds = toolbar.record.bounds;
-    let rect = egui::Rect::from_min_size(
-        egui::pos2(bounds.x as f32, bounds.y as f32),
-        egui::vec2(bounds.width as f32, bounds.height as f32),
-    );
-    let mut render = |id: &str| -> Result<crate::command_chrome::EguiCommandChromeOutput, _> {
-        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
-        let mut overlay = katana_ui_core::molecule::command_chrome::CommandChromeToolbar::new();
-        overlay =
-            overlay.action(CommandChromeAction::new(id, "同一").accessibility_label("同一 ⭐️"));
-        chrome.show_toolbar(
-            &mut child,
-            &mut overlay,
-            &style.chrome_raster,
-            &style.chrome_paint,
-        )
-    };
-    let first = render("collision-left")?;
-    let second = render("collision-right")?;
-    toolbar.record.actions.extend(first.record.actions);
-    toolbar.record.actions.extend(second.record.actions);
-    toolbar.events.extend(first.events);
-    toolbar.events.extend(second.events);
-    Ok(())
-}
+use katana_ui_core::atom::TextArea;
+use katana_ui_core::text_surface::{TextSurface, TextSurfaceProps, TextSurfaceViewport};
 
 #[test]
 fn ui_rect_rounds_position_and_size_while_clamping_negative_size() {
@@ -44,4 +10,61 @@ fn ui_rect_rounds_position_and_size_while_clamping_negative_size() {
     assert_eq!(converted.y, 2);
     assert_eq!(converted.width, 3);
     assert_eq!(converted.height, 0);
+}
+
+#[test]
+fn metrics_frame_rejects_a_non_positive_platform_scale_before_rendering() {
+    let adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+    )
+    .expect("default text raster configuration");
+
+    let error = begin_metrics_frame(&adapter, 0.0)
+        .expect_err("zero platform scale must fail closed before child rendering");
+
+    assert!(matches!(
+        error,
+        EguiTextCommandSurfaceError::Text(EguiTextSurfaceError::Raster(
+            katana_ui_core_text_raster::PlatformTextRasterError::NonFiniteLayoutExtent
+        ))
+    ));
+}
+
+#[test]
+fn root_composition_propagates_a_real_text_surface_raster_failure() {
+    let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+    )
+    .expect("default text raster configuration");
+    let mut props = TextSurfaceProps::new(
+        TextArea::new("missing-font-root").value("本文"),
+        Vec::new(),
+        TextSurfaceViewport::new(0, 0, 320, 180),
+    );
+    props.accessibility_label = "missing font root".to_owned();
+    let mut surface = EguiTextCommandSurface::new(TextSurface::new(props));
+    let mut style = TextCommandSurfaceStyle::standard().expect("standard root style");
+    style.text_raster.font.size = f32::NAN;
+    let context = egui::Context::default();
+    let mut result = None;
+
+    crate::run_ui_discard(
+        &context,
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(320.0, 180.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| result = Some(adapter.show(ui, &mut surface, &style)),
+    );
+
+    let error = result
+        .expect("root composition result")
+        .expect_err("non-finite text style must fail closed");
+    assert!(
+        matches!(&error, EguiTextCommandSurfaceError::Text(_)),
+        "unexpected root composition error: {error:?}"
+    );
 }

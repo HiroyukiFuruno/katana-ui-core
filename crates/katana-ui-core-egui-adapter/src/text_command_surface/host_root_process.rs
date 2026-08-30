@@ -34,8 +34,8 @@ impl HostRootProcess {
             &decoded.presentation,
             decoded.command_families.as_ref(),
         );
-        let mut root = EguiTextCommandSurfaceRoot::with_identity(decoded.identity.clone(), surface)
-            .map_err(|error| EguiTextCommandSurfaceRootFactoryError::Root(error.to_string()))?;
+        let mut root =
+            EguiTextCommandSurfaceRoot::with_identity(decoded.identity.clone(), surface)?;
         let _ = root.synchronize_presentation(decoded.presentation.clone());
         Ok(Self {
             root,
@@ -63,10 +63,7 @@ impl HostRootProcess {
             process.root.attach_source_address(source_address);
         }
         if let Some(tab_strip) = tab_strip {
-            let _ = process
-                .root
-                .attach_tab_strip(tab_strip)
-                .map_err(|error| EguiTextCommandSurfaceRootFactoryError::Root(error.to_string()))?;
+            let _ = process.root.attach_tab_strip(tab_strip)?;
         }
         if let Some(status_diagnostics) = status_diagnostics {
             let (status_bar, diagnostics_list) = status_diagnostics.into_parts();
@@ -147,10 +144,7 @@ impl HostRootProcess {
             self.root.attach_source_address(source_address);
         }
         if let Some(tab_strip) = tab_strip {
-            changed |= self
-                .root
-                .attach_tab_strip(tab_strip)
-                .map_err(|error| EguiTextCommandSurfaceRootFactoryError::Root(error.to_string()))?;
+            changed |= self.root.attach_tab_strip(tab_strip)?;
         }
         if let Some(status_diagnostics) = status_diagnostics {
             let (status_bar, diagnostics_list) = status_diagnostics.into_parts();
@@ -174,21 +168,13 @@ impl HostRootProcess {
         &mut self,
         ui: &mut egui::Ui,
     ) -> Result<EguiTextCommandSurfaceRootOutput, EguiTextCommandSurfaceRootFactoryError> {
-        let output = self
-            .root
-            .show(ui, &self.style)
-            .map_err(|error| EguiTextCommandSurfaceRootFactoryError::Root(error.to_string()))?;
+        let output = self.root.show(ui, &self.style)?;
         if let Some(router) = self.effect_router.as_mut() {
             let effect = router
                 .route(output.events().current_context())
                 .map_err(|_| EguiTextCommandSurfaceRootFactoryError::OpaqueHostEffect)?;
             if let Some(effect) = effect {
-                output
-                    .events()
-                    .attach_opaque_host_effect_batch(effect)
-                    .map_err(|_| {
-                        EguiTextCommandSurfaceRootFactoryError::OpaqueHostEffectRejected
-                    })?;
+                output.events().attach_opaque_host_effect_batch(effect)?;
             }
         }
         Ok(output)

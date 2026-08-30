@@ -213,3 +213,7 @@ impl TabStripRetainedState {
         })
     }
 }
+
+#[cfg(test)]
+#[path = "retained_state_tests.rs"]
+mod tests;

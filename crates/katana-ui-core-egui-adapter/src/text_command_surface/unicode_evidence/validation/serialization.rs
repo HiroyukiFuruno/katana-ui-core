@@ -13,18 +13,13 @@ pub(super) fn canonical_hash(
 ) -> Result<String, KucUnicodeColorGlyphEvidenceError> {
     serde_json::to_vec(artifact)
         .map(|bytes| hex::encode(Sha256::digest(bytes)))
-        .map_err(|error| KucUnicodeColorGlyphEvidenceError::Serialization(error.to_string()))
+        .map_err(serialization_error)
+}
+
+fn serialization_error(error: serde_json::Error) -> KucUnicodeColorGlyphEvidenceError {
+    KucUnicodeColorGlyphEvidenceError::Serialization(error.to_string())
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn hash_pixels_is_stable_and_sensitive_to_rgba_content() {
-        let first = hash_pixels(&[[1, 2, 3, 4]]);
-        assert_eq!(first, hash_pixels(&[[1, 2, 3, 4]]));
-        assert_ne!(first, hash_pixels(&[[1, 2, 3, 5]]));
-        assert_eq!(first.len(), 64);
-    }
-}
+#[path = "serialization_tests.rs"]
+mod serialization_tests;

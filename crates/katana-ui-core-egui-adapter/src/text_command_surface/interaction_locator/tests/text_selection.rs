@@ -125,4 +125,11 @@ fn text_selection_continuation_walks_phases_and_reports_end_state_failures() {
         new_release().advance(&locator),
         Err(KucTextSelectionContinuationError::FloatingNotVisible)
     ));
+
+    let mut already_applied = start();
+    assert_eq!(already_applied.apply_to_raw_input_once(&mut input), Ok(()));
+    assert_eq!(
+        already_applied.apply_to_raw_input_once(&mut input),
+        Err(KucTextSelectionContinuationError::AlreadyApplied)
+    );
 }

@@ -730,6 +730,9 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked",
         "bash scripts/run-strict-coverage.sh",
         "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --locked",
+        "coverage:\n    just coverage-container",
+        "coverage-iterate:\n    just coverage-container-iterate",
+        "KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh",
     )
     justfile_forbidden = (
         "{{CARGO}} test --workspace",
@@ -762,6 +765,10 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "--include-ignored",
         "export CARGO_PROFILE_TEST_OPT_LEVEL=0",
         'run_cargo clean --target-dir "$coverage_target_dir"',
+        'coverage_reuse="${KUC_COVERAGE_REUSE:-0}"',
+        "run_cargo llvm-cov clean --profraw-only",
+        'coverage_min_free_gib="${KUC_COVERAGE_MIN_FREE_GIB:-2}"',
+        'df -Pk "${CARGO_TARGET_DIR:-target}"',
         "run_cargo llvm-cov report",
         "--fail-under-functions 100",
         "--fail-under-lines 100",
@@ -1565,7 +1572,16 @@ def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bo
         "    {{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked\n"
         "\n"
         "coverage:\n"
+        "    just coverage-container\n"
+        "\n"
+        "coverage-iterate:\n"
+        "    just coverage-container-iterate\n"
+        "\n"
+        "coverage-linux:\n"
         "    CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh\n"
+        "\n"
+        "coverage-linux-iterate:\n"
+        "    KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh\n"
         "\n"
         "cargo-test:\n"
         "    {{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --locked\n"
@@ -1587,7 +1603,11 @@ def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bo
     coverage_source = (
         "export CARGO_PROFILE_TEST_OPT_LEVEL=0\n"
         'coverage_target_dir="${CARGO_TARGET_DIR:-target}/llvm-cov-target"\n'
+        'coverage_reuse="${KUC_COVERAGE_REUSE:-0}"\n'
         'run_cargo clean --target-dir "$coverage_target_dir"\n'
+        "run_cargo llvm-cov clean --profraw-only\n"
+        'coverage_min_free_gib="${KUC_COVERAGE_MIN_FREE_GIB:-2}"\n'
+        'df -Pk "${CARGO_TARGET_DIR:-target}"\n'
         "run_cargo llvm-cov \\\n"
         "  -p katana-ui-core \\\n"
         "  -p katana-ui-core-storybook \\\n"

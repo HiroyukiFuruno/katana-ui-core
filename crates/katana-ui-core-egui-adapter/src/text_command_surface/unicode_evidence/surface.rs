@@ -29,26 +29,17 @@ pub(super) fn evidence_surface() -> TextSurface {
 }
 
 pub(super) fn explicit_spans(text: &str) -> Vec<UiTextSpan> {
-    let mut spans = Vec::new();
-    let mut cursor = 0;
-    for range in PlatformTextGraphemeRange::ranges(text) {
-        let Some(grapheme) = text.get(range.byte_start..range.byte_end) else {
-            continue;
-        };
-        if range.byte_start > cursor {
-            spans.push(UiTextSpan::plain(&text[cursor..range.byte_start]));
-        }
-        if grapheme == super::constants::STAR_TEXT || grapheme == super::constants::ZWJ_TEXT {
-            spans.push(UiTextSpan::emoji(grapheme));
-        } else {
-            spans.push(UiTextSpan::plain(grapheme));
-        }
-        cursor = range.byte_end;
-    }
-    if cursor < text.len() {
-        spans.push(UiTextSpan::plain(&text[cursor..]));
-    }
-    spans
+    PlatformTextGraphemeRange::ranges(text)
+        .into_iter()
+        .map(|range| {
+            let grapheme = &text[range.byte_start..range.byte_end];
+            if grapheme == super::constants::STAR_TEXT || grapheme == super::constants::ZWJ_TEXT {
+                UiTextSpan::emoji(grapheme)
+            } else {
+                UiTextSpan::plain(grapheme)
+            }
+        })
+        .collect()
 }
 
 pub(super) fn trace_style() -> TextCommandSurfaceStyle {
@@ -116,23 +107,5 @@ pub(super) fn trace_style() -> TextCommandSurfaceStyle {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn explicit_spans_keep_plain_text_and_emoji_roles_in_order() {
-        let spans = explicit_spans("a⭐️b👩‍💻c");
-        assert_eq!(spans.len(), 5);
-        assert!(spans[1].style.emoji);
-        assert!(spans[3].style.emoji);
-        assert_eq!(spans[0].text, "a");
-        assert_eq!(spans[4].text, "c");
-    }
-
-    #[test]
-    fn evidence_style_has_distinct_search_input_geometry() {
-        let style = trace_style();
-        assert!(style.search.input_width_px > style.search.input_height_px);
-        assert_eq!(style.text_raster.font.name, "kuc-unicode-evidence");
-    }
-}
+#[path = "surface_tests.rs"]
+mod tests;

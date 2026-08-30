@@ -69,10 +69,14 @@ mod tests {
     fn lease_is_opaque_and_ratio_is_fail_closed() {
         let lease = EditorViewportProjectionLease::new(preview());
         assert_eq!(format!("{lease:?}"), "EditorViewportProjectionLease(..)");
-        assert!(matches!(
-            EditorViewportProjectionLease::new(preview()).with_split_ratio_percent(9),
-            Err(EditorViewportProjectionError::InvalidSplitRatio)
-        ));
+        let error = EditorViewportProjectionLease::new(preview())
+            .with_split_ratio_percent(9)
+            .expect_err("ratio below ten percent must fail closed");
+        assert_eq!(error, EditorViewportProjectionError::InvalidSplitRatio);
+        assert_eq!(
+            error.to_string(),
+            "editor viewport split ratio must be between 10 and 90 percent"
+        );
         assert!(
             EditorViewportProjectionLease::new(preview())
                 .with_split_ratio_percent(90)

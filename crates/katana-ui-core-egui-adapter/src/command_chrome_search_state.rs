@@ -4,6 +4,10 @@ use katana_ui_core::molecule::command_chrome::{CommandChromeSearchStrip, Command
 use katana_ui_core::molecule::structured::ReplaceMode;
 use katana_ui_core::text_surface::{TextSurface, TextSurfaceProps, TextSurfaceViewport};
 
+#[cfg(test)]
+#[path = "command_chrome_search_state_tests.rs"]
+mod tests;
+
 impl SearchSurfaceState {
     pub(super) fn new(
         strip: &CommandChromeSearchStrip,

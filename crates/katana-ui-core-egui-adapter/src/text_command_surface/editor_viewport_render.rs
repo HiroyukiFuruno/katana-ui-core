@@ -40,6 +40,9 @@ pub(super) fn layout(
     );
     response
         .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Slider, true, "Editor split"));
+    if response.drag_started() || response.clicked() {
+        response.request_focus();
+    }
     if response.dragged() {
         let percent =
             ((document_width + response.drag_delta().x) / available_width * 100.0).round() as i32;
@@ -193,67 +196,5 @@ fn ui_rect(bounds: egui::Rect) -> UiRect {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use katana_ui_core::render_model::UiImageSurfaceProps;
-
-    fn lease() -> EditorViewportProjectionLease {
-        EditorViewportProjectionLease::new(
-            UiImageSurfaceProps::new("preview", 2, 1, vec![1, 2, 3, 255, 4, 5, 6, 255])
-                .expect("valid preview")
-                .accessibility_label("Preview"),
-        )
-    }
-
-    #[test]
-    fn split_layout_is_non_overlapping_and_preview_paints_real_rgba() {
-        let context = egui::Context::default();
-        let mut lease = lease();
-        let mut texture = None;
-        let mut observed = None;
-        let mut output = context.run_ui(egui::RawInput::default(), |ui| {
-            let body = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(400.0, 200.0));
-            let layout = layout(ui, body, &mut lease);
-            assert!(layout.document.max.x < layout.preview.min.x);
-            assert_eq!(layout.document.min, body.min);
-            assert_eq!(layout.preview.max, body.max);
-            observed = Some(render_preview(
-                ui,
-                layout.preview,
-                &lease,
-                &mut texture,
-                [7, 8, 9, 255],
-            ));
-        });
-        output.textures_delta.clear();
-        let observed = observed.expect("preview output");
-        assert_eq!(observed.paint_plan.operations.len(), 2);
-        let TextSurfacePaintOperationKind::Texture { texture, .. } =
-            &observed.paint_plan.operations[1].kind
-        else {
-            panic!("preview must retain a texture operation");
-        };
-        assert_eq!(texture.rgba_pixels, vec![1, 2, 3, 255, 4, 5, 6, 255]);
-    }
-
-    #[test]
-    fn fit_modes_preserve_their_generic_geometry_contract() {
-        let bounds = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(100.0, 100.0));
-        assert_eq!(
-            fitted_rect(bounds, 200, 100, UiImageSurfaceFit::Stretch),
-            bounds
-        );
-        assert_eq!(
-            fitted_rect(bounds, 200, 100, UiImageSurfaceFit::Contain).size(),
-            egui::vec2(100.0, 50.0)
-        );
-        assert_eq!(
-            fitted_rect(bounds, 200, 100, UiImageSurfaceFit::Cover).size(),
-            egui::vec2(200.0, 100.0)
-        );
-        assert_eq!(
-            fitted_rect(bounds, 40, 20, UiImageSurfaceFit::Original).size(),
-            egui::vec2(40.0, 20.0)
-        );
-    }
-}
+#[path = "editor_viewport_render_inline_tests.rs"]
+mod tests;

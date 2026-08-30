@@ -7,3 +7,11 @@ fn main() {
         tree.root().children().len()
     );
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn main_runs_in_the_binary_test_target() {
+        super::main();
+    }
+}

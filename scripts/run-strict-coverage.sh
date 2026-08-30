@@ -62,8 +62,41 @@ export KUC_STORYBOOK_MOUSE_TRACE="${CARGO_TARGET_DIR:-target}/kuc-storybook-mous
 export CARGO_PROFILE_TEST_OPT_LEVEL=0
 
 coverage_target_dir="${CARGO_TARGET_DIR:-target}/llvm-cov-target"
-run_cargo clean --target-dir "$coverage_target_dir"
-run_cargo llvm-cov clean --workspace
+coverage_reuse="${KUC_COVERAGE_REUSE:-0}"
+coverage_test_threads="${COVERAGE_TEST_THREADS:-4}"
+coverage_started_at="${SECONDS}"
+case "${coverage_reuse}" in
+  0)
+    coverage_mode="clean"
+    run_cargo clean --target-dir "$coverage_target_dir"
+    run_cargo llvm-cov clean --workspace
+    ;;
+  1)
+    coverage_mode="reuse"
+    # WHY: 反復時も実行profileは再利用せず、compiler outputだけを保持する。
+    run_cargo llvm-cov clean --profraw-only
+    ;;
+  *)
+    echo "KUC_COVERAGE_REUSE must be 0 or 1" >&2
+    exit 1
+    ;;
+esac
+if [[ ! "${coverage_test_threads}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "COVERAGE_TEST_THREADS must be a positive integer" >&2
+  exit 1
+fi
+coverage_min_free_gib="${KUC_COVERAGE_MIN_FREE_GIB:-2}"
+if [[ ! "${coverage_min_free_gib}" =~ ^[1-9][0-9]*$ ]]; then
+  echo "KUC_COVERAGE_MIN_FREE_GIB must be a positive integer" >&2
+  exit 1
+fi
+coverage_available_kib="$(df -Pk "${CARGO_TARGET_DIR:-target}" | awk 'NR == 2 { print $4 }')"
+coverage_required_kib="$((coverage_min_free_gib * 1024 * 1024))"
+if ((coverage_available_kib < coverage_required_kib)); then
+  echo "strict coverage requires at least ${coverage_min_free_gib} GiB free after cleanup" >&2
+  exit 1
+fi
+echo "coverage mode: ${coverage_mode}; test threads: ${coverage_test_threads}"
 run_cargo llvm-cov \
   -p katana-ui-core \
   -p katana-ui-core-egui-adapter \
@@ -77,7 +110,7 @@ run_cargo llvm-cov \
   --no-report \
   -- \
   --include-ignored \
-  --test-threads=2
+  --test-threads="${coverage_test_threads}"
 run_cargo llvm-cov report \
   --summary-only \
   --ignore-filename-regex '(^|/)(tests/|tests\.rs$|[^/]+_tests\.rs$)' \
@@ -85,3 +118,4 @@ run_cargo llvm-cov report \
   --fail-under-lines 100 \
   --fail-uncovered-functions 0 \
   --fail-uncovered-lines 0
+echo "strict coverage elapsed seconds: $((SECONDS - coverage_started_at))"

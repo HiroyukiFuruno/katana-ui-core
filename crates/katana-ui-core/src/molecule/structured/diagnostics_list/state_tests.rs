@@ -11,12 +11,18 @@ fn select_scope_returns_no_event_if_scope_is_invalid_or_unchanged() {
 
     assert!(
         state
-            .select_scope(DiagnosticScopeKey::new("missing"), &[first.clone()])
+            .select_scope(
+                DiagnosticScopeKey::new("missing"),
+                std::slice::from_ref(&first),
+            )
             .is_empty()
     );
     assert!(
         state
-            .select_scope(DiagnosticScopeKey::new("missing"), &[first.clone()])
+            .select_scope(
+                DiagnosticScopeKey::new("missing"),
+                std::slice::from_ref(&first),
+            )
             .is_empty()
     );
 

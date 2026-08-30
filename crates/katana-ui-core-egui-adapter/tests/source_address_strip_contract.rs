@@ -6,8 +6,9 @@ use katana_ui_core_egui_adapter::artifact_compositor::{
     ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor, ArtifactPaintPlanRef,
 };
 use katana_ui_core_egui_adapter::source_address_strip::{
-    EguiSourceAddressStripAdapter, EguiSourceAddressStripOutput, SourceAddressFrameEventClass,
-    SourceAddressPaintOperationKind, SourceAddressSubmissionForwarder,
+    EguiSourceAddressStripAdapter, EguiSourceAddressStripError, EguiSourceAddressStripOutput,
+    SourceAddressFrameEventClass, SourceAddressPaintOperationKind, SourceAddressRenderStyle,
+    SourceAddressSubmissionForwarder,
 };
 use sha2::{Digest, Sha256};
 use std::cell::RefCell;
@@ -120,6 +121,69 @@ fn accesskit_button(
         .ok_or_else(|| format!("AccessKit button `{label}` was not published"))
 }
 
+fn assert_label_raster_failure(mut strip: SourceAddressStrip) -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-label-error")
+        .map_err(|error| error.to_string())?;
+    let mut style = SourceAddressRenderStyle::default();
+    style.label_font.size = f32::NAN;
+    let mut observed = None;
+
+    let mut output = context.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(800.0, 120.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| observed = Some(adapter.show_with_style(ui, &mut strip, &style)),
+    );
+    output.textures_delta.clear();
+    let error = observed
+        .ok_or_else(|| "source-address label error route did not run".to_owned())?
+        .err()
+        .ok_or_else(|| "non-finite label font must fail rasterization".to_owned())?;
+    assert!(matches!(error, EguiSourceAddressStripError::Raster(_)));
+    Ok(())
+}
+
+fn assert_entry_raster_failure(mut strip: SourceAddressStrip, history: bool) -> Result<(), String> {
+    if history {
+        strip
+            .apply_action(SourceAddressAction::OpenHistory)
+            .ok_or_else(|| "history must open before entry rendering".to_owned())?;
+    } else {
+        strip
+            .apply_action(SourceAddressAction::OpenCandidates)
+            .ok_or_else(|| "candidates must open before entry rendering".to_owned())?;
+    }
+    let context = egui::Context::default();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-entry-error")
+        .map_err(|error| error.to_string())?;
+    let mut style = SourceAddressRenderStyle::default();
+    style.label_font.size = 14.0;
+    let mut observed = None;
+
+    let mut output = context.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(800.0, 120.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| observed = Some(adapter.show_with_style(ui, &mut strip, &style)),
+    );
+    output.textures_delta.clear();
+    let error = observed
+        .ok_or_else(|| "source-address entry error route did not run".to_owned())?
+        .err()
+        .ok_or_else(|| "empty entry label must fail rasterization".to_owned())?;
+    assert!(matches!(error, EguiSourceAddressStripError::Raster(_)));
+    Ok(())
+}
+
 #[derive(Default)]
 struct Forwarder(Vec<String>);
 
@@ -162,6 +226,64 @@ fn actual_egui_surface_publishes_generic_japanese_accesskit_labels() -> Result<(
     let serialized = format!("{update:?}");
     assert!(!serialized.contains("opaque-history-target"));
     assert!(!serialized.contains("opaque-candidate-target"));
+    Ok(())
+}
+
+#[test]
+fn actual_egui_button_raster_failures_propagate_through_each_control_route() -> Result<(), String> {
+    let mut history = SourceAddressStrip::new(SourceAddressPresentation::new(
+        "ソースアドレス",
+        "入力",
+        "入力",
+    ));
+    history.set_history(vec![SourceAddressEntry::new(
+        SourceAddressPresentation::new("履歴", "履歴", "履歴"),
+        b"history",
+    )]);
+    assert_label_raster_failure(history)?;
+
+    let mut candidates = SourceAddressStrip::new(SourceAddressPresentation::new(
+        "ソースアドレス",
+        "入力",
+        "入力",
+    ));
+    candidates.set_candidates(vec![SourceAddressEntry::new(
+        SourceAddressPresentation::new("候補", "候補", "候補"),
+        b"candidate",
+    )]);
+    assert_label_raster_failure(candidates)?;
+
+    assert_label_raster_failure(SourceAddressStrip::new(SourceAddressPresentation::new(
+        "ソースアドレス",
+        "入力",
+        "入力",
+    )))?;
+    Ok(())
+}
+
+#[test]
+fn actual_egui_entry_raster_failures_propagate_for_history_and_candidates() -> Result<(), String> {
+    let mut history = SourceAddressStrip::new(SourceAddressPresentation::new(
+        "ソースアドレス",
+        "入力",
+        "入力",
+    ));
+    history.set_history(vec![SourceAddressEntry::new(
+        SourceAddressPresentation::new("", "空の履歴", "空の履歴"),
+        b"history",
+    )]);
+    assert_entry_raster_failure(history, true)?;
+
+    let mut candidates = SourceAddressStrip::new(SourceAddressPresentation::new(
+        "ソースアドレス",
+        "入力",
+        "入力",
+    ));
+    candidates.set_candidates(vec![SourceAddressEntry::new(
+        SourceAddressPresentation::new("", "空の候補", "空の候補"),
+        b"candidate",
+    )]);
+    assert_entry_raster_failure(candidates, false)?;
     Ok(())
 }
 
@@ -249,6 +371,86 @@ fn accesskit_activation_reaches_only_generic_event_classes() -> Result<(), Strin
 }
 
 #[test]
+fn actual_egui_history_can_open_and_close_via_accesskit() -> Result<(), String> {
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-history-toggle")
+        .map_err(|error| error.to_string())?;
+    let mut strip = strip();
+
+    let (initial, _) = frame(&context, &mut adapter, &mut strip)?;
+    let open = accesskit_button(&initial, "履歴を開く")?;
+    let (_, open_receipt) = frame_with_events(
+        &context,
+        &mut adapter,
+        &mut strip,
+        vec![accesskit_click(open)],
+    )?;
+    assert!(
+        open_receipt
+            .event_classes()
+            .contains(&SourceAddressFrameEventClass::HistoryOpened)
+    );
+    assert!(strip.history_open());
+
+    let (opened, _) = frame(&context, &mut adapter, &mut strip)?;
+    let close = accesskit_button(&opened, "履歴を閉じる")?;
+    let (_, close_receipt) = frame_with_events(
+        &context,
+        &mut adapter,
+        &mut strip,
+        vec![accesskit_click(close)],
+    )?;
+    assert!(
+        close_receipt
+            .event_classes()
+            .contains(&SourceAddressFrameEventClass::HistoryClosed)
+    );
+    assert!(!strip.history_open());
+    Ok(())
+}
+
+#[test]
+fn actual_egui_candidates_can_open_and_close_via_accesskit() -> Result<(), String> {
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-candidates-toggle")
+        .map_err(|error| error.to_string())?;
+    let mut strip = strip();
+
+    let (initial, _) = frame(&context, &mut adapter, &mut strip)?;
+    let open = accesskit_button(&initial, "候補を開く")?;
+    let (_, open_receipt) = frame_with_events(
+        &context,
+        &mut adapter,
+        &mut strip,
+        vec![accesskit_click(open)],
+    )?;
+    assert!(
+        open_receipt
+            .event_classes()
+            .contains(&SourceAddressFrameEventClass::CandidatesOpened)
+    );
+    assert!(strip.candidates_open());
+
+    let (opened, _) = frame(&context, &mut adapter, &mut strip)?;
+    let close = accesskit_button(&opened, "候補を閉じる")?;
+    let (_, close_receipt) = frame_with_events(
+        &context,
+        &mut adapter,
+        &mut strip,
+        vec![accesskit_click(close)],
+    )?;
+    assert!(
+        close_receipt
+            .event_classes()
+            .contains(&SourceAddressFrameEventClass::CandidatesClosed)
+    );
+    assert!(!strip.candidates_open());
+    Ok(())
+}
+
+#[test]
 fn accesskit_submit_forwards_a_one_shot_value_without_public_event_payload() -> Result<(), String> {
     let context = egui::Context::default();
     context.enable_accesskit();
@@ -277,6 +479,134 @@ fn accesskit_submit_forwards_a_one_shot_value_without_public_event_payload() -> 
         .forward_submissions_once(&mut forwarder)
         .map_err(|error| error.to_string())?;
     assert_eq!(forwarder.0, ["日本語⭐️"]);
+    Ok(())
+}
+
+#[test]
+fn actual_egui_disabled_strip_disallows_accesskit_activation() -> Result<(), String> {
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-disabled-toggle")
+        .map_err(|error| error.to_string())?;
+    let mut strip = strip();
+    assert!(
+        strip
+            .apply_action(SourceAddressAction::SetEnabled(false))
+            .is_some()
+    );
+
+    let (initial, _) = frame(&context, &mut adapter, &mut strip)?;
+    let history = accesskit_button(&initial, "履歴を開く")?;
+    let submit = accesskit_button(&initial, "開く")?;
+    let candidate = accesskit_button(&initial, "候補を開く")?;
+
+    let (_, history_receipt) = frame_with_events(
+        &context,
+        &mut adapter,
+        &mut strip,
+        vec![accesskit_click(history)],
+    )?;
+    let (_, submit_receipt) = frame_with_events(
+        &context,
+        &mut adapter,
+        &mut strip,
+        vec![accesskit_click(submit)],
+    )?;
+    let (_, candidate_receipt) = frame_with_events(
+        &context,
+        &mut adapter,
+        &mut strip,
+        vec![accesskit_click(candidate)],
+    )?;
+
+    assert!(!strip.history_open());
+    assert!(!strip.candidates_open());
+    assert!(history_receipt.event_classes().is_empty());
+    assert!(submit_receipt.event_classes().is_empty());
+    assert!(candidate_receipt.event_classes().is_empty());
+    let mut forwarder = Forwarder::default();
+    history_receipt
+        .forward_submissions_once(&mut forwarder)
+        .map_err(|error| error.to_string())?;
+    submit_receipt
+        .forward_submissions_once(&mut forwarder)
+        .map_err(|error| error.to_string())?;
+    candidate_receipt
+        .forward_submissions_once(&mut forwarder)
+        .map_err(|error| error.to_string())?;
+    assert!(forwarder.0.is_empty());
+    Ok(())
+}
+
+#[test]
+fn source_address_error_display_reaches_raster_and_test_only_variants() -> Result<(), String> {
+    let config = katana_ui_core_text_raster::PlatformTextRasterConfig::default();
+    let catalog = Arc::new(katana_ui_core_text_raster::PlatformFontCatalog::new(
+        config.catalog_policy(),
+    ));
+    let mismatched_config = config.clone().with_emoji_candidate_sha256([
+        katana_ui_core_text_raster::PlatformFontSha256::from_bytes([0; 32]),
+    ]);
+    if mismatched_config.catalog_policy() == *catalog.policy() {
+        return Err("test setup did not create a mismatched catalog policy".to_owned());
+    }
+    let metrics = Rc::new(RefCell::new(
+        katana_ui_core_text_raster::PlatformTextMetricsFrame::new(),
+    ));
+    let catalog_error = EguiSourceAddressStripAdapter::with_catalog_and_metrics(
+        "source-address-mismatch-message-contract",
+        catalog,
+        mismatched_config,
+        metrics,
+    )
+    .err()
+    .ok_or_else(|| "mismatched catalog policy should fail".to_owned())?;
+    assert_eq!(
+        EguiSourceAddressStripError::PaintPlanNotProduced.to_string(),
+        "source-address did not produce a paint plan"
+    );
+    assert_eq!(
+        EguiSourceAddressStripError::FrameNotProduced.to_string(),
+        "source-address did not produce an input frame"
+    );
+    match &catalog_error {
+        EguiSourceAddressStripError::Raster(error) => {
+            let display = format!("{catalog_error}");
+            assert!(display.contains("source-address raster failed"));
+            let detail = format!("{error}");
+            assert!(detail.to_lowercase().contains("catalog"));
+        }
+        _ => return Err("mismatched catalog policy should fail with raster variant".to_owned()),
+    }
+
+    Ok(())
+}
+
+#[test]
+fn source_address_show_propagates_a_real_text_surface_raster_failure() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-text-error")
+        .map_err(|error| error.to_string())?;
+    let mut source = strip();
+    let mut style = SourceAddressRenderStyle::default();
+    style.input_raster.font.size = f32::NAN;
+    let mut observed = None;
+
+    let mut platform_output = context.run_ui(egui::RawInput::default(), |ui| {
+        observed = Some(adapter.show_with_style(ui, &mut source, &style));
+    });
+    platform_output.textures_delta.clear();
+    let error = observed
+        .ok_or_else(|| "source-address render did not run".to_owned())?
+        .err()
+        .ok_or_else(|| "invalid text style should fail closed".to_owned())?;
+    assert!(matches!(error, EguiSourceAddressStripError::TextSurface(_)));
+    assert!(
+        error
+            .to_string()
+            .contains("source-address text surface failed")
+    );
+    assert!(adapter.artifact_paint_plan().is_none());
     Ok(())
 }
 
@@ -601,6 +931,151 @@ fn physical_text_and_enter_submit_through_the_source_address_adapter() -> Result
         .forward_submissions_once(&mut forwarder)
         .map_err(|error| error.to_string())?;
     assert_eq!(forwarder.0, ["draft-one"]);
+    Ok(())
+}
+
+#[test]
+fn direct_frame_path_with_no_accesskit_keeps_state_transitions_predictable() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-direct-contract")
+        .map_err(|error| error.to_string())?;
+    let mut source = strip();
+
+    let (initial, initial_receipt) =
+        direct_frame_with_events(&context, &mut adapter, &mut source, Vec::new())?;
+    assert!(initial.platform_output.accesskit_update.is_none());
+    assert!(initial_receipt.event_classes().is_empty());
+
+    let _ = source
+        .apply_action(SourceAddressAction::OpenHistory)
+        .ok_or_else(|| "history action must be accepted".to_owned())?;
+    let (history, history_receipt) =
+        direct_frame_with_events(&context, &mut adapter, &mut source, Vec::new())?;
+    assert!(history.platform_output.accesskit_update.is_none());
+    assert!(source.history_open());
+    assert!(history_receipt.event_classes().is_empty());
+
+    let input_bounds = adapter
+        .artifact_paint_plan()
+        .and_then(|plan| {
+            plan.operations.iter().find_map(|operation| {
+                matches!(operation.kind, SourceAddressPaintOperationKind::Input(_))
+                    .then_some(operation.clip_bounds)
+            })
+        })
+        .ok_or_else(|| "source-address input must have a paint bound".to_owned())?;
+    let input_point = egui::pos2(
+        input_bounds.x as f32 + input_bounds.width as f32 / 2.0,
+        input_bounds.y as f32 + input_bounds.height as f32 / 2.0,
+    );
+    let (_, focused) = direct_frame_with_events(
+        &context,
+        &mut adapter,
+        &mut source,
+        vec![
+            egui::Event::PointerMoved(input_point),
+            egui::Event::PointerButton {
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                pos: input_point,
+                modifiers: egui::Modifiers::NONE,
+            },
+            egui::Event::PointerButton {
+                button: egui::PointerButton::Primary,
+                pressed: false,
+                pos: input_point,
+                modifiers: egui::Modifiers::NONE,
+            },
+        ],
+    )?;
+    assert!(
+        focused
+            .event_classes()
+            .contains(&SourceAddressFrameEventClass::Focused),
+        "direct path should be able to focus without accesskit"
+    );
+
+    let (_, typed) = direct_frame_with_events(
+        &context,
+        &mut adapter,
+        &mut source,
+        vec![egui::Event::Text("from direct path".to_owned())],
+    )?;
+    assert!(
+        typed
+            .event_classes()
+            .iter()
+            .any(|class| *class == SourceAddressFrameEventClass::DraftChanged),
+        "direct text input must still emit a draft change"
+    );
+    Ok(())
+}
+
+#[test]
+fn actual_egui_selects_history_and_candidate_entries_via_accesskit() -> Result<(), String> {
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-entry-selection")
+        .map_err(|error| error.to_string())?;
+    let mut source = strip();
+
+    let (initial, _) = frame(&context, &mut adapter, &mut source)?;
+    let history_toggle = accesskit_button(&initial, "履歴を開く")?;
+    let (_, opened_history) = frame_with_events(
+        &context,
+        &mut adapter,
+        &mut source,
+        vec![accesskit_click(history_toggle)],
+    )?;
+    assert!(
+        opened_history
+            .event_classes()
+            .contains(&SourceAddressFrameEventClass::HistoryOpened)
+    );
+
+    let (history_frame, _) = frame(&context, &mut adapter, &mut source)?;
+    let history_entry = accesskit_button(&history_frame, "履歴項目")?;
+    let (_, selected_history) = frame_with_events(
+        &context,
+        &mut adapter,
+        &mut source,
+        vec![accesskit_click(history_entry)],
+    )?;
+    assert_eq!(source.draft(), "履歴項目");
+    assert!(
+        selected_history
+            .event_classes()
+            .contains(&SourceAddressFrameEventClass::HistorySelected)
+    );
+
+    let (closed_history, _) = frame(&context, &mut adapter, &mut source)?;
+    let candidates_toggle = accesskit_button(&closed_history, "候補を開く")?;
+    let (_, opened_candidates) = frame_with_events(
+        &context,
+        &mut adapter,
+        &mut source,
+        vec![accesskit_click(candidates_toggle)],
+    )?;
+    assert!(
+        opened_candidates
+            .event_classes()
+            .contains(&SourceAddressFrameEventClass::CandidatesOpened)
+    );
+
+    let (candidate_frame, _) = frame(&context, &mut adapter, &mut source)?;
+    let candidate_entry = accesskit_button(&candidate_frame, "候補項目")?;
+    let (_, selected_candidate) = frame_with_events(
+        &context,
+        &mut adapter,
+        &mut source,
+        vec![accesskit_click(candidate_entry)],
+    )?;
+    assert_eq!(source.draft(), "候補項目");
+    assert!(
+        selected_candidate
+            .event_classes()
+            .contains(&SourceAddressFrameEventClass::CandidateSelected)
+    );
     Ok(())
 }
 

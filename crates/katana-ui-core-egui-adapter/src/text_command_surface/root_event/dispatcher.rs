@@ -89,7 +89,7 @@ impl RootEventDispatcher {
             status_bar: payload.status_bar.as_deref(),
             diagnostics_list: payload.diagnostics_list.as_deref(),
         };
-        let bytes = serde_json::to_vec(&envelope).map_err(|error| error.to_string())?;
+        let bytes = serialize_value(&envelope)?;
         let mut fingerprint_bytes = bytes;
         fingerprint_bytes.extend_from_slice(b"|kuc-source-address-count|");
         fingerprint_bytes.extend_from_slice(
@@ -107,6 +107,10 @@ impl RootEventDispatcher {
             ),
         )
     }
+}
+
+pub(super) fn serialize_value(value: &impl Serialize) -> Result<Vec<u8>, String> {
+    serde_json::to_vec(value).map_err(|error| error.to_string())
 }
 
 pub(super) struct RootEventFingerprint;

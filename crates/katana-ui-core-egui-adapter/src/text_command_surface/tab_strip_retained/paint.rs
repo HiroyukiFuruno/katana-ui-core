@@ -259,3 +259,7 @@ impl TabStripRetainedState {
         Ok(())
     }
 }
+
+#[cfg(test)]
+#[path = "paint_tests.rs"]
+mod tests;

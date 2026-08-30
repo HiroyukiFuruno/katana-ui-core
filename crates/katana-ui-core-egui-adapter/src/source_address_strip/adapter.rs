@@ -74,110 +74,144 @@ impl EguiSourceAddressStripAdapter {
             )
         });
         surface.synchronize_value(strip.draft());
-        self.last_paint_plan = Some(SourceAddressPaintPlan {
+        let mut paint_plan = SourceAddressPaintPlan {
             surface_bounds: Paint::ui_rect(root_bounds),
             operations: Vec::new(),
-        });
-        let mut field = None;
-        let response = ui.with_layout(
-            egui::Layout::left_to_right(egui::Align::Center),
-            |ui| -> Result<(), EguiSourceAddressStripError> {
-                let rendered = self.text_surface_adapter.show_with_input_policy(
+        };
+        let response = ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+            let rendered = self.text_surface_adapter.show_with_input_policy(
+                ui,
+                &mut surface,
+                &style.input_raster,
+                &style.input_paint,
+                &EguiTextSurfaceInputPolicy::default(),
+            )?;
+            self.last_input_artifact = Some(rendered.artifact.clone());
+            paint_plan.operations.extend(
+                rendered
+                    .artifact
+                    .paint_plan
+                    .operations
+                    .iter()
+                    .cloned()
+                    .map(|operation| SourceAddressPaintOperation {
+                        clip_bounds: operation.clip_bounds,
+                        kind: SourceAddressPaintOperationKind::Input(Raster::sanitize_input_kind(
+                            operation.kind,
+                        )),
+                    }),
+            );
+            if !strip.history().is_empty() {
+                let label = if strip.history_open() {
+                    "履歴を閉じる"
+                } else {
+                    "履歴を開く"
+                };
+                let button = Raster::raster_button(
+                    self,
+                    &mut paint_plan,
                     ui,
-                    &mut surface,
-                    &style.input_raster,
-                    &style.input_paint,
-                    &EguiTextSurfaceInputPolicy::default(),
+                    label,
+                    "履歴",
+                    enabled,
+                    style,
                 )?;
-                self.last_input_artifact = Some(rendered.artifact.clone());
-                if let Some(plan) = self.last_paint_plan.as_mut() {
-                    plan.operations.extend(
-                        rendered
-                            .artifact
-                            .paint_plan
-                            .operations
-                            .iter()
-                            .cloned()
-                            .map(|operation| SourceAddressPaintOperation {
-                                clip_bounds: operation.clip_bounds,
-                                kind: SourceAddressPaintOperationKind::Input(
-                                    Raster::sanitize_input_kind(operation.kind),
-                                ),
-                            }),
-                    );
-                }
-                field = Some(rendered);
-                if !strip.history().is_empty() {
-                    let label = if strip.history_open() {
-                        "履歴を閉じる"
-                    } else {
-                        "履歴を開く"
-                    };
-                    let button = Raster::raster_button(self, ui, label, "履歴", enabled, style)?;
-                    Interaction::publish_button_accessibility(
-                        ui,
-                        button.id,
-                        button.rect,
-                        label,
-                        enabled,
-                    );
-                    if Interaction::activated_by_pointer_or_accesskit(ui, &button) {
-                        let action = if strip.history_open() {
-                            SourceAddressAction::CloseHistory
-                        } else {
-                            SourceAddressAction::OpenHistory
-                        };
-                        if let Some(event) = strip.apply_action(action) {
-                            output.record(event);
-                        }
-                    }
-                }
-                if !strip.candidates().is_empty() {
-                    let label = if strip.candidates_open() {
-                        "候補を閉じる"
-                    } else {
-                        "候補を開く"
-                    };
-                    let button = Raster::raster_button(self, ui, label, "候補", enabled, style)?;
-                    Interaction::publish_button_accessibility(
-                        ui,
-                        button.id,
-                        button.rect,
-                        label,
-                        enabled,
-                    );
-                    if Interaction::activated_by_pointer_or_accesskit(ui, &button) {
-                        let action = if strip.candidates_open() {
-                            SourceAddressAction::CloseCandidates
-                        } else {
-                            SourceAddressAction::OpenCandidates
-                        };
-                        if let Some(event) = strip.apply_action(action) {
-                            output.record(event);
-                        }
-                    }
-                }
-                let submit =
-                    Raster::raster_button(self, ui, "開く", &accessibility_label, enabled, style)?;
                 Interaction::publish_button_accessibility(
                     ui,
-                    submit.id,
-                    submit.rect,
-                    "開く",
+                    button.id,
+                    button.rect,
+                    label,
                     enabled,
                 );
-                if Interaction::activated_by_pointer_or_accesskit(ui, &submit)
-                    && let Some(event) = strip.apply_action(SourceAddressAction::Submit)
-                {
-                    output.record(event);
+                if Interaction::activated_by_pointer_or_accesskit(ui, &button) {
+                    let action = if strip.history_open() {
+                        SourceAddressAction::CloseHistory
+                    } else {
+                        SourceAddressAction::OpenHistory
+                    };
+                    if let Some(event) = strip.apply_action(action) {
+                        output.record(event);
+                    }
                 }
-                Ok(())
-            },
-        );
-        response.inner?;
-        let response = response.response;
-        let field = field.ok_or(EguiSourceAddressStripError::FrameNotProduced)?;
-        for event in &field.events {
+            }
+            if !strip.candidates().is_empty() {
+                let label = if strip.candidates_open() {
+                    "候補を閉じる"
+                } else {
+                    "候補を開く"
+                };
+                let button = Raster::raster_button(
+                    self,
+                    &mut paint_plan,
+                    ui,
+                    label,
+                    "候補",
+                    enabled,
+                    style,
+                )?;
+                Interaction::publish_button_accessibility(
+                    ui,
+                    button.id,
+                    button.rect,
+                    label,
+                    enabled,
+                );
+                if Interaction::activated_by_pointer_or_accesskit(ui, &button) {
+                    let action = if strip.candidates_open() {
+                        SourceAddressAction::CloseCandidates
+                    } else {
+                        SourceAddressAction::OpenCandidates
+                    };
+                    if let Some(event) = strip.apply_action(action) {
+                        output.record(event);
+                    }
+                }
+            }
+            let submit = Raster::raster_button(
+                self,
+                &mut paint_plan,
+                ui,
+                "開く",
+                &accessibility_label,
+                enabled,
+                style,
+            )?;
+            Interaction::publish_button_accessibility(ui, submit.id, submit.rect, "開く", enabled);
+            if Interaction::activated_by_pointer_or_accesskit(ui, &submit)
+                && let Some(event) = strip.apply_action(SourceAddressAction::Submit)
+            {
+                output.record(event);
+            }
+            Ok::<_, EguiSourceAddressStripError>(rendered)
+        });
+        let field = response.inner?;
+        self.apply_text_surface_events(&mut output, strip, &field.events);
+        if strip.history_open() {
+            output.record_all(show_entries(self, &mut paint_plan, ui, strip, true, style)?);
+        }
+        if strip.candidates_open() {
+            output.record_all(show_entries(
+                self,
+                &mut paint_plan,
+                ui,
+                strip,
+                false,
+                style,
+            )?);
+        }
+        Paint::paint_button_plan(ui, self, Some(&paint_plan));
+        self.last_paint_plan = Some(paint_plan);
+        self.surface = Some(surface);
+        Ok(output)
+    }
+
+    fn apply_text_surface_events(
+        &self,
+        output: &mut EguiSourceAddressStripOutput,
+        strip: &mut SourceAddressStrip,
+        events: &[TextSurfaceEvent],
+    ) {
+        for event in events {
             match event {
                 TextSurfaceEvent::TextArea(katana_ui_core::atom::TextAreaEvent::Change(value)) => {
                     if let Some(event) =
@@ -193,17 +227,6 @@ impl EguiSourceAddressStripAdapter {
                         output.record(event);
                     }
                 }
-                TextSurfaceEvent::TextArea(katana_ui_core::atom::TextAreaEvent::Focus) => {
-                    if let Some(event) = strip.apply_action(SourceAddressAction::SetFocused(true)) {
-                        output.record(event);
-                    }
-                }
-                TextSurfaceEvent::TextArea(katana_ui_core::atom::TextAreaEvent::Blur) => {
-                    if let Some(event) = strip.apply_action(SourceAddressAction::SetFocused(false))
-                    {
-                        output.record(event);
-                    }
-                }
                 TextSurfaceEvent::TextArea(katana_ui_core::atom::TextAreaEvent::Submit(_)) => {
                     if let Some(event) = strip.apply_action(SourceAddressAction::Submit) {
                         output.record(event);
@@ -212,21 +235,87 @@ impl EguiSourceAddressStripAdapter {
                 _ => {}
             }
         }
-        if strip.history_open() {
-            output.record_all(show_entries(self, ui, strip, true, style)?);
-        }
-        if strip.candidates_open() {
-            output.record_all(show_entries(self, ui, strip, false, style)?);
-        }
-        let button_plan = self.last_paint_plan.clone();
-        Paint::paint_button_plan(ui, self, button_plan.as_ref());
-        if response.lost_focus()
-            && !ui.input(|input| input.pointer.any_down())
-            && let Some(event) = strip.apply_action(SourceAddressAction::SetFocused(false))
-        {
-            output.record(event);
-        }
-        self.surface = Some(surface);
-        Ok(output)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{EguiSourceAddressStripAdapter, EguiSourceAddressStripOutput};
+    use crate::source_address_strip::SourceAddressFrameEventClass;
+    use katana_ui_core::atom::{TextAreaEvent, TextAreaKeyChord, TextAreaValidationError};
+    use katana_ui_core::molecule::structured::source_address_strip::{
+        SourceAddressPresentation, SourceAddressStrip,
+    };
+    use katana_ui_core::text_surface::TextSurfaceEvent;
+
+    fn strip() -> SourceAddressStrip {
+        SourceAddressStrip::new(SourceAddressPresentation::new(
+            "ソース",
+            "ソースを入力",
+            "ソースを入力",
+        ))
+    }
+
+    #[test]
+    fn source_address_adapter_text_surface_events_are_dispatched_to_output() {
+        let adapter = EguiSourceAddressStripAdapter::new("source-address-dispatch-test")
+            .expect("adapter should initialize");
+        let mut strip = strip();
+        let mut output = EguiSourceAddressStripOutput {
+            event_classes: Vec::new(),
+            submissions: Vec::new(),
+        };
+
+        adapter.apply_text_surface_events(
+            &mut output,
+            &mut strip,
+            &[
+                TextSurfaceEvent::FocusChanged(true),
+                TextSurfaceEvent::TextArea(TextAreaEvent::Change("next".to_owned())),
+                TextSurfaceEvent::TextArea(TextAreaEvent::Submit("value".to_owned())),
+            ],
+        );
+
+        assert!(
+            output
+                .event_classes
+                .contains(&SourceAddressFrameEventClass::Focused)
+        );
+        assert!(
+            output
+                .event_classes
+                .contains(&SourceAddressFrameEventClass::Submitted)
+        );
+        assert!(
+            output
+                .event_classes
+                .iter()
+                .any(|event| matches!(event, SourceAddressFrameEventClass::DraftChanged))
+        );
+        let submissions = output.take_submissions();
+        assert_eq!(submissions.len(), 1);
+        let submission = submissions.into_iter().next().expect("submission exists");
+        assert_eq!(submission.into_draft(), "next");
+    }
+
+    #[test]
+    fn source_address_adapter_drops_non_text_surface_events_without_output() {
+        let adapter = EguiSourceAddressStripAdapter::new("source-address-dispatch-ignore-test")
+            .expect("adapter should initialize");
+        let mut strip = strip();
+        let mut output = EguiSourceAddressStripOutput {
+            event_classes: Vec::new(),
+            submissions: Vec::new(),
+        };
+
+        adapter.apply_text_surface_events(
+            &mut output,
+            &mut strip,
+            &[TextSurfaceEvent::KeyValidationFailed {
+                key: TextAreaKeyChord::enter(),
+                error: TextAreaValidationError::ConflictingKeyBindings,
+            }],
+        );
+        assert!(output.event_classes.is_empty());
     }
 }

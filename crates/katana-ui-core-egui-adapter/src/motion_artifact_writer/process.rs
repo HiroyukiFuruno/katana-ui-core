@@ -400,7 +400,7 @@ exit 0
             "elif [ \"$1\" = \"-hide_banner\" ] && [ \"$3\" = \"error\" ] && [ \"$4\" = \"-formats\" ]; then\n",
             "  echo \" E....  mp4\"\n",
             "elif echo \"$@\" | grep -q framemd5; then\n",
-            "  if echo \"$@\" | grep -q \"-start_number\"; then\n",
+            "  if echo \"$@\" | grep -q -- \"-start_number\"; then\n",
             "    echo \"#dimensions 0:2x1\"\n",
             "{source_body}",
             "  else\n",
@@ -441,7 +441,7 @@ exit 0
             ],
             &[
                 "0, 0, 0, 1, 6, 0123456789abcdef0123456789abcdef",
-                "0, 1, 1, 1, 6, 00112233445566778899aabbccddeeff00",
+                "0, 1, 1, 1, 6, 00112233445566778899aabbccddeeff",
             ],
             |output| {
                 let error = MotionArtifactWriter::new()
@@ -451,11 +451,14 @@ exit 0
                         MotionArtifactSettings::new(2, 2, 1),
                     )
                     .expect_err("frame hashes should mismatch between source and decode");
-                assert!(matches!(
-                    error,
-                    MotionArtifactError::Encoder(message)
-                        if message.contains("decoded frame hashes do not match the PNG frame sequence")
-                ));
+                assert!(
+                    matches!(
+                        &error,
+                        MotionArtifactError::Encoder(message)
+                            if message.contains("decoded frame hashes do not match the PNG frame sequence")
+                    ),
+                    "unexpected motion artifact error: {error:?}"
+                );
             },
         );
     }

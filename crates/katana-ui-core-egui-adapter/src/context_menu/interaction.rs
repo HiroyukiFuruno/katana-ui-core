@@ -133,3 +133,137 @@ fn keyboard_input(
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ContextMenuTypeAheadBuffer, UiRect, consume_item_click, is_outside_click, keyboard_input,
+    };
+    use crate::context_menu::ContextMenuPresentationItem;
+    use katana_ui_core::molecule::selection::{
+        ContextMenuAction, ContextMenuItemKind, ContextMenuKeyboardInput,
+    };
+
+    #[test]
+    fn outside_click_distinguishes_inside_and_outside_boundaries() {
+        let context = egui::Context::default();
+        let bounds = UiRect::new(10, 20, 40, 30);
+        let mut inside = false;
+        let mut outside = false;
+
+        let mut output = context.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(100.0, 100.0),
+                )),
+                events: vec![egui::Event::PointerButton {
+                    pos: egui::pos2(20.0, 30.0),
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+                ..Default::default()
+            },
+            |ui| {
+                ui.input(|input| {
+                    inside = is_outside_click(input, bounds);
+                });
+            },
+        );
+        output.textures_delta.clear();
+
+        let mut output = context.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(100.0, 100.0),
+                )),
+                events: vec![egui::Event::PointerButton {
+                    pos: egui::pos2(9.0, 19.0),
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+                ..Default::default()
+            },
+            |ui| {
+                ui.input(|input| {
+                    outside = is_outside_click(input, bounds);
+                });
+            },
+        );
+        output.textures_delta.clear();
+
+        assert!(!inside);
+        assert!(outside);
+    }
+
+    #[test]
+    fn consume_item_click_separates_submenu_and_action_paths() {
+        let action = ContextMenuPresentationItem {
+            id: "action".to_string(),
+            label: "action".to_string(),
+            accessibility_label: "action".to_string(),
+            icon: None,
+            enabled: true,
+            checked: false,
+            kind: ContextMenuItemKind::Action,
+            children: Vec::new(),
+        };
+        let submenu = ContextMenuPresentationItem {
+            id: "submenu".to_string(),
+            label: "submenu".to_string(),
+            accessibility_label: "submenu".to_string(),
+            icon: None,
+            enabled: true,
+            checked: false,
+            kind: ContextMenuItemKind::Submenu,
+            children: Vec::new(),
+        };
+
+        assert_eq!(
+            consume_item_click(&action, vec![0]),
+            Some(ContextMenuAction::Activate { path: vec![0] })
+        );
+        assert_eq!(
+            consume_item_click(&submenu, vec![1]),
+            Some(ContextMenuAction::OpenSubmenu { path: vec![1] })
+        );
+        let disabled = ContextMenuPresentationItem {
+            id: "disabled".to_string(),
+            label: "disabled".to_string(),
+            accessibility_label: "disabled".to_string(),
+            icon: None,
+            enabled: false,
+            checked: false,
+            kind: ContextMenuItemKind::Action,
+            children: Vec::new(),
+        };
+        assert!(consume_item_click(&disabled, vec![2]).is_none());
+    }
+
+    #[test]
+    fn keyboard_input_treats_release_and_text_events_as_non_actions() {
+        let mut type_ahead = ContextMenuTypeAheadBuffer::new(1000);
+        assert!(
+            keyboard_input(
+                egui::Event::Key {
+                    key: egui::Key::Tab,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
+                },
+                &mut type_ahead,
+                0.0
+            )
+            .is_none()
+        );
+        assert_eq!(
+            keyboard_input(egui::Event::Text("x".to_string()), &mut type_ahead, 0.0),
+            Some(ContextMenuKeyboardInput::TypeAhead("x".to_string()))
+        );
+        assert!(keyboard_input(egui::Event::Copy, &mut type_ahead, 0.0).is_none());
+    }
+}

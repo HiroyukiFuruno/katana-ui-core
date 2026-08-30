@@ -101,7 +101,9 @@ pub(super) fn compose_correlation_fingerprint(
     hex::encode(hasher.finalize())
 }
 
-pub(super) fn tab_event_fingerprint(events: &[SanitizedTabProjectionClosedEvent]) -> String {
+pub(in super::super) fn tab_event_fingerprint(
+    events: &[SanitizedTabProjectionClosedEvent],
+) -> String {
     let mut hasher = Sha256::new();
     hasher.update(b"kuc.sanitized-tab-events/v1\0");
     hasher.update(events.len().to_le_bytes());

@@ -208,3 +208,106 @@ impl EguiSourceAddressStripOutput {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::text_surface::EguiTextSurfaceError;
+    use katana_ui_core::molecule::structured::source_address_strip::{
+        SourceAddressAction, SourceAddressEvent, SourceAddressPresentation, SourceAddressStrip,
+    };
+    use katana_ui_core_text_raster::PlatformTextRasterError;
+
+    fn build_output() -> EguiSourceAddressStripOutput {
+        let mut output = EguiSourceAddressStripOutput {
+            event_classes: Vec::new(),
+            submissions: Vec::new(),
+        };
+        output.record_all(vec![
+            SourceAddressEvent::DraftChanged,
+            SourceAddressEvent::EnabledChanged,
+            SourceAddressEvent::Focused,
+            SourceAddressEvent::Blurred,
+            SourceAddressEvent::HistoryOpened,
+            SourceAddressEvent::HistoryClosed,
+            SourceAddressEvent::CandidatesOpened,
+            SourceAddressEvent::CandidatesClosed,
+            SourceAddressEvent::HistorySelected,
+            SourceAddressEvent::CandidateSelected,
+        ]);
+        let mut strip =
+            SourceAddressStrip::new(SourceAddressPresentation::new("source", "source", "source"));
+        let _ = strip.apply_action(SourceAddressAction::SetDraft(
+            "opaque-draft-value".to_owned(),
+        ));
+        output.record(
+            strip
+                .apply_action(SourceAddressAction::Submit)
+                .expect("enabled source-address accepts submission"),
+        );
+        output
+    }
+
+    #[test]
+    fn source_address_strip_output_record_covers_event_class_variants_and_uses_submission_path() {
+        let output = build_output();
+        let mut output = output;
+        assert_eq!(
+            output.event_classes(),
+            &[
+                SourceAddressFrameEventClass::DraftChanged,
+                SourceAddressFrameEventClass::EnabledChanged,
+                SourceAddressFrameEventClass::Focused,
+                SourceAddressFrameEventClass::Blurred,
+                SourceAddressFrameEventClass::HistoryOpened,
+                SourceAddressFrameEventClass::HistoryClosed,
+                SourceAddressFrameEventClass::CandidatesOpened,
+                SourceAddressFrameEventClass::CandidatesClosed,
+                SourceAddressFrameEventClass::HistorySelected,
+                SourceAddressFrameEventClass::CandidateSelected,
+                SourceAddressFrameEventClass::Submitted,
+            ]
+        );
+        let submissions = output.take_submissions();
+        assert_eq!(submissions.len(), 1);
+        assert_eq!(
+            submissions.into_iter().next().unwrap().into_draft(),
+            "opaque-draft-value"
+        );
+    }
+
+    #[test]
+    fn source_address_strip_output_debug_exposes_only_counters() {
+        let output = build_output();
+        let debug = format!("{output:?}");
+        assert!(debug.contains("event_class_count"));
+        assert!(debug.contains("submission_count"));
+        assert!(!debug.contains("opaque-draft-value"));
+    }
+
+    #[test]
+    fn source_address_strip_error_strings_cover_all_variants() {
+        let surface_error =
+            EguiSourceAddressStripError::TextSurface(EguiTextSurfaceError::FrameNotProduced);
+        let raster_error = EguiSourceAddressStripError::Raster(PlatformTextRasterError::EmptyText);
+        let frame_error = EguiSourceAddressStripError::FrameNotProduced;
+        let plan_error = EguiSourceAddressStripError::PaintPlanNotProduced;
+
+        assert_eq!(
+            surface_error.to_string(),
+            "source-address text surface failed: egui did not produce a text surface frame"
+        );
+        assert_eq!(
+            raster_error.to_string(),
+            "source-address raster failed: platform text raster request must not be empty"
+        );
+        assert_eq!(
+            frame_error.to_string(),
+            "source-address did not produce an input frame"
+        );
+        assert_eq!(
+            plan_error.to_string(),
+            "source-address did not produce a paint plan"
+        );
+    }
+}

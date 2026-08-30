@@ -8,6 +8,10 @@ use super::sanitized_document_root_style::SanitizedDocumentRootStyleKey;
 use super::sanitized_tab_projection::SanitizedTabProjection;
 pub use types::{SanitizedDocumentRootIdentity, SanitizedDocumentRootInput};
 
+#[cfg(test)]
+#[path = "sanitized_document_root_input_tests.rs"]
+mod coverage_tests;
+
 impl SanitizedDocumentRootInput {
     /// Creates a document input from a valid UTF-8 snapshot.
     #[must_use]

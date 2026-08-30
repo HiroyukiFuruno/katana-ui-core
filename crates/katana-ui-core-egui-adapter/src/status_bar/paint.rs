@@ -48,3 +48,33 @@ impl StatusBarPaint {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn tone_color_maps_to_expected_rgba() {
+        let neutral = [37, 37, 37, 255];
+        assert_eq!(
+            StatusBarPaint::tone_color(UiTone::Neutral, neutral),
+            neutral
+        );
+        assert_eq!(
+            StatusBarPaint::tone_color(UiTone::Accent, neutral),
+            [100, 175, 255, 255],
+        );
+        assert_eq!(
+            StatusBarPaint::tone_color(UiTone::Success, neutral),
+            [100, 210, 145, 255],
+        );
+        assert_eq!(
+            StatusBarPaint::tone_color(UiTone::Warning, neutral),
+            [240, 190, 75, 255],
+        );
+        assert_eq!(
+            StatusBarPaint::tone_color(UiTone::Danger, neutral),
+            [240, 105, 105, 255],
+        );
+    }
+}

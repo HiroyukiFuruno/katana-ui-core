@@ -209,3 +209,7 @@ fn hit_test_artifact(hit: super::model::KucHitTestObservation) -> super::model::
         byte_end: hit.byte_end,
     }
 }
+
+#[cfg(test)]
+#[path = "validation_tests.rs"]
+mod tests;

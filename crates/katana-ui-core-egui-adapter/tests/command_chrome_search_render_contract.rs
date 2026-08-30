@@ -204,6 +204,18 @@ fn actual_egui_search_strip_uses_shared_text_surface_for_placeholder_ime_and_kat
         SearchNavigationDirection::Previous,
     );
 
+    let (_, escape_closed) = run_frame(
+        &context,
+        &mut adapter,
+        &mut strip,
+        vec![key_event(egui::Key::Escape, egui::Modifiers::default())],
+    );
+    assert!(
+        expect_output(escape_closed)
+            .events
+            .contains(&CommandChromeSearchEvent::CloseRequested)
+    );
+
     let controls = first.record.controls;
     let close = controls
         .iter()

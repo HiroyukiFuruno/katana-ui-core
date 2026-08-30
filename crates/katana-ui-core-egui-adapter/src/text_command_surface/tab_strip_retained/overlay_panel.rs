@@ -25,7 +25,7 @@ impl TabStripRetainedState {
         let mut operations = Vec::new();
         let mut panel_bounds = Vec::new();
         let mut closed = false;
-        loop {
+        while !current_entries.is_empty() {
             let panel = self.render_overlay_panel(
                 ui,
                 current_entries,
@@ -60,11 +60,24 @@ impl TabStripRetainedState {
             depth = depth.saturating_add(1);
         }
         let Some(surface) = union_bounds(&panel_bounds) else {
+            let closed = protected_bounds.is_empty()
+                || ui.input(|input| {
+                    input.events.iter().any(|event| {
+                        let egui::Event::PointerButton {
+                            pos, pressed: true, ..
+                        } = event
+                        else {
+                            return false;
+                        };
+                        !protected_bounds.iter().any(|bounds| bounds.contains(*pos))
+                    })
+                });
             return Ok(TabStripOverlayOutcome {
-                closed: true,
+                closed,
                 submenu_path: Vec::new(),
                 paint_plan: TabStripPaintPlan {
-                    surface_bounds: UiRect::new(0, 0, 0, 0),
+                    surface_bounds: union_bounds(protected_bounds)
+                        .map_or(UiRect::new(0, 0, 0, 0), ui_rect),
                     operations,
                 },
             });

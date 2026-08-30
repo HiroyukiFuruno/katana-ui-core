@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn factory_issues_every_public_scenario_with_nonempty_stages() {
-        let factory = FullTextCommandSurfaceScenarioFactory::new();
+        let factory = FullTextCommandSurfaceScenarioFactory::default();
         for id in [
             FullTextCommandSurfaceScenarioId::Resting,
             FullTextCommandSurfaceScenarioId::Selection,

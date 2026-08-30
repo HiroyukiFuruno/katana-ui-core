@@ -46,22 +46,22 @@ impl FullTextCommandSurfaceMotionFrame {
     ) -> Result<(), FullTextCommandSurfaceMotionPlanError> {
         match self.dropdown_transition {
             DropdownMotionTransition::None => {}
-            DropdownMotionTransition::BeginTrigger | DropdownMotionTransition::BeginItem => {
+            transition
+            @ (DropdownMotionTransition::BeginTrigger
+            | DropdownMotionTransition::BeginItem) => {
                 if continuation.is_some() {
                     return Err(FullTextCommandSurfaceMotionPlanError::UnexpectedContinuation);
                 }
-                let selector = match self.dropdown_transition {
-                    DropdownMotionTransition::BeginTrigger => KucInteractionSelector::new(
+                let selector = if matches!(transition, DropdownMotionTransition::BeginTrigger) {
+                    KucInteractionSelector::new(
                         "kuc.rich.block-code",
                         KucInteractionActionClass::DropdownTrigger,
-                    ),
-                    DropdownMotionTransition::BeginItem => KucInteractionSelector::new(
+                    )
+                } else {
+                    KucInteractionSelector::new(
                         "kuc.generic-language-00",
                         KucInteractionActionClass::DropdownItem,
-                    ),
-                    DropdownMotionTransition::None | DropdownMotionTransition::Advance => {
-                        return Err(FullTextCommandSurfaceMotionPlanError::InvalidTransition);
-                    }
+                    )
                 };
                 *continuation = Some(KucOpaqueMotionContinuation::click(
                     locator

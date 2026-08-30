@@ -84,3 +84,7 @@ fn text_surface_from_presentation(
     let _ = surface.synchronize_presentation(text_presentation.clone());
     surface
 }
+
+#[cfg(test)]
+#[path = "host_root_surface_tests.rs"]
+mod tests;

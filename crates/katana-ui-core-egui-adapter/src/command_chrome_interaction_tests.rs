@@ -153,3 +153,18 @@ fn consume_pointer_activation_key_only_filters_consumed_activation_events() {
     );
     assert!(retained);
 }
+
+#[test]
+fn consumed_activation_key_does_not_block_navigation_and_releases() {
+    let mut consumed = true;
+    assert_eq!(
+        None,
+        consume_pointer_activation_key(ToolbarKeyboardInput::Space, &mut consumed)
+    );
+    assert!(!consumed);
+    assert_eq!(
+        Some(ToolbarKeyboardInput::ArrowRight),
+        consume_pointer_activation_key(ToolbarKeyboardInput::ArrowRight, &mut consumed),
+    );
+    assert!(!consumed);
+}

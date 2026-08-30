@@ -43,8 +43,16 @@ pub(crate) struct BoundAccessKitEvidence {
 }
 
 impl BoundAccessKitEvidence {
-    pub(crate) fn entries(&self) -> &[AccessKitEvidence] {
-        &self.entries
+    pub(crate) fn matching_entries(
+        &self,
+        context: &KucRootEventBatchContext,
+        root_identity: &str,
+    ) -> &[AccessKitEvidence] {
+        if self.matches(context, root_identity) {
+            self.entries.as_slice()
+        } else {
+            &[]
+        }
     }
 
     pub(crate) fn matches(&self, context: &KucRootEventBatchContext, root_identity: &str) -> bool {
@@ -149,9 +157,7 @@ impl AccessKitEvidenceLedger {
                 target_class: target_class_name(entry.target_class),
             })
             .collect();
-        serde_json::to_vec(&material)
-            .map(|bytes| hex::encode(Sha256::digest(bytes)))
-            .map_err(|error| error.to_string())
+        hash_serialized(&material)
     }
 }
 
@@ -230,21 +236,13 @@ fn target_class_name(class: AccessKitTargetClass) -> &'static str {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::AccessKitTargetClass;
-    use super::target_class_name;
+#[path = "accesskit_evidence_tests.rs"]
+mod tests;
 
-    #[test]
-    fn status_bar_segment_and_diagnostics_fix_class_names_are_mapped() {
-        assert_eq!(
-            "status-bar-segment",
-            target_class_name(AccessKitTargetClass::StatusBarSegment)
-        );
-        assert_eq!(
-            "diagnostics-fix",
-            target_class_name(AccessKitTargetClass::DiagnosticsFix)
-        );
-    }
+fn hash_serialized(value: &impl Serialize) -> Result<String, String> {
+    serde_json::to_vec(value)
+        .map(|bytes| hex::encode(Sha256::digest(bytes)))
+        .map_err(|error| error.to_string())
 }
 
 impl BoundAccessKitEvidence {

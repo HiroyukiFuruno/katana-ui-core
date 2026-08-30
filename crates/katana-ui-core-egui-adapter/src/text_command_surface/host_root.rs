@@ -260,17 +260,16 @@ impl EguiTextCommandSurfaceRootFactory {
         let (token, router, source_address, tab_strip, status_diagnostics, editor_viewport) =
             lease.into_parts();
         let decoded = decode_token(&token)?;
-        Ok(EguiTextCommandSurfaceHostRoot {
-            process: HostRootProcess::retain_with_router(
-                decoded,
-                token.revision,
-                router,
-                source_address,
-                tab_strip,
-                status_diagnostics,
-                editor_viewport,
-            )?,
-        })
+        HostRootProcess::retain_with_router(
+            decoded,
+            token.revision,
+            router,
+            source_address,
+            tab_strip,
+            status_diagnostics,
+            editor_viewport,
+        )
+        .map(|process| EguiTextCommandSurfaceHostRoot { process })
     }
 }
 

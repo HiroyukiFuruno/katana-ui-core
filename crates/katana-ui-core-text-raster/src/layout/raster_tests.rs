@@ -46,3 +46,15 @@ fn raster_extent_rejects_axis_and_total_pixel_limits() {
         })
     );
 }
+
+#[test]
+fn layout_raster_dimension_rejects_non_finite_dimensions() {
+    assert_eq!(
+        raster_dimension(f32::NAN),
+        Err(PlatformTextRasterError::NonFiniteLayoutExtent)
+    );
+    assert_eq!(
+        raster_dimension(f32::INFINITY),
+        Err(PlatformTextRasterError::NonFiniteLayoutExtent)
+    );
+}

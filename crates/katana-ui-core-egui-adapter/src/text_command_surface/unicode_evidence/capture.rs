@@ -33,46 +33,24 @@ impl KucUnicodeColorGlyphEvidenceCapture {
         let context = egui::Context::default();
         ensure_face_is_resolved_and_pinned(root.evidence_catalog(), &policy)?;
         let _initial = runner::run_frame(&context, &mut root, &style, Vec::new())?;
-        let _press = runner::run_frame(
-            &context,
-            &mut root,
-            &style,
-            vec![runner::pointer_button(
-                egui::pos2(TRACE_POINTER_X, TRACE_POINTER_Y),
-                true,
-            )],
-        )?;
-        let _release = runner::run_frame(
-            &context,
-            &mut root,
-            &style,
-            vec![runner::pointer_button(
-                egui::pos2(TRACE_POINTER_X, TRACE_POINTER_Y),
-                false,
-            )],
-        )?;
-        let preedit = runner::run_frame(
-            &context,
-            &mut root,
-            &style,
-            vec![egui::Event::Ime(egui::ImeEvent::Preedit {
-                text: IME_PREEDIT_TEXT.to_string(),
-                active_range_chars: None,
-            })],
-        )?;
-        let committed = runner::run_frame(
-            &context,
-            &mut root,
-            &style,
-            vec![egui::Event::Ime(egui::ImeEvent::Commit(
-                IME_COMMIT_TEXT.to_string(),
-            ))],
-        )?;
-        if committed.output.evidence_composite.rgba_pixels.is_empty() {
-            return Err(KucUnicodeColorGlyphEvidenceError::RootTrace(
-                "retained root produced an empty RGBA composite".to_string(),
-            ));
-        }
+        let press = vec![runner::pointer_button(
+            egui::pos2(TRACE_POINTER_X, TRACE_POINTER_Y),
+            true,
+        )];
+        let _press = runner::run_frame(&context, &mut root, &style, press)?;
+        let release = vec![runner::pointer_button(
+            egui::pos2(TRACE_POINTER_X, TRACE_POINTER_Y),
+            false,
+        )];
+        let _release = runner::run_frame(&context, &mut root, &style, release)?;
+        let preedit_event = egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: IME_PREEDIT_TEXT.to_string(),
+            active_range_chars: None,
+        });
+        let preedit = runner::run_frame(&context, &mut root, &style, vec![preedit_event])?;
+        let commit_event = egui::Event::Ime(egui::ImeEvent::Commit(IME_COMMIT_TEXT.to_string()));
+        let committed = runner::run_frame(&context, &mut root, &style, vec![commit_event])?;
+        ensure_non_empty_composite(&committed.output.evidence_composite.rgba_pixels)?;
 
         let final_text = format!("{INITIAL_TEXT}{IME_COMMIT_TEXT}");
         let star_range = required_range(&final_text, STAR_TEXT)?;
@@ -90,16 +68,10 @@ impl KucUnicodeColorGlyphEvidenceCapture {
         let control_bounds = offset_bounds(control_range)?;
         let zwj_bounds = offset_bounds(zwj_range)?;
         let canvas_width = committed.output.evidence_composite.canvas.ui_rect().width;
-        let star_crop = crop_observation::crop_for_composite(
-            &committed.output.evidence_composite.rgba_pixels,
-            canvas_width,
-            star_bounds,
-        )?;
-        let control_crop = crop_observation::crop_for_composite(
-            &committed.output.evidence_composite.rgba_pixels,
-            canvas_width,
-            control_bounds,
-        )?;
+        let composite = &committed.output.evidence_composite.rgba_pixels;
+        let star_crop = crop_observation::crop_for_composite(composite, canvas_width, star_bounds)?;
+        let control_crop =
+            crop_observation::crop_for_composite(composite, canvas_width, control_bounds)?;
         let hit_tests = vec![
             crop_observation::hit_test_observation("star", raster, star_bounds)?,
             crop_observation::hit_test_observation("control_star", raster, control_bounds)?,
@@ -201,6 +173,16 @@ fn required_range(
     })
 }
 
+fn ensure_non_empty_composite(rgba_pixels: &[u8]) -> Result<(), KucUnicodeColorGlyphEvidenceError> {
+    if rgba_pixels.is_empty() {
+        Err(KucUnicodeColorGlyphEvidenceError::RootTrace(
+            "retained root produced an empty RGBA composite".to_string(),
+        ))
+    } else {
+        Ok(())
+    }
+}
+
 fn ensure_face_is_resolved_and_pinned(
     catalog: &PlatformFontCatalog,
     policy: &PlatformFontCatalogPolicy,
@@ -237,3 +219,7 @@ fn ensure_face_is_resolved_and_pinned(
         })
     }
 }
+
+#[cfg(test)]
+#[path = "capture_tests.rs"]
+mod tests;

@@ -189,3 +189,7 @@ fn hash_serialized(value: &impl Serialize) -> Result<String, String> {
         .map(|bytes| hex::encode(Sha256::digest(bytes)))
         .map_err(|error| error.to_string())
 }
+
+#[cfg(test)]
+#[path = "root_frame_tests.rs"]
+mod tests;

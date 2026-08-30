@@ -1,12 +1,17 @@
-use katana_ui_core::atom::{TextArea, TextAreaEvent};
+use katana_ui_core::atom::{
+    TextArea, TextAreaAction, TextAreaCompositionPhase, TextAreaEvent, TextAreaSelection,
+};
+use katana_ui_core::component::ComponentAction;
+use katana_ui_core::interaction::UiAction;
 use katana_ui_core::render_model::{UiIconProps, UiTextSpan};
 use katana_ui_core::text_surface::{
-    TextSurface, TextSurfaceAccessibilityTarget, TextSurfaceAutomaticGutterPresentation,
-    TextSurfaceAutomaticGutterRangeOverride, TextSurfaceClipboardOperation, TextSurfaceEvent,
-    TextSurfaceGutter, TextSurfaceGutterRangeStartAnchor, TextSurfaceGutterRow,
-    TextSurfaceHistoryOperation, TextSurfacePresentation, TextSurfaceProps,
-    TextSurfaceScrollAlignment, TextSurfaceScrollRequest, TextSurfaceScrollRequestRejection,
-    TextSurfaceScrollRequestToken, TextSurfaceScrollTarget, TextSurfaceViewport,
+    TextSurface, TextSurfaceAccessibilityTarget, TextSurfaceAction,
+    TextSurfaceAutomaticGutterPresentation, TextSurfaceAutomaticGutterRangeOverride,
+    TextSurfaceClipboardOperation, TextSurfaceEvent, TextSurfaceGutter,
+    TextSurfaceGutterRangeStartAnchor, TextSurfaceGutterRow, TextSurfaceHistoryOperation,
+    TextSurfacePresentation, TextSurfaceProps, TextSurfaceScrollAlignment,
+    TextSurfaceScrollRequest, TextSurfaceScrollRequestRejection, TextSurfaceScrollRequestToken,
+    TextSurfaceScrollTarget, TextSurfaceViewport,
 };
 use katana_ui_core::theme::{FontFamily, FontToken};
 use katana_ui_core_egui_adapter::text_surface::{
@@ -14,6 +19,7 @@ use katana_ui_core_egui_adapter::text_surface::{
     EguiTextSurfaceInputPolicy, EguiTextSurfaceKey, EguiTextSurfaceOutput, TextSurfaceGutterPaint,
     TextSurfacePaintOperationKind, TextSurfacePaintStyle, TextSurfaceRasterStyle,
 };
+use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterError};
 
 const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 360.0;
@@ -986,14 +992,14 @@ fn controlled_automatic_gutter_handles_input_crossing_a_digit_boundary()
 -> Result<(), EguiTextSurfaceError> {
     let context = egui::Context::default();
     let mut adapter = EguiTextSurfaceAdapter::default();
-    let text = (1..=99)
+    let text = (1..=9)
         .map(|line| line.to_string())
         .collect::<Vec<_>>()
         .join("\n");
     let mut surface = TextSurface::new(TextSurfaceProps::new(
         TextArea::new("controlled-gutter-digit-boundary").value(text.clone()),
         UiTextSpan::emoji_marked_spans(&text, Default::default()),
-        TextSurfaceViewport::new(0, 0, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32),
+        TextSurfaceViewport::new(0, 0, SCREEN_WIDTH as u32, 900),
     ));
     let mut presentation = TextSurfacePresentation::from_props(surface.props());
     presentation.automatic_gutter = Some(TextSurfaceAutomaticGutterPresentation::new());
@@ -1003,11 +1009,11 @@ fn controlled_automatic_gutter_handles_input_crossing_a_digit_boundary()
         FontToken {
             name: "compact-editor".to_string(),
             family: FontFamily::Monospace,
-            size: 12.0,
+            size: 80.0,
             weight: FONT_WEIGHT,
         },
         TEXT_COLOR,
-        8.0,
+        72.0,
     );
     let initial = run_frame_with_raster_style(
         &context,
@@ -1016,7 +1022,22 @@ fn controlled_automatic_gutter_handles_input_crossing_a_digit_boundary()
         Vec::new(),
         &compact_style,
     )?;
-    let point = center_bounds(initial.record.frame.viewport_bounds);
+    let first_row = initial
+        .record
+        .frame
+        .gutter
+        .first()
+        .expect("nine-line source must expose its first gutter row");
+    let point = egui::pos2(
+        initial
+            .record
+            .frame
+            .viewport_bounds
+            .x
+            .saturating_add_unsigned(initial.record.frame.viewport_bounds.width) as f32
+            - 10.0,
+        first_row.bounds.y as f32 + first_row.bounds.height as f32 / 2.0,
+    );
     let _ = run_frame_with_raster_style(
         &context,
         &mut adapter,
@@ -1024,19 +1045,47 @@ fn controlled_automatic_gutter_handles_input_crossing_a_digit_boundary()
         vec![pointer_button(point, true), pointer_button(point, false)],
         &compact_style,
     )?;
+    let end = surface.state().text_area.value.len();
+    let _ = surface.apply_action(TextSurfaceAction::TextArea(TextAreaAction::Select(
+        TextAreaSelection { start: end, end },
+    )));
     let updated = run_frame_with_raster_style(
         &context,
         &mut adapter,
         &mut surface,
-        vec![egui::Event::Text("\n100".to_string())],
+        vec![egui::Event::Text("\n10".to_string())],
         &compact_style,
     )?;
 
-    assert_eq!(surface.state().text_area.value.lines().count(), 100);
-    assert!(surface.state().text_area.value.contains("100"));
-    assert!(updated.record.frame.viewport_bounds.x >= initial.record.frame.viewport_bounds.x);
+    assert_eq!(surface.state().text_area.value.lines().count(), 10);
+    assert!(surface.state().text_area.value.contains("10"));
     assert!(
-        updated.record.frame.viewport_bounds.width <= initial.record.frame.viewport_bounds.width
+        updated.record.frame.viewport_bounds.x > initial.record.frame.viewport_bounds.x,
+        "value={:?} selection={:?} initial={:?} updated={:?} initial_rows={:?} updated_rows={:?}",
+        surface.state().text_area.value,
+        surface.state().text_area.selection,
+        initial.record.frame.viewport_bounds,
+        updated.record.frame.viewport_bounds,
+        initial
+            .record
+            .frame
+            .gutter
+            .iter()
+            .map(|row| row.display_label.as_str())
+            .collect::<Vec<_>>(),
+        updated
+            .record
+            .frame
+            .gutter
+            .iter()
+            .map(|row| row.display_label.as_str())
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        updated.record.frame.viewport_bounds.width < initial.record.frame.viewport_bounds.width,
+        "initial={:?} updated={:?}",
+        initial.record.frame.viewport_bounds,
+        updated.record.frame.viewport_bounds
     );
     assert!(!updated.record.frame.layout_identity.is_empty());
     Ok(())
@@ -1918,6 +1967,163 @@ fn invalid_controlled_scroll_request_preserves_actual_raw_input_interaction_and_
     assert!(accesskit.nodes.iter().any(|(node_id, node)| {
         node.role() == egui::accesskit::Role::MultilineTextInput && *node_id == accesskit.focus
     }));
+    Ok(())
+}
+
+#[test]
+fn actual_raw_input_shift_f10_requests_the_keyboard_context_target()
+-> Result<(), EguiTextSurfaceError> {
+    let context = egui::Context::default();
+    let mut adapter = EguiTextSurfaceAdapter::default();
+    let mut surface = surface();
+    let output = run_frame(
+        &context,
+        &mut adapter,
+        &mut surface,
+        vec![egui::Event::Key {
+            key: egui::Key::F10,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers {
+                shift: true,
+                ..egui::Modifiers::NONE
+            },
+        }],
+    )?;
+
+    let target = output
+        .context_target
+        .expect("Shift+F10 RawInput must resolve a context target");
+    assert_eq!(output.record.frame.selection.range, target.selection());
+    assert_eq!(
+        output.record.frame.viewport_bounds,
+        target.viewport_bounds()
+    );
+    assert!(output.events.iter().any(|event| matches!(
+        event,
+        TextSurfaceEvent::ContextTargetRequested { selection }
+            if *selection == output.record.frame.selection.range
+    )));
+    Ok(())
+}
+
+#[test]
+fn actual_legacy_marker_without_icon_activates_from_the_whole_gutter_row()
+-> Result<(), EguiTextSurfaceError> {
+    let context = egui::Context::default();
+    let mut adapter = EguiTextSurfaceAdapter::default();
+    let text = "marker row";
+    let mut surface = TextSurface::new(
+        TextSurfaceProps::new(
+            TextArea::new("legacy-marker").value(text),
+            UiTextSpan::emoji_marked_spans(text, Default::default()),
+            TextSurfaceViewport::new(0, 0, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32),
+        )
+        .gutter(
+            TextSurfaceGutter::new(GUTTER_WIDTH)
+                .row(TextSurfaceGutterRow::new(0, "1").marker_id("legacy-marker")),
+        ),
+    );
+
+    let first = run_frame(&context, &mut adapter, &mut surface, Vec::new())?;
+    let gutter = first
+        .record
+        .frame
+        .gutter
+        .first()
+        .expect("legacy marker gutter row must render");
+    assert_eq!(Some("legacy-marker"), gutter.marker_id.as_deref());
+    assert!(gutter.marker_bounds.is_none());
+    let logical_row = gutter.logical_row;
+    let point = center_bounds(gutter.bounds);
+    let activated = run_frame(
+        &context,
+        &mut adapter,
+        &mut surface,
+        vec![pointer_button(point, true)],
+    )?;
+
+    assert!(activated.events.iter().any(|event| matches!(
+        event,
+        TextSurfaceEvent::GutterMarkerActivated {
+            logical_row: row,
+            marker_id,
+        } if *row == logical_row && marker_id == "legacy-marker"
+    )));
+    Ok(())
+}
+
+#[test]
+fn actual_post_input_emoji_raster_failure_is_returned_without_painting()
+-> Result<(), EguiTextSurfaceError> {
+    let context = egui::Context::default();
+    let mut config = PlatformTextRasterConfig::default();
+    config.emoji_candidates.clear();
+    config.emoji_candidate_sha256.clear();
+    let mut adapter = EguiTextSurfaceAdapter::new(config);
+    let text = "A";
+    let mut surface = TextSurface::new(TextSurfaceProps::new(
+        TextArea::new("post-input-raster").value(text),
+        UiTextSpan::emoji_marked_spans(text, Default::default()),
+        TextSurfaceViewport::new(0, 0, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32),
+    ));
+
+    let first = run_frame(&context, &mut adapter, &mut surface, Vec::new())?;
+    let point = center_bounds(first.record.frame.viewport_bounds);
+    let _ = run_frame(
+        &context,
+        &mut adapter,
+        &mut surface,
+        vec![pointer_button(point, true)],
+    )?;
+    let _ = run_frame(
+        &context,
+        &mut adapter,
+        &mut surface,
+        vec![pointer_button(point, false)],
+    )?;
+    assert!(surface.state().text_area.focused);
+
+    let failed = run_frame(
+        &context,
+        &mut adapter,
+        &mut surface,
+        vec![egui::Event::Ime(egui::ImeEvent::Commit("⭐️".to_owned()))],
+    );
+    assert!(matches!(
+        failed,
+        Err(EguiTextSurfaceError::Raster(
+            PlatformTextRasterError::ColorEmojiUnavailable { .. }
+        ))
+    ));
+    Ok(())
+}
+
+#[test]
+fn actual_generic_selection_with_invalid_utf8_boundaries_fails_closed_during_composition()
+-> Result<(), EguiTextSurfaceError> {
+    let context = egui::Context::default();
+    for (start, end) in [(1, 2), (0, 1)] {
+        let mut text_area = TextArea::new("invalid-selection").value("あ");
+        let target = text_area.state_id().clone();
+        let selected = text_area.apply_action(&UiAction::cursor_selection(target, end, start, end));
+        assert!(selected.handled);
+        let mut surface = TextSurface::new(TextSurfaceProps::new(
+            text_area,
+            UiTextSpan::emoji_marked_spans("あ", Default::default()),
+            TextSurfaceViewport::new(0, 0, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32),
+        ));
+        let composition = surface.apply_action(TextSurfaceAction::TextArea(
+            TextAreaAction::composition(TextAreaCompositionPhase::Update, "X", 1),
+        ));
+        assert!(composition.handled);
+
+        let mut adapter = EguiTextSurfaceAdapter::default();
+        let output = run_frame(&context, &mut adapter, &mut surface, Vec::new())?;
+        assert_eq!("あ", surface.state().text_area.value);
+        assert!(output.record.frame.preedit.is_none());
+    }
     Ok(())
 }
 

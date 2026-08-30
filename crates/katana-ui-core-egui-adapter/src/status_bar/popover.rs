@@ -32,7 +32,7 @@ impl EguiStatusBarAdapter {
         let area = egui::Area::new(self.id.with(("popover", id.as_str())))
             .order(egui::Order::Foreground)
             .fixed_pos(egui::pos2(POPOVER_OFFSET_PX, POPOVER_OFFSET_PX))
-            .show(ui.ctx(), |ui| -> Result<(), EguiStatusBarError> {
+            .show(ui.ctx(), |ui| {
                 egui::Frame::popup(ui.style())
                     .show(ui, |ui| -> Result<(), EguiStatusBarError> {
                         let title =
@@ -43,8 +43,7 @@ impl EguiStatusBarAdapter {
                         ui.add(egui::Image::from_texture(body).fit_to_original_size(1.0));
                         Ok(())
                     })
-                    .inner?;
-                Ok(())
+                    .inner
             });
         area.inner
     }

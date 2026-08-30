@@ -1,5 +1,29 @@
 use super::host_root_types::EguiTextCommandSurfaceRootFactoryError;
 
+impl From<super::super::types::EguiTextCommandSurfaceError>
+    for EguiTextCommandSurfaceRootFactoryError
+{
+    fn from(error: super::super::types::EguiTextCommandSurfaceError) -> Self {
+        Self::Root(error.to_string())
+    }
+}
+
+impl From<super::super::root::EguiTextCommandSurfaceRootError>
+    for EguiTextCommandSurfaceRootFactoryError
+{
+    fn from(error: super::super::root::EguiTextCommandSurfaceRootError) -> Self {
+        Self::Root(error.to_string())
+    }
+}
+
+impl From<super::super::root::KucOpaqueHostEffectAttachError>
+    for EguiTextCommandSurfaceRootFactoryError
+{
+    fn from(_: super::super::root::KucOpaqueHostEffectAttachError) -> Self {
+        Self::OpaqueHostEffectRejected
+    }
+}
+
 impl std::fmt::Display for EguiTextCommandSurfaceRootFactoryError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

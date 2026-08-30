@@ -262,3 +262,7 @@ mod overlay_panel;
 mod paint;
 mod retained_state;
 mod support;
+
+#[cfg(test)]
+#[path = "tab_strip_retained/tab_strip_retained_tests.rs"]
+mod tests;

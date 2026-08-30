@@ -35,3 +35,7 @@ fn contains(bounds: katana_ui_core::render_model::UiRect, point: TextSurfacePoin
         && point.y >= bounds.y
         && point.y <= bounds.y.saturating_add(bounds.height as i32)
 }
+
+#[cfg(test)]
+#[path = "gutter_interaction_tests.rs"]
+mod tests;

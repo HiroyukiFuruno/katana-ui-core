@@ -1,7 +1,5 @@
 //! Root composition helpers for text command surface child adapters.
 
-#[cfg(test)]
-use crate::command_chrome::EguiCommandChromeOutput;
 use crate::command_chrome::{EguiCommandChromeAdapter, EguiCommandChromeError};
 use crate::context_menu::EguiContextMenuAdapter;
 use crate::text_command_surface::accesskit_evidence::AccessKitEvidenceLedger;
@@ -79,8 +77,6 @@ impl EguiTextCommandSurfaceAdapter {
                 })
             })
             .transpose()?;
-        #[cfg(test)]
-        let mut toolbar = toolbar;
         /* WHY: Evaluate focused search controls before the body so one RawInput text event
         cannot be dispatched to both retained children in the same root frame. */
         let search = surface
@@ -126,8 +122,6 @@ impl EguiTextCommandSurfaceAdapter {
             })
             .transpose()?;
         let context_menu = self.show_context_menu(ui, surface, &text, style)?;
-        #[cfg(test)]
-        inject_same_bounds_test_overlay(ui, toolbar.as_mut(), &mut self.chrome, style)?;
         if context_menu.as_ref().is_some_and(|output| {
             output.events.iter().any(|event| {
                 matches!(
@@ -224,44 +218,6 @@ impl EguiTextCommandSurfaceAdapter {
         let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
         render(&mut child, &mut self.chrome).map_err(Into::into)
     }
-}
-
-#[cfg(test)]
-fn inject_same_bounds_test_overlay(
-    ui: &mut egui::Ui,
-    toolbar: Option<&mut EguiCommandChromeOutput>,
-    chrome: &mut EguiCommandChromeAdapter,
-    style: &TextCommandSurfaceStyle,
-) -> Result<(), EguiTextCommandSurfaceError> {
-    let Some(toolbar) = toolbar else {
-        return Ok(());
-    };
-    let bounds = toolbar.record.bounds;
-    let rect = egui::Rect::from_min_size(
-        egui::pos2(bounds.x as f32, bounds.y as f32),
-        egui::vec2(bounds.width as f32, bounds.height as f32),
-    );
-    let mut render = |id: &str| -> Result<crate::command_chrome::EguiCommandChromeOutput, _> {
-        let mut child = ui.new_child(egui::UiBuilder::new().max_rect(rect));
-        let mut overlay = katana_ui_core::molecule::command_chrome::CommandChromeToolbar::new();
-        overlay = overlay.action(
-            katana_ui_core::molecule::command_chrome::CommandChromeAction::new(id, "同一")
-                .accessibility_label("同一 ⭐️"),
-        );
-        chrome.show_toolbar(
-            &mut child,
-            &mut overlay,
-            &style.chrome_raster,
-            &style.chrome_paint,
-        )
-    };
-    let first = render("collision-left")?;
-    let second = render("collision-right")?;
-    toolbar.record.actions.extend(first.record.actions);
-    toolbar.record.actions.extend(second.record.actions);
-    toolbar.events.extend(first.events);
-    toolbar.events.extend(second.events);
-    Ok(())
 }
 
 fn selection_for(surface: &EguiTextCommandSurface) -> (usize, usize) {

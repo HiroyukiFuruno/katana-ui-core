@@ -66,3 +66,66 @@ fn suppressing_same_key_multiple_times_keeps_single_entry() {
 
     assert_eq!(policy.suppressed_keys, vec![EguiTextSurfaceKey::Enter]);
 }
+
+#[test]
+fn default_input_policy_does_not_filter_ime_text_or_nonmatching_keys() {
+    let policy = EguiTextSurfaceInputPolicy::default();
+
+    assert!(!policy.suppresses_event(&egui::Event::Text("x".to_owned())));
+    assert!(!policy.suppresses_event(&egui::Event::Ime(egui::ImeEvent::Commit("x".to_owned()))));
+    assert!(!policy.suppresses_event(&egui::Event::Key {
+        key: egui::Key::Tab,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    }));
+}
+
+#[test]
+fn default_policy_suppresses_only_configured_pressed_keys_and_releases_pass_through() {
+    let policy = EguiTextSurfaceInputPolicy::default().suppress(EguiTextSurfaceKey::Enter);
+
+    assert!(policy.suppresses_event(&egui::Event::Key {
+        key: egui::Key::Enter,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    }));
+    assert!(!policy.suppresses_event(&egui::Event::Key {
+        key: egui::Key::Enter,
+        physical_key: None,
+        pressed: false,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    }));
+}
+
+#[test]
+fn input_policy_maps_all_supported_navigation_keys_and_retains_pointer_focus() {
+    let policy = EguiTextSurfaceInputPolicy::default()
+        .with_retained_pointer_focus()
+        .suppress(EguiTextSurfaceKey::Escape)
+        .suppress(EguiTextSurfaceKey::ArrowUp)
+        .suppress(EguiTextSurfaceKey::ArrowDown)
+        .suppress(EguiTextSurfaceKey::ArrowLeft)
+        .suppress(EguiTextSurfaceKey::ArrowRight);
+
+    assert!(policy.retain_pointer_focus);
+    for key in [
+        egui::Key::Escape,
+        egui::Key::ArrowUp,
+        egui::Key::ArrowDown,
+        egui::Key::ArrowLeft,
+        egui::Key::ArrowRight,
+    ] {
+        assert!(policy.suppresses_event(&egui::Event::Key {
+            key,
+            pressed: true,
+            physical_key: None,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }));
+    }
+}

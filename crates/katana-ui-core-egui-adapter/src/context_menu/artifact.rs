@@ -12,16 +12,16 @@ pub(super) fn artifact_frame(
     events: Vec<ContextMenuEvent>,
 ) -> Result<ContextMenuArtifactFrame, ContextMenuAdapterError> {
     Ok(ContextMenuArtifactFrame {
-        frame_record_hash: hash(&record)?,
-        paint_plan_hash: hash(&paint_plan)?,
+        frame_record_hash: artifact_hash(&record)?,
+        paint_plan_hash: artifact_hash(&paint_plan)?,
         record,
         paint_plan,
         events,
     })
 }
 
-fn hash(value: &impl Serialize) -> Result<String, ContextMenuAdapterError> {
-    serde_json::to_vec(value)
-        .map(|bytes| hex::encode(Sha256::digest(bytes)))
-        .map_err(|error| ContextMenuAdapterError::ArtifactSerialization(error.to_string()))
+pub(super) fn artifact_hash(value: &impl Serialize) -> Result<String, ContextMenuAdapterError> {
+    let bytes = serde_json::to_vec(value)
+        .map_err(|error| ContextMenuAdapterError::ArtifactSerialization(error.to_string()))?;
+    Ok(hex::encode(Sha256::digest(bytes)))
 }

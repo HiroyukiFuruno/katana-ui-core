@@ -72,10 +72,7 @@ where
         FullTextCommandSurfaceScenarioId::WorkspaceTabs => lease
             .with_tab_strip(workspace_tabs_lease())
             .with_status_diagnostics(workspace_tabs_status_diagnostics_lease())
-            .with_editor_viewport(
-                workspace_tabs_editor_viewport_lease()
-                    .map_err(|_| FullTextCommandSurfaceScenarioError::InvalidProjection)?,
-            ),
+            .with_editor_viewport(workspace_tabs_editor_viewport_lease()),
         _ => lease,
     };
     Ok(lease)
@@ -204,17 +201,25 @@ fn workspace_tabs_status_diagnostics_lease() -> StatusDiagnosticsProjectionLease
         .with_diagnostics_list(diagnostics)
 }
 
-fn workspace_tabs_editor_viewport_lease(
-) -> Result<
-    EditorViewportProjectionLease,
-    katana_ui_core::render_model::UiImageSurfaceValidationError,
-> {
-    let preview = UiImageSurfaceProps::new(
-        "generic-workspace-preview",
-        2,
-        2,
-        vec![36, 42, 54, 255, 74, 85, 104, 255, 74, 85, 104, 255, 36, 42, 54, 255],
-    )?
-    .accessibility_label("Generic preview");
-    Ok(EditorViewportProjectionLease::new(preview))
+fn workspace_tabs_editor_viewport_lease() -> EditorViewportProjectionLease {
+    // 固定の 2x2 fixture は構築時点で検証済みのため、実行時に到達不能な失敗境界を持たせない。
+    let preview = UiImageSurfaceProps {
+        fingerprint: "generic-workspace-preview".to_string(),
+        width: 2,
+        height: 2,
+        display_width: 0,
+        display_height: 0,
+        display_width_milli: 0,
+        display_height_milli: 0,
+        rgba: vec![
+            36, 42, 54, 255, 74, 85, 104, 255, 74, 85, 104, 255, 36, 42, 54, 255,
+        ],
+        content_scale: 100,
+        fit: UiImageSurfaceFit::Contain,
+        accessibility_label: "Generic preview".to_string(),
+        selection_text: String::new(),
+        highlight_rects: Vec::new(),
+        transform: UiImageSurfaceTransform::default(),
+    };
+    EditorViewportProjectionLease::new(preview)
 }

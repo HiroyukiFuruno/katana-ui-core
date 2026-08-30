@@ -1,7 +1,8 @@
 use super::adapter::EguiSourceAddressStripAdapter;
 use super::types::{
     EguiSourceAddressStripError, SourceAddressLabelRasterEvidence, SourceAddressPaintOperation,
-    SourceAddressPaintOperationKind, SourceAddressPaintTexture, SourceAddressRenderStyle,
+    SourceAddressPaintOperationKind, SourceAddressPaintPlan, SourceAddressPaintTexture,
+    SourceAddressRenderStyle,
 };
 use crate::text_surface::TextSurfacePaintOperationKind;
 use katana_ui_core::render_model::{UiTextSpan, UiTextSpanStyle};
@@ -15,6 +16,7 @@ pub(crate) struct Raster;
 impl Raster {
     pub(crate) fn raster_button(
         adapter: &mut EguiSourceAddressStripAdapter,
+        paint_plan: &mut SourceAddressPaintPlan,
         ui: &mut egui::Ui,
         label: &str,
         tooltip: &str,
@@ -78,27 +80,25 @@ impl Raster {
             });
         let image_size = egui::vec2(raster.width as f32 / scale, raster.height as f32 / scale);
         let image_rect = egui::Rect::from_center_size(rect.center(), image_size);
-        if let Some(plan) = adapter.last_paint_plan.as_mut() {
-            plan.operations.push(SourceAddressPaintOperation {
-                clip_bounds: super::paint::Paint::ui_rect(rect),
-                kind: SourceAddressPaintOperationKind::Fill {
-                    bounds: super::paint::Paint::ui_rect(rect),
-                    color_rgba: fill,
+        paint_plan.operations.push(SourceAddressPaintOperation {
+            clip_bounds: super::paint::Paint::ui_rect(rect),
+            kind: SourceAddressPaintOperationKind::Fill {
+                bounds: super::paint::Paint::ui_rect(rect),
+                color_rgba: fill,
+            },
+        });
+        paint_plan.operations.push(SourceAddressPaintOperation {
+            clip_bounds: super::paint::Paint::ui_rect(rect),
+            kind: SourceAddressPaintOperationKind::Texture {
+                bounds: super::paint::Paint::ui_rect(image_rect),
+                texture: SourceAddressPaintTexture {
+                    identity,
+                    width: raster.width as u32,
+                    height: raster.height as u32,
+                    rgba_pixels: pixels,
                 },
-            });
-            plan.operations.push(SourceAddressPaintOperation {
-                clip_bounds: super::paint::Paint::ui_rect(rect),
-                kind: SourceAddressPaintOperationKind::Texture {
-                    bounds: super::paint::Paint::ui_rect(image_rect),
-                    texture: SourceAddressPaintTexture {
-                        identity,
-                        width: raster.width as u32,
-                        height: raster.height as u32,
-                        rgba_pixels: pixels,
-                    },
-                },
-            });
-        }
+            },
+        });
         Ok(response.on_hover_text(tooltip))
     }
 

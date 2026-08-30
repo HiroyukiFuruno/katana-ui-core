@@ -91,15 +91,8 @@ fn paint_tab_strip(
 }
 
 fn canvas_byte_length(canvas: UiRect) -> Result<usize, ArtifactCompositeError> {
-    usize::try_from(canvas.width)
-        .map_err(|_| ArtifactCompositeError::Overflow {
-            context: "converting canvas width",
-        })?
-        .checked_mul(usize::try_from(canvas.height).map_err(|_| {
-            ArtifactCompositeError::Overflow {
-                context: "converting canvas height",
-            }
-        })?)
+    (canvas.width as usize)
+        .checked_mul(canvas.height as usize)
         .and_then(|pixels| pixels.checked_mul(RGBA_CHANNELS))
         .ok_or(ArtifactCompositeError::Overflow {
             context: "sizing canvas RGBA bytes",

@@ -40,10 +40,20 @@ impl EguiDiagnosticsListAdapter {
         } = layout;
         let snapshot = diagnostics.render_snapshot();
         let mut row_top = 0.0;
-        for (index, item_id) in snapshot.visible.visible_ids.iter().enumerate() {
-            let Some(item) = snapshot.items.iter().find(|item| &item.id == item_id) else {
-                continue;
-            };
+        let visible_items =
+            snapshot
+                .visible
+                .visible_ids
+                .iter()
+                .enumerate()
+                .filter_map(|(index, item_id)| {
+                    snapshot
+                        .items
+                        .iter()
+                        .find(|item| &item.id == item_id)
+                        .map(|item| (index, item))
+                });
+        for (index, item) in visible_items {
             let item_height = row_heights.get(index).copied().unwrap_or(style.row_height);
             let top = header.bottom() + row_top - self.scroll_y;
             row_top += item_height;
@@ -104,7 +114,7 @@ impl EguiDiagnosticsListAdapter {
                 },
             );
             let disclosure_clicked = if item.fix_preview.is_some() {
-                self.render_disclosure(
+                let disclosure_result = self.render_disclosure(
                     ui,
                     DisclosureRenderContext {
                         plan,
@@ -117,7 +127,8 @@ impl EguiDiagnosticsListAdapter {
                         style,
                         scale,
                     },
-                )?
+                );
+                disclosure_result?
             } else {
                 false
             };
@@ -132,7 +143,7 @@ impl EguiDiagnosticsListAdapter {
             );
             let text = format!("{:?}: {}  {}", item.severity, item.message, location);
             self.paint_text(plan, clipped_bounds, &text, style, scale)?;
-            if expanded {
+            if let Some(preview) = item.fix_preview.as_ref().filter(|_| expanded) {
                 let preview_bounds = egui::Rect::from_min_size(
                     egui::pos2(
                         clipped_bounds.left() + super::super::paint::DIAGNOSTICS_PREVIEW_LEFT_INSET,
@@ -144,7 +155,7 @@ impl EguiDiagnosticsListAdapter {
                         (Self::item_preview_height(item, style) - style.preview_padding).max(1.0),
                     ),
                 );
-                self.paint_preview(plan, viewport, preview_bounds, item, style, scale)?;
+                self.paint_preview(plan, viewport, preview_bounds, preview, style, scale)?;
             }
             if let Some(quickfix) = &item.quickfix {
                 self.render_quickfix(
@@ -155,7 +166,7 @@ impl EguiDiagnosticsListAdapter {
                     quickfix,
                     bounds,
                     clipped_bounds,
-                )?;
+                );
             }
         }
         Ok(())
@@ -213,7 +224,7 @@ impl EguiDiagnosticsListAdapter {
         quickfix: &katana_ui_core::molecule::DiagnosticAction,
         bounds: egui::Rect,
         clipped_bounds: egui::Rect,
-    ) -> Result<(), EguiDiagnosticsListError> {
+    ) {
         let fix_bounds = egui::Rect::from_min_size(
             egui::pos2(
                 clipped_bounds.right() - super::super::paint::DIAGNOSTICS_QUICKFIX_RIGHT_INSET,
@@ -245,6 +256,5 @@ impl EguiDiagnosticsListAdapter {
                 .events
                 .extend(diagnostics.apply_action(DiagnosticsListAction::ApplyFix(item.id.clone())));
         }
-        Ok(())
     }
 }

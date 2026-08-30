@@ -33,7 +33,9 @@ use katana_ui_core::molecule::{
     DiagnosticLocation, DiagnosticSeverity, DiagnosticsList, StatusBar, StatusBarDensity,
     StatusBarMode, StatusBarSegment,
 };
-use katana_ui_core::render_model::{UiImageSurfaceProps, UiStateId};
+use katana_ui_core::render_model::{
+    UiImageSurfaceFit, UiImageSurfaceProps, UiImageSurfaceTransform, UiStateId,
+};
 use katana_ui_core::text_selection::UiTextSelectionRange;
 use katana_ui_core::text_surface::{
     TextSurface, TextSurfaceAnnotation, TextSurfaceAnnotationStyle,

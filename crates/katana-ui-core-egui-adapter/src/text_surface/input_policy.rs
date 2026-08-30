@@ -209,4 +209,47 @@ mod tests {
         }));
     }
 
+    #[test]
+    fn default_policy_keeps_key_releases_and_non_text_events() {
+        let policy = EguiTextSurfaceInputPolicy::default();
+
+        assert!(!policy.suppresses_event(&egui::Event::Key {
+            key: egui::Key::Enter,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }));
+        assert!(!policy.suppresses_event(&egui::Event::Key {
+            key: egui::Key::Enter,
+            physical_key: None,
+            pressed: false,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }));
+        assert!(!policy.suppresses_event(&egui::Event::Key {
+            key: egui::Key::F1,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }));
+    }
+
+    #[test]
+    fn default_policy_keeps_ime_commit_and_key_releases() {
+        let policy = EguiTextSurfaceInputPolicy::default();
+
+        assert!(!policy.suppresses_event(&egui::Event::Ime(
+            egui::ImeEvent::Commit("かな".into())
+        )));
+        assert!(!policy.suppresses_event(&egui::Event::Key {
+            key: egui::Key::Tab,
+            physical_key: None,
+            pressed: false,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }));
+    }
+
 }

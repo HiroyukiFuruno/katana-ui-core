@@ -52,11 +52,7 @@ pub(super) fn crop_for_composite(
             let pixel = rgba_pixels.get(index..end).ok_or_else(|| {
                 KucUnicodeColorGlyphEvidenceError::RootTrace("composite crop pixel missing".into())
             })?;
-            let pixel: [u8; RGBA_CHANNEL_COUNT] = pixel.try_into().map_err(|_| {
-                KucUnicodeColorGlyphEvidenceError::RootTrace(
-                    "composite crop pixel width changed".into(),
-                )
-            })?;
+            let pixel = [pixel[0], pixel[1], pixel[2], pixel[3]];
             pixels.push(pixel);
         }
     }
@@ -83,57 +79,6 @@ pub(super) fn hit_test_observation(
         byte_end: hit.byte_end,
     })
 }
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn find_range_uses_grapheme_boundaries_and_rejects_missing_text() {
-        assert_eq!(find_range("a⭐️b", "⭐️"), Some((1, 7)));
-        assert_eq!(find_range("a⭐️b", "⭐"), None);
-    }
-
-    #[test]
-    fn bounds_for_range_requires_the_exact_raster_grapheme() {
-        let font = katana_ui_core::theme::FontToken {
-            name: "coverage-test".to_owned(),
-            family: katana_ui_core::theme::FontFamily::Proportional,
-            size: 14.0,
-            weight: 400,
-        };
-        let request = katana_ui_core_text_raster::PlatformTextRasterRequest::from_text(
-            "⭐️",
-            font,
-            [255, 255, 255, 255],
-        );
-        let mut rasterizer = katana_ui_core_text_raster::PlatformTextRasterizer::new(
-            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
-        );
-        let raster = rasterizer
-            .rasterize(&request)
-            .expect("default rasterizer resolves the test text");
-        let bounds = bounds_for_range(&raster, (0, "⭐️".len())).expect("range is present");
-        assert!(bounds.width > 0);
-        assert!(bounds.height > 0);
-        assert!(matches!(
-            bounds_for_range(&raster, (0, 1)),
-            Err(KucUnicodeColorGlyphEvidenceError::RootTrace(message)) if message == "raster bounds missing"
-        ));
-    }
-
-    #[test]
-    fn crop_for_composite_reports_empty_and_missing_pixels() {
-        let bounds = KucBounds::new(0, 0, 1, 1);
-        assert!(matches!(
-            crop_for_composite(&[], 1, bounds),
-            Err(KucUnicodeColorGlyphEvidenceError::RootTrace(message)) if message == "composite crop pixel missing"
-        ));
-        assert_eq!(
-            crop_for_composite(&[1, 2, 3, 4], 1, bounds)
-                .expect("one RGBA pixel is a valid crop")
-                .pixels,
-            vec![[1, 2, 3, 4]]
-        );
-    }
-}
+#[path = "crop_observation_tests.rs"]
+mod tests;

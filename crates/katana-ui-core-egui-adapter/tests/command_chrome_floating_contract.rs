@@ -20,6 +20,69 @@ const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 160.0;
 
 #[test]
+fn floating_toolbar_fails_closed_when_its_action_icon_is_invalid() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let toolbar = CommandChromeToolbar::new().action(
+        CommandChromeAction::new("invalid", "Invalid").icon(UiIconProps::new("not-an-svg")),
+    );
+    let mut floating = FloatingCommandToolbar::new(
+        toolbar,
+        FloatingCommandToolbarLayout::new(
+            Rect::new(32, 32, 8, 8),
+            Size::new(160, 48),
+            Rect::new(0, 0, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32),
+        ),
+    );
+    let _ = floating.apply_action(FloatingCommandToolbarAction::Open);
+    let mut output = None;
+
+    let _ = run_frame(
+        &context,
+        &mut adapter,
+        &mut floating,
+        Vec::new(),
+        &mut output,
+    );
+
+    assert!(output.is_some_and(|result| result.is_err()));
+}
+
+#[test]
+fn floating_toolbar_fails_closed_when_a_dropdown_item_icon_is_invalid() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let toolbar = CommandChromeToolbar::new().action(
+        CommandChromeAction::new("menu", "Menu").dropdown(
+            CommandChromeDropdown::new(CommandChromeDropdownTrigger::Primary).item(
+                CommandChromeDropdownItem::new("invalid", "Invalid")
+                    .icon(UiIconProps::new("not-an-svg")),
+            ),
+        ),
+    );
+    let mut floating = FloatingCommandToolbar::new(
+        toolbar,
+        FloatingCommandToolbarLayout::new(
+            Rect::new(32, 32, 8, 8),
+            Size::new(160, 48),
+            Rect::new(0, 0, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32),
+        ),
+    );
+    let _ = floating.apply_action(FloatingCommandToolbarAction::Open);
+    let mut output = None;
+
+    let _ = run_frame(
+        &context,
+        &mut adapter,
+        &mut floating,
+        Vec::new(),
+        &mut output,
+    );
+
+    assert!(output.is_some_and(|result| result.is_err()));
+}
+
+#[test]
 fn actual_egui_floating_toolbar_uses_core_placement_rasters_tooltip_and_accesskit() {
     let context = egui::Context::default();
     context.enable_accesskit();

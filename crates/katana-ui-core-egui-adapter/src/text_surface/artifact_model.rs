@@ -268,6 +268,10 @@ impl std::fmt::Display for EguiTextSurfaceError {
 
 impl std::error::Error for EguiTextSurfaceError {}
 
+#[cfg(test)]
+#[path = "artifact_model_tests.rs"]
+mod tests;
+
 fn artifact_hash(value: &impl Serialize) -> Result<String, EguiTextSurfaceError> {
     let bytes = serde_json::to_vec(value)
         .map_err(|error| EguiTextSurfaceError::ArtifactSerialization(error.to_string()))?;

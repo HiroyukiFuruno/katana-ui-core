@@ -295,23 +295,40 @@ fn menu_entry_separator_and_chain_calls_are_strictly_localized() {
 fn debug_impls_do_not_reveal_inner_payload_lengths() {
     let tab = TabStripTabDescriptor::new(
         TabStripTabTarget::from_opaque_bytes([1u8, 2, 3, 4]),
-        TabStripText::new("tab"),
+        TabStripText::new("sensitive-tab-label-314159"),
     )
-    .tooltip(TabStripText::new("tooltip"))
-    .accessibility_label(TabStripText::new("a11y"));
+    .tooltip(TabStripText::new("sensitive-tab-tooltip-271828"))
+    .accessibility_label(TabStripText::new("sensitive-tab-a11y-161803"));
     let group = TabStripGroupDescriptor::new(
         TabStripGroupTarget::from_opaque_bytes([9u8, 8, 7]),
-        TabStripText::new("group"),
+        TabStripText::new("sensitive-group-label-141421"),
     )
-    .accessibility_label(TabStripText::new("g-a11y"));
+    .accessibility_label(TabStripText::new("sensitive-group-a11y-173205"));
     let swatch = TabStripSwatchDescriptor::new(
         TabStripSwatchTarget::from_opaque_bytes([3u8, 2, 1]),
         RgbaColor::new(1, 2, 3, 4),
     )
     .accessibility_label(TabStripText::new("swatch"));
 
-    assert_eq!(format!("{:?}", tab), "TabStripTabDescriptor(..)");
-    assert_eq!(format!("{:?}", group), "TabStripGroupDescriptor(..)");
+    let tab_debug = format!("{tab:?}");
+    assert!(tab_debug.starts_with("TabStripTabDescriptor {"));
+    assert!(tab_debug.contains("label: \"<opaque>\""));
+    for secret in [
+        "sensitive-tab-label-314159",
+        "sensitive-tab-tooltip-271828",
+        "sensitive-tab-a11y-161803",
+    ] {
+        assert!(!tab_debug.contains(secret));
+    }
+    let group_debug = format!("{group:?}");
+    assert!(group_debug.starts_with("TabStripGroupDescriptor {"));
+    assert!(group_debug.contains("label: \"<opaque>\""));
+    for secret in [
+        "sensitive-group-label-141421",
+        "sensitive-group-a11y-173205",
+    ] {
+        assert!(!group_debug.contains(secret));
+    }
     assert_eq!(format!("{:?}", swatch), "TabStripSwatchDescriptor(..)");
     assert_eq!(format!("{:?}", &tab.target), "TabStripTabTarget(..)");
     assert_eq!(format!("{:?}", &group.target), "TabStripGroupTarget(..)");
@@ -324,6 +341,14 @@ fn debug_impls_do_not_reveal_inner_payload_lengths() {
 
 #[test]
 fn navigation_and_control_formats_use_opaque_debug_shapes() {
+    let control = TabStripControlPresentation::new(
+        TabStripText::new("control-tooltip-secret"),
+        TabStripText::new("control-a11y-secret"),
+    );
+    assert_eq!(
+        format!("{control:?}"),
+        "TabStripControlPresentation(..)"
+    );
     let previous = TabStripControlPresentation::new(
         TabStripText::new("prev-tooltip"),
         TabStripText::new("prev-a11y"),
@@ -411,8 +436,16 @@ fn popup_and_group_debug_variants_are_exercised() {
         ),
     ));
 
-    assert_eq!(format!("{:?}", tab), "TabStripTabDescriptor(..)");
-    assert_eq!(format!("{:?}", group), "TabStripGroupDescriptor(..)");
+    let tab_debug = format!("{tab:?}");
+    assert!(tab_debug.starts_with("TabStripTabDescriptor {"));
+    for secret in ["tip-a11y", "close-tip", "close-a11y"] {
+        assert!(!tab_debug.contains(secret));
+    }
+    let group_debug = format!("{group:?}");
+    assert!(group_debug.starts_with("TabStripGroupDescriptor {"));
+    for secret in ["sub-a11y", "leaf-a11y"] {
+        assert!(!group_debug.contains(secret));
+    }
 }
 
 #[test]

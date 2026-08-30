@@ -1,5 +1,7 @@
 use super::*;
-use crate::text_command_surface::{KucOpaqueHostEffectError, KucRootEventBatchContext};
+use crate::text_command_surface::{
+    KucOpaqueHostEffectBatch, KucOpaqueHostEffectError, KucRootEventBatchContext,
+};
 use katana_ui_core::molecule::{DiagnosticsList, StatusBar, StatusBarSegment};
 use katana_ui_core::render_model::UiImageSurfaceProps;
 
@@ -14,6 +16,31 @@ fn raw_input() -> egui::RawInput {
         )),
         ..Default::default()
     }
+}
+
+#[test]
+fn boxed_router_lease_keeps_router_and_debug_opaque() {
+    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        1,
+        b"boxed-router-target",
+        presentation(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
+    )
+    .expect("token");
+    let lease = EguiTextCommandSurfaceHostProjectionLease::from_router(
+        token,
+        Box::new(|_context: KucRootEventBatchContext| Ok(None)),
+    );
+
+    assert_eq!(
+        format!("{lease:?}"),
+        "EguiTextCommandSurfaceHostProjectionLease(..)"
+    );
+    let (_token, _router, source, tab, status, viewport) = lease.into_parts();
+    assert!(source.is_none());
+    assert!(tab.is_none());
+    assert!(status.is_none());
+    assert!(viewport.is_none());
 }
 
 #[test]
@@ -113,4 +140,17 @@ fn retain_with_lease_attaches_auxiliary_projection_lease_slots() {
             .contains(&crate::text_command_surface::EguiTextCommandSurfaceChild::Preview)
     );
     assert!(!frame.record().identity().is_empty());
+
+    output
+        .events()
+        .attach_opaque_host_effect_batch(KucOpaqueHostEffectBatch::from_handler(|| Ok(())))
+        .expect("fresh root batch accepts one effect");
+    let attach_error = output
+        .events()
+        .attach_opaque_host_effect_batch(KucOpaqueHostEffectBatch::from_handler(|| Ok(())))
+        .expect_err("second effect is rejected");
+    assert!(matches!(
+        EguiTextCommandSurfaceRootFactoryError::from(attach_error),
+        EguiTextCommandSurfaceRootFactoryError::OpaqueHostEffectRejected
+    ));
 }

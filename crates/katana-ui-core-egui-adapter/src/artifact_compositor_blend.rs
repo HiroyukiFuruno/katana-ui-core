@@ -104,15 +104,8 @@ fn validate_texture<T: TextureRef>(texture: &T) -> Result<(), ArtifactCompositeE
             identity: texture.identity().to_owned(),
         });
     }
-    let expected = usize::try_from(texture.width())
-        .map_err(|_| ArtifactCompositeError::Overflow {
-            context: "converting texture width",
-        })?
-        .checked_mul(usize::try_from(texture.height()).map_err(|_| {
-            ArtifactCompositeError::Overflow {
-                context: "converting texture height",
-            }
-        })?)
+    let expected = (texture.width() as usize)
+        .checked_mul(texture.height() as usize)
         .and_then(|pixels| pixels.checked_mul(RGBA_CHANNELS))
         .ok_or(ArtifactCompositeError::Overflow {
             context: "sizing texture RGBA bytes",
@@ -159,15 +152,7 @@ fn nearest_texture_pixel<T: TextureRef>(
             actual: texture.rgba_pixels().len(),
         }
     })?;
-    let [red, green, blue, alpha] = pixels else {
-        return Err(ArtifactCompositeError::TexturePixelRange {
-            identity: texture.identity().to_owned(),
-            start: index,
-            end,
-            actual: texture.rgba_pixels().len(),
-        });
-    };
-    Ok([*red, *green, *blue, *alpha])
+    Ok([pixels[0], pixels[1], pixels[2], pixels[3]])
 }
 
 fn source_over(

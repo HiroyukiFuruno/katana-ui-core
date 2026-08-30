@@ -1,16 +1,19 @@
 use katana_ui_core::molecule::{
-    CodeDiff, CodeDiffLine, CodeDiffLineKind, DiagnosticAction, DiagnosticFixPreview,
-    DiagnosticLocation, DiagnosticSeverity, DiagnosticsList, DiagnosticsListEvent,
+    CodeDiff, CodeDiffLine, CodeDiffLineKind, DiagnosticAction, DiagnosticFixPreview, DiagnosticId,
+    DiagnosticItem, DiagnosticLocation, DiagnosticSeverity, DiagnosticsList, DiagnosticsListAction,
+    DiagnosticsListEvent,
 };
 use katana_ui_core_egui_adapter::artifact_compositor::{
     ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor, ArtifactPaintPlanRef,
 };
 use katana_ui_core_egui_adapter::diagnostics_list::{
     DiagnosticsListPaintOperationKind, DiagnosticsTargetIdentity, EguiDiagnosticsListAdapter,
+    EguiDiagnosticsListError,
 };
 use katana_ui_core_egui_adapter::text_command_surface::{
     KucInteractionActionClass, KucInteractionSelector,
 };
+use katana_ui_core_text_raster::PlatformTextRasterError;
 
 #[test]
 fn target_identities_are_opaque_stable_and_distinct_from_display_text() {
@@ -36,6 +39,22 @@ fn target_identities_are_opaque_stable_and_distinct_from_display_text() {
         )
         .contains("kuc.diagnostics.target.v1.item.")
     );
+}
+
+#[test]
+fn diagnostics_list_error_display_and_conversion_coverage() {
+    let raster: EguiDiagnosticsListError = PlatformTextRasterError::EmptyText.into();
+    assert_eq!(
+        raster.to_string(),
+        "diagnostics raster failed: platform text raster request must not be empty"
+    );
+
+    let missing_plan = EguiDiagnosticsListError::PaintPlanNotProduced;
+    assert_eq!(
+        missing_plan.to_string(),
+        "diagnostics did not produce a paint plan"
+    );
+    assert!(format!("{missing_plan:?}").contains("PaintPlanNotProduced"));
 }
 
 fn diagnostics() -> DiagnosticsList {
@@ -185,6 +204,22 @@ fn scope_pointer_keyboard_and_stale_accesskit_use_current_resolver() -> Result<(
         matches!(keyboard.as_slice(), [DiagnosticsListEvent::ScopeSelected { scope_key }] if scope_key.as_str() == "all")
     );
 
+    let (_, keyboard) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::Key {
+            key: egui::Key::ArrowRight,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    )?;
+    assert!(
+        matches!(keyboard.as_slice(), [DiagnosticsListEvent::ScopeSelected { scope_key }] if scope_key.as_str() == "active")
+    );
+
     let (stale_frame, _) = frame(&context, &mut adapter, &mut diagnostics, Vec::new())?;
     let old_second = stale_frame
         .platform_output
@@ -263,6 +298,27 @@ fn one_scope_is_visible_but_disabled_for_accesskit_activation() -> Result<(), St
     )?;
     assert!(events.is_empty());
     Ok(())
+}
+
+#[test]
+fn diagnostics_list_fails_closed_when_a_scope_label_cannot_be_rasterized() {
+    let context = egui::Context::default();
+    let mut adapter = EguiDiagnosticsListAdapter::new("invalid-scope-label")
+        .expect("diagnostics adapter should initialize");
+    let mut diagnostics = DiagnosticsList::new("Diagnostics")
+        .scope("all", "", "All diagnostics")
+        .item(DiagnosticItem::new(
+            "error",
+            DiagnosticSeverity::Error,
+            "Error",
+            DiagnosticLocation::new("src/lib.rs", 1, 1),
+        ));
+
+    let error = match frame(&context, &mut adapter, &mut diagnostics, Vec::new()) {
+        Ok(_) => panic!("an empty scope label must fail closed"),
+        Err(error) => error,
+    };
+    assert!(error.contains("platform text raster request must not be empty"));
 }
 
 fn many_diagnostics() -> DiagnosticsList {
@@ -409,6 +465,123 @@ fn raw_input_keyboard_actions_return_existing_core_events() -> Result<(), String
     assert!(
         matches!(fixed.as_slice(), [DiagnosticsListEvent::DiagnosticFixApplied { id }] if id.as_str() == "error")
     );
+    let (_, previous_error) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::Key {
+            key: egui::Key::F8,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers {
+                shift: true,
+                ..egui::Modifiers::NONE
+            },
+        }],
+    )?;
+    assert!(matches!(
+        previous_error.as_slice(),
+        [DiagnosticsListEvent::DiagnosticSelected { id }] if id.as_str() == "error"
+    ));
+    Ok(())
+}
+
+#[test]
+fn diagnostics_list_preview_renders_no_lines_and_special_diff_kinds() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiDiagnosticsListAdapter::new("diagnostics-preview-special")
+        .map_err(|error| error.to_string())?;
+    let mut diagnostics = DiagnosticsList::new("診断 ⭐️")
+        .item(
+            DiagnosticItem::new(
+                "empty",
+                DiagnosticSeverity::Error,
+                "空の差分",
+                DiagnosticLocation::new("src/empty.rs", 1, 1),
+            )
+            .fix_preview(DiagnosticFixPreview::new(CodeDiff::new("empty diff"))),
+        )
+        .item(
+            DiagnosticItem::new(
+                "multi",
+                DiagnosticSeverity::Warning,
+                "差分の種類",
+                DiagnosticLocation::new("src/special.rs", 2, 1),
+            )
+            .fix_preview(DiagnosticFixPreview::new(
+                CodeDiff::new("special")
+                    .line(CodeDiffLine {
+                        old_number: Some(1),
+                        new_number: Some(1),
+                        kind: CodeDiffLineKind::Context,
+                        text: "context".to_string(),
+                    })
+                    .line(CodeDiffLine {
+                        old_number: Some(2),
+                        new_number: None,
+                        kind: CodeDiffLineKind::Placeholder,
+                        text: "placeholder".to_string(),
+                    })
+                    .line(CodeDiffLine {
+                        old_number: Some(3),
+                        new_number: Some(4),
+                        kind: CodeDiffLineKind::Removed,
+                        text: "removed".to_string(),
+                    })
+                    .line(CodeDiffLine {
+                        old_number: Some(4),
+                        new_number: Some(5),
+                        kind: CodeDiffLineKind::Added,
+                        text: "added".to_string(),
+                    }),
+            )),
+        );
+    diagnostics.apply_action(DiagnosticsListAction::ToggleFixPreview(DiagnosticId::new(
+        "empty",
+    )));
+    diagnostics.apply_action(DiagnosticsListAction::ToggleFixPreview(DiagnosticId::new(
+        "multi",
+    )));
+
+    let _ = frame(&context, &mut adapter, &mut diagnostics, Vec::new())?;
+
+    assert!(
+        adapter
+            .raster_evidence()
+            .iter()
+            .any(|evidence| evidence.text == "差分なし")
+    );
+    assert!(
+        adapter
+            .raster_evidence()
+            .iter()
+            .any(|evidence| evidence.text.contains(" context"))
+    );
+    assert!(
+        adapter
+            .raster_evidence()
+            .iter()
+            .any(|evidence| evidence.text.contains("… placeholder"))
+    );
+    assert!(
+        adapter
+            .raster_evidence()
+            .iter()
+            .any(|evidence| evidence.text.contains(" removed")),
+        "{:?}",
+        adapter
+            .raster_evidence()
+            .iter()
+            .map(|evidence| evidence.text.as_str())
+            .collect::<Vec<_>>()
+    );
+    assert!(
+        adapter
+            .raster_evidence()
+            .iter()
+            .any(|evidence| evidence.text.contains(" added"))
+    );
     Ok(())
 }
 
@@ -447,6 +620,215 @@ fn accesskit_click_returns_generic_selection_event() -> Result<(), String> {
         events.as_slice(),
         [DiagnosticsListEvent::DiagnosticSelected { .. }]
     ));
+    let (_, navigated) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::Key {
+            key: egui::Key::Enter,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    )?;
+    assert!(matches!(
+        navigated.as_slice(),
+        [DiagnosticsListEvent::NavigateRequested { .. }]
+    ));
+    Ok(())
+}
+
+#[test]
+fn accesskit_click_quickfix_runs_apply_fix_event() -> Result<(), String> {
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let mut adapter = EguiDiagnosticsListAdapter::new("diagnostics-quickfix")
+        .map_err(|error| error.to_string())?;
+    let mut diagnostics = diagnostics();
+    let initial = frame(&context, &mut adapter, &mut diagnostics, Vec::new())?.0;
+    let quickfix_target = initial
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .and_then(|update| {
+            update
+                .nodes
+                .iter()
+                .find_map(|(id, node)| (node.label() == Some("修正を適用")).then_some(*id))
+        })
+        .ok_or_else(|| "missing quickfix accesskit node".to_string())?;
+
+    let (_, events) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::AccessKitActionRequest(
+            egui::accesskit::ActionRequest {
+                action: egui::accesskit::Action::Click,
+                target_tree: egui::accesskit::TreeId::ROOT,
+                target_node: quickfix_target,
+                data: None,
+            },
+        )],
+    )?;
+
+    assert!(events.iter().any(|event| {
+        matches!(
+            event,
+            DiagnosticsListEvent::DiagnosticFixApplied { id } if id.as_str() == "error"
+        )
+    }));
+    Ok(())
+}
+
+#[test]
+fn accesskit_click_severity_filter_toggles_filter_state() -> Result<(), String> {
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let mut adapter = EguiDiagnosticsListAdapter::new("diagnostics-severity-filter")
+        .map_err(|error| error.to_string())?;
+    let mut diagnostics = diagnostics();
+    let initial = frame(&context, &mut adapter, &mut diagnostics, Vec::new())?.0;
+    let warning_filter = initial
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .and_then(|update| {
+            update.nodes.iter().find_map(|(id, node)| {
+                (node.role() == egui::accesskit::Role::CheckBox
+                    && node.label() == Some("Warning")
+                    && node.supports_action(egui::accesskit::Action::Click))
+                .then_some(*id)
+            })
+        })
+        .ok_or_else(|| "missing warning severity filter node".to_string())?;
+    let before_warning = diagnostics
+        .render_snapshot()
+        .options
+        .severity_filter
+        .contains(&DiagnosticSeverity::Warning);
+
+    let (_, events) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::AccessKitActionRequest(
+            egui::accesskit::ActionRequest {
+                action: egui::accesskit::Action::Click,
+                target_tree: egui::accesskit::TreeId::ROOT,
+                target_node: warning_filter,
+                data: None,
+            },
+        )],
+    )?;
+
+    assert!(events.contains(&DiagnosticsListEvent::FilterChanged));
+    let after = diagnostics
+        .render_snapshot()
+        .options
+        .severity_filter
+        .contains(&DiagnosticSeverity::Warning);
+    assert_ne!(before_warning, after);
+
+    let (_, restored_events) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::AccessKitActionRequest(
+            egui::accesskit::ActionRequest {
+                action: egui::accesskit::Action::Click,
+                target_tree: egui::accesskit::TreeId::ROOT,
+                target_node: warning_filter,
+                data: None,
+            },
+        )],
+    )?;
+    assert!(restored_events.contains(&DiagnosticsListEvent::FilterChanged));
+    assert_eq!(
+        before_warning,
+        diagnostics
+            .render_snapshot()
+            .options
+            .severity_filter
+            .contains(&DiagnosticSeverity::Warning)
+    );
+    Ok(())
+}
+
+#[test]
+fn accesskit_scroll_up_updates_scroll_position() -> Result<(), String> {
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let mut adapter = EguiDiagnosticsListAdapter::new("diagnostics-scroll-up")
+        .map_err(|error| error.to_string())?;
+    let mut diagnostics = many_diagnostics();
+
+    let (initial, _) = frame_at_pointer(&context, &mut adapter, &mut diagnostics, Vec::new())?;
+    let list_nodes = initial
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .map(|update| {
+            update
+                .nodes
+                .iter()
+                .filter_map(|(id, node)| {
+                    (node.role() == egui::accesskit::Role::List
+                        && node.supports_action(egui::accesskit::Action::ScrollDown)
+                        && node.supports_action(egui::accesskit::Action::ScrollUp))
+                    .then_some(*id)
+                })
+                .collect::<Vec<_>>()
+        })
+        .ok_or_else(|| "missing diagnostics list accesskit node".to_string())?;
+    let list_node = list_nodes
+        .first()
+        .copied()
+        .ok_or_else(|| "missing diagnostics list accesskit node".to_string())?;
+
+    let (wheel_output, events_down) = frame_at_pointer(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(0.0, -1.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    )?;
+    assert!(events_down.is_empty());
+    assert!(adapter.scroll_y() > 0.0);
+    let list_node = wheel_output
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .and_then(|update| {
+            update.nodes.iter().find_map(|(id, node)| {
+                (node.role() == egui::accesskit::Role::List
+                    && node.supports_action(egui::accesskit::Action::ScrollDown)
+                    && node.supports_action(egui::accesskit::Action::ScrollUp))
+                .then_some(*id)
+            })
+        })
+        .unwrap_or(list_node);
+    let before_up = adapter.scroll_y();
+    let (_after_output, events_up) = frame(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::AccessKitActionRequest(
+            egui::accesskit::ActionRequest {
+                action: egui::accesskit::Action::ScrollUp,
+                target_tree: egui::accesskit::TreeId::ROOT,
+                target_node: list_node,
+                data: None,
+            },
+        )],
+    )?;
+    assert!(events_up.is_empty());
+    assert!(adapter.scroll_y() < before_up);
     Ok(())
 }
 
@@ -790,6 +1172,51 @@ fn retained_viewport_scrolls_many_items_and_republishes_only_visible_targets() -
             .iter()
             .any(|e| e.text.contains("⭐️"))
     );
+    let (_, revealed_events) = frame_at_pointer(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::Key {
+            key: egui::Key::ArrowDown,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    )?;
+    assert!(revealed_events.iter().any(|event| matches!(
+        event,
+        DiagnosticsListEvent::DiagnosticSelected { id } if id.as_str() == "item-0"
+    )));
+    assert_eq!(adapter.scroll_y(), 0.0);
+    let (_, second_scroll_events) = frame_at_pointer(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::AccessKitActionRequest(
+            egui::accesskit::ActionRequest {
+                action: egui::accesskit::Action::ScrollDown,
+                target_tree: egui::accesskit::TreeId::ROOT,
+                target_node: scroll_target,
+                data: None,
+            },
+        )],
+    )?;
+    assert!(second_scroll_events.is_empty());
+    assert!(adapter.scroll_y() > 0.0);
+    let (_, reset_events) = frame_at_pointer(
+        &context,
+        &mut adapter,
+        &mut diagnostics,
+        vec![egui::Event::MouseWheel {
+            unit: egui::MouseWheelUnit::Point,
+            delta: egui::vec2(0.0, 10_000.0),
+            phase: egui::TouchPhase::Move,
+            modifiers: egui::Modifiers::NONE,
+        }],
+    )?;
+    assert!(reset_events.is_empty());
+    assert_eq!(adapter.scroll_y(), 0.0);
     let before_keyboard = adapter.scroll_y();
     for _ in 0..8 {
         let (_, events) = frame_at_pointer(

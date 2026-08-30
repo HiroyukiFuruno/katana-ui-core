@@ -31,11 +31,7 @@ impl KucInteractionLocator {
     ) -> Self {
         let mut targets = Vec::new();
         let mut hidden = HashSet::new();
-        let evidence = if bound_evidence.matches(context, root_identity) {
-            bound_evidence.entries()
-        } else {
-            &[]
-        };
+        let evidence = bound_evidence.matching_entries(context, root_identity);
         if let Some(toolbar) = output.toolbar.as_ref() {
             append_toolbar_targets(
                 &mut targets,
@@ -84,11 +80,9 @@ impl KucInteractionLocator {
         }
         append_generic_targets(&mut targets, evidence);
         /* WHY: A current bound AccessKit target is authoritative over stale hidden metadata. */
-        hidden.retain(|key| {
-            !targets
-                .iter()
-                .any(|target| target.action_identity == key.0 && target.action_class == key.1)
-        });
+        for target in &targets {
+            hidden.remove(&(target.action_identity.clone(), target.action_class));
+        }
         Self {
             root_identity: root_identity.to_owned(),
             state_revision: context.state_revision(),
@@ -165,21 +159,25 @@ impl KucInteractionLocator {
             return Err(KucInteractionLocatorError::Hidden);
         }
         let mut selected = None;
+        let mut duplicate = false;
         for target in self.targets.iter().filter(|target| {
             target.action_identity == selector.action_identity
                 && target.action_class == selector.action_class
         }) {
             if selected.is_some() {
-                return Err(KucInteractionLocatorError::Ambiguous);
+                duplicate = true;
+                break;
             }
             selected = Some(target);
         }
         let target = selected.ok_or(KucInteractionLocatorError::Missing)?;
+        if duplicate
+            || (!target.disabled && self.ambiguous_bounds.contains(&target.evidence.bounds))
+        {
+            return Err(KucInteractionLocatorError::Ambiguous);
+        }
         if target.disabled {
             return Err(KucInteractionLocatorError::Disabled);
-        }
-        if self.ambiguous_bounds.contains(&target.evidence.bounds) {
-            return Err(KucInteractionLocatorError::Ambiguous);
         }
         let point = center(target.evidence.bounds);
         let modifiers = egui::Modifiers::default();
@@ -223,11 +221,7 @@ impl KucInteractionLocator {
         selector: KucInteractionSelector,
     ) -> Result<KucOpaqueClickContinuation, KucInteractionLocatorError> {
         let request = self.request(selector.clone())?;
-        let event = request
-            .events
-            .into_iter()
-            .next()
-            .ok_or(KucInteractionLocatorError::Missing)?;
+        let event = self.click_event(&selector, OpaqueClickPhase::Aim)?;
         Ok(KucOpaqueClickContinuation {
             root_identity: request.root_identity,
             frame_serial: self.frame_serial,

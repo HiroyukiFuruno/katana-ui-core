@@ -150,6 +150,14 @@ impl UiSurfaceGestureController {
         input: UiSurfaceGestureInput,
         mut callback: impl FnMut(&UiSurfaceGestureEvent) -> UiSurfaceGestureOverride,
     ) -> UiSurfaceGestureOutcome {
+        self.apply_with_override_dyn(input, &mut callback)
+    }
+
+    fn apply_with_override_dyn(
+        &mut self,
+        input: UiSurfaceGestureInput,
+        callback: &mut dyn FnMut(&UiSurfaceGestureEvent) -> UiSurfaceGestureOverride,
+    ) -> UiSurfaceGestureOutcome {
         let mut outcome = self.apply(input);
         let Some(event) = outcome.event.as_ref() else {
             return outcome;

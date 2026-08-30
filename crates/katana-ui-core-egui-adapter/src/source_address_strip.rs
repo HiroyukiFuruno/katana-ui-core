@@ -15,3 +15,7 @@ pub use types::{
     SourceAddressPaintPlan, SourceAddressPaintTexture, SourceAddressRasterEvidenceReceipt,
     SourceAddressRenderStyle, SourceAddressSubmissionForwarder,
 };
+
+#[cfg(test)]
+#[path = "source_address_strip_tests.rs"]
+mod tests;

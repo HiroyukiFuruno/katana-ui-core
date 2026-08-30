@@ -17,7 +17,7 @@ use super::model::{
     TextSurfaceRasterStyle,
 };
 use super::paint::{PaintLayers, build_paint_plan, paint_surface};
-use super::raster::{layout_for_surface, rasterize_placeholder, rasterize_surface};
+use super::raster::{RasterFrame, layout_for_surface, rasterize_placeholder, rasterize_surface};
 use katana_ui_core::render_model::UiRect;
 use katana_ui_core::text_surface::{
     TextSurface, TextSurfaceFocusRequestResult, TextSurfacePoint, TextSurfaceViewportSizing,
@@ -26,6 +26,41 @@ use katana_ui_core::text_surface::{
 mod constructors;
 
 impl EguiTextSurfaceAdapter {
+    fn raster(
+        &mut self,
+        surface: &TextSurface,
+        style: &TextSurfaceRasterStyle,
+        content_width: f32,
+        scale_factor: f32,
+    ) -> Result<RasterFrame, EguiTextSurfaceError> {
+        rasterize_surface(
+            &mut self.rasterizer,
+            surface,
+            style,
+            content_width,
+            scale_factor,
+            raster_identity(surface, style),
+            &self.metrics,
+        )
+    }
+
+    fn gutter(
+        &mut self,
+        frame: &RasterFrame,
+        surface: &TextSurface,
+        style: &TextSurfaceRasterStyle,
+        scale_factor: f32,
+    ) -> Result<u32, EguiTextSurfaceError> {
+        let layout = layout_for_surface(frame, surface, TextSurfacePoint::new(0, 0));
+        controlled_gutter_width(
+            &mut self.rasterizer,
+            &layout,
+            style,
+            scale_factor,
+            &self.metrics,
+        )
+    }
+
     pub(crate) fn request_focus_for_next_frame(&mut self, focused: bool) {
         self.pending_focus_request = Some(focused);
     }
@@ -70,38 +105,17 @@ impl EguiTextSurfaceAdapter {
             .map_or(0, |gutter| gutter.width);
         let mut gutter_width = configured_gutter_width;
         let mut content_width = (surface_width - gutter_width as f32).max(1.0);
-        let mut raster_frame = rasterize_surface(
-            &mut self.rasterizer,
-            surface,
-            raster_style,
-            content_width,
-            scale_factor,
-            raster_identity(surface, raster_style),
-            &self.metrics,
-        )?;
+        let mut raster_frame = self.raster(surface, raster_style, content_width, scale_factor)?;
         if surface.has_controlled_automatic_gutter() {
             for _ in 0..2 {
-                let measured_width = controlled_gutter_width(
-                    &mut self.rasterizer,
-                    &layout_for_surface(&raster_frame, surface, TextSurfacePoint::new(0, 0)),
-                    raster_style,
-                    scale_factor,
-                    &self.metrics,
-                )?;
+                let measured_width =
+                    self.gutter(&raster_frame, surface, raster_style, scale_factor)?;
                 if measured_width == gutter_width {
                     break;
                 }
                 gutter_width = measured_width;
                 content_width = (surface_width - gutter_width as f32).max(1.0);
-                raster_frame = rasterize_surface(
-                    &mut self.rasterizer,
-                    surface,
-                    raster_style,
-                    content_width,
-                    scale_factor,
-                    raster_identity(surface, raster_style),
-                    &self.metrics,
-                )?;
+                raster_frame = self.raster(surface, raster_style, content_width, scale_factor)?;
             }
         }
         let (bounds, response) = ui.allocate_exact_size(
@@ -141,24 +155,11 @@ impl EguiTextSurfaceAdapter {
         if let Some(TextSurfaceFocusRequestResult::Acknowledged(value)) = focus_request.as_ref() {
             self.pending_focus_request = Some(value.focused);
         }
-        let mut raster_frame = rasterize_surface(
-            &mut self.rasterizer,
-            surface,
-            raster_style,
-            content_width,
-            scale_factor,
-            raster_identity(surface, raster_style),
-            &self.metrics,
-        )?;
+        let mut raster_frame = self.raster(surface, raster_style, content_width, scale_factor)?;
         if surface.has_controlled_automatic_gutter() {
             for _ in 0..2 {
-                let measured_width = controlled_gutter_width(
-                    &mut self.rasterizer,
-                    &layout_for_surface(&raster_frame, surface, TextSurfacePoint::new(0, 0)),
-                    raster_style,
-                    scale_factor,
-                    &self.metrics,
-                )?;
+                let measured_width =
+                    self.gutter(&raster_frame, surface, raster_style, scale_factor)?;
                 if measured_width == gutter_width {
                     break;
                 }
@@ -170,15 +171,7 @@ impl EguiTextSurfaceAdapter {
                     surface_bounds.width.saturating_sub(gutter_width),
                     surface_bounds.height,
                 );
-                raster_frame = rasterize_surface(
-                    &mut self.rasterizer,
-                    surface,
-                    raster_style,
-                    content_width,
-                    scale_factor,
-                    raster_identity(surface, raster_style),
-                    &self.metrics,
-                )?;
+                raster_frame = self.raster(surface, raster_style, content_width, scale_factor)?;
             }
         }
         synchronize_scroll_bounds(surface, &raster_frame, viewport_bounds);

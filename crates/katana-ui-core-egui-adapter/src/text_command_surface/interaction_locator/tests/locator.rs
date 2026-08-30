@@ -1,3 +1,6 @@
+use super::super::targets::{
+    TEXT_SURFACE_CONTEXT_TARGET_ID, append_generic_targets, append_text_surface_context_target,
+};
 use super::super::{
     AccessKitEvidence, AccessKitTargetClass, KucInteractionActionClass, KucInteractionLocatorError,
     KucInteractionRequestError, KucInteractionSelector, KucOpaqueInteractionRequest,
@@ -15,6 +18,7 @@ fn request_is_opaque_and_raw_input_is_mutated_once() {
         KUC_LOCATOR_REQUEST_REVISION,
         vec![target("bold", KucInteractionActionClass::Toolbar, false)],
     );
+    assert_eq!(locator.state_revision(), KUC_LOCATOR_REQUEST_REVISION);
     let selector = KucInteractionSelector::new("bold", KucInteractionActionClass::Toolbar);
     let mut request = locator.request(selector).expect("current action");
     let mut input = egui::RawInput::default();
@@ -28,6 +32,23 @@ fn request_is_opaque_and_raw_input_is_mutated_once() {
         Err(KucInteractionRequestError::AlreadyQueued)
     );
     assert_eq!(input.events.len(), REQUEST_EVENT_COUNT_THREE);
+
+    let queued_locator = super::common::locator(
+        "queued-root",
+        KUC_LOCATOR_REQUEST_REVISION,
+        vec![target("queued", KucInteractionActionClass::Toolbar, false)],
+    );
+    let queued_request = queued_locator
+        .request(KucInteractionSelector::new(
+            "queued",
+            KucInteractionActionClass::Toolbar,
+        ))
+        .expect("current queued action");
+    let mut queued_input = egui::RawInput::default();
+    queued_locator
+        .queue_request(queued_request, &mut queued_input)
+        .expect("current request queues through its owner locator");
+    assert_eq!(queued_input.events.len(), REQUEST_EVENT_COUNT_THREE);
 }
 
 #[test]
@@ -146,4 +167,140 @@ fn root_and_revision_mismatch_do_not_mutate_raw_input() {
         Err(KucInteractionRequestError::Stale)
     );
     assert!(input.events.is_empty());
+
+    let stale_correlation = KucOpaqueInteractionRequest {
+        root_identity: "owner".to_owned(),
+        state_revision: KUC_LOCATOR_OWNER_FRAME,
+        correlation_fingerprint: "different-event-batch".to_owned(),
+        events: vec![egui::Event::Copy],
+        queued: false,
+    };
+    assert_eq!(
+        owner.queue_request(stale_correlation, &mut input),
+        Err(KucInteractionRequestError::Stale)
+    );
+    assert!(input.events.is_empty());
+}
+
+#[test]
+fn disabled_context_target_is_retained_and_fails_closed() {
+    let evidence = vec![
+        target(
+            TEXT_SURFACE_CONTEXT_TARGET_ID,
+            KucInteractionActionClass::TextSurfaceContextTarget,
+            true,
+        )
+        .evidence,
+    ];
+    let mut targets = Vec::new();
+    append_text_surface_context_target(&mut targets, &evidence);
+
+    assert_eq!(targets.len(), 1);
+    assert!(targets[0].disabled);
+    assert_eq!(
+        locator("root", KUC_FRAME_STEP_ONE, targets)
+            .request_context_open()
+            .expect_err("disabled context target must not be requested"),
+        KucInteractionLocatorError::Disabled
+    );
+}
+
+#[test]
+fn generic_accesskit_targets_preserve_every_action_class() {
+    let expected = [
+        ("status", KucInteractionActionClass::StatusBarSegment),
+        ("scope", KucInteractionActionClass::DiagnosticsScope),
+        (
+            "severity",
+            KucInteractionActionClass::DiagnosticsSeverityFilter,
+        ),
+        ("diagnostic", KucInteractionActionClass::DiagnosticsItem),
+        ("fix", KucInteractionActionClass::DiagnosticsFix),
+    ];
+    let evidence = expected
+        .iter()
+        .map(|(identity, class)| target(identity, *class, false).evidence)
+        .collect::<Vec<_>>();
+    let mut targets = Vec::new();
+    append_generic_targets(&mut targets, &evidence);
+
+    assert_eq!(targets.len(), expected.len());
+    for (identity, class) in expected {
+        assert!(targets.iter().any(|target| {
+            target.action_identity == identity && target.action_class == class && !target.disabled
+        }));
+    }
+}
+
+#[test]
+fn mismatched_bound_evidence_is_ignored_after_an_actual_surface_frame() {
+    use crate::text_command_surface::{
+        EguiTextCommandSurface, EguiTextCommandSurfaceAdapter, TextCommandSurfaceStyle,
+    };
+    use katana_ui_core::atom::TextArea;
+    use katana_ui_core::molecule::command_chrome::{CommandChromeAction, CommandChromeToolbar};
+    use katana_ui_core::text_surface::{TextSurface, TextSurfaceProps, TextSurfaceViewport};
+
+    let text = TextSurface::new(TextSurfaceProps::new(
+        TextArea::new("locator-evidence").value("locator evidence"),
+        Vec::new(),
+        TextSurfaceViewport::new(0, 0, 320, 180),
+    ));
+    let mut surface =
+        EguiTextCommandSurface::new(text).with_toolbar(CommandChromeToolbar::new().action(
+            CommandChromeAction::new("mismatch-action", "Mismatch action"),
+        ));
+    let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+    )
+    .expect("adapter");
+    let style = TextCommandSurfaceStyle::standard().expect("style");
+    let context = egui::Context::default();
+    let mut output = None;
+    crate::run_ui_discard(
+        &context,
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(320.0, 180.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            output =
+                Some(adapter.show_with_tab_strip(ui, &mut surface, &style, None, None, None, None));
+        },
+    );
+    let mut output = output
+        .expect("actual frame ran")
+        .expect("actual frame output");
+    let actual_evidence = output.accesskit_evidence.clone();
+    assert!(actual_evidence.iter().any(|entry| {
+        entry.target_identity == "mismatch-action"
+            && entry.target_class == AccessKitTargetClass::Toolbar
+    }));
+    let batch = super::super::super::root_event::build_event_batch(&mut output, None)
+        .expect("root event batch");
+    let event_context = batch.current_context();
+    let mismatched = crate::text_command_surface::accesskit_evidence::bind_frame(
+        actual_evidence,
+        "other-root",
+        &event_context,
+    );
+
+    let locator = super::super::KucInteractionLocator::from_output(
+        "root",
+        &event_context,
+        KUC_FRAME_STEP_ONE,
+        &output,
+        &mismatched,
+    );
+
+    assert!(matches!(
+        locator.request(KucInteractionSelector::new(
+            "mismatch-action",
+            KucInteractionActionClass::Toolbar,
+        )),
+        Err(KucInteractionLocatorError::Missing)
+    ));
 }

@@ -16,7 +16,9 @@ pub(super) fn run_frame(
     events: Vec<egui::Event>,
 ) -> Result<CapturedFrame, KucUnicodeColorGlyphEvidenceError> {
     context.enable_accesskit();
-    let mut result = None;
+    let mut result = Err(KucUnicodeColorGlyphEvidenceError::RootTrace(
+        "root frame missing".into(),
+    ));
     let mut full_output = context.run_ui(
         egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
@@ -26,20 +28,25 @@ pub(super) fn run_frame(
             events,
             ..egui::RawInput::default()
         },
-        |ui| result = Some(root.show(ui, style)),
+        |ui| {
+            result = match root.show(ui, style) {
+                Ok(output) => Ok(output),
+                Err(error) => Err(KucUnicodeColorGlyphEvidenceError::RootTrace(
+                    error.to_string(),
+                )),
+            };
+        },
+    );
+    let missing_accesskit_update = KucUnicodeColorGlyphEvidenceError::RootTrace(
+        "retained root did not emit an AccessKit tree update".into(),
     );
     let accesskit_update = full_output.platform_output.accesskit_update.take();
+    let accesskit_update = accesskit_update.ok_or(missing_accesskit_update)?;
     full_output.textures_delta.clear();
-    let output = result
-        .ok_or_else(|| KucUnicodeColorGlyphEvidenceError::RootTrace("root frame missing".into()))?
-        .map_err(|error| KucUnicodeColorGlyphEvidenceError::RootTrace(error.to_string()))?;
+    let output = result?;
     Ok(CapturedFrame {
         output,
-        accesskit_update: accesskit_update.ok_or_else(|| {
-            KucUnicodeColorGlyphEvidenceError::RootTrace(
-                "retained root did not emit an AccessKit tree update".into(),
-            )
-        })?,
+        accesskit_update,
     })
 }
 
@@ -51,3 +58,7 @@ pub(super) fn pointer_button(pos: egui::Pos2, pressed: bool) -> egui::Event {
         modifiers: egui::Modifiers::default(),
     }
 }
+
+#[cfg(test)]
+#[path = "runner_tests.rs"]
+mod tests;

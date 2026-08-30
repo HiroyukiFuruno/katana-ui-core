@@ -15,6 +15,8 @@ RTK := env_var_or_default("RTK", `command -v rtk 2> /dev/null || true`)
 RTK_CMD := if RTK == "" { "" } else { RTK + " " }
 JOBS := env_var_or_default("JOBS", "2")
 CARGO := env_var_or_default("CARGO", RTK_CMD + "cargo")
+COVERAGE_BUILD_JOBS := env_var_or_default("CARGO_BUILD_JOBS", JOBS)
+COVERAGE_TEST_THREADS := env_var_or_default("COVERAGE_TEST_THREADS", "4")
 KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"
 VERSION := env_var_or_default("VERSION", `awk -F '"' '/^version = / { print $2; exit }' Cargo.toml`)
 VERSION_BARE := replace(VERSION, "v", "")
@@ -143,14 +145,29 @@ test: unit-test
 coverage:
     just coverage-container
 
+# Run strict coverage while reusing unchanged coverage build artifacts during iteration.
+coverage-iterate:
+    just coverage-container-iterate
+
 # Run the Linux/Xvfb coverage implementation directly
 coverage-linux:
     CARGO="{{CARGO}}" bash scripts/run-strict-coverage.sh
 
+# Run the Linux/Xvfb iteration path without discarding unchanged coverage build artifacts.
+coverage-linux-iterate:
+    KUC_COVERAGE_REUSE=1 CARGO="{{CARGO}}" bash scripts/run-strict-coverage.sh
+
 # Run strict Linux/Xvfb coverage from macOS or Windows without opening a window
 coverage-container:
+    just _coverage-container-run 0
+
+# Run the containerized iteration path while keeping the final clean gate separate.
+coverage-container-iterate:
+    just _coverage-container-run 1
+
+_coverage-container-run reuse:
     docker build --tag "{{COVERAGE_IMAGE}}" --file scripts/coverage/Dockerfile scripts/coverage
-    docker run --rm --volume "{{REPO_ROOT}}:/source:ro" --volume kuc-coverage-cargo-registry:/usr/local/cargo/registry --volume kuc-coverage-target:/tmp/kuc-target --workdir /source --env CARGO_BUILD_JOBS=1 --env CARGO_INCREMENTAL=0 --env CARGO_TARGET_DIR=/tmp/kuc-target "{{COVERAGE_IMAGE}}" bash scripts/coverage/run-in-container.sh
+    docker run --rm --volume "{{REPO_ROOT}}:/source:ro" --volume kuc-coverage-cargo-registry:/usr/local/cargo/registry --volume kuc-coverage-target:/tmp/kuc-target --workdir /source --env CARGO_BUILD_JOBS="{{COVERAGE_BUILD_JOBS}}" --env CARGO_INCREMENTAL=0 --env CARGO_TARGET_DIR=/tmp/kuc-target --env COVERAGE_TEST_THREADS="{{COVERAGE_TEST_THREADS}}" --env KUC_COVERAGE_REUSE="{{reuse}}" "{{COVERAGE_IMAGE}}" bash scripts/coverage/run-in-container.sh
 
 # Run the local quality gate
 check: fmt-check check-types lint unit-test ast-lint kuc-guardrails overlay-lifecycle-lint menu-button-contract

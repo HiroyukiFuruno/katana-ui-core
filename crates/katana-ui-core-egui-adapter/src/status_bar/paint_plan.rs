@@ -38,3 +38,61 @@ impl EguiStatusBarAdapter {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use katana_ui_core::render_model::UiRect;
+
+    use super::*;
+
+    #[test]
+    fn paint_plan_is_noop_when_missing() {
+        let mut adapter =
+            super::super::adapter::EguiStatusBarAdapter::new("status-paint-plan-noop")
+                .expect("status bar adapter should construct");
+        adapter.last_paint_plan = None;
+        let context = egui::Context::default();
+        let mut output = context.run_ui(egui::RawInput::default(), |ui| {
+            adapter.paint_plan(ui);
+        });
+        output.textures_delta.clear();
+    }
+
+    #[test]
+    fn paint_plan_renders_fill_and_texture_operations() {
+        let mut adapter =
+            super::super::adapter::EguiStatusBarAdapter::new("status-paint-plan-path")
+                .expect("status bar adapter should construct");
+        adapter.last_paint_plan = Some(super::super::types::StatusBarPaintPlan {
+            surface_bounds: UiRect::new(0, 0, 10, 10),
+            operations: vec![
+                super::super::types::StatusBarPaintOperation {
+                    clip_bounds: UiRect::new(0, 0, 10, 10),
+                    kind: StatusBarPaintOperationKind::Fill {
+                        bounds: UiRect::new(0, 0, 10, 10),
+                        color_rgba: [10, 20, 30, 255],
+                    },
+                },
+                super::super::types::StatusBarPaintOperation {
+                    clip_bounds: UiRect::new(0, 0, 10, 10),
+                    kind: StatusBarPaintOperationKind::Texture {
+                        bounds: UiRect::new(1, 1, 2, 2),
+                        texture: super::super::types::StatusBarPaintTexture {
+                            identity: "status-bar-cover-test".to_owned(),
+                            width: 2,
+                            height: 2,
+                            rgba_pixels: vec![
+                                0, 0, 0, 255, 255, 255, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255,
+                            ],
+                        },
+                    },
+                },
+            ],
+        });
+        let context = egui::Context::default();
+        let mut output = context.run_ui(egui::RawInput::default(), |ui| {
+            adapter.paint_plan(ui);
+        });
+        output.textures_delta.clear();
+    }
+}

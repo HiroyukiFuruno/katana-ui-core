@@ -396,6 +396,13 @@ fn diagnostics_filter_preview_empty_and_navigation_boundaries_are_explicit() {
             list.apply_action(action)
         );
     }
+    let options = list.render_snapshot().options;
+    assert_eq!(options.group_by, DiagnosticsGroupBy::Source);
+    assert_eq!(options.sort_by, DiagnosticsSortBy::Location);
+    assert_eq!(
+        options.severity_filter,
+        [DiagnosticSeverity::Error].into_iter().collect()
+    );
 
     assert!(matches!(
         list.apply_action(DiagnosticsListAction::ToggleFixPreview(id("error-a")))

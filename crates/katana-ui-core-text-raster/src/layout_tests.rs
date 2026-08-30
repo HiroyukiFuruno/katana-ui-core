@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     PlatformColorEmojiAvailability, PlatformColorEmojiUnavailableReason,
-    PlatformFontCatalogFingerprint, PlatformFontProfile,
+    PlatformFontCatalogFingerprint, PlatformFontProfile, PlatformTextRasterError,
 };
 
 const TEST_FONT_SIZE_PX: f32 = 16.0;
@@ -39,5 +39,16 @@ fn direct_layout_measure_rejects_empty_text_before_shaping() {
     assert_eq!(
         TextLayoutRasterizer::measure(&mut font_system, &request, &unavailable_emoji_face(),),
         Err(PlatformTextRasterError::EmptyText)
+    );
+}
+
+#[test]
+fn direct_layout_measure_rejects_nonfinite_scale_factor_before_shaping() {
+    let mut font_system = cosmic_text::FontSystem::new();
+    let request = PlatformTextMetricsRequest::from_text("coverage", font(), f32::NAN);
+
+    assert_eq!(
+        TextLayoutRasterizer::measure(&mut font_system, &request, &unavailable_emoji_face(),),
+        Err(PlatformTextRasterError::NonFiniteLayoutExtent)
     );
 }

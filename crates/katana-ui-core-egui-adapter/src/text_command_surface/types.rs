@@ -97,17 +97,30 @@ impl EguiTextCommandSurfaceAdapter {
         let metrics = Rc::new(RefCell::new(
             katana_ui_core_text_raster::PlatformTextMetricsFrame::new(),
         ));
-        Ok(Self {
-            text: EguiTextSurfaceAdapter::with_catalog_and_metrics(
-                Arc::clone(&catalog), config.clone(), Rc::clone(&metrics),
-            )
-            .map_err(EguiTextSurfaceError::from)?,
-            chrome: EguiCommandChromeAdapter::with_catalog_and_metrics(
+        let text = EguiTextSurfaceAdapter::with_catalog_and_metrics(
+            Arc::clone(&catalog),
+            config.clone(),
+            Rc::clone(&metrics),
+        )
+        .map_err(EguiTextSurfaceError::from)?;
+        let chrome = EguiCommandChromeAdapter::with_catalog_and_metrics(
+            Arc::clone(&catalog),
+            config.clone(),
+            UiSvgRasterConfig::default(),
+            Rc::clone(&metrics),
+        )?;
+        let source_address =
+            crate::source_address_strip::EguiSourceAddressStripAdapter::with_catalog_and_metrics(
+                "source-address",
                 Arc::clone(&catalog),
                 config.clone(),
-                UiSvgRasterConfig::default(),
                 Rc::clone(&metrics),
-            )?,
+            )?;
+        let status_bar = EguiStatusBarAdapter::new("root-status-bar")?;
+        let diagnostics_list = EguiDiagnosticsListAdapter::new("root-diagnostics-list")?;
+        Ok(Self {
+            text,
+            chrome,
             catalog: Arc::clone(&catalog),
             text_raster_config: config.clone(),
             floating_selection: None,
@@ -115,12 +128,9 @@ impl EguiTextCommandSurfaceAdapter {
             context_menu: None,
             context_target: None,
             metrics: Rc::clone(&metrics),
-            source_address:
-                crate::source_address_strip::EguiSourceAddressStripAdapter::with_catalog_and_metrics(
-                    "source-address", Arc::clone(&catalog), config, Rc::clone(&metrics),
-                )?,
-            status_bar: EguiStatusBarAdapter::new("root-status-bar")?,
-            diagnostics_list: EguiDiagnosticsListAdapter::new("root-diagnostics-list")?,
+            source_address,
+            status_bar,
+            diagnostics_list,
             preview_texture: None,
         })
     }

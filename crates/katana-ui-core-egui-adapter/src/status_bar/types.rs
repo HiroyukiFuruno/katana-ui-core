@@ -137,3 +137,21 @@ impl std::fmt::Display for EguiStatusBarError {
     }
 }
 impl std::error::Error for EguiStatusBarError {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn status_bar_error_display_and_conversion_cover_all_variants() {
+        let raster_error: EguiStatusBarError = PlatformTextRasterError::EmptyText.into();
+        assert_eq!(
+            raster_error.to_string(),
+            "status-bar raster failed: platform text raster request must not be empty"
+        );
+        assert_eq!(
+            EguiStatusBarError::PaintPlanNotProduced.to_string(),
+            "status-bar did not produce a paint plan"
+        );
+    }
+}

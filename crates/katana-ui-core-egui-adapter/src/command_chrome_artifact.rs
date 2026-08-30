@@ -10,6 +10,10 @@ use katana_ui_core::text_surface::TextSurfaceEvent;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+#[cfg(test)]
+#[path = "command_chrome_artifact_tests.rs"]
+mod tests;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommandChromePaintTexture {
     pub identity: String,

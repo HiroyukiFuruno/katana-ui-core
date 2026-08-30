@@ -606,16 +606,13 @@ exit 0
     fn parse_framemd5_hash_rejects_invalid_value() {
         assert!(super::parse_framemd5_hash("invalid").is_err());
         assert!(super::parse_framemd5_hash("0, 0, 0, 1, 6, 0123456789abc").is_err());
-        match super::parse_framemd5_hash("0, 0, 0, 1, 6, zz0123456789abcdef0123456789abcdef") {
-            Err(error) => {
-                assert!(
-                    error
-                        .to_string()
-                        .contains("decoder emitted an invalid frame hash")
-                );
-            }
-            Ok(hash) => panic!("unexpected valid framemd5 hash: {hash}"),
-        }
+        let error = super::parse_framemd5_hash("0, 0, 0, 1, 6, zz0123456789abcdef0123456789abcdef")
+            .expect_err("non-hex frame hash must fail closed");
+        assert!(
+            error
+                .to_string()
+                .contains("decoder emitted an invalid frame hash")
+        );
     }
 
     #[test]

@@ -1,12 +1,15 @@
 use katana_ui_core::molecule::{
-    ProgressMeterShape, ProgressMeterSpec, StatusBar, StatusBarEvent, StatusBarMode,
-    StatusBarPopoverSpec, StatusBarSegment, StatusBarSegmentAlignment,
+    ProgressMeterShape, ProgressMeterSpec, StatusBar, StatusBarDensity, StatusBarEvent,
+    StatusBarMode, StatusBarPopoverSpec, StatusBarSegment, StatusBarSegmentAlignment,
 };
 use katana_ui_core::render_model::UiTone;
 use katana_ui_core_egui_adapter::artifact_compositor::{
     ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor, ArtifactPaintPlanRef,
 };
-use katana_ui_core_egui_adapter::status_bar::{EguiStatusBarAdapter, StatusBarPaintOperationKind};
+use katana_ui_core_egui_adapter::status_bar::{
+    EguiStatusBarAdapter, StatusBarPaintOperationKind, StatusBarRenderStyle,
+};
+use serde_json::{Value, json};
 
 fn status_bar() -> StatusBar {
     StatusBar::new("文書状態")
@@ -53,6 +56,17 @@ fn frame(
         .ok_or_else(|| "status-bar receipt was not produced".to_owned())?
         .map_err(|error| error.to_string())?;
     Ok((output, receipt.events().to_vec()))
+}
+
+fn with_open_popover(mut status: StatusBar, id: &str) -> Result<StatusBar, String> {
+    let mut serialized: Value = serde_json::to_value(&status).map_err(|error| error.to_string())?;
+    let state = serialized
+        .get_mut("state")
+        .and_then(Value::as_object_mut)
+        .ok_or_else(|| "status-bar state is missing".to_owned())?;
+    state.insert("open_popover".to_owned(), json!(id));
+    status = serde_json::from_value(serialized).map_err(|error| error.to_string())?;
+    Ok(status)
 }
 
 #[test]
@@ -141,6 +155,128 @@ fn accesskit_activation_maps_to_existing_generic_status_action() -> Result<(), S
         }],
         events
     );
+    Ok(())
+}
+
+#[test]
+fn status_bar_single_message_uses_single_message_path_and_rasterizes() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiStatusBarAdapter::new("status-single-message-contract")
+        .map_err(|error| error.to_string())?;
+    let mut status = StatusBar::new("単一メッセージ")
+        .mode(StatusBarMode::SingleMessage)
+        .message("保存が完了しました");
+
+    let (_output, events) = frame(&context, &mut adapter, &mut status, Vec::new())?;
+
+    assert!(events.is_empty());
+    let plan = adapter
+        .artifact_paint_plan()
+        .ok_or_else(|| "status-bar keeps its closed paint plan".to_owned())?;
+    assert!(
+        plan.operations
+            .iter()
+            .any(|operation| matches!(operation.kind, StatusBarPaintOperationKind::Texture { .. }))
+    );
+
+    Ok(())
+}
+
+#[test]
+fn compact_status_bar_uses_the_reduced_public_frame_height() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter =
+        EguiStatusBarAdapter::new("status-compact-contract").map_err(|error| error.to_string())?;
+    let mut status = StatusBar::new("compact")
+        .mode(StatusBarMode::SingleMessage)
+        .density(StatusBarDensity::Compact)
+        .message("ready");
+
+    let _ = frame(&context, &mut adapter, &mut status, Vec::new())?;
+    let plan = adapter
+        .artifact_paint_plan()
+        .ok_or_else(|| "compact status-bar keeps its paint plan".to_owned())?;
+    assert_eq!(
+        plan.surface_bounds.height,
+        StatusBarRenderStyle::standard().height_px.saturating_sub(4)
+    );
+    Ok(())
+}
+
+#[test]
+fn status_bar_center_alignment_path_is_rendered() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter =
+        EguiStatusBarAdapter::new("status-center-contract").map_err(|error| error.to_string())?;
+    let mut status = StatusBar::new("センター")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(
+            StatusBarSegment::new("center", "中央セグメント")
+                .alignment(StatusBarSegmentAlignment::Center),
+        );
+
+    let (_, events) = frame(&context, &mut adapter, &mut status, Vec::new())?;
+    assert!(events.is_empty());
+    let plan = adapter
+        .artifact_paint_plan()
+        .ok_or_else(|| "center status-bar keeps its paint plan".to_owned())?;
+    assert!(
+        plan.operations
+            .iter()
+            .any(|operation| matches!(operation.kind, StatusBarPaintOperationKind::Texture { .. })),
+        "center-aligned rendering must produce a textured segment"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn status_bar_open_popover_id_mismatch_does_not_render_overlay() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiStatusBarAdapter::new("status-popover-missing-contract")
+        .map_err(|error| error.to_string())?;
+    let status = StatusBar::new("状態")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(
+            StatusBarSegment::new("progress", "進捗").alignment(StatusBarSegmentAlignment::Leading),
+        );
+    let mut status = with_open_popover(status, "missing").map_err(|error| error.to_string())?;
+
+    let (_, events) = frame(&context, &mut adapter, &mut status, Vec::new())?;
+    assert!(events.is_empty());
+    let plan = adapter
+        .artifact_paint_plan()
+        .ok_or_else(|| "status-bar keeps paint plan on missing popover".to_owned())?;
+    assert!(!plan
+        .operations
+        .iter()
+        .any(|operation| matches!(&operation.kind, StatusBarPaintOperationKind::Texture { texture, .. } if texture.identity.starts_with("status-bar-overlay:"))));
+
+    Ok(())
+}
+
+#[test]
+fn status_bar_open_popover_without_spec_is_noop() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiStatusBarAdapter::new("status-popover-no-spec-contract")
+        .map_err(|error| error.to_string())?;
+    let status = StatusBar::new("状態")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(
+            StatusBarSegment::new("plain", "説明").alignment(StatusBarSegmentAlignment::Center),
+        );
+    let mut status = with_open_popover(status, "plain").map_err(|error| error.to_string())?;
+
+    let (_, events) = frame(&context, &mut adapter, &mut status, Vec::new())?;
+    assert!(events.is_empty());
+    let plan = adapter
+        .artifact_paint_plan()
+        .ok_or_else(|| "status-bar keeps paint plan on spec-less popover".to_owned())?;
+    assert!(!plan
+        .operations
+        .iter()
+        .any(|operation| matches!(&operation.kind, StatusBarPaintOperationKind::Texture { texture, .. } if texture.identity.starts_with("status-bar-overlay:"))));
+
     Ok(())
 }
 

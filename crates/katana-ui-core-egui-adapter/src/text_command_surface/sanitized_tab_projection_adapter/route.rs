@@ -148,3 +148,7 @@ impl SanitizedTabProjectionRouteTable {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "route_tests.rs"]
+mod coverage_tests;

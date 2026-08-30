@@ -70,6 +70,5 @@ pub(super) fn scalars(text: &str) -> Vec<u32> {
 }
 
 #[cfg(test)]
-#[cfg(test)]
 #[path = "grapheme_tests.rs"]
 mod tests;

@@ -3,7 +3,7 @@ use super::interaction::Interaction;
 use super::raster::Raster;
 use super::types::{
     EguiSourceAddressStripError, EguiSourceAddressStripOutput, SourceAddressFrameEventClass,
-    SourceAddressRenderStyle,
+    SourceAddressPaintPlan, SourceAddressRenderStyle,
 };
 use katana_ui_core::molecule::structured::source_address_strip::{
     SourceAddressAction, SourceAddressEvent, SourceAddressStrip,
@@ -40,6 +40,7 @@ impl EguiSourceAddressStripOutput {
 
 pub(super) fn show_entries(
     adapter: &mut EguiSourceAddressStripAdapter,
+    paint_plan: &mut SourceAddressPaintPlan,
     ui: &mut egui::Ui,
     strip: &mut SourceAddressStrip,
     history: bool,
@@ -72,7 +73,15 @@ pub(super) fn show_entries(
     };
     let mut events = Vec::new();
     for (index, (visible, tooltip, accessibility)) in entries.iter().enumerate() {
-        let button = Raster::raster_button(adapter, ui, visible, tooltip, strip.enabled(), style)?;
+        let button = Raster::raster_button(
+            adapter,
+            paint_plan,
+            ui,
+            visible,
+            tooltip,
+            strip.enabled(),
+            style,
+        )?;
         Interaction::publish_button_accessibility(
             ui,
             button.id,

@@ -21,6 +21,10 @@ use katana_ui_core_egui_adapter::text_command_surface::{
     EguiTextCommandSurfaceRootEventTransport, EguiTextCommandSurfaceRootFactory,
     EguiTextCommandSurfaceRootFactoryError, EguiTextCommandSurfaceSearchPresentation,
     KucOpaqueHostEffectBatch, KucRootEventBatchContext, KucRootEventBatchForwarder,
+    TabStripCorrelation, TabStripGroupCapabilities, TabStripGroupDescriptor,
+    TabStripGroupPopupPresentation, TabStripGroupTarget, TabStripMenuEntry, TabStripMenuOperation,
+    TabStripProjection, TabStripProjectionLease, TabStripTabCapabilities, TabStripTabDescriptor,
+    TabStripTabTarget, TabStripText,
 };
 use katana_ui_core_egui_adapter::text_command_surface::{
     EguiTextCommandSurfacePresentation, TextCommandSurfaceStyle,
@@ -608,6 +612,155 @@ fn family_projection_round_trips_and_distinct_families_render() {
     let _ = root
         .synchronize(legacy)
         .expect("legacy synchronization must preserve compatibility");
+}
+
+#[test]
+fn host_lease_tab_strip_reaches_the_public_root_composite() {
+    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        1,
+        b"host-tab-composite-target",
+        host_context_presentation(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
+    )
+    .expect("host token");
+    let projection = TabStripProjection::new(
+        1,
+        TabStripCorrelation::from_opaque_bytes(b"host-tab-correlation"),
+    )
+    .tab(
+        TabStripTabDescriptor::new(
+            TabStripTabTarget::from_opaque_bytes(b"host-tab"),
+            TabStripText::new("日本語 ⭐️"),
+        )
+        .capabilities(TabStripTabCapabilities::new().active(true).selectable(true)),
+    );
+    let lease =
+        katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceHostProjectionLease::new(
+            token,
+            |_context| Ok(None),
+        )
+        .with_tab_strip(TabStripProjectionLease::new(projection));
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(lease)
+        .expect("tab-strip lease retain");
+    let context = egui::Context::default();
+
+    let frame = host_frame(&context, &mut root, Vec::new());
+
+    assert!(!frame.record().rgba_hash().is_empty());
+    assert!(!frame.record().paint_plan_hash().is_empty());
+}
+
+#[test]
+fn host_tab_strip_group_rename_retains_focus_through_pointer_and_egui_blur() {
+    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        1,
+        b"host-tab-rename-target",
+        host_context_presentation(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
+    )
+    .expect("host token");
+    let projection = TabStripProjection::new(
+        1,
+        TabStripCorrelation::from_opaque_bytes(b"host-tab-rename-correlation"),
+    )
+    .group(
+        TabStripGroupDescriptor::new(
+            TabStripGroupTarget::from_opaque_bytes(b"host-tab-rename-group"),
+            TabStripText::new("Group"),
+        )
+        .capabilities(
+            TabStripGroupCapabilities::new()
+                .menu_available(true)
+                .renamable(true),
+        )
+        .popup(
+            TabStripGroupPopupPresentation::new()
+                .rename_placeholder(TabStripText::new("Group name"))
+                .entry(TabStripMenuEntry::action(
+                    TabStripText::new("Ungroup"),
+                    TabStripText::new("Ungroup tabs"),
+                    TabStripMenuOperation::Ungroup,
+                )),
+        ),
+    );
+    let lease =
+        katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceHostProjectionLease::new(
+            token,
+            |_context| Ok(None),
+        )
+        .with_tab_strip(TabStripProjectionLease::new(projection));
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(lease)
+        .expect("tab-strip lease retain");
+    let context = egui::Context::default();
+
+    let closed = host_frame(&context, &mut root, Vec::new());
+    let closed_hash = closed.record().paint_plan_hash().to_owned();
+    let opened = host_frame(
+        &context,
+        &mut root,
+        vec![
+            egui::Event::PointerMoved(egui::pos2(20.0, 18.0)),
+            egui::Event::PointerButton {
+                pos: egui::pos2(20.0, 18.0),
+                button: egui::PointerButton::Secondary,
+                pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            },
+            egui::Event::PointerButton {
+                pos: egui::pos2(20.0, 18.0),
+                button: egui::PointerButton::Secondary,
+                pressed: false,
+                modifiers: egui::Modifiers::NONE,
+            },
+        ],
+    );
+    assert_ne!(opened.record().paint_plan_hash(), closed_hash);
+
+    let pressed = host_frame(
+        &context,
+        &mut root,
+        vec![
+            egui::Event::PointerMoved(egui::pos2(20.0, 50.0)),
+            egui::Event::PointerButton {
+                pos: egui::pos2(20.0, 50.0),
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            },
+            egui::Event::PointerButton {
+                pos: egui::pos2(20.0, 50.0),
+                button: egui::PointerButton::Primary,
+                pressed: false,
+                modifiers: egui::Modifiers::NONE,
+            },
+        ],
+    );
+    assert!(!pressed.record().paint_plan_hash().is_empty());
+
+    let mut reclaimed = None;
+    let mut full_output = context.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 720.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            ui.memory_mut(|memory| memory.request_focus(egui::Id::new("external-focus-owner")));
+            reclaimed = Some(root.show(ui).expect("host root show after focus transfer"));
+        },
+    );
+    full_output.textures_delta.clear();
+    assert!(
+        !reclaimed
+            .expect("reclaimed host root frame")
+            .record()
+            .paint_plan_hash()
+            .is_empty()
+    );
 }
 
 #[test]

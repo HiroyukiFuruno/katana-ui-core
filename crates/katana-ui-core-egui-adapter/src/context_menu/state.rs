@@ -149,3 +149,78 @@ impl EguiContextMenuAdapter {
         self.vertical_scroll_offset = next_offset.clamp(0.0, maximum);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use katana_ui_core::molecule::selection::{
+        ContextMenuAction, ContextMenuAnchor, ContextMenuSize, ContextMenuViewport,
+    };
+    use katana_ui_core::render_model::UiRect;
+
+    #[test]
+    fn wheel_scroll_only_changes_offset_when_hovered_inside_bounds() {
+        let context = egui::Context::default();
+        let mut adapter = crate::context_menu::EguiContextMenuAdapter::new(
+            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+        )
+        .expect("context menu adapter should initialize");
+        adapter.apply_actions([ContextMenuAction::OpenWithLayout {
+            anchor: ContextMenuAnchor::Pointer { x: 0, y: 0 },
+            menu_size: ContextMenuSize::new(80, 80),
+            viewport: ContextMenuViewport::new(100, 40),
+        }]);
+
+        let has_input = |events: Vec<egui::Event>, adapter: &mut super::EguiContextMenuAdapter| {
+            let mut output = context.run_ui(
+                egui::RawInput {
+                    events,
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(100.0, 40.0),
+                    )),
+                    ..Default::default()
+                },
+                |ui| {
+                    adapter.apply_wheel_scroll(ui, UiRect::new(0, 0, 80, 40), 300);
+                },
+            );
+            output.textures_delta.clear();
+            adapter.vertical_scroll_offset
+        };
+        let mut adapter = adapter;
+        let no_hover = has_input(
+            vec![egui::Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Point,
+                delta: egui::vec2(0.0, 20.0),
+                phase: egui::TouchPhase::Move,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            &mut adapter,
+        );
+        assert_eq!(0.0, no_hover);
+
+        let with_hover = has_input(
+            vec![
+                egui::Event::PointerMoved(egui::pos2(10.0, 10.0)),
+                egui::Event::MouseWheel {
+                    unit: egui::MouseWheelUnit::Point,
+                    delta: egui::vec2(0.0, 20.0),
+                    phase: egui::TouchPhase::Move,
+                    modifiers: egui::Modifiers::NONE,
+                },
+            ],
+            &mut adapter,
+        );
+        assert!(with_hover > 0.0);
+    }
+
+    #[test]
+    fn reveal_keyboard_highlight_keeps_offset_when_highlight_missing() {
+        let mut adapter = crate::context_menu::EguiContextMenuAdapter::new(
+            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+        )
+        .expect("context menu adapter should initialize");
+        adapter.reveal_keyboard_highlight(UiRect::new(0, 0, 100, 40), 120, 0);
+        assert_eq!(0.0, adapter.vertical_scroll_offset);
+    }
+}

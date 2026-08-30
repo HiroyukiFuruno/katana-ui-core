@@ -35,12 +35,7 @@ impl EguiTextCommandSurfaceAdapter {
             });
         }
         super::accesskit_evidence::begin_frame(ui.ctx());
-        self.metrics
-            .borrow_mut()
-            .begin(ui.ctx().pixels_per_point())
-            .map_err(|error| {
-                EguiTextCommandSurfaceError::Text(EguiTextSurfaceError::from(error))
-            })?;
+        begin_metrics_frame(self, ui.ctx().pixels_per_point())?;
         let root = ui.available_rect_before_wrap();
         let source_address_height = if surface.source_address.is_some() {
             SOURCE_ADDRESS_HEIGHT_PX
@@ -127,18 +122,23 @@ impl EguiTextCommandSurfaceAdapter {
                 state.show(&mut child)
             })
             .transpose()?;
-        let source_address = surface
-            .source_address
-            .as_mut()
-            .map(|strip| {
-                let mut child = ui.new_child(egui::UiBuilder::new().max_rect(source_address_rect));
-                self.source_address.show(&mut child, strip)
-            })
-            .transpose()?;
-        let source_address_paint_plan = source_address
-            .as_ref()
-            .map(|_| self.source_address.required_paint_plan())
-            .transpose()?;
+        let source_address =
+            surface
+                .source_address
+                .as_mut()
+                .map(
+                    |strip| -> Result<
+                        super::types::SourceAddressRootOutput,
+                        EguiTextCommandSurfaceError,
+                    > {
+                        let mut child =
+                            ui.new_child(egui::UiBuilder::new().max_rect(source_address_rect));
+                        let output = self.source_address.show(&mut child, strip)?;
+                        let paint_plan = self.source_address.required_paint_plan()?;
+                        Ok(super::types::SourceAddressRootOutput { output, paint_plan })
+                    },
+                )
+                .transpose()?;
         let toolbar = surface
             .toolbar
             .as_mut()
@@ -148,8 +148,6 @@ impl EguiTextCommandSurfaceAdapter {
                 })
             })
             .transpose()?;
-        #[cfg(test)]
-        let mut toolbar = toolbar;
         /* WHY: Evaluate focused search controls before the body so one RawInput text event
         cannot be dispatched to both retained children in the same root frame. */
         let search = search_visible
@@ -234,8 +232,6 @@ impl EguiTextCommandSurfaceAdapter {
             })
             .transpose()?;
         let context_menu = self.show_context_menu(ui, surface, &text, style)?;
-        #[cfg(test)]
-        tests::inject_same_bounds_test_overlay(ui, toolbar.as_mut(), &mut self.chrome, style)?;
         if context_menu.as_ref().is_some_and(|output| {
             output.events.iter().any(|event| {
                 matches!(
@@ -275,16 +271,7 @@ impl EguiTextCommandSurfaceAdapter {
             floating,
             search,
             context_menu,
-            source_address: match (source_address, source_address_paint_plan) {
-                (Some(output), Some(paint_plan)) => {
-                    Some(super::types::SourceAddressRootOutput { output, paint_plan })
-                }
-                (None, None) => None,
-                _ => return Err(
-                    crate::source_address_strip::EguiSourceAddressStripError::PaintPlanNotProduced
-                        .into(),
-                ),
-            },
+            source_address,
             accesskit_evidence: super::accesskit_evidence::finish_frame(ui.ctx()),
             ordered_artifacts: Vec::new(),
             status_bar,
@@ -305,6 +292,17 @@ mod helpers;
 #[cfg(test)]
 #[path = "composition_tests.rs"]
 mod tests;
+
+fn begin_metrics_frame(
+    adapter: &EguiTextCommandSurfaceAdapter,
+    pixels_per_point: f32,
+) -> Result<(), EguiTextCommandSurfaceError> {
+    adapter
+        .metrics
+        .borrow_mut()
+        .begin(pixels_per_point)
+        .map_err(|error| EguiTextCommandSurfaceError::Text(EguiTextSurfaceError::from(error)))
+}
 
 fn selection_for(surface: &EguiTextCommandSurface) -> (usize, usize) {
     (

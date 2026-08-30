@@ -12,9 +12,13 @@ use katana_ui_core::molecule::command_chrome::{
 };
 use katana_ui_core::render_model::UiRect;
 
+#[cfg(test)]
+#[path = "command_chrome_dropdown_tests.rs"]
+mod tests;
+
 const MENU_ROW_PADDING_PX: u32 = 8;
 
-struct RenderedDropdownItem {
+pub(super) struct RenderedDropdownItem {
     item: katana_ui_core::molecule::command_chrome::CommandChromeDropdownItem,
     rendered: RenderedAction,
 }
@@ -30,13 +34,16 @@ pub(super) fn dropdown_layout(
     trigger_bounds: UiRect,
     dropdown: &CommandChromeDropdown,
     style: &CommandChromeRasterStyle,
-) -> Result<CommandChromeDropdownLayout, EguiCommandChromeError> {
+) -> Result<(CommandChromeDropdownLayout, Vec<RenderedDropdownItem>), EguiCommandChromeError> {
     let rendered = render_dropdown_items(adapter, ui, dropdown, style)?;
     let size = dropdown_size(&rendered);
-    Ok(CommandChromeDropdownLayout::new(
-        placement_rect(trigger_bounds),
-        placement_rect(ui_rect(ui.ctx().content_rect())),
-        size,
+    Ok((
+        CommandChromeDropdownLayout::new(
+            placement_rect(trigger_bounds),
+            placement_rect(ui_rect(ui.ctx().content_rect())),
+            size,
+        ),
+        rendered,
     ))
 }
 
@@ -45,23 +52,24 @@ pub(super) fn show_dropdown(
     ui: &mut egui::Ui,
     toolbar: &mut CommandChromeToolbar,
     toolbar_bounds: UiRect,
-    raster_style: &CommandChromeRasterStyle,
+    prepared_dropdowns: &[(String, Vec<RenderedDropdownItem>)],
     paint_style: &CommandChromePaintStyle,
     events: &mut Vec<CommandChromeToolbarEvent>,
-) -> Result<Option<DropdownPresentation>, EguiCommandChromeError> {
-    let Some(open) = toolbar.open_dropdown_model().cloned() else {
-        return Ok(None);
-    };
-    let Some(dropdown) = toolbar
+) -> Option<DropdownPresentation> {
+    let open = toolbar.open_dropdown_model().cloned()?;
+    let has_dropdown = toolbar
         .actions()
         .iter()
         .find(|action| action.id() == open.action_id())
         .and_then(|action| action.dropdown_model())
-        .cloned()
-    else {
-        return Ok(None);
-    };
-    let rendered = render_dropdown_items(adapter, ui, &dropdown, raster_style)?;
+        .is_some();
+    if !has_dropdown {
+        return None;
+    }
+    let rendered = prepared_dropdowns
+        .iter()
+        .find(|(action_id, _)| action_id == open.action_id().as_str())
+        .map(|(_, rendered)| rendered.as_slice())?;
     let bounds = ui_rect_from_placement(open.bounds());
     let menu_rect = egui_rect(bounds);
     let menu_id = ui
@@ -147,7 +155,7 @@ pub(super) fn show_dropdown(
             reason: katana_ui_core::molecule::command_chrome::CommandChromeDropdownCloseReason::OutsideClick,
         }));
     }
-    Ok(Some(DropdownPresentation {
+    Some(DropdownPresentation {
         record: EguiCommandChromeDropdownFrame {
             action_id: open.action_id().as_str().to_string(),
             trigger_bounds: ui_rect_from_placement(open.trigger_bounds()),
@@ -155,7 +163,7 @@ pub(super) fn show_dropdown(
             items,
         },
         paint: DropdownPaintSource::new(bounds, paint_style.action_rgba, paint_sources),
-    }))
+    })
 }
 
 fn pointer_button_in(ui: &egui::Ui, bounds: egui::Rect, pressed: bool) -> bool {
@@ -177,10 +185,15 @@ fn render_dropdown_items(
         .iter()
         .cloned()
         .map(|item| {
-            let icon = item
-                .icon_model()
-                .map(|icon| adapter.raster_icon(icon, style, ui.ctx().pixels_per_point()))
-                .transpose()?;
+            let (icon, icon_identity) = match item.icon_model() {
+                Some(icon_model) => {
+                    let raster =
+                        adapter.raster_icon(icon_model, style, ui.ctx().pixels_per_point())?;
+                    let identity = raster.identity.clone();
+                    (Some(raster), Some(identity))
+                }
+                None => (None, None),
+            };
             let label =
                 adapter.raster_label(item.label_model(), style, ui.ctx().pixels_per_point())?;
             let width = icon
@@ -196,7 +209,7 @@ fn render_dropdown_items(
             Ok(RenderedDropdownItem {
                 rendered: RenderedAction {
                     bounds: UiRect::new(0, 0, width.max(1), height.max(1)),
-                    icon_identity: icon.as_ref().map(|raster| raster.identity.clone()),
+                    icon_identity,
                     label_identity: Some(label.identity.clone()),
                     icon,
                     label: Some(label),
