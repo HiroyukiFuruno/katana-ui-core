@@ -48,7 +48,9 @@ pub(super) fn compose(
         }
     }
     let non_transparent_pixel_count = rgba_pixels
-        .chunks_exact(RGBA_CHANNELS)
+        .as_chunks::<RGBA_CHANNELS>()
+        .0
+        .iter()
         .filter(|pixel| pixel[RGBA_CHANNELS - 1] != 0)
         .count();
     Ok(ArtifactCompositeFrame {
