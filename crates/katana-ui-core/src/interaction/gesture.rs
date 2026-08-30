@@ -77,26 +77,27 @@ impl UiSurfaceGestureController {
             UiSurfaceGestureInput::PointerUp {
                 pointer_id,
                 position,
-            } => {
-                let Some(active) = self
-                    .active_pointer
-                    .take()
-                    .filter(|value| value.pointer_id == pointer_id)
-                else {
-                    return UiSurfaceGestureOutcome::unhandled(
-                        self.hit_target(position)
-                            .map(|surface| surface.target.clone()),
-                    );
-                };
-                handled(
-                    active.target,
-                    UiSurfaceGestureInput::PointerUp {
-                        pointer_id,
-                        position,
+            } => self
+                .active_pointer
+                .take_if(|value| value.pointer_id == pointer_id)
+                .map_or_else(
+                    || {
+                        let target = self
+                            .hit_target(position)
+                            .map(|surface| surface.target.clone());
+                        UiSurfaceGestureOutcome::unhandled(target)
                     },
-                    None,
-                )
-            }
+                    |active| {
+                        handled(
+                            active.target,
+                            UiSurfaceGestureInput::PointerUp {
+                                pointer_id,
+                                position,
+                            },
+                            None,
+                        )
+                    },
+                ),
             UiSurfaceGestureInput::SmoothScroll {
                 position,
                 delta_x,
@@ -368,11 +369,22 @@ mod tests {
             position: UiSurfacePoint::new(38, 37),
         });
         assert!(!stale_up.captured);
+        let continued = controller.apply(UiSurfaceGestureInput::PointerMove {
+            pointer_id: 3,
+            position: UiSurfacePoint::new(39, 38),
+        });
+        assert_eq!(
+            continued.command,
+            Some(UiSurfaceGestureCommand::PanBy {
+                delta_x: 1.0,
+                delta_y: 1.0
+            })
+        );
         let released = controller.apply(UiSurfaceGestureInput::PointerUp {
             pointer_id: 3,
-            position: UiSurfacePoint::new(38, 37),
+            position: UiSurfacePoint::new(39, 38),
         });
-        assert!(!released.captured);
+        assert!(released.captured);
     }
 
     #[test]
