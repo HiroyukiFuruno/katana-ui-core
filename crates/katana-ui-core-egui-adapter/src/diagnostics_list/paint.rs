@@ -91,12 +91,13 @@ impl EguiDiagnosticsListAdapter {
             scale_factor: scale,
         })?;
         let pixels: Vec<u8> = raster.rgba_pixels.iter().flatten().copied().collect();
+        let pixel_hash = hex::encode(Sha256::digest(&pixels));
         self.raster_evidence.push(DiagnosticsListRasterEvidence {
             text: text.to_string(),
             width: raster.width as u32,
             height: raster.height as u32,
             chromatic_pixel_count: raster.chromatic_pixel_count(),
-            sha256: hex::encode(Sha256::digest(&pixels)),
+            sha256: pixel_hash.clone(),
         });
         let image = egui::Rect::from_min_size(
             bounds.left_top() + egui::vec2(DIAGNOSTICS_SMALL_INSET, DIAGNOSTICS_SMALL_INSET),
@@ -107,10 +108,7 @@ impl EguiDiagnosticsListAdapter {
             kind: DiagnosticsListPaintOperationKind::Texture {
                 bounds: DiagnosticsPaint::ui_rect(image),
                 texture: DiagnosticsListPaintTexture {
-                    identity: format!(
-                        concat!("diagnostics-text:", "{}"),
-                        hex::encode(Sha256::digest(text.as_bytes()))
-                    ),
+                    identity: format!(concat!("diagnostics-text:", "{}"), pixel_hash),
                     width: raster.width as u32,
                     height: raster.height as u32,
                     rgba_pixels: pixels,

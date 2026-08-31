@@ -469,6 +469,67 @@ fn frame_at_pointer(
     frame(context, adapter, diagnostics, events)
 }
 
+fn frame_with_raster_surface(
+    context: &egui::Context,
+    adapter: &mut EguiDiagnosticsListAdapter,
+    diagnostics: &mut DiagnosticsList,
+    width: f32,
+    scale: f32,
+) -> Result<bool, String> {
+    let mut show_error = None;
+    let mut input = egui::RawInput {
+        screen_rect: Some(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(width, 240.0),
+        )),
+        ..egui::RawInput::default()
+    };
+    input.viewports.insert(
+        egui::ViewportId::ROOT,
+        egui::ViewportInfo {
+            native_pixels_per_point: Some(scale),
+            ..egui::ViewportInfo::default()
+        },
+    );
+    let mut output = context.run_ui(input, |ctx| {
+        egui::CentralPanel::default().show(ctx, |ui| {
+            if let Err(error) = adapter.show(ui, diagnostics) {
+                show_error = Some(error.to_string());
+            }
+        });
+    });
+    let emitted_textures = !output.textures_delta.set.is_empty();
+    output.textures_delta.clear();
+    show_error.map_or_else(|| Ok(emitted_textures), Err)
+}
+
+fn texture_identity_for_raster(
+    adapter: &EguiDiagnosticsListAdapter,
+    text: &str,
+) -> Result<String, String> {
+    let pixel_hash = adapter
+        .raster_evidence()
+        .iter()
+        .find(|evidence| evidence.text == text)
+        .map(|evidence| evidence.sha256.as_str())
+        .ok_or_else(|| format!("missing raster evidence for `{text}`"))?;
+    let identity = format!("diagnostics-text:{pixel_hash}");
+    adapter
+        .artifact_paint_plan()
+        .into_iter()
+        .flat_map(|plan| plan.operations.iter())
+        .find_map(|operation| match &operation.kind {
+            DiagnosticsListPaintOperationKind::Texture { texture, .. }
+                if texture.identity == identity =>
+            {
+                Some(texture.identity.clone())
+            }
+            DiagnosticsListPaintOperationKind::Fill { .. }
+            | DiagnosticsListPaintOperationKind::Texture { .. } => None,
+        })
+        .ok_or_else(|| format!("missing texture for raster identity `{identity}`"))
+}
+
 #[test]
 fn raster_plan_contains_japanese_emoji_location_and_quickfix_without_labels() -> Result<(), String>
 {
@@ -506,6 +567,38 @@ fn raster_plan_contains_japanese_emoji_location_and_quickfix_without_labels() ->
         format!("diagnostics plan composes through the KUC artifact compositor: {error}")
     })?;
     assert!(composed.non_transparent_pixel_count > 0);
+    Ok(())
+}
+
+#[test]
+fn retained_diagnostics_textures_reuse_equal_pixels_and_refresh_for_scale_and_width()
+-> Result<(), String> {
+    let text = "同じ診断テキストを長い幅制約で rasterize し、保持 texture の更新を検証します ⭐️";
+    let context = egui::Context::default();
+    let mut adapter = EguiDiagnosticsListAdapter::new("diagnostics-retained-raster")
+        .map_err(|error| error.to_string())?;
+    let mut diagnostics = DiagnosticsList::new(text);
+
+    let initial = frame_with_raster_surface(&context, &mut adapter, &mut diagnostics, 420.0, 1.0)?;
+    let initial_identity = texture_identity_for_raster(&adapter, text)?;
+    assert!(initial);
+
+    let reused = frame_with_raster_surface(&context, &mut adapter, &mut diagnostics, 420.0, 1.0)?;
+    assert_eq!(
+        initial_identity,
+        texture_identity_for_raster(&adapter, text)?
+    );
+    assert!(!reused);
+
+    let scaled = frame_with_raster_surface(&context, &mut adapter, &mut diagnostics, 420.0, 2.0)?;
+    let scaled_identity = texture_identity_for_raster(&adapter, text)?;
+    assert_ne!(initial_identity, scaled_identity);
+    assert!(scaled);
+
+    let narrowed = frame_with_raster_surface(&context, &mut adapter, &mut diagnostics, 96.0, 1.0)?;
+    let narrowed_identity = texture_identity_for_raster(&adapter, text)?;
+    assert_ne!(initial_identity, narrowed_identity);
+    assert!(narrowed);
     Ok(())
 }
 

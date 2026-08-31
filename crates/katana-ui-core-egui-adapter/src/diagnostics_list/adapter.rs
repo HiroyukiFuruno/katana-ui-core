@@ -18,6 +18,10 @@ mod render;
 #[path = "adapter/interaction_boundary_tests.rs"]
 mod interaction_boundary_tests;
 
+#[cfg(test)]
+#[path = "adapter/texture_identity_tests.rs"]
+mod texture_identity_tests;
+
 pub(super) struct DiagnosticsRenderLayout<'a> {
     pub(super) style: &'a DiagnosticsListStyle,
     pub(super) surface: egui::Rect,
