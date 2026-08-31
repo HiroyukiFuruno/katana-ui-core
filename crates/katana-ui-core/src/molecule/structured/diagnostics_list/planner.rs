@@ -1,6 +1,6 @@
 use super::{
-    DiagnosticId, DiagnosticItem, DiagnosticSeverity, DiagnosticsGroupBy, DiagnosticsListOptions,
-    DiagnosticsSortBy,
+    DiagnosticId, DiagnosticItem, DiagnosticScopeKey, DiagnosticSeverity, DiagnosticsGroupBy,
+    DiagnosticsListOptions, DiagnosticsSortBy,
 };
 use serde::{Deserialize, Serialize};
 
@@ -37,6 +37,21 @@ impl DiagnosticsListPlanner {
     }
 
     #[must_use]
+    pub fn snapshot_for_scope(
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+        scope_key: Option<&DiagnosticScopeKey>,
+    ) -> DiagnosticsVisibleSnapshot {
+        let visible = Self::visible_items_for_scope(items, options, scope_key);
+        let visible_ids = visible.iter().map(|it| it.id.clone()).collect::<Vec<_>>();
+        DiagnosticsVisibleSnapshot {
+            groups: Self::groups(&visible, options.group_by),
+            total_count: visible_ids.len(),
+            visible_ids,
+        }
+    }
+
+    #[must_use]
     pub fn visible_items<'a>(
         items: &'a [DiagnosticItem],
         options: &DiagnosticsListOptions,
@@ -44,6 +59,23 @@ impl DiagnosticsListPlanner {
         let mut visible = items
             .iter()
             .filter(|it| options.severity_filter.contains(&it.severity))
+            .collect::<Vec<_>>();
+        Self::sort(&mut visible, options.sort_by);
+        visible
+    }
+
+    #[must_use]
+    pub fn visible_items_for_scope<'a>(
+        items: &'a [DiagnosticItem],
+        options: &DiagnosticsListOptions,
+        scope_key: Option<&DiagnosticScopeKey>,
+    ) -> Vec<&'a DiagnosticItem> {
+        let mut visible = items
+            .iter()
+            .filter(|item| {
+                options.severity_filter.contains(&item.severity)
+                    && scope_key.is_none_or(|key| item.scope_keys.contains(key))
+            })
             .collect::<Vec<_>>();
         Self::sort(&mut visible, options.sort_by);
         visible

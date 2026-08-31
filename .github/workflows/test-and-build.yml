@@ -137,5 +137,8 @@ jobs:
         run: just storybook-check
 
       - name: Run coverage
-        if: matrix.os == 'ubuntu-latest'
+        # WHY: release PR は release-preflight の release-check が同じ strict coverage を実行する。
+        if: >-
+          matrix.os == 'ubuntu-latest' &&
+          !startsWith(github.head_ref, 'release/v')
         run: just coverage

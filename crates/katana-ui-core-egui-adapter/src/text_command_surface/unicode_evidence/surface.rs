@@ -29,16 +29,17 @@ pub(super) fn evidence_surface() -> TextSurface {
 }
 
 pub(super) fn explicit_spans(text: &str) -> Vec<UiTextSpan> {
-    let mut spans = Vec::new();
-    for range in PlatformTextGraphemeRange::ranges(text) {
-        let grapheme = &text[range.byte_start..range.byte_end];
-        if grapheme == super::constants::STAR_TEXT || grapheme == super::constants::ZWJ_TEXT {
-            spans.push(UiTextSpan::emoji(grapheme));
-        } else {
-            spans.push(UiTextSpan::plain(grapheme));
-        }
-    }
-    spans
+    PlatformTextGraphemeRange::ranges(text)
+        .into_iter()
+        .map(|range| {
+            let grapheme = &text[range.byte_start..range.byte_end];
+            if grapheme == super::constants::STAR_TEXT || grapheme == super::constants::ZWJ_TEXT {
+                UiTextSpan::emoji(grapheme)
+            } else {
+                UiTextSpan::plain(grapheme)
+            }
+        })
+        .collect()
 }
 
 pub(super) fn trace_style() -> TextCommandSurfaceStyle {
@@ -104,3 +105,7 @@ pub(super) fn trace_style() -> TextCommandSurfaceStyle {
         },
     }
 }
+
+#[cfg(test)]
+#[path = "surface_tests.rs"]
+mod tests;

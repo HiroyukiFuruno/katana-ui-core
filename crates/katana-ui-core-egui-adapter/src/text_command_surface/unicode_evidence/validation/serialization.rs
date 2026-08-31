@@ -11,8 +11,9 @@ pub(super) fn hash_pixels(pixels: &[[u8; RGBA_CHANNEL_COUNT]]) -> String {
 pub(super) fn canonical_hash(
     artifact: &KucUnicodeColorGlyphEvidence,
 ) -> Result<String, KucUnicodeColorGlyphEvidenceError> {
-    let bytes = serde_json::to_vec(artifact).map_err(serialization_error)?;
-    Ok(hex::encode(Sha256::digest(bytes)))
+    serde_json::to_vec(artifact)
+        .map(|bytes| hex::encode(Sha256::digest(bytes)))
+        .map_err(serialization_error)
 }
 
 fn serialization_error(error: serde_json::Error) -> KucUnicodeColorGlyphEvidenceError {
@@ -20,15 +21,5 @@ fn serialization_error(error: serde_json::Error) -> KucUnicodeColorGlyphEvidence
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn evidence_serialization_errors_map_to_the_typed_error() {
-        let result = serde_json::from_slice::<serde_json::Value>(b"").map_err(serialization_error);
-        assert!(matches!(
-            result,
-            Err(KucUnicodeColorGlyphEvidenceError::Serialization(_))
-        ));
-    }
-}
+#[path = "serialization_tests.rs"]
+mod serialization_tests;

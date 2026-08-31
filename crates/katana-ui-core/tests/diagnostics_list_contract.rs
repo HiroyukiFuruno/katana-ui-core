@@ -129,12 +129,12 @@ fn expanded_fix_preview_renders_code_diff_with_distinct_state() {
 }
 
 #[test]
-fn open_bulk_preview_renders_modal_overlay_with_typed_event() {
+fn bulk_preview_renders_then_closes_after_typed_confirmation() {
     let mut list = DiagnosticsList::new("Diagnostics")
         .item(item_with_fix("error-a"))
         .bulk_preview(ModalOverlay::new("Bulk fix preview").child(Text::new("Apply safe fixes")));
     let events = list.apply_action(DiagnosticsListAction::OpenBulkPreview);
-    let tree = UiTree::new(list);
+    let tree = UiTree::new(list.clone());
 
     assert!(matches!(
         events.as_slice(),
@@ -145,6 +145,21 @@ fn open_bulk_preview_renders_modal_overlay_with_typed_event() {
             .children()
             .iter()
             .any(|it| it.kind() == UiNodeKind::ModalOverlay)
+    );
+
+    let events = list.apply_action(DiagnosticsListAction::ConfirmBulkApply);
+    let tree = UiTree::new(list.clone());
+
+    assert!(matches!(
+        events.as_slice(),
+        [DiagnosticsListEvent::BulkFixApplied { .. }]
+    ));
+    assert!(!list.render_snapshot().state.bulk_preview_open);
+    assert!(
+        tree.root()
+            .children()
+            .iter()
+            .all(|it| it.kind() != UiNodeKind::ModalOverlay)
     );
 }
 
@@ -396,6 +411,13 @@ fn diagnostics_filter_preview_empty_and_navigation_boundaries_are_explicit() {
             list.apply_action(action)
         );
     }
+    let options = list.render_snapshot().options;
+    assert_eq!(options.group_by, DiagnosticsGroupBy::Source);
+    assert_eq!(options.sort_by, DiagnosticsSortBy::Location);
+    assert_eq!(
+        options.severity_filter,
+        [DiagnosticSeverity::Error].into_iter().collect()
+    );
 
     assert!(matches!(
         list.apply_action(DiagnosticsListAction::ToggleFixPreview(id("error-a")))

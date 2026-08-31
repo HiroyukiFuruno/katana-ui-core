@@ -12,7 +12,9 @@ use super::model::{
     KucUnicodeColorGlyphEvidenceInput, KucUnicodeColorGlyphEvidenceProfileArtifact,
 };
 use super::types::KucUnicodeColorGlyphEvidenceError;
-pub(super) use super::validation_types::KucUnicodeColorGlyphEvidenceBuilder;
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct KucUnicodeColorGlyphEvidenceBuilder;
 
 impl KucUnicodeColorGlyphEvidenceBuilder {
     pub fn build(
@@ -24,9 +26,19 @@ impl KucUnicodeColorGlyphEvidenceBuilder {
         let control_range =
             grapheme::required_range(&input.final_text, CONTROL_STAR_TEXT, &ranges)?;
         let zwj_range = grapheme::required_range(&input.final_text, ZWJ_TEXT, &ranges)?;
-        validate_ime_scalars(&input)?;
+        grapheme::validate_scalar_sequence(
+            &input.ime.preedit_scalars,
+            IME_PREEDIT_TEXT,
+            &grapheme::scalars(IME_PREEDIT_TEXT),
+        )?;
+        grapheme::validate_scalar_sequence(
+            &input.ime.commit_scalars,
+            IME_COMMIT_TEXT,
+            &grapheme::scalars(IME_COMMIT_TEXT),
+        )?;
         validate_ime_events(&input)?;
         validate_caret(&input)?;
+        validate_accesskit_node(&input)?;
         crop::validate_hit_test(&input.hit_tests, "star", star_range)?;
         crop::validate_hit_test(&input.hit_tests, "control_star", control_range)?;
         crop::validate_hit_test(&input.hit_tests, "zwj", zwj_range)?;
@@ -38,6 +50,7 @@ impl KucUnicodeColorGlyphEvidenceBuilder {
         let profile_id = input.profile.as_str().to_string();
         let catalog_fingerprint = input.catalog_policy.fingerprint().to_hex();
         let face = catalog::face_artifact(&input, &profile_id, &catalog_fingerprint)?;
+        let accesskit_text_input = accesskit_artifact(&input)?;
         let mut artifact = KucUnicodeColorGlyphEvidence {
             schema: UNICODE_EVIDENCE_SCHEMA.to_string(),
             schema_version: UNICODE_EVIDENCE_SCHEMA_VERSION,
@@ -59,6 +72,7 @@ impl KucUnicodeColorGlyphEvidenceBuilder {
             hit_tests: input.hit_tests.into_iter().map(hit_test_artifact).collect(),
             star,
             control_star,
+            accesskit_text_input,
             chromatic_pixel_delta,
             accesskit_text_snapshot_hash: input.accesskit_text_snapshot_hash,
             root_frame_hash: input.root_frame_hash,
@@ -71,19 +85,58 @@ impl KucUnicodeColorGlyphEvidenceBuilder {
     }
 }
 
-fn validate_ime_scalars(
+fn validate_accesskit_node(
     input: &KucUnicodeColorGlyphEvidenceInput,
 ) -> Result<(), KucUnicodeColorGlyphEvidenceError> {
-    grapheme::validate_scalar_sequence(
-        &input.ime.preedit_scalars,
-        IME_PREEDIT_TEXT,
-        &grapheme::scalars(IME_PREEDIT_TEXT),
-    )?;
-    grapheme::validate_scalar_sequence(
-        &input.ime.commit_scalars,
-        IME_COMMIT_TEXT,
-        &grapheme::scalars(IME_COMMIT_TEXT),
-    )
+    let node = input
+        .accesskit_text_input
+        .as_ref()
+        .ok_or(KucUnicodeColorGlyphEvidenceError::MissingAccessKitNode)?;
+    if node.node_id.is_empty()
+        || node.value.is_empty()
+        || node.bounds.width == 0
+        || node.bounds.height == 0
+    {
+        return Err(KucUnicodeColorGlyphEvidenceError::InvalidAccessKitNode {
+            reason: "node id, value, and positive bounds are required",
+        });
+    }
+    let expected_role = "MultilineTextInput";
+    if node.role != expected_role {
+        return Err(KucUnicodeColorGlyphEvidenceError::AccessKitRoleMismatch {
+            expected: expected_role.to_string(),
+            actual: node.role.clone(),
+        });
+    }
+    if node.value != input.final_text {
+        return Err(KucUnicodeColorGlyphEvidenceError::AccessKitValueMismatch);
+    }
+    let expected = node.value.chars().map(u32::from).collect::<Vec<_>>();
+    if node.scalar_sequence != expected {
+        return Err(
+            KucUnicodeColorGlyphEvidenceError::AccessKitScalarSequenceMismatch {
+                expected,
+                actual: node.scalar_sequence.clone(),
+            },
+        );
+    }
+    Ok(())
+}
+
+fn accesskit_artifact(
+    input: &KucUnicodeColorGlyphEvidenceInput,
+) -> Result<super::model::KucAccessKitNodeArtifact, KucUnicodeColorGlyphEvidenceError> {
+    let node = input
+        .accesskit_text_input
+        .as_ref()
+        .ok_or(KucUnicodeColorGlyphEvidenceError::MissingAccessKitNode)?;
+    Ok(super::model::KucAccessKitNodeArtifact {
+        node_id: node.node_id.clone(),
+        role: node.role.clone(),
+        value: node.value.clone(),
+        scalar_sequence: node.scalar_sequence.clone(),
+        bounds: node.bounds,
+    })
 }
 
 fn validate_ime_events(
@@ -158,119 +211,5 @@ fn hit_test_artifact(hit: super::model::KucHitTestObservation) -> super::model::
 }
 
 #[cfg(test)]
-mod tests {
-    use super::super::model::{
-        KucBounds, KucCaretObservation, KucHitTestObservation, KucImeTraceEvidence,
-        KucRgbaCropEvidence,
-    };
-    use super::*;
-    use katana_ui_core_text_raster::{
-        PlatformColorEmojiAvailability, PlatformColorEmojiFaceRecord,
-        PlatformFontCatalogFingerprint, PlatformFontCatalogPolicy, PlatformFontProfile,
-    };
-
-    fn input() -> KucUnicodeColorGlyphEvidenceInput {
-        KucUnicodeColorGlyphEvidenceInput {
-            profile: PlatformFontProfile::Unsupported,
-            catalog_policy: PlatformFontCatalogPolicy::new(
-                PlatformFontProfile::Unsupported,
-                Vec::new(),
-                Vec::new(),
-                Vec::new(),
-            ),
-            face: PlatformColorEmojiFaceRecord {
-                platform_profile: PlatformFontProfile::Unsupported,
-                family_identity: String::new(),
-                source_file_path: None,
-                raw_file_sha256: None,
-                catalog_fingerprint: PlatformFontCatalogFingerprint::from_bytes([0; 32]),
-                availability: PlatformColorEmojiAvailability::Resolved,
-            },
-            final_text: String::new(),
-            ime: KucImeTraceEvidence {
-                preedit_scalars: Vec::new(),
-                commit_scalars: Vec::new(),
-                preedit_event_seen: true,
-                commit_event_seen: true,
-            },
-            caret: KucCaretObservation {
-                bounds: KucBounds::new(0, 0, 1, 1),
-            },
-            hit_tests: Vec::new(),
-            star_crop: KucRgbaCropEvidence::new(KucBounds::new(0, 0, 1, 1), Vec::new()),
-            control_crop: KucRgbaCropEvidence::new(KucBounds::new(0, 0, 1, 1), Vec::new()),
-            accesskit_text_snapshot_hash: "a".into(),
-            root_frame_hash: "b".into(),
-            root_record_hash: "c".into(),
-            root_rgba_hash: "d".into(),
-        }
-    }
-
-    #[test]
-    fn ime_caret_hash_and_hit_artifact_helpers_cover_all_boundaries() {
-        let mut value = input();
-        assert!(validate_ime_events(&value).is_ok());
-        value.ime.preedit_event_seen = false;
-        assert!(validate_ime_events(&value).is_err());
-        value.ime.preedit_event_seen = true;
-        value.ime.commit_event_seen = false;
-        assert!(validate_ime_events(&value).is_err());
-
-        value.caret.bounds.width = 0;
-        assert!(validate_caret(&value).is_err());
-        value.caret.bounds.width = 1;
-        value.caret.bounds.height = 0;
-        assert!(validate_caret(&value).is_err());
-        value.caret.bounds.height = 1;
-        assert!(validate_caret(&value).is_ok());
-
-        assert!(validate_hashes(&value).is_ok());
-        value.root_record_hash.clear();
-        assert!(matches!(
-            validate_hashes(&value),
-            Err(KucUnicodeColorGlyphEvidenceError::EmptyEvidenceHash {
-                field: "root_record_hash"
-            })
-        ));
-
-        let artifact = hit_test_artifact(KucHitTestObservation {
-            target: "opaque".into(),
-            query_x: 2,
-            query_y: 3,
-            byte_start: 4,
-            byte_end: 5,
-        });
-        assert_eq!((artifact.query_x, artifact.query_y), (2, 3));
-        assert_eq!((artifact.byte_start, artifact.byte_end), (4, 5));
-    }
-
-    #[test]
-    fn ime_scalar_validation_rejects_preedit_and_commit_mismatches() {
-        let mut value = input();
-        value.ime.preedit_scalars = grapheme::scalars(IME_PREEDIT_TEXT);
-        value.ime.commit_scalars = grapheme::scalars(IME_COMMIT_TEXT);
-        assert!(validate_ime_scalars(&value).is_ok());
-        value.ime.preedit_scalars.clear();
-        assert!(validate_ime_scalars(&value).is_err());
-        value.ime.preedit_scalars = grapheme::scalars(IME_PREEDIT_TEXT);
-        value.ime.commit_scalars.clear();
-        assert!(validate_ime_scalars(&value).is_err());
-    }
-
-    #[test]
-    fn chromatic_delta_rejects_equal_zero_and_unrepresentable_values() {
-        let artifact = |count| KucRgbaCropArtifact {
-            bounds: KucBounds::new(0, 0, 1, 1),
-            rgba_sha256: "hash".into(),
-            pixel_count: 1,
-            chromatic_pixel_count: count,
-        };
-        assert!(chromatic_pixel_delta(&artifact(1), &artifact(1)).is_err());
-        assert!(chromatic_pixel_delta(&artifact(0), &artifact(1)).is_err());
-        assert_eq!(
-            chromatic_pixel_delta(&artifact(2), &artifact(1)).ok(),
-            Some(1)
-        );
-        assert!(chromatic_pixel_delta(&artifact(usize::MAX), &artifact(0)).is_err());
-    }
-}
+#[path = "validation_tests.rs"]
+mod tests;

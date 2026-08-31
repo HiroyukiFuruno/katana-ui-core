@@ -221,30 +221,5 @@ fn egui_rect(value: UiRect) -> egui::Rect {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::accessibility_target_key;
-    use katana_ui_core::text_surface::TextSurfaceAccessibilityTarget;
-
-    #[test]
-    fn every_accessibility_target_has_a_stable_key() {
-        assert_eq!(
-            accessibility_target_key(&TextSurfaceAccessibilityTarget::Surface),
-            "surface"
-        );
-        assert_eq!(
-            accessibility_target_key(&TextSurfaceAccessibilityTarget::GutterRow { logical_row: 3 }),
-            "gutter-row:3"
-        );
-        assert_eq!(
-            accessibility_target_key(&TextSurfaceAccessibilityTarget::GutterMarker {
-                logical_row: 3,
-                marker_id: "diagnostic".into(),
-            }),
-            "gutter-marker:3:diagnostic"
-        );
-        assert_eq!(
-            accessibility_target_key(&TextSurfaceAccessibilityTarget::ContextSelection),
-            "context-selection"
-        );
-    }
-}
+#[path = "accessibility_tests.rs"]
+mod tests;

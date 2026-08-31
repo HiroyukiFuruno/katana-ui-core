@@ -1,50 +1,179 @@
 //! Consumer-safe retained root facade.
 
-#[path = "host_root_api.rs"]
-mod host_root_api;
-#[path = "host_root_error.rs"]
-mod host_root_error;
+#[path = "host_root/command_families.rs"]
+mod host_root_command_families;
+#[path = "host_root/errors.rs"]
+mod host_root_errors;
 #[path = "host_root_facade.rs"]
 mod host_root_facade;
-#[path = "host_root_frame.rs"]
+#[path = "host_root/frame.rs"]
 mod host_root_frame;
 #[path = "host_root_process.rs"]
 mod host_root_process;
-#[path = "host_root_projection.rs"]
-mod host_root_projection;
 #[path = "host_root_record.rs"]
 mod host_root_record;
 #[path = "host_root_surface.rs"]
 mod host_root_surface;
 #[path = "host_root_token_codec.rs"]
 mod host_root_token_codec;
-use super::root::EguiTextCommandSurfaceRootOutput;
+#[path = "host_root/types.rs"]
+mod host_root_types;
+
+use super::EditorViewportProjectionLease;
+use super::root::KucRootEffectRouter;
+use super::source_address_projection_lease::SourceAddressProjectionLease;
+use super::status_diagnostics_projection_lease::StatusDiagnosticsProjectionLease;
+use super::tab_strip_projection_lease::TabStripProjectionLease;
 use super::types::{EguiTextCommandSurfacePresentation, TextCommandSurfaceStyle};
 use host_root_process::HostRootProcess;
 use host_root_token_codec::decode_token;
 use host_root_token_codec::{encode_presentation, encode_presentation_with_command_families};
-use serde::{Deserialize, Serialize};
-
-pub use host_root_projection::{
-    EguiTextCommandSurfaceCommandFamilyProjection, EguiTextCommandSurfaceHostProjectionLease,
+pub use host_root_types::{
+    EguiTextCommandSurfaceCommandFamilyProjection, EguiTextCommandSurfaceHostProjectionEncoder,
+    EguiTextCommandSurfaceHostProjectionLease, EguiTextCommandSurfaceHostRoot,
+    EguiTextCommandSurfaceHostRootFrame, EguiTextCommandSurfaceHostTargetToken,
+    EguiTextCommandSurfacePresentationToken, EguiTextCommandSurfaceRootFactory,
+    EguiTextCommandSurfaceRootFactoryError,
 };
+use host_root_types::{
+    HostProjectionParts, RootPresentationWire, RootPresentationWireWithCommandFamilies,
+};
+
 pub use host_root_record::{
     EguiTextCommandSurfaceHostRootRecord, EguiTextCommandSurfaceHostRootRecordDimensions,
 };
-/// Opaque host target token. Its payload cannot be inspected by a consumer.
-pub struct EguiTextCommandSurfaceHostTargetToken {
-    pub(super) payload: Box<[u8]>,
+
+impl EguiTextCommandSurfaceHostTargetToken {
+    /// Creates a target token from host-owned opaque bytes.
+    #[must_use]
+    pub fn from_opaque_bytes(payload: impl Into<Vec<u8>>) -> Self {
+        Self {
+            payload: payload.into().into_boxed_slice(),
+        }
+    }
 }
 
-/// Opaque, revisioned presentation token accepted by the retained root.
-pub struct EguiTextCommandSurfacePresentationToken {
-    pub(super) revision: u64,
-    pub(super) target: EguiTextCommandSurfaceHostTargetToken,
-    pub(super) payload: Box<[u8]>,
+impl std::fmt::Debug for EguiTextCommandSurfaceHostTargetToken {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("EguiTextCommandSurfaceHostTargetToken(..)")
+    }
 }
 
-/// Encodes host-projected generic presentation data into an opaque root token.
-pub struct EguiTextCommandSurfaceHostProjectionEncoder;
+impl EguiTextCommandSurfacePresentationToken {
+    /// Creates a non-reusable presentation token from host-projected opaque bytes.
+    #[must_use]
+    pub fn from_opaque_bytes(
+        revision: u64,
+        target: EguiTextCommandSurfaceHostTargetToken,
+        payload: impl Into<Vec<u8>>,
+    ) -> Self {
+        Self {
+            revision,
+            target,
+            payload: payload.into().into_boxed_slice(),
+        }
+    }
+
+    pub(super) fn from_encoded(
+        revision: u64,
+        target: EguiTextCommandSurfaceHostTargetToken,
+        payload: impl Into<Vec<u8>>,
+    ) -> Self {
+        Self {
+            revision,
+            target,
+            payload: payload.into().into_boxed_slice(),
+        }
+    }
+}
+
+impl std::fmt::Debug for EguiTextCommandSurfacePresentationToken {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("EguiTextCommandSurfacePresentationToken")
+            .field("revision", &self.revision)
+            .field("target", &self.target)
+            .field("payload", &"<opaque>")
+            .finish()
+    }
+}
+
+impl EguiTextCommandSurfaceHostProjectionLease {
+    #[must_use]
+    pub fn new<R>(token: EguiTextCommandSurfacePresentationToken, router: R) -> Self
+    where
+        R: KucRootEffectRouter + 'static,
+    {
+        Self {
+            token,
+            router: Box::new(router),
+            source_address: None,
+            tab_strip: None,
+            status_diagnostics: None,
+            editor_viewport: None,
+        }
+    }
+
+    #[must_use]
+    pub fn from_router(
+        token: EguiTextCommandSurfacePresentationToken,
+        router: Box<dyn KucRootEffectRouter>,
+    ) -> Self {
+        Self {
+            token,
+            router,
+            source_address: None,
+            tab_strip: None,
+            status_diagnostics: None,
+            editor_viewport: None,
+        }
+    }
+
+    /// Adds one opaque source-address projection to this consuming lease.
+    #[must_use]
+    pub fn with_source_address(mut self, lease: SourceAddressProjectionLease) -> Self {
+        self.source_address = Some(lease);
+        self
+    }
+
+    /// Adds one opaque TabStrip projection to this consuming lease.
+    #[must_use]
+    pub fn with_tab_strip(mut self, lease: TabStripProjectionLease) -> Self {
+        self.tab_strip = Some(lease);
+        self
+    }
+
+    /// Adds one opaque status/diagnostics projection to this consuming lease.
+    #[must_use]
+    pub fn with_status_diagnostics(mut self, lease: StatusDiagnosticsProjectionLease) -> Self {
+        self.status_diagnostics = Some(lease);
+        self
+    }
+
+    /// Adds one generic document/preview split viewport to this consuming lease.
+    #[must_use]
+    pub fn with_editor_viewport(mut self, lease: EditorViewportProjectionLease) -> Self {
+        self.editor_viewport = Some(lease);
+        self
+    }
+
+    pub(super) fn into_parts(self) -> HostProjectionParts {
+        (
+            self.token,
+            self.router,
+            self.source_address,
+            self.tab_strip,
+            self.status_diagnostics,
+            self.editor_viewport,
+        )
+    }
+}
+
+impl std::fmt::Debug for EguiTextCommandSurfaceHostProjectionLease {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("EguiTextCommandSurfaceHostProjectionLease(..)")
+    }
+}
 
 impl EguiTextCommandSurfaceHostProjectionEncoder {
     #[must_use]
@@ -52,6 +181,7 @@ impl EguiTextCommandSurfaceHostProjectionEncoder {
         Self
     }
 
+    /// Creates one revisioned token without exposing the host target or payload.
     pub fn token(
         revision: u64,
         target: impl Into<Vec<u8>>,
@@ -105,15 +235,13 @@ impl Default for EguiTextCommandSurfaceHostProjectionEncoder {
     }
 }
 
-/// Factory for KUC-owned retained roots and their platform text catalog policy.
-pub struct EguiTextCommandSurfaceRootFactory;
-
 impl EguiTextCommandSurfaceRootFactory {
     #[must_use]
     pub fn new() -> Self {
         Self
     }
 
+    /// Retains a root from one opaque presentation token.
     pub fn retain(
         &self,
         token: EguiTextCommandSurfacePresentationToken,
@@ -124,15 +252,24 @@ impl EguiTextCommandSurfaceRootFactory {
         })
     }
 
+    /// Retains a root with a non-wire host effect lease.
     pub fn retain_with_lease(
         &self,
         lease: EguiTextCommandSurfaceHostProjectionLease,
     ) -> Result<EguiTextCommandSurfaceHostRoot, EguiTextCommandSurfaceRootFactoryError> {
-        let (token, router) = lease.into_parts();
+        let (token, router, source_address, tab_strip, status_diagnostics, editor_viewport) =
+            lease.into_parts();
         let decoded = decode_token(&token)?;
-        Ok(EguiTextCommandSurfaceHostRoot {
-            process: HostRootProcess::retain_with_router(decoded, token.revision, router)?,
-        })
+        HostRootProcess::retain_with_router(
+            decoded,
+            token.revision,
+            router,
+            source_address,
+            tab_strip,
+            status_diagnostics,
+            editor_viewport,
+        )
+        .map(|process| EguiTextCommandSurfaceHostRoot { process })
     }
 }
 
@@ -140,50 +277,6 @@ impl Default for EguiTextCommandSurfaceRootFactory {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// KUC-retained root. Consumers can inject tokens and call one root `show`.
-pub struct EguiTextCommandSurfaceHostRoot {
-    pub(super) process: HostRootProcess,
-}
-
-impl EguiTextCommandSurfaceHostRoot {}
-
-/// Closed root record returned by the consumer-safe facade.
-/// One root frame. The event batch is intentionally inaccessible except through forwarding.
-pub struct EguiTextCommandSurfaceHostRootFrame {
-    pub(super) output: EguiTextCommandSurfaceRootOutput,
-    pub(super) record: EguiTextCommandSurfaceHostRootRecord,
-}
-
-impl EguiTextCommandSurfaceHostRootFrame {}
-
-/// Errors raised while retaining or synchronizing the facade root.
-#[derive(Debug)]
-pub enum EguiTextCommandSurfaceRootFactoryError {
-    InvalidToken(&'static str),
-    IdentityChanged,
-    StaleRevision { current: u64, received: u64 },
-    RevisionConflict { revision: u64 },
-    Decode(String),
-    Root(String),
-    OpaqueHostEffect,
-    OpaqueHostEffectRejected,
-    DuplicateLease { revision: u64 },
-}
-
-#[derive(Deserialize, Serialize)]
-pub(super) struct RootPresentationWire {
-    pub(super) presentation: EguiTextCommandSurfacePresentation,
-    pub(super) style: TextCommandSurfaceStyle,
-}
-
-#[derive(Deserialize, Serialize)]
-pub(super) struct RootPresentationWireWithCommandFamilies {
-    pub(super) version: u8,
-    pub(super) presentation: EguiTextCommandSurfacePresentation,
-    pub(super) style: TextCommandSurfaceStyle,
-    pub(super) command_families: EguiTextCommandSurfaceCommandFamilyProjection,
 }
 
 #[cfg(test)]

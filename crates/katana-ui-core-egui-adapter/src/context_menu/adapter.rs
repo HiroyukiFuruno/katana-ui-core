@@ -1,4 +1,4 @@
-use super::accessibility::ContextMenuAccessibility;
+use super::accessibility::publish_menu;
 use super::artifact::artifact_frame;
 use super::interaction::{is_outside_click, keyboard_actions};
 use super::paint::{measure_and_build_plan, paint_plan, translate_plan};
@@ -9,13 +9,18 @@ use super::types::{
     ContextMenuRasterStyle, EguiContextMenuAdapter, EguiContextMenuFrameRecord,
     EguiContextMenuOutput,
 };
+use crate::text_surface::SharedTextMetrics;
 use crate::text_surface::TextSurfaceContextTargetAnchor;
 use crate::texture_cache::{DEFAULT_TEXTURE_CACHE_CAPACITY, RgbaTextureCache};
 use katana_ui_core::molecule::selection::{
     ContextMenu, ContextMenuAction, ContextMenuCloseReason, ContextMenuTypeAheadBuffer,
 };
 use katana_ui_core_svg_raster::{UiSvgRasterConfig, UiSvgRasterizer};
-use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterizer};
+use katana_ui_core_text_raster::{
+    PlatformTextRasterConfig, PlatformTextRasterResources, PlatformTextRasterizer,
+};
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::sync::Arc;
 
 const TYPE_AHEAD_TIMEOUT_MS: u64 = 1_000;
@@ -29,6 +34,40 @@ impl EguiContextMenuAdapter {
     pub(crate) fn with_catalog(
         catalog: Arc<katana_ui_core_text_raster::PlatformFontCatalog>,
         config: PlatformTextRasterConfig,
+    ) -> Result<Self, ContextMenuAdapterError> {
+        Self::with_catalog_and_metrics(
+            catalog,
+            config,
+            Rc::new(RefCell::new(
+                katana_ui_core_text_raster::PlatformTextMetricsFrame::new(),
+            )),
+        )
+    }
+
+    pub(crate) fn with_catalog_and_metrics(
+        catalog: Arc<katana_ui_core_text_raster::PlatformFontCatalog>,
+        config: PlatformTextRasterConfig,
+        metrics: SharedTextMetrics,
+    ) -> Result<Self, ContextMenuAdapterError> {
+        Ok(Self {
+            menu: ContextMenu::new("kuc-context-menu"),
+            presentation: ContextMenuPresentation::default(),
+            anchor: None,
+            submenu_path: Vec::new(),
+            scroll_path: Vec::new(),
+            vertical_scroll_offset: 0.0,
+            focus_return: None,
+            type_ahead: ContextMenuTypeAheadBuffer::new(TYPE_AHEAD_TIMEOUT_MS),
+            text_rasterizer: PlatformTextRasterizer::with_catalog(catalog, config)?,
+            metrics,
+            svg_rasterizer: UiSvgRasterizer::new(UiSvgRasterConfig::default()),
+            textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
+        })
+    }
+
+    pub(crate) fn with_resources_and_metrics(
+        resources: &PlatformTextRasterResources,
+        metrics: SharedTextMetrics,
     ) -> Self {
         Self {
             menu: ContextMenu::new("kuc-context-menu"),
@@ -39,30 +78,18 @@ impl EguiContextMenuAdapter {
             vertical_scroll_offset: 0.0,
             focus_return: None,
             type_ahead: ContextMenuTypeAheadBuffer::new(TYPE_AHEAD_TIMEOUT_MS),
-            text_rasterizer: PlatformTextRasterizer::with_catalog_cache_capacity(
-                catalog,
-                config.cache_capacity,
-            ),
+            text_rasterizer: resources.rasterizer(),
+            metrics,
             svg_rasterizer: UiSvgRasterizer::new(UiSvgRasterConfig::default()),
             textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
         }
     }
 
-    #[must_use]
-    pub fn new(config: PlatformTextRasterConfig) -> Self {
-        Self {
-            menu: ContextMenu::new("kuc-context-menu"),
-            presentation: ContextMenuPresentation::default(),
-            anchor: None,
-            submenu_path: Vec::new(),
-            scroll_path: Vec::new(),
-            vertical_scroll_offset: 0.0,
-            focus_return: None,
-            type_ahead: ContextMenuTypeAheadBuffer::new(TYPE_AHEAD_TIMEOUT_MS),
-            text_rasterizer: PlatformTextRasterizer::new(config),
-            svg_rasterizer: UiSvgRasterizer::new(UiSvgRasterConfig::default()),
-            textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
-        }
+    pub fn new(config: PlatformTextRasterConfig) -> Result<Self, ContextMenuAdapterError> {
+        let catalog = Arc::new(katana_ui_core_text_raster::PlatformFontCatalog::new(
+            config.catalog_policy(),
+        ));
+        Self::with_catalog(catalog, config)
     }
 
     /// Synchronizes only opaque controlled presentation, preserving interaction state.
@@ -106,6 +133,7 @@ impl EguiContextMenuAdapter {
         let measured = measure_and_build_plan(
             &mut self.text_rasterizer,
             &mut self.svg_rasterizer,
+            &self.metrics,
             &items,
             raster_style,
             paint_style,
@@ -141,7 +169,7 @@ impl EguiContextMenuAdapter {
             .show(ui.ctx(), |menu_ui| {
                 menu_ui.set_min_size(egui::vec2(bounds.width as f32, bounds.height as f32));
                 menu_ui.set_clip_rect(egui_rect(bounds));
-                ContextMenuAccessibility::publish_menu(menu_ui, area_id, bounds);
+                publish_menu(menu_ui, area_id, bounds);
                 egui::ScrollArea::vertical()
                     .id_salt(area_id.with(("overflow-clip", &self.submenu_path)))
                     .scroll_source(egui::scroll_area::ScrollSource::NONE)
@@ -170,10 +198,10 @@ impl EguiContextMenuAdapter {
             item_frames,
         } = area.inner;
         events.extend(self.apply_actions(pointer_actions));
-        /* WHY: The opener belongs to the target surface, not to the already-open menu. A menu
-        placed below the pointer would otherwise close on the same frame it is opened. */
+        /* WHY: The opener belongs to the target surface, not to the already-open menu.
+         * A menu placed below the pointer would otherwise close on the same frame it is opened. */
         if !opening && ui.input(|input| is_outside_click(input, bounds)) {
-            events.extend(self.apply_actions(vec![ContextMenuAction::Close {
+            events.extend(self.apply_actions([ContextMenuAction::Close {
                 reason: ContextMenuCloseReason::OutsideClick,
             }]));
         }
@@ -195,86 +223,5 @@ impl EguiContextMenuAdapter {
             events,
             artifact: Some(artifact),
         })
-    }
-}
-
-impl Default for EguiContextMenuAdapter {
-    fn default() -> Self {
-        Self::new(PlatformTextRasterConfig::default())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::super::types::ContextMenuPresentationItem;
-    use super::*;
-    use crate::text_surface::TextSurfaceContextTargetAnchor;
-    use katana_ui_core::molecule::selection::ContextMenuEvent;
-    use katana_ui_core::render_model::UiRect;
-    use katana_ui_core::text_selection::UiTextSelectionRange;
-    use katana_ui_core::theme::{FontFamily, FontToken};
-
-    #[test]
-    fn normal_open_from_generic_presentation_emits_the_complete_artifact_frame() {
-        let context = egui::Context::default();
-        let mut adapter = EguiContextMenuAdapter::default();
-        adapter.synchronize_presentation(ContextMenuPresentation {
-            visible: true,
-            items: vec![ContextMenuPresentationItem::action("copy", "コピー ⭐️")],
-        });
-        adapter.request_open(TextSurfaceContextTargetAnchor::pointer(
-            24,
-            32,
-            UiTextSelectionRange::caret(0),
-            UiRect::new(0, 0, 640, 360),
-        ));
-
-        let mut result = None;
-        crate::run_ui_discard(&context, egui::RawInput::default(), |ui| {
-            result = Some(adapter.show(ui, &raster_style(), &paint_style()));
-        });
-        let output = result
-            .expect("the Egui frame must invoke the adapter")
-            .expect("the normal generic context-menu path must succeed");
-        let record = output
-            .record
-            .expect("open menu must produce a frame record");
-        let artifact = output.artifact.expect("open menu must produce an artifact");
-
-        assert_eq!(artifact.record, record);
-        assert_eq!(artifact.events, output.events);
-        assert!(!artifact.paint_plan.operations.is_empty());
-        assert!(!artifact.frame_record_hash.is_empty());
-        assert!(!artifact.paint_plan_hash.is_empty());
-        assert_eq!(record.items.len(), 1);
-        assert_eq!(record.items[0].id, "copy");
-        assert!(
-            output
-                .events
-                .iter()
-                .any(|event| { matches!(event, ContextMenuEvent::Opened { .. }) })
-        );
-    }
-
-    fn raster_style() -> ContextMenuRasterStyle {
-        ContextMenuRasterStyle {
-            font: FontToken {
-                name: "context-menu-adapter-test".into(),
-                family: FontFamily::Proportional,
-                size: 15.0,
-                weight: 400,
-            },
-            text_color_rgba: [230, 230, 230, 255],
-            icon_color_rgba: [230, 230, 230, 255],
-            line_height_px: 22.0,
-        }
-    }
-
-    const fn paint_style() -> ContextMenuPaintStyle {
-        ContextMenuPaintStyle {
-            background_rgba: [30, 30, 32, 255],
-            highlighted_rgba: [60, 80, 112, 255],
-            disabled_rgba: [45, 45, 48, 255],
-        }
     }
 }

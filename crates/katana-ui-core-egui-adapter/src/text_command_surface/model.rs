@@ -1,31 +1,13 @@
 use super::types::EguiTextCommandSurface;
 use crate::context_menu::ContextMenuPresentation;
 use katana_ui_core::molecule::command_chrome::{
-    CommandChromeSearchStrip, CommandChromeToolbar, FloatingCommandToolbar,
+    CommandChromeFamilyId, CommandChromeSearchStrip, CommandChromeToolbar, FloatingCommandToolbar,
     FloatingCommandToolbarVisibility,
 };
+use katana_ui_core::molecule::structured::source_address_strip::SourceAddressStrip;
 use katana_ui_core::text_surface::TextSurface;
 
 impl EguiTextCommandSurface {
-    pub(super) fn apply_command_family_projection(
-        &mut self,
-        projection: &super::host_root::EguiTextCommandSurfaceCommandFamilyProjection,
-    ) {
-        if let Some(family) = projection.primary.clone()
-            && let Some(toolbar) = self.toolbar.take()
-        {
-            self.toolbar = Some(toolbar.command_family(family));
-        }
-        if let Some(family) = projection.floating.clone() {
-            if let Some(toolbar) = self.deferred_floating_toolbar.take() {
-                self.deferred_floating_toolbar = Some(toolbar.command_family(family.clone()));
-            }
-            if let Some(toolbar) = self.floating.take() {
-                self.floating = Some(toolbar.command_family(family));
-            }
-        }
-    }
-
     #[must_use]
     pub fn new(text: TextSurface) -> Self {
         Self {
@@ -36,7 +18,11 @@ impl EguiTextCommandSurface {
             floating_visibility: FloatingCommandToolbarVisibility::Closed,
             floating_visibility_controlled: false,
             search: None,
+            search_closed_by_interaction: false,
             context_menu: None,
+            primary_command_family: None,
+            floating_command_family: None,
+            source_address: None,
         }
     }
 
@@ -69,6 +55,10 @@ impl EguiTextCommandSurface {
         self
     }
 
+    pub(crate) fn set_source_address(&mut self, strip: SourceAddressStrip) {
+        self.source_address = Some(strip);
+    }
+
     #[must_use]
     pub fn text(&self) -> &TextSurface {
         &self.text
@@ -93,69 +83,88 @@ impl EguiTextCommandSurface {
     pub fn context_menu_presentation(&self) -> Option<&ContextMenuPresentation> {
         self.context_menu.as_ref()
     }
+
+    pub(crate) fn synchronize_command_families(
+        &mut self,
+        primary: Option<CommandChromeFamilyId>,
+        floating: Option<CommandChromeFamilyId>,
+    ) -> bool {
+        let changed =
+            self.primary_command_family != primary || self.floating_command_family != floating;
+        self.primary_command_family = primary;
+        self.floating_command_family = floating;
+        changed
+    }
+
+    pub(crate) fn primary_command_family(&self) -> Option<&CommandChromeFamilyId> {
+        self.toolbar.as_ref().and_then(|toolbar| {
+            self.primary_command_family
+                .as_ref()
+                .or_else(|| Some(toolbar.command_family_id()))
+        })
+    }
+
+    pub(crate) fn floating_command_family(&self) -> Option<&CommandChromeFamilyId> {
+        self.deferred_floating_toolbar
+            .as_ref()
+            .or_else(|| self.floating.as_ref().map(|value| value.toolbar_model()))
+            .and_then(|toolbar| {
+                self.floating_command_family
+                    .as_ref()
+                    .or_else(|| Some(toolbar.command_family_id()))
+            })
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::EguiTextCommandSurface;
     use katana_ui_core::atom::TextArea;
     use katana_ui_core::interaction::placement::{Rect, Size};
     use katana_ui_core::molecule::command_chrome::{
-        CommandChromeFamilyId, FloatingCommandToolbarLayout,
+        CommandChromeToolbar, FloatingCommandToolbar, FloatingCommandToolbarLayout,
+        FloatingCommandToolbarVisibility,
     };
-    use katana_ui_core::text_surface::{TextSurfaceProps, TextSurfaceViewport};
+    use katana_ui_core::text_surface::{TextSurface, TextSurfaceProps, TextSurfaceViewport};
 
-    #[test]
-    fn family_projection_reaches_primary_deferred_and_materialized_floating_slots() {
-        let text = TextSurface::new(TextSurfaceProps::new(
-            TextArea::new("surface"),
+    fn text_surface() -> TextSurface {
+        let value = "fixture";
+        let props = TextSurfaceProps::new(
+            TextArea::new("surface-text").value(value),
             Vec::new(),
-            TextSurfaceViewport::new(0, 0, 320, 120),
-        ));
-        let toolbar = CommandChromeToolbar::new();
-        let mut surface = EguiTextCommandSurface::new(text)
-            .with_toolbar(toolbar.clone())
-            .with_floating_toolbar(toolbar.clone(), FloatingCommandToolbarVisibility::Visible);
-        surface.floating = Some(FloatingCommandToolbar::new(
+            TextSurfaceViewport::new(0, 0, 16, 16),
+        );
+        TextSurface::new(props)
+    }
+
+    fn floating_toolbar() -> FloatingCommandToolbar {
+        let toolbar = CommandChromeToolbar::new().action(
+            katana_ui_core::molecule::command_chrome::CommandChromeAction::new(
+                "fixture", "fixture",
+            ),
+        );
+        FloatingCommandToolbar::new(
             toolbar,
             FloatingCommandToolbarLayout::new(
                 Rect::new(0, 0, 10, 10),
-                Size::new(20, 10),
-                Rect::new(0, 0, 100, 100),
+                Size::new(1, 1),
+                Rect::new(0, 0, 20, 20),
             ),
-        ));
-        surface.apply_command_family_projection(
-            &super::super::host_root::EguiTextCommandSurfaceCommandFamilyProjection::new(
-                Some(CommandChromeFamilyId::new("primary")),
-                Some(CommandChromeFamilyId::new("floating")),
-            ),
-        );
-
-        assert!(surface.toolbar().is_some());
-        assert!(surface.floating_toolbar().is_some());
-        assert!(surface.search_strip().is_none());
+        )
+        .focus_return_target("focus-return".into())
+        .initial_visibility(FloatingCommandToolbarVisibility::Visible)
     }
 
     #[test]
-    fn family_projection_is_additive_when_command_slots_are_absent() {
-        let text = TextSurface::new(TextSurfaceProps::new(
-            TextArea::new("surface"),
-            Vec::new(),
-            TextSurfaceViewport::new(0, 0, 320, 120),
-        ));
-        let mut surface = EguiTextCommandSurface::new(text);
-        surface.apply_command_family_projection(
-            &super::super::host_root::EguiTextCommandSurfaceCommandFamilyProjection::new(
-                Some(CommandChromeFamilyId::new("primary")),
-                Some(CommandChromeFamilyId::new("floating")),
-            ),
-        );
-        assert!(surface.toolbar().is_none());
+    fn floating_toolbar_returns_none_before_assignment() {
+        let surface = EguiTextCommandSurface::new(text_surface());
         assert!(surface.floating_toolbar().is_none());
-        surface.apply_command_family_projection(
-            &super::super::host_root::EguiTextCommandSurfaceCommandFamilyProjection::new(
-                None, None,
-            ),
-        );
+    }
+
+    #[test]
+    fn floating_toolbar_returns_active_toolbar_when_present() {
+        let mut surface = EguiTextCommandSurface::new(text_surface());
+        surface.floating = Some(floating_toolbar());
+        assert!(surface.floating_toolbar().is_some());
     }
 }

@@ -3,7 +3,9 @@ pub(super) use super::*;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::artifact_compositor::ArtifactCompositeError;
     use crate::context_menu::{ContextMenuPresentation, ContextMenuPresentationItem};
+    use crate::text_command_surface::EguiTextCommandSurfaceArtifactError;
     use katana_ui_core::atom::TextArea;
     use katana_ui_core::molecule::command_chrome::{
         CommandChromeAction, CommandChromeFamilyId, CommandChromeToolbar,
@@ -16,21 +18,17 @@ mod tests {
     use katana_ui_core::molecule::structured::SearchControlStrip;
     use katana_ui_core::text_surface::{TextSurface, TextSurfaceProps, TextSurfaceViewport};
 
-    fn raw_input_snapshot(input: &egui::RawInput) -> String {
-        format!("{input:#?}")
-    }
-
-    fn collision_root() -> EguiTextCommandSurfaceRoot {
+    fn base_root() -> EguiTextCommandSurfaceRoot {
         let surface = EguiTextCommandSurface::new(EguiTextSurfaceForTest::surface()).with_toolbar(
             CommandChromeToolbar::new().action(CommandChromeAction::new("base", "基準")),
         );
-        EguiTextCommandSurfaceRoot::with_identity("collision-root", surface)
+        EguiTextCommandSurfaceRoot::with_identity("base-root", surface).expect("base fixture root")
     }
 
     #[test]
     fn derived_identity_and_root_error_conversions_are_stable() {
         let surface = EguiTextCommandSurface::new(EguiTextSurfaceForTest::surface());
-        let root = EguiTextCommandSurfaceRoot::new(surface);
+        let root = EguiTextCommandSurfaceRoot::new(surface).expect("derived root identity");
         assert!(root.identity.starts_with("kuc.text-command-root/"));
 
         let errors = [
@@ -56,6 +54,64 @@ mod tests {
     }
 
     #[test]
+    fn every_root_artifact_error_has_a_stable_child_specific_message() {
+        let cases = [
+            (
+                EguiTextCommandSurfaceArtifactError::MissingToolbar,
+                "toolbar child requires a toolbar plan",
+            ),
+            (
+                EguiTextCommandSurfaceArtifactError::MissingSearch,
+                "search child requires a search plan",
+            ),
+            (
+                EguiTextCommandSurfaceArtifactError::MissingSourceAddress,
+                "source-address child requires a source-address plan",
+            ),
+            (
+                EguiTextCommandSurfaceArtifactError::MissingTabStrip,
+                "tab-strip child requires a tab-strip plan",
+            ),
+            (
+                EguiTextCommandSurfaceArtifactError::MissingTabStripOverlay,
+                "tab-strip overlay requires an overlay plan",
+            ),
+            (
+                EguiTextCommandSurfaceArtifactError::MissingFloating,
+                "floating child requires a floating output",
+            ),
+            (
+                EguiTextCommandSurfaceArtifactError::MissingFloatingPaintPlan,
+                "floating child requires a floating paint plan",
+            ),
+            (
+                EguiTextCommandSurfaceArtifactError::MissingContextMenu,
+                "context-menu child requires a context-menu output",
+            ),
+            (
+                EguiTextCommandSurfaceArtifactError::MissingContextMenuPaintPlan,
+                "context-menu child requires a context-menu paint plan",
+            ),
+            (
+                EguiTextCommandSurfaceArtifactError::MissingStatusBar,
+                "status-bar child requires a status-bar paint plan",
+            ),
+            (
+                EguiTextCommandSurfaceArtifactError::MissingDiagnosticsList,
+                "diagnostics-list child requires a diagnostics-list paint plan",
+            ),
+            (
+                EguiTextCommandSurfaceArtifactError::MissingPreview,
+                "preview child requires a preview paint plan",
+            ),
+        ];
+
+        for (error, expected) in cases {
+            assert_eq!(error.to_string(), expected);
+        }
+    }
+
+    #[test]
     fn duplicate_command_family_is_rejected_before_render() {
         let surface = EguiTextCommandSurface::new(EguiTextSurfaceForTest::surface())
             .with_toolbar(CommandChromeToolbar::new().action(CommandChromeAction::new("p", "P")))
@@ -63,7 +119,9 @@ mod tests {
                 CommandChromeToolbar::new().action(CommandChromeAction::new("f", "F")),
                 FloatingCommandToolbarVisibility::Visible,
             );
-        let mut root = EguiTextCommandSurfaceRoot::with_identity("duplicate-family", surface);
+        let mut root = EguiTextCommandSurfaceRoot::with_identity("duplicate-family", surface)
+            .expect("duplicate family is rejected at render time");
+        let style = TextCommandSurfaceStyle::standard().expect("standard root style");
         let context = egui::Context::default();
         let mut result = None;
         crate::run_ui_discard(
@@ -75,7 +133,7 @@ mod tests {
                 )),
                 ..egui::RawInput::default()
             },
-            |ui| result = Some(root.show(ui, &TextCommandSurfaceStyle::standard())),
+            |ui| result = Some(root.show(ui, &style)),
         );
         let error = result
             .expect("root invocation")
@@ -102,7 +160,8 @@ mod tests {
                     .action(CommandChromeAction::new("f", "F")),
                 FloatingCommandToolbarVisibility::Visible,
             );
-        let mut root = EguiTextCommandSurfaceRoot::with_identity("distinct-families", surface);
+        let mut root = EguiTextCommandSurfaceRoot::with_identity("distinct-families", surface)
+            .expect("distinct family root");
         let output = render(&context_for_test(), &mut root);
         assert_eq!(
             output.toolbar_record.as_ref().map(|record| {
@@ -137,10 +196,42 @@ mod tests {
             CommandChromeToolbar::new().action(CommandChromeAction::new("f", "F")),
             FloatingCommandToolbarVisibility::Visible,
         );
-        let mut root = EguiTextCommandSurfaceRoot::with_identity("floating-only", surface);
+        let mut root = EguiTextCommandSurfaceRoot::with_identity("floating-only", surface)
+            .expect("floating-only root");
         let output = render(&context_for_test(), &mut root);
         assert!(output.toolbar_record.is_none());
         assert!(output.floating.and_then(|value| value.record).is_some());
+    }
+
+    #[test]
+    fn status_diagnostics_lease_mounts_both_children_in_an_actual_root_frame() {
+        let mut root = EguiTextCommandSurfaceRoot::with_identity(
+            "status-diagnostics-root",
+            EguiTextCommandSurface::new(EguiTextSurfaceForTest::surface()),
+        )
+        .expect("status diagnostics root");
+        root.attach_status_diagnostics(
+            StatusDiagnosticsProjectionLease::new()
+                .with_status_bar(katana_ui_core::molecule::StatusBar::new("status").segment(
+                    katana_ui_core::molecule::StatusBarSegment::new("status-segment", "Ready"),
+                ))
+                .with_diagnostics_list(katana_ui_core::molecule::DiagnosticsList::new(
+                    "diagnostics",
+                )),
+        );
+
+        let output = render(&context_for_test(), &mut root);
+
+        assert!(
+            output
+                .artifact_order()
+                .contains(&crate::text_command_surface::EguiTextCommandSurfaceChild::StatusBar)
+        );
+        assert!(
+            output.artifact_order().contains(
+                &crate::text_command_surface::EguiTextCommandSurfaceChild::DiagnosticsList,
+            )
+        );
     }
 
     struct EguiTextSurfaceForTest;
@@ -162,6 +253,7 @@ mod tests {
         root: &mut EguiTextCommandSurfaceRoot,
     ) -> EguiTextCommandSurfaceRootOutput {
         let mut output = None;
+        let style = TextCommandSurfaceStyle::standard().expect("standard root style");
         crate::run_ui_discard(
             context,
             egui::RawInput {
@@ -171,7 +263,7 @@ mod tests {
                 )),
                 ..egui::RawInput::default()
             },
-            |ui| output = Some(root.show(ui, &TextCommandSurfaceStyle::standard())),
+            |ui| output = Some(root.show(ui, &style)),
         );
         output.expect("root frame").expect("root render")
     }
@@ -243,7 +335,8 @@ mod tests {
             "shared-catalog-root",
             surface,
             katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
-        );
+        )
+        .expect("shared catalog root");
         let context = egui::Context::default();
         let _ = render(&context, &mut root);
 
@@ -251,6 +344,7 @@ mod tests {
         assert_eq!(root_catalog.stats().font_database_discoveries, 1);
         let text_catalog = root.adapter.text.catalog();
         let chrome_catalog = root.adapter.chrome.catalog();
+        let source_address_catalog = root.adapter.source_address.catalog();
         let menu_catalog = root
             .adapter
             .context_menu
@@ -258,10 +352,19 @@ mod tests {
             .expect("context-menu child is instantiated by the real frame")
             .catalog();
         assert!(std::sync::Arc::ptr_eq(&text_catalog, &chrome_catalog));
+        assert!(std::sync::Arc::ptr_eq(
+            &text_catalog,
+            &source_address_catalog
+        ));
         assert!(std::sync::Arc::ptr_eq(&text_catalog, &menu_catalog));
         assert!(std::sync::Arc::ptr_eq(&text_catalog, &root.adapter.catalog));
+        assert!(std::sync::Arc::ptr_eq(
+            &text_catalog,
+            &root.adapter.text_raster_resources.catalog(),
+        ));
         assert_eq!(text_catalog.stats().font_database_discoveries, 1);
         assert_eq!(chrome_catalog.stats().font_database_discoveries, 1);
+        assert_eq!(source_address_catalog.stats().font_database_discoveries, 1);
         assert_eq!(menu_catalog.stats().font_database_discoveries, 1);
         assert_eq!(text_catalog.fingerprint(), root_catalog.fingerprint());
         assert_eq!(chrome_catalog.fingerprint(), root_catalog.fingerprint());
@@ -269,46 +372,29 @@ mod tests {
     }
 
     #[test]
-    fn actual_root_same_bounds_is_fail_closed_without_input_or_effect_dispatch() {
+    fn narrow_actual_root_fails_closed_before_issuing_a_selection_continuation() {
         let context = egui::Context::default();
-        context.enable_accesskit();
-        let mut root = collision_root();
-        let output = render(&context, &mut root);
-        let before_context = output.events().current_context();
-        let input = egui::RawInput::default();
-        let before_input = raw_input_snapshot(&input);
-        for identity in ["collision-left", "collision-right"] {
-            assert!(matches!(
-                output
-                    .interaction_locator()
-                    .request(KucInteractionSelector::new(
-                        identity,
-                        KucInteractionActionClass::Toolbar,
-                    )),
-                Err(KucInteractionLocatorError::Ambiguous)
-            ));
-            assert_eq!(raw_input_snapshot(&input), before_input);
-        }
-        let unknown = output
-            .interaction_locator()
-            .request(KucInteractionSelector::new(
-                "collision-unknown",
-                KucInteractionActionClass::Toolbar,
-            ));
-        assert!(matches!(unknown, Err(KucInteractionLocatorError::Missing)));
-        assert_eq!(raw_input_snapshot(&input), before_input);
-        assert_eq!(output.events().current_context(), before_context);
+        let mut root = base_root();
+        let style = TextCommandSurfaceStyle::standard().expect("standard root style");
+        let mut output = None;
+        crate::run_ui_discard(
+            &context,
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(20.0, 80.0),
+                )),
+                ..egui::RawInput::default()
+            },
+            |ui| output = Some(root.show(ui, &style)),
+        );
+        let output = output
+            .expect("narrow root frame ran")
+            .expect("narrow root frame renders");
 
-        let effect_count = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
-        let effect_count_for_handler = effect_count.clone();
-        let effect = KucOpaqueHostEffectBatch::from_handler(move || {
-            effect_count_for_handler.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
-            Ok(())
-        });
-        output
-            .events()
-            .attach_opaque_host_effect_batch(effect)
-            .expect("effect attached to untouched batch");
-        assert_eq!(effect_count.load(std::sync::atomic::Ordering::SeqCst), 0);
+        assert!(matches!(
+            output.interaction_locator().begin_text_selection(),
+            Err(KucTextSelectionContinuationError::Unavailable)
+        ));
     }
 }

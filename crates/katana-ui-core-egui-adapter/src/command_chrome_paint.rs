@@ -128,6 +128,13 @@ pub(super) fn paint_command_chrome(
             CommandChromePaintOperationKind::Fill { bounds, color_rgba } => {
                 painter.rect_filled(egui_rect(*bounds), 0.0, color(*color_rgba));
             }
+            CommandChromePaintOperationKind::RoundedFill {
+                bounds,
+                color_rgba,
+                radius_px,
+            } => {
+                painter.rect_filled(egui_rect(*bounds), *radius_px as f32, color(*color_rgba));
+            }
             CommandChromePaintOperationKind::Texture { bounds, texture } => {
                 let texture = cache.texture_for_rgba(
                     ui.ctx(),

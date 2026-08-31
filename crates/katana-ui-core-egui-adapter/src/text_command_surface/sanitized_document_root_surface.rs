@@ -7,7 +7,9 @@ use super::super::sanitized_context_projection_adapter::context_menu_presentatio
 use super::super::sanitized_document_root_input::SanitizedDocumentRootInput;
 use super::super::sanitized_search_projection_adapter::SanitizedSearchPresentation;
 use katana_ui_core::atom::TextArea;
-use katana_ui_core::molecule::command_chrome::FloatingCommandToolbarVisibility;
+use katana_ui_core::molecule::command_chrome::{
+    CommandChromeFamilyId, FloatingCommandToolbarVisibility,
+};
 use katana_ui_core::render_model::UiStateId;
 use katana_ui_core::text_surface::{
     TextSurface, TextSurfaceAccessibilityLabels, TextSurfaceAutomaticGutterPresentation,
@@ -17,10 +19,11 @@ use katana_ui_core::text_surface::{
 pub(super) fn from_input(
     input: &SanitizedDocumentRootInput,
 ) -> (EguiTextCommandSurface, EguiTextCommandSurfacePresentation) {
-    let state_id = UiStateId::new(format!(
+    let identity = format!(
         "kuc.sanitized-document/{}",
         input.identity.stable_fingerprint()
-    ));
+    );
+    let state_id = UiStateId::new(identity.clone());
     let presentation = presentation_from_input(input);
     let text_area = TextArea::new(input.snapshot.clone())
         .stable_state_id(state_id.clone())
@@ -32,7 +35,35 @@ pub(super) fn from_input(
             .adapter_measured_viewport();
     props.accessibility_label = input.snapshot.clone();
     let text = TextSurface::new(props);
-    (EguiTextCommandSurface::new(text), presentation)
+    let mut surface = EguiTextCommandSurface::new(text);
+    let _ = surface.synchronize_presentation(presentation.clone());
+    apply_internal_command_families(&mut surface, &identity);
+    (surface, presentation)
+}
+
+fn apply_internal_command_families(surface: &mut EguiTextCommandSurface, identity: &str) {
+    let primary = surface.toolbar.take().map(|toolbar| {
+        toolbar.command_family(CommandChromeFamilyId::new(format!(
+            "{identity}/primary-command-family"
+        )))
+    });
+    let floating = surface.deferred_floating_toolbar.take().map(|toolbar| {
+        toolbar.command_family(CommandChromeFamilyId::new(format!(
+            "{identity}/floating-command-family"
+        )))
+    });
+    surface.toolbar = primary;
+    surface.deferred_floating_toolbar = floating;
+    surface.synchronize_command_families(
+        surface
+            .toolbar
+            .as_ref()
+            .map(|toolbar| toolbar.command_family_id().clone()),
+        surface
+            .deferred_floating_toolbar
+            .as_ref()
+            .map(|toolbar| toolbar.command_family_id().clone()),
+    );
 }
 
 pub(super) fn presentation_from_input(

@@ -1,12 +1,38 @@
 use katana_ui_core::component::ComponentAction;
-use katana_ui_core::interaction::UiAction;
-use katana_ui_core::render_model::UiNodeKind;
+use katana_ui_core::interaction::{
+    UiAction, UiGestureSurface, UiSurfaceGestureCapabilities, UiSurfaceGestureCommand,
+    UiSurfaceGestureController, UiSurfaceGestureInput, UiSurfaceGestureOverride,
+    UiSurfaceHostEvent, UiSurfacePoint,
+};
+use katana_ui_core::molecule::structured::{
+    DiagnosticAction, DiagnosticId, DiagnosticItem, DiagnosticKeyboardInput, DiagnosticLocation,
+    DiagnosticSeverity, DiagnosticsGroupBy, DiagnosticsList, DiagnosticsListAction,
+    DiagnosticsListEvent, DiagnosticsListOptions, DiagnosticsSortBy, SourceAddressAction,
+    SourceAddressEntry, SourceAddressEvent, SourceAddressPresentation, SourceAddressStrip,
+};
+use katana_ui_core::render_model::{UiNodeKind, UiRect, UiStateId};
 use katana_ui_core::widget::molecules::{
     ChoiceItem, ComboBox, ContextMenu, ContextMenuAction, ContextMenuAnchor, ContextMenuEvent,
     ContextMenuItem, GenericGrid, GridCellContent, GridCoordinate, GridTrackSizeProvider,
     GridViewport, ModalOverlay, SearchBox, SelectBox,
 };
-use kuc_consumer_app::ConsumerApp;
+use kuc_consumer_app::{ConsumerApp, root_kind};
+use std::collections::BTreeSet;
+use std::process::Command;
+
+#[test]
+fn consumer_default_and_binary_report_the_rendered_public_root()
+-> Result<(), Box<dyn std::error::Error>> {
+    let app = ConsumerApp::default();
+    let tree = app.render();
+    assert_eq!(UiNodeKind::Panel, root_kind(&tree));
+
+    let output = Command::new(env!("CARGO_BIN_EXE_kuc-consumer-app")).output()?;
+    assert!(output.status.success());
+    let stdout = String::from_utf8(output.stdout)?;
+    assert!(stdout.contains("KUC consumer app: root=Panel children=1"));
+    Ok(())
+}
 
 #[test]
 fn consumer_app_public_shell_contains_real_toolbar_controls() {
@@ -184,4 +210,236 @@ fn public_grid_contract_bounds_one_hundred_thousand_cell_model()
     assert_eq!(coordinates.len(), rendered.props().grid.cells.len());
     assert!(rendered.props().grid.validate().is_ok());
     Ok(())
+}
+
+#[test]
+fn public_typed_gesture_contract_needs_no_consumer_string_or_geometry_parsing() {
+    let target = UiStateId::new("opaque-surface");
+    let capabilities = UiSurfaceGestureCapabilities::default()
+        .pointer_pan(true)
+        .smooth_scroll_pan(true)
+        .zoom(true)
+        .fullscreen(true);
+    let mut controller = UiSurfaceGestureController::new([UiGestureSurface::new(
+        target.clone(),
+        UiRect::new(10, 20, 100, 80),
+    )
+    .capabilities(capabilities)]);
+
+    let down = controller.apply(UiSurfaceGestureInput::PointerDown {
+        pointer_id: 7,
+        position: UiSurfacePoint::new(30, 40),
+    });
+    assert!(down.captured);
+    assert_eq!(down.target.as_ref(), Some(&target));
+
+    let moved = controller.apply(UiSurfaceGestureInput::PointerMove {
+        pointer_id: 7,
+        position: UiSurfacePoint::new(34, 47),
+    });
+    assert_eq!(
+        moved.command,
+        Some(UiSurfaceGestureCommand::PanBy {
+            delta_x: 4.0,
+            delta_y: 7.0,
+        })
+    );
+
+    let zoomed = controller.apply_with_override(
+        UiSurfaceGestureInput::Zoom {
+            multiplier: 1.25,
+            center: UiSurfacePoint::new(34, 47),
+        },
+        |event| match event.input {
+            UiSurfaceGestureInput::Zoom { center, .. } => {
+                UiSurfaceGestureOverride::Command(UiSurfaceGestureCommand::ZoomBy {
+                    multiplier: 2.0,
+                    center,
+                })
+            }
+            _ => UiSurfaceGestureOverride::UseDefault,
+        },
+    );
+    assert!(zoomed.captured);
+    assert_eq!(
+        zoomed.command,
+        Some(UiSurfaceGestureCommand::ZoomBy {
+            multiplier: 2.0,
+            center: UiSurfacePoint::new(34, 47),
+        })
+    );
+    assert_eq!(
+        controller.set_fullscreen(&target, true),
+        Some(UiSurfaceHostEvent::FullscreenChanged {
+            target,
+            fullscreen: true,
+        })
+    );
+}
+
+#[test]
+fn public_gesture_contract_tracks_unhandled_and_default_override_paths() {
+    let capabilities = UiSurfaceGestureCapabilities::default().pointer_pan(true);
+    let mut controller = UiSurfaceGestureController::new([
+        UiGestureSurface::new("no-pan", UiRect::new(0, 0, 10, 10)),
+        UiGestureSurface::new("pan", UiRect::new(20, 20, 20, 20)).capabilities(capabilities),
+    ]);
+
+    let miss = controller.apply(UiSurfaceGestureInput::PointerDown {
+        pointer_id: 1,
+        position: UiSurfacePoint::new(40, 40),
+    });
+    assert!(miss.target.is_none());
+    assert!(!miss.captured);
+
+    let down = controller.apply(UiSurfaceGestureInput::PointerDown {
+        pointer_id: 2,
+        position: UiSurfacePoint::new(25, 25),
+    });
+    assert_eq!(down.target.as_ref(), Some(&UiStateId::new("pan")));
+    assert!(down.captured);
+
+    let stale_move = controller.apply(UiSurfaceGestureInput::PointerMove {
+        pointer_id: 3,
+        position: UiSurfacePoint::new(25, 25),
+    });
+    assert_eq!(stale_move.target.as_ref(), Some(&UiStateId::new("pan")));
+    assert!(!stale_move.captured);
+
+    let ignored = controller.apply_with_override(
+        UiSurfaceGestureInput::PointerMove {
+            pointer_id: 2,
+            position: UiSurfacePoint::new(30, 32),
+        },
+        |_| UiSurfaceGestureOverride::UseDefault,
+    );
+    assert_eq!(
+        ignored.command,
+        Some(UiSurfaceGestureCommand::PanBy {
+            delta_x: 5.0,
+            delta_y: 7.0,
+        })
+    );
+    assert!(ignored.captured);
+
+    let stale_up = controller.apply(UiSurfaceGestureInput::PointerUp {
+        pointer_id: 3,
+        position: UiSurfacePoint::new(30, 32),
+    });
+    assert_eq!(stale_up.target.as_ref(), Some(&UiStateId::new("pan")));
+    assert!(!stale_up.captured);
+}
+
+#[test]
+fn public_source_address_contract_respects_focus_scope_and_submission() {
+    let mut strip = SourceAddressStrip::new(SourceAddressPresentation::new(
+        "Source",
+        "Source history",
+        "Source access",
+    ));
+    assert_eq!("Source", strip.presentation().visible());
+
+    strip.set_history(vec![SourceAddressEntry::new(
+        SourceAddressPresentation::new("history://primary", "history tooltip", "history access"),
+        b"h1".to_vec(),
+    )]);
+    strip.set_candidates(vec![SourceAddressEntry::new(
+        SourceAddressPresentation::new("candidate://next", "candidate tooltip", "candidate access"),
+        b"c1".to_vec(),
+    )]);
+
+    assert!(matches!(
+        strip.apply_action(SourceAddressAction::OpenCandidates),
+        Some(SourceAddressEvent::CandidatesOpened)
+    ));
+    assert!(strip.candidates_open());
+    assert!(matches!(
+        strip.apply_action(SourceAddressAction::SetFocused(true)),
+        Some(SourceAddressEvent::Focused)
+    ));
+    assert!(matches!(
+        strip.apply_action(SourceAddressAction::SelectCandidate(0)),
+        Some(SourceAddressEvent::CandidateSelected)
+    ));
+    assert_eq!(strip.draft(), "candidate://next");
+    assert_eq!(strip.selected_candidate(), Some(0));
+    assert!(strip.apply_action(SourceAddressAction::Submit).is_some());
+
+    assert!(matches!(
+        strip.apply_action(SourceAddressAction::SetEnabled(false)),
+        Some(SourceAddressEvent::EnabledChanged)
+    ));
+    assert!(
+        strip
+            .apply_action(SourceAddressAction::SetFocused(true))
+            .is_none()
+    );
+    assert!(strip.apply_action(SourceAddressAction::Submit).is_none());
+}
+
+#[test]
+fn public_diagnostics_list_contract_drives_scope_navigation_fix_and_bulk_events() {
+    let mut list = DiagnosticsList::new("Diagnostics");
+    let mut filter = BTreeSet::new();
+    filter.insert(DiagnosticSeverity::Warning);
+    list = list
+        .scope("a", "Alpha", "scope alpha")
+        .scope("b", "Beta", "scope beta")
+        .option(DiagnosticsListOptions {
+            severity_filter: filter,
+            ..Default::default()
+        })
+        .item(
+            DiagnosticItem::new(
+                "d1",
+                DiagnosticSeverity::Error,
+                "first error",
+                DiagnosticLocation::new("main.rs", 10, 3),
+            )
+            .quickfix(DiagnosticAction::new("fix", "Fix it"))
+            .scope("a"),
+        )
+        .item(
+            DiagnosticItem::new(
+                "d2",
+                DiagnosticSeverity::Error,
+                "second error",
+                DiagnosticLocation::new("main.rs", 20, 7),
+            )
+            .quickfix(DiagnosticAction::new("fix", "Fix it"))
+            .scope("b"),
+        );
+
+    assert_eq!(
+        list.apply_action(DiagnosticsListAction::SetGroupBy(
+            DiagnosticsGroupBy::Severity
+        )),
+        vec![DiagnosticsListEvent::FilterChanged]
+    );
+    assert_eq!(
+        list.apply_action(DiagnosticsListAction::SetSortBy(
+            DiagnosticsSortBy::Severity
+        )),
+        vec![DiagnosticsListEvent::FilterChanged]
+    );
+
+    let scope_next = list.apply_action(DiagnosticsListAction::Keyboard(
+        DiagnosticKeyboardInput::ScopeNext,
+    ));
+    assert!(matches!(
+        scope_next.as_slice(),
+        [DiagnosticsListEvent::ScopeSelected { .. }]
+    ));
+
+    assert_eq!(
+        list.apply_action(DiagnosticsListAction::ApplyFix(DiagnosticId::new("d1"))),
+        vec![DiagnosticsListEvent::DiagnosticFixApplied {
+            id: DiagnosticId::new("d1")
+        }]
+    );
+
+    assert_eq!(
+        list.apply_action(DiagnosticsListAction::OpenBulkPreview),
+        vec![DiagnosticsListEvent::BulkFixPreviewOpened]
+    );
 }

@@ -100,7 +100,7 @@ pub(super) fn show_toolbar_unpainted(
                     } else {
                         primary_bounds
                     };
-                    let layout = dropdown_layout(
+                    let (layout, _) = dropdown_layout(
                         adapter,
                         ui,
                         trigger_bounds,
@@ -199,20 +199,18 @@ pub(super) fn show_toolbar_unpainted(
     };
     let paint_plan =
         build_toolbar_paint_plan(&record, &paint_sources, dropdown.as_ref(), paint_style);
-    crate::command_chrome::command_chrome_artifact::CommandChromeArtifactFrame::new(
+    let artifact = crate::command_chrome::command_chrome_artifact::CommandChromeArtifactFrame::new(
         record.clone(),
         paint_plan,
         events.clone(),
-    )
-    .map(|artifact| {
-        let output = EguiCommandChromeOutput {
-            record,
-            events,
-            artifact,
-        };
-        paint_command_chrome(ui, &mut adapter.textures, &output.artifact.paint_plan);
-        output
-    })
+    );
+    let output = EguiCommandChromeOutput {
+        record,
+        events,
+        artifact,
+    };
+    paint_command_chrome(ui, &mut adapter.textures, &output.artifact.paint_plan);
+    Ok(output)
 }
 
 fn dropdown_focus_return_target(events: &[CommandChromeToolbarEvent]) -> Option<&str> {

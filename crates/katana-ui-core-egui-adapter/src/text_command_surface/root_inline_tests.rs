@@ -1,0 +1,25 @@
+const ROOT_FRAME_WIDTH: f32 = 640.0;
+const ROOT_FRAME_HEIGHT: f32 = 360.0;
+const ROOT_FRAME_WIDTH_PX: u32 = 640;
+const ROOT_FRAME_HEIGHT_PX: u32 = 360;
+const TAB_STRIP_POINTER_X: f32 = 40.0;
+const TAB_STRIP_POINTER_Y: f32 = 18.0;
+const COMPACT_ROOT_WIDTH: f32 = 180.0;
+const HORIZONTAL_SCROLL_POINTER_X: f32 = 80.0;
+const NAVIGATION_PREVIOUS_X: f32 = 594.0;
+const NAVIGATION_NEXT_X: f32 = 626.0;
+const TRAILING_CLOSE_X: f32 = 48.0;
+const TRAILING_UNPIN_X: f32 = 108.0;
+const TAB_DRAG_END_X: f32 = 600.0;
+
+include!("root_inline_tests/support.rs");
+include!("root_inline_tests/command_family.rs");
+include!("root_inline_tests/tab_strip_interaction.rs");
+include!("root_inline_tests/tab_strip_drag.rs");
+include!("root_inline_tests/tab_strip_context_menu.rs");
+include!("root_inline_tests/group_presentation.rs");
+include!("root_inline_tests/tab_strip_scroll.rs");
+include!("root_inline_tests/tab_strip_navigation.rs");
+include!("root_inline_tests/retained_command_family.rs");
+include!("root_inline_tests/support_helpers.rs");
+include!("root_inline_tests/root_catalog.rs");

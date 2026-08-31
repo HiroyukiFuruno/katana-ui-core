@@ -118,7 +118,7 @@ mod tests {
             1,
             b"full-root-target".to_vec(),
             presentation,
-            TextCommandSurfaceStyle::standard(),
+            TextCommandSurfaceStyle::standard().expect("standard style"),
         )
         .expect("token should encode");
         let mut root: EguiTextCommandSurfaceHostRoot = EguiTextCommandSurfaceRootFactory::new()

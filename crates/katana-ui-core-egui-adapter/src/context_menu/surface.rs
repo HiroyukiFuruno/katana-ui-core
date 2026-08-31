@@ -1,4 +1,4 @@
-use super::accessibility::ContextMenuAccessibility;
+use super::accessibility::publish_item;
 use super::interaction::consume_item_click;
 use super::presentation::full_path;
 use super::types::{ContextMenuPresentationItem, EguiContextMenuItemFrame};
@@ -31,7 +31,7 @@ pub(super) fn menu_items(
         let rect = egui_rect(item_bounds);
         let item_id = area_id.with(("item", index));
         let response = ui.interact(rect, item_id, egui::Sense::click());
-        ContextMenuAccessibility::publish_item(ui, item_id, item, item_bounds);
+        publish_item(ui, item_id, item, item_bounds);
         item_frames.push(EguiContextMenuItemFrame {
             id: item.id.clone(),
             bounds: item_bounds,
@@ -135,45 +135,63 @@ fn contains_rect(bounds: UiRect, item: UiRect) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::context_menu::types::{MENU_PADDING_PX, ROW_HEIGHT_PX};
 
     #[test]
-    fn node_anchor_remains_opaque_when_localized() {
-        let anchor = TextSurfaceContextTargetAnchor {
-            anchor: UiContextMenuAnchor::NodeId("opaque-node".into()),
-            selection: katana_ui_core::text_selection::UiTextSelectionRange::caret(0),
-            viewport_bounds: UiRect::new(10, 20, 100, 80),
-        };
-        assert_eq!(
-            local_anchor(&anchor, UiRect::new(10, 20, 100, 80)),
-            UiContextMenuAnchor::NodeId("opaque-node".into())
-        );
+    fn menu_item_bounds_advances_by_row_height_and_respects_vertical_scroll_offset() {
+        let bounds = UiRect::new(0, 0, 100, 100);
+        let first = menu_item_bounds(bounds, 0, 0.0);
+        let second = menu_item_bounds(bounds, 1, 0.0);
+        let row_height = ROW_HEIGHT_PX as i32;
+        assert_eq!(first.y + row_height, second.y);
+        assert!(contains_rect(bounds, first));
+        assert!(contains_rect(bounds, second));
+
+        let scrolled = menu_item_bounds(bounds, 0, 5.0);
+        assert_eq!(scrolled.y, bounds.y + MENU_PADDING_PX as i32 - 5);
     }
 
     #[test]
-    fn pointer_virtual_anchor_and_geometry_helpers_cover_the_local_surface() {
-        let viewport = UiRect::new(10, 20, 100, 80);
-        for (anchor, expected) in [
-            (
-                UiContextMenuAnchor::Pointer { x: 14, y: 26 },
-                UiContextMenuAnchor::Pointer { x: 4, y: 6 },
-            ),
-            (
-                UiContextMenuAnchor::VirtualRect(UiContextMenuRect::new(15, 27, 8, 9)),
-                UiContextMenuAnchor::VirtualRect(UiContextMenuRect::new(5, 7, 8, 9)),
-            ),
-        ] {
-            let target = TextSurfaceContextTargetAnchor {
-                anchor,
-                selection: katana_ui_core::text_selection::UiTextSelectionRange::caret(0),
-                viewport_bounds: viewport,
-            };
-            assert_eq!(local_anchor(&target, viewport), expected);
-        }
+    fn contains_rect_detects_out_of_range_items() {
+        let bounds = UiRect::new(10, 20, 40, 20);
+        assert!(contains(bounds, egui::Pos2::new(10.0, 20.0)));
+        assert!(!contains(bounds, egui::Pos2::new(51.0, 39.0)));
+        assert!(contains_rect(bounds, UiRect::new(10, 20, 20, 20),));
+        assert!(!contains_rect(bounds, UiRect::new(45, 20, 10, 10),));
 
-        let bounds = UiRect::new(0, 0, 20, 20);
-        assert!(contains(bounds, egui::pos2(10.0, 10.0)));
-        assert!(!contains(bounds, egui::pos2(20.0, 20.0)));
-        assert!(contains_rect(bounds, UiRect::new(1, 1, 18, 18)));
-        assert!(!contains_rect(bounds, UiRect::new(1, 1, 20, 20)));
+        let menu_bounds = UiRect::new(
+            0,
+            0,
+            100,
+            ROW_HEIGHT_PX.saturating_add(MENU_PADDING_PX.saturating_mul(2)),
+        );
+        let items = [
+            ContextMenuPresentationItem::action("visible", "Visible"),
+            ContextMenuPresentationItem::action("clipped", "Clipped"),
+        ];
+        let context = egui::Context::default();
+        let mut frames = None;
+        let mut output = context.run_ui(egui::RawInput::default(), |ui| {
+            frames = Some(
+                menu_items(
+                    ui,
+                    egui::Id::new("clipped-menu-items"),
+                    menu_bounds,
+                    &items,
+                    &[],
+                    0.0,
+                )
+                .item_frames,
+            );
+        });
+        output.textures_delta.clear();
+        assert_eq!(
+            frames
+                .expect("menu item frames")
+                .iter()
+                .map(|frame| frame.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["visible"]
+        );
     }
 }

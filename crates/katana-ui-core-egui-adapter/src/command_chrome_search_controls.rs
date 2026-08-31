@@ -1,4 +1,4 @@
-use super::command_chrome_interaction::CommandChromeInteraction;
+use super::command_chrome_interaction::publish_labeled_button_accesskit;
 use super::command_chrome_search_paint::{SearchControlPaintSource, SearchControlPaintState};
 use super::command_chrome_types::{
     CommandChromeRasterStyle, EguiCommandChromeAdapter, EguiCommandChromeError,
@@ -72,6 +72,7 @@ fn specs(strip: &CommandChromeSearchStrip) -> Vec<ControlSpec> {
     let options = *strip.options_model();
     let navigation = strip.capabilities_model().navigation.is_available()
         && strip.result_count_model().unwrap_or_default() > 0;
+    let replace_visible = strip.replace_mode_model() != ReplaceMode::Hidden;
     let replace = strip.replace_mode_model() == ReplaceMode::Visible
         && strip.capabilities_model().replace.is_available();
     let mut values = vec![
@@ -117,13 +118,13 @@ fn specs(strip: &CommandChromeSearchStrip) -> Vec<ControlSpec> {
         ),
         ControlSpec::summary("result-summary", strip.result_summary_model()),
     ];
-    if replace {
+    if replace_visible {
         values.extend([
             ControlSpec::action(
                 "replace-one",
                 strings.replace_one,
                 icons.icon_for(SearchControlIconSlot::ReplaceOne).cloned(),
-                true,
+                replace,
                 false,
                 SearchControlStripAction::Replace(SearchReplaceScope::One),
             ),
@@ -131,7 +132,7 @@ fn specs(strip: &CommandChromeSearchStrip) -> Vec<ControlSpec> {
                 "replace-all",
                 strings.replace_all,
                 icons.icon_for(SearchControlIconSlot::ReplaceAll).cloned(),
-                true,
+                replace,
                 false,
                 SearchControlStripAction::Replace(SearchReplaceScope::All),
             ),
@@ -207,7 +208,7 @@ fn show_control(
         .inner;
     let bounds = ui_rect(rect);
     if spec.action.is_some() {
-        CommandChromeInteraction::publish_labeled_button_accesskit(
+        publish_labeled_button_accesskit(
             ui,
             response.id,
             &spec.text.accessibility_label,

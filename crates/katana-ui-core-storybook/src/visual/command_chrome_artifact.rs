@@ -67,7 +67,8 @@ pub(super) fn paint_plan_has_colored_star_texture(plan: &CommandChromePaintPlan)
 pub(super) fn texture_identities(plan: &CommandChromePaintPlan) -> Vec<String> {
     plan.operations.iter().filter_map(|operation| match &operation.kind {
         katana_ui_core_egui_adapter::command_chrome::CommandChromePaintOperationKind::Texture { texture, .. } => Some(texture.identity.clone()),
-        katana_ui_core_egui_adapter::command_chrome::CommandChromePaintOperationKind::Fill { .. } => None,
+        katana_ui_core_egui_adapter::command_chrome::CommandChromePaintOperationKind::Fill { .. }
+        | katana_ui_core_egui_adapter::command_chrome::CommandChromePaintOperationKind::RoundedFill { .. } => None,
     }).collect()
 }
 

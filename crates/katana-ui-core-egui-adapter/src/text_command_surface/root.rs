@@ -1,78 +1,49 @@
 //! Closed retained root contract for KUC text-command composition.
 
-#[path = "interaction_locator.rs"]
 mod interaction_locator;
-#[path = "root_event.rs"]
 mod root_event;
-#[path = "root_frame.rs"]
 mod root_frame;
+#[path = "root/root_types.rs"]
+mod root_types;
 
-use super::artifact::EguiTextCommandSurfaceArtifactError;
+use super::source_address_projection_lease::SourceAddressProjectionLease;
+use super::status_diagnostics_projection_lease::StatusDiagnosticsProjectionLease;
+use super::tab_strip_projection_lease::TabStripProjectionLease;
+use super::tab_strip_retained::TabStripRetainedState;
 use super::types::{
     EguiTextCommandSurface, EguiTextCommandSurfaceAdapter, EguiTextCommandSurfaceError,
     TextCommandSurfaceStyle,
 };
 use crate::artifact_compositor::{
-    ArtifactCanvasBounds, ArtifactCompositeError, ArtifactCompositeFrame, ArtifactCompositeRequest,
-    ArtifactCompositor,
+    ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor,
 };
-use crate::text_surface::EguiTextSurfaceOutput;
+use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterResources};
 use root_event::build_event_batch;
-pub(crate) use root_event::{
-    EguiTextCommandSurfaceRootEventCommandDetachError,
-    EguiTextCommandSurfaceRootEventSearchDetachError, KucOpaqueHostEffectAttachError,
-};
 use root_frame::build_frame;
 
 pub use interaction_locator::{
     KucInteractionActionClass, KucInteractionLocator, KucInteractionLocatorError,
-    KucInteractionRequestError, KucInteractionSelector, KucOpaqueInteractionRequest,
+    KucInteractionRequestError, KucInteractionSelector, KucOpaqueClickContinuation,
+    KucOpaqueClickContinuationError, KucOpaqueInteractionRequest, KucOpaqueSearchTraceContinuation,
+    KucOpaqueTextSelectionContinuation, KucSearchTraceContinuationError,
+    KucTextSelectionContinuationError,
 };
 pub use root_event::{
     EguiTextCommandSurfaceRootEventBatch, EguiTextCommandSurfaceRootEventBatchDispatchError,
     EguiTextCommandSurfaceRootEventBatchForwardError, EguiTextCommandSurfaceRootEventChildClass,
     EguiTextCommandSurfaceRootEventClassDispatch, EguiTextCommandSurfaceRootEventDispatchReceipt,
     EguiTextCommandSurfaceRootEventForwardingReceipt, EguiTextCommandSurfaceRootEventTransport,
-    KucOpaqueHostEffectBatch, KucOpaqueHostEffectError, KucRootEffectRouter,
-    KucRootEventBatchContext, KucRootEventBatchDispatcher, KucRootEventBatchForwarder,
+    KucOpaqueHostEffectAttachError, KucOpaqueHostEffectBatch, KucOpaqueHostEffectError,
+    KucRootEffectRouter, KucRootEventBatchContext, KucRootEventBatchDispatcher,
+    KucRootEventBatchForwarder,
 };
 pub use root_frame::{
     EguiTextCommandSurfaceRootAccessKitReference, EguiTextCommandSurfaceRootDimensions,
     EguiTextCommandSurfaceRootFrame,
 };
-
-/// KUC-owned retained root that composes the generic text-command children once.
-pub struct EguiTextCommandSurfaceRoot {
-    surface: EguiTextCommandSurface,
-    adapter: EguiTextCommandSurfaceAdapter,
-    identity: String,
-    state_revision: u64,
-}
-
-/// The only frame data exposed by the retained root.
-#[derive(Debug)]
-pub struct EguiTextCommandSurfaceRootOutput {
-    frame: EguiTextCommandSurfaceRootFrame,
-    events: EguiTextCommandSurfaceRootEventBatch,
-    pub(crate) evidence_text: EguiTextSurfaceOutput,
-    pub(crate) evidence_composite: ArtifactCompositeFrame,
-    locator: interaction_locator::KucInteractionLocator,
-    #[cfg(test)]
-    pub(crate) toolbar_record: Option<crate::command_chrome::EguiCommandChromeFrameRecord>,
-    #[cfg(test)]
-    pub(crate) context_menu_record: Option<crate::context_menu::EguiContextMenuFrameRecord>,
-    #[cfg(test)]
-    pub(crate) floating: Option<crate::command_chrome::EguiCommandChromeFloatingOutput>,
-}
-
-/// Failure while producing the closed root frame or event batch.
-#[derive(Debug)]
-pub enum EguiTextCommandSurfaceRootError {
-    Surface(EguiTextCommandSurfaceError),
-    Artifact(EguiTextCommandSurfaceArtifactError),
-    Composite(ArtifactCompositeError),
-    Serialization(String),
-}
+pub use root_types::{
+    EguiTextCommandSurfaceRoot, EguiTextCommandSurfaceRootError, EguiTextCommandSurfaceRootOutput,
+};
 
 impl EguiTextCommandSurfaceRoot {
     pub(crate) fn evidence_catalog(&self) -> &katana_ui_core_text_raster::PlatformFontCatalog {
@@ -80,8 +51,7 @@ impl EguiTextCommandSurfaceRoot {
     }
 
     /// Creates a root with an identity derived from the retained text state id.
-    #[must_use]
-    pub fn new(surface: EguiTextCommandSurface) -> Self {
+    pub fn new(surface: EguiTextCommandSurface) -> Result<Self, EguiTextCommandSurfaceError> {
         let identity = format!(
             "kuc.text-command-root/{}",
             surface.text().state().text_area.state_id.as_str()
@@ -90,28 +60,46 @@ impl EguiTextCommandSurfaceRoot {
     }
 
     /// Creates a root with a caller-provided opaque, stable identity.
-    #[must_use]
-    pub fn with_identity(identity: impl Into<String>, surface: EguiTextCommandSurface) -> Self {
-        Self {
+    pub fn with_identity(
+        identity: impl Into<String>,
+        surface: EguiTextCommandSurface,
+    ) -> Result<Self, EguiTextCommandSurfaceError> {
+        Ok(Self::with_text_raster_resources(
+            identity,
             surface,
-            adapter: EguiTextCommandSurfaceAdapter::default(),
-            identity: identity.into(),
-            state_revision: 0,
-        }
+            PlatformTextRasterResources::new(PlatformTextRasterConfig::default()),
+        ))
     }
 
     /// Creates a root whose retained text children use one catalog policy.
-    #[must_use]
     pub fn with_text_raster_config(
         identity: impl Into<String>,
         surface: EguiTextCommandSurface,
-        config: katana_ui_core_text_raster::PlatformTextRasterConfig,
+        config: PlatformTextRasterConfig,
+    ) -> Result<Self, EguiTextCommandSurfaceError> {
+        Ok(Self::with_text_raster_resources(
+            identity,
+            surface,
+            PlatformTextRasterResources::new(config),
+        ))
+    }
+
+    pub(crate) fn with_text_raster_resources(
+        identity: impl Into<String>,
+        surface: EguiTextCommandSurface,
+        resources: PlatformTextRasterResources,
     ) -> Self {
         Self {
             surface,
-            adapter: EguiTextCommandSurfaceAdapter::with_text_raster_config(config),
+            adapter: EguiTextCommandSurfaceAdapter::with_resources(resources),
             identity: identity.into(),
             state_revision: 0,
+            frame_serial: 0,
+            source_address_submission_port: None,
+            tab_strip: None,
+            status_bar: None,
+            diagnostics_list: None,
+            editor_viewport: None,
         }
     }
 
@@ -127,11 +115,77 @@ impl EguiTextCommandSurfaceRoot {
         changed
     }
 
-    pub(crate) fn apply_command_family_projection(
+    pub fn attach_source_address(&mut self, lease: SourceAddressProjectionLease) {
+        let (strip, port) = lease.into_parts();
+        self.surface.set_source_address(strip);
+        self.source_address_submission_port = port;
+    }
+
+    /// Mounts the generic KUC status child into this retained root.
+    pub(crate) fn attach_status_bar(&mut self, status_bar: katana_ui_core::molecule::StatusBar) {
+        self.status_bar = Some(status_bar);
+    }
+
+    /// Mounts the generic KUC diagnostics child into this retained root.
+    pub(crate) fn attach_diagnostics_list(
         &mut self,
-        projection: &super::host_root::EguiTextCommandSurfaceCommandFamilyProjection,
+        diagnostics_list: katana_ui_core::molecule::DiagnosticsList,
     ) {
-        self.surface.apply_command_family_projection(projection);
+        self.diagnostics_list = Some(diagnostics_list);
+    }
+
+    /// Consumes a generic child projection without exposing child models through the root API.
+    pub fn attach_status_diagnostics(&mut self, lease: StatusDiagnosticsProjectionLease) {
+        let (status_bar, diagnostics_list) = lease.into_parts();
+        if let Some(status_bar) = status_bar {
+            self.attach_status_bar(status_bar);
+        }
+        if let Some(diagnostics_list) = diagnostics_list {
+            self.attach_diagnostics_list(diagnostics_list);
+        }
+    }
+
+    pub(crate) fn attach_tab_strip(
+        &mut self,
+        lease: TabStripProjectionLease,
+    ) -> Result<bool, EguiTextCommandSurfaceError> {
+        TabStripRetainedState::from_lease(
+            lease,
+            std::sync::Arc::clone(&self.adapter.catalog),
+            self.adapter.text_raster_config.clone(),
+        )
+        .map(|tab_strip| {
+            self.tab_strip = Some(tab_strip);
+            true
+        })
+        .map_err(Into::into)
+    }
+
+    pub(crate) fn clear_tab_strip(&mut self) -> bool {
+        self.tab_strip.take().is_some()
+    }
+
+    pub(crate) fn clear_status_diagnostics(&mut self) -> bool {
+        let changed = self.status_bar.is_some() || self.diagnostics_list.is_some();
+        self.status_bar = None;
+        self.diagnostics_list = None;
+        changed
+    }
+
+    pub(crate) fn attach_editor_viewport(&mut self, lease: super::EditorViewportProjectionLease) {
+        self.editor_viewport = Some(lease);
+    }
+
+    pub(crate) fn clear_editor_viewport(&mut self) -> bool {
+        self.editor_viewport.take().is_some()
+    }
+
+    pub(crate) fn synchronize_command_families(
+        &mut self,
+        primary: Option<katana_ui_core::molecule::command_chrome::CommandChromeFamilyId>,
+        floating: Option<katana_ui_core::molecule::command_chrome::CommandChromeFamilyId>,
+    ) -> bool {
+        self.surface.synchronize_command_families(primary, floating)
     }
 
     /// Renders one actual root frame and returns only its closed frame/event contracts.
@@ -140,15 +194,26 @@ impl EguiTextCommandSurfaceRoot {
         ui: &mut egui::Ui,
         style: &TextCommandSurfaceStyle,
     ) -> Result<EguiTextCommandSurfaceRootOutput, EguiTextCommandSurfaceRootError> {
-        let output = self.adapter.show(ui, &mut self.surface, style)?;
+        ui.ctx().enable_accesskit();
+        self.frame_serial = self.frame_serial.saturating_add(1);
+        let mut output = self.adapter.show_with_tab_strip(
+            ui,
+            &mut self.surface,
+            style,
+            self.tab_strip.as_mut(),
+            self.status_bar.as_mut(),
+            self.diagnostics_list.as_mut(),
+            self.editor_viewport.as_mut(),
+        )?;
         let mut events =
-            build_event_batch(&output).map_err(EguiTextCommandSurfaceRootError::Serialization)?;
+            build_event_batch(&mut output, self.source_address_submission_port.clone())
+                .map_err(EguiTextCommandSurfaceRootError::Serialization)?;
         if events.has_events() {
             self.state_revision = self.state_revision.saturating_add(1);
         }
         events.set_root_metadata(&self.identity, self.state_revision);
         let context = events.current_context();
-        let bound_evidence = super::accesskit_evidence::AccessKitEvidenceLedger::bind_frame(
+        let bound_evidence = super::accesskit_evidence::bind_frame(
             output.accesskit_evidence.clone(),
             &self.identity,
             &context,
@@ -163,13 +228,16 @@ impl EguiTextCommandSurfaceRoot {
         let locator = interaction_locator::KucInteractionLocator::from_output(
             &self.identity,
             &context,
+            self.frame_serial,
             &output,
             &bound_evidence,
         );
+        let artifact_order = output.artifact_order().to_vec();
         Ok(EguiTextCommandSurfaceRootOutput {
             evidence_text: output.text,
             evidence_composite: composite,
             locator,
+            artifact_order,
             frame,
             events,
             #[cfg(test)]
@@ -178,6 +246,8 @@ impl EguiTextCommandSurfaceRoot {
             floating: output.floating,
             #[cfg(test)]
             context_menu_record: output.context_menu.and_then(|value| value.record),
+            #[cfg(test)]
+            search_record: output.search.map(|value| value.record),
         })
     }
 }
@@ -206,45 +276,17 @@ impl EguiTextCommandSurfaceRootOutput {
     pub const fn interaction_locator(&self) -> &interaction_locator::KucInteractionLocator {
         &self.locator
     }
-}
 
-impl From<EguiTextCommandSurfaceError> for EguiTextCommandSurfaceRootError {
-    fn from(value: EguiTextCommandSurfaceError) -> Self {
-        Self::Surface(value)
+    #[must_use]
+    pub fn artifact_order(&self) -> &[super::types::EguiTextCommandSurfaceChild] {
+        &self.artifact_order
     }
 }
 
-impl From<EguiTextCommandSurfaceArtifactError> for EguiTextCommandSurfaceRootError {
-    fn from(value: EguiTextCommandSurfaceArtifactError) -> Self {
-        Self::Artifact(value)
-    }
-}
-
-impl From<ArtifactCompositeError> for EguiTextCommandSurfaceRootError {
-    fn from(value: ArtifactCompositeError) -> Self {
-        Self::Composite(value)
-    }
-}
-
-impl std::fmt::Display for EguiTextCommandSurfaceRootError {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Surface(error) => write!(formatter, "text-command root surface failed: {error}"),
-            Self::Artifact(error) => {
-                write!(formatter, "text-command root artifact failed: {error}")
-            }
-            Self::Composite(error) => {
-                write!(formatter, "text-command root composition failed: {error}")
-            }
-            Self::Serialization(error) => {
-                write!(formatter, "text-command root serialization failed: {error}")
-            }
-        }
-    }
-}
-
-impl std::error::Error for EguiTextCommandSurfaceRootError {}
-
-#[path = "root_tests.rs"]
 #[cfg(test)]
-mod root_tests;
+#[path = "root_inline_tests.rs"]
+mod tests;
+
+#[cfg(test)]
+#[path = "root_tests.rs"]
+mod retained_root_tests;

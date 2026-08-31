@@ -19,6 +19,10 @@ pub use model::{
 use render::segment_nodes;
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+#[path = "status_bar_tests.rs"]
+mod tests;
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct StatusBar {
     label: String,
@@ -115,6 +119,31 @@ impl StatusBar {
             }
             StatusBarMode::SingleMessage | StatusBarMode::MultiSegment => Vec::new(),
         }
+    }
+
+    #[must_use]
+    pub fn label(&self) -> &str {
+        &self.label
+    }
+
+    #[must_use]
+    pub const fn mode_value(&self) -> StatusBarMode {
+        self.mode
+    }
+
+    #[must_use]
+    pub const fn density_value(&self) -> StatusBarDensity {
+        self.density
+    }
+
+    #[must_use]
+    pub fn single_message(&self) -> Option<&str> {
+        self.single_message.as_deref()
+    }
+
+    #[must_use]
+    pub fn segments(&self) -> &[StatusBarSegment] {
+        &self.segments
     }
 
     #[must_use]

@@ -2,7 +2,7 @@ use crate::{
     PlatformColorEmojiAvailability, PlatformColorEmojiFaceResolver, PlatformEmojiFontCandidate,
     PlatformEmojiFontLoadError, PlatformEmojiFontLoader, PlatformEmojiFontObservation,
     PlatformFontCatalog, PlatformFontSha256, PlatformTextRasterConfig, PlatformTextRasterError,
-    PlatformTextRasterizer,
+    PlatformTextRasterResources, PlatformTextRasterizer,
 };
 use std::sync::Arc;
 
@@ -68,4 +68,17 @@ fn catalog_policy_hash_mismatch_is_rejected_by_with_catalog() {
         PlatformTextRasterizer::with_catalog(Arc::new(catalog), config),
         Err(PlatformTextRasterError::CatalogConfigurationMismatch)
     ));
+}
+
+#[test]
+fn resources_children_reuse_the_catalog_created_for_their_configuration() {
+    let config = PlatformTextRasterConfig::default().with_cache_capacity(7);
+    let resources = PlatformTextRasterResources::new(config.clone());
+    let first = resources.rasterizer();
+    let second = resources.rasterizer();
+
+    assert_eq!(resources.config(), &config);
+    assert_eq!(resources.catalog().policy(), &config.catalog_policy());
+    assert!(Arc::ptr_eq(&resources.catalog(), &first.catalog()));
+    assert!(Arc::ptr_eq(&first.catalog(), &second.catalog()));
 }

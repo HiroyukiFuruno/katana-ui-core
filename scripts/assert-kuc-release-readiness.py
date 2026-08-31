@@ -670,9 +670,9 @@ def justfile_fmt_scope_failures(root: Path = ROOT) -> list[str]:
         return [f"{path_label(justfile, root)}: Justfile is missing"]
     source = justfile.read_text(encoding="utf-8")
     required = (
-        'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"',
-        "{{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}}",
-        "{{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}} -- --check",
+        'KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-text-raster -p katana-ui-core-svg-raster -p katana-ui-core-egui-adapter -p katana-ui-core-storybook -p kuc-consumer-app"',
+        "{{CARGO}} fmt {{KUC_FORMAT_PACKAGES}}",
+        "{{CARGO}} fmt {{KUC_FORMAT_PACKAGES}} -- --check",
     )
     forbidden = (
         "{{CARGO}} fmt --all",
@@ -730,12 +730,26 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked",
         "bash scripts/run-strict-coverage.sh",
         "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --locked",
+        "coverage: fmt-check ast-lint\n    just coverage-container",
+        "coverage-iterate: fmt-check ast-lint\n    just coverage-container-iterate",
+        "coverage-adapter-supplement test_target test_filter: fmt-check ast-lint\n    KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} just coverage-container-adapter-supplement",
+        "KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh",
+        "KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh",
+        "_coverage-container-run reuse:",
+        'bash scripts/coverage/run-container.sh "{{COVERAGE_IMAGE}}" "{{REPO_ROOT}}" "{{COVERAGE_BUILD_JOBS}}" "{{COVERAGE_TEST_THREADS}}" "{{reuse}}"',
+        "check: fmt-check ast-lint check-types lint unit-test",
+        "python3 scripts/assert-strict-coverage-json.py --self-test",
+        "python3 scripts/coverage/image-runtime-id.py --self-test",
+        "python3 scripts/coverage/run-test-binaries.py --self-test",
+        "release-check: release-target-check fmt-check ast-lint release-readiness-check release-verify",
+        'release-local-cleanup:\n    python3 scripts/release/cleanup-release-branches.py --version "{{VERSION}}" --repo "{{RELEASE_REPO}}"',
     )
     justfile_forbidden = (
         "{{CARGO}} test --workspace",
         "{{CARGO}} llvm-cov --workspace",
         'RUSTFLAGS="-D warnings" cargo test --workspace',
         "cargo test --workspace",
+        "KUC_COVERAGE_SCOPE",
     )
     failures = [
         f"{path_label(justfile, root)}: Rust test gate must scope execution to KUC workspace packages with `{token}`"
@@ -761,18 +775,299 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "--all-targets",
         "--include-ignored",
         "export CARGO_PROFILE_TEST_OPT_LEVEL=0",
-        'run_cargo clean --target-dir "$coverage_target_dir"',
-        "run_cargo llvm-cov report",
-        "--fail-under-functions 100",
-        "--fail-under-lines 100",
-        "--fail-uncovered-functions 0",
-        "--fail-uncovered-lines 0",
+        'run_cargo clean --target-dir "${coverage_target_dir}"',
+        'coverage_reuse="${KUC_COVERAGE_REUSE:-0}"',
+        'coverage_test_threads="${COVERAGE_TEST_THREADS:-4}"',
+        'coverage_supplement_target="${KUC_COVERAGE_SUPPLEMENT_TARGET:-lib}"',
+        'coverage_supplement_filter="${KUC_COVERAGE_SUPPLEMENT_FILTER:-}"',
+        'coverage_runtime="${KUC_COVERAGE_RUNTIME:-native}"',
+        'coverage_image_id="${KUC_COVERAGE_IMAGE_ID:-}"',
+        'coverage_profile_path="${coverage_storage_dir}/kuc-workspace-coverage-profile-v3.sha256"',
+        'coverage_strict_state_path="${coverage_profile_path}.strict-state"',
+        'coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"',
+        "coverage_production_digest()",
+        "coverage_profile_signature()",
+        "native_coverage_runtime_id()",
+        "write_coverage_state()",
+        "write_coverage_profile_state()",
+        "write_coverage_strict_state()",
+        "invalidate_coverage_profile()",
+        "finalize_coverage_process()",
+        "trap finalize_coverage_process EXIT",
+        "coverage_transaction_active=1",
+        "write_coverage_profile_state invalid",
+        "write_coverage_strict_state invalid",
+        "runtime-image-id=",
+        "production-digest=",
+        "Justfile",
+        "scripts/run-strict-coverage.sh",
+        "scripts/assert-strict-coverage-json.py",
+        "scripts/coverage/run-test-binaries.py",
+        "scripts/coverage/image-runtime-id.py",
+        "scripts/coverage/run-container.sh",
+        "scripts/coverage/run-in-container.sh",
+        "scripts/coverage/Dockerfile",
+        "crates/katana-ui-core/Cargo.toml",
+        "crates/katana-ui-core-egui-adapter/Cargo.toml",
+        "crates/katana-ui-core-storybook/Cargo.toml",
+        "crates/katana-ui-core-svg-raster/Cargo.toml",
+        "crates/katana-ui-core-text-raster/Cargo.toml",
+        "examples/kuc-consumer-app/Cargo.toml",
+        "rust-toolchain.toml",
+        "config.toml",
+        "rustc -vV",
+        "run_cargo llvm-cov --version",
+        'getconf _NPROCESSORS_ONLN',
+        "coverage_packages=(",
+        "run_cargo llvm-cov clean --profraw-only",
+        "run_cargo llvm-cov clean --workspace",
+        'coverage_mode="rebuild"',
+        'coverage_mode="reuse"',
+        "coverage supplement requires a complete full-workspace profile",
+        "coverage profile is incomplete or its production inputs changed; rerun full coverage before supplementing",
+        "write_coverage_profile_state in-progress",
+        "write_coverage_strict_state in-progress",
+        'write_coverage_profile_state "${pending_profile_signature}"',
+        'write_coverage_strict_state "passed:${pending_profile_signature}"',
+        'write_coverage_strict_state "failed:${pending_profile_signature}"',
+        "run_cargo_raw()",
+        "run_cargo_raw llvm-cov show-env --sh",
+        "run_cargo_raw metadata --format-version 1 --no-deps --locked",
+        "--message-format=json",
+        "python3 scripts/coverage/run-test-binaries.py",
+        '--max-parallel-binaries "${coverage_parallel_binaries}"',
+        '--test-threads "${coverage_threads_per_binary}"',
+        'coverage_min_free_gib="${KUC_COVERAGE_MIN_FREE_GIB:-2}"',
+        'df -Pk "${coverage_storage_dir}"',
+        "run_cargo llvm-cov report --quiet",
+        "--json",
+        '--output-path "${coverage_report_path}"',
+        "python3 scripts/assert-strict-coverage-json.py",
+        "--validate-profile",
+        "--ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\\.rs$|[^/]+_tests\\.rs$)'",
+        "container coverage requires a validated runtime image identity",
+        "native coverage does not accept KUC_COVERAGE_IMAGE_ID",
     )
     failures.extend(
         f"{path_label(coverage_script, root)}: strict coverage gate must include `{token}`"
         for token in coverage_required
         if token not in coverage_source
     )
+    container_wrapper = root / "scripts" / "coverage" / "run-container.sh"
+    if not container_wrapper.exists():
+        failures.append(
+            f"{path_label(container_wrapper, root)}: coverage container wrapper is missing"
+        )
+    else:
+        wrapper_source = container_wrapper.read_text(encoding="utf-8")
+        wrapper_required = (
+            "set -euo pipefail",
+            'coverage_image_id="$(',
+            'docker image inspect "${coverage_image}"',
+            "python3 scripts/coverage/image-runtime-id.py",
+            '^runtime-v1:sha256:[0-9a-f]{64}$',
+            '"${coverage_test_threads}" != "auto"',
+            "docker run --rm",
+            "--env KUC_COVERAGE_RUNTIME=container",
+            '--env KUC_COVERAGE_IMAGE_ID="${coverage_image_id}"',
+            "--env KUC_COVERAGE_SUPPLEMENT_TARGET",
+            "--env KUC_COVERAGE_SUPPLEMENT_FILTER",
+        )
+        failures.extend(
+            f"{path_label(container_wrapper, root)}: coverage wrapper must include `{token}`"
+            for token in wrapper_required
+            if token not in wrapper_source
+        )
+        legacy_image_id_patterns = (
+            re.compile(r"\[\s*['\"]Id['\"]\s*\]"),
+            re.compile(r"\.Id\b"),
+            re.compile(r"\bget\(\s*['\"]Id['\"]"),
+        )
+        if any(pattern.search(wrapper_source) for pattern in legacy_image_id_patterns):
+            failures.append(
+                f"{path_label(container_wrapper, root)}: coverage wrapper must not use volatile Docker image ID"
+            )
+        identity_assignment = wrapper_source.find('coverage_image_id="$(')
+        image_inspect = wrapper_source.find('docker image inspect "${coverage_image}"')
+        identity_checker = wrapper_source.find(
+            "python3 scripts/coverage/image-runtime-id.py"
+        )
+        identity_validation = wrapper_source.find(
+            'if [[ ! "${coverage_image_id}" =~ ^runtime-v1:sha256:[0-9a-f]{64}$ ]]'
+        )
+        container_execution = wrapper_source.find("docker run --rm")
+        if not (
+            0
+            <= identity_assignment
+            < image_inspect
+            < identity_checker
+            < identity_validation
+            < container_execution
+        ):
+            failures.append(
+                f"{path_label(container_wrapper, root)}: runtime identity must be checked before container execution"
+            )
+
+    image_identity = root / "scripts" / "coverage" / "image-runtime-id.py"
+    if not image_identity.exists():
+        failures.append(
+            f"{path_label(image_identity, root)}: coverage image runtime identity checker is missing"
+        )
+    else:
+        identity_source = image_identity.read_text(encoding="utf-8")
+        identity_required = (
+            'RUNTIME_PREFIX = "runtime-v1:sha256:"',
+            'REQUIRED_IMAGE_FIELDS = ("Architecture", "Os", "RootFS", "Config")',
+            "def runtime_payload(inspect_payload: object)",
+            "def runtime_identity(inspect_payload: object)",
+            "def self_test()",
+            "volatile manifest metadata changed runtime identity",
+            "RootFS change did not change runtime identity",
+            "Config change did not change runtime identity",
+            "docker inspect must return exactly one image",
+        )
+        failures.extend(
+            f"{path_label(image_identity, root)}: runtime identity checker must include `{token}`"
+            for token in identity_required
+            if token not in identity_source
+        )
+
+    container_entrypoint = root / "scripts" / "coverage" / "run-in-container.sh"
+    if not container_entrypoint.exists():
+        failures.append(
+            f"{path_label(container_entrypoint, root)}: coverage container entrypoint is missing"
+        )
+    else:
+        entrypoint_source = container_entrypoint.read_text(encoding="utf-8")
+        entrypoint_required = (
+            '"${KUC_COVERAGE_RUNTIME:-}" != "container"',
+            '^runtime-v1:sha256:[0-9a-f]{64}$',
+            "container coverage requires a validated runtime image identity",
+        )
+        failures.extend(
+            f"{path_label(container_entrypoint, root)}: coverage container entrypoint must include `{token}`"
+            for token in entrypoint_required
+            if token not in entrypoint_source
+        )
+    transaction_begin = coverage_source.find("coverage_transaction_active=1")
+    profile_invalidate = coverage_source.find("write_coverage_profile_state in-progress")
+    strict_invalidate = coverage_source.find("write_coverage_strict_state in-progress")
+    transaction_start = coverage_source.find("\ninvalidate_coverage_profile\n")
+    mutation_positions = (
+        coverage_source.find('run_cargo clean --target-dir "${coverage_target_dir}"'),
+        coverage_source.find("run_cargo llvm-cov clean --profraw-only"),
+        coverage_source.find("run_cargo llvm-cov clean --workspace"),
+        coverage_source.find("run_cargo_raw llvm-cov show-env --sh"),
+        coverage_source.find("run_cargo_raw test"),
+        coverage_source.find("python3 scripts/coverage/run-test-binaries.py"),
+        coverage_source.find("run_cargo llvm-cov report --quiet"),
+    )
+    profile_validation = coverage_source.rfind(
+        "python3 scripts/assert-strict-coverage-json.py --validate-profile"
+    )
+    profile_finalize = coverage_source.rfind(
+        'write_coverage_profile_state "${pending_profile_signature}"'
+    )
+    transaction_commit = coverage_source.rfind("coverage_transaction_active=0")
+    strict_report = coverage_source.rfind(
+        'if python3 scripts/assert-strict-coverage-json.py "${coverage_report_path}"; then'
+    )
+    strict_pass = coverage_source.rfind(
+        'write_coverage_strict_state "passed:${pending_profile_signature}"'
+    )
+    strict_fail = coverage_source.rfind(
+        'write_coverage_strict_state "failed:${pending_profile_signature}"'
+    )
+    if not (
+        0
+        <= transaction_begin
+        < profile_invalidate
+        < strict_invalidate
+        < transaction_start
+        < min(mutation_positions)
+        <= max(mutation_positions)
+        < profile_validation
+        < profile_finalize
+        < transaction_commit
+        < strict_report
+        < strict_pass
+        < strict_fail
+    ):
+        failures.append(
+            f"{path_label(coverage_script, root)}: coverage profile readiness and strict pass state must be finalized in fail-closed order"
+        )
+    coverage_checker = root / "scripts" / "assert-strict-coverage-json.py"
+    if not coverage_checker.exists():
+        failures.append(
+            f"{path_label(coverage_checker, root)}: strict coverage JSON checker is missing"
+        )
+    else:
+        checker_source = coverage_checker.read_text(encoding="utf-8")
+        checker_required = (
+            "def coverage_profile_failures(payload: object)",
+            'for metric in ("functions", "lines")',
+            "covered > count",
+            "if covered != count:",
+            "uncovered={count - covered}",
+            'sys.argv[1] == "--validate-profile"',
+            "coverage_profile_failures(bad)",
+            "strict_coverage_failures(good)",
+            "strict_coverage_failures(bad)",
+            "strict_coverage_failures(malformed)",
+        )
+        failures.extend(
+            f"{path_label(coverage_checker, root)}: strict coverage checker must include `{token}`"
+            for token in checker_required
+            if token not in checker_source
+        )
+    return failures
+
+
+def coverage_workflow_routing_failures(root: Path = ROOT) -> list[str]:
+    ci_workflow = root / ".github/workflows/test-and-build.yml"
+    release_workflow = root / ".github/workflows/release-preflight.yml"
+    failures: list[str] = []
+    if not ci_workflow.exists():
+        failures.append(f"{path_label(ci_workflow, root)}: CI workflow is missing")
+    else:
+        ci_source = ci_workflow.read_text(encoding="utf-8")
+        ci_coverage_block = (
+            "      - name: Run coverage\n"
+            "        # WHY: release PR は release-preflight の release-check が同じ strict coverage を実行する。\n"
+            "        if: >-\n"
+            "          matrix.os == 'ubuntu-latest' &&\n"
+            "          !startsWith(github.head_ref, 'release/v')\n"
+            "        run: just coverage\n"
+        )
+        if ci_coverage_block not in ci_source:
+            failures.append(
+                f"{path_label(ci_workflow, root)}: release PR must not duplicate strict coverage"
+            )
+    if not release_workflow.exists():
+        failures.append(
+            f"{path_label(release_workflow, root)}: release preflight workflow is missing"
+        )
+    else:
+        release_source = release_workflow.read_text(encoding="utf-8")
+        release_quality_gate_block = (
+            "      - name: Quality gate\n"
+            "        # WHY: release PR は直後の release-check が同じ check を内包するため二重実行しない。\n"
+            "        if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release/v')\n"
+            "        run: just check\n"
+        )
+        if release_quality_gate_block not in release_source:
+            failures.append(
+                f"{path_label(release_workflow, root)}: release PR must not duplicate the quality gate inside release-check"
+            )
+        release_required = (
+            "startsWith(github.head_ref, 'release/v')",
+            'run: just VERSION="${{ steps.version.outputs.version }}" release-check',
+        )
+        failures.extend(
+            f"{path_label(release_workflow, root)}: release PR coverage route must include `{token}`"
+            for token in release_required
+            if token not in release_source
+        )
     return failures
 
 
@@ -1199,6 +1494,36 @@ def self_test() -> int:
             for line in justfile_test_scope_failures(test_root)
         )
     with tempfile.TemporaryDirectory() as tmp:
+        test_root = Path(tmp)
+        write_justfile_test_scope_self_test_file(
+            test_root,
+            use_scoped_packages=True,
+            use_legacy_image_id=True,
+        )
+        coverage_legacy_id_bad_passed = not any(
+            "must not use volatile Docker image ID" in line
+            for line in justfile_test_scope_failures(test_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        workflow_root = Path(tmp)
+        write_coverage_workflow_routing_self_test_files(
+            workflow_root,
+            skip_release_duplicate=True,
+        )
+        coverage_workflow_good_failed = bool(
+            coverage_workflow_routing_failures(workflow_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
+        workflow_root = Path(tmp)
+        write_coverage_workflow_routing_self_test_files(
+            workflow_root,
+            skip_release_duplicate=False,
+        )
+        coverage_workflow_bad_passed = not any(
+            "must not duplicate strict coverage" in line
+            for line in coverage_workflow_routing_failures(workflow_root)
+        )
+    with tempfile.TemporaryDirectory() as tmp:
         storybook_root = Path(tmp)
         write_justfile_storybook_command_self_test_file(
             storybook_root,
@@ -1349,6 +1674,9 @@ def self_test() -> int:
         or justfile_lint_bad_passed
         or justfile_test_good_failed
         or justfile_test_bad_passed
+        or coverage_legacy_id_bad_passed
+        or coverage_workflow_good_failed
+        or coverage_workflow_bad_passed
         or justfile_storybook_good_failed
         or justfile_storybook_bad_passed
         or preset_tab_good_failed
@@ -1398,6 +1726,12 @@ def self_test() -> int:
             print("- valid KUC-scoped Justfile test gate rejected", file=sys.stderr)
         if justfile_test_bad_passed:
             print("- dependency-wide Justfile test gate allowed", file=sys.stderr)
+        if coverage_legacy_id_bad_passed:
+            print("- volatile Docker image ID coverage wrapper allowed", file=sys.stderr)
+        if coverage_workflow_good_failed:
+            print("- valid release coverage workflow routing rejected", file=sys.stderr)
+        if coverage_workflow_bad_passed:
+            print("- duplicate release PR coverage workflow routing allowed", file=sys.stderr)
         if justfile_storybook_good_failed:
             print("- valid target-scoped Storybook Justfile commands rejected", file=sys.stderr)
         if justfile_storybook_bad_passed:
@@ -1517,13 +1851,13 @@ def write_storybook_requirement_gate_self_test_files(
 def write_justfile_fmt_scope_self_test_file(root: Path, use_scoped_packages: bool) -> None:
     root.mkdir(parents=True, exist_ok=True)
     scoped_packages = (
-        'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"\n'
+        'KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-text-raster -p katana-ui-core-svg-raster -p katana-ui-core-egui-adapter -p katana-ui-core-storybook -p kuc-consumer-app"\n'
         "\n"
         "fmt:\n"
-        "    {{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}}\n"
+        "    {{CARGO}} fmt {{KUC_FORMAT_PACKAGES}}\n"
         "\n"
         "fmt-check:\n"
-        "    {{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}} -- --check\n"
+        "    {{CARGO}} fmt {{KUC_FORMAT_PACKAGES}} -- --check\n"
     )
     dependency_wide = (
         "fmt:\n"
@@ -1556,7 +1890,11 @@ def write_justfile_lint_scope_self_test_file(root: Path, use_scoped_packages: bo
     (root / "Justfile").write_text(source, encoding="utf-8")
 
 
-def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bool) -> None:
+def write_justfile_test_scope_self_test_file(
+    root: Path,
+    use_scoped_packages: bool,
+    use_legacy_image_id: bool = False,
+) -> None:
     root.mkdir(parents=True, exist_ok=True)
     scoped_packages = (
         'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"\n'
@@ -1564,11 +1902,42 @@ def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bo
         "unit-test:\n"
         "    {{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked\n"
         "\n"
-        "coverage:\n"
+        "coverage: fmt-check ast-lint\n"
+        "    just coverage-container\n"
+        "\n"
+        "coverage-iterate: fmt-check ast-lint\n"
+        "    just coverage-container-iterate\n"
+        "\n"
+        "coverage-adapter-supplement test_target test_filter: fmt-check ast-lint\n"
+        "    KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} just coverage-container-adapter-supplement\n"
+        "\n"
+        "coverage-linux:\n"
         "    CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh\n"
+        "\n"
+        "coverage-linux-iterate:\n"
+        "    KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh\n"
+        "\n"
+        "coverage-linux-adapter-supplement test_target test_filter:\n"
+        "    KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh\n"
+        "\n"
+        "coverage-container-adapter-supplement:\n"
+        "    just _coverage-container-run 1\n"
+        "\n"
+        "_coverage-container-run reuse:\n"
+        '    bash scripts/coverage/run-container.sh "{{COVERAGE_IMAGE}}" "{{REPO_ROOT}}" "{{COVERAGE_BUILD_JOBS}}" "{{COVERAGE_TEST_THREADS}}" "{{reuse}}"\n'
         "\n"
         "cargo-test:\n"
         "    {{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --locked\n"
+        "\n"
+        "check: fmt-check ast-lint check-types lint unit-test\n"
+        "    python3 scripts/assert-strict-coverage-json.py --self-test\n"
+        "    python3 scripts/coverage/image-runtime-id.py --self-test\n"
+        "    python3 scripts/coverage/run-test-binaries.py --self-test\n"
+        "\n"
+        "release-check: release-target-check fmt-check ast-lint release-readiness-check release-verify\n"
+        "\n"
+        "release-local-cleanup:\n"
+        "    python3 scripts/release/cleanup-release-branches.py --version \"{{VERSION}}\" --repo \"{{RELEASE_REPO}}\"\n"
     )
     dependency_wide = (
         "unit-test:\n"
@@ -1584,25 +1953,161 @@ def write_justfile_test_scope_self_test_file(root: Path, use_scoped_packages: bo
     (root / "Justfile").write_text(source, encoding="utf-8")
     scripts = root / "scripts"
     scripts.mkdir(parents=True, exist_ok=True)
+    coverage_dir = scripts / "coverage"
+    coverage_dir.mkdir(parents=True, exist_ok=True)
+    if use_legacy_image_id:
+        identity_command = (
+            'coverage_image_id="$(docker image inspect "${coverage_image}" | '
+            "python3 -c 'import json, sys; image=json.load(sys.stdin)[0]; "
+            'print(image["Id"])\')"\n'
+        )
+    else:
+        identity_command = (
+            'coverage_image_id="$(docker image inspect "${coverage_image}" | '
+            'python3 scripts/coverage/image-runtime-id.py)"\n'
+        )
+    (coverage_dir / "run-container.sh").write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'coverage_image="image"\n'
+        'coverage_test_threads="auto"\n'
+        'if [[ "${coverage_test_threads}" != "auto" && ! "${coverage_test_threads}" =~ ^[1-9][0-9]*$ ]]; then exit 1; fi\n'
+        f"{identity_command}"
+        'if [[ ! "${coverage_image_id}" =~ ^runtime-v1:sha256:[0-9a-f]{64}$ ]]; then exit 1; fi\n'
+        "docker run --rm --env KUC_COVERAGE_RUNTIME=container "
+        '--env KUC_COVERAGE_IMAGE_ID="${coverage_image_id}" '
+        "--env KUC_COVERAGE_SUPPLEMENT_TARGET --env KUC_COVERAGE_SUPPLEMENT_FILTER image\n",
+        encoding="utf-8",
+    )
+    (coverage_dir / "image-runtime-id.py").write_text(
+        'RUNTIME_PREFIX = "runtime-v1:sha256:"\n'
+        'REQUIRED_IMAGE_FIELDS = ("Architecture", "Os", "RootFS", "Config")\n'
+        "def runtime_payload(inspect_payload: object):\n    pass\n"
+        "def runtime_identity(inspect_payload: object):\n    pass\n"
+        "def self_test():\n"
+        "    messages = (\n"
+        '        "volatile manifest metadata changed runtime identity",\n'
+        '        "RootFS change did not change runtime identity",\n'
+        '        "Config change did not change runtime identity",\n'
+        '        "docker inspect must return exactly one image",\n'
+        "    )\n",
+        encoding="utf-8",
+    )
+    (coverage_dir / "run-in-container.sh").write_text(
+        '#!/usr/bin/env bash\nif [[ "${KUC_COVERAGE_RUNTIME:-}" != "container" ]]; then exit 1; fi\n'
+        'if [[ ! "${KUC_COVERAGE_IMAGE_ID:-}" =~ ^runtime-v1:sha256:[0-9a-f]{64}$ ]]; then\n'
+        '  echo "container coverage requires a validated runtime image identity"\n'
+        "  exit 1\nfi\n",
+        encoding="utf-8",
+    )
     coverage_source = (
+        "finalize_coverage_process() {\n"
+        "  if [[ \"${coverage_transaction_active:-0}\" == \"1\" ]]; then\n"
+        "    write_coverage_profile_state invalid\n"
+        "    write_coverage_strict_state invalid\n"
+        "  fi\n"
+        "}\n"
+        "trap finalize_coverage_process EXIT\n"
         "export CARGO_PROFILE_TEST_OPT_LEVEL=0\n"
-        'coverage_target_dir="${CARGO_TARGET_DIR:-target}/llvm-cov-target"\n'
-        'run_cargo clean --target-dir "$coverage_target_dir"\n'
-        "run_cargo llvm-cov \\\n"
+        'coverage_storage_dir="${CARGO_TARGET_DIR:-target}"\n'
+        'coverage_target_dir="${coverage_storage_dir}/llvm-cov-target"\n'
+        'coverage_reuse="${KUC_COVERAGE_REUSE:-0}"\n'
+        'coverage_test_threads="${COVERAGE_TEST_THREADS:-4}"\n'
+        'coverage_supplement_target="${KUC_COVERAGE_SUPPLEMENT_TARGET:-lib}"\n'
+        'coverage_supplement_filter="${KUC_COVERAGE_SUPPLEMENT_FILTER:-}"\n'
+        'coverage_runtime="${KUC_COVERAGE_RUNTIME:-native}"\n'
+        'coverage_image_id="${KUC_COVERAGE_IMAGE_ID:-}"\n'
+        "coverage_transaction_active=0\n"
+        'coverage_profile_path="${coverage_storage_dir}/kuc-workspace-coverage-profile-v3.sha256"\n'
+        'coverage_strict_state_path="${coverage_profile_path}.strict-state"\n'
+        'coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"\n'
+        "coverage_production_digest() { :; }\n"
+        "coverage_profile_signature() { :; }\n"
+        "native_coverage_runtime_id() { :; }\n"
+        "write_coverage_state() { :; }\n"
+        "write_coverage_profile_state() { :; }\n"
+        "write_coverage_strict_state() { :; }\n"
+        "invalidate_coverage_profile() {\n"
+        "  coverage_transaction_active=1\n"
+        "  write_coverage_profile_state in-progress\n"
+        "  write_coverage_strict_state in-progress\n"
+        "}\n"
+        "runtime-image-id=\n"
+        "production-digest=\n"
+        "Justfile\n"
+        "scripts/run-strict-coverage.sh\n"
+        "scripts/assert-strict-coverage-json.py\n"
+        "scripts/coverage/run-test-binaries.py\n"
+        "scripts/coverage/image-runtime-id.py\n"
+        "scripts/coverage/run-container.sh\n"
+        "scripts/coverage/run-in-container.sh\n"
+        "scripts/coverage/Dockerfile\n"
+        "crates/katana-ui-core/Cargo.toml\n"
+        "crates/katana-ui-core-egui-adapter/Cargo.toml\n"
+        "crates/katana-ui-core-storybook/Cargo.toml\n"
+        "crates/katana-ui-core-svg-raster/Cargo.toml\n"
+        "crates/katana-ui-core-text-raster/Cargo.toml\n"
+        "examples/kuc-consumer-app/Cargo.toml\n"
+        "rust-toolchain.toml\n"
+        "config.toml\n"
+        "rustc -vV\n"
+        "run_cargo llvm-cov --version\n"
+        'getconf _NPROCESSORS_ONLN\n'
+        'coverage_packages=(\n'
+        'coverage_mode="rebuild"\n'
+        'coverage_mode="reuse"\n'
+        "echo \"coverage supplement requires a complete full-workspace profile\"\n"
+        "echo \"coverage profile is incomplete or its production inputs changed; rerun full coverage before supplementing\"\n"
+        "echo \"container coverage requires a validated runtime image identity\"\n"
+        "echo \"native coverage does not accept KUC_COVERAGE_IMAGE_ID\"\n"
+        "invalidate_coverage_profile\n"
+        'run_cargo clean --target-dir "${coverage_target_dir}"\n'
+        "run_cargo llvm-cov clean --profraw-only\n"
+        "run_cargo llvm-cov clean --workspace\n"
+        'echo "coverage mode: ${coverage_mode}"\n'
+        "run_cargo_raw() { :; }\n"
+        "run_cargo_raw llvm-cov show-env --sh\n"
+        "run_cargo_raw metadata --format-version 1 --no-deps --locked\n"
+        "run_cargo_raw test --include-ignored\n"
+        "--message-format=json\n"
+        "python3 scripts/coverage/run-test-binaries.py \\\n"
+        '  --max-parallel-binaries "${coverage_parallel_binaries}" \\\n'
+        '  --test-threads "${coverage_threads_per_binary}"\n'
+        'coverage_min_free_gib="${KUC_COVERAGE_MIN_FREE_GIB:-2}"\n'
+        'df -Pk "${coverage_storage_dir}"\n'
+        "run_cargo llvm-cov report --quiet \\\n"
+        '  "${coverage_packages[@]}" --json --summary-only \\\n'
+        '  --output-path "${coverage_report_path}" \\\n'
+        "  --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\\.rs$|[^/]+_tests\\.rs$)'\n"
         "  -p katana-ui-core \\\n"
         "  -p katana-ui-core-storybook \\\n"
         "  -p kuc-consumer-app \\\n"
-        "  --all-targets --all-features --locked --no-report \\\n"
-        "  -- --include-ignored\n"
-        "run_cargo llvm-cov report \\\n"
-        "  --summary-only \\\n"
-        "  --fail-under-functions 100 \\\n"
-        "  --fail-under-lines 100 \\\n"
-        "  --fail-uncovered-functions 0 \\\n"
-        "  --fail-uncovered-lines 0\n"
+        "  --all-targets --all-features --locked\n"
+        'python3 scripts/assert-strict-coverage-json.py --validate-profile "${coverage_report_path}"\n'
+        'write_coverage_profile_state "${pending_profile_signature}"\n'
+        "coverage_transaction_active=0\n"
+        'if python3 scripts/assert-strict-coverage-json.py "${coverage_report_path}"; then\n'
+        '  write_coverage_strict_state "passed:${pending_profile_signature}"\n'
+        "else\n"
+        '  write_coverage_strict_state "failed:${pending_profile_signature}"\n'
+        "fi\n"
     )
     (scripts / "run-strict-coverage.sh").write_text(
         coverage_source,
+        encoding="utf-8",
+    )
+    (scripts / "assert-strict-coverage-json.py").write_text(
+        "def coverage_profile_failures(payload: object):\n"
+        '    for metric in ("functions", "lines"):\n'
+        "        if covered > count:\n"
+        "            pass\n"
+        "    if covered != count:\n"
+        '        print(f"uncovered={count - covered}")\n'
+        'if sys.argv[1] == "--validate-profile":\n'
+        "    coverage_profile_failures(bad)\n"
+        "strict_coverage_failures(good)\n"
+        "strict_coverage_failures(bad)\n"
+        "strict_coverage_failures(malformed)\n",
         encoding="utf-8",
     )
 
@@ -1642,6 +2147,40 @@ def write_justfile_storybook_command_self_test_file(
     )
     source = target_scoped if use_target_rustc else dependency_wide
     (root / "Justfile").write_text(source, encoding="utf-8")
+
+
+def write_coverage_workflow_routing_self_test_files(
+    root: Path,
+    skip_release_duplicate: bool,
+) -> None:
+    workflows = root / ".github/workflows"
+    workflows.mkdir(parents=True, exist_ok=True)
+    coverage_condition = (
+        "        # WHY: release PR は release-preflight の release-check が同じ strict coverage を実行する。\n"
+        "        if: >-\n"
+        "          matrix.os == 'ubuntu-latest' &&\n"
+        "          !startsWith(github.head_ref, 'release/v')\n"
+        if skip_release_duplicate
+        else "        if: matrix.os == 'ubuntu-latest'\n"
+    )
+    (workflows / "test-and-build.yml").write_text(
+        "name: CI\nsteps:\n"
+        "      - name: Run coverage\n"
+        f"{coverage_condition}"
+        "        run: just coverage\n",
+        encoding="utf-8",
+    )
+    (workflows / "release-preflight.yml").write_text(
+        "name: release-preflight\n"
+        "steps:\n"
+        "      - name: Quality gate\n"
+        "        # WHY: release PR は直後の release-check が同じ check を内包するため二重実行しない。\n"
+        "        if: github.event_name == 'pull_request' && !startsWith(github.head_ref, 'release/v')\n"
+        "        run: just check\n"
+        "if: startsWith(github.head_ref, 'release/v')\n"
+        'run: just VERSION="${{ steps.version.outputs.version }}" release-check\n',
+        encoding="utf-8",
+    )
 
 
 def write_preset_tab_scroll_self_test_files(root: Path, include_hit_bounds: bool) -> None:
@@ -1694,6 +2233,7 @@ def main() -> int:
     failures.extend(justfile_fmt_scope_failures())
     failures.extend(justfile_lint_scope_failures())
     failures.extend(justfile_test_scope_failures())
+    failures.extend(coverage_workflow_routing_failures())
     failures.extend(justfile_storybook_command_scope_failures())
     failures.extend(viewer_consumer_event_contract_failures())
     failures.extend(preset_tab_scroll_contract_failures())

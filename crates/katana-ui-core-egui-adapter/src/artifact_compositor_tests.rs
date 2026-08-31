@@ -3,6 +3,24 @@ use crate::command_chrome::{
     CommandChromePaintOperation, CommandChromePaintOperationKind, CommandChromePaintPlan,
     EguiCommandChromeDrawLayer,
 };
+use crate::context_menu::{
+    ContextMenuPaintOperation, ContextMenuPaintOperationKind, ContextMenuPaintPlan,
+    ContextMenuPaintTexture,
+};
+use crate::diagnostics_list::{
+    DiagnosticsListPaintOperation, DiagnosticsListPaintOperationKind, DiagnosticsListPaintPlan,
+    DiagnosticsListPaintTexture,
+};
+use crate::source_address_strip::{
+    SourceAddressPaintOperation, SourceAddressPaintOperationKind, SourceAddressPaintPlan,
+    SourceAddressPaintTexture,
+};
+use crate::status_bar::{
+    StatusBarPaintOperation, StatusBarPaintOperationKind, StatusBarPaintPlan, StatusBarPaintTexture,
+};
+use crate::tab_strip_paint::{
+    TabStripPaintOperation, TabStripPaintOperationKind, TabStripPaintPlan, TabStripPaintTexture,
+};
 use crate::text_surface::{
     EguiTextSurfaceDrawLayer, TextSurfacePaintOperation, TextSurfacePaintOperationKind,
     TextSurfacePaintPlan, TextSurfacePaintTexture,
@@ -41,83 +59,77 @@ fn chrome_plan(kind: CommandChromePaintOperationKind) -> CommandChromePaintPlan 
     }
 }
 
-#[test]
-fn public_api_preserves_mixed_order_clips_and_repeats_hashes() {
-    let text = text_plan(TextSurfacePaintOperationKind::Fill {
-        bounds: UiRect::new(DRAW_START_X, CANVAS_Y, DRAW_WIDTH, ONE_PIXEL),
-        color_rgba: [255, 0, 0, 255],
-    });
-    let chrome = chrome_plan(CommandChromePaintOperationKind::Fill {
-        bounds: UiRect::new(OVERLAY_X, CANVAS_Y, ONE_PIXEL, ONE_PIXEL),
-        color_rgba: [0, 0, 255, 128],
-    });
-    let plans = [
-        ArtifactPaintPlanRef::TextSurface(&text),
-        ArtifactPaintPlanRef::CommandChrome(&chrome),
-    ];
-    let request = ArtifactCompositeRequest {
-        canvas: ArtifactCanvasBounds::new(UiRect::new(
-            CANVAS_X,
-            CANVAS_Y,
-            SURFACE_WIDTH,
-            SURFACE_HEIGHT,
-        )),
-        plans: &plans,
-    };
-    let first = ArtifactCompositor::compose(request.clone()).expect("valid plans compose");
-    let second = ArtifactCompositor::compose(request).expect("repeat plans compose");
-    assert_eq!(first, second);
-    assert_eq!(first.non_transparent_pixel_count, 2);
-    assert_eq!(&first.rgba_pixels[0..4], &[255, 0, 0, 255]);
-    assert_eq!(&first.rgba_pixels[4..8], &[127, 0, 128, 255]);
+fn source_address_plan(kind: SourceAddressPaintOperationKind) -> SourceAddressPaintPlan {
+    SourceAddressPaintPlan {
+        surface_bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+        operations: vec![SourceAddressPaintOperation {
+            clip_bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+            kind,
+        }],
+    }
 }
 
-#[test]
-fn public_api_rejects_malformed_texture_and_zero_canvas() {
-    let texture = TextSurfacePaintTexture {
-        identity: "star-vs16".to_owned(),
-        width: 2,
-        height: 1,
-        rgba_pixels: vec![255, 255, 0, 255],
-    };
-    let text = text_plan(TextSurfacePaintOperationKind::Texture {
-        bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, ONE_PIXEL),
-        texture,
-    });
-    let plans = [ArtifactPaintPlanRef::TextSurface(&text)];
-    assert!(matches!(
-        ArtifactCompositor::compose(ArtifactCompositeRequest {
-            canvas: ArtifactCanvasBounds::new(UiRect::new(
-                CANVAS_X,
-                CANVAS_Y,
-                SURFACE_WIDTH,
-                SURFACE_HEIGHT,
-            )),
-            plans: &plans,
-        }),
-        Err(ArtifactCompositeError::TextureByteLength { .. })
-    ));
-    assert!(matches!(
-        ArtifactCompositor::compose(ArtifactCompositeRequest {
-            canvas: ArtifactCanvasBounds::new(UiRect::new(0, 0, 0, ONE_PIXEL)),
-            plans: &plans,
-        }),
-        Err(ArtifactCompositeError::ZeroCanvas)
-    ));
+fn status_bar_plan(kind: StatusBarPaintOperationKind) -> StatusBarPaintPlan {
+    StatusBarPaintPlan {
+        surface_bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+        operations: vec![StatusBarPaintOperation {
+            clip_bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+            kind,
+        }],
+    }
 }
 
-#[test]
-fn public_api_rejects_canvas_edge_overflow() {
-    let text = text_plan(TextSurfacePaintOperationKind::Fill {
-        bounds: UiRect::new(CANVAS_X, CANVAS_Y, ONE_PIXEL, ONE_PIXEL),
-        color_rgba: [0, 0, 0, 0],
-    });
-    let plans = [ArtifactPaintPlanRef::TextSurface(&text)];
-    assert!(matches!(
-        ArtifactCompositor::compose(ArtifactCompositeRequest {
-            canvas: ArtifactCanvasBounds::new(UiRect::new(i32::MAX, 0, 1, 1)),
-            plans: &plans,
-        }),
-        Err(ArtifactCompositeError::Overflow { .. })
-    ));
+fn diagnostics_list_plan(kind: DiagnosticsListPaintOperationKind) -> DiagnosticsListPaintPlan {
+    DiagnosticsListPaintPlan {
+        surface_bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+        operations: vec![DiagnosticsListPaintOperation {
+            clip_bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+            kind,
+        }],
+    }
 }
+
+fn context_menu_plan(kind: ContextMenuPaintOperationKind) -> ContextMenuPaintPlan {
+    ContextMenuPaintPlan {
+        surface_bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+        operations: vec![ContextMenuPaintOperation {
+            clip_bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+            kind,
+        }],
+    }
+}
+
+fn tab_strip_plan(kind: TabStripPaintOperationKind) -> TabStripPaintPlan {
+    TabStripPaintPlan {
+        surface_bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+        operations: vec![TabStripPaintOperation {
+            clip_bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+            kind,
+        }],
+    }
+}
+
+fn require_ok<T: std::fmt::Debug, E: std::fmt::Debug>(
+    result: Result<T, E>,
+    context: &str,
+) -> Option<T> {
+    assert!(result.is_ok(), "{context}: {result:?}");
+    result.ok()
+}
+
+fn require_err<T: std::fmt::Debug, E: std::fmt::Debug>(
+    result: Result<T, E>,
+    context: &str,
+) -> Option<E> {
+    assert!(result.is_err(), "{context}: {result:?}");
+    result.err()
+}
+
+#[path = "artifact_compositor_tests/basic.rs"]
+mod basic;
+#[path = "artifact_compositor_tests/components.rs"]
+mod components;
+#[path = "artifact_compositor_tests/failures.rs"]
+mod failures;
+#[path = "artifact_compositor_tests/tab_strip_bounds.rs"]
+mod tab_strip_bounds;

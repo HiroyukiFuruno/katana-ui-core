@@ -3,6 +3,7 @@ mod events;
 mod options;
 mod planner;
 mod render;
+mod retained_selection;
 mod state;
 mod types;
 
@@ -18,7 +19,7 @@ pub use planner::{DiagnosticsGroup, DiagnosticsListPlanner, DiagnosticsVisibleSn
 pub use state::DiagnosticsListState;
 pub use types::{
     DiagnosticAction, DiagnosticFixPreview, DiagnosticId, DiagnosticItem, DiagnosticLocation,
-    DiagnosticSeverity,
+    DiagnosticScopeInput, DiagnosticScopeKey, DiagnosticSeverity,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -28,9 +29,25 @@ pub struct DiagnosticsList {
     pub(super) options: DiagnosticsListOptions,
     pub(super) state: DiagnosticsListState,
     pub(super) items: Vec<DiagnosticItem>,
+    pub(super) scopes: Vec<DiagnosticScopeInput>,
     pub(super) empty_slot: Option<UiNode>,
     pub(super) loading_slot: Option<UiNode>,
     pub(super) bulk_preview: Option<UiNode>,
+}
+
+/// Immutable generic read-model used by retained adapter implementations.
+///
+/// It intentionally contains no host path resolution, linter type, URL, or
+/// action target. Adapters return only core `DiagnosticsListEvent` values.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct DiagnosticsListRenderSnapshot {
+    pub label: String,
+    pub state_id: UiStateId,
+    pub options: DiagnosticsListOptions,
+    pub state: DiagnosticsListState,
+    pub items: Vec<DiagnosticItem>,
+    pub scopes: Vec<DiagnosticScopeInput>,
+    pub visible: DiagnosticsVisibleSnapshot,
 }
 
 impl DiagnosticsList {
@@ -42,6 +59,7 @@ impl DiagnosticsList {
             options: DiagnosticsListOptions::default(),
             state: DiagnosticsListState::default(),
             items: Vec::new(),
+            scopes: Vec::new(),
             empty_slot: None,
             loading_slot: None,
             bulk_preview: None,
@@ -61,6 +79,30 @@ impl DiagnosticsList {
     }
 
     #[must_use]
+    pub fn scope(
+        mut self,
+        key: impl Into<String>,
+        label: impl Into<String>,
+        accessible_label: impl Into<String>,
+    ) -> Self {
+        self.scopes
+            .push(DiagnosticScopeInput::new(key, label, accessible_label));
+        self.state.reconcile_scope_selection(&self.scopes);
+        self
+    }
+
+    pub fn set_scopes(&mut self, values: impl IntoIterator<Item = (String, String, String)>) {
+        let values = values
+            .into_iter()
+            .map(|(key, label, accessible_label)| {
+                DiagnosticScopeInput::new(key, label, accessible_label)
+            })
+            .collect();
+        self.scopes = values;
+        self.state.reconcile_scope_selection(&self.scopes);
+    }
+
+    #[must_use]
     pub fn virtualization(mut self, value: VirtualizationConfig) -> Self {
         self.options.virtualization = Some(value);
         self
@@ -68,7 +110,11 @@ impl DiagnosticsList {
 
     #[must_use]
     pub fn virtual_range_model(&self) -> Option<VirtualRange> {
-        let visible = DiagnosticsListPlanner::visible_items(&self.items, &self.options);
+        let visible = DiagnosticsListPlanner::visible_items_for_scope(
+            &self.items,
+            &self.options,
+            self.state.selected_scope_key.as_ref(),
+        );
         MoleculeVirtualization::range(&self.options.virtualization, visible.len())
     }
 
@@ -101,7 +147,37 @@ impl DiagnosticsList {
         &self.state_id
     }
 
+    #[must_use]
+    pub fn render_snapshot(&self) -> DiagnosticsListRenderSnapshot {
+        DiagnosticsListRenderSnapshot {
+            label: self.label.clone(),
+            state_id: self.state_id.clone(),
+            options: self.options.clone(),
+            state: self.state.clone(),
+            items: self.items.clone(),
+            scopes: self.scopes.clone(),
+            visible: DiagnosticsListPlanner::snapshot_for_scope(
+                &self.items,
+                &self.options,
+                self.state.selected_scope_key.as_ref(),
+            ),
+        }
+    }
+
     pub fn apply_action(&mut self, action: DiagnosticsListAction) -> Vec<DiagnosticsListEvent> {
-        self.state.apply_action(action, &self.items, &self.options)
+        match &action {
+            DiagnosticsListAction::SetGroupBy(group_by) => {
+                self.options.group_by = *group_by;
+            }
+            DiagnosticsListAction::SetSortBy(sort_by) => {
+                self.options.sort_by = *sort_by;
+            }
+            DiagnosticsListAction::SetSeverityFilter(severity_filter) => {
+                self.options.severity_filter.clone_from(severity_filter);
+            }
+            _ => {}
+        }
+        self.state
+            .apply_action(action, &self.items, &self.scopes, &self.options)
     }
 }

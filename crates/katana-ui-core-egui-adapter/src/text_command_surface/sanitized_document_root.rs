@@ -24,8 +24,6 @@ mod sanitized_document_root_record;
 mod sanitized_document_root_style;
 #[path = "sanitized_document_root_transport.rs"]
 mod sanitized_document_root_transport;
-#[path = "sanitized_projection_hash.rs"]
-mod sanitized_projection_hash;
 #[path = "sanitized_search_event.rs"]
 pub(super) mod sanitized_search_event;
 #[path = "sanitized_search_projection.rs"]
@@ -75,8 +73,8 @@ pub use sanitized_search_projection::{
 };
 
 pub use sanitized_tab_projection::{
-    SanitizedTab, SanitizedTabCapabilities, SanitizedTabGroup, SanitizedTabProjection,
-    SanitizedTabTarget,
+    SanitizedTab, SanitizedTabCapabilities, SanitizedTabGroup, SanitizedTabGroupCapabilities,
+    SanitizedTabGroupTarget, SanitizedTabProjection, SanitizedTabTarget,
 };
 pub type SanitizedTabClosePresentation = sanitized_tab_projection::SanitizedTabClosePresentation;
 

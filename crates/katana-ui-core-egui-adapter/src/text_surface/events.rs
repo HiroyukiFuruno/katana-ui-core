@@ -17,11 +17,23 @@ impl TextSurfaceInteraction {
         frame: &TextSurfaceFrameRecord,
         input_policy: &EguiTextSurfaceInputPolicy,
         pending_focus_request: Option<bool>,
+        pointer_exclusion_bounds: &[katana_ui_core::render_model::UiRect],
     ) -> Vec<TextSurfaceEvent> {
+        let pointer_excluded = pointer_event_in_bounds(ui, pointer_exclusion_bounds);
         let accepts_text_input =
             response.has_focus() || ui.ctx().memory(|memory| memory.focused().is_none());
-        let mut events = focus_events(surface, response, frame, pending_focus_request);
-        events.extend(pointer_events(ui, response, surface, layout, frame));
+        let mut events = focus_events(
+            ui,
+            surface,
+            response,
+            frame,
+            pending_focus_request,
+            input_policy.retain_pointer_focus,
+            pointer_excluded,
+        );
+        if !pointer_excluded {
+            events.extend(pointer_events(ui, response, surface, layout, frame));
+        }
         if !surface.state().text_area.focused || !accepts_text_input {
             return events;
         }
@@ -47,11 +59,20 @@ impl TextSurfaceInteraction {
 }
 
 fn focus_events(
+    ui: &egui::Ui,
     surface: &mut TextSurface,
     response: &egui::Response,
     frame: &TextSurfaceFrameRecord,
     pending_focus_request: Option<bool>,
+    retain_pointer_focus: bool,
+    pointer_excluded: bool,
 ) -> Vec<TextSurfaceEvent> {
+    if pointer_excluded {
+        if surface.state().text_area.focused {
+            response.request_focus();
+        }
+        return Vec::new();
+    }
     if response
         .interact_pointer_pos()
         .map(surface_point)
@@ -65,22 +86,61 @@ fn focus_events(
         return Vec::new();
     }
     if let Some(focused) = pending_focus_request {
+        if focused {
+            response.request_focus();
+        } else {
+            response.surrender_focus();
+        }
         return set_focus(surface, focused);
     }
-    if response.clicked() || response.drag_started() {
+    let physical_primary_input = retain_pointer_focus
+        && ui.input(|input| {
+            input.events.iter().any(|event| {
+                matches!(event, egui::Event::PointerButton { pos, button: egui::PointerButton::Primary, .. } if response.rect.contains(*pos))
+            })
+        });
+    if response.is_pointer_button_down_on()
+        || response.clicked()
+        || response.drag_started()
+        || physical_primary_input
+    {
         response.request_focus();
         return set_focus(surface, true);
     }
     if response.has_focus() && !surface.state().text_area.focused {
         return set_focus(surface, true);
     }
+    if retain_pointer_focus && surface.state().text_area.focused && !response.has_focus() {
+        response.request_focus();
+        return Vec::new();
+    }
     if response.lost_focus() && surface.state().text_area.focused {
         return set_focus(surface, false);
     }
-    if surface.state().text_area.focused && !response.has_focus() {
+    if surface.state().text_area.focused
+        && !response.has_focus()
+        && ui.ctx().memory(|memory| {
+            memory
+                .focused()
+                .is_none_or(|focused| focused == response.id)
+        })
+    {
         response.request_focus();
     }
     Vec::new()
+}
+
+fn pointer_event_in_bounds(ui: &egui::Ui, bounds: &[katana_ui_core::render_model::UiRect]) -> bool {
+    ui.input(|input| {
+        input.events.iter().any(|event| {
+            let egui::Event::PointerButton { pos, .. } = event else {
+                return false;
+            };
+            bounds
+                .iter()
+                .any(|bounds| contains(*bounds, surface_point(*pos)))
+        })
+    })
 }
 
 fn set_focus(surface: &mut TextSurface, focused: bool) -> Vec<TextSurfaceEvent> {

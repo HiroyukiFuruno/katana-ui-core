@@ -85,6 +85,22 @@ impl KucRootEventBatchDispatcher for PublicDispatcher {
         self.calls += 1;
         Ok(())
     }
+
+    fn dispatch_status_bar_events(
+        &mut self,
+        _events: Vec<katana_ui_core::molecule::StatusBarEvent>,
+    ) -> Result<(), Self::Error> {
+        self.calls += 1;
+        Ok(())
+    }
+
+    fn dispatch_diagnostics_list_events(
+        &mut self,
+        _events: Vec<katana_ui_core::molecule::DiagnosticsListEvent>,
+    ) -> Result<(), Self::Error> {
+        self.calls += 1;
+        Ok(())
+    }
 }
 
 fn dispatch_receipt_from_public_api(
@@ -137,13 +153,14 @@ fn root() -> EguiTextCommandSurfaceRoot {
         .with_toolbar(fixtures::toolbar_fixture())
         .with_search_strip(fixtures::search_fixture(false));
     EguiTextCommandSurfaceRoot::with_identity("contract.text-command-root", surface)
+        .expect("root construction")
 }
 
 fn root_with_identity(identity: &str) -> EguiTextCommandSurfaceRoot {
     let surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture())
         .with_toolbar(fixtures::toolbar_fixture())
         .with_search_strip(fixtures::search_fixture(false));
-    EguiTextCommandSurfaceRoot::with_identity(identity, surface)
+    EguiTextCommandSurfaceRoot::with_identity(identity, surface).expect("root construction")
 }
 
 fn use_all_fixture_contracts() {
@@ -259,7 +276,8 @@ fn central_panel_pointer_state_opens_context_menu_from_fresh_root_frame() {
     let mut root = EguiTextCommandSurfaceRoot::with_identity(
         "contract.central-panel-context-root",
         EguiTextCommandSurface::new(selected_text_surface()).with_context_menu(menu),
-    );
+    )
+    .expect("root construction");
     let (_, initial) = render_actual_in_central_panel(&context, &mut root, Vec::new());
     let mut request = initial
         .interaction_locator()
@@ -467,7 +485,8 @@ fn actual_root_locator_rejects_duplicate_action_identities_as_ambiguous() {
         .action(CommandChromeAction::new("duplicate", "Second"));
     let surface =
         EguiTextCommandSurface::new(fixtures::text_surface_fixture()).with_toolbar(toolbar);
-    let mut root = EguiTextCommandSurfaceRoot::with_identity("contract.ambiguous-root", surface);
+    let mut root = EguiTextCommandSurfaceRoot::with_identity("contract.ambiguous-root", surface)
+        .expect("root construction");
     let (_, output) = render_actual(&context, &mut root, Vec::new());
     assert!(matches!(
         output
@@ -533,7 +552,8 @@ fn actual_root_locator_resolves_floating_and_context_targets_with_accesskit() {
             FloatingCommandToolbarVisibility::Visible,
         );
     let mut floating_root =
-        EguiTextCommandSurfaceRoot::with_identity("contract.floating-root", floating_surface);
+        EguiTextCommandSurfaceRoot::with_identity("contract.floating-root", floating_surface)
+            .expect("root construction");
     let (floating_full, floating) = render_actual(&context, &mut floating_root, Vec::new());
     assert!(accesskit_has_label(&floating_full, "選択ツール ⭐️"));
     let mut floating_input = egui::RawInput::default();
@@ -581,7 +601,8 @@ fn actual_root_locator_resolves_floating_and_context_targets_with_accesskit() {
     let context_surface =
         EguiTextCommandSurface::new(selected_text_surface()).with_context_menu(menu);
     let mut context_root =
-        EguiTextCommandSurfaceRoot::with_identity("contract.context-root", context_surface);
+        EguiTextCommandSurfaceRoot::with_identity("contract.context-root", context_surface)
+            .expect("root construction");
     let (context_initial_full, context_initial) =
         render_actual(&context, &mut context_root, Vec::new());
     let mut context_open_input = egui::RawInput::default();
@@ -770,13 +791,15 @@ fn external_consumer_can_retain_public_dispatch_receipt() {
     let output = render(&mut root());
     let (receipt, dispatch_calls) = dispatch_receipt_from_public_api(&output);
 
-    assert_eq!(dispatch_calls, 5);
+    assert_eq!(dispatch_calls, 7);
     assert_eq!(receipt.text_count(), 0);
     assert_eq!(receipt.toolbar_count(), 0);
     assert_eq!(receipt.floating_count(), 0);
     assert_eq!(receipt.search_count(), 0);
     assert_eq!(receipt.context_menu_count(), 0);
-    assert_eq!(receipt.class_dispatches().len(), 5);
+    assert_eq!(receipt.status_bar_count(), 0);
+    assert_eq!(receipt.diagnostics_list_count(), 0);
+    assert_eq!(receipt.class_dispatches().len(), 7);
 }
 
 #[test]
@@ -830,9 +853,7 @@ fn public_root_event_forwarding_contract_is_opaque_and_child_free() {
     let transport_source = include_str!("../src/text_command_surface/root_event.rs");
     let public_contract = transport_source
         .split_once("pub struct EguiTextCommandSurfaceRootEventTransport")
-        .and_then(|(_, value)| {
-            value.split_once("impl std::fmt::Debug for EguiTextCommandSurfaceRootEventTransport")
-        })
+        .and_then(|(_, value)| value.split_once("/// Deterministic receipt"))
         .map(|(value, _)| value)
         .expect("public root event forwarding contract was not found");
 
@@ -856,6 +877,11 @@ fn public_root_event_forwarding_contract_is_opaque_and_child_free() {
             "public root event forwarding contract leaked `{forbidden}`"
         );
     }
+    let transport_impl = include_str!("../src/text_command_surface/root_event/transport.rs");
+    assert!(
+        transport_impl
+            .contains("formatter.write_str(\"EguiTextCommandSurfaceRootEventTransport(..)\")")
+    );
 
     let batch_source = include_str!("../src/text_command_surface/root_event_types.rs");
     let batch_definition = batch_source

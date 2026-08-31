@@ -2,6 +2,7 @@ use super::command_chrome_artifact::{
     CommandChromeArtifactFrame, EguiCommandChromeFloatingArtifactFrame,
     EguiCommandChromeSearchArtifactFrame,
 };
+use crate::text_surface::SharedTextMetrics;
 use crate::text_surface::{
     EguiTextSurfaceAdapter, EguiTextSurfaceError, EguiTextSurfaceFrameRecord,
     TextSurfacePaintStyle, TextSurfaceRasterStyle,
@@ -19,12 +20,19 @@ use katana_ui_core_svg_raster::{UiSvgRasterError, UiSvgRasterizer};
 use katana_ui_core_text_raster::{PlatformTextRasterError, PlatformTextRasterizer};
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+#[path = "command_chrome_types_tests.rs"]
+mod tests;
+
 pub struct EguiCommandChromeAdapter {
     pub(super) text_rasterizer: PlatformTextRasterizer,
     pub(super) svg_rasterizer: UiSvgRasterizer,
     pub(super) textures: RgbaTextureCache,
     pub(super) text_surface_adapter: EguiTextSurfaceAdapter,
     pub(super) search_surfaces: Option<SearchSurfaceState>,
+    pub(super) metrics: SharedTextMetrics,
+    pub(super) dropdown_primary_press: Option<(String, String)>,
+    pub(super) floating_pointer_exclusions: Vec<UiRect>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -57,6 +65,7 @@ pub struct EguiCommandChromeSearchStyle {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EguiCommandChromeDrawLayer {
     PanelFill,
+    PanelBorder,
     ActionFill,
     IconTexture,
     TextTexture,
@@ -70,6 +79,7 @@ pub struct EguiCommandChromeActionFrame {
     pub action_id: String,
     pub bounds: UiRect,
     pub secondary_trigger_bounds: Option<UiRect>,
+    pub primary_dropdown_trigger: bool,
     pub icon_raster_identity: Option<String>,
     pub label_raster_identity: Option<String>,
     pub disabled: bool,
@@ -211,36 +221,6 @@ pub(super) struct SearchSurfaceState {
 }
 
 impl std::error::Error for EguiCommandChromeError {}
-
-#[cfg(test)]
-mod error_tests {
-    use super::*;
-
-    #[test]
-    fn command_chrome_error_conversions_and_display_cover_every_variant() {
-        let text = EguiCommandChromeError::from(PlatformTextRasterError::EmptyText);
-        assert!(
-            text.to_string()
-                .contains("command chrome text raster failed")
-        );
-
-        let svg = EguiCommandChromeError::from(UiSvgRasterError::EmptySource);
-        assert!(svg.to_string().contains("command chrome SVG raster failed"));
-
-        let surface = EguiCommandChromeError::from(EguiTextSurfaceError::FrameNotProduced);
-        assert!(
-            surface
-                .to_string()
-                .contains("command chrome text surface failed")
-        );
-
-        let serialization = EguiCommandChromeError::ArtifactSerialization("opaque".into());
-        assert_eq!(
-            serialization.to_string(),
-            "command chrome artifact serialization failed: opaque"
-        );
-    }
-}
 
 #[derive(Clone)]
 pub(super) struct RenderedAction {

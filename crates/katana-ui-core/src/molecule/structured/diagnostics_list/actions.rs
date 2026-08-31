@@ -1,4 +1,6 @@
-use super::{DiagnosticId, DiagnosticSeverity, DiagnosticsGroupBy, DiagnosticsSortBy};
+use super::{
+    DiagnosticId, DiagnosticScopeKey, DiagnosticSeverity, DiagnosticsGroupBy, DiagnosticsSortBy,
+};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 
@@ -7,6 +9,7 @@ pub enum DiagnosticsListAction {
     SetGroupBy(DiagnosticsGroupBy),
     SetSortBy(DiagnosticsSortBy),
     SetSeverityFilter(BTreeSet<DiagnosticSeverity>),
+    SelectScope(DiagnosticScopeKey),
     Select(DiagnosticId),
     ToggleFixPreview(DiagnosticId),
     ApplyFix(DiagnosticId),
@@ -25,4 +28,6 @@ pub enum DiagnosticKeyboardInput {
     Space,
     F8,
     ShiftF8,
+    ScopeNext,
+    ScopePrevious,
 }

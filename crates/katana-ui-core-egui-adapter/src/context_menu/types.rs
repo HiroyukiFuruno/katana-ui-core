@@ -24,6 +24,7 @@ pub struct EguiContextMenuAdapter {
     pub(super) focus_return: Option<egui::Id>,
     pub(super) type_ahead: katana_ui_core::molecule::selection::ContextMenuTypeAheadBuffer,
     pub(super) text_rasterizer: katana_ui_core_text_raster::PlatformTextRasterizer,
+    pub(super) metrics: crate::text_surface::SharedTextMetrics,
     pub(super) svg_rasterizer: katana_ui_core_svg_raster::UiSvgRasterizer,
     pub(super) textures: crate::texture_cache::RgbaTextureCache,
 }
@@ -184,23 +185,3 @@ impl std::fmt::Display for ContextMenuAdapterError {
 }
 
 impl std::error::Error for ContextMenuAdapterError {}
-
-#[cfg(test)]
-mod error_tests {
-    use super::*;
-
-    #[test]
-    fn context_menu_error_conversions_and_display_cover_every_variant() {
-        let raster = ContextMenuAdapterError::from(PlatformTextRasterError::EmptyText);
-        assert!(raster.to_string().contains("context menu raster failed"));
-
-        let svg = ContextMenuAdapterError::from(UiSvgRasterError::EmptySource);
-        assert!(svg.to_string().contains("context menu SVG raster failed"));
-
-        let serialization = ContextMenuAdapterError::ArtifactSerialization("opaque".into());
-        assert_eq!(
-            serialization.to_string(),
-            "context menu artifact serialization failed: opaque"
-        );
-    }
-}

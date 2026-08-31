@@ -8,3 +8,4 @@ echo "KUC pre-commit guard: local failures are fix-and-continue work, not a reas
 echo "Stop only for push confirmation required / release confirmation required / destructive operation confirmation required."
 
 just kuc-guardrails
+bash scripts/hooks/kuc-hook-dispatcher.sh pre-commit

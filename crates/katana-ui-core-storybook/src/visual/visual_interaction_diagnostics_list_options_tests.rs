@@ -1,4 +1,5 @@
 use super::visual_interaction_test_support::component_body_pixel_diff;
+use super::window_interaction::diagnostics_list_operation::DiagnosticsListStoryAction;
 use super::window_interaction::{
     StorybookWindowState, apply_click, apply_clickable_keyboard_activation_for_audit,
     apply_diagnostics_list_scroll_for_audit, apply_hover_at, focus_clickable_at_for_audit,
@@ -56,8 +57,14 @@ fn diagnostics_list_window_interaction_keeps_filter_bulk_fix_preview_instance_is
 
     click_option(&mut state, "diagnostics.severity_filter")?;
     assert!(state.screen_state.diagnostics_list.has_error_filter());
+    let _ = state
+        .screen_state
+        .diagnostics_list
+        .apply_action(DiagnosticsListStoryAction::OpenBulkPreview);
+    assert!(state.screen_state.diagnostics_list.has_bulk_preview_open());
     click_option(&mut state, "diagnostics.bulk_action")?;
     assert!(state.screen_state.diagnostics_list.has_bulk_applied());
+    assert!(!state.screen_state.diagnostics_list.has_bulk_preview_open());
     assert_eq!(
         "diagnostic_bulk_apply",
         state.screen_state.diagnostics_list.callback_action()

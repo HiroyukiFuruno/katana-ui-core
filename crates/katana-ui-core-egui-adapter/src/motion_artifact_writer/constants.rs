@@ -1,6 +1,6 @@
-pub(super) const DEFAULT_ENCODER: &str = "mpeg4";
+pub(super) const DEFAULT_ENCODER: &str = "libx264rgb";
 pub(super) const DEFAULT_MUXER: &str = "mp4";
-pub(super) const DEFAULT_PIXEL_FORMAT: &str = "yuv420p";
+pub(super) const DEFAULT_PIXEL_FORMAT: &str = "rgb24";
 
 pub(super) const MOTION_SCHEMA: &str = "kuc.retained-root-motion.v1";
 pub(super) const ROOT_IMAGE_PATTERN: &str = "frame-%03d.png";

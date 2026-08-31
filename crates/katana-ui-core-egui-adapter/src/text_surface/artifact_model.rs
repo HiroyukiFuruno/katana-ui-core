@@ -268,69 +268,12 @@ impl std::fmt::Display for EguiTextSurfaceError {
 
 impl std::error::Error for EguiTextSurfaceError {}
 
+#[cfg(test)]
+#[path = "artifact_model_tests.rs"]
+mod tests;
+
 fn artifact_hash(value: &impl Serialize) -> Result<String, EguiTextSurfaceError> {
     let bytes = serde_json::to_vec(value)
         .map_err(|error| EguiTextSurfaceError::ArtifactSerialization(error.to_string()))?;
     Ok(hex::encode(Sha256::digest(bytes)))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct SerializeFail;
-
-    impl Serialize for SerializeFail {
-        fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
-            Err(serde::ser::Error::custom("closed serialization failure"))
-        }
-    }
-
-    #[test]
-    fn artifact_hash_maps_serialization_failures_to_the_typed_surface_error() {
-        assert!(matches!(
-            artifact_hash(&SerializeFail),
-            Err(EguiTextSurfaceError::ArtifactSerialization(_))
-        ));
-    }
-
-    #[test]
-    fn context_targets_and_error_conversions_cover_the_closed_model_surface() {
-        let selection = UiTextSelectionRange::new(2, 4);
-        let viewport = UiRect::new(1, 2, 300, 180);
-        let pointer = TextSurfaceContextTargetAnchor::pointer(10, 20, selection, viewport);
-        assert_eq!(pointer.selection(), selection);
-        assert_eq!(pointer.viewport_bounds(), viewport);
-        assert!(matches!(
-            pointer.anchor(),
-            UiContextMenuAnchor::Pointer { x: 10, y: 20 }
-        ));
-
-        let virtual_target = TextSurfaceContextTargetAnchor::selection_or_caret(
-            selection,
-            UiRect::new(5, 6, 7, 8),
-            viewport,
-        );
-        assert!(matches!(
-            virtual_target.anchor(),
-            UiContextMenuAnchor::VirtualRect(_)
-        ));
-
-        let raster = EguiTextSurfaceError::from(PlatformTextRasterError::EmptyText);
-        assert!(raster.to_string().contains("text surface raster failed"));
-        let svg = EguiTextSurfaceError::from(UiSvgRasterError::EmptySource);
-        assert!(svg.to_string().contains("gutter svg raster failed"));
-        assert_eq!(
-            EguiTextSurfaceError::FrameNotProduced.to_string(),
-            "egui did not produce a text surface frame"
-        );
-        assert!(
-            EguiTextSurfaceError::ArtifactSerialization("opaque".to_string())
-                .to_string()
-                .contains("artifact serialization failed")
-        );
-    }
 }

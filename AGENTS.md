@@ -173,6 +173,12 @@ v0.1.0 release readiness が未達の間、runner は未完了の 01〜24 / Stor
 push confirmation required / release confirmation required / destructive operation confirmation required を停止条件の合言葉として扱う。
 それ以外で作業が残っている場合は、次の未完了タスクを選び、実装と自動テストへ進む。
 
+## 進捗報告
+
+リリース作業の完了率は、事前に固定した最上位ステップのうち、DoD と検証証跡を満たして完了した数だけで算出する。
+進行中ステップは、内部の修正件数や部分テストの通過数にかかわらず完了数へ加えない。内部進捗は完了率と分離して報告する。
+例として 5 ステップ中 2 ステップだけが完了し、3 番目が coverage 99% でも、完了率は `2 / 5 = 40%` とする。
+
 ## repository hook
 
 `.githooks/pre-commit` は `just kuc-guardrails` を実行し、停止条件の誤り、Storybook の完了根拠化、KUC 固有 guard の欠落を commit 前に検出する。

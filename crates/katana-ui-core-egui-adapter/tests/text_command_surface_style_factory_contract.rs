@@ -3,8 +3,8 @@ use katana_ui_core_egui_adapter::text_command_surface::TextCommandSurfaceStyle;
 
 #[test]
 fn public_factory_is_deterministic_and_produces_required_dimensions() {
-    let first = TextCommandSurfaceStyle::standard();
-    let second = TextCommandSurfaceStyle::standard();
+    let first = TextCommandSurfaceStyle::standard().expect("standard style");
+    let second = TextCommandSurfaceStyle::standard().expect("standard style");
 
     assert_eq!(first, second);
     assert!(first.text_raster.line_height_px.is_finite());
@@ -19,8 +19,8 @@ fn public_factory_is_deterministic_and_produces_required_dimensions() {
 
 #[test]
 fn public_factory_reads_generic_theme_tokens() {
-    let light = TextCommandSurfaceStyle::from_theme(&ThemeSnapshot::light());
-    let dark = TextCommandSurfaceStyle::from_theme(&ThemeSnapshot::dark());
+    let light = TextCommandSurfaceStyle::from_theme(&ThemeSnapshot::light()).expect("light style");
+    let dark = TextCommandSurfaceStyle::from_theme(&ThemeSnapshot::dark()).expect("dark style");
 
     assert_ne!(
         light.text_paint.background_rgba,

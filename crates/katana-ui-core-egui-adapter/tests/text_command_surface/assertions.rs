@@ -34,24 +34,26 @@ pub(crate) fn assert_artifact_output_contract(
     for (position, (child, plan)) in output.artifact_order().iter().zip(plans.iter()).enumerate() {
         match (child, plan) {
             (EguiTextCommandSurfaceChild::Text, ArtifactPaintPlanRef::TextSurface(_)) => {}
-            (EguiTextCommandSurfaceChild::Text, ArtifactPaintPlanRef::CommandChrome(_)) => {
-                panic!("artifact plan at position {position} is CommandChrome but child is Text");
+            (EguiTextCommandSurfaceChild::Preview, ArtifactPaintPlanRef::TextSurface(_)) => {}
+            (EguiTextCommandSurfaceChild::TabStrip, ArtifactPaintPlanRef::TabStrip(_))
+            | (EguiTextCommandSurfaceChild::TabStripOverlay, ArtifactPaintPlanRef::TabStrip(_)) => {
             }
+            (
+                EguiTextCommandSurfaceChild::SourceAddress,
+                ArtifactPaintPlanRef::SourceAddress(_),
+            ) => {}
             (EguiTextCommandSurfaceChild::Toolbar, ArtifactPaintPlanRef::CommandChrome(_)) => {}
             (EguiTextCommandSurfaceChild::Search, ArtifactPaintPlanRef::CommandChrome(_)) => {}
             (EguiTextCommandSurfaceChild::Floating, ArtifactPaintPlanRef::CommandChrome(_)) => {}
             (EguiTextCommandSurfaceChild::ContextMenu, ArtifactPaintPlanRef::ContextMenu(_)) => {}
-            (EguiTextCommandSurfaceChild::ContextMenu, ArtifactPaintPlanRef::CommandChrome(_)) => {
-                panic!("ContextMenu layer resolved to a command-chrome plan")
-            }
-            (other_child, ArtifactPaintPlanRef::TextSurface(_)) => {
+            (EguiTextCommandSurfaceChild::StatusBar, ArtifactPaintPlanRef::StatusBar(_)) => {}
+            (
+                EguiTextCommandSurfaceChild::DiagnosticsList,
+                ArtifactPaintPlanRef::DiagnosticsList(_),
+            ) => {}
+            (other_child, other_plan) => {
                 panic!(
-                    "artifact plan at position {position} is TextSurface but child is {other_child:?}"
-                );
-            }
-            (other_child, ArtifactPaintPlanRef::ContextMenu(_)) => {
-                panic!(
-                    "artifact plan at position {position} is ContextMenu but child is {other_child:?}"
+                    "artifact plan at position {position} is {other_plan:?} but child is {other_child:?}"
                 );
             }
         }

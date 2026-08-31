@@ -14,7 +14,11 @@ impl From<DiagnosticsList> for UiNode {
         if value.state.loading {
             return render_optional_slot(node, value.loading_slot);
         }
-        let visible = DiagnosticsListPlanner::visible_items(&value.items, &value.options);
+        let visible = DiagnosticsListPlanner::visible_items_for_scope(
+            &value.items,
+            &value.options,
+            value.state.selected_scope_key.as_ref(),
+        );
         let range = value.virtual_range_model();
         node = node.interaction(interaction_state(&value, &visible, range.as_ref()));
         if visible.is_empty() {

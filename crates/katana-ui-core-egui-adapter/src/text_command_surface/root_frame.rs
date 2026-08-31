@@ -5,7 +5,7 @@ use crate::artifact_compositor::ArtifactCompositeFrame;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
-const ROOT_CHILD_RECORD_SLOT_COUNT: usize = 5;
+const ROOT_CHILD_RECORD_SLOT_COUNT: usize = 8;
 
 /// Root dimensions without child coordinates or geometry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -111,12 +111,28 @@ pub(super) fn build_frame(
     output: &EguiTextCommandSurfaceOutput,
     composite: &ArtifactCompositeFrame,
 ) -> Result<EguiTextCommandSurfaceRootFrame, String> {
-    let accessibility_hash = hash_serialized(&output.text.artifact.record.frame.accessibility)?;
+    let accessibility_hash =
+        super::super::accesskit_evidence::snapshot_hash(&output.accesskit_evidence)?;
     let bounds = composite.canvas.ui_rect();
     let dimensions = EguiTextCommandSurfaceRootDimensions {
         width: bounds.width,
         height: bounds.height,
     };
+    let status_bar_hash = output
+        .status_bar
+        .as_ref()
+        .map(|value| hash_serialized(&value.paint_plan))
+        .transpose()?;
+    let diagnostics_list_hash = output
+        .diagnostics_list
+        .as_ref()
+        .map(|value| hash_serialized(&value.paint_plan))
+        .transpose()?;
+    let preview_hash = output
+        .preview
+        .as_ref()
+        .map(|value| hash_serialized(&value.paint_plan))
+        .transpose()?;
     let material = RootRecordMaterial {
         identity,
         state_revision,
@@ -148,6 +164,9 @@ pub(super) fn build_frame(
                     .as_ref()
                     .map(|artifact| artifact.frame_record_hash.as_str())
             }),
+            status_bar_hash.as_deref(),
+            diagnostics_list_hash.as_deref(),
+            preview_hash.as_deref(),
         ],
         accessibility_hash: &accessibility_hash,
     };
@@ -166,27 +185,11 @@ pub(super) fn build_frame(
 }
 
 fn hash_serialized(value: &impl Serialize) -> Result<String, String> {
-    let bytes = serde_json::to_vec(value).map_err(|error| error.to_string())?;
-    Ok(hex::encode(Sha256::digest(bytes)))
+    serde_json::to_vec(value)
+        .map(|bytes| hex::encode(Sha256::digest(bytes)))
+        .map_err(|error| error.to_string())
 }
 
 #[cfg(test)]
-mod serialization_tests {
-    use super::*;
-
-    struct SerializeFail;
-
-    impl Serialize for SerializeFail {
-        fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-        {
-            Err(serde::ser::Error::custom("closed serialization failure"))
-        }
-    }
-
-    #[test]
-    fn root_frame_hash_preserves_serialization_failures() {
-        assert!(hash_serialized(&SerializeFail).is_err());
-    }
-}
+#[path = "root_frame_tests.rs"]
+mod tests;

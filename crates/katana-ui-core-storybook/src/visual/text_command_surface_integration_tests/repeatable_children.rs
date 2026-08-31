@@ -46,7 +46,7 @@ impl RepeatableChildrenScenario {
         let context = egui::Context::default();
         context.enable_accesskit();
         let mut adapter =
-            katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceAdapter::default();
+            katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceAdapter::with_text_raster_config(katana_ui_core_text_raster::PlatformTextRasterConfig::default())?;
         let mut surface =
             katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurface::new(
                 text_surface_fixture::text_surface_fixture(),

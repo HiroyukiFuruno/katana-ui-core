@@ -2921,10 +2921,13 @@ muxer_capability_verified;
     )
     write_text(
         root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root.rs",
-        "pub struct EguiTextCommandSurfacePresentationToken;\n"
         "pub fn retain(\n"
-        "pub struct EguiTextCommandSurfaceHostProjectionEncoder;\n"
         "pub fn token(\n",
+    )
+    write_text(
+        root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root/types.rs",
+        "pub struct EguiTextCommandSurfacePresentationToken;\n"
+        "pub struct EguiTextCommandSurfaceHostProjectionEncoder;\n",
     )
     write_text(
         root / "crates/katana-ui-core-egui-adapter/tests/host_root_facade_contract.rs",

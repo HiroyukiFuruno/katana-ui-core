@@ -9,9 +9,7 @@ use super::command_chrome_types::{
     EguiCommandChromeAdapter, EguiCommandChromeError, EguiCommandChromeSearchFrameRecord,
     EguiCommandChromeSearchOutput, EguiCommandChromeSearchStyle, SearchSurfaceState,
 };
-use crate::text_surface::{
-    EguiTextSurfaceError, EguiTextSurfaceInputPolicy, EguiTextSurfaceOutput,
-};
+use crate::text_surface::{EguiTextSurfaceInputPolicy, EguiTextSurfaceOutput};
 use katana_ui_core::molecule::command_chrome::CommandChromeSearchStrip;
 use katana_ui_core::molecule::structured::ReplaceMode;
 use katana_ui_core::text_surface::TextSurface;
@@ -52,7 +50,8 @@ impl EguiCommandChromeAdapter {
         surfaces: &mut SearchSurfaceState,
     ) -> Result<EguiCommandChromeSearchOutput, EguiCommandChromeError> {
         let start = ui.cursor().min;
-        let replace_visible = strip.replace_mode_model() == ReplaceMode::Visible;
+        let replace_visible = strip.replace_mode_model() != ReplaceMode::Hidden;
+        let query_was_focused = surfaces.query.state().text_area.focused;
         let (query, replace, controls, control_events, control_paint_sources) = ui
             .scope(|ui| {
                 ui.spacing_mut().item_spacing.x = search_style.gap_px as f32;
@@ -95,7 +94,7 @@ impl EguiCommandChromeAdapter {
         events.extend(query_key_events(
             ui,
             strip,
-            surfaces.query.state().text_area.focused,
+            query_was_focused || surfaces.query.state().text_area.focused,
         ));
         let bounds = bounds(
             start,
@@ -149,20 +148,18 @@ impl EguiCommandChromeAdapter {
             &control_paint_sources,
             paint_style,
         );
-        EguiCommandChromeSearchArtifactFrame::new(
+        let artifact = EguiCommandChromeSearchArtifactFrame::new(
             record.clone(),
             paint_plan,
             events.clone(),
             text_events.clone(),
-        )
-        .map(|artifact| {
-            paint_command_chrome(ui, &mut self.textures, &artifact.paint_plan);
-            EguiCommandChromeSearchOutput {
-                record,
-                events,
-                text_events,
-                artifact,
-            }
+        );
+        paint_command_chrome(ui, &mut self.textures, &artifact.paint_plan);
+        Ok(EguiCommandChromeSearchOutput {
+            record,
+            events,
+            text_events,
+            artifact,
         })
     }
 }
@@ -174,21 +171,19 @@ fn show_input(
     style: &EguiCommandChromeSearchStyle,
     policy: &EguiTextSurfaceInputPolicy,
 ) -> Result<EguiTextSurfaceOutput, EguiCommandChromeError> {
-    let mut output = None;
     ui.allocate_ui_with_layout(
         egui::vec2(style.input_width_px as f32, style.input_height_px as f32),
         egui::Layout::left_to_right(egui::Align::Center),
         |ui| {
-            output = Some(adapter.show_with_input_policy_unpainted(
+            adapter.show_with_input_policy_unpainted(
                 ui,
                 surface,
                 &style.input_raster,
                 &style.input_paint,
                 policy,
-            ))
+            )
         },
-    );
-    output
-        .ok_or(EguiTextSurfaceError::FrameNotProduced)?
-        .map_err(Into::into)
+    )
+    .inner
+    .map_err(Into::into)
 }

@@ -70,31 +70,5 @@ pub(super) fn scalars(text: &str) -> Vec<u32> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn grapheme_helpers_cover_valid_missing_changed_and_scalar_mismatch_paths() {
-        let ranges = artifacts("a⭐️");
-        assert_eq!(ranges.len(), 2);
-        assert_eq!(required_range("a⭐️", "⭐️", &ranges).ok(), Some((1, 7)));
-        assert!(required_range("a⭐️", "missing", &ranges).is_err());
-
-        let changed = [KucGraphemeArtifact {
-            byte_start: 0,
-            byte_end: 1,
-            scalar_sequence: scalars("a"),
-        }];
-        assert!(required_range("b", "a", &changed).is_err());
-
-        let invalid = [KucGraphemeArtifact {
-            byte_start: 99,
-            byte_end: 100,
-            scalar_sequence: scalars("a"),
-        }];
-        assert!(required_range("a", "a", &invalid).is_err());
-
-        assert!(validate_scalar_sequence(&scalars("a"), "a", &scalars("a")).is_ok());
-        assert!(validate_scalar_sequence(&scalars("b"), "a", &scalars("a")).is_err());
-    }
-}
+#[path = "grapheme_tests.rs"]
+mod tests;

@@ -1,10 +1,14 @@
 use super::artifact_model::EguiTextSurfaceError;
+use super::model::SharedTextMetrics;
 use super::model::TextSurfaceRasterStyle;
 use super::raster::{RasterFrame, rasterize_gutter_label};
 use egui::Ui;
 use katana_ui_core::render_model::UiRect;
 use katana_ui_core::text_surface::{TextSurface, TextSurfaceLayout, TextSurfaceViewportSizing};
 use katana_ui_core_text_raster::PlatformTextRasterizer;
+
+pub(super) const AUTOMATIC_GUTTER_MIN_WIDTH: u32 = 52;
+const AUTOMATIC_GUTTER_LABEL_PADDING: u32 = 12;
 
 pub(super) fn placeholder_raster_identity(
     surface: &TextSurface,
@@ -34,6 +38,7 @@ pub(super) fn controlled_gutter_width(
     layout: &TextSurfaceLayout,
     style: &TextSurfaceRasterStyle,
     scale_factor: f32,
+    metrics: &SharedTextMetrics,
 ) -> Result<u32, EguiTextSurfaceError> {
     let label = layout
         .lines
@@ -42,8 +47,10 @@ pub(super) fn controlled_gutter_width(
         .max()
         .unwrap_or(1)
         .to_string();
-    let raster = rasterize_gutter_label(rasterizer, &label, style, scale_factor)?;
-    Ok(logical_extent(raster.width, scale_factor))
+    let raster = rasterize_gutter_label(rasterizer, &label, style, scale_factor, metrics)?;
+    Ok(logical_extent(raster.width, scale_factor)
+        .saturating_add(AUTOMATIC_GUTTER_LABEL_PADDING)
+        .max(AUTOMATIC_GUTTER_MIN_WIDTH))
 }
 
 pub(super) fn surface_extent_for_ui(ui: &Ui, surface: &mut TextSurface) -> (f32, f32) {

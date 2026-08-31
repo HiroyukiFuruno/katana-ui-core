@@ -1,38 +1,26 @@
+#[path = "sanitized_document_root_transport/fingerprint.rs"]
+mod fingerprint;
+#[path = "sanitized_document_root_transport/types.rs"]
+mod types;
+
 use super::super::root::{
-    EguiTextCommandSurfaceRootEventDispatchReceipt,
-    EguiTextCommandSurfaceRootEventForwardingReceipt, EguiTextCommandSurfaceRootEventTransport,
-    KucRootEventBatchDispatcher,
+    EguiTextCommandSurfaceRootEventBatchDispatchError,
+    EguiTextCommandSurfaceRootEventBatchForwardError,
+    EguiTextCommandSurfaceRootEventDispatchReceipt, EguiTextCommandSurfaceRootEventTransport,
+    EguiTextCommandSurfaceRootOutput, KucOpaqueHostEffectBatch, KucOpaqueHostEffectError,
+    KucRootEventBatchDispatcher, KucRootEventBatchForwarder,
 };
-use super::sanitized_search_projection::SanitizedSearchCapabilityRejection;
+use super::sanitized_command_event::SanitizedCommandActivationTransport;
+use super::sanitized_context_event::SanitizedContextMenuActivationTransport;
+use super::sanitized_search_event::SanitizedSearchEventTransport;
+use super::sanitized_tab_projection::adapter::SanitizedTabProjectionClosedEvent;
+use std::cell::RefCell;
 
-mod sanitized_document_root_transport_forwarding;
-
-use sanitized_document_root_transport_forwarding as forwarding;
-
-pub(crate) use sanitized_document_root_transport_forwarding::RootEventForwarding;
-
-/// Opaque callback used to forward one sanitized document root event transport.
-pub trait SanitizedDocumentRootEventForwarder {
-    type Error;
-
-    fn forward_sanitized_document_root_event(
-        &mut self,
-        transport: SanitizedDocumentRootEventTransport,
-    ) -> Result<(), Self::Error>;
-}
-
-/// Sealed, non-clone event transport reserved for the sanitized root boundary.
-pub struct SanitizedDocumentRootEventTransport {
-    root_transport: Option<EguiTextCommandSurfaceRootEventTransport>,
-}
-
-/// Failure while the host consumes the opaque root port.
-#[derive(Debug, PartialEq, Eq)]
-pub enum SanitizedDocumentRootEventDispatchError<DispatcherError> {
-    AlreadyConsumed,
-    Child(DispatcherError),
-    OpaqueHostEffect,
-}
+pub use types::{
+    SanitizedDocumentRootEventDispatchError, SanitizedDocumentRootEventForwardError,
+    SanitizedDocumentRootEventForwarder, SanitizedDocumentRootEventForwardingReceipt,
+    SanitizedDocumentRootEventTransport,
+};
 
 impl SanitizedDocumentRootEventTransport {
     /// Relays the opaque root event to the actual host dispatcher exactly once.
@@ -50,24 +38,16 @@ impl SanitizedDocumentRootEventTransport {
             .root_transport
             .take()
             .ok_or(SanitizedDocumentRootEventDispatchError::AlreadyConsumed)?;
-        transport
-            .dispatch_once(dispatcher)
-            .map_err(map_dispatch_error)
-    }
-}
-
-fn map_dispatch_error<DispatcherError>(
-    error: super::super::root::EguiTextCommandSurfaceRootEventBatchDispatchError<DispatcherError>,
-) -> SanitizedDocumentRootEventDispatchError<DispatcherError> {
-    match error {
-        super::super::root::EguiTextCommandSurfaceRootEventBatchDispatchError::AlreadyConsumed => {
-            SanitizedDocumentRootEventDispatchError::AlreadyConsumed
-        }
-        super::super::root::EguiTextCommandSurfaceRootEventBatchDispatchError::Dispatcher(
-            error,
-        ) => SanitizedDocumentRootEventDispatchError::Child(error),
-        super::super::root::EguiTextCommandSurfaceRootEventBatchDispatchError::OpaqueHostEffect => {
-            SanitizedDocumentRootEventDispatchError::OpaqueHostEffect
+        match transport.dispatch_once(dispatcher) {
+            Ok(receipt) => Ok(receipt),
+            Err(EguiTextCommandSurfaceRootEventBatchDispatchError::Dispatcher(error)) => {
+                Err(SanitizedDocumentRootEventDispatchError::Child(error))
+            }
+            Err(
+                EguiTextCommandSurfaceRootEventBatchDispatchError::AlreadyConsumed
+                | EguiTextCommandSurfaceRootEventBatchDispatchError::OpaqueHostEffect
+                | EguiTextCommandSurfaceRootEventBatchDispatchError::SourceAddressPort(_),
+            ) => Err(SanitizedDocumentRootEventDispatchError::OpaqueHostEffect),
         }
     }
 }
@@ -80,117 +60,170 @@ impl std::fmt::Debug for SanitizedDocumentRootEventTransport {
             .finish()
     }
 }
+pub(super) use fingerprint::tab_event_fingerprint;
+use fingerprint::{
+    command_event_fingerprint, compose_correlation_fingerprint, compose_event_batch_fingerprint,
+    context_menu_event_fingerprint, search_event_fingerprint,
+};
 
-/// Receipt returned after one sanitized document root event forwarding operation.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SanitizedDocumentRootEventForwardingReceipt {
-    root_identity: String,
-    state_revision: u64,
-    correlation_fingerprint: String,
-    event_batch_fingerprint: String,
-    event_cardinality: usize,
+struct RootEventForwarderBridge<'a, Forwarder> {
+    forwarder: &'a mut Forwarder,
+    tab_closed_events: &'a RefCell<Option<Vec<SanitizedTabProjectionClosedEvent>>>,
+    search_events: &'a RefCell<Option<Vec<SanitizedSearchEventTransport>>>,
+    command_events: &'a RefCell<Option<Vec<SanitizedCommandActivationTransport>>>,
+    context_menu_events: &'a RefCell<Option<Vec<SanitizedContextMenuActivationTransport>>>,
+    tab_event_count: usize,
+    tab_event_fingerprint: String,
+    search_event_count: usize,
+    search_event_fingerprint: String,
+    command_event_count: usize,
+    command_event_fingerprint: String,
+    context_menu_event_count: usize,
+    context_menu_event_fingerprint: String,
 }
 
-impl SanitizedDocumentRootEventForwardingReceipt {
-    #[must_use]
-    pub fn root_identity(&self) -> &str {
-        &self.root_identity
-    }
-
-    #[must_use]
-    pub const fn state_revision(&self) -> u64 {
-        self.state_revision
-    }
-
-    #[must_use]
-    pub fn correlation_fingerprint(&self) -> &str {
-        &self.correlation_fingerprint
-    }
-
-    #[must_use]
-    pub fn event_batch_fingerprint(&self) -> &str {
-        &self.event_batch_fingerprint
-    }
-
-    #[must_use]
-    pub const fn event_cardinality(&self) -> usize {
-        self.event_cardinality
-    }
-
-    #[must_use]
-    pub const fn consumed_once(&self) -> bool {
-        true
-    }
-}
-
-/// Typed failure for the one-shot sanitized event forwarding operation.
-#[derive(Debug, PartialEq, Eq)]
-pub enum SanitizedDocumentRootEventForwardError<ForwarderError> {
-    AlreadyConsumed,
-    StaleFrame,
+enum RootEventForwarderBridgeError<ForwarderError> {
     InconsistentTabEventBatch,
     InconsistentSearchEventBatch,
     InconsistentCommandEventBatch,
     InconsistentContextMenuEventBatch,
     Forwarder(ForwarderError),
-    SearchCapability(SanitizedSearchCapabilityRejection),
-    CommandCapability(super::sanitized_command_projection::SanitizedCommandCapabilityRejection),
-    ContextMenuCapability(
-        super::sanitized_context_projection::SanitizedContextMenuCapabilityRejection,
-    ),
 }
 
-impl SanitizedDocumentRootEventForwardingReceipt {
-    fn from_root(
-        value: EguiTextCommandSurfaceRootEventForwardingReceipt,
-        tab_event_fingerprint: &str,
-        tab_event_count: usize,
-        search_event_fingerprint: &str,
-        search_event_count: usize,
-        command_event_fingerprint: &str,
-        command_event_count: usize,
-        context_menu_event_fingerprint: &str,
-        context_menu_event_count: usize,
-    ) -> Self {
-        Self {
-            root_identity: value.root_identity().to_owned(),
-            state_revision: value.state_revision(),
-            correlation_fingerprint:
-                forwarding::SanitizedEventFingerprints::compose_correlation_fingerprint(
-                    &value,
-                    tab_event_fingerprint,
-                    tab_event_count,
-                    search_event_fingerprint,
-                    search_event_count,
-                    command_event_fingerprint,
-                    command_event_count,
-                    context_menu_event_fingerprint,
-                    context_menu_event_count,
-                ),
-            event_batch_fingerprint:
-                forwarding::SanitizedEventFingerprints::compose_event_batch_fingerprint(
-                    &value,
-                    tab_event_fingerprint,
-                    tab_event_count,
-                    search_event_fingerprint,
-                    search_event_count,
-                    command_event_fingerprint,
-                    command_event_count,
-                    context_menu_event_fingerprint,
-                    context_menu_event_count,
-                ),
-            event_cardinality: value.event_cardinality()
-                + tab_event_count
-                + search_event_count
-                + command_event_count
-                + context_menu_event_count,
+pub(super) fn forward_root_events_once<Forwarder>(
+    output: &EguiTextCommandSurfaceRootOutput,
+    tab_closed_events: &RefCell<Option<Vec<SanitizedTabProjectionClosedEvent>>>,
+    search_events: &RefCell<Option<Vec<SanitizedSearchEventTransport>>>,
+    command_events: &RefCell<Option<Vec<SanitizedCommandActivationTransport>>>,
+    context_menu_events: &RefCell<Option<Vec<SanitizedContextMenuActivationTransport>>>,
+    forwarder: &mut Forwarder,
+) -> Result<
+    SanitizedDocumentRootEventForwardingReceipt,
+    SanitizedDocumentRootEventForwardError<Forwarder::Error>,
+>
+where
+    Forwarder: SanitizedDocumentRootEventForwarder,
+{
+    let mut bridge = RootEventForwarderBridge {
+        forwarder,
+        tab_closed_events,
+        search_events,
+        command_events,
+        context_menu_events,
+        tab_event_count: 0,
+        tab_event_fingerprint: String::new(),
+        search_event_count: 0,
+        search_event_fingerprint: String::new(),
+        command_event_count: 0,
+        command_event_fingerprint: String::new(),
+        context_menu_event_count: 0,
+        context_menu_event_fingerprint: String::new(),
+    };
+    let receipt = output
+        .events()
+        .forward_once(&mut bridge)
+        .map_err(|error| match error {
+            EguiTextCommandSurfaceRootEventBatchForwardError::AlreadyConsumed => {
+                SanitizedDocumentRootEventForwardError::AlreadyConsumed
+            }
+            EguiTextCommandSurfaceRootEventBatchForwardError::Forwarder(error) => match error {
+                RootEventForwarderBridgeError::InconsistentTabEventBatch => {
+                    SanitizedDocumentRootEventForwardError::InconsistentTabEventBatch
+                }
+                RootEventForwarderBridgeError::InconsistentSearchEventBatch => {
+                    SanitizedDocumentRootEventForwardError::InconsistentSearchEventBatch
+                }
+                RootEventForwarderBridgeError::InconsistentCommandEventBatch => {
+                    SanitizedDocumentRootEventForwardError::InconsistentCommandEventBatch
+                }
+                RootEventForwarderBridgeError::InconsistentContextMenuEventBatch => {
+                    SanitizedDocumentRootEventForwardError::InconsistentContextMenuEventBatch
+                }
+                RootEventForwarderBridgeError::Forwarder(error) => {
+                    SanitizedDocumentRootEventForwardError::Forwarder(error)
+                }
+            },
+        })?;
+    Ok(SanitizedDocumentRootEventForwardingReceipt::from_root(
+        receipt,
+        &bridge.tab_event_fingerprint,
+        bridge.tab_event_count,
+        &bridge.search_event_fingerprint,
+        bridge.search_event_count,
+        &bridge.command_event_fingerprint,
+        bridge.command_event_count,
+        &bridge.context_menu_event_fingerprint,
+        bridge.context_menu_event_count,
+    ))
+}
+
+impl<Forwarder> KucRootEventBatchForwarder for RootEventForwarderBridge<'_, Forwarder>
+where
+    Forwarder: SanitizedDocumentRootEventForwarder,
+{
+    type Error = RootEventForwarderBridgeError<Forwarder::Error>;
+
+    fn forward_root_event_batch(
+        &mut self,
+        transport: EguiTextCommandSurfaceRootEventTransport,
+    ) -> Result<(), Self::Error> {
+        let tab_closed_events = self
+            .tab_closed_events
+            .borrow_mut()
+            .take()
+            .ok_or(RootEventForwarderBridgeError::InconsistentTabEventBatch)?;
+        let search_events = self
+            .search_events
+            .borrow_mut()
+            .take()
+            .ok_or(RootEventForwarderBridgeError::InconsistentSearchEventBatch)?;
+        let command_events = self
+            .command_events
+            .borrow_mut()
+            .take()
+            .ok_or(RootEventForwarderBridgeError::InconsistentCommandEventBatch)?;
+        let context_menu_events = self
+            .context_menu_events
+            .borrow_mut()
+            .take()
+            .ok_or(RootEventForwarderBridgeError::InconsistentContextMenuEventBatch)?;
+        for event in &tab_closed_events {
+            event.read_for_transport();
         }
+        for event in &search_events {
+            event.read_for_transport();
+        }
+        self.tab_event_count = tab_closed_events.len();
+        self.tab_event_fingerprint = tab_event_fingerprint(&tab_closed_events);
+        self.search_event_count = search_events.len();
+        self.search_event_fingerprint = search_event_fingerprint(&search_events);
+        self.command_event_count = command_events.len();
+        self.command_event_fingerprint = command_event_fingerprint(&command_events);
+        self.context_menu_event_count = context_menu_events.len();
+        self.context_menu_event_fingerprint = context_menu_event_fingerprint(&context_menu_events);
+        let effect_batch = KucOpaqueHostEffectBatch::from_handler(move || {
+            for mut event in command_events {
+                event.invoke_once().map_err(|_| KucOpaqueHostEffectError)?;
+            }
+            for mut event in context_menu_events {
+                event.invoke_once().map_err(|_| KucOpaqueHostEffectError)?;
+            }
+            for mut event in search_events {
+                event.invoke_once().map_err(|_| KucOpaqueHostEffectError)?;
+            }
+            Ok(())
+        });
+        let transport = transport.with_opaque_host_effect_batch(effect_batch);
+        let transport = SanitizedDocumentRootEventTransport {
+            root_transport: Some(transport),
+        };
+        let _ = &transport.root_transport;
+        self.forwarder
+            .forward_sanitized_document_root_event(transport)
+            .map_err(RootEventForwarderBridgeError::Forwarder)
     }
 }
 
 #[cfg(test)]
-pub(crate) use sanitized_document_root_transport_forwarding::SanitizedEventFingerprints;
-
-#[cfg(test)]
-#[path = "sanitized_document_root_transport_tests.rs"]
+#[path = "sanitized_document_root_transport_inline_tests.rs"]
 mod tests;

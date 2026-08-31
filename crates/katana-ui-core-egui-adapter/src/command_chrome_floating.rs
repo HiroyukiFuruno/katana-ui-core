@@ -14,6 +14,9 @@ use katana_ui_core::render_model::UiRect;
 
 const TOOLTIP_PADDING_PX: u32 = 6;
 const FLOATING_SURFACE_ID: &str = "kuc-floating-command-chrome";
+pub(super) const FLOATING_PANEL_PADDING_PX: u32 = 10;
+pub(super) const FLOATING_PANEL_BORDER_PX: u32 = 1;
+pub(super) const FLOATING_PANEL_RADIUS_PX: u32 = 8;
 
 impl EguiCommandChromeAdapter {
     pub fn show_floating_toolbar(
@@ -25,6 +28,7 @@ impl EguiCommandChromeAdapter {
     ) -> Result<EguiCommandChromeFloatingOutput, EguiCommandChromeError> {
         let mut events = escape_dismiss_events(ui, floating);
         if !floating.is_open() {
+            self.floating_pointer_exclusions.clear();
             return Ok(EguiCommandChromeFloatingOutput {
                 record: None,
                 events,
@@ -32,6 +36,18 @@ impl EguiCommandChromeAdapter {
             });
         }
         let measured_panel = self.measure_toolbar(ui, floating.toolbar_model(), raster_style)?;
+        let measured_panel = katana_ui_core::interaction::placement::Size::new(
+            measured_panel.width.saturating_add(
+                FLOATING_PANEL_PADDING_PX
+                    .saturating_add(FLOATING_PANEL_BORDER_PX)
+                    .saturating_mul(2),
+            ),
+            measured_panel.height.saturating_add(
+                FLOATING_PANEL_PADDING_PX
+                    .saturating_add(FLOATING_PANEL_BORDER_PX)
+                    .saturating_mul(2),
+            ),
+        );
         let _ = floating.synchronize_measured_panel(measured_panel);
         let Some(bounds) = floating.bounds_model() else {
             return Ok(EguiCommandChromeFloatingOutput {
@@ -44,16 +60,17 @@ impl EguiCommandChromeAdapter {
         let area_id = ui.id().with(FLOATING_SURFACE_ID);
         let panel_size = egui::vec2(bounds.width as f32, bounds.height as f32);
         let panel_rect = egui_rect(panel_bounds);
+        let toolbar_rect = inset_panel(panel_bounds);
         let mut panel_ui = ui.new_child(egui::UiBuilder::new().id(area_id).max_rect(panel_rect));
         panel_ui.set_min_size(panel_size);
-        let toolbar_output_result = self.show_toolbar_unpainted(
+        panel_ui = panel_ui.new_child(egui::UiBuilder::new().max_rect(egui_rect(toolbar_rect)));
+        let toolbar_output = self.show_toolbar_unpainted(
             &mut panel_ui,
             floating.toolbar_model_mut(),
             raster_style,
             paint_style,
             crate::text_command_surface::accesskit_evidence::AccessKitTargetClass::FloatingToolbar,
-        );
-        let toolbar_output = toolbar_output_result?;
+        )?;
         if let Some(close_events) = outside_dismiss_events(ui, floating, &toolbar_output.record) {
             return Ok(EguiCommandChromeFloatingOutput {
                 record: None,
@@ -77,15 +94,15 @@ impl EguiCommandChromeAdapter {
                 .as_ref()
                 .map(|value| value.raster_identity().to_string()),
         };
+        self.floating_pointer_exclusions = floating_pointer_exclusions(&record);
         let paint_plan = build_floating_paint_plan(
             panel_bounds,
             &toolbar_output.artifact.paint_plan,
             tooltip.as_ref(),
             paint_style,
         );
-        let artifact_result =
+        let artifact =
             EguiCommandChromeFloatingArtifactFrame::new(record.clone(), paint_plan, events.clone());
-        let artifact = artifact_result?;
         paint_command_chrome(ui, &mut self.textures, &artifact.paint_plan);
         Ok(EguiCommandChromeFloatingOutput {
             record: Some(record),
@@ -123,6 +140,16 @@ impl EguiCommandChromeAdapter {
         );
         Ok(TooltipPaintSource::new(bounds, text_bounds, raster))
     }
+}
+
+fn floating_pointer_exclusions(record: &EguiCommandChromeFloatingFrameRecord) -> Vec<UiRect> {
+    let mut bounds = vec![record.panel_bounds, record.toolbar.bounds];
+    if let Some(dropdown) = record.toolbar.dropdown.as_ref() {
+        bounds.push(dropdown.trigger_bounds);
+        bounds.push(dropdown.bounds);
+        bounds.extend(dropdown.items.iter().map(|item| item.bounds));
+    }
+    bounds
 }
 
 fn escape_dismiss_events(
@@ -246,4 +273,14 @@ fn egui_rect(bounds: UiRect) -> egui::Rect {
 
 fn core_rect(bounds: katana_ui_core::interaction::placement::Rect) -> UiRect {
     UiRect::new(bounds.x, bounds.y, bounds.width, bounds.height)
+}
+
+fn inset_panel(bounds: UiRect) -> UiRect {
+    let inset = FLOATING_PANEL_PADDING_PX.saturating_add(FLOATING_PANEL_BORDER_PX);
+    UiRect::new(
+        bounds.x.saturating_add(inset as i32),
+        bounds.y.saturating_add(inset as i32),
+        bounds.width.saturating_sub(inset.saturating_mul(2)),
+        bounds.height.saturating_sub(inset.saturating_mul(2)),
+    )
 }

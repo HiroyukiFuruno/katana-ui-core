@@ -8,7 +8,7 @@ use katana_ui_core::molecule::command_chrome::{
 };
 use katana_ui_core::render_model::{UiIconProps, UiRect, UiTextSpan, UiTextSpanStyle};
 use katana_ui_core_svg_raster::UiSvgRasterRequest;
-use katana_ui_core_text_raster::PlatformTextRasterRequest;
+use katana_ui_core_text_raster::{PlatformTextMetricsRequest, PlatformTextRasterRequest};
 
 const ACTION_PADDING_PX: u32 = 8;
 const SPLIT_SECONDARY_WIDTH_PX: u32 = 20;
@@ -91,6 +91,12 @@ impl EguiCommandChromeAdapter {
             max_width_px: None,
             scale_factor: scale,
         };
+        let measured = self.metrics.borrow_mut().measure_text(
+            &mut self.text_rasterizer,
+            &PlatformTextMetricsRequest::from_text(label, style.font.clone(), scale),
+        )?;
+        let mut request = request;
+        request.line_height_px = measured.line_height_px / scale.max(1.0);
         let raster = self.text_rasterizer.rasterize(&request)?;
         let pixels = raster.rgba_pixels.iter().flatten().copied().collect();
         Ok(RenderedRaster::new(

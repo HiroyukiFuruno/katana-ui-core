@@ -1,4 +1,5 @@
 use super::artifact_model::EguiTextSurfaceError;
+use super::model::SharedTextMetrics;
 use super::model::TextSurfaceRasterStyle;
 use katana_ui_core::render_model::{UiRect, UiTextSpan, UiTextSpanStyle};
 use katana_ui_core::text_surface::{
@@ -6,7 +7,8 @@ use katana_ui_core::text_surface::{
 };
 use katana_ui_core::theme::FontFamily;
 use katana_ui_core_text_raster::{
-    PlatformTextRaster, PlatformTextRasterRequest, PlatformTextRasterizer,
+    PlatformTextMetricsRequest, PlatformTextRaster, PlatformTextRasterRequest,
+    PlatformTextRasterizer,
 };
 
 pub(super) struct RasterFrame {
@@ -21,12 +23,20 @@ pub(super) fn rasterize_surface(
     max_width_px: f32,
     scale_factor: f32,
     identity: String,
+    metrics: &SharedTextMetrics,
 ) -> Result<RasterFrame, EguiTextSurfaceError> {
+    record_metrics(
+        metrics,
+        rasterizer,
+        &surface.state().text_area.value,
+        &style.font,
+        scale_factor,
+    )?;
     let request = PlatformTextRasterRequest {
         spans: surface_spans(surface, style),
         font: style.font.clone(),
         fallback_color_rgba: style.fallback_color_rgba,
-        line_height_px: style.line_height_px,
+        line_height_px: style.line_height_px / scale_factor.max(1.0),
         max_width_px: Some(max_width_px.max(1.0)),
         scale_factor,
     };
@@ -41,17 +51,19 @@ pub(super) fn rasterize_placeholder(
     max_width_px: f32,
     scale_factor: f32,
     identity: String,
+    metrics: &SharedTextMetrics,
 ) -> Result<Option<RasterFrame>, EguiTextSurfaceError> {
     let state = &surface.state().text_area;
     let placeholder = &surface.props().text_area.options().placeholder;
     if !state.value.is_empty() || state.composition.is_some() || placeholder.is_empty() {
         return Ok(None);
     }
+    record_metrics(metrics, rasterizer, placeholder, &style.font, scale_factor)?;
     let request = PlatformTextRasterRequest {
         spans: UiTextSpan::emoji_marked_spans(placeholder, base_span_style(style)),
         font: style.font.clone(),
         fallback_color_rgba: style.fallback_color_rgba,
-        line_height_px: style.line_height_px,
+        line_height_px: style.line_height_px / scale_factor.max(1.0),
         max_width_px: Some(max_width_px.max(1.0)),
         scale_factor,
     };
@@ -76,17 +88,39 @@ pub(super) fn rasterize_gutter_label(
     label: &str,
     style: &TextSurfaceRasterStyle,
     scale_factor: f32,
+    metrics: &SharedTextMetrics,
 ) -> Result<PlatformTextRaster, EguiTextSurfaceError> {
+    record_metrics(metrics, rasterizer, label, &style.font, scale_factor)?;
     let base_style = base_span_style(style);
     let request = PlatformTextRasterRequest {
         spans: UiTextSpan::emoji_marked_spans(label, base_style),
         font: style.font.clone(),
         fallback_color_rgba: style.fallback_color_rgba,
-        line_height_px: style.line_height_px,
+        line_height_px: style.line_height_px / scale_factor.max(1.0),
         max_width_px: None,
         scale_factor,
     };
     Ok(rasterizer.rasterize(&request)?)
+}
+
+fn record_metrics(
+    metrics: &SharedTextMetrics,
+    rasterizer: &mut PlatformTextRasterizer,
+    text: &str,
+    font: &katana_ui_core::theme::FontToken,
+    scale_factor: f32,
+) -> Result<katana_ui_core_text_raster::PlatformTextMetrics, EguiTextSurfaceError> {
+    metrics
+        .borrow_mut()
+        .measure_text(
+            rasterizer,
+            &PlatformTextMetricsRequest::from_text(
+                if text.is_empty() { " " } else { text },
+                font.clone(),
+                scale_factor,
+            ),
+        )
+        .map_err(Into::into)
 }
 
 fn surface_spans(surface: &TextSurface, style: &TextSurfaceRasterStyle) -> Vec<UiTextSpan> {
@@ -154,28 +188,20 @@ fn composed_text(surface: &TextSurface) -> String {
     let Some(composition) = state.composition.as_ref() else {
         return state.value.clone();
     };
-    let (start, end) =
-        safe_composition_range(&state.value, state.selection.start, state.selection.end);
-    let (before, remainder) = state.value.split_at(start);
-    let (_, after) = remainder.split_at(end - start);
-    format!("{before}{}{after}", composition.preedit)
-}
-
-fn safe_composition_range(value: &str, start: usize, end: usize) -> (usize, usize) {
-    let boundary = |index: usize| {
-        let mut index = index.min(value.len());
-        while !value.is_char_boundary(index) {
-            index -= 1;
-        }
-        index
-    };
-    let start = boundary(start);
-    let end = boundary(end);
-    if start <= end {
+    let start = state.selection.start.min(state.value.len());
+    let end = state.selection.end.min(state.value.len());
+    let (start, end) = if start <= end {
         (start, end)
     } else {
         (end, start)
-    }
+    };
+    let Some(before) = state.value.get(..start) else {
+        return state.value.clone();
+    };
+    let Some(after) = state.value.get(end..) else {
+        return state.value.clone();
+    };
+    format!("{before}{}{after}", composition.preedit)
 }
 
 fn base_span_style(style: &TextSurfaceRasterStyle) -> UiTextSpanStyle {
@@ -187,12 +213,5 @@ fn base_span_style(style: &TextSurfaceRasterStyle) -> UiTextSpanStyle {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::safe_composition_range;
-
-    #[test]
-    fn composition_range_clamps_reorders_and_preserves_utf8_boundaries() {
-        assert_eq!((0, 3), safe_composition_range("日本", 1, 5));
-        assert_eq!((0, 6), safe_composition_range("日本", usize::MAX, 1));
-    }
-}
+#[path = "raster_tests.rs"]
+mod tests;

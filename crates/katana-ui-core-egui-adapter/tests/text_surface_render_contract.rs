@@ -1,5 +1,5 @@
 use katana_ui_core::atom::TextArea;
-use katana_ui_core::render_model::UiTextSpan;
+use katana_ui_core::render_model::{UiIconProps, UiTextSpan};
 use katana_ui_core::text_surface::{
     TextSurface, TextSurfaceAccessibilityActionKind, TextSurfaceAccessibilityLabels,
     TextSurfaceAction, TextSurfaceAnnotation, TextSurfaceAnnotationStyle,
@@ -8,10 +8,10 @@ use katana_ui_core::text_surface::{
 };
 use katana_ui_core::theme::{FontFamily, FontToken};
 use katana_ui_core_egui_adapter::text_surface::{
-    EguiTextSurfaceAdapter, EguiTextSurfaceDrawLayer, TextSurfaceGutterPaint,
+    EguiTextSurfaceAdapter, EguiTextSurfaceDrawLayer, EguiTextSurfaceError, TextSurfaceGutterPaint,
     TextSurfacePaintOperationKind, TextSurfacePaintStyle, TextSurfaceRasterStyle,
 };
-use katana_ui_core_text_raster::PlatformTextRasterConfig;
+use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterError};
 
 const SCREEN_WIDTH: f32 = 640.0;
 const SCREEN_HEIGHT: f32 = 360.0;
@@ -45,6 +45,50 @@ fn missing_font_catalog_fails_closed_before_surface_paint() {
     });
     output.textures_delta.clear();
     assert!(result.is_some_and(|value| value.is_err()));
+}
+
+#[test]
+fn empty_gutter_label_fails_closed_while_building_the_real_paint_plan() {
+    let context = egui::Context::default();
+    let mut adapter = EguiTextSurfaceAdapter::default();
+    let text = "paint failure";
+    let mut surface = TextSurface::new(
+        TextSurfaceProps::new(
+            TextArea::new("empty-gutter-label").value(text),
+            UiTextSpan::emoji_marked_spans(text, Default::default()),
+            TextSurfaceViewport::new(0, 0, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32),
+        )
+        .gutter(TextSurfaceGutter::new(GUTTER_WIDTH).row(TextSurfaceGutterRow::new(0, ""))),
+    );
+
+    assert!(matches!(
+        run_frame(&context, &mut adapter, &mut surface, Vec::new()),
+        Err(EguiTextSurfaceError::Raster(
+            PlatformTextRasterError::EmptyText
+        ))
+    ));
+}
+
+#[test]
+fn invalid_gutter_svg_is_returned_through_the_real_paint_plan() {
+    let context = egui::Context::default();
+    let mut adapter = EguiTextSurfaceAdapter::default();
+    let text = "svg failure";
+    let mut row = TextSurfaceGutterRow::new(0, "1").marker_id("invalid-svg");
+    row.icon = Some(UiIconProps::new("<svg"));
+    let mut surface = TextSurface::new(
+        TextSurfaceProps::new(
+            TextArea::new("invalid-svg").value(text),
+            UiTextSpan::emoji_marked_spans(text, Default::default()),
+            TextSurfaceViewport::new(0, 0, SCREEN_WIDTH as u32, SCREEN_HEIGHT as u32),
+        )
+        .gutter(TextSurfaceGutter::new(GUTTER_WIDTH).row(row)),
+    );
+
+    assert!(matches!(
+        run_frame(&context, &mut adapter, &mut surface, Vec::new()),
+        Err(EguiTextSurfaceError::Svg(_))
+    ));
 }
 
 #[test]
@@ -122,6 +166,15 @@ fn actual_egui_surface_uses_kuc_raster_texture_and_one_frame_record() {
     );
     assert_eq!(64, rendered.artifact.frame_record_hash.len());
     assert_eq!(64, rendered.artifact.paint_plan_hash.len());
+    let keyboard_target = rendered.keyboard_context_target();
+    assert_eq!(
+        rendered.record.frame.selection.range,
+        keyboard_target.selection()
+    );
+    assert_eq!(
+        rendered.record.frame.viewport_bounds,
+        keyboard_target.viewport_bounds()
+    );
     let text_texture = rendered
         .artifact
         .paint_plan

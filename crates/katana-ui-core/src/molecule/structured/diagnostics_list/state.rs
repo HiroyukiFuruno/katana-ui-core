@@ -1,9 +1,14 @@
 use super::{
-    BulkFixSkipReason, DiagnosticId, DiagnosticItem, DiagnosticKeyboardInput,
-    DiagnosticsListAction, DiagnosticsListEvent, DiagnosticsListOptions, DiagnosticsListPlanner,
+    BulkFixSkipReason, DiagnosticId, DiagnosticItem, DiagnosticKeyboardInput, DiagnosticScopeInput,
+    DiagnosticScopeKey, DiagnosticsListAction, DiagnosticsListEvent, DiagnosticsListOptions,
+    DiagnosticsListPlanner, retained_selection::selected_visible_id,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
+
+#[cfg(test)]
+#[path = "state_tests.rs"]
+mod tests;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DiagnosticsListState {
@@ -11,6 +16,7 @@ pub struct DiagnosticsListState {
     pub expanded_ids: BTreeSet<DiagnosticId>,
     pub loading: bool,
     pub bulk_preview_open: bool,
+    pub selected_scope_key: Option<DiagnosticScopeKey>,
 }
 
 impl DiagnosticsListState {
@@ -18,8 +24,10 @@ impl DiagnosticsListState {
         &mut self,
         action: DiagnosticsListAction,
         items: &[DiagnosticItem],
+        scopes: &[DiagnosticScopeInput],
         options: &DiagnosticsListOptions,
     ) -> Vec<DiagnosticsListEvent> {
+        self.reconcile_scope_selection(scopes);
         match action {
             DiagnosticsListAction::SetGroupBy(_)
             | DiagnosticsListAction::SetSortBy(_)
@@ -27,12 +35,41 @@ impl DiagnosticsListState {
                 vec![DiagnosticsListEvent::FilterChanged]
             }
             DiagnosticsListAction::Select(id) => self.select(id),
+            DiagnosticsListAction::SelectScope(key) => self.select_scope(key, scopes),
             DiagnosticsListAction::ToggleFixPreview(id) => self.toggle_fix_preview(id),
             DiagnosticsListAction::ApplyFix(id) => apply_fix(items, id),
             DiagnosticsListAction::OpenBulkPreview => self.open_bulk_preview(),
-            DiagnosticsListAction::ConfirmBulkApply => bulk_apply(items, options),
-            DiagnosticsListAction::Keyboard(input) => self.apply_keyboard(input, items, options),
+            DiagnosticsListAction::ConfirmBulkApply => self.confirm_bulk_apply(items, options),
+            DiagnosticsListAction::Keyboard(input) => {
+                self.apply_keyboard(input, items, scopes, options)
+            }
         }
+    }
+
+    pub(super) fn reconcile_scope_selection(&mut self, scopes: &[DiagnosticScopeInput]) {
+        if self
+            .selected_scope_key
+            .as_ref()
+            .is_some_and(|key| scopes.iter().any(|scope| &scope.key == key))
+        {
+            return;
+        }
+        self.selected_scope_key = scopes.first().map(|scope| scope.key.clone());
+    }
+
+    fn select_scope(
+        &mut self,
+        key: DiagnosticScopeKey,
+        scopes: &[DiagnosticScopeInput],
+    ) -> Vec<DiagnosticsListEvent> {
+        if scopes.len() < 2 || !scopes.iter().any(|scope| scope.key == key) {
+            return Vec::new();
+        }
+        if self.selected_scope_key.as_ref() == Some(&key) {
+            return Vec::new();
+        }
+        self.selected_scope_key = Some(key.clone());
+        vec![DiagnosticsListEvent::ScopeSelected { scope_key: key }]
     }
 
     fn select(&mut self, id: DiagnosticId) -> Vec<DiagnosticsListEvent> {
@@ -56,22 +93,57 @@ impl DiagnosticsListState {
         vec![DiagnosticsListEvent::BulkFixPreviewOpened]
     }
 
+    fn confirm_bulk_apply(
+        &mut self,
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+    ) -> Vec<DiagnosticsListEvent> {
+        self.bulk_preview_open = false;
+        bulk_apply(items, self.selected_scope_key.as_ref(), options)
+    }
+
     fn apply_keyboard(
         &mut self,
         input: DiagnosticKeyboardInput,
         items: &[DiagnosticItem],
+        scopes: &[DiagnosticScopeInput],
         options: &DiagnosticsListOptions,
     ) -> Vec<DiagnosticsListEvent> {
         match input {
             DiagnosticKeyboardInput::F8 => self.select_error(items, options, true),
             DiagnosticKeyboardInput::ShiftF8 => self.select_error(items, options, false),
-            DiagnosticKeyboardInput::Space => self.apply_selected_fix(items),
-            DiagnosticKeyboardInput::Enter => self.navigate_selected(),
-            DiagnosticKeyboardInput::ArrowRight => self.toggle_selected_preview(),
-            DiagnosticKeyboardInput::ArrowLeft => self.collapse_selected_preview(),
+            DiagnosticKeyboardInput::Space => self.apply_selected_fix(items, options),
+            DiagnosticKeyboardInput::Enter => self.navigate_selected(items, options),
+            DiagnosticKeyboardInput::ArrowRight => self.toggle_selected_preview(items, options),
+            DiagnosticKeyboardInput::ArrowLeft => self.collapse_selected_preview(items, options),
             DiagnosticKeyboardInput::ArrowUp => self.select_visible(items, options, false),
             DiagnosticKeyboardInput::ArrowDown => self.select_visible(items, options, true),
+            DiagnosticKeyboardInput::ScopeNext => self.select_scope_relative(scopes, true),
+            DiagnosticKeyboardInput::ScopePrevious => self.select_scope_relative(scopes, false),
         }
+    }
+
+    fn select_scope_relative(
+        &mut self,
+        scopes: &[DiagnosticScopeInput],
+        forward: bool,
+    ) -> Vec<DiagnosticsListEvent> {
+        if scopes.len() < 2 {
+            return Vec::new();
+        }
+        let index = self
+            .selected_scope_key
+            .as_ref()
+            .and_then(|key| scopes.iter().position(|scope| &scope.key == key))
+            .unwrap_or(0);
+        let next = if forward {
+            (index + 1) % scopes.len()
+        } else if index == 0 {
+            scopes.len() - 1
+        } else {
+            index - 1
+        };
+        self.select_scope(scopes[next].key.clone(), scopes)
     }
 
     fn select_visible(
@@ -80,7 +152,7 @@ impl DiagnosticsListState {
         options: &DiagnosticsListOptions,
         forward: bool,
     ) -> Vec<DiagnosticsListEvent> {
-        let ids = DiagnosticsListPlanner::visible_items(items, options)
+        let ids = visible_items(items, options, self.selected_scope_key.as_ref())
             .into_iter()
             .map(|it| it.id.clone())
             .collect::<Vec<_>>();
@@ -96,7 +168,7 @@ impl DiagnosticsListState {
         options: &DiagnosticsListOptions,
         forward: bool,
     ) -> Vec<DiagnosticsListEvent> {
-        let visible = DiagnosticsListPlanner::visible_items(items, options);
+        let visible = visible_items(items, options, self.selected_scope_key.as_ref());
         let errors = visible
             .into_iter()
             .filter(|it| it.severity.is_error())
@@ -108,26 +180,39 @@ impl DiagnosticsListState {
         self.select(id)
     }
 
-    fn apply_selected_fix(&self, items: &[DiagnosticItem]) -> Vec<DiagnosticsListEvent> {
-        self.selected_id
-            .clone()
-            .map_or_else(Vec::new, |id| apply_fix(items, id))
+    fn apply_selected_fix(
+        &self,
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+    ) -> Vec<DiagnosticsListEvent> {
+        selected_visible_id(self, items, options).map_or_else(Vec::new, |id| apply_fix(items, id))
     }
 
-    fn toggle_selected_preview(&mut self) -> Vec<DiagnosticsListEvent> {
-        self.selected_id
-            .clone()
+    fn toggle_selected_preview(
+        &mut self,
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+    ) -> Vec<DiagnosticsListEvent> {
+        selected_visible_id(self, items, options)
             .map_or_else(Vec::new, |id| self.toggle_fix_preview(id))
     }
 
-    fn navigate_selected(&self) -> Vec<DiagnosticsListEvent> {
-        self.selected_id.clone().map_or_else(Vec::new, |id| {
+    fn navigate_selected(
+        &self,
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+    ) -> Vec<DiagnosticsListEvent> {
+        selected_visible_id(self, items, options).map_or_else(Vec::new, |id| {
             vec![DiagnosticsListEvent::NavigateRequested { id }]
         })
     }
 
-    fn collapse_selected_preview(&mut self) -> Vec<DiagnosticsListEvent> {
-        let Some(id) = self.selected_id.clone() else {
+    fn collapse_selected_preview(
+        &mut self,
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+    ) -> Vec<DiagnosticsListEvent> {
+        let Some(id) = selected_visible_id(self, items, options) else {
             return Vec::new();
         };
         if !self.expanded_ids.remove(&id) {
@@ -138,6 +223,14 @@ impl DiagnosticsListState {
             expanded: false,
         }]
     }
+}
+
+fn visible_items<'a>(
+    items: &'a [DiagnosticItem],
+    options: &DiagnosticsListOptions,
+    scope_key: Option<&DiagnosticScopeKey>,
+) -> Vec<&'a DiagnosticItem> {
+    DiagnosticsListPlanner::visible_items_for_scope(items, options, scope_key)
 }
 
 fn apply_fix(items: &[DiagnosticItem], id: DiagnosticId) -> Vec<DiagnosticsListEvent> {
@@ -151,9 +244,10 @@ fn apply_fix(items: &[DiagnosticItem], id: DiagnosticId) -> Vec<DiagnosticsListE
 
 fn bulk_apply(
     items: &[DiagnosticItem],
+    selected_scope_key: Option<&DiagnosticScopeKey>,
     options: &DiagnosticsListOptions,
 ) -> Vec<DiagnosticsListEvent> {
-    let visible = DiagnosticsListPlanner::visible_items(items, options);
+    let visible = visible_items(items, options, selected_scope_key);
     let visible_ids = visible
         .iter()
         .map(|it| it.id.clone())

@@ -5,8 +5,7 @@ use super::constants::{
 use super::crop_observation;
 use super::model::{
     KucCaretObservation, KucImeTraceEvidence, KucUnicodeColorGlyphEvidence,
-    KucUnicodeColorGlyphEvidenceCapture, KucUnicodeColorGlyphEvidenceInput,
-    KucUnicodeColorGlyphEvidenceOptions,
+    KucUnicodeColorGlyphEvidenceInput, KucUnicodeColorGlyphEvidenceOptions,
 };
 use super::runner;
 use super::surface;
@@ -14,7 +13,11 @@ use super::types::KucUnicodeColorGlyphEvidenceError;
 use crate::text_command_surface::{EguiTextCommandSurface, EguiTextCommandSurfaceRoot};
 use katana_ui_core_text_raster::{
     PlatformColorEmojiAvailability, PlatformFontCatalog, PlatformFontCatalogPolicy,
+    PlatformTextRasterResources,
 };
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct KucUnicodeColorGlyphEvidenceCapture;
 
 impl KucUnicodeColorGlyphEvidenceCapture {
     pub fn capture(
@@ -22,59 +25,39 @@ impl KucUnicodeColorGlyphEvidenceCapture {
     ) -> Result<KucUnicodeColorGlyphEvidence, KucUnicodeColorGlyphEvidenceError> {
         let policy = options.config.catalog_policy();
         let style = surface::trace_style();
-        let mut root = EguiTextCommandSurfaceRoot::with_text_raster_config(
+        let mut root = EguiTextCommandSurfaceRoot::with_text_raster_resources(
             options.root_identity,
             EguiTextCommandSurface::new(surface::evidence_surface()),
-            options.config.clone(),
+            PlatformTextRasterResources::new(options.config.clone()),
         );
         let context = egui::Context::default();
         ensure_face_is_resolved_and_pinned(root.evidence_catalog(), &policy)?;
         let _initial = runner::run_frame(&context, &mut root, &style, Vec::new())?;
-        let press = runner::run_frame(
-            &context,
-            &mut root,
-            &style,
-            vec![runner::pointer_button(
-                egui::pos2(TRACE_POINTER_X, TRACE_POINTER_Y),
-                true,
-            )],
-        );
-        let _press = press?;
-        let release = runner::run_frame(
-            &context,
-            &mut root,
-            &style,
-            vec![runner::pointer_button(
-                egui::pos2(TRACE_POINTER_X, TRACE_POINTER_Y),
-                false,
-            )],
-        );
-        let _release = release?;
-        let preedit_result = runner::run_frame(
-            &context,
-            &mut root,
-            &style,
-            vec![egui::Event::Ime(egui::ImeEvent::Preedit {
-                text: IME_PREEDIT_TEXT.to_string(),
-                active_range_chars: None,
-            })],
-        );
-        let preedit = preedit_result?;
-        let committed_result = runner::run_frame(
-            &context,
-            &mut root,
-            &style,
-            vec![egui::Event::Ime(egui::ImeEvent::Commit(
-                IME_COMMIT_TEXT.to_string(),
-            ))],
-        );
-        let committed = committed_result?;
+        let press = vec![runner::pointer_button(
+            egui::pos2(TRACE_POINTER_X, TRACE_POINTER_Y),
+            true,
+        )];
+        let _press = runner::run_frame(&context, &mut root, &style, press)?;
+        let release = vec![runner::pointer_button(
+            egui::pos2(TRACE_POINTER_X, TRACE_POINTER_Y),
+            false,
+        )];
+        let _release = runner::run_frame(&context, &mut root, &style, release)?;
+        let preedit_event = egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: IME_PREEDIT_TEXT.to_string(),
+            active_range_chars: None,
+        });
+        let preedit = runner::run_frame(&context, &mut root, &style, vec![preedit_event])?;
+        let commit_event = egui::Event::Ime(egui::ImeEvent::Commit(IME_COMMIT_TEXT.to_string()));
+        let committed = runner::run_frame(&context, &mut root, &style, vec![commit_event])?;
+        ensure_non_empty_composite(&committed.output.evidence_composite.rgba_pixels)?;
+
         let final_text = format!("{INITIAL_TEXT}{IME_COMMIT_TEXT}");
         let star_range = required_range(&final_text, STAR_TEXT)?;
         let control_range = required_range(&final_text, CONTROL_STAR_TEXT)?;
         let zwj_range = required_range(&final_text, ZWJ_TEXT)?;
-        let raster = &committed.evidence_text.raster;
-        let texture_bounds = committed.evidence_text.record.texture_bounds;
+        let raster = &committed.output.evidence_text.raster;
+        let texture_bounds = committed.output.evidence_text.record.texture_bounds;
         let offset_bounds = |range| {
             let mut bounds = crop_observation::bounds_for_range(raster, range)?;
             bounds.x = bounds.x.saturating_add(texture_bounds.x.max(0) as u32);
@@ -84,25 +67,17 @@ impl KucUnicodeColorGlyphEvidenceCapture {
         let star_bounds = offset_bounds(star_range)?;
         let control_bounds = offset_bounds(control_range)?;
         let zwj_bounds = offset_bounds(zwj_range)?;
-        let canvas_width = committed.evidence_composite.canvas.ui_rect().width;
-        let star_crop_result = crop_observation::crop_for_composite(
-            &committed.evidence_composite.rgba_pixels,
-            canvas_width,
-            star_bounds,
-        );
-        let star_crop = star_crop_result?;
-        let control_crop_result = crop_observation::crop_for_composite(
-            &committed.evidence_composite.rgba_pixels,
-            canvas_width,
-            control_bounds,
-        );
-        let control_crop = control_crop_result?;
+        let canvas_width = committed.output.evidence_composite.canvas.ui_rect().width;
+        let composite = &committed.output.evidence_composite.rgba_pixels;
+        let star_crop = crop_observation::crop_for_composite(composite, canvas_width, star_bounds)?;
+        let control_crop =
+            crop_observation::crop_for_composite(composite, canvas_width, control_bounds)?;
         let hit_tests = vec![
             crop_observation::hit_test_observation("star", raster, star_bounds)?,
             crop_observation::hit_test_observation("control_star", raster, control_bounds)?,
             crop_observation::hit_test_observation("zwj", raster, zwj_bounds)?,
         ];
-        let preedit_event_seen = preedit.evidence_text.events.iter().any(|event| {
+        let preedit_event_seen = preedit.output.evidence_text.events.iter().any(|event| {
             matches!(
                 event,
                 katana_ui_core::text_surface::TextSurfaceEvent::TextArea(
@@ -110,7 +85,7 @@ impl KucUnicodeColorGlyphEvidenceCapture {
                 ) if value.preedit == IME_PREEDIT_TEXT
             )
         });
-        let commit_event_seen = committed.evidence_text.events.iter().any(|event| {
+        let commit_event_seen = committed.output.evidence_text.events.iter().any(|event| {
             matches!(
                 event,
                 katana_ui_core::text_surface::TextSurfaceEvent::TextArea(
@@ -118,7 +93,8 @@ impl KucUnicodeColorGlyphEvidenceCapture {
                 ) if value == IME_COMMIT_TEXT
             )
         });
-        let final_frame = committed.frame();
+        let accesskit_text_input = extract_accesskit_text_input(&committed.accesskit_update)?;
+        let final_frame = committed.output.frame();
         let input = KucUnicodeColorGlyphEvidenceInput {
             profile: policy.platform_profile,
             catalog_policy: policy,
@@ -131,18 +107,61 @@ impl KucUnicodeColorGlyphEvidenceCapture {
                 commit_event_seen,
             },
             caret: KucCaretObservation::from_ui_rect(
-                committed.evidence_text.record.frame.selection.caret,
+                committed.output.evidence_text.record.frame.selection.caret,
             ),
             hit_tests,
             star_crop,
             control_crop,
+            accesskit_text_input: Some(accesskit_text_input),
             accesskit_text_snapshot_hash: final_frame.accessibility().snapshot_hash().to_string(),
             root_frame_hash: final_frame.record_hash().to_string(),
-            root_record_hash: committed.evidence_text.artifact.frame_record_hash.clone(),
+            root_record_hash: committed
+                .output
+                .evidence_text
+                .artifact
+                .frame_record_hash
+                .clone(),
             root_rgba_hash: final_frame.rgba_hash().to_string(),
         };
         super::validation::KucUnicodeColorGlyphEvidenceBuilder::build(input)
     }
+}
+
+fn extract_accesskit_text_input(
+    update: &egui::accesskit::TreeUpdate,
+) -> Result<super::model::KucAccessKitNodeObservation, KucUnicodeColorGlyphEvidenceError> {
+    let nodes = update
+        .nodes
+        .iter()
+        .filter(|(_, node)| node.role() == egui::accesskit::Role::MultilineTextInput)
+        .collect::<Vec<_>>();
+    let [(node_id, node)] = nodes.as_slice() else {
+        return Err(KucUnicodeColorGlyphEvidenceError::MissingAccessKitNode);
+    };
+    let value = node
+        .value()
+        .ok_or(KucUnicodeColorGlyphEvidenceError::InvalidAccessKitNode {
+            reason: "multiline text input value is missing",
+        })?;
+    let bounds = node
+        .bounds()
+        .ok_or(KucUnicodeColorGlyphEvidenceError::InvalidAccessKitNode {
+            reason: "multiline text input bounds are missing",
+        })?;
+    let width = (bounds.x1 - bounds.x0).max(0.0) as u32;
+    let height = (bounds.y1 - bounds.y0).max(0.0) as u32;
+    Ok(super::model::KucAccessKitNodeObservation {
+        node_id: format!("{node_id:?}"),
+        role: format!("{:?}", node.role()),
+        scalar_sequence: value.chars().map(u32::from).collect(),
+        value: value.to_string(),
+        bounds: super::model::KucBounds::new(
+            bounds.x0.max(0.0) as u32,
+            bounds.y0.max(0.0) as u32,
+            width,
+            height,
+        ),
+    })
 }
 
 fn required_range(
@@ -152,6 +171,16 @@ fn required_range(
     crop_observation::find_range(text, target).ok_or_else(|| {
         KucUnicodeColorGlyphEvidenceError::RootTrace(format!("{target} range missing"))
     })
+}
+
+fn ensure_non_empty_composite(rgba_pixels: &[u8]) -> Result<(), KucUnicodeColorGlyphEvidenceError> {
+    if rgba_pixels.is_empty() {
+        Err(KucUnicodeColorGlyphEvidenceError::RootTrace(
+            "retained root produced an empty RGBA composite".to_string(),
+        ))
+    } else {
+        Ok(())
+    }
 }
 
 fn ensure_face_is_resolved_and_pinned(
@@ -192,95 +221,5 @@ fn ensure_face_is_resolved_and_pinned(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use katana_ui_core_text_raster::{
-        PlatformEmojiFontCandidate, PlatformFontProfile, PlatformFontSha256,
-    };
-
-    #[test]
-    fn required_range_returns_exact_grapheme_and_typed_missing_error() {
-        assert_eq!(required_range("a⭐️b", "⭐️").ok(), Some((1, 7)));
-        assert!(matches!(
-            required_range("a⭐️b", "missing"),
-            Err(KucUnicodeColorGlyphEvidenceError::RootTrace(error))
-                if error == "missing range missing"
-        ));
-    }
-
-    #[test]
-    fn unresolved_catalog_is_rejected_before_root_trace_capture() {
-        let policy = PlatformFontCatalogPolicy::new(
-            PlatformFontProfile::Unsupported,
-            Vec::new(),
-            Vec::new(),
-            Vec::new(),
-        );
-        let catalog = PlatformFontCatalog::new(policy.clone());
-        assert!(matches!(
-            ensure_face_is_resolved_and_pinned(&catalog, &policy),
-            Err(KucUnicodeColorGlyphEvidenceError::ColorEmojiUnavailable { .. })
-        ));
-    }
-
-    #[test]
-    fn errored_and_unpinned_catalogs_fail_closed() {
-        let font_path = std::env::temp_dir().join(format!(
-            "kuc-unicode-evidence-font-{}.ttf",
-            std::process::id()
-        ));
-        std::fs::write(&font_path, b"font fixture").expect("write font fixture");
-        let candidate = PlatformEmojiFontCandidate::new(font_path.clone(), "Noto Color Emoji")
-            .with_expected_raw_file_sha256(PlatformFontSha256::digest(b"different"));
-        let error_policy = PlatformFontCatalogPolicy::new(
-            PlatformFontProfile::Linux,
-            Vec::new(),
-            Vec::new(),
-            vec![candidate],
-        );
-        let error_catalog = PlatformFontCatalog::new(error_policy.clone());
-        assert!(matches!(
-            ensure_face_is_resolved_and_pinned(&error_catalog, &error_policy),
-            Err(KucUnicodeColorGlyphEvidenceError::ColorEmojiFaceError { .. })
-        ));
-        std::fs::remove_file(&font_path).expect("remove font fixture");
-
-        #[cfg(target_os = "macos")]
-        let (profile, system_font, family) = (
-            PlatformFontProfile::MacOs,
-            std::path::PathBuf::from("/System/Library/Fonts/Apple Color Emoji.ttc"),
-            "Apple Color Emoji",
-        );
-        #[cfg(target_os = "linux")]
-        let (profile, system_font, family) = (
-            PlatformFontProfile::Linux,
-            std::path::PathBuf::from("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"),
-            "Noto Color Emoji",
-        );
-        #[cfg(target_os = "windows")]
-        let (profile, system_font, family) = (
-            PlatformFontProfile::Windows,
-            std::path::PathBuf::from("C:/Windows/Fonts/seguiemj.ttf"),
-            "Segoe UI Emoji",
-        );
-        let system_font_bytes = std::fs::read(&system_font).expect("read system emoji font");
-        let hash = PlatformFontSha256::digest(&system_font_bytes);
-        let resolved_policy = PlatformFontCatalogPolicy::new(
-            profile,
-            Vec::new(),
-            Vec::new(),
-            vec![
-                PlatformEmojiFontCandidate::new(system_font, family)
-                    .with_expected_raw_file_sha256(hash),
-            ],
-        );
-        let resolved_catalog = PlatformFontCatalog::new(resolved_policy.clone());
-        assert!(ensure_face_is_resolved_and_pinned(&resolved_catalog, &resolved_policy).is_ok());
-        let empty_policy =
-            PlatformFontCatalogPolicy::new(profile, Vec::new(), Vec::new(), Vec::new());
-        assert!(matches!(
-            ensure_face_is_resolved_and_pinned(&resolved_catalog, &empty_policy),
-            Err(KucUnicodeColorGlyphEvidenceError::ColorEmojiUnpinned { .. })
-        ));
-    }
-}
+#[path = "capture_tests.rs"]
+mod tests;

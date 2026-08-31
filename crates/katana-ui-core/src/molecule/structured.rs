@@ -10,6 +10,7 @@ mod options;
 mod options_actions;
 mod options_extra;
 pub mod search_control_strip;
+pub mod source_address_strip;
 pub mod startup_state_panel;
 mod tree_view_hit_test;
 mod types;
@@ -40,6 +41,10 @@ pub use model::{CommandPalette, DynamicArrayEditor, TreeView};
 pub use search_control_strip::{
     ReplaceMode, SearchControlStrip, SearchControlStripAction, SearchControlStripEvent,
     SearchNavigationDirection, SearchOptionKind, SearchOptions, SearchReplaceScope,
+};
+pub use source_address_strip::{
+    SourceAddressAction, SourceAddressEntry, SourceAddressEvent, SourceAddressPresentation,
+    SourceAddressStrip, SourceAddressSubmission,
 };
 pub use startup_state_panel::{
     StartupState, StartupStatePanel, StartupStatePanelAction, StartupStatePanelEvent,

@@ -1,3 +1,4 @@
+use super::types::{ContextMenuPaintPlan, EguiContextMenuFrameRecord, EguiContextMenuItemFrame};
 use super::{
     ContextMenuPaintStyle, ContextMenuPresentation, ContextMenuPresentationItem,
     ContextMenuRasterStyle, EguiContextMenuAdapter,
@@ -5,9 +6,15 @@ use super::{
 use crate::artifact_compositor::{
     ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor, ArtifactPaintPlanRef,
 };
+use crate::context_menu::ContextMenuAdapterError;
 use crate::text_surface::TextSurfaceContextTargetAnchor;
-use katana_ui_core::molecule::selection::ContextMenuItemKind;
-use katana_ui_core::render_model::{UiIconProps, UiRect};
+use katana_ui_core::molecule::selection::{
+    ContextMenuAction, ContextMenuItemKind, ContextMenuTypeAheadBuffer,
+};
+use katana_ui_core::molecule::selection::{
+    ContextMenuAnchor, ContextMenuSize, ContextMenuViewport,
+};
+use katana_ui_core::render_model::UiRect;
 use katana_ui_core::text_selection::UiTextSelectionRange;
 use katana_ui_core::theme::{FontFamily, FontToken};
 
@@ -18,108 +25,62 @@ const CONTEXT_Y: i32 = 340;
 const FONT_SIZE_PX: f32 = 15.0;
 const FONT_WEIGHT: u16 = 400;
 const LINE_HEIGHT_PX: f32 = 22.0;
+const KEYBOARD_INPUT_WIDTH_PX: f32 = 160.0;
+const KEYBOARD_INPUT_HEIGHT_PX: f32 = 40.0;
 const TEXT_RGBA: [u8; 4] = [230, 230, 230, 255];
 const MENU_BACKGROUND_RGBA: [u8; 4] = [30, 30, 32, 255];
 const MENU_HIGHLIGHTED_RGBA: [u8; 4] = [60, 80, 112, 255];
 const MENU_DISABLED_RGBA: [u8; 4] = [45, 45, 48, 255];
 
-#[test]
-fn actual_context_menu_adapter_keeps_opaque_tree_and_composites_repeatably()
--> Result<(), Box<dyn std::error::Error>> {
-    let first = run_menu()?;
-    let second = run_menu()?;
-    assert_eq!(first, second);
-    assert!(first.0.width > 0);
-    assert!(first.0.x < CONTEXT_X);
-    assert!(first.1 > 0);
-    Ok(())
+fn pressed_key_event(key: egui::Key) -> egui::Event {
+    egui::Event::Key {
+        key,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::default(),
+    }
 }
 
-#[test]
-fn invalid_item_icon_fails_closed() {
-    let context = egui::Context::default();
-    let mut adapter = EguiContextMenuAdapter::default();
-    adapter.synchronize_presentation(ContextMenuPresentation {
-        visible: true,
-        items: vec![ContextMenuPresentationItem {
-            id: "invalid".into(),
-            label: "Invalid".into(),
-            accessibility_label: "Invalid".into(),
-            icon: Some(UiIconProps::new("not-an-svg")),
-            enabled: true,
-            checked: false,
-            kind: ContextMenuItemKind::Action,
-            children: Vec::new(),
-        }],
-    });
-    adapter.request_open(TextSurfaceContextTargetAnchor::pointer(
-        10,
-        10,
-        UiTextSelectionRange::caret(0),
-        UiRect::new(0, 0, FRAME_WIDTH_PX as u32, FRAME_HEIGHT_PX as u32),
-    ));
-    let mut output = None;
-    crate::run_ui_discard(&context, frame_input(), |ui| {
-        output = Some(adapter.show(ui, &raster_style(), &paint_style()));
-    });
-    assert!(output.is_some_and(|result| result.is_err()));
+fn collect_keyboard_actions(
+    context: &egui::Context,
+    events: Vec<egui::Event>,
+    items: &[ContextMenuPresentationItem],
+    submenu_path: &mut Vec<usize>,
+    highlighted_path: &[usize],
+    type_ahead: &mut ContextMenuTypeAheadBuffer,
+) -> Vec<ContextMenuAction> {
+    let mut actions = Vec::new();
+    let mut frame_output = context.run_ui(
+        egui::RawInput {
+            events,
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(KEYBOARD_INPUT_WIDTH_PX, KEYBOARD_INPUT_HEIGHT_PX),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            actions = ui.input(|input| {
+                super::interaction::keyboard_actions(
+                    input,
+                    items,
+                    submenu_path,
+                    highlighted_path,
+                    type_ahead,
+                )
+            });
+        },
+    );
+    frame_output.textures_delta.clear();
+    actions
 }
 
-fn run_menu() -> Result<(UiRect, usize, String), Box<dyn std::error::Error>> {
-    let context = egui::Context::default();
-    context.enable_accesskit();
-    let mut adapter = EguiContextMenuAdapter::default();
-    adapter.synchronize_presentation(ContextMenuPresentation {
-        visible: true,
-        items: vec![
-            ContextMenuPresentationItem::action("format", "整形 ⭐️"),
-            ContextMenuPresentationItem::action("code", "コード種別").child(
-                ContextMenuPresentationItem::action("opaque-code-kind", "code kind"),
-            ),
-            ContextMenuPresentationItem {
-                id: "disabled".to_string(),
-                label: "利用不可".to_string(),
-                accessibility_label: "利用不可".to_string(),
-                icon: None,
-                enabled: false,
-                checked: false,
-                kind: ContextMenuItemKind::Action,
-                children: Vec::new(),
-            },
-        ],
-    });
-    adapter.request_open(TextSurfaceContextTargetAnchor::pointer(
-        CONTEXT_X,
-        CONTEXT_Y,
-        UiTextSelectionRange::caret(0),
-        UiRect::new(0, 0, FRAME_WIDTH_PX as u32, FRAME_HEIGHT_PX as u32),
-    ));
-    let mut output = None;
-    crate::run_ui_discard(&context, frame_input(), |ui| {
-        output = Some(adapter.show(ui, &raster_style(), &paint_style()));
-    });
-    let output = output.ok_or_else(|| std::io::Error::other("actual egui frame did not run"))??;
-    let record = output
-        .record
-        .ok_or_else(|| std::io::Error::other("visible menu record was absent"))?;
-    let artifact = output
-        .artifact
-        .ok_or_else(|| std::io::Error::other("visible menu artifact was absent"))?;
-    let plans = [ArtifactPaintPlanRef::ContextMenu(&artifact.paint_plan)];
-    let composite = ArtifactCompositor::compose(ArtifactCompositeRequest {
-        canvas: ArtifactCanvasBounds::new(UiRect::new(
-            0,
-            0,
-            FRAME_WIDTH_PX as u32,
-            FRAME_HEIGHT_PX as u32,
-        )),
-        plans: &plans,
-    })?;
-    Ok((
-        record.bounds,
-        composite.non_transparent_pixel_count,
-        composite.pixel_hash,
-    ))
+fn require_ok<T, E: std::fmt::Debug>(result: Result<T, E>, context: &str) -> Option<T> {
+    if let Err(error) = &result {
+        assert!(result.is_ok(), "{context}: {error:?}");
+    }
+    result.ok()
 }
 
 fn frame_input() -> egui::RawInput {
@@ -153,3 +114,10 @@ const fn paint_style() -> ContextMenuPaintStyle {
         disabled_rgba: MENU_DISABLED_RGBA,
     }
 }
+
+#[path = "tests/adapter.rs"]
+mod adapter;
+#[path = "tests/interaction.rs"]
+mod interaction;
+#[path = "tests/serialization.rs"]
+mod serialization;

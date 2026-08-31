@@ -10,8 +10,8 @@ use katana_ui_core::molecule::toolbar::{
     SplitAction, SplitActionPart, ToolbarDensity, ToolbarGroup, ToolbarPriority, ToolbarStrategy,
 };
 
-const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
-const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+const FNV1A_OFFSET_BASIS_BYTES: [u8; 8] = [0xcb, 0xf2, 0x9c, 0xe4, 0x84, 0x22, 0x23, 0x25];
+const FNV1A_PRIME: u64 = 0x0000_0100_0000_01b3;
 
 pub(super) fn command_chrome_toolbar_presentation(
     projection: &SanitizedCommandProjection,
@@ -60,18 +60,14 @@ fn ordered_visible_groups(projection: &SanitizedCommandProjection) -> Vec<&Sanit
 }
 
 fn ordered_visible_items(group: &SanitizedCommandGroup) -> Vec<&SanitizedCommandItem> {
-    let mut items = Vec::new();
-    for (index, item) in group.items().iter().enumerate() {
-        if item.visible() {
-            items.push((index, item));
-        }
-    }
+    let mut items = group
+        .items()
+        .iter()
+        .enumerate()
+        .filter(|(_, item)| item.visible())
+        .collect::<Vec<_>>();
     items.sort_by_key(|(index, item)| (item.order(), *index));
-    let mut visible = Vec::with_capacity(items.len());
-    for (_, item) in items {
-        visible.push(item);
-    }
-    visible
+    items.into_iter().map(|(_, item)| item).collect()
 }
 
 fn ordered_visible_dropdown_items(
@@ -170,10 +166,10 @@ fn target_id(namespace: &str, target: &SanitizedCommandTarget) -> String {
 }
 
 fn stable_hash_text(value: &str) -> u64 {
-    let mut hash = FNV_OFFSET_BASIS;
+    let mut hash = u64::from_be_bytes(FNV1A_OFFSET_BASIS_BYTES);
     for byte in value.as_bytes() {
         hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(FNV_PRIME);
+        hash = hash.wrapping_mul(FNV1A_PRIME);
     }
     hash
 }
@@ -184,199 +180,9 @@ fn priority_for_sequence(sequence: usize) -> ToolbarPriority {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::ordered_visible_items;
-    use crate::text_command_surface::sanitized_document_root::{
-        SanitizedCommandDropdownItem, SanitizedCommandGroup, SanitizedCommandItem,
-        SanitizedCommandProjection, SanitizedCommandTarget,
-    };
-    use katana_ui_core::molecule::command_chrome::{
-        CommandChromeDropdownTrigger, CommandChromeToolbarPresentation,
-    };
-    use katana_ui_core::render_model::UiIconProps;
+#[path = "sanitized_command_projection_adapter_inline_tests.rs"]
+mod tests;
 
-    #[test]
-    fn maps_ordering_capability_and_dropdown_without_host_semantics() {
-        let projection = SanitizedCommandProjection::new([
-            SanitizedCommandGroup::new(20, "second")
-                .enabled_state(false)
-                .item(SanitizedCommandItem::new(
-                    target("second"),
-                    1,
-                    "disabled by group",
-                )),
-            SanitizedCommandGroup::new(10, "first")
-                .item(SanitizedCommandItem::new(target("later"), 20, "later").visible_state(false))
-                .item(
-                    SanitizedCommandItem::new(target("main"), 10, "main")
-                        .tooltip_text("main tooltip")
-                        .accessibility_label_text("main access")
-                        .with_icon(UiIconProps::new("<svg/>"))
-                        .dropdown_item(
-                            SanitizedCommandDropdownItem::new(target("drop hidden"), 5, "hidden")
-                                .visible_state(false),
-                        )
-                        .dropdown_item(
-                            SanitizedCommandDropdownItem::new(
-                                target("drop later"),
-                                30,
-                                "later option",
-                            )
-                            .enabled_state(false),
-                        )
-                        .dropdown_item(SanitizedCommandDropdownItem::new(
-                            target("drop first"),
-                            10,
-                            "first option",
-                        )),
-                ),
-        ]);
-
-        let toolbar = CommandChromeToolbarPresentation::from(&projection);
-
-        assert_eq!(toolbar.groups.len(), 2);
-        assert_eq!(
-            toolbar
-                .groups
-                .iter()
-                .map(|group| group.label_model().map(String::as_str))
-                .collect::<Vec<_>>(),
-            [Some("first"), Some("second")]
-        );
-        assert_eq!(
-            toolbar
-                .actions
-                .iter()
-                .map(|action| action.label_model())
-                .collect::<Vec<_>>(),
-            ["main", "disabled by group"]
-        );
-        let main = &toolbar.actions[0];
-        assert_eq!(
-            main.tooltip_model().map(String::as_str),
-            Some("main tooltip")
-        );
-        assert_eq!(
-            main.accessibility_label_model().map(String::as_str),
-            Some("main access")
-        );
-        assert!(main.icon_model().is_some());
-        assert!(!main.disabled_model());
-        let dropdown = main.dropdown_model().expect("visible dropdown items map");
-        assert_eq!(
-            dropdown.trigger_model(),
-            CommandChromeDropdownTrigger::SplitSecondary
-        );
-        assert_eq!(
-            dropdown
-                .items()
-                .iter()
-                .map(|item| (item.label_model(), item.disabled_model()))
-                .collect::<Vec<_>>(),
-            [("first option", false), ("later option", true)]
-        );
-        assert!(toolbar.actions[1].disabled_model());
-    }
-
-    #[test]
-    fn opaque_target_mapping_is_private_and_does_not_reveal_payload() {
-        let secret = "secret-host-payload";
-        let projection = SanitizedCommandProjection::new([SanitizedCommandGroup::new(1, "group")
-            .item(SanitizedCommandItem::new(target(secret), 1, "unknown"))]);
-
-        let toolbar = CommandChromeToolbarPresentation::from(&projection);
-        let action_id = toolbar.actions[0].id().as_str();
-
-        assert!(action_id.starts_with("kuc-command-"));
-        assert!(!action_id.contains(secret));
-
-        let source = include_str!("sanitized_command_projection_adapter.rs");
-        let api_source = source.split("#[cfg(test)]").next().unwrap_or(source);
-        assert!(!api_source.contains("pub fn "));
-        assert!(!api_source.contains("pub struct "));
-        assert!(!api_source.contains("pub enum "));
-        assert!(!api_source.contains("pub use "));
-        assert!(!api_source.contains("target.opaque"));
-        assert!(!api_source.contains("serialize"));
-    }
-
-    #[test]
-    fn unknown_host_command_remains_generic_without_semantic_switch() {
-        let projection =
-            SanitizedCommandProjection::new([SanitizedCommandGroup::new(1, "host").item(
-                SanitizedCommandItem::new(target("opaque unknown"), 1, "host-defined"),
-            )]);
-
-        let toolbar = CommandChromeToolbarPresentation::from(&projection);
-
-        assert_eq!(toolbar.actions.len(), 1);
-        assert_eq!(toolbar.actions[0].label_model(), "host-defined");
-        assert!(toolbar.actions[0].dropdown_model().is_none());
-
-        let source = include_str!("sanitized_command_projection_adapter.rs");
-        let source = source
-            .split("#[cfg(test)]")
-            .next()
-            .unwrap_or(source)
-            .to_ascii_lowercase();
-        for term in ["katana_language", "katana::", "kle", "markdown"] {
-            assert!(
-                !source.contains(term),
-                "adapter must not contain host semantic switch term: {term}"
-            );
-        }
-    }
-
-    #[test]
-    fn item_inherits_group_presentation_and_dropdown_preserves_item_presentation() {
-        let projection = SanitizedCommandProjection::new([SanitizedCommandGroup::new(1, "group")
-            .tooltip_text("group tooltip")
-            .accessibility_label_text("group access")
-            .with_icon(UiIconProps::new("<svg>group</svg>"))
-            .item(
-                SanitizedCommandItem::new(target("command"), 1, "command").dropdown_item(
-                    SanitizedCommandDropdownItem::new(target("choice"), 1, "choice")
-                        .tooltip_text("choice tooltip")
-                        .accessibility_label_text("choice access")
-                        .with_icon(UiIconProps::new("<svg>choice</svg>")),
-                ),
-            )]);
-        let toolbar = CommandChromeToolbarPresentation::from(&projection);
-        let action = &toolbar.actions[0];
-        assert_eq!(
-            action.tooltip_model().map(String::as_str),
-            Some("group tooltip")
-        );
-        assert_eq!(
-            action.accessibility_label_model().map(String::as_str),
-            Some("group access")
-        );
-        assert!(action.icon_model().is_some());
-        let item = &action.dropdown_model().expect("dropdown maps").items()[0];
-        assert_eq!(
-            item.tooltip_model().map(String::as_str),
-            Some("choice tooltip")
-        );
-        assert_eq!(
-            item.accessibility_label_model().map(String::as_str),
-            Some("choice access")
-        );
-        assert!(item.icon_model().is_some());
-    }
-
-    #[test]
-    fn visible_items_are_sorted_by_order_then_source_position() {
-        let group = SanitizedCommandGroup::new(0, "group")
-            .item(SanitizedCommandItem::new(target("later"), 20, "later"))
-            .item(SanitizedCommandItem::new(target("first"), 10, "first"));
-
-        let items = ordered_visible_items(&group);
-
-        assert_eq!(items[0].label(), "first");
-        assert_eq!(items[1].label(), "later");
-    }
-
-    fn target(value: &str) -> SanitizedCommandTarget {
-        SanitizedCommandTarget::from_opaque_bytes(value.as_bytes())
-    }
-}
+#[cfg(test)]
+#[path = "sanitized_command_projection_adapter_tests.rs"]
+mod coverage_tests;

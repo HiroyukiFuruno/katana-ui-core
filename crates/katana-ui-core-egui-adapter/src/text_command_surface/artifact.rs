@@ -9,10 +9,16 @@ use super::types::{EguiTextCommandSurfaceChild, EguiTextCommandSurfaceOutput};
 pub enum EguiTextCommandSurfaceArtifactError {
     MissingToolbar,
     MissingSearch,
+    MissingSourceAddress,
+    MissingTabStrip,
+    MissingTabStripOverlay,
     MissingFloating,
     MissingFloatingPaintPlan,
     MissingContextMenu,
     MissingContextMenuPaintPlan,
+    MissingStatusBar,
+    MissingDiagnosticsList,
+    MissingPreview,
 }
 
 impl std::fmt::Display for EguiTextCommandSurfaceArtifactError {
@@ -20,12 +26,20 @@ impl std::fmt::Display for EguiTextCommandSurfaceArtifactError {
         let message = match self {
             Self::MissingToolbar => "toolbar child requires a toolbar plan",
             Self::MissingSearch => "search child requires a search plan",
+            Self::MissingSourceAddress => "source-address child requires a source-address plan",
+            Self::MissingTabStrip => "tab-strip child requires a tab-strip plan",
+            Self::MissingTabStripOverlay => "tab-strip overlay requires an overlay plan",
             Self::MissingFloating => "floating child requires a floating output",
             Self::MissingFloatingPaintPlan => "floating child requires a floating paint plan",
             Self::MissingContextMenu => "context-menu child requires a context-menu output",
             Self::MissingContextMenuPaintPlan => {
                 "context-menu child requires a context-menu paint plan"
             }
+            Self::MissingStatusBar => "status-bar child requires a status-bar paint plan",
+            Self::MissingDiagnosticsList => {
+                "diagnostics-list child requires a diagnostics-list paint plan"
+            }
+            Self::MissingPreview => "preview child requires a preview paint plan",
         };
         formatter.write_str(message)
     }
@@ -33,25 +47,59 @@ impl std::fmt::Display for EguiTextCommandSurfaceArtifactError {
 
 impl std::error::Error for EguiTextCommandSurfaceArtifactError {}
 
+pub(super) struct RootArtifactChildren {
+    pub tab_strip: bool,
+    pub tab_strip_overlay: bool,
+    pub source_address: bool,
+    pub toolbar: bool,
+    pub toolbar_dropdown_open: bool,
+    pub search: bool,
+    pub floating_open: bool,
+    pub context_menu_open: bool,
+    pub status_bar: bool,
+    pub diagnostics_list: bool,
+    pub preview: bool,
+}
+
 pub(super) fn artifact_order_for_root(
-    toolbar: bool,
-    search: bool,
-    floating_open: bool,
-    context_menu_open: bool,
+    children: RootArtifactChildren,
 ) -> Vec<EguiTextCommandSurfaceChild> {
     let mut order = Vec::new();
-    if toolbar {
+    if children.tab_strip {
+        order.push(EguiTextCommandSurfaceChild::TabStrip);
+    }
+    if children.source_address {
+        order.push(EguiTextCommandSurfaceChild::SourceAddress);
+    }
+    if children.toolbar && !children.toolbar_dropdown_open {
         order.push(EguiTextCommandSurfaceChild::Toolbar);
     }
-    if search {
+    if children.search {
         order.push(EguiTextCommandSurfaceChild::Search);
     }
     order.push(EguiTextCommandSurfaceChild::Text);
-    if floating_open {
+    if children.preview {
+        order.push(EguiTextCommandSurfaceChild::Preview);
+    }
+    if children.diagnostics_list {
+        order.push(EguiTextCommandSurfaceChild::DiagnosticsList);
+    }
+    if children.status_bar {
+        order.push(EguiTextCommandSurfaceChild::StatusBar);
+    }
+    if children.toolbar && children.toolbar_dropdown_open {
+        /* WHY: the actual dropdown is rendered through egui's foreground Area and must remain
+        above the text surface in the root-owned deterministic composite as well. */
+        order.push(EguiTextCommandSurfaceChild::Toolbar);
+    }
+    if children.floating_open {
         order.push(EguiTextCommandSurfaceChild::Floating);
     }
-    if context_menu_open {
+    if children.context_menu_open {
         order.push(EguiTextCommandSurfaceChild::ContextMenu);
+    }
+    if children.tab_strip_overlay {
+        order.push(EguiTextCommandSurfaceChild::TabStripOverlay);
     }
     order
 }
@@ -64,9 +112,38 @@ impl EguiTextCommandSurfaceOutput {
         let mut plans = Vec::with_capacity(self.artifact_order().len());
         for child in self.artifact_order() {
             plans.push(match child {
+                EguiTextCommandSurfaceChild::TabStrip => ArtifactPaintPlanRef::TabStrip(
+                    &self
+                        .tab_strip
+                        .as_ref()
+                        .ok_or(EguiTextCommandSurfaceArtifactError::MissingTabStrip)?
+                        .paint_plan,
+                ),
+                EguiTextCommandSurfaceChild::TabStripOverlay => ArtifactPaintPlanRef::TabStrip(
+                    self.tab_strip
+                        .as_ref()
+                        .ok_or(EguiTextCommandSurfaceArtifactError::MissingTabStrip)?
+                        .overlay_paint_plan
+                        .as_ref()
+                        .ok_or(EguiTextCommandSurfaceArtifactError::MissingTabStripOverlay)?,
+                ),
+                EguiTextCommandSurfaceChild::SourceAddress => ArtifactPaintPlanRef::SourceAddress(
+                    &self
+                        .source_address
+                        .as_ref()
+                        .ok_or(EguiTextCommandSurfaceArtifactError::MissingSourceAddress)?
+                        .paint_plan,
+                ),
                 EguiTextCommandSurfaceChild::Text => {
                     ArtifactPaintPlanRef::TextSurface(&self.text.artifact.paint_plan)
                 }
+                EguiTextCommandSurfaceChild::Preview => ArtifactPaintPlanRef::TextSurface(
+                    &self
+                        .preview
+                        .as_ref()
+                        .ok_or(EguiTextCommandSurfaceArtifactError::MissingPreview)?
+                        .paint_plan,
+                ),
                 EguiTextCommandSurfaceChild::Toolbar => ArtifactPaintPlanRef::CommandChrome(
                     &self
                         .toolbar
@@ -105,6 +182,22 @@ impl EguiTextCommandSurfaceOutput {
                         .ok_or(EguiTextCommandSurfaceArtifactError::MissingContextMenuPaintPlan)?;
                     ArtifactPaintPlanRef::ContextMenu(&artifact.paint_plan)
                 }
+                EguiTextCommandSurfaceChild::StatusBar => ArtifactPaintPlanRef::StatusBar(
+                    &self
+                        .status_bar
+                        .as_ref()
+                        .ok_or(EguiTextCommandSurfaceArtifactError::MissingStatusBar)?
+                        .paint_plan,
+                ),
+                EguiTextCommandSurfaceChild::DiagnosticsList => {
+                    ArtifactPaintPlanRef::DiagnosticsList(
+                        &self
+                            .diagnostics_list
+                            .as_ref()
+                            .ok_or(EguiTextCommandSurfaceArtifactError::MissingDiagnosticsList)?
+                            .paint_plan,
+                    )
+                }
             });
         }
         Ok(plans)
@@ -113,21 +206,5 @@ impl EguiTextCommandSurfaceOutput {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn artifact_error_display_covers_each_missing_child_fact() {
-        let cases = [
-            EguiTextCommandSurfaceArtifactError::MissingToolbar,
-            EguiTextCommandSurfaceArtifactError::MissingSearch,
-            EguiTextCommandSurfaceArtifactError::MissingFloating,
-            EguiTextCommandSurfaceArtifactError::MissingFloatingPaintPlan,
-            EguiTextCommandSurfaceArtifactError::MissingContextMenu,
-            EguiTextCommandSurfaceArtifactError::MissingContextMenuPaintPlan,
-        ];
-        for error in cases {
-            assert!(error.to_string().contains("requires"));
-            let _: &dyn std::error::Error = &error;
-        }
-    }
+    include!("artifact_tests.rs");
 }

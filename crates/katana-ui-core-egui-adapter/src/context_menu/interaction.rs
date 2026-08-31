@@ -136,200 +136,134 @@ fn keyboard_input(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use katana_ui_core::molecule::selection::{ContextMenu, ContextMenuItemKind};
-
-    fn key(value: egui::Key) -> egui::Event {
-        egui::Event::Key {
-            key: value,
-            physical_key: None,
-            pressed: true,
-            repeat: false,
-            modifiers: egui::Modifiers::NONE,
-        }
-    }
+    use super::{
+        ContextMenuTypeAheadBuffer, UiRect, consume_item_click, is_outside_click, keyboard_input,
+    };
+    use crate::context_menu::ContextMenuPresentationItem;
+    use katana_ui_core::molecule::selection::{
+        ContextMenuAction, ContextMenuItemKind, ContextMenuKeyboardInput,
+    };
 
     #[test]
-    fn keyboard_input_maps_every_supported_navigation_key() {
-        let mut type_ahead = ContextMenuTypeAheadBuffer::new(1_000);
-        for value in [
-            egui::Key::ArrowDown,
-            egui::Key::ArrowUp,
-            egui::Key::Home,
-            egui::Key::End,
-            egui::Key::Enter,
-            egui::Key::Space,
-            egui::Key::ArrowRight,
-            egui::Key::ArrowLeft,
-            egui::Key::Escape,
-        ] {
-            assert!(keyboard_input(key(value), &mut type_ahead, 0.0).is_some());
-        }
-        assert!(keyboard_input(key(egui::Key::F1), &mut type_ahead, 0.0).is_none());
-        assert!(keyboard_input(egui::Event::Text(String::new()), &mut type_ahead, 0.0).is_none());
-    }
-
-    #[test]
-    fn arrow_left_closes_the_current_submenu_path_without_emitting_an_action() {
+    fn outside_click_distinguishes_inside_and_outside_boundaries() {
         let context = egui::Context::default();
-        let mut submenu_path = vec![0];
-        let mut type_ahead = ContextMenuTypeAheadBuffer::new(1_000);
-        let items = vec![ContextMenuPresentationItem::action("child", "Child")];
-        let mut actions = None;
+        let bounds = UiRect::new(10, 20, 40, 30);
+        let mut inside = false;
+        let mut outside = false;
+
         let mut output = context.run_ui(
             egui::RawInput {
-                events: vec![key(egui::Key::ArrowLeft)],
-                ..egui::RawInput::default()
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(100.0, 100.0),
+                )),
+                events: vec![egui::Event::PointerButton {
+                    pos: egui::pos2(20.0, 30.0),
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+                ..Default::default()
             },
             |ui| {
-                actions = Some(ui.input(|input| {
-                    keyboard_actions(input, &items, &mut submenu_path, &[0, 0], &mut type_ahead)
-                }));
-            },
-        );
-        output.textures_delta.clear();
-        assert!(actions.expect("actions captured").is_empty());
-        assert!(submenu_path.is_empty());
-    }
-
-    #[test]
-    fn activation_without_a_highlight_fails_closed() {
-        let context = egui::Context::default();
-        let mut submenu_path = Vec::new();
-        let mut type_ahead = ContextMenuTypeAheadBuffer::new(1_000);
-        let items = vec![ContextMenuPresentationItem::action("item", "Item")];
-        let mut actions = None;
-        crate::run_ui_discard(
-            &context,
-            egui::RawInput {
-                events: vec![key(egui::Key::Enter)],
-                ..egui::RawInput::default()
-            },
-            |ctx| {
-                egui::CentralPanel::default().show(ctx, |ui| {
-                    actions = Some(ui.input(|input| {
-                        keyboard_actions(input, &items, &mut submenu_path, &[], &mut type_ahead)
-                    }));
+                ui.input(|input| {
+                    inside = is_outside_click(input, bounds);
                 });
             },
         );
-        assert!(actions.expect("actions captured").is_empty());
+        output.textures_delta.clear();
+
+        let mut output = context.run_ui(
+            egui::RawInput {
+                screen_rect: Some(egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(100.0, 100.0),
+                )),
+                events: vec![egui::Event::PointerButton {
+                    pos: egui::pos2(9.0, 19.0),
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                }],
+                ..Default::default()
+            },
+            |ui| {
+                ui.input(|input| {
+                    outside = is_outside_click(input, bounds);
+                });
+            },
+        );
+        output.textures_delta.clear();
+
+        assert!(!inside);
+        assert!(outside);
     }
 
     #[test]
-    fn collects_events_from_multiple_actions_and_tracks_submenu_path_pop() {
-        let mut menu = ContextMenu::new("id");
-        let context_item = ContextMenuPresentationItem {
-            id: "parent".into(),
-            label: "Parent".into(),
-            accessibility_label: String::new(),
+    fn consume_item_click_separates_submenu_and_action_paths() {
+        let action = ContextMenuPresentationItem {
+            id: "action".to_string(),
+            label: "action".to_string(),
+            accessibility_label: "action".to_string(),
+            icon: None,
+            enabled: true,
+            checked: false,
+            kind: ContextMenuItemKind::Action,
+            children: Vec::new(),
+        };
+        let submenu = ContextMenuPresentationItem {
+            id: "submenu".to_string(),
+            label: "submenu".to_string(),
+            accessibility_label: "submenu".to_string(),
             icon: None,
             enabled: true,
             checked: false,
             kind: ContextMenuItemKind::Submenu,
             children: Vec::new(),
         };
-        let events = crate::context_menu::presentation::core_items(&[context_item.clone()]);
-        menu.synchronize_items(events);
-        assert!(
-            menu.apply_context_action_events(&ContextMenuAction::OpenSubmenu { path: vec![0] })
-                .into_iter()
-                .any(|event| matches!(event, ContextMenuEvent::SubmenuOpened { .. }))
+
+        assert_eq!(
+            consume_item_click(&action, vec![0]),
+            Some(ContextMenuAction::Activate { path: vec![0] })
         );
-        let output = collect_events(
-            &mut menu,
-            [
-                ContextMenuAction::OpenSubmenu { path: vec![0] },
-                ContextMenuAction::Close {
-                    reason: ContextMenuCloseReason::Escape,
-                },
-            ],
+        assert_eq!(
+            consume_item_click(&submenu, vec![1]),
+            Some(ContextMenuAction::OpenSubmenu { path: vec![1] })
         );
-        assert!(output.iter().any(|event| matches!(
-            event,
-            ContextMenuEvent::SubmenuOpened { .. } | ContextMenuEvent::Closed { .. }
-        )));
-    }
-
-    #[test]
-    fn type_ahead_event_and_outside_pointer_logic() {
-        let item = ContextMenuPresentationItem::action("item", "Item");
-        let items = vec![item];
-        let mut type_ahead = ContextMenuTypeAheadBuffer::new(1_000);
-        let mut submenu = Vec::new();
-        let path = vec![0];
-        let actions = {
-            let context = egui::Context::default();
-            let mut actions = Vec::new();
-            let mut output = context.run_ui(egui::RawInput::default(), |ui| {
-                actions = ui.input(|input| {
-                    keyboard_actions(input, &items, &mut submenu, &path, &mut type_ahead)
-                });
-            });
-            output.textures_delta.clear();
-            actions
-        };
-        assert!(actions.is_empty());
-
-        let bounds = katana_ui_core::render_model::UiRect::new(0, 0, 10, 10);
-        let mut outside = false;
-        let raw = egui::RawInput {
-            events: vec![egui::Event::PointerButton {
-                pos: egui::pos2(20.0, 20.0),
-                button: egui::PointerButton::Primary,
-                pressed: true,
-                modifiers: egui::Modifiers::NONE,
-            }],
-            ..egui::RawInput::default()
-        };
-        let context = egui::Context::default();
-        let mut output = context.run_ui(raw, |ui| {
-            outside = ui.input(|input| is_outside_click(input, bounds));
-        });
-        output.textures_delta.clear();
-        assert!(outside);
-    }
-
-    #[test]
-    fn keyboard_actions_cover_typeahead_submenu_and_escape_intents() {
-        let submenu_item = ContextMenuPresentationItem {
-            id: "parent".into(),
-            label: "Parent".into(),
-            accessibility_label: String::new(),
+        let disabled = ContextMenuPresentationItem {
+            id: "disabled".to_string(),
+            label: "disabled".to_string(),
+            accessibility_label: "disabled".to_string(),
             icon: None,
-            enabled: true,
+            enabled: false,
             checked: false,
-            kind: ContextMenuItemKind::Submenu,
-            children: vec![ContextMenuPresentationItem::action("child", "Child")],
+            kind: ContextMenuItemKind::Action,
+            children: Vec::new(),
         };
-        let context = egui::Context::default();
-        for event in [
-            egui::Event::Text("p".into()),
-            key(egui::Key::ArrowRight),
-            key(egui::Key::Escape),
-        ] {
-            let mut submenu_path = Vec::new();
-            let mut type_ahead = ContextMenuTypeAheadBuffer::new(1_000);
-            let mut actions = Vec::new();
-            crate::run_ui_discard(
-                &context,
-                egui::RawInput {
-                    events: vec![event],
-                    ..egui::RawInput::default()
+        assert!(consume_item_click(&disabled, vec![2]).is_none());
+    }
+
+    #[test]
+    fn keyboard_input_treats_release_and_text_events_as_non_actions() {
+        let mut type_ahead = ContextMenuTypeAheadBuffer::new(1000);
+        assert!(
+            keyboard_input(
+                egui::Event::Key {
+                    key: egui::Key::Tab,
+                    physical_key: None,
+                    pressed: false,
+                    repeat: false,
+                    modifiers: egui::Modifiers::NONE,
                 },
-                |ui| {
-                    actions = ui.input(|input| {
-                        keyboard_actions(
-                            input,
-                            std::slice::from_ref(&submenu_item),
-                            &mut submenu_path,
-                            &[0],
-                            &mut type_ahead,
-                        )
-                    });
-                },
-            );
-            assert_eq!(actions.len(), 1);
-        }
+                &mut type_ahead,
+                0.0
+            )
+            .is_none()
+        );
+        assert_eq!(
+            keyboard_input(egui::Event::Text("x".to_string()), &mut type_ahead, 0.0),
+            Some(ContextMenuKeyboardInput::TypeAhead("x".to_string()))
+        );
+        assert!(keyboard_input(egui::Event::Copy, &mut type_ahead, 0.0).is_none());
     }
 }

@@ -105,6 +105,7 @@ jobs:
           git tag -a "${TAG}" -m "Release ${TAG}"
           git push origin "refs/tags/${TAG}"
       - name: Create GitHub Release
+        id: create_github_release
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.version }}
@@ -119,3 +120,8 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: bash scripts/release/publish-crates.sh "${{ steps.version.outputs.version }}"
+      - name: Cleanup merged release branches
+        if: steps.create_github_release.outcome == 'success' && (github.event_name == 'pull_request' || inputs.publish_crates == true)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release/cleanup-release-branches.py --version "${{ steps.version.outputs.version }}"

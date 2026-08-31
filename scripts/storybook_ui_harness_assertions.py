@@ -194,10 +194,12 @@ class StorybookUiHarness:
                 "muxer_capability_verified",
             ),
             "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root.rs": (
-                "pub struct EguiTextCommandSurfacePresentationToken",
                 "pub fn retain(",
-                "pub struct EguiTextCommandSurfaceHostProjectionEncoder",
                 "pub fn token(",
+            ),
+            "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root/types.rs": (
+                "pub struct EguiTextCommandSurfacePresentationToken",
+                "pub struct EguiTextCommandSurfaceHostProjectionEncoder",
             ),
             "crates/katana-ui-core-egui-adapter/tests/host_root_facade_contract.rs": (
                 "opaque_tokens_and_transport_have_no_clone_or_serialize_derives",

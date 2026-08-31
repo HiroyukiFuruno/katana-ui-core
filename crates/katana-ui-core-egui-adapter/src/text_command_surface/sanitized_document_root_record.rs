@@ -98,54 +98,5 @@ impl SanitizedDocumentRootRecordDimensions {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn public_record_has_no_child_payload_or_pixel_storage() {
-        let source = include_str!("sanitized_document_root_record.rs");
-        let public = source
-            .split_once("pub struct SanitizedDocumentRootRecord")
-            .expect("record declaration exists")
-            .1
-            .split_once("impl SanitizedDocumentRootRecord")
-            .expect("record implementation exists")
-            .0;
-        for forbidden in [
-            "child_geometry",
-            "payload",
-            "rgba_pixels",
-            "texture",
-            "accesskit_nodes",
-        ] {
-            assert!(!public.contains(forbidden), "record leaked `{forbidden}`");
-        }
-    }
-
-    #[test]
-    fn record_accessors_return_only_closed_root_facts() {
-        let record = SanitizedDocumentRootRecord {
-            identity: "opaque-root".to_string(),
-            revision: 7,
-            state_revision: 8,
-            dimensions: SanitizedDocumentRootRecordDimensions {
-                width: 640,
-                height: 480,
-            },
-            rgba_hash: "rgba".to_string(),
-            paint_plan_hash: "paint".to_string(),
-            record_hash: "record".to_string(),
-            accessibility_snapshot_hash: "accessibility".to_string(),
-        };
-        assert_eq!(record.identity(), "opaque-root");
-        assert_eq!(record.revision(), 7);
-        assert_eq!(record.presentation_revision(), 7);
-        assert_eq!(record.state_revision(), 8);
-        assert_eq!(record.dimensions().width(), 640);
-        assert_eq!(record.dimensions().height(), 480);
-        assert_eq!(record.rgba_hash(), "rgba");
-        assert_eq!(record.paint_plan_hash(), "paint");
-        assert_eq!(record.record_hash(), "record");
-        assert_eq!(record.accessibility_snapshot_hash(), "accessibility");
-    }
-}
+#[path = "sanitized_document_root_record_tests.rs"]
+mod tests;

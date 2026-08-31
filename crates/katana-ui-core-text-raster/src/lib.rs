@@ -5,6 +5,7 @@ mod font_candidates;
 mod layout;
 mod model;
 mod rasterizer;
+mod resources;
 mod surface_layout;
 
 pub use catalog::{PlatformFontCatalog, PlatformFontCatalogStats};
@@ -17,11 +18,13 @@ pub use catalog_types::{
 };
 pub use config::PlatformTextRasterConfig;
 pub use model::{
-    PlatformTextGraphemeBounds, PlatformTextGraphemeRange, PlatformTextHit, PlatformTextRaster,
-    PlatformTextRasterCrop, PlatformTextRasterError, PlatformTextRasterReport,
+    PlatformTextGraphemeAdvance, PlatformTextGraphemeBounds, PlatformTextGraphemeRange,
+    PlatformTextHit, PlatformTextMetrics, PlatformTextMetricsFrame, PlatformTextMetricsRequest,
+    PlatformTextRaster, PlatformTextRasterCrop, PlatformTextRasterError, PlatformTextRasterReport,
     PlatformTextRasterRequest, PlatformTextRasterStats,
 };
 pub use rasterizer::PlatformTextRasterizer;
+pub use resources::PlatformTextRasterResources;
 
 #[cfg(test)]
 mod catalog_contract_tests;

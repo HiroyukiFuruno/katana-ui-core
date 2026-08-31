@@ -166,7 +166,8 @@ fn actual_egui_toolbar_uses_kuc_rasters_accesskit_and_typed_events() {
                 CommandChromePaintOperationKind::Texture { texture, .. } => {
                     texture.identity == icon_identity && texture.width > 0 && texture.height > 0
                 }
-                CommandChromePaintOperationKind::Fill { .. } => false,
+                CommandChromePaintOperationKind::Fill { .. }
+                | CommandChromePaintOperationKind::RoundedFill { .. } => false,
             })
     );
     assert!(!full_output.textures_delta.set.is_empty());

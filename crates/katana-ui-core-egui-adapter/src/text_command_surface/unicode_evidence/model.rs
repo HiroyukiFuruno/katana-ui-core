@@ -5,9 +5,6 @@ use katana_ui_core_text_raster::{
     PlatformTextRasterConfig,
 };
 
-#[derive(Debug, Default, Clone, Copy)]
-pub struct KucUnicodeColorGlyphEvidenceCapture;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KucUnicodeColorGlyphEvidenceOptions {
     pub root_identity: String,
@@ -34,6 +31,7 @@ pub struct KucUnicodeColorGlyphEvidenceInput {
     pub hit_tests: Vec<KucHitTestObservation>,
     pub star_crop: KucRgbaCropEvidence,
     pub control_crop: KucRgbaCropEvidence,
+    pub accesskit_text_input: Option<KucAccessKitNodeObservation>,
     pub accesskit_text_snapshot_hash: String,
     pub root_frame_hash: String,
     pub root_record_hash: String,
@@ -107,6 +105,15 @@ pub struct KucRgbaCropEvidence {
     pub pixels: Vec<[u8; RGBA_CHANNEL_COUNT]>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KucAccessKitNodeObservation {
+    pub node_id: String,
+    pub role: String,
+    pub value: String,
+    pub scalar_sequence: Vec<u32>,
+    pub bounds: KucBounds,
+}
+
 impl KucRgbaCropEvidence {
     #[must_use]
     pub fn new(bounds: KucBounds, pixels: Vec<[u8; RGBA_CHANNEL_COUNT]>) -> Self {
@@ -132,6 +139,7 @@ pub struct KucUnicodeColorGlyphEvidence {
     pub hit_tests: Vec<KucHitTestArtifact>,
     pub star: KucRgbaCropArtifact,
     pub control_star: KucRgbaCropArtifact,
+    pub accesskit_text_input: KucAccessKitNodeArtifact,
     pub chromatic_pixel_delta: i64,
     pub accesskit_text_snapshot_hash: String,
     pub root_frame_hash: String,
@@ -191,6 +199,15 @@ pub struct KucRgbaCropArtifact {
     pub rgba_sha256: String,
     pub pixel_count: usize,
     pub chromatic_pixel_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct KucAccessKitNodeArtifact {
+    pub node_id: String,
+    pub role: String,
+    pub value: String,
+    pub scalar_sequence: Vec<u32>,
+    pub bounds: KucBounds,
 }
 
 impl KucUnicodeColorGlyphEvidence {

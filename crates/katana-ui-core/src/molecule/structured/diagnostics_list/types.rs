@@ -1,5 +1,6 @@
 use crate::molecule::CodeDiff;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 
 const DIAGNOSTIC_SEVERITY_COUNT: usize = 4;
 
@@ -15,6 +16,42 @@ impl DiagnosticId {
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct DiagnosticScopeKey(String);
+
+impl DiagnosticScopeKey {
+    #[must_use]
+    pub fn new(value: impl Into<String>) -> Self {
+        Self(value.into())
+    }
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DiagnosticScopeInput {
+    pub key: DiagnosticScopeKey,
+    pub label: String,
+    pub accessible_label: String,
+}
+
+impl DiagnosticScopeInput {
+    #[must_use]
+    pub fn new(
+        key: impl Into<String>,
+        label: impl Into<String>,
+        accessible_label: impl Into<String>,
+    ) -> Self {
+        Self {
+            key: DiagnosticScopeKey::new(key),
+            label: label.into(),
+            accessible_label: accessible_label.into(),
+        }
     }
 }
 
@@ -84,6 +121,7 @@ pub struct DiagnosticItem {
     pub location: DiagnosticLocation,
     pub quickfix: Option<DiagnosticAction>,
     pub fix_preview: Option<DiagnosticFixPreview>,
+    pub scope_keys: BTreeSet<DiagnosticScopeKey>,
 }
 
 impl DiagnosticItem {
@@ -102,6 +140,7 @@ impl DiagnosticItem {
             location,
             quickfix: None,
             fix_preview: None,
+            scope_keys: BTreeSet::new(),
         }
     }
 
@@ -120,6 +159,19 @@ impl DiagnosticItem {
     #[must_use]
     pub fn fix_preview(mut self, value: DiagnosticFixPreview) -> Self {
         self.fix_preview = Some(value);
+        self
+    }
+
+    #[must_use]
+    pub fn scope(mut self, key: impl Into<String>) -> Self {
+        self.scope_keys.insert(DiagnosticScopeKey::new(key));
+        self
+    }
+
+    #[must_use]
+    pub fn scopes(mut self, keys: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        self.scope_keys
+            .extend(keys.into_iter().map(DiagnosticScopeKey::new));
         self
     }
 }

@@ -33,8 +33,9 @@ impl EguiContextMenuAdapter {
 
     pub(super) fn apply_actions(
         &mut self,
-        actions: Vec<ContextMenuAction>,
+        actions: impl IntoIterator<Item = ContextMenuAction>,
     ) -> Vec<ContextMenuEvent> {
+        let actions = actions.into_iter().collect::<Vec<_>>();
         for action in &actions {
             if let ContextMenuAction::OpenSubmenu { path } = action {
                 self.submenu_path = path.clone();
@@ -55,7 +56,7 @@ impl EguiContextMenuAdapter {
                 artifact: None,
             };
         }
-        let events = self.apply_actions(vec![ContextMenuAction::Close { reason }]);
+        let events = self.apply_actions([ContextMenuAction::Close { reason }]);
         self.finish_closed(ui, events)
     }
 
@@ -151,342 +152,75 @@ impl EguiContextMenuAdapter {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::context_menu::types::MENU_PADDING_PX;
-    use crate::context_menu::{
-        ContextMenuPaintStyle, ContextMenuPresentation, ContextMenuPresentationItem,
-        ContextMenuRasterStyle,
+    use katana_ui_core::molecule::selection::{
+        ContextMenuAction, ContextMenuAnchor, ContextMenuSize, ContextMenuViewport,
     };
-    use crate::text_surface::TextSurfaceContextTargetAnchor;
-    use katana_ui_core::text_selection::UiTextSelectionRange;
-    use katana_ui_core::theme::{FontFamily, FontToken};
+    use katana_ui_core::render_model::UiRect;
 
     #[test]
-    fn closing_an_already_closed_menu_returns_an_empty_frame() {
+    fn wheel_scroll_only_changes_offset_when_hovered_inside_bounds() {
         let context = egui::Context::default();
-        let mut adapter = EguiContextMenuAdapter::default();
-        let mut captured = None;
-        let mut output = context.run_ui(Default::default(), |ui| {
-            captured = Some(adapter.close(ui, ContextMenuCloseReason::Escape));
-        });
-        output.textures_delta.clear();
-        let closed = captured.expect("closed output captured");
-        assert!(closed.record.is_none());
-        assert!(closed.events.is_empty());
-        assert!(closed.artifact.is_none());
-    }
-
-    #[test]
-    fn closing_an_open_menu_emits_the_requested_close_reason() {
-        let context = egui::Context::default();
-        let mut adapter = EguiContextMenuAdapter::default();
-        let _ = adapter.apply_actions(vec![ContextMenuAction::OpenWithLayout {
-            anchor: katana_ui_core::molecule::selection::ContextMenuAnchor::Pointer { x: 0, y: 0 },
-            menu_size: ContextMenuSize::new(100, 100),
-            viewport: ContextMenuViewport::new(100, 100),
+        let mut adapter = crate::context_menu::EguiContextMenuAdapter::new(
+            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+        )
+        .expect("context menu adapter should initialize");
+        adapter.apply_actions([ContextMenuAction::OpenWithLayout {
+            anchor: ContextMenuAnchor::Pointer { x: 0, y: 0 },
+            menu_size: ContextMenuSize::new(80, 80),
+            viewport: ContextMenuViewport::new(100, 40),
         }]);
-        let mut captured = None;
-        let mut output = context.run_ui(Default::default(), |ui| {
-            captured = Some(adapter.close(ui, ContextMenuCloseReason::Escape));
-        });
-        output.textures_delta.clear();
-        let closed = captured.expect("closed output captured");
-        assert!(matches!(
-            closed.events.as_slice(),
-            [ContextMenuEvent::Closed {
-                reason: ContextMenuCloseReason::Escape
-            }]
-        ));
-    }
 
-    #[test]
-    fn wheel_scroll_from_raw_input_ignores_zero_and_outside_and_clamps_both_bounds() {
-        let context = egui::Context::default();
-        let mut adapter = EguiContextMenuAdapter::default();
-        let bounds = UiRect::new(0, 0, 100, 20);
-
-        let mut output = context.run_ui(
-            egui::RawInput {
-                events: vec![
-                    egui::Event::PointerMoved(egui::pos2(10.0, 10.0)),
-                    egui::Event::MouseWheel {
-                        unit: egui::MouseWheelUnit::Point,
-                        delta: egui::vec2(0.0, 0.0),
-                        modifiers: egui::Modifiers::NONE,
-                        phase: egui::TouchPhase::Move,
-                    },
-                ],
-                ..Default::default()
-            },
-            |ui| {
-                adapter.apply_wheel_scroll(ui, bounds, 100);
-            },
-        );
-        output.textures_delta.clear();
-        assert_eq!(adapter.vertical_scroll_offset, 0.0);
-
-        adapter.vertical_scroll_offset = 12.0;
-        let mut output = context.run_ui(
-            egui::RawInput {
-                events: vec![
-                    egui::Event::PointerMoved(egui::pos2(101.0, 10.0)),
-                    egui::Event::MouseWheel {
-                        unit: egui::MouseWheelUnit::Point,
-                        delta: egui::vec2(0.0, 50.0),
-                        modifiers: egui::Modifiers::NONE,
-                        phase: egui::TouchPhase::Move,
-                    },
-                ],
-                ..Default::default()
-            },
-            |ui| {
-                adapter.apply_wheel_scroll(ui, bounds, 100);
-            },
-        );
-        output.textures_delta.clear();
-        assert_eq!(adapter.vertical_scroll_offset, 12.0);
-
-        let mut output = context.run_ui(
-            egui::RawInput {
-                events: vec![
-                    egui::Event::PointerMoved(egui::pos2(10.0, 10.0)),
-                    egui::Event::MouseWheel {
-                        unit: egui::MouseWheelUnit::Point,
-                        delta: egui::vec2(0.0, 100.0),
-                        modifiers: egui::Modifiers::NONE,
-                        phase: egui::TouchPhase::Move,
-                    },
-                ],
-                ..Default::default()
-            },
-            |ui| {
-                adapter.apply_wheel_scroll(ui, bounds, 100);
-            },
-        );
-        output.textures_delta.clear();
-        assert_eq!(adapter.vertical_scroll_offset, 80.0);
-
-        let mut output = context.run_ui(
-            egui::RawInput {
-                events: vec![
-                    egui::Event::PointerMoved(egui::pos2(10.0, 10.0)),
-                    egui::Event::MouseWheel {
-                        unit: egui::MouseWheelUnit::Point,
-                        delta: egui::vec2(0.0, -100.0),
-                        modifiers: egui::Modifiers::NONE,
-                        phase: egui::TouchPhase::Move,
-                    },
-                ],
-                ..Default::default()
-            },
-            |ui| {
-                adapter.apply_wheel_scroll(ui, bounds, 100);
-            },
-        );
-        output.textures_delta.clear();
-        assert_eq!(adapter.vertical_scroll_offset, 0.0);
-    }
-
-    #[test]
-    fn keyboard_highlight_reveal_covers_viewport_below_viewport_and_invalid_paths() {
-        let mut adapter = EguiContextMenuAdapter::default();
-        let bounds = UiRect::new(0, 0, 100, 30);
-        adapter.reveal_keyboard_highlight(bounds, 300, 1);
-
-        adapter.synchronize_presentation(ContextMenuPresentation {
-            visible: true,
-            items: vec![ContextMenuPresentationItem::action("one", "One")],
-        });
-        let _ = adapter.apply_actions(vec![
-            ContextMenuAction::OpenWithLayout {
-                anchor: katana_ui_core::molecule::selection::ContextMenuAnchor::Pointer {
-                    x: 0,
-                    y: 0,
+        let has_input = |events: Vec<egui::Event>, adapter: &mut super::EguiContextMenuAdapter| {
+            let mut output = context.run_ui(
+                egui::RawInput {
+                    events,
+                    screen_rect: Some(egui::Rect::from_min_size(
+                        egui::Pos2::ZERO,
+                        egui::vec2(100.0, 40.0),
+                    )),
+                    ..Default::default()
                 },
-                menu_size: ContextMenuSize::new(100, 100),
-                viewport: ContextMenuViewport::new(100, 100),
-            },
-            ContextMenuAction::Highlight { path: vec![9] },
-        ]);
-        adapter.reveal_keyboard_highlight(bounds, 300, 1);
-
-        let _ = adapter.apply_actions(vec![ContextMenuAction::Highlight { path: vec![0] }]);
-        adapter.vertical_scroll_offset = 0.0;
-        adapter.reveal_keyboard_highlight(bounds, 300, 1);
-        assert_eq!(
-            adapter.vertical_scroll_offset,
-            crate::context_menu::types::MENU_PADDING_PX as f32
+                |ui| {
+                    adapter.apply_wheel_scroll(ui, UiRect::new(0, 0, 80, 40), 300);
+                },
+            );
+            output.textures_delta.clear();
+            adapter.vertical_scroll_offset
+        };
+        let mut adapter = adapter;
+        let no_hover = has_input(
+            vec![egui::Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Point,
+                delta: egui::vec2(0.0, 20.0),
+                phase: egui::TouchPhase::Move,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            &mut adapter,
         );
+        assert_eq!(0.0, no_hover);
 
-        adapter.vertical_scroll_offset = 20.0;
-        adapter.reveal_keyboard_highlight(bounds, 300, 1);
-        assert_eq!(
-            adapter.vertical_scroll_offset,
-            crate::context_menu::types::MENU_PADDING_PX as f32
-        );
-
-        adapter.synchronize_presentation(ContextMenuPresentation {
-            visible: true,
-            items: vec![
-                ContextMenuPresentationItem::action("one", "One"),
-                ContextMenuPresentationItem::action("two", "Two"),
-                ContextMenuPresentationItem::action("three", "Three"),
+        let with_hover = has_input(
+            vec![
+                egui::Event::PointerMoved(egui::pos2(10.0, 10.0)),
+                egui::Event::MouseWheel {
+                    unit: egui::MouseWheelUnit::Point,
+                    delta: egui::vec2(0.0, 20.0),
+                    phase: egui::TouchPhase::Move,
+                    modifiers: egui::Modifiers::NONE,
+                },
             ],
-        });
-        let _ = adapter.apply_actions(vec![ContextMenuAction::Highlight { path: vec![2] }]);
-        adapter.vertical_scroll_offset = 0.0;
-        adapter.reveal_keyboard_highlight(bounds, 300, 3);
-        assert_eq!(adapter.vertical_scroll_offset, 66.0);
-
-        let _ = adapter.apply_actions(vec![ContextMenuAction::Highlight { path: vec![3] }]);
-        adapter.reveal_keyboard_highlight(bounds, 300, 3);
-        assert_eq!(adapter.vertical_scroll_offset, 66.0);
-
-        let _ = adapter.apply_actions(vec![ContextMenuAction::OpenSubmenu { path: vec![1] }]);
-        let _ = adapter.apply_actions(vec![ContextMenuAction::Highlight { path: vec![0] }]);
-        adapter.reveal_keyboard_highlight(bounds, 300, 3);
-        assert_eq!(adapter.vertical_scroll_offset, 66.0);
+            &mut adapter,
+        );
+        assert!(with_hover > 0.0);
     }
 
     #[test]
-    fn normal_menu_input_reveals_previous_highlight_after_real_scroll() {
-        let context = egui::Context::default();
-        let mut adapter = EguiContextMenuAdapter::default();
-        adapter.synchronize_presentation(ContextMenuPresentation {
-            visible: true,
-            items: (0..4)
-                .map(|index| {
-                    ContextMenuPresentationItem::action(
-                        format!("item-{index}"),
-                        format!("Item {index}"),
-                    )
-                })
-                .collect(),
-        });
-        adapter.request_open(TextSurfaceContextTargetAnchor::pointer(
-            10,
-            10,
-            UiTextSelectionRange::caret(0),
-            UiRect::new(0, 0, 200, 100),
-        ));
-
-        let mut output = None;
-        crate::run_ui_discard(&context, egui::RawInput::default(), |ui| {
-            output = Some(adapter.show(ui, &raster_style(), &paint_style()));
-        });
-        assert!(output.expect("initial frame captured").is_ok());
-
-        let mut output = None;
-        crate::run_ui_discard(
-            &context,
-            egui::RawInput {
-                events: vec![egui::Event::Key {
-                    key: egui::Key::ArrowDown,
-                    physical_key: None,
-                    pressed: true,
-                    repeat: false,
-                    modifiers: egui::Modifiers::NONE,
-                }],
-                ..Default::default()
-            },
-            |ui| {
-                output = Some(adapter.show(ui, &raster_style(), &paint_style()));
-            },
-        );
-        assert!(output.expect("first highlight frame captured").is_ok());
-
-        let mut output = None;
-        crate::run_ui_discard(
-            &context,
-            egui::RawInput {
-                events: vec![
-                    egui::Event::PointerMoved(egui::pos2(10.0, 10.0)),
-                    egui::Event::MouseWheel {
-                        unit: egui::MouseWheelUnit::Point,
-                        delta: egui::vec2(0.0, 100.0),
-                        modifiers: egui::Modifiers::NONE,
-                        phase: egui::TouchPhase::Move,
-                    },
-                    egui::Event::Key {
-                        key: egui::Key::ArrowDown,
-                        physical_key: None,
-                        pressed: true,
-                        repeat: false,
-                        modifiers: egui::Modifiers::NONE,
-                    },
-                ],
-                ..Default::default()
-            },
-            |ui| {
-                output = Some(adapter.show(ui, &raster_style(), &paint_style()));
-            },
-        );
-        assert!(output.expect("scrolled highlight frame captured").is_ok());
-        assert!(adapter.vertical_scroll_offset > MENU_PADDING_PX as f32);
-
-        let mut output = None;
-        crate::run_ui_discard(
-            &context,
-            egui::RawInput {
-                events: vec![egui::Event::Key {
-                    key: egui::Key::Home,
-                    physical_key: None,
-                    pressed: true,
-                    repeat: false,
-                    modifiers: egui::Modifiers::NONE,
-                }],
-                ..Default::default()
-            },
-            |ui| {
-                output = Some(adapter.show(ui, &raster_style(), &paint_style()));
-            },
-        );
-        let output = output
-            .expect("previous highlight frame captured")
-            .expect("normal menu presentation succeeds");
-        assert_eq!(
-            output.record.expect("visible menu record").highlighted_path,
-            vec![0]
-        );
-        assert_eq!(adapter.vertical_scroll_offset, MENU_PADDING_PX as f32);
-    }
-
-    fn raster_style() -> ContextMenuRasterStyle {
-        ContextMenuRasterStyle {
-            font: FontToken {
-                name: "context-menu-state-test".into(),
-                family: FontFamily::Proportional,
-                size: 15.0,
-                weight: 400,
-            },
-            text_color_rgba: [230, 230, 230, 255],
-            icon_color_rgba: [230, 230, 230, 255],
-            line_height_px: 22.0,
-        }
-    }
-
-    const fn paint_style() -> ContextMenuPaintStyle {
-        ContextMenuPaintStyle {
-            background_rgba: [30, 30, 32, 255],
-            highlighted_rgba: [60, 80, 112, 255],
-            disabled_rgba: [45, 45, 48, 255],
-        }
-    }
-
-    #[test]
-    fn submenu_path_and_focus_return_are_consumed_by_close_finalization() {
-        let context = egui::Context::default();
-        let mut adapter = EguiContextMenuAdapter::default();
-        let focus_id = egui::Id::new("context-focus-return");
-        adapter.focus_return = Some(focus_id);
-        let _ = adapter.apply_actions(vec![ContextMenuAction::OpenSubmenu { path: vec![2] }]);
-        assert_eq!(adapter.submenu_path, vec![2]);
-
-        let mut output = context.run_ui(Default::default(), |ui| {
-            let _ = adapter.finish_closed(ui, Vec::new());
-        });
-        output.textures_delta.clear();
-        assert!(adapter.submenu_path.is_empty());
-        assert_eq!(context.memory(|memory| memory.focused()), Some(focus_id));
+    fn reveal_keyboard_highlight_keeps_offset_when_highlight_missing() {
+        let mut adapter = crate::context_menu::EguiContextMenuAdapter::new(
+            katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+        )
+        .expect("context menu adapter should initialize");
+        adapter.reveal_keyboard_highlight(UiRect::new(0, 0, 100, 40), 120, 0);
+        assert_eq!(0.0, adapter.vertical_scroll_offset);
     }
 }

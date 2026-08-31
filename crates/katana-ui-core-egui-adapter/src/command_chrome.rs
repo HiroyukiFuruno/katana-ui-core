@@ -1,7 +1,5 @@
 #[path = "command_chrome_artifact.rs"]
 mod command_chrome_artifact;
-#[path = "command_chrome_artifact_types.rs"]
-mod command_chrome_artifact_types;
 #[path = "command_chrome_dropdown.rs"]
 mod command_chrome_dropdown;
 #[path = "command_chrome_floating.rs"]
@@ -24,21 +22,26 @@ mod command_chrome_search_interaction;
 mod command_chrome_search_paint;
 #[path = "command_chrome_search_state.rs"]
 mod command_chrome_search_state;
-#[path = "command_chrome_toolbar.rs"]
-mod command_chrome_toolbar;
 #[path = "command_chrome_types.rs"]
 mod command_chrome_types;
+#[path = "command_chrome/toolbar.rs"]
+mod toolbar;
 
-use crate::text_command_surface::accesskit_evidence::AccessKitTargetClass;
+use command_chrome_paint::paint_command_chrome;
 use command_chrome_presentation::toolbar_size;
 use katana_ui_core::interaction::placement::Size;
 use katana_ui_core::molecule::command_chrome::CommandChromeToolbar;
 use katana_ui_core::render_model::UiRect;
 use katana_ui_core_svg_raster::{UiSvgRasterConfig, UiSvgRasterizer};
-use katana_ui_core_text_raster::{PlatformTextRasterConfig, PlatformTextRasterizer};
+use katana_ui_core_text_raster::{
+    PlatformTextRasterConfig, PlatformTextRasterResources, PlatformTextRasterizer,
+};
+use std::cell::RefCell;
+use std::rc::Rc;
+#[cfg(test)]
 use std::sync::Arc;
 
-pub use command_chrome_artifact_types::{
+pub use command_chrome_artifact::{
     CommandChromeArtifactFrame, CommandChromePaintOperation, CommandChromePaintOperationKind,
     CommandChromePaintPlan, CommandChromePaintTexture, EguiCommandChromeFloatingArtifactFrame,
     EguiCommandChromeSearchArtifactFrame,
@@ -59,25 +62,52 @@ impl EguiCommandChromeAdapter {
         self.text_rasterizer.catalog()
     }
 
-    pub(crate) fn with_catalog(
+    #[cfg(test)]
+    pub(crate) fn with_catalog_and_metrics(
         catalog: Arc<katana_ui_core_text_raster::PlatformFontCatalog>,
         text: PlatformTextRasterConfig,
         svg: UiSvgRasterConfig,
-    ) -> Self {
-        Self {
-            text_surface_adapter: crate::text_surface::EguiTextSurfaceAdapter::with_catalog(
-                Arc::clone(&catalog),
-                text.clone(),
-            ),
-            text_rasterizer: PlatformTextRasterizer::with_catalog_cache_capacity(
-                catalog,
-                text.cache_capacity,
-            ),
+        metrics: crate::text_surface::SharedTextMetrics,
+    ) -> Result<Self, EguiCommandChromeError> {
+        Ok(Self {
+            text_surface_adapter:
+                crate::text_surface::EguiTextSurfaceAdapter::with_catalog_and_metrics(
+                    Arc::clone(&catalog),
+                    text.clone(),
+                    Rc::clone(&metrics),
+                )?,
+            text_rasterizer: PlatformTextRasterizer::with_catalog(catalog, text)?,
             svg_rasterizer: UiSvgRasterizer::new(svg),
             textures: crate::texture_cache::RgbaTextureCache::new(
                 crate::texture_cache::DEFAULT_TEXTURE_CACHE_CAPACITY,
             ),
             search_surfaces: None,
+            metrics,
+            dropdown_primary_press: None,
+            floating_pointer_exclusions: Vec::new(),
+        })
+    }
+
+    pub(crate) fn with_resources_and_metrics(
+        resources: &PlatformTextRasterResources,
+        svg: UiSvgRasterConfig,
+        metrics: crate::text_surface::SharedTextMetrics,
+    ) -> Self {
+        Self {
+            text_surface_adapter:
+                crate::text_surface::EguiTextSurfaceAdapter::with_resources_and_metrics(
+                    resources,
+                    Rc::clone(&metrics),
+                ),
+            text_rasterizer: resources.rasterizer(),
+            svg_rasterizer: UiSvgRasterizer::new(svg),
+            textures: crate::texture_cache::RgbaTextureCache::new(
+                crate::texture_cache::DEFAULT_TEXTURE_CACHE_CAPACITY,
+            ),
+            search_surfaces: None,
+            metrics,
+            dropdown_primary_press: None,
+            floating_pointer_exclusions: Vec::new(),
         }
     }
 
@@ -108,7 +138,16 @@ impl EguiCommandChromeAdapter {
                 crate::texture_cache::DEFAULT_TEXTURE_CACHE_CAPACITY,
             ),
             search_surfaces: None,
+            metrics: Rc::new(RefCell::new(
+                katana_ui_core_text_raster::PlatformTextMetricsFrame::new(),
+            )),
+            dropdown_primary_press: None,
+            floating_pointer_exclusions: Vec::new(),
         }
+    }
+
+    pub(crate) fn floating_pointer_exclusions(&self) -> &[UiRect] {
+        &self.floating_pointer_exclusions
     }
 
     pub fn show_toolbar(
@@ -118,32 +157,37 @@ impl EguiCommandChromeAdapter {
         raster_style: &CommandChromeRasterStyle,
         paint_style: &CommandChromePaintStyle,
     ) -> Result<EguiCommandChromeOutput, EguiCommandChromeError> {
-        self.show_toolbar_unpainted(
+        let output = self.show_toolbar_unpainted(
             ui,
             toolbar,
             raster_style,
             paint_style,
-            AccessKitTargetClass::Toolbar,
-        )
+            crate::text_command_surface::accesskit_evidence::AccessKitTargetClass::Toolbar,
+        )?;
+        paint_command_chrome(ui, &mut self.textures, &output.artifact.paint_plan);
+        Ok(output)
     }
+}
 
-    pub(super) fn show_toolbar_unpainted(
-        &mut self,
-        ui: &mut egui::Ui,
-        toolbar: &mut CommandChromeToolbar,
-        raster_style: &CommandChromeRasterStyle,
-        paint_style: &CommandChromePaintStyle,
-        target_class: AccessKitTargetClass,
-    ) -> Result<EguiCommandChromeOutput, EguiCommandChromeError> {
-        command_chrome_toolbar::show_toolbar_unpainted(
-            self,
-            ui,
-            toolbar,
-            raster_style,
-            paint_style,
-            target_class,
+fn dropdown_focus_return_target(
+    events: &[katana_ui_core::molecule::command_chrome::CommandChromeToolbarEvent],
+) -> Option<&str> {
+    events.iter().rev().find_map(|event| {
+        let katana_ui_core::molecule::command_chrome::CommandChromeToolbarEvent::DropdownClosed {
+            action_id,
+            reason,
+        } = event
+        else {
+            return None;
+        };
+        matches!(
+            reason,
+            katana_ui_core::molecule::command_chrome::CommandChromeDropdownCloseReason::Escape
+                | katana_ui_core::molecule::command_chrome::CommandChromeDropdownCloseReason::OutsideClick
+                | katana_ui_core::molecule::command_chrome::CommandChromeDropdownCloseReason::ItemActivated
         )
-    }
+        .then_some(action_id.as_str())
+    })
 }
 
 impl Default for EguiCommandChromeAdapter {
@@ -156,5 +200,14 @@ impl Default for EguiCommandChromeAdapter {
 }
 
 pub(super) fn ui_rect(rect: egui::Rect) -> UiRect {
-    command_chrome_toolbar::ui_rect(rect)
+    UiRect::new(
+        rect.min.x.round() as i32,
+        rect.min.y.round() as i32,
+        rect.width().round().max(0.0) as u32,
+        rect.height().round().max(0.0) as u32,
+    )
 }
+
+#[cfg(test)]
+#[path = "command_chrome_tests.rs"]
+mod tests;

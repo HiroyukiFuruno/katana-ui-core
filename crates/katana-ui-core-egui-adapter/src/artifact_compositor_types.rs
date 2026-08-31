@@ -1,5 +1,9 @@
 use crate::command_chrome::CommandChromePaintPlan;
 use crate::context_menu::ContextMenuPaintPlan;
+use crate::diagnostics_list::DiagnosticsListPaintPlan;
+use crate::source_address_strip::SourceAddressPaintPlan;
+use crate::status_bar::StatusBarPaintPlan;
+use crate::tab_strip_paint::TabStripPaintPlan;
 use crate::text_surface::TextSurfacePaintPlan;
 use katana_ui_core::render_model::UiRect;
 use std::fmt;
@@ -24,6 +28,10 @@ impl ArtifactCanvasBounds {
 #[derive(Debug, Clone, Copy)]
 pub enum ArtifactPaintPlanRef<'a> {
     TextSurface(&'a TextSurfacePaintPlan),
+    SourceAddress(&'a SourceAddressPaintPlan),
+    StatusBar(&'a StatusBarPaintPlan),
+    DiagnosticsList(&'a DiagnosticsListPaintPlan),
+    TabStrip(&'a TabStripPaintPlan),
     CommandChrome(&'a CommandChromePaintPlan),
     ContextMenu(&'a ContextMenuPaintPlan),
 }
@@ -109,43 +117,3 @@ impl fmt::Display for ArtifactCompositeError {
 }
 
 impl std::error::Error for ArtifactCompositeError {}
-
-#[cfg(test)]
-mod tests {
-    use super::ArtifactCompositeError;
-
-    #[test]
-    fn error_display_covers_all_variants() {
-        let errors = [
-            ArtifactCompositeError::ZeroCanvas.to_string(),
-            ArtifactCompositeError::Overflow {
-                context: "test context",
-            }
-            .to_string(),
-            ArtifactCompositeError::ZeroTexture {
-                identity: "texture".to_owned(),
-            }
-            .to_string(),
-            ArtifactCompositeError::TextureByteLength {
-                identity: "texture".to_owned(),
-                expected: 4,
-                actual: 2,
-            }
-            .to_string(),
-            ArtifactCompositeError::TexturePixelRange {
-                identity: "texture".to_owned(),
-                start: 0,
-                end: 4,
-                actual: 2,
-            }
-            .to_string(),
-            ArtifactCompositeError::Serialization("oops".to_owned()).to_string(),
-        ];
-        assert!(errors[0].contains("non-zero"));
-        assert!(errors[1].contains("arithmetic overflow while test context"));
-        assert!(errors[2].contains("texture `texture` has zero"));
-        assert!(errors[3].contains("RGBA bytes; expected 4"));
-        assert!(errors[4].contains("cannot provide RGBA range 0..4"));
-        assert!(errors[5].contains("artifact plan serialization failed"));
-    }
-}

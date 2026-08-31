@@ -158,10 +158,24 @@ fn rejects_missing_encoder_and_decode_failure() {
         super::ffmpeg::Ffmpeg::discover_at(std::path::Path::new("/definitely-missing/ffmpeg"))
             .expect_err("missing ffmpeg must fail");
     assert!(matches!(missing, MotionArtifactError::Encoder(_)));
+
+    let empty_version_root = tempfile_dir("empty-version");
+    let empty_version_script = empty_version_root.join("ffmpeg");
+    std::fs::write(&empty_version_script, "#!/bin/sh\nexit 0\n")
+        .expect("empty-version ffmpeg should write");
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::set_permissions(
+        &empty_version_script,
+        std::fs::Permissions::from_mode(0o755),
+    )
+    .expect("empty-version ffmpeg should be executable");
+    let empty_version = super::ffmpeg::Ffmpeg::discover_at(&empty_version_script)
+        .expect_err("empty ffmpeg version must fail");
+    assert!(matches!(empty_version, MotionArtifactError::Encoder(_)));
+
     let root = tempfile_dir("decode");
     let script = root.join("ffmpeg");
     std::fs::write(&script, "#!/bin/sh\nexit 17\n").expect("fake ffmpeg should write");
-    use std::os::unix::fs::PermissionsExt;
     std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
         .expect("fake ffmpeg should be executable");
     let decode = (super::ffmpeg::Ffmpeg {

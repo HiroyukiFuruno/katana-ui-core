@@ -23,82 +23,97 @@ pub(super) fn presentation() -> EguiTextCommandSurfacePresentation {
     }
 }
 
+#[path = "host_root_factory_tests.rs"]
+mod factory_tests;
+#[path = "host_root_lease_tests.rs"]
+mod lease_tests;
+
 #[test]
-fn opaque_token_and_encoder_entry_points_execute_in_the_unit_crate() {
-    let target = EguiTextCommandSurfaceHostTargetToken::from_opaque_bytes(b"target".to_vec());
+fn host_root_factory_error_variants_are_rendered_and_debuggable() {
+    let invalid_token = EguiTextCommandSurfaceRootFactoryError::InvalidToken("unknown root format");
     assert_eq!(
-        format!("{target:?}"),
-        "EguiTextCommandSurfaceHostTargetToken(..)"
+        invalid_token.to_string(),
+        "invalid root token: unknown root format"
     );
-    let opaque = EguiTextCommandSurfacePresentationToken::from_opaque_bytes(
-        7,
-        EguiTextCommandSurfaceHostTargetToken::from_opaque_bytes(b"opaque".to_vec()),
-        b"payload".to_vec(),
-    );
-    assert!(format!("{opaque:?}").contains("<opaque>"));
+    assert!(format!("{invalid_token:?}").contains("InvalidToken"));
 
-    let encoded = EguiTextCommandSurfacePresentationToken::from_encoded(
-        8,
-        EguiTextCommandSurfaceHostTargetToken::from_opaque_bytes(b"encoded".to_vec()),
-        b"encoded-payload".to_vec(),
+    let identity_changed = EguiTextCommandSurfaceRootFactoryError::IdentityChanged;
+    assert_eq!(
+        identity_changed.to_string(),
+        "root identity cannot change while retained"
     );
-    assert_eq!(encoded.revision, 8);
+    assert!(format!("{identity_changed:?}").contains("IdentityChanged"));
 
-    let encoder = <EguiTextCommandSurfaceHostProjectionEncoder as Default>::default();
-    assert!(
-        encoder
-            .encode(
-                1,
-                b"legacy-encode".to_vec(),
-                presentation(),
-                TextCommandSurfaceStyle::standard()
-            )
-            .is_ok()
+    let stale_revision = EguiTextCommandSurfaceRootFactoryError::StaleRevision {
+        current: 7,
+        received: 3,
+    };
+    assert_eq!(
+        stale_revision.to_string(),
+        "stale root presentation revision 3; current is 7"
     );
-    assert!(
-        EguiTextCommandSurfaceHostProjectionEncoder::token(
-            2,
-            b"legacy-token".to_vec(),
-            presentation(),
-            TextCommandSurfaceStyle::standard()
-        )
-        .is_ok()
-    );
-    assert!(
-        encoder
-            .encode_with_command_families(
-                3,
-                b"family-encode".to_vec(),
-                presentation(),
-                TextCommandSurfaceStyle::standard(),
-                EguiTextCommandSurfaceCommandFamilyProjection::default()
-            )
-            .is_ok()
-    );
-    assert!(
-        EguiTextCommandSurfaceHostProjectionEncoder::token_with_command_families(
-            4,
-            b"family-token".to_vec(),
-            presentation(),
-            TextCommandSurfaceStyle::standard(),
-            EguiTextCommandSurfaceCommandFamilyProjection::default()
-        )
-        .is_ok()
-    );
-    let _factory = <EguiTextCommandSurfaceRootFactory as Default>::default();
-}
+    assert!(format!("{stale_revision:?}").contains("StaleRevision"));
 
-#[test]
-fn empty_host_target_fails_closed_before_payload_decode() {
-    let token = EguiTextCommandSurfacePresentationToken::from_opaque_bytes(
-        1,
-        EguiTextCommandSurfaceHostTargetToken::from_opaque_bytes(Vec::new()),
-        b"not-json".to_vec(),
+    let revision_conflict =
+        EguiTextCommandSurfaceRootFactoryError::RevisionConflict { revision: 9 };
+    assert_eq!(
+        revision_conflict.to_string(),
+        "root presentation revision 9 was already retained"
     );
-    assert!(matches!(
-        EguiTextCommandSurfaceRootFactory::new().retain(token),
-        Err(EguiTextCommandSurfaceRootFactoryError::InvalidToken(
-            "host target is empty"
-        ))
-    ));
+    assert!(format!("{revision_conflict:?}").contains("RevisionConflict"));
+
+    let decode = EguiTextCommandSurfaceRootFactoryError::Decode("corrupt token".to_string());
+    assert_eq!(
+        decode.to_string(),
+        "root presentation token decode failed: corrupt token"
+    );
+    assert!(format!("{decode:?}").contains("Decode"));
+
+    let root = EguiTextCommandSurfaceRootFactoryError::Root("upstream error".to_string());
+    assert_eq!(root.to_string(), "upstream error");
+    assert!(format!("{root:?}").contains("Root"));
+
+    let opaque_host_effect = EguiTextCommandSurfaceRootFactoryError::OpaqueHostEffect;
+    assert_eq!(
+        opaque_host_effect.to_string(),
+        "opaque host effect router failed"
+    );
+    assert!(format!("{opaque_host_effect:?}").contains("OpaqueHostEffect"));
+
+    let opaque_host_effect_rejected =
+        EguiTextCommandSurfaceRootFactoryError::OpaqueHostEffectRejected;
+    assert_eq!(
+        opaque_host_effect_rejected.to_string(),
+        "opaque host effect batch was rejected"
+    );
+    assert!(format!("{opaque_host_effect_rejected:?}").contains("OpaqueHostEffectRejected"));
+
+    let duplicate_lease = EguiTextCommandSurfaceRootFactoryError::DuplicateLease { revision: 11 };
+    assert_eq!(
+        duplicate_lease.to_string(),
+        "root lease revision 11 was already consumed"
+    );
+    assert!(format!("{duplicate_lease:?}").contains("DuplicateLease"));
+
+    let surface_conversion = EguiTextCommandSurfaceRootFactoryError::from(
+        crate::text_command_surface::EguiTextCommandSurfaceError::DuplicateCommandFamilyMount {
+            family: katana_ui_core::molecule::command_chrome::CommandChromeFamilyId::new(
+                "duplicate",
+            ),
+        },
+    );
+    assert_eq!(
+        surface_conversion.to_string(),
+        "command family is mounted in both primary and floating slots"
+    );
+
+    let root_conversion = EguiTextCommandSurfaceRootFactoryError::from(
+        crate::text_command_surface::EguiTextCommandSurfaceRootError::Serialization(
+            "root serialization".to_owned(),
+        ),
+    );
+    assert_eq!(
+        root_conversion.to_string(),
+        "text-command root serialization failed: root serialization"
+    );
 }

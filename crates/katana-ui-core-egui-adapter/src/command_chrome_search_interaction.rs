@@ -38,44 +38,40 @@ pub(super) fn query_key_events(
     if !query_focused {
         return Vec::new();
     }
-    ui.input(|input| input.events.clone())
-        .into_iter()
-        .filter_map(|event| match event {
-            egui::Event::Key {
-                key,
-                pressed: true,
-                modifiers,
-                ..
-            } => query_key_action(key, modifiers.shift),
-            _ => None,
-        })
-        .flat_map(|action| strip.apply_action(action))
-        .collect()
-}
-
-fn query_key_action(key: egui::Key, shift: bool) -> Option<CommandChromeSearchAction> {
-    match key {
-        egui::Key::Enter => Some(navigate_action(shift)),
-        egui::Key::ArrowDown => Some(navigate_action(false)),
-        egui::Key::ArrowUp => Some(navigate_action(true)),
-        egui::Key::Escape => Some(CommandChromeSearchAction::RequestClose),
-        _ => None,
+    let input_events = ui.input(|input| input.events.clone());
+    let mut routed_events = Vec::new();
+    for event in input_events {
+        if let egui::Event::Key {
+            key,
+            pressed: true,
+            modifiers,
+            ..
+        } = event
+        {
+            routed_events.extend(route_pressed_key(strip, key, modifiers));
+        }
     }
+    routed_events
 }
 
-fn navigate_action(previous: bool) -> CommandChromeSearchAction {
-    CommandChromeSearchAction::Strip {
-        action: SearchControlStripAction::Navigate(if previous {
-            SearchNavigationDirection::Previous
-        } else {
-            SearchNavigationDirection::Next
-        }),
+fn route_pressed_key(
+    strip: &mut CommandChromeSearchStrip,
+    key: egui::Key,
+    modifiers: egui::Modifiers,
+) -> Vec<CommandChromeSearchEvent> {
+    match key {
+        egui::Key::Enter => navigate(strip, modifiers.shift),
+        egui::Key::ArrowDown => navigate(strip, false),
+        egui::Key::ArrowUp => navigate(strip, true),
+        egui::Key::Escape => strip.apply_action(CommandChromeSearchAction::RequestClose),
+        _ => Vec::new(),
     }
 }
 
 pub(super) fn query_input_policy() -> EguiTextSurfaceInputPolicy {
     EguiTextSurfaceInputPolicy::default()
         .without_context_target()
+        .with_text_input_target()
         .suppress(EguiTextSurfaceKey::Enter)
         .suppress(EguiTextSurfaceKey::Escape)
         .suppress(EguiTextSurfaceKey::ArrowUp)
@@ -111,21 +107,16 @@ pub(super) fn bounds(
     )
 }
 
-#[cfg(test)]
-mod tests {
-    use super::query_key_action;
-
-    #[test]
-    fn query_key_classification_covers_navigation_close_and_unhandled_keys() {
-        for (key, shift) in [
-            (egui::Key::Enter, true),
-            (egui::Key::Enter, false),
-            (egui::Key::ArrowDown, true),
-            (egui::Key::ArrowUp, false),
-            (egui::Key::Escape, false),
-        ] {
-            assert!(query_key_action(key, shift).is_some());
-        }
-        assert_eq!(query_key_action(egui::Key::Tab, false), None);
-    }
+fn navigate(strip: &mut CommandChromeSearchStrip, previous: bool) -> Vec<CommandChromeSearchEvent> {
+    strip.apply_action(CommandChromeSearchAction::Strip {
+        action: SearchControlStripAction::Navigate(if previous {
+            SearchNavigationDirection::Previous
+        } else {
+            SearchNavigationDirection::Next
+        }),
+    })
 }
+
+#[cfg(test)]
+#[path = "command_chrome_search_interaction_tests.rs"]
+mod tests;

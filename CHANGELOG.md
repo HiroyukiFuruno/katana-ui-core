@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-08-30
+
+### Added
+
+- Added a generic typed pointer gesture contract for pan, smooth-scroll, pinch/trackpad zoom, and fullscreen state propagation through KUC-owned hit targets.
+- Added the retained full-editor root projection and cross-platform text-raster evidence required by downstream editor hosts.
+- Added issue-first dependency-evidence hooks and post-publication branch/worktree cleanup automation.
+
+### Changed
+
+- Consolidated all outstanding KUC release requirements into one patch release and updated compatible direct, transitive, and lockfile dependencies.
+- Kept crates.io publication in GitHub Actions, including a tag-bound retry workflow; local registry login is not part of the release flow.
+
+### Fixed
+
+- Added real `egui::RawInput` pointer-resolution regressions and restored strict line/function coverage requirements without exclusions or threshold changes.
+- Preserved legacy opaque host-token behavior while applying explicit command-family identities only through the versioned envelope.
+
 ## [0.3.1] - 2026-08-28
 
 ### Added

@@ -1,4 +1,4 @@
-use super::DiagnosticId;
+use super::{DiagnosticId, DiagnosticScopeKey};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -22,6 +22,9 @@ pub enum DiagnosticsListEvent {
         skipped_ids: Vec<(DiagnosticId, BulkFixSkipReason)>,
     },
     FilterChanged,
+    ScopeSelected {
+        scope_key: DiagnosticScopeKey,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

@@ -20,6 +20,7 @@ mod skeleton_cluster;
 mod state;
 pub mod status_bar;
 pub mod structured;
+pub mod tab_strip_icon_catalog;
 mod toast_stack_manager;
 pub mod toolbar;
 mod virtualization;

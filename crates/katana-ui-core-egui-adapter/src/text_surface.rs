@@ -3,20 +3,21 @@ mod adapter;
 mod artifact_model;
 mod controlled_focus;
 mod controlled_scroll;
+mod events;
 mod gutter_icon;
 mod gutter_interaction;
-mod input;
+mod keyboard;
 mod measurement;
 mod model;
+mod model_paint;
 mod paint;
-mod paint_layers;
 mod raster;
-mod render;
 
 pub use artifact_model::{
     EguiTextSurfaceError, EguiTextSurfaceFrameRecord, EguiTextSurfaceOutput,
     TextSurfaceArtifactFrame, TextSurfaceContextTargetAnchor,
 };
+pub use model::SharedTextMetrics;
 pub use model::{
     EguiTextSurfaceAdapter, EguiTextSurfaceDrawLayer, EguiTextSurfaceInputPolicy,
     EguiTextSurfaceKey, TextSurfaceAnnotationPaint, TextSurfaceGutterPaint,

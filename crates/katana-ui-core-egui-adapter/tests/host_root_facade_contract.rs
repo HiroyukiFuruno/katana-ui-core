@@ -21,6 +21,10 @@ use katana_ui_core_egui_adapter::text_command_surface::{
     EguiTextCommandSurfaceRootEventTransport, EguiTextCommandSurfaceRootFactory,
     EguiTextCommandSurfaceRootFactoryError, EguiTextCommandSurfaceSearchPresentation,
     KucOpaqueHostEffectBatch, KucRootEventBatchContext, KucRootEventBatchForwarder,
+    TabStripCorrelation, TabStripGroupCapabilities, TabStripGroupDescriptor,
+    TabStripGroupPopupPresentation, TabStripGroupTarget, TabStripMenuEntry, TabStripMenuOperation,
+    TabStripProjection, TabStripProjectionLease, TabStripTabCapabilities, TabStripTabDescriptor,
+    TabStripTabTarget, TabStripText,
 };
 use katana_ui_core_egui_adapter::text_command_surface::{
     EguiTextCommandSurfacePresentation, TextCommandSurfaceStyle,
@@ -154,7 +158,7 @@ fn host_context_lease(
         revision,
         b"host-root-context-target".to_vec(),
         host_context_presentation(),
-        TextCommandSurfaceStyle::standard(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
     )
     .expect("host context token");
     katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceHostProjectionLease::new(
@@ -281,7 +285,7 @@ fn complex_host_context_lease(
         revision,
         b"complex-host-root-context-target".to_vec(),
         complex_host_context_presentation(),
-        TextCommandSurfaceStyle::standard(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
     )
     .expect("complex host context token");
     katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceHostProjectionLease::new(
@@ -429,52 +433,63 @@ fn public_facade_compiles_with_opaque_tokens_and_one_shot_transport() {
 
 #[test]
 fn opaque_tokens_and_transport_have_no_clone_or_serialize_derives() {
-    let source = include_str!("../src/text_command_surface/host_root.rs");
+    let source = include_str!("../src/text_command_surface/host_root/types.rs");
     for type_name in [
         "EguiTextCommandSurfaceHostTargetToken",
         "EguiTextCommandSurfacePresentationToken",
     ] {
-        let declaration = source
-            .split_once(&format!("pub struct {type_name}"))
-            .and_then(|(_, value)| value.split_once("impl "))
-            .map(|(value, _)| value)
+        let marker = format!("pub struct {type_name}");
+        let (prefix, declaration) = source
+            .split_once(&marker)
             .expect("opaque token declaration was not found");
-        assert!(!declaration.contains("Clone"), "{type_name} became Clone");
+        let attributes = prefix
+            .rsplit_once("\n\n")
+            .map_or(prefix, |(_, value)| value);
+        let declaration = declaration
+            .split_once("\n}")
+            .map_or(declaration, |(value, _)| value);
+        assert!(!attributes.contains("Clone"), "{type_name} became Clone");
         assert!(
-            !declaration.contains("Serialize"),
+            !attributes.contains("Serialize") && !declaration.contains("Serialize"),
             "{type_name} became Serialize"
         );
     }
 
     let event_source = include_str!("../src/text_command_surface/root_event.rs");
-    let transport = event_source
+    let (transport_prefix, transport) = event_source
         .split_once("pub struct EguiTextCommandSurfaceRootEventTransport")
-        .and_then(|(_, value)| value.split_once("impl std::fmt::Debug"))
-        .map(|(value, _)| value)
         .expect("opaque event transport declaration was not found");
-    assert!(!transport.contains("Clone"));
-    assert!(!transport.contains("Serialize"));
+    let transport_attributes = transport_prefix
+        .rsplit_once("\n\n")
+        .map_or(transport_prefix, |(_, value)| value);
+    let transport = transport
+        .split_once("\n}")
+        .map_or(transport, |(value, _)| value);
+    assert!(!transport_attributes.contains("Clone"));
+    assert!(!transport_attributes.contains("Serialize") && !transport.contains("Serialize"));
 }
 
 #[test]
 fn public_facade_signatures_reject_child_and_presentation_concrete_types() {
-    let source = include_str!("../src/text_command_surface/host_root.rs");
+    let root_source = include_str!("../src/text_command_surface/host_root.rs");
+    let facade_source = include_str!("../src/text_command_surface/host_root_facade.rs");
+    let types_source = include_str!("../src/text_command_surface/host_root/types.rs");
     let public_sections = [
-        source
+        root_source
             .split_once("impl EguiTextCommandSurfaceRootFactory")
             .and_then(|(_, value)| {
                 value.split_once("impl Default for EguiTextCommandSurfaceRootFactory")
             })
             .map(|(value, _)| value),
-        source
+        facade_source
             .split_once("impl EguiTextCommandSurfaceHostRoot")
-            .and_then(|(_, value)| value.split_once("/// Closed root record"))
+            .and_then(|(_, value)| value.split_once("impl EguiTextCommandSurfaceHostRootFrame"))
             .map(|(value, _)| value),
-        source
+        facade_source
             .split_once("impl EguiTextCommandSurfaceHostRootFrame")
-            .and_then(|(_, value)| value.split_once("/// Errors raised"))
+            .and_then(|(_, value)| value.split_once("impl std::fmt::Debug"))
             .map(|(value, _)| value),
-        source
+        types_source
             .split_once("/// Errors raised")
             .and_then(|(_, value)| value.split_once("#[derive(Deserialize, Serialize)]"))
             .map(|(value, _)| value),
@@ -508,7 +523,8 @@ fn public_facade_signatures_reject_child_and_presentation_concrete_types() {
             );
         }
     }
-    assert!(!source.contains("pub fn with_text_raster_config"));
+    assert!(!root_source.contains("pub fn with_text_raster_config"));
+    assert!(!facade_source.contains("pub fn with_text_raster_config"));
 }
 
 #[test]
@@ -543,7 +559,7 @@ fn compatibility_types_are_hidden_and_storybook_uses_only_the_facade_root() {
 
 #[test]
 fn host_projection_boundary_keeps_target_bytes_and_rgba_private() {
-    let source = include_str!("../src/text_command_surface/host_root.rs");
+    let source = include_str!("../src/text_command_surface/host_root/types.rs");
     assert!(source.contains("pub struct EguiTextCommandSurfaceHostProjectionEncoder"));
     assert!(!source.contains("String::from_utf8"));
     assert!(
@@ -562,7 +578,7 @@ fn family_projection_round_trips_and_distinct_families_render() {
         1,
         b"family-target".to_vec(),
         host_context_presentation(),
-        TextCommandSurfaceStyle::standard(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
         EguiTextCommandSurfaceCommandFamilyProjection::new(
             Some(CommandChromeFamilyId::new("primary-family")),
             Some(CommandChromeFamilyId::new("floating-family")),
@@ -590,12 +606,161 @@ fn family_projection_round_trips_and_distinct_families_render() {
         2,
         b"family-target".to_vec(),
         host_context_presentation(),
-        TextCommandSurfaceStyle::standard(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
     )
     .expect("legacy synchronization token");
     let _ = root
         .synchronize(legacy)
         .expect("legacy synchronization must preserve compatibility");
+}
+
+#[test]
+fn host_lease_tab_strip_reaches_the_public_root_composite() {
+    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        1,
+        b"host-tab-composite-target",
+        host_context_presentation(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
+    )
+    .expect("host token");
+    let projection = TabStripProjection::new(
+        1,
+        TabStripCorrelation::from_opaque_bytes(b"host-tab-correlation"),
+    )
+    .tab(
+        TabStripTabDescriptor::new(
+            TabStripTabTarget::from_opaque_bytes(b"host-tab"),
+            TabStripText::new("日本語 ⭐️"),
+        )
+        .capabilities(TabStripTabCapabilities::new().active(true).selectable(true)),
+    );
+    let lease =
+        katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceHostProjectionLease::new(
+            token,
+            |_context| Ok(None),
+        )
+        .with_tab_strip(TabStripProjectionLease::new(projection));
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(lease)
+        .expect("tab-strip lease retain");
+    let context = egui::Context::default();
+
+    let frame = host_frame(&context, &mut root, Vec::new());
+
+    assert!(!frame.record().rgba_hash().is_empty());
+    assert!(!frame.record().paint_plan_hash().is_empty());
+}
+
+#[test]
+fn host_tab_strip_group_rename_retains_focus_through_pointer_and_egui_blur() {
+    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        1,
+        b"host-tab-rename-target",
+        host_context_presentation(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
+    )
+    .expect("host token");
+    let projection = TabStripProjection::new(
+        1,
+        TabStripCorrelation::from_opaque_bytes(b"host-tab-rename-correlation"),
+    )
+    .group(
+        TabStripGroupDescriptor::new(
+            TabStripGroupTarget::from_opaque_bytes(b"host-tab-rename-group"),
+            TabStripText::new("Group"),
+        )
+        .capabilities(
+            TabStripGroupCapabilities::new()
+                .menu_available(true)
+                .renamable(true),
+        )
+        .popup(
+            TabStripGroupPopupPresentation::new()
+                .rename_placeholder(TabStripText::new("Group name"))
+                .entry(TabStripMenuEntry::action(
+                    TabStripText::new("Ungroup"),
+                    TabStripText::new("Ungroup tabs"),
+                    TabStripMenuOperation::Ungroup,
+                )),
+        ),
+    );
+    let lease =
+        katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceHostProjectionLease::new(
+            token,
+            |_context| Ok(None),
+        )
+        .with_tab_strip(TabStripProjectionLease::new(projection));
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(lease)
+        .expect("tab-strip lease retain");
+    let context = egui::Context::default();
+
+    let closed = host_frame(&context, &mut root, Vec::new());
+    let closed_hash = closed.record().paint_plan_hash().to_owned();
+    let opened = host_frame(
+        &context,
+        &mut root,
+        vec![
+            egui::Event::PointerMoved(egui::pos2(20.0, 18.0)),
+            egui::Event::PointerButton {
+                pos: egui::pos2(20.0, 18.0),
+                button: egui::PointerButton::Secondary,
+                pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            },
+            egui::Event::PointerButton {
+                pos: egui::pos2(20.0, 18.0),
+                button: egui::PointerButton::Secondary,
+                pressed: false,
+                modifiers: egui::Modifiers::NONE,
+            },
+        ],
+    );
+    assert_ne!(opened.record().paint_plan_hash(), closed_hash);
+
+    let pressed = host_frame(
+        &context,
+        &mut root,
+        vec![
+            egui::Event::PointerMoved(egui::pos2(20.0, 50.0)),
+            egui::Event::PointerButton {
+                pos: egui::pos2(20.0, 50.0),
+                button: egui::PointerButton::Primary,
+                pressed: true,
+                modifiers: egui::Modifiers::NONE,
+            },
+            egui::Event::PointerButton {
+                pos: egui::pos2(20.0, 50.0),
+                button: egui::PointerButton::Primary,
+                pressed: false,
+                modifiers: egui::Modifiers::NONE,
+            },
+        ],
+    );
+    assert!(!pressed.record().paint_plan_hash().is_empty());
+
+    let mut reclaimed = None;
+    let mut full_output = context.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1280.0, 720.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            ui.memory_mut(|memory| memory.request_focus(egui::Id::new("external-focus-owner")));
+            reclaimed = Some(root.show(ui).expect("host root show after focus transfer"));
+        },
+    );
+    full_output.textures_delta.clear();
+    assert!(
+        !reclaimed
+            .expect("reclaimed host root frame")
+            .record()
+            .paint_plan_hash()
+            .is_empty()
+    );
 }
 
 #[test]
@@ -605,7 +770,7 @@ fn versioned_same_family_token_fails_closed_at_root_render() {
         1,
         b"duplicate-family-target".to_vec(),
         host_context_presentation(),
-        TextCommandSurfaceStyle::standard(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
         EguiTextCommandSurfaceCommandFamilyProjection::new(Some(family.clone()), Some(family)),
     )
     .expect("duplicate family token");
@@ -638,7 +803,7 @@ fn family_token_debug_does_not_expose_semantic_payload() {
         1,
         b"opaque-target".to_vec(),
         host_context_presentation(),
-        TextCommandSurfaceStyle::standard(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
         EguiTextCommandSurfaceCommandFamilyProjection::new(
             Some(CommandChromeFamilyId::new("primary-family")),
             Some(CommandChromeFamilyId::new("floating-family")),

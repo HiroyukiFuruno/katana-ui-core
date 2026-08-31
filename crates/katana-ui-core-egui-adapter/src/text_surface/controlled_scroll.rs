@@ -9,7 +9,8 @@ pub(super) fn synchronize_scroll_bounds(
     raster_frame: &RasterFrame,
     viewport_bounds: UiRect,
 ) {
-    surface.synchronize_scroll_bounds(raster_extent(raster_frame), viewport_bounds);
+    let layout = layout_for_surface(raster_frame, surface, TextSurfacePoint::new(0, 0));
+    surface.synchronize_scroll_bounds(layout.content_bounds, viewport_bounds);
 }
 
 pub(super) fn synchronize_scroll_request(
@@ -42,13 +43,4 @@ pub(super) fn scroll_request_event(value: &TextSurfaceScrollRequestResult) -> Te
             }
         }
     }
-}
-
-fn raster_extent(frame: &RasterFrame) -> UiRect {
-    UiRect::new(
-        0,
-        0,
-        u32::try_from(frame.raster.width).unwrap_or(u32::MAX),
-        u32::try_from(frame.raster.height).unwrap_or(u32::MAX),
-    )
 }

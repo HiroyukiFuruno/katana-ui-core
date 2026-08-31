@@ -17,8 +17,30 @@ pub(super) fn surface_from_presentation(
     let compatibility = command_families
         .cloned()
         .unwrap_or_else(EguiTextCommandSurfaceCommandFamilyProjection::legacy_compatibility);
-    surface.apply_command_family_projection(&compatibility);
+    apply_command_families(&mut surface, &compatibility);
     surface
+}
+
+fn apply_command_families(
+    surface: &mut EguiTextCommandSurface,
+    command_families: &EguiTextCommandSurfaceCommandFamilyProjection,
+) {
+    if let Some(toolbar) = surface.toolbar.take() {
+        surface.toolbar =
+            Some(toolbar.command_family(command_families.primary().cloned().unwrap_or_default()));
+    }
+    if let Some(toolbar) = surface.deferred_floating_toolbar.take() {
+        surface.deferred_floating_toolbar =
+            Some(toolbar.command_family(command_families.floating().cloned().unwrap_or_default()));
+    }
+    if let Some(floating) = surface.floating.take() {
+        surface.floating =
+            Some(floating.command_family(command_families.floating().cloned().unwrap_or_default()));
+    }
+    surface.synchronize_command_families(
+        command_families.primary().cloned(),
+        command_families.floating().cloned(),
+    );
 }
 
 fn text_surface_from_presentation(
@@ -26,10 +48,10 @@ fn text_surface_from_presentation(
     presentation: &EguiTextCommandSurfacePresentation,
 ) -> TextSurface {
     let text_presentation = &presentation.text;
-    let state_id = match presentation.text_state_id.clone() {
-        Some(state_id) => state_id,
-        None => UiStateId::new(format!("{identity}/text")),
-    };
+    let state_id = presentation
+        .text_state_id
+        .clone()
+        .unwrap_or_else(|| UiStateId::new(format!("{identity}/text")));
     let label = if text_presentation.accessibility_label.is_empty() {
         format!("{identity}/text")
     } else {
@@ -64,31 +86,5 @@ fn text_surface_from_presentation(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use katana_ui_core::render_model::UiTextSpan;
-    use katana_ui_core::text_surface::TextSurfacePresentation;
-
-    #[test]
-    fn missing_text_state_identity_uses_the_host_root_identity() {
-        let source = TextSurface::new(TextSurfaceProps::new(
-            TextArea::new("source").value("text"),
-            Vec::<UiTextSpan>::new(),
-            TextSurfaceViewport::new(0, 0, 1, 1),
-        ));
-        let presentation = EguiTextCommandSurfacePresentation {
-            text_state_id: None,
-            text: TextSurfacePresentation::from_props(source.props()),
-            toolbar: None,
-            floating: None,
-            search: None,
-            context_menu: None,
-        };
-
-        let surface = text_surface_from_presentation("opaque-root", &presentation);
-        assert_eq!(
-            surface.props().text_area.state_id().as_str(),
-            "opaque-root/text"
-        );
-    }
-}
+#[path = "host_root_surface_tests.rs"]
+mod tests;

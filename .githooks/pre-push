@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+push_updates="$(cat)"
 repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
@@ -18,3 +19,4 @@ fi
 
 echo "KUC pre-push guard: confirmation present; running release boundary guard."
 just kuc-guardrails
+printf '%s\n' "$push_updates" | bash scripts/hooks/kuc-hook-dispatcher.sh pre-push "${1:-}"

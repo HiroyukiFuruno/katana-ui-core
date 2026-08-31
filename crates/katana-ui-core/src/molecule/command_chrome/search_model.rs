@@ -159,6 +159,10 @@ pub struct SearchControlCapabilities {
     pub close: CommandChromeCapability,
 }
 
+#[cfg(test)]
+#[path = "search_model_tests.rs"]
+mod tests;
+
 impl SearchControlCapabilities {
     #[must_use]
     pub const fn all_available() -> Self {

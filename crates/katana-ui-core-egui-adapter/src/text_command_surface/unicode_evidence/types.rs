@@ -32,6 +32,19 @@ pub enum KucUnicodeColorGlyphEvidenceError {
         kind: &'static str,
     },
     InvalidCaret,
+    MissingAccessKitNode,
+    AccessKitRoleMismatch {
+        expected: String,
+        actual: String,
+    },
+    InvalidAccessKitNode {
+        reason: &'static str,
+    },
+    AccessKitValueMismatch,
+    AccessKitScalarSequenceMismatch {
+        expected: Vec<u32>,
+        actual: Vec<u32>,
+    },
     MissingHitTest {
         target: String,
     },
@@ -58,14 +71,3 @@ impl fmt::Display for KucUnicodeColorGlyphEvidenceError {
 }
 
 impl std::error::Error for KucUnicodeColorGlyphEvidenceError {}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn evidence_error_display_uses_typed_debug_without_payload_interpretation() {
-        let error = KucUnicodeColorGlyphEvidenceError::RootTrace("opaque".into());
-        assert_eq!(error.to_string(), "RootTrace(\"opaque\")");
-    }
-}

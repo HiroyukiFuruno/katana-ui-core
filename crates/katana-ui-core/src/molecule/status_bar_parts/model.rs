@@ -1,6 +1,10 @@
 use crate::render_model::UiTone;
 use serde::{Deserialize, Serialize};
 
+#[cfg(test)]
+#[path = "model_tests.rs"]
+mod tests;
+
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StatusBarMode {
     #[default]
@@ -77,6 +81,21 @@ impl ProgressMeterSpec {
     pub const fn shape(&self) -> ProgressMeterShape {
         self.shape
     }
+
+    #[must_use]
+    pub fn label_text(&self) -> &str {
+        &self.label
+    }
+
+    #[must_use]
+    pub const fn tone_value(&self) -> UiTone {
+        self.tone
+    }
+
+    #[must_use]
+    pub fn tooltip_text(&self) -> &str {
+        &self.tooltip
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -92,6 +111,16 @@ impl StatusBarPopoverSpec {
             title: title.into(),
             body: body.into(),
         }
+    }
+
+    #[must_use]
+    pub fn title(&self) -> &str {
+        &self.title
+    }
+
+    #[must_use]
+    pub fn body(&self) -> &str {
+        &self.body
     }
 }
 
@@ -173,6 +202,46 @@ impl StatusBarSegment {
     #[must_use]
     pub fn id(&self) -> &str {
         &self.id
+    }
+
+    #[must_use]
+    pub fn label(&self) -> &str {
+        &self.label
+    }
+
+    #[must_use]
+    pub fn icon_name(&self) -> Option<&str> {
+        self.icon.as_deref()
+    }
+
+    #[must_use]
+    pub const fn tone_value(&self) -> UiTone {
+        self.tone
+    }
+
+    #[must_use]
+    pub const fn alignment_value(&self) -> StatusBarSegmentAlignment {
+        self.alignment
+    }
+
+    #[must_use]
+    pub fn tooltip_text(&self) -> Option<&str> {
+        self.tooltip.as_deref()
+    }
+
+    #[must_use]
+    pub const fn is_interactive(&self) -> bool {
+        self.interactive
+    }
+
+    #[must_use]
+    pub const fn popover_spec(&self) -> Option<&StatusBarPopoverSpec> {
+        self.popover.as_ref()
+    }
+
+    #[must_use]
+    pub fn accessibility_label_text(&self) -> &str {
+        &self.accessibility_label
     }
 
     #[must_use]

@@ -15,7 +15,10 @@ RTK := env_var_or_default("RTK", `command -v rtk 2> /dev/null || true`)
 RTK_CMD := if RTK == "" { "" } else { RTK + " " }
 JOBS := env_var_or_default("JOBS", "2")
 CARGO := env_var_or_default("CARGO", RTK_CMD + "cargo")
+COVERAGE_BUILD_JOBS := env_var_or_default("CARGO_BUILD_JOBS", JOBS)
+COVERAGE_TEST_THREADS := env_var_or_default("COVERAGE_TEST_THREADS", "4")
 KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"
+KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-text-raster -p katana-ui-core-svg-raster -p katana-ui-core-egui-adapter -p katana-ui-core-storybook -p kuc-consumer-app"
 VERSION := env_var_or_default("VERSION", `awk -F '"' '/^version = / { print $2; exit }' Cargo.toml`)
 VERSION_BARE := replace(VERSION, "v", "")
 COVERAGE_MIN_LINES := "100"
@@ -31,11 +34,11 @@ help:
 
 # Apply Rust formatting
 fmt:
-    {{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}}
+    {{CARGO}} fmt {{KUC_FORMAT_PACKAGES}}
 
 # Check Rust formatting
 fmt-check:
-    {{CARGO}} fmt {{KUC_WORKSPACE_PACKAGES}} -- --check
+    {{CARGO}} fmt {{KUC_FORMAT_PACKAGES}} -- --check
 
 # Check workspace type safety
 check-types:
@@ -68,6 +71,7 @@ consumer-app-contract:
 kuc-guardrails: consumer-app-contract
     python3 scripts/test_kuc_guardrails.py
     python3 scripts/test_next_storybook_page_change.py
+    python3 scripts/coverage/run-test-binaries.py --self-test
     python3 scripts/test_storybook_reflection_audit.py
     python3 scripts/test_storybook_ui_harness.py
     python3 scripts/test_storybook_ui_harness_public_options.py
@@ -86,6 +90,8 @@ kuc-guardrails: consumer-app-contract
     python3 scripts/test_storybook_interaction_pending_only.py
     python3 scripts/test_verify_release_target.py
     python3 scripts/storybook_native_window_probe.py --self-test
+    python3 scripts/assert-strict-coverage-json.py --self-test
+    python3 scripts/coverage/image-runtime-id.py --self-test
     python3 scripts/assert-kuc-release-readiness.py --self-test
     python3 scripts/assert-kuc-release-readiness.py
     python3 scripts/assert-storybook-consumer-contract.py --self-test
@@ -101,6 +107,10 @@ kuw-guardrails: kuc-guardrails
 # Install repository-local git hooks
 install-hooks:
     bash scripts/install-git-hooks.sh
+
+# Run hook policy validation fixtures.
+hook:
+    python3 scripts/test_hook_policy.py
 
 # Run Storybook page structure checks
 storybook-ast-lint:
@@ -136,20 +146,48 @@ smoke-test: storybook-smoke storybook-interaction-smoke
 test: unit-test
 
 # Run coverage as a release confidence gate
-coverage:
+coverage: fmt-check ast-lint
     just coverage-container
+
+# Rerun the full strict suite while reusing unchanged coverage build artifacts during iteration.
+coverage-iterate: fmt-check ast-lint
+    just coverage-container-iterate
+
+# Add one focused adapter target to a complete full-workspace profile during iteration.
+# This never replaces the clean full-workspace coverage run in release-check.
+coverage-adapter-supplement test_target test_filter: fmt-check ast-lint
+    KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} just coverage-container-adapter-supplement
 
 # Run the Linux/Xvfb coverage implementation directly
 coverage-linux:
     CARGO="{{CARGO}}" bash scripts/run-strict-coverage.sh
 
+# Run the Linux/Xvfb iteration path without discarding unchanged coverage build artifacts.
+coverage-linux-iterate:
+    KUC_COVERAGE_REUSE=1 CARGO="{{CARGO}}" bash scripts/run-strict-coverage.sh
+
+# Supplement an unchanged full-workspace profile with one focused adapter test target on Linux.
+coverage-linux-adapter-supplement test_target test_filter:
+    KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} KUC_COVERAGE_REUSE=1 CARGO="{{CARGO}}" bash scripts/run-strict-coverage.sh
+
 # Run strict Linux/Xvfb coverage from macOS or Windows without opening a window
 coverage-container:
+    just _coverage-container-run 0
+
+# Run the containerized iteration path while keeping the final clean gate separate.
+coverage-container-iterate:
+    just _coverage-container-run 1
+
+# Supplement a complete full-workspace profile without rerunning unrelated tests.
+coverage-container-adapter-supplement:
+    just _coverage-container-run 1
+
+_coverage-container-run reuse:
     docker build --tag "{{COVERAGE_IMAGE}}" --file scripts/coverage/Dockerfile scripts/coverage
-    docker run --rm --volume "{{REPO_ROOT}}:/source:ro" --volume kuc-coverage-cargo-registry:/usr/local/cargo/registry --volume kuc-coverage-target:/tmp/kuc-target --workdir /source --env CARGO_BUILD_JOBS=1 --env CARGO_INCREMENTAL=0 --env CARGO_TARGET_DIR=/tmp/kuc-target "{{COVERAGE_IMAGE}}" bash scripts/coverage/run-in-container.sh
+    bash scripts/coverage/run-container.sh "{{COVERAGE_IMAGE}}" "{{REPO_ROOT}}" "{{COVERAGE_BUILD_JOBS}}" "{{COVERAGE_TEST_THREADS}}" "{{reuse}}"
 
 # Run the local quality gate
-check: fmt-check check-types lint unit-test ast-lint kuc-guardrails overlay-lifecycle-lint menu-button-contract
+check: fmt-check ast-lint check-types lint unit-test kuc-guardrails overlay-lifecycle-lint menu-button-contract
     @echo "checks passed"
 
 # Sweep old build artifacts locally (older than 7 days)
@@ -222,12 +260,16 @@ release-verify: check coverage
     bash scripts/release/verify-core-release-scope.sh "{{VERSION}}"
 
 # Verify release branch readiness before merging
-release-check: release-target-check release-readiness-check release-verify
+release-check: release-target-check fmt-check ast-lint release-readiness-check release-verify
     bash scripts/release/assert-crate-not-published.sh "{{VERSION}}"
 
 # Show recent Release workflow runs
 release-status:
     gh run list --repo {{RELEASE_REPO}} --workflow Release --limit 5
+
+# After public release, switch to the default branch and remove only merged release branches.
+release-local-cleanup:
+    python3 scripts/release/cleanup-release-branches.py --version "{{VERSION}}" --repo "{{RELEASE_REPO}}"
 
 # Check Storybook overlay/action pages in an opened state, not only initial mount.
 storybook-interaction-smoke:

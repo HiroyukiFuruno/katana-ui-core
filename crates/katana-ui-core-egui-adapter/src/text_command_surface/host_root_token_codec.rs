@@ -98,6 +98,26 @@ pub(super) fn encode_presentation(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use katana_ui_core::render_model::UiTextSpan;
+    use katana_ui_core::text_surface::{
+        TextSurface, TextSurfacePresentation, TextSurfaceProps, TextSurfaceViewport,
+    };
+
+    fn presentation() -> EguiTextCommandSurfacePresentation {
+        let surface = TextSurface::new(TextSurfaceProps::new(
+            katana_ui_core::atom::TextArea::new("host-token-codec").value("opaque text"),
+            Vec::<UiTextSpan>::new(),
+            TextSurfaceViewport::new(0, 0, 320, 180),
+        ));
+        EguiTextCommandSurfacePresentation {
+            text_state_id: None,
+            text: TextSurfacePresentation::from_props(surface.props()),
+            toolbar: None,
+            floating: None,
+            search: None,
+            context_menu: None,
+        }
+    }
 
     #[test]
     fn malformed_versioned_and_legacy_payloads_are_typed_decode_failures() {
@@ -130,8 +150,8 @@ mod tests {
         let token = encode_presentation_with_command_families(
             1,
             b"unit-family-target".to_vec(),
-            super::super::tests::presentation(),
-            TextCommandSurfaceStyle::standard(),
+            presentation(),
+            TextCommandSurfaceStyle::standard().expect("standard style"),
             EguiTextCommandSurfaceCommandFamilyProjection::default(),
         )
         .expect("versioned family token");

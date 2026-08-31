@@ -13,7 +13,10 @@ use katana_ui_core_egui_adapter::text_command_surface::{
 pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
     let context = egui::Context::default();
     context.enable_accesskit();
-    let mut adapter = EguiTextCommandSurfaceAdapter::default();
+    let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+    )
+    .expect("text command adapter");
     let mut surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture());
     let presentation = controlled_presentation(&surface, menu_presentation(true));
     assert!(surface.synchronize_presentation(presentation.clone()));
@@ -207,7 +210,10 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 fn assert_invalid_menu_icon_fails_closed() -> Result<(), Box<dyn std::error::Error>> {
     let context = egui::Context::default();
-    let mut adapter = EguiTextCommandSurfaceAdapter::default();
+    let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+    )
+    .expect("text command adapter");
     let mut surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture());
     let mut invalid_menu = menu_presentation(true);
     invalid_menu.items[0].icon = Some(UiIconProps::new("not-an-svg"));
@@ -243,7 +249,10 @@ fn assert_invalid_menu_icon_fails_closed() -> Result<(), Box<dyn std::error::Err
 
 fn assert_root_clamps_measured_menu() -> Result<(), Box<dyn std::error::Error>> {
     let context = egui::Context::default();
-    let mut adapter = EguiTextCommandSurfaceAdapter::default();
+    let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+    )
+    .expect("text command adapter");
     let mut surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture());
     let presentation = controlled_presentation(&surface, menu_presentation(true));
     assert!(surface.synchronize_presentation(presentation));

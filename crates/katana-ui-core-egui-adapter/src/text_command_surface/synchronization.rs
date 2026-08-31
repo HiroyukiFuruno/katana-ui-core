@@ -10,7 +10,9 @@ use katana_ui_core::molecule::structured::SearchControlStrip;
 impl EguiTextCommandSurface {
     /// Synchronizes generic controlled values without exposing mutable child models.
     pub fn synchronize_presentation(&mut self, value: EguiTextCommandSurfacePresentation) -> bool {
-        let mut changed = value
+        let mut changed = value.search.is_some() && self.search_closed_by_interaction;
+        self.search_closed_by_interaction = false;
+        changed |= value
             .text_state_id
             .is_some_and(|state_id| self.text.synchronize_state_id(state_id));
         changed |= self.text.synchronize_presentation(value.text);

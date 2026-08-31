@@ -1,5 +1,6 @@
 use super::artifact_model::{EguiTextSurfaceError, EguiTextSurfaceFrameRecord};
 use super::gutter_icon::marker_texture_operation;
+use super::model::SharedTextMetrics;
 use super::model::{
     EguiTextSurfaceDrawLayer, TextSurfacePaintOperation, TextSurfacePaintOperationKind,
     TextSurfacePaintPlan, TextSurfacePaintStyle, TextSurfacePaintTexture, TextSurfaceRasterStyle,
@@ -11,6 +12,10 @@ use katana_ui_core::text_surface::{TextSurfaceAnnotationStyle, TextSurfaceFrameR
 use katana_ui_core_svg_raster::UiSvgRasterizer;
 use katana_ui_core_text_raster::{PlatformTextRaster, PlatformTextRasterizer};
 
+mod layers;
+
+pub(super) use layers::PaintLayers;
+
 pub(super) fn build_paint_plan(
     rasterizer: &mut PlatformTextRasterizer,
     svg_rasterizer: &mut UiSvgRasterizer,
@@ -20,6 +25,7 @@ pub(super) fn build_paint_plan(
     style: &TextSurfacePaintStyle,
     raster_style: &TextSurfaceRasterStyle,
     scale_factor: f32,
+    metrics: &SharedTextMetrics,
 ) -> Result<TextSurfacePaintPlan, EguiTextSurfaceError> {
     let frame = &record.frame;
     let gutter_bounds = gutter_bounds(frame);
@@ -52,13 +58,13 @@ pub(super) fn build_paint_plan(
         } else if let Some(paint) = paint {
             label_style.fallback_color_rgba = paint.foreground_rgba;
         }
-        let label_raster_result = rasterize_gutter_label(
+        let label_raster = rasterize_gutter_label(
             rasterizer,
             &gutter.display_label,
             &label_style,
             scale_factor,
-        );
-        let label_raster = label_raster_result?;
+            metrics,
+        )?;
         let identity = format!(
             "gutter:{}:{}:{}:{label_style:?}",
             gutter.logical_row, gutter.visual_role, gutter.display_label,
@@ -279,47 +285,4 @@ fn egui_rect(bounds: UiRect) -> egui::Rect {
 
 fn color([red, green, blue, alpha]: [u8; RGBA_CHANNEL_COUNT]) -> egui::Color32 {
     egui::Color32::from_rgba_unmultiplied(red, green, blue, alpha)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn paint_surface_executes_fill_and_texture_operations() {
-        let bounds = UiRect::new(1, 2, 3, 4);
-        let plan = TextSurfacePaintPlan {
-            surface_bounds: bounds,
-            viewport_bounds: bounds,
-            operations: vec![
-                fill(
-                    EguiTextSurfaceDrawLayer::Background,
-                    bounds,
-                    bounds,
-                    [1, 2, 3, 4],
-                ),
-                texture(
-                    EguiTextSurfaceDrawLayer::TextTexture,
-                    bounds,
-                    UiRect::new(1, 2, 1, 1),
-                    TextSurfacePaintTexture {
-                        identity: "paint-surface-texture".into(),
-                        width: 1,
-                        height: 1,
-                        rgba_pixels: vec![255, 255, 255, 255],
-                    },
-                ),
-            ],
-        };
-        let context = egui::Context::default();
-        let mut cache = RgbaTextureCache::new(2);
-        crate::run_ui_discard(&context, Default::default(), |ui| {
-            paint_surface(ui, &mut cache, &plan);
-        });
-        assert_eq!(
-            color([1, 2, 3, 4]),
-            egui::Color32::from_rgba_unmultiplied(1, 2, 3, 4)
-        );
-        assert_eq!(egui_rect(bounds).min, egui::pos2(1.0, 2.0));
-    }
 }

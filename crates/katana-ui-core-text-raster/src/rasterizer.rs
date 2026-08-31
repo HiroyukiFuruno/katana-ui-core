@@ -2,8 +2,8 @@ use crate::catalog::PlatformFontCatalog;
 use crate::config::PlatformTextRasterConfig;
 use crate::layout::TextLayoutRasterizer;
 use crate::model::{
-    PlatformTextRaster, PlatformTextRasterError, PlatformTextRasterReport,
-    PlatformTextRasterRequest, PlatformTextRasterStats,
+    PlatformTextMetrics, PlatformTextMetricsRequest, PlatformTextRaster, PlatformTextRasterError,
+    PlatformTextRasterReport, PlatformTextRasterRequest, PlatformTextRasterStats,
 };
 use cosmic_text::SwashCache;
 use std::collections::{HashMap, VecDeque};
@@ -25,7 +25,7 @@ impl PlatformTextRasterizer {
     #[must_use]
     pub fn new(config: PlatformTextRasterConfig) -> Self {
         let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
-        Self::from_catalog(catalog, config)
+        Self::from_matching_catalog(catalog, config)
     }
 
     pub fn with_catalog(
@@ -35,26 +35,7 @@ impl PlatformTextRasterizer {
         if catalog.policy() != &config.catalog_policy() {
             return Err(PlatformTextRasterError::CatalogConfigurationMismatch);
         }
-        Ok(Self::from_catalog(catalog, config))
-    }
-
-    /// Reuses a caller-owned catalog while retaining only the cache policy from configuration.
-    #[must_use]
-    pub fn with_catalog_cache_capacity(
-        catalog: Arc<PlatformFontCatalog>,
-        cache_capacity: usize,
-    ) -> Self {
-        Self {
-            catalog,
-            swash_cache: SwashCache::new(),
-            cache: HashMap::new(),
-            cache_order: VecDeque::new(),
-            cache_capacity: cache_capacity.max(MIN_CACHE_CAPACITY),
-            stats: PlatformTextRasterStats {
-                font_database_loads: INITIAL_FONT_DATABASE_LOADS,
-                ..PlatformTextRasterStats::default()
-            },
-        }
+        Ok(Self::from_matching_catalog(catalog, config))
     }
 
     #[must_use]
@@ -62,8 +43,21 @@ impl PlatformTextRasterizer {
         Arc::clone(&self.catalog)
     }
 
-    fn from_catalog(catalog: Arc<PlatformFontCatalog>, config: PlatformTextRasterConfig) -> Self {
-        Self::with_catalog_cache_capacity(catalog, config.cache_capacity)
+    pub(crate) fn from_matching_catalog(
+        catalog: Arc<PlatformFontCatalog>,
+        config: PlatformTextRasterConfig,
+    ) -> Self {
+        Self {
+            catalog,
+            swash_cache: SwashCache::new(),
+            cache: HashMap::new(),
+            cache_order: VecDeque::new(),
+            cache_capacity: config.cache_capacity.max(MIN_CACHE_CAPACITY),
+            stats: PlatformTextRasterStats {
+                font_database_loads: INITIAL_FONT_DATABASE_LOADS,
+                ..PlatformTextRasterStats::default()
+            },
+        }
     }
 
     fn request_contains_emoji(request: &PlatformTextRasterRequest) -> bool {
@@ -100,6 +94,21 @@ impl PlatformTextRasterizer {
         self.insert_cache(key, raster.clone());
         raster.report = self.report(false);
         Ok(raster)
+    }
+
+    pub fn measure_text(
+        &mut self,
+        request: &PlatformTextMetricsRequest,
+    ) -> Result<PlatformTextMetrics, PlatformTextRasterError> {
+        if request.text.is_empty() {
+            return Err(PlatformTextRasterError::EmptyText);
+        }
+        let emoji_face = self.catalog.emoji_face().clone();
+        self.catalog
+            .with_font_system(|font_system| {
+                TextLayoutRasterizer::measure(font_system, request, &emoji_face)
+            })
+            .map_err(|_| PlatformTextRasterError::CatalogAccess)?
     }
 
     fn cached_result(&self, cached: &PlatformTextRaster) -> PlatformTextRaster {

@@ -1,0 +1,153 @@
+#[test]
+fn fingerprint_tracks_target_and_presentation_without_debug_leaks() {
+    let base = SanitizedSearchProjectionBuilder::new()
+        .localized_presentation(localized("次へ"))
+        .next_enabled(true)
+        .next_target(SanitizedSearchTarget::from_opaque_bytes([1, 2, 3]))
+        .build()
+        .expect("検証済み");
+    let same = SanitizedSearchProjectionBuilder::new()
+        .localized_presentation(localized("次へ"))
+        .next_enabled(true)
+        .next_target(SanitizedSearchTarget::from_opaque_bytes([1, 2, 3]))
+        .build()
+        .expect("検証済み");
+    let changed_presentation = SanitizedSearchProjectionBuilder::new()
+        .localized_presentation(localized("次の一致"))
+        .next_enabled(true)
+        .next_target(SanitizedSearchTarget::from_opaque_bytes([1, 2, 3]))
+        .build()
+        .expect("検証済み");
+    let changed_target = SanitizedSearchProjectionBuilder::new()
+        .localized_presentation(localized("次へ"))
+        .next_enabled(true)
+        .next_target(SanitizedSearchTarget::from_opaque_bytes([1, 2, 4]))
+        .build()
+        .expect("検証済み");
+
+    assert!(base.same_as(&same));
+    assert!(!base.same_as(&changed_presentation));
+    assert!(!base.same_as(&changed_target));
+
+    let debug = format!("{base:?}");
+    assert!(!debug.contains("検索"));
+    assert!(!debug.contains("置換"));
+    assert!(!debug.contains("次へ"));
+    assert!(!debug.contains("⭐️"));
+    assert!(!debug.contains("1, 2, 3"));
+}
+
+#[test]
+fn builder_projects_all_search_operations_and_states() {
+    let target = || SanitizedSearchTarget::from_opaque_bytes([1, 2, 3]);
+    let projection = SanitizedSearchProjectionBuilder::new()
+        .localized_presentation(localized("次へ"))
+        .query_target(target())
+        .replacement_target(target())
+        .match_case_target(target())
+        .match_case_state(true)
+        .whole_word_target(target())
+        .whole_word_state(true)
+        .regex_target(target())
+        .regex_state(true)
+        .close_enabled(true)
+        .close_target(target())
+        .next_enabled(true)
+        .next_target(target())
+        .previous_enabled(true)
+        .previous_target(target())
+        .replace_enabled(true)
+        .replace_target(target())
+        .replace_all_enabled(true)
+        .replace_all_target(target())
+        .build()
+        .expect("all configured operations have targets");
+
+    assert!(projection.query.enabled);
+    assert!(projection.replacement.enabled);
+    assert!(projection.match_case.current);
+    assert!(projection.whole_word.current);
+    assert!(projection.regex.current);
+    assert!(projection.close.enabled);
+    assert!(projection.next.enabled);
+    assert!(projection.previous.enabled);
+    assert!(projection.replace.enabled);
+    assert!(projection.replace_all.enabled);
+}
+
+#[test]
+fn result_and_unavailable_presentation_fail_closed_independently() {
+    let invalid_result = SanitizedSearchLocalizedPresentation::new(
+        localized("次へ").controls,
+        localized("次へ").operations,
+        SanitizedSearchResultSummaryPresentation::new(
+            "",
+            "一致なし ⭐️",
+            "一件 ⭐️",
+            "位置 ⭐️",
+            "件数 ⭐️",
+        ),
+        localized("次へ").unavailable,
+    );
+    assert_eq!(
+        SanitizedSearchProjectionBuilder::new()
+            .localized_presentation(invalid_result)
+            .build()
+            .expect_err("empty result presentation"),
+        SanitizedSearchProjectionBuildError::EmptyPresentationText
+    );
+
+    let invalid_unavailable = SanitizedSearchLocalizedPresentation::new(
+        localized("次へ").controls,
+        localized("次へ").operations,
+        localized("次へ").result_summary,
+        SanitizedSearchUnavailablePresentation::new(
+            "",
+            "置換は利用不可",
+            "移動は利用不可",
+            "閉じる操作は利用不可",
+        ),
+    );
+    assert_eq!(
+        SanitizedSearchProjectionBuilder::new()
+            .localized_presentation(invalid_unavailable)
+            .build()
+            .expect_err("empty unavailable presentation"),
+        SanitizedSearchProjectionBuildError::EmptyPresentationText
+    );
+}
+
+#[test]
+fn debug_views_keep_localized_text_and_opaque_targets_private() {
+    let presentation = localized("次の一致");
+    let target = SanitizedSearchTarget::from_opaque_bytes([91, 92, 93]);
+    let operation = SanitizedSearchOperation::new();
+    let builder = SanitizedSearchProjectionBuilder::default()
+        .localized_presentation(presentation.clone())
+        .next_enabled(true)
+        .next_target(target);
+
+    let debug_views = [
+        format!("{:?}", presentation.controls.strip),
+        format!("{:?}", presentation.controls),
+        format!("{:?}", presentation.operations),
+        format!("{:?}", presentation.result_summary),
+        format!("{:?}", presentation.unavailable),
+        format!("{presentation:?}"),
+        format!("{operation:?}"),
+        format!("{builder:?}"),
+    ];
+    for debug in debug_views {
+        assert!(!debug.contains("次の一致"));
+        assert!(!debug.contains("91"));
+        assert!(!debug.contains("92"));
+        assert!(!debug.contains("93"));
+        assert!(!debug.contains("⭐️"));
+    }
+
+    let target = SanitizedSearchTarget::from_opaque_bytes([91, 92, 93]);
+    let target_debug = format!("{target:?}");
+    assert!(!target_debug.contains("91"));
+    assert!(!target_debug.contains("92"));
+    assert!(!target_debug.contains("93"));
+}

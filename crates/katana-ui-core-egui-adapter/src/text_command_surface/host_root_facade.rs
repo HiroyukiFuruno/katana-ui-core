@@ -1,3 +1,5 @@
+#[cfg(test)]
+use super::super::root::EguiTextCommandSurfaceRootOutput;
 use super::super::root::{
     EguiTextCommandSurfaceRootEventBatchForwardError,
     EguiTextCommandSurfaceRootEventForwardingReceipt, KucRootEventBatchForwarder,
@@ -10,6 +12,14 @@ use super::{
 };
 
 impl EguiTextCommandSurfaceHostRoot {
+    #[cfg(test)]
+    pub(crate) fn show_output_for_test(
+        &mut self,
+        ui: &mut egui::Ui,
+    ) -> Result<EguiTextCommandSurfaceRootOutput, EguiTextCommandSurfaceRootFactoryError> {
+        self.process.show(ui)
+    }
+
     /// Applies a newer opaque token without exposing child models or layout facts.
     pub fn synchronize(
         &mut self,
@@ -26,11 +36,16 @@ impl EguiTextCommandSurfaceHostRoot {
         &mut self,
         lease: EguiTextCommandSurfaceHostProjectionLease,
     ) -> Result<bool, EguiTextCommandSurfaceRootFactoryError> {
-        let (token, router) = lease.into_parts();
+        let (token, router, source_address, tab_strip, status_diagnostics, editor_viewport) =
+            lease.into_parts();
         self.process.synchronize_with_router(
             token.revision,
             super::host_root_token_codec::decode_token(&token)?,
             router,
+            source_address,
+            tab_strip,
+            status_diagnostics,
+            editor_viewport,
         )
     }
 

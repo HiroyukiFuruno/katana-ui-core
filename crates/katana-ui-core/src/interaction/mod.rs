@@ -4,6 +4,7 @@ mod action_builders;
 mod action_name;
 mod conversion;
 pub mod drag_and_drop;
+mod gesture;
 mod molecule_action_builders;
 pub mod motion;
 pub mod placement;
@@ -15,6 +16,11 @@ mod typed_target;
 pub mod virtualization;
 
 pub use action::UiAction;
+pub use gesture::{
+    UiGestureSurface, UiSurfaceGestureCapabilities, UiSurfaceGestureCommand,
+    UiSurfaceGestureController, UiSurfaceGestureEvent, UiSurfaceGestureInput,
+    UiSurfaceGestureOutcome, UiSurfaceGestureOverride, UiSurfaceHostEvent, UiSurfacePoint,
+};
 pub use motion::{
     MotionContext, MotionDisableContext, MotionDistanceToken, MotionDurationToken,
     MotionEasingToken, MotionPrimitive, MotionPrimitiveKind, MotionResolver, MotionSnapshot,

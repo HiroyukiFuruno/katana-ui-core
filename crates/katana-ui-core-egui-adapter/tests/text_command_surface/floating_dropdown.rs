@@ -10,7 +10,10 @@ use katana_ui_core_egui_adapter::text_command_surface::{
 pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
     let context = egui::Context::default();
     context.enable_accesskit();
-    let mut adapter = EguiTextCommandSurfaceAdapter::default();
+    let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+    )
+    .expect("text command adapter");
     let mut surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture())
         .with_toolbar(fixtures::toolbar_fixture())
         .with_floating_toolbar(
@@ -185,7 +188,10 @@ pub(crate) fn run() -> Result<(), Box<dyn std::error::Error>> {
 pub(crate) fn last_item_run() -> Result<(), Box<dyn std::error::Error>> {
     let context = egui::Context::default();
     context.enable_accesskit();
-    let mut adapter = EguiTextCommandSurfaceAdapter::default();
+    let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(
+        katana_ui_core_text_raster::PlatformTextRasterConfig::default(),
+    )
+    .expect("text command adapter");
     let mut surface = EguiTextCommandSurface::new(fixtures::text_surface_fixture())
         .with_floating_toolbar(
             fixtures::toolbar_fixture(),

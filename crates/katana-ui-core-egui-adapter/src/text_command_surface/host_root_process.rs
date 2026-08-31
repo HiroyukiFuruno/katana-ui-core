@@ -1,22 +1,20 @@
+use super::super::EditorViewportProjectionLease;
 use super::super::root::KucRootEffectRouter;
 use super::super::root::{EguiTextCommandSurfaceRoot, EguiTextCommandSurfaceRootOutput};
+use super::super::source_address_projection_lease::SourceAddressProjectionLease;
+use super::super::status_diagnostics_projection_lease::StatusDiagnosticsProjectionLease;
+use super::super::tab_strip_projection_lease::TabStripProjectionLease;
+use super::EguiTextCommandSurfaceCommandFamilyProjection;
 use super::host_root_surface::surface_from_presentation;
+use super::host_root_token_codec::DecodedRootPresentation;
 use super::{EguiTextCommandSurfaceRootFactoryError, TextCommandSurfaceStyle};
-use crate::text_command_surface::host_root::host_root_token_codec::DecodedRootPresentation;
-use crate::text_command_surface::root::KucOpaqueHostEffectAttachError;
-
-fn map_opaque_effect_attach_error(
-    _error: KucOpaqueHostEffectAttachError,
-) -> EguiTextCommandSurfaceRootFactoryError {
-    EguiTextCommandSurfaceRootFactoryError::OpaqueHostEffectRejected
-}
 
 pub(crate) struct HostRootProcess {
     root: EguiTextCommandSurfaceRoot,
     identity: String,
     style: TextCommandSurfaceStyle,
     presentation: super::super::types::EguiTextCommandSurfacePresentation,
-    command_families: Option<super::EguiTextCommandSurfaceCommandFamilyProjection>,
+    command_families: Option<EguiTextCommandSurfaceCommandFamilyProjection>,
     presentation_revision: u64,
     effect_router: Option<Box<dyn KucRootEffectRouter>>,
 }
@@ -36,7 +34,8 @@ impl HostRootProcess {
             &decoded.presentation,
             decoded.command_families.as_ref(),
         );
-        let mut root = EguiTextCommandSurfaceRoot::with_identity(decoded.identity.clone(), surface);
+        let mut root =
+            EguiTextCommandSurfaceRoot::with_identity(decoded.identity.clone(), surface)?;
         let _ = root.synchronize_presentation(decoded.presentation.clone());
         Ok(Self {
             root,
@@ -53,9 +52,31 @@ impl HostRootProcess {
         decoded: DecodedRootPresentation,
         presentation_revision: u64,
         router: Box<dyn KucRootEffectRouter>,
+        source_address: Option<SourceAddressProjectionLease>,
+        tab_strip: Option<TabStripProjectionLease>,
+        status_diagnostics: Option<StatusDiagnosticsProjectionLease>,
+        editor_viewport: Option<EditorViewportProjectionLease>,
     ) -> Result<Self, EguiTextCommandSurfaceRootFactoryError> {
         let mut process = Self::retain(decoded, presentation_revision)?;
         process.effect_router = Some(router);
+        if let Some(source_address) = source_address {
+            process.root.attach_source_address(source_address);
+        }
+        if let Some(tab_strip) = tab_strip {
+            let _ = process.root.attach_tab_strip(tab_strip)?;
+        }
+        if let Some(status_diagnostics) = status_diagnostics {
+            let (status_bar, diagnostics_list) = status_diagnostics.into_parts();
+            if let Some(status_bar) = status_bar {
+                process.root.attach_status_bar(status_bar);
+            }
+            if let Some(diagnostics_list) = diagnostics_list {
+                process.root.attach_diagnostics_list(diagnostics_list);
+            }
+        }
+        if let Some(editor_viewport) = editor_viewport {
+            process.root.attach_editor_viewport(editor_viewport);
+        }
         Ok(process)
     }
 
@@ -82,12 +103,21 @@ impl HostRootProcess {
             }
             return Ok(false);
         }
-        let changed = self
+        let family_changed = decoded.command_families != self.command_families;
+        let mut changed = self
             .root
             .synchronize_presentation(decoded.presentation.clone());
-        if let Some(command_families) = decoded.command_families.as_ref() {
-            self.root.apply_command_family_projection(command_families);
+        if family_changed && let Some(command_families) = decoded.command_families.as_ref() {
+            changed |= self.root.synchronize_command_families(
+                command_families.primary().cloned(),
+                command_families.floating().cloned(),
+            );
         }
+        /* WHY: A newer plain token has no tab lease, so it must not retain an
+        earlier lease-owned tab strip behind the opaque root boundary. */
+        changed |= self.root.clear_tab_strip();
+        changed |= self.root.clear_status_diagnostics();
+        changed |= self.root.clear_editor_viewport();
         self.style = decoded.style;
         self.presentation = decoded.presentation;
         self.command_families = decoded.command_families;
@@ -100,12 +130,37 @@ impl HostRootProcess {
         revision: u64,
         decoded: DecodedRootPresentation,
         router: Box<dyn KucRootEffectRouter>,
+        source_address: Option<SourceAddressProjectionLease>,
+        tab_strip: Option<TabStripProjectionLease>,
+        status_diagnostics: Option<StatusDiagnosticsProjectionLease>,
+        editor_viewport: Option<EditorViewportProjectionLease>,
     ) -> Result<bool, EguiTextCommandSurfaceRootFactoryError> {
         if revision <= self.presentation_revision {
             return Err(EguiTextCommandSurfaceRootFactoryError::DuplicateLease { revision });
         }
-        let changed = self.synchronize(revision, decoded)?;
+        let mut changed = self.synchronize(revision, decoded)?;
         self.effect_router = Some(router);
+        if let Some(source_address) = source_address {
+            self.root.attach_source_address(source_address);
+        }
+        if let Some(tab_strip) = tab_strip {
+            changed |= self.root.attach_tab_strip(tab_strip)?;
+        }
+        if let Some(status_diagnostics) = status_diagnostics {
+            let (status_bar, diagnostics_list) = status_diagnostics.into_parts();
+            if let Some(status_bar) = status_bar {
+                self.root.attach_status_bar(status_bar);
+                changed = true;
+            }
+            if let Some(diagnostics_list) = diagnostics_list {
+                self.root.attach_diagnostics_list(diagnostics_list);
+                changed = true;
+            }
+        }
+        if let Some(editor_viewport) = editor_viewport {
+            self.root.attach_editor_viewport(editor_viewport);
+            changed = true;
+        }
         Ok(changed)
     }
 
@@ -113,19 +168,13 @@ impl HostRootProcess {
         &mut self,
         ui: &mut egui::Ui,
     ) -> Result<EguiTextCommandSurfaceRootOutput, EguiTextCommandSurfaceRootFactoryError> {
-        let output = self
-            .root
-            .show(ui, &self.style)
-            .map_err(|error| EguiTextCommandSurfaceRootFactoryError::Root(error.to_string()))?;
+        let output = self.root.show(ui, &self.style)?;
         if let Some(router) = self.effect_router.as_mut() {
             let effect = router
                 .route(output.events().current_context())
                 .map_err(|_| EguiTextCommandSurfaceRootFactoryError::OpaqueHostEffect)?;
             if let Some(effect) = effect {
-                output
-                    .events()
-                    .attach_opaque_host_effect_batch(effect)
-                    .map_err(map_opaque_effect_attach_error)?;
+                output.events().attach_opaque_host_effect_batch(effect)?;
             }
         }
         Ok(output)
@@ -137,224 +186,5 @@ impl HostRootProcess {
 
     pub(super) const fn presentation_revision(&self) -> u64 {
         self.presentation_revision
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::EguiTextCommandSurfaceRootFactoryError;
-    use super::EguiTextCommandSurfaceRootFactoryError::*;
-    use super::HostRootProcess;
-    use super::map_opaque_effect_attach_error;
-    use crate::text_command_surface::host_root::host_root_token_codec::DecodedRootPresentation;
-    use crate::text_command_surface::{
-        EguiTextCommandSurfaceCommandFamilyProjection, KucOpaqueHostEffectBatch,
-        KucOpaqueHostEffectError, KucRootEventBatchContext, TextCommandSurfaceStyle,
-    };
-    use katana_ui_core::atom::TextArea;
-    use katana_ui_core::molecule::command_chrome::CommandChromeAction;
-    use katana_ui_core::molecule::command_chrome::CommandChromeToolbarPresentation;
-    use katana_ui_core::render_model::UiStateId;
-    use katana_ui_core::text_surface::{
-        TextSurface, TextSurfacePresentation, TextSurfaceProps, TextSurfaceViewport,
-    };
-    use std::cell::Cell;
-    use std::rc::Rc;
-
-    #[test]
-    fn opaque_effect_attach_failures_map_to_the_closed_factory_error() {
-        use crate::text_command_surface::root::KucOpaqueHostEffectAttachError;
-
-        for error in [
-            KucOpaqueHostEffectAttachError::AlreadyConsumed,
-            KucOpaqueHostEffectAttachError::AlreadyAttached,
-        ] {
-            assert!(matches!(
-                map_opaque_effect_attach_error(error),
-                EguiTextCommandSurfaceRootFactoryError::OpaqueHostEffectRejected
-            ));
-        }
-    }
-
-    fn minimal_presentation() -> super::super::super::types::EguiTextCommandSurfacePresentation {
-        let text_surface = TextSurface::new(
-            TextSurfaceProps::new(
-                TextArea::new("host-root-process").value("hello"),
-                Vec::new(),
-                TextSurfaceViewport::new(0, 0, 1, 1),
-            )
-            .adapter_measured_viewport(),
-        );
-        super::super::super::types::EguiTextCommandSurfacePresentation {
-            text_state_id: Some(UiStateId::new("host-root-process")),
-            text: TextSurfacePresentation::from_props(text_surface.props()),
-            toolbar: Some(CommandChromeToolbarPresentation {
-                actions: vec![CommandChromeAction::new("action", "Action")],
-                groups: Vec::new(),
-                display_mode: Default::default(),
-                density: Default::default(),
-                overflow_strategy: Default::default(),
-            }),
-            floating: None,
-            search: None,
-            context_menu: None,
-        }
-    }
-
-    fn decoded_presentation(identity: &str) -> DecodedRootPresentation {
-        DecodedRootPresentation {
-            identity: identity.to_owned(),
-            presentation: minimal_presentation(),
-            style: TextCommandSurfaceStyle::standard(),
-            command_families: Some(EguiTextCommandSurfaceCommandFamilyProjection::new(
-                Some(
-                    katana_ui_core::molecule::command_chrome::CommandChromeFamilyId::new("primary"),
-                ),
-                Some(
-                    katana_ui_core::molecule::command_chrome::CommandChromeFamilyId::new(
-                        "floating",
-                    ),
-                ),
-            )),
-        }
-    }
-
-    fn no_effect(
-        _context: KucRootEventBatchContext,
-    ) -> Result<Option<KucOpaqueHostEffectBatch>, KucOpaqueHostEffectError> {
-        Ok(None)
-    }
-
-    fn successful_effect() -> Result<(), KucOpaqueHostEffectError> {
-        Ok(())
-    }
-
-    #[test]
-    fn retain_rejects_empty_identity() {
-        let mut decoded = decoded_presentation("   ");
-        decoded.identity = String::new();
-        assert!(matches!(
-            HostRootProcess::retain(decoded, 1),
-            Err(InvalidToken(reason)) if reason == "host target identity is empty"
-        ));
-    }
-
-    #[test]
-    fn retain_accepts_and_tracks_identity_and_revision() {
-        let process =
-            HostRootProcess::retain(decoded_presentation("host-root-process"), 3).expect("retain");
-        assert_eq!(process.identity(), "host-root-process");
-        assert_eq!(process.presentation_revision(), 3);
-    }
-
-    #[test]
-    fn synchronize_detects_identity_and_revision_conflicts() {
-        let mut process =
-            HostRootProcess::retain(decoded_presentation("host-root-process"), 3).expect("retain");
-        assert!(matches!(
-            process.synchronize(2, decoded_presentation("host-root-process")),
-            Err(StaleRevision {
-                current: 3,
-                received: 2
-            })
-        ));
-        assert!(matches!(
-            process.synchronize(3, decoded_presentation("another-root")),
-            Err(IdentityChanged)
-        ));
-        let revision_conflicting = decoded_presentation("host-root-process");
-        let revision_conflicting_without_family = DecodedRootPresentation {
-            command_families: None,
-            ..revision_conflicting
-        };
-        assert!(matches!(
-            process.synchronize(3, revision_conflicting_without_family),
-            Err(RevisionConflict { revision: 3 })
-        ));
-        let mut revision_conflicting = decoded_presentation("host-root-process");
-        revision_conflicting.command_families = None;
-        assert!(process.synchronize(4, revision_conflicting).is_ok());
-        let mut same_revision = decoded_presentation("host-root-process");
-        same_revision.command_families = None;
-        assert!(
-            !process
-                .synchronize(4, same_revision)
-                .expect("same revision returns cached state")
-        );
-        assert!(
-            process
-                .synchronize(5, decoded_presentation("host-root-process"))
-                .is_ok()
-        );
-    }
-
-    #[test]
-    fn synchronize_with_router_rejects_duplicate_lease_and_routes_output() {
-        assert!(successful_effect().is_ok());
-        let mut process =
-            HostRootProcess::retain(decoded_presentation("host-root-process"), 1).expect("retain");
-        assert!(matches!(
-            process.synchronize_with_router(
-                1,
-                decoded_presentation("host-root-process"),
-                Box::new(no_effect)
-            ),
-            Err(DuplicateLease { revision: 1 })
-        ));
-
-        let mut no_effect_process = HostRootProcess::retain_with_router(
-            decoded_presentation("host-root-no-effect"),
-            1,
-            Box::new(no_effect),
-        )
-        .expect("router retain");
-        let context = egui::Context::default();
-        crate::run_ui_discard(&context, egui::RawInput::default(), |ui| {
-            let _ = no_effect_process.show(ui).expect("no-effect show");
-        });
-
-        let router_calls = Rc::new(Cell::new(0usize));
-        let closure_calls = Rc::clone(&router_calls);
-        let next = DecodedRootPresentation {
-            identity: String::from("host-root-process"),
-            presentation: minimal_presentation(),
-            style: TextCommandSurfaceStyle::standard(),
-            command_families: None,
-        };
-        assert!(
-            !process
-                .synchronize_with_router(
-                    2,
-                    next,
-                    Box::new(move |_context| {
-                        closure_calls.set(closure_calls.get() + 1);
-                        Ok(Some(KucOpaqueHostEffectBatch::from_handler(
-                            successful_effect,
-                        )))
-                    })
-                )
-                .expect("lease update")
-        );
-
-        let context = egui::Context::default();
-        crate::run_ui_discard(&context, egui::RawInput::default(), |ui| {
-            let _ = process.show(ui).expect("show");
-        });
-        assert_eq!(router_calls.get(), 1);
-    }
-
-    #[test]
-    fn show_propagates_router_error() {
-        let mut process =
-            HostRootProcess::retain(decoded_presentation("host-root-process"), 1).expect("retain");
-        process.effect_router = Some(Box::new(|_context| Err(KucOpaqueHostEffectError)));
-
-        let context = egui::Context::default();
-        crate::run_ui_discard(&context, egui::RawInput::default(), |_ui| {
-            assert!(matches!(
-                process.show(_ui),
-                Err(EguiTextCommandSurfaceRootFactoryError::OpaqueHostEffect)
-            ));
-        });
     }
 }

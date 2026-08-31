@@ -1,7 +1,8 @@
 use super::common::{TEXT_COLOR, font, grapheme_pixels};
 use crate::{
-    PlatformFontCatalog, PlatformTextRasterConfig, PlatformTextRasterError,
-    PlatformTextRasterRequest, PlatformTextRasterizer,
+    PlatformFontCatalog, PlatformTextMetricsFrame, PlatformTextMetricsRequest,
+    PlatformTextRasterConfig, PlatformTextRasterError, PlatformTextRasterRequest,
+    PlatformTextRasterizer,
 };
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -94,6 +95,50 @@ fn empty_text_is_rejected_without_changing_rasterizer_stats() {
         PlatformTextRasterError::EmptyText
     );
     assert_eq!(rasterizer.stats(), before);
+}
+
+#[test]
+fn metrics_reject_empty_text_and_frame_scale_drift() {
+    let mut rasterizer = PlatformTextRasterizer::new(PlatformTextRasterConfig::default());
+    let empty = PlatformTextMetricsRequest::from_text("", font(), 1.0);
+    assert_eq!(
+        rasterizer.measure_text(&empty),
+        Err(PlatformTextRasterError::EmptyText)
+    );
+
+    let mut frame = PlatformTextMetricsFrame::new();
+    frame.begin(1.0).expect("valid frame scale");
+    let drifted = PlatformTextMetricsRequest::from_text("scale drift", font(), 2.0);
+    let error = frame
+        .measure_text(&mut rasterizer, &drifted)
+        .expect_err("frame scale drift must fail closed");
+    assert!(matches!(
+        error,
+        PlatformTextRasterError::MetricsFrameScaleMismatch { .. }
+    ));
+    assert!(error.to_string().contains("scale changed"));
+}
+
+#[test]
+fn metrics_frame_reuses_records_and_utf8_ranges_clamp_to_char_boundaries()
+-> Result<(), Box<dyn std::error::Error>> {
+    let mut rasterizer = PlatformTextRasterizer::new(PlatformTextRasterConfig::default());
+    let request = PlatformTextMetricsRequest::from_text("metrics", font(), 1.0);
+    let mut frame = PlatformTextMetricsFrame::new();
+    let first = frame.measure_text(&mut rasterizer, &request)?;
+    let second = frame.measure_text(&mut rasterizer, &request)?;
+    assert_eq!(first, second);
+    assert_eq!(frame.records().len(), 1);
+
+    assert!(crate::PlatformTextGraphemeRange::previous("é", 1).is_none());
+    assert_eq!(
+        crate::PlatformTextGraphemeRange::next("é", 1),
+        Some(crate::PlatformTextGraphemeRange {
+            byte_start: 0,
+            byte_end: "é".len(),
+        })
+    );
+    Ok(())
 }
 
 #[test]

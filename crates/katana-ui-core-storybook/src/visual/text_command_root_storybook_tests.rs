@@ -136,6 +136,16 @@ fn full_root_artifact_generates_decodes_and_records_mp4() -> Result<(), FullRoot
         manifest["mp4"]["decoder"]["decoded_frame_count"],
         sequence.steps.len()
     );
+    assert_eq!(
+        manifest["mp4"]["decoder"]["source_frame_hashes"],
+        manifest["mp4"]["decoder"]["decoded_frame_hashes"]
+    );
+    assert_eq!(
+        manifest["mp4"]["decoder"]["decoded_frame_hashes"]
+            .as_array()
+            .map(Vec::len),
+        Some(sequence.steps.len())
+    );
     assert!(
         manifest["mp4"]["ffmpeg_path"]
             .as_str()

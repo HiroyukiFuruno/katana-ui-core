@@ -5,7 +5,6 @@ mod adapter;
 mod artifact;
 mod interaction;
 mod paint;
-mod paint_geometry;
 mod presentation;
 mod state;
 mod surface;
