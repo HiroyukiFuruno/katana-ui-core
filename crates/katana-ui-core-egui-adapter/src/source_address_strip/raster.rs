@@ -61,14 +61,11 @@ impl Raster {
             .rect_filled(rect, 0.0, super::paint::Paint::color(fill));
         let pixels: Vec<u8> = raster.rgba_pixels.iter().flatten().copied().collect();
         let label_fingerprint = Self::source_address_label_fingerprint(label);
+        let raster_fingerprint = hex::encode(Sha256::digest(&pixels));
         let identity = format!(
-            "source-address-label:{label_fingerprint}:{:?}:{scale}",
-            style.label_font
+            "source-address-label:{label_fingerprint}:{:?}:{scale}:{raster_fingerprint}",
+            style.label_font,
         );
-        let mut hasher = Sha256::new();
-        for pixel in &raster.rgba_pixels {
-            hasher.update(pixel);
-        }
         adapter
             .last_label_rasters
             .push(SourceAddressLabelRasterEvidence {
@@ -76,7 +73,7 @@ impl Raster {
                 width: raster.width as u32,
                 height: raster.height as u32,
                 chromatic_pixel_count: raster.chromatic_pixel_count(),
-                sha256: hex::encode(hasher.finalize()),
+                sha256: raster_fingerprint,
             });
         let image_size = egui::vec2(raster.width as f32 / scale, raster.height as f32 / scale);
         let image_rect = egui::Rect::from_center_size(rect.center(), image_size);

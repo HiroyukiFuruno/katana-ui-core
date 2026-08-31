@@ -1,5 +1,6 @@
 use super::{EguiSourceAddressStripAdapter, EguiSourceAddressStripOutput};
 use crate::source_address_strip::SourceAddressFrameEventClass;
+use crate::source_address_strip::SourceAddressPaintOperationKind;
 use crate::source_address_strip::SourceAddressRenderStyle;
 use katana_ui_core::atom::{TextAreaEvent, TextAreaKeyChord, TextAreaValidationError};
 use katana_ui_core::molecule::structured::source_address_strip::{
@@ -203,4 +204,50 @@ fn source_address_adapter_preserves_raster_evidence_only_on_successful_frame() {
             .contains("source-address text surface failed")
     );
     assert!(adapter.raster_evidence().is_none());
+}
+
+#[test]
+fn source_address_replaces_retained_button_texture_when_label_color_changes() {
+    let context = egui::Context::default();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-label-color")
+        .expect("adapter should initialize");
+    let mut strip = strip();
+    let standard = SourceAddressRenderStyle::default();
+    let mut recolored = standard.clone();
+    recolored.label_color_rgba = [24, 181, 207, 255];
+
+    let mut first = context.run_ui(egui::RawInput::default(), |ui| {
+        adapter
+            .show_with_style(ui, &mut strip, &standard)
+            .expect("standard label should render");
+    });
+    let first_identity = button_texture_identity(&adapter).to_owned();
+    first.textures_delta.clear();
+
+    let mut second = context.run_ui(egui::RawInput::default(), |ui| {
+        adapter
+            .show_with_style(ui, &mut strip, &recolored)
+            .expect("recolored label should render");
+    });
+    let second_identity = button_texture_identity(&adapter);
+
+    assert_ne!(first_identity, second_identity);
+    assert!(!second.textures_delta.set.is_empty());
+    second.textures_delta.clear();
+}
+
+fn button_texture_identity(adapter: &EguiSourceAddressStripAdapter) -> &str {
+    adapter
+        .artifact_paint_plan()
+        .expect("source-address frame should produce a paint plan")
+        .operations
+        .iter()
+        .find_map(|operation| match &operation.kind {
+            SourceAddressPaintOperationKind::Texture { texture, .. } => {
+                Some(texture.identity.as_str())
+            }
+            SourceAddressPaintOperationKind::Fill { .. }
+            | SourceAddressPaintOperationKind::Input(_) => None,
+        })
+        .expect("source-address frame should contain a button texture")
 }
