@@ -22,6 +22,7 @@ concurrency:
 
 permissions:
   contents: write
+  id-token: write
 
 env:
   CARGO_BUILD_JOBS: 1
@@ -115,10 +116,14 @@ jobs:
           else
             gh release create "${TAG}" --verify-tag --latest --generate-notes
           fi
+      - name: Authenticate with crates.io
+        if: github.event_name == 'pull_request' || inputs.publish_crates == true
+        id: crates_io_auth
+        uses: rust-lang/crates-io-auth-action@c6f97d42243bad5fab37ca0427f495c86d5b1a18 # v1.0.5
       - name: Publish crates.io
         if: github.event_name == 'pull_request' || inputs.publish_crates == true
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.crates_io_auth.outputs.token }}
         run: bash scripts/release/publish-crates.sh "${{ steps.version.outputs.version }}"
       - name: Cleanup merged release branches
         if: steps.create_github_release.outcome == 'success' && (github.event_name == 'pull_request' || inputs.publish_crates == true)

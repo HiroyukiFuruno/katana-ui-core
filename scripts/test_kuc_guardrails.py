@@ -3843,6 +3843,30 @@ class KucGuardrailsTest(unittest.TestCase):
         self.assertEqual(sorted(positions), positions)
         self.assertIn('wait_until_available "${package}"', source)
         self.assertIn('cargo publish -p "${package}" --locked', source)
+        self.assertNotIn("--token", source)
+
+    def test_release_workflows_use_short_lived_crates_io_oidc_tokens(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        workflow_paths = [
+            root / ".github/workflows/release.yml",
+            root / ".github/workflows/release-publish-retry.yml",
+        ]
+        auth_action = (
+            "rust-lang/crates-io-auth-action@"
+            "c6f97d42243bad5fab37ca0427f495c86d5b1a18"
+        )
+
+        for workflow_path in workflow_paths:
+            with self.subTest(workflow=workflow_path.name):
+                source = workflow_path.read_text(encoding="utf-8")
+
+                self.assertIn("id-token: write", source)
+                self.assertIn(auth_action, source)
+                self.assertIn(
+                    "CARGO_REGISTRY_TOKEN: ${{ steps.crates_io_auth.outputs.token }}",
+                    source,
+                )
+                self.assertNotIn("secrets.CARGO_REGISTRY_TOKEN", source)
 
     def test_release_scope_guard_lists_exactly_four_public_crates(self) -> None:
         root = Path(__file__).resolve().parents[1]

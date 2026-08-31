@@ -31,6 +31,6 @@ for package in "${packages[@]}"; do
     echo "${package} ${version} already published; skipping."
     continue
   fi
-  cargo publish -p "${package}" --locked --token "${CARGO_REGISTRY_TOKEN}"
+  cargo publish -p "${package}" --locked
   wait_until_available "${package}"
 done
