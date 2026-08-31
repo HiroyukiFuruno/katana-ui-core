@@ -47,7 +47,7 @@ impl SegmentSnapshot {
             progress: None,
         }
     }
-    fn display_label(&self) -> String {
+    pub(super) fn display_label(&self) -> String {
         match &self.icon {
             Some(icon) => format!("{icon} {}", self.label),
             None => self.label.clone(),
@@ -84,6 +84,7 @@ impl EguiStatusBarAdapter {
         paint_plan: &mut StatusBarPaintPlan,
         out: &mut EguiStatusBarOutput,
     ) -> Result<(), EguiStatusBarError> {
+        let root = self.alignment_column(root, status, alignment, style)?;
         let segments: Vec<_> = status
             .segments_for(alignment)
             .into_iter()
@@ -265,7 +266,7 @@ impl EguiStatusBarAdapter {
         Ok(format!("{elided}{ellipsis}"))
     }
 
-    fn raster_width(
+    pub(super) fn raster_width(
         &mut self,
         label: &str,
         style: &StatusBarRenderStyle,

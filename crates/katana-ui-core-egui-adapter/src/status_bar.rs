@@ -2,6 +2,7 @@
 
 mod accessibility;
 mod adapter;
+mod alignment;
 mod paint;
 mod paint_plan;
 mod popover;
@@ -22,6 +23,10 @@ mod tests;
 #[cfg(test)]
 #[path = "status_bar_layout_tests.rs"]
 mod layout_tests;
+
+#[cfg(test)]
+#[path = "status_bar_alignment_layout_tests.rs"]
+mod alignment_layout_tests;
 
 #[cfg(test)]
 #[path = "status_bar_failure_tests.rs"]

@@ -30,6 +30,9 @@ impl UiSurfaceGestureController {
                 let Some(surface) = self.hit_target(position) else {
                     return UiSurfaceGestureOutcome::unhandled(None);
                 };
+                if self.active_pointer.is_some() {
+                    return UiSurfaceGestureOutcome::unhandled(Some(surface.target.clone()));
+                }
                 let target = surface.target.clone();
                 if !surface.capabilities.pointer_pan {
                     return UiSurfaceGestureOutcome::unhandled(Some(target));
@@ -159,6 +162,7 @@ impl UiSurfaceGestureController {
         input: UiSurfaceGestureInput,
         callback: &mut dyn FnMut(&UiSurfaceGestureEvent) -> UiSurfaceGestureOverride,
     ) -> UiSurfaceGestureOutcome {
+        let active_pointer = self.active_pointer.clone();
         let mut outcome = self.apply(input);
         let Some(event) = outcome.event.as_ref() else {
             return outcome;
@@ -167,6 +171,14 @@ impl UiSurfaceGestureController {
             UiSurfaceGestureOverride::UseDefault => {}
             UiSurfaceGestureOverride::Command(command) => outcome.command = Some(command),
             UiSurfaceGestureOverride::Ignore => {
+                match event.input {
+                    UiSurfaceGestureInput::PointerDown { .. }
+                    | UiSurfaceGestureInput::PointerMove { .. }
+                    | UiSurfaceGestureInput::PointerUp { .. } => {
+                        self.active_pointer = active_pointer;
+                    }
+                    _ => {}
+                }
                 outcome.command = None;
                 outcome.captured = false;
             }
@@ -376,8 +388,8 @@ mod tests {
         assert_eq!(
             continued.command,
             Some(UiSurfaceGestureCommand::PanBy {
-                delta_x: 1.0,
-                delta_y: 1.0
+                delta_x: 4.0,
+                delta_y: 3.0
             })
         );
         let released = controller.apply(UiSurfaceGestureInput::PointerUp {
@@ -385,6 +397,162 @@ mod tests {
             position: UiSurfacePoint::new(39, 38),
         });
         assert!(released.captured);
+    }
+
+    #[test]
+    fn capture_keeps_active_pointer_when_new_pointer_down_arrives() {
+        let capabilities = UiSurfaceGestureCapabilities::default().pointer_pan(true);
+        let mut controller = UiSurfaceGestureController::new([surface(capabilities)]);
+        let origin = UiSurfacePoint::new(20, 30);
+        let secondary = UiSurfacePoint::new(30, 40);
+
+        let down = controller.apply(UiSurfaceGestureInput::PointerDown {
+            pointer_id: 1,
+            position: origin,
+        });
+        assert!(down.captured);
+
+        let blocked = controller.apply(UiSurfaceGestureInput::PointerDown {
+            pointer_id: 2,
+            position: secondary,
+        });
+        assert!(!blocked.captured);
+        assert!(blocked.event.is_none());
+
+        let moved = controller.apply(UiSurfaceGestureInput::PointerMove {
+            pointer_id: 1,
+            position: UiSurfacePoint::new(25, 32),
+        });
+        assert_eq!(
+            moved.command,
+            Some(UiSurfaceGestureCommand::PanBy {
+                delta_x: 5.0,
+                delta_y: 2.0
+            })
+        );
+
+        let released = controller.apply(UiSurfaceGestureInput::PointerUp {
+            pointer_id: 1,
+            position: UiSurfacePoint::new(25, 32),
+        });
+        assert!(released.captured);
+    }
+
+    #[test]
+    fn ignored_down_does_not_create_capture_for_following_moves() {
+        let capabilities = UiSurfaceGestureCapabilities::default().pointer_pan(true);
+        let mut controller = UiSurfaceGestureController::new([surface(capabilities)]);
+        let point = UiSurfacePoint::new(20, 30);
+        let ignored_down = controller.apply_with_override(
+            UiSurfaceGestureInput::PointerDown {
+                pointer_id: 1,
+                position: point,
+            },
+            |_| UiSurfaceGestureOverride::Ignore,
+        );
+        assert!(!ignored_down.captured);
+        assert!(ignored_down.event.is_some());
+
+        let move_after_ignored_down = controller.apply(UiSurfaceGestureInput::PointerMove {
+            pointer_id: 1,
+            position: UiSurfacePoint::new(20, 10),
+        });
+        assert!(!move_after_ignored_down.captured);
+        assert!(move_after_ignored_down.event.is_none());
+    }
+
+    #[test]
+    fn ignored_move_and_up_keep_internal_gesture_state() {
+        let mut controller = UiSurfaceGestureController::new([surface(
+            UiSurfaceGestureCapabilities::default().pointer_pan(true),
+        )]);
+        let down = controller.apply(UiSurfaceGestureInput::PointerDown {
+            pointer_id: 1,
+            position: UiSurfacePoint::new(20, 30),
+        });
+        assert!(down.captured);
+
+        let ignored_move = controller.apply_with_override(
+            UiSurfaceGestureInput::PointerMove {
+                pointer_id: 1,
+                position: UiSurfacePoint::new(15, 30),
+            },
+            |_| UiSurfaceGestureOverride::Ignore,
+        );
+        assert!(!ignored_move.captured);
+
+        let moved = controller.apply(UiSurfaceGestureInput::PointerMove {
+            pointer_id: 1,
+            position: UiSurfacePoint::new(20, 30),
+        });
+        assert_eq!(
+            moved.command,
+            Some(UiSurfaceGestureCommand::PanBy {
+                delta_x: 0.0,
+                delta_y: 0.0
+            })
+        );
+
+        let ignored_up = controller.apply_with_override(
+            UiSurfaceGestureInput::PointerUp {
+                pointer_id: 1,
+                position: UiSurfacePoint::new(20, 30),
+            },
+            |_| UiSurfaceGestureOverride::Ignore,
+        );
+        assert!(!ignored_up.captured);
+
+        let kept_after_ignored_up = controller.apply(UiSurfaceGestureInput::PointerMove {
+            pointer_id: 1,
+            position: UiSurfacePoint::new(40, 30),
+        });
+        assert_eq!(
+            kept_after_ignored_up.command,
+            Some(UiSurfaceGestureCommand::PanBy {
+                delta_x: 20.0,
+                delta_y: 0.0
+            })
+        );
+    }
+
+    #[test]
+    fn ignored_non_pointer_event_keeps_the_active_pointer_capture() {
+        let capabilities = UiSurfaceGestureCapabilities::default()
+            .pointer_pan(true)
+            .zoom(true);
+        let mut controller = UiSurfaceGestureController::new([surface(capabilities)]);
+        let origin = UiSurfacePoint::new(20, 30);
+        assert!(
+            controller
+                .apply(UiSurfaceGestureInput::PointerDown {
+                    pointer_id: 1,
+                    position: origin,
+                })
+                .captured
+        );
+
+        let ignored_zoom = controller.apply_with_override(
+            UiSurfaceGestureInput::Zoom {
+                multiplier: 1.25,
+                center: origin,
+            },
+            |_| UiSurfaceGestureOverride::Ignore,
+        );
+        assert!(!ignored_zoom.captured);
+        assert!(ignored_zoom.event.is_some());
+        assert!(ignored_zoom.command.is_none());
+
+        let moved = controller.apply(UiSurfaceGestureInput::PointerMove {
+            pointer_id: 1,
+            position: UiSurfacePoint::new(24, 33),
+        });
+        assert_eq!(
+            moved.command,
+            Some(UiSurfaceGestureCommand::PanBy {
+                delta_x: 4.0,
+                delta_y: 3.0
+            })
+        );
     }
 
     #[test]

@@ -99,7 +99,7 @@ impl DiagnosticsListState {
         options: &DiagnosticsListOptions,
     ) -> Vec<DiagnosticsListEvent> {
         self.bulk_preview_open = false;
-        bulk_apply(items, options)
+        bulk_apply(items, self.selected_scope_key.as_ref(), options)
     }
 
     fn apply_keyboard(
@@ -231,9 +231,10 @@ fn apply_fix(items: &[DiagnosticItem], id: DiagnosticId) -> Vec<DiagnosticsListE
 
 fn bulk_apply(
     items: &[DiagnosticItem],
+    selected_scope_key: Option<&DiagnosticScopeKey>,
     options: &DiagnosticsListOptions,
 ) -> Vec<DiagnosticsListEvent> {
-    let visible = DiagnosticsListPlanner::visible_items(items, options);
+    let visible = visible_items(items, options, selected_scope_key);
     let visible_ids = visible
         .iter()
         .map(|it| it.id.clone())

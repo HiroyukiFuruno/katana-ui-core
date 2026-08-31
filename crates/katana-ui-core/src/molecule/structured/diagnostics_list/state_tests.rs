@@ -179,3 +179,43 @@ fn keyboard_navigation_respects_selected_scope_and_avoids_hidden_diagnostics() {
         vec![DiagnosticsListEvent::DiagnosticFixApplied { id: visible_id }]
     );
 }
+
+#[test]
+fn confirm_bulk_apply_filters_items_outside_selected_scope() {
+    let first = scope("a");
+    let second = scope("b");
+    let in_scope_with_fix =
+        item("scope-a-with-fix", "a").quickfix(DiagnosticAction::new("a-with-fix", "fix"));
+    let in_scope_without_fix = item("scope-a-without-fix", "a");
+    let out_of_scope_with_fix =
+        item("scope-b-with-fix", "b").quickfix(DiagnosticAction::new("b-with-fix", "fix"));
+
+    let items = vec![
+        in_scope_with_fix.clone(),
+        in_scope_without_fix.clone(),
+        out_of_scope_with_fix.clone(),
+    ];
+
+    let mut state = DiagnosticsListState {
+        selected_scope_key: Some(first.key.clone()),
+        ..DiagnosticsListState::default()
+    };
+
+    assert!(matches!(
+        state
+            .apply_action(
+                DiagnosticsListAction::ConfirmBulkApply,
+                &items,
+                &[first, second],
+                &DiagnosticsListOptions::default(),
+            )
+            .as_slice(),
+        [DiagnosticsListEvent::BulkFixApplied { applied_ids, skipped_ids }]
+            if applied_ids == &vec![in_scope_with_fix.id.clone()]
+                && skipped_ids
+                    == &vec![
+                        (in_scope_without_fix.id.clone(), BulkFixSkipReason::NoQuickfix),
+                        (out_of_scope_with_fix.id.clone(), BulkFixSkipReason::FilteredOut)
+                    ]
+    ));
+}
