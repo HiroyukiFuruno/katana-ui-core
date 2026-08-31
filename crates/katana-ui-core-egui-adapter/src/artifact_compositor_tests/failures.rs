@@ -167,6 +167,11 @@ fn every_clipped_plan_propagates_surface_geometry_overflow() {
         color_rgba: [0, 0, 0, 0],
     });
     diagnostics.surface_bounds = overflow;
+    let mut tab_strip = tab_strip_plan(TabStripPaintOperationKind::Fill {
+        bounds: overflow,
+        color_rgba: [0, 0, 0, 0],
+    });
+    tab_strip.surface_bounds = overflow;
     let mut chrome = chrome_plan(CommandChromePaintOperationKind::Fill {
         bounds: overflow,
         color_rgba: [0, 0, 0, 0],
@@ -182,6 +187,7 @@ fn every_clipped_plan_propagates_surface_geometry_overflow() {
         ArtifactPaintPlanRef::SourceAddress(&source),
         ArtifactPaintPlanRef::StatusBar(&status),
         ArtifactPaintPlanRef::DiagnosticsList(&diagnostics),
+        ArtifactPaintPlanRef::TabStrip(&tab_strip),
         ArtifactPaintPlanRef::CommandChrome(&chrome),
         ArtifactPaintPlanRef::ContextMenu(&context),
     ] {
@@ -196,21 +202,9 @@ fn every_clipped_plan_propagates_surface_geometry_overflow() {
 }
 
 #[test]
-fn tab_strip_and_rounded_chrome_propagate_blend_failures() {
-    let overflow = UiRect::new(i32::MAX, 0, 1, 1);
-    let tab_fill = tab_strip_plan(TabStripPaintOperationKind::Fill {
-        bounds: overflow,
-        color_rgba: [0, 0, 0, 0],
-    });
-    assert!(matches!(
-        ArtifactCompositor::compose(ArtifactCompositeRequest {
-            canvas: ArtifactCanvasBounds::new(UiRect::new(0, 0, 4, 4)),
-            plans: &[ArtifactPaintPlanRef::TabStrip(&tab_fill)]
-        }),
-        Err(ArtifactCompositeError::Overflow { .. })
-    ));
+fn tab_strip_texture_and_rounded_chrome_propagate_blend_failures() {
     let tab_texture = tab_strip_plan(TabStripPaintOperationKind::Texture {
-        bounds: UiRect::new(0, 0, 1, 1),
+        bounds: UiRect::new(CANVAS_X, CANVAS_Y, ONE_PIXEL, ONE_PIXEL),
         texture: TabStripPaintTexture {
             identity: "zero-tab-texture".to_owned(),
             width: 0,
@@ -220,11 +214,17 @@ fn tab_strip_and_rounded_chrome_propagate_blend_failures() {
     });
     assert!(matches!(
         ArtifactCompositor::compose(ArtifactCompositeRequest {
-            canvas: ArtifactCanvasBounds::new(UiRect::new(0, 0, 4, 4)),
+            canvas: ArtifactCanvasBounds::new(UiRect::new(
+                CANVAS_X,
+                CANVAS_Y,
+                SURFACE_WIDTH,
+                SURFACE_HEIGHT,
+            )),
             plans: &[ArtifactPaintPlanRef::TabStrip(&tab_texture)]
         }),
         Err(ArtifactCompositeError::ZeroTexture { .. })
     ));
+    let overflow = UiRect::new(i32::MAX, 0, 1, 1);
     let rounded = CommandChromePaintPlan {
         surface_bounds: UiRect::new(0, 0, 4, 4),
         operations: vec![CommandChromePaintOperation {

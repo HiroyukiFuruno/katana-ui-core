@@ -68,24 +68,20 @@ fn paint_tab_strip(
     plan: &TabStripPaintPlan,
 ) -> Result<(), ArtifactCompositeError> {
     for operation in &plan.operations {
+        let Some(clip) = artifact_compositor_geometry::clip_rect(
+            canvas,
+            plan.surface_bounds,
+            operation.clip_bounds,
+        )?
+        else {
+            continue;
+        };
         match &operation.kind {
             TabStripPaintOperationKind::Fill { bounds, color_rgba } => {
-                artifact_compositor_blend::fill(
-                    pixels,
-                    canvas,
-                    operation.clip_bounds,
-                    *bounds,
-                    *color_rgba,
-                )?;
+                artifact_compositor_blend::fill(pixels, canvas, clip, *bounds, *color_rgba)?;
             }
             TabStripPaintOperationKind::Texture { bounds, texture } => {
-                artifact_compositor_blend::texture(
-                    pixels,
-                    canvas,
-                    operation.clip_bounds,
-                    *bounds,
-                    texture,
-                )?;
+                artifact_compositor_blend::texture(pixels, canvas, clip, *bounds, texture)?;
             }
         }
     }

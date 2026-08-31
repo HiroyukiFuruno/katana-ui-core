@@ -131,3 +131,5 @@ mod basic;
 mod components;
 #[path = "artifact_compositor_tests/failures.rs"]
 mod failures;
+#[path = "artifact_compositor_tests/tab_strip_bounds.rs"]
+mod tab_strip_bounds;
