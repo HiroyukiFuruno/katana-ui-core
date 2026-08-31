@@ -740,6 +740,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "check: fmt-check ast-lint check-types lint unit-test",
         "python3 scripts/assert-strict-coverage-json.py --self-test",
         "python3 scripts/coverage/image-runtime-id.py --self-test",
+        "python3 scripts/coverage/run-test-binaries.py --self-test",
         "release-check: release-target-check fmt-check ast-lint release-readiness-check release-verify",
         'release-local-cleanup:\n    python3 scripts/release/cleanup-release-branches.py --version "{{VERSION}}" --repo "{{RELEASE_REPO}}"',
     )
@@ -781,10 +782,9 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         'coverage_supplement_filter="${KUC_COVERAGE_SUPPLEMENT_FILTER:-}"',
         'coverage_runtime="${KUC_COVERAGE_RUNTIME:-native}"',
         'coverage_image_id="${KUC_COVERAGE_IMAGE_ID:-}"',
-        'coverage_profile_path="${CARGO_TARGET_DIR:-target}/kuc-workspace-coverage-profile-v2.sha256"',
+        'coverage_profile_path="${coverage_storage_dir}/kuc-workspace-coverage-profile-v3.sha256"',
         'coverage_strict_state_path="${coverage_profile_path}.strict-state"',
-        'coverage_report_path="${CARGO_TARGET_DIR:-target}/kuc-workspace-coverage-summary.json"',
-        'coverage_supplement_report_path="${CARGO_TARGET_DIR:-target}/kuc-supplement-coverage-summary.json"',
+        'coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"',
         "coverage_production_digest()",
         "coverage_profile_signature()",
         "native_coverage_runtime_id()",
@@ -802,6 +802,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "Justfile",
         "scripts/run-strict-coverage.sh",
         "scripts/assert-strict-coverage-json.py",
+        "scripts/coverage/run-test-binaries.py",
         "scripts/coverage/image-runtime-id.py",
         "scripts/coverage/run-container.sh",
         "scripts/coverage/run-in-container.sh",
@@ -822,7 +823,6 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "run_cargo llvm-cov clean --workspace",
         'coverage_mode="rebuild"',
         'coverage_mode="reuse"',
-        "coverage_build_args=(--no-clean)",
         "coverage supplement requires a complete full-workspace profile",
         "coverage profile is incomplete or its production inputs changed; rerun full coverage before supplementing",
         "write_coverage_profile_state in-progress",
@@ -830,10 +830,15 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         'write_coverage_profile_state "${pending_profile_signature}"',
         'write_coverage_strict_state "passed:${pending_profile_signature}"',
         'write_coverage_strict_state "failed:${pending_profile_signature}"',
-        "run_cargo llvm-cov test --quiet",
-        '"${coverage_build_args[@]}"',
+        "run_cargo_raw()",
+        "run_cargo_raw llvm-cov show-env --sh",
+        "run_cargo_raw metadata --format-version 1 --no-deps --locked",
+        "--message-format=json",
+        "python3 scripts/coverage/run-test-binaries.py",
+        '--max-parallel-binaries "${coverage_parallel_binaries}"',
+        '--test-threads "${coverage_threads_per_binary}"',
         'coverage_min_free_gib="${KUC_COVERAGE_MIN_FREE_GIB:-2}"',
-        'df -Pk "${CARGO_TARGET_DIR:-target}"',
+        'df -Pk "${coverage_storage_dir}"',
         "run_cargo llvm-cov report --quiet",
         "--json",
         '--output-path "${coverage_report_path}"',
@@ -952,8 +957,10 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         coverage_source.find('run_cargo clean --target-dir "${coverage_target_dir}"'),
         coverage_source.find("run_cargo llvm-cov clean --profraw-only"),
         coverage_source.find("run_cargo llvm-cov clean --workspace"),
-        coverage_source.find("run_cargo llvm-cov test --quiet"),
-        coverage_source.find("run_cargo llvm-cov --quiet"),
+        coverage_source.find("run_cargo_raw llvm-cov show-env --sh"),
+        coverage_source.find("run_cargo_raw test"),
+        coverage_source.find("python3 scripts/coverage/run-test-binaries.py"),
+        coverage_source.find("run_cargo llvm-cov report --quiet"),
     )
     profile_validation = coverage_source.rfind(
         "python3 scripts/assert-strict-coverage-json.py --validate-profile"
@@ -1925,6 +1932,7 @@ def write_justfile_test_scope_self_test_file(
         "check: fmt-check ast-lint check-types lint unit-test\n"
         "    python3 scripts/assert-strict-coverage-json.py --self-test\n"
         "    python3 scripts/coverage/image-runtime-id.py --self-test\n"
+        "    python3 scripts/coverage/run-test-binaries.py --self-test\n"
         "\n"
         "release-check: release-target-check fmt-check ast-lint release-readiness-check release-verify\n"
         "\n"
@@ -2001,7 +2009,8 @@ def write_justfile_test_scope_self_test_file(
         "}\n"
         "trap finalize_coverage_process EXIT\n"
         "export CARGO_PROFILE_TEST_OPT_LEVEL=0\n"
-        'coverage_target_dir="${CARGO_TARGET_DIR:-target}/llvm-cov-target"\n'
+        'coverage_storage_dir="${CARGO_TARGET_DIR:-target}"\n'
+        'coverage_target_dir="${coverage_storage_dir}/llvm-cov-target"\n'
         'coverage_reuse="${KUC_COVERAGE_REUSE:-0}"\n'
         'coverage_test_threads="${COVERAGE_TEST_THREADS:-4}"\n'
         'coverage_supplement_target="${KUC_COVERAGE_SUPPLEMENT_TARGET:-lib}"\n'
@@ -2009,10 +2018,9 @@ def write_justfile_test_scope_self_test_file(
         'coverage_runtime="${KUC_COVERAGE_RUNTIME:-native}"\n'
         'coverage_image_id="${KUC_COVERAGE_IMAGE_ID:-}"\n'
         "coverage_transaction_active=0\n"
-        'coverage_profile_path="${CARGO_TARGET_DIR:-target}/kuc-workspace-coverage-profile-v2.sha256"\n'
+        'coverage_profile_path="${coverage_storage_dir}/kuc-workspace-coverage-profile-v3.sha256"\n'
         'coverage_strict_state_path="${coverage_profile_path}.strict-state"\n'
-        'coverage_report_path="${CARGO_TARGET_DIR:-target}/kuc-workspace-coverage-summary.json"\n'
-        'coverage_supplement_report_path="${CARGO_TARGET_DIR:-target}/kuc-supplement-coverage-summary.json"\n'
+        'coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"\n'
         "coverage_production_digest() { :; }\n"
         "coverage_profile_signature() { :; }\n"
         "native_coverage_runtime_id() { :; }\n"
@@ -2029,6 +2037,7 @@ def write_justfile_test_scope_self_test_file(
         "Justfile\n"
         "scripts/run-strict-coverage.sh\n"
         "scripts/assert-strict-coverage-json.py\n"
+        "scripts/coverage/run-test-binaries.py\n"
         "scripts/coverage/image-runtime-id.py\n"
         "scripts/coverage/run-container.sh\n"
         "scripts/coverage/run-in-container.sh\n"
@@ -2047,7 +2056,6 @@ def write_justfile_test_scope_self_test_file(
         'coverage_packages=(\n'
         'coverage_mode="rebuild"\n'
         'coverage_mode="reuse"\n'
-        "coverage_build_args=(--no-clean)\n"
         "echo \"coverage supplement requires a complete full-workspace profile\"\n"
         "echo \"coverage profile is incomplete or its production inputs changed; rerun full coverage before supplementing\"\n"
         "echo \"container coverage requires a validated runtime image identity\"\n"
@@ -2057,23 +2065,24 @@ def write_justfile_test_scope_self_test_file(
         "run_cargo llvm-cov clean --profraw-only\n"
         "run_cargo llvm-cov clean --workspace\n"
         'echo "coverage mode: ${coverage_mode}"\n'
-        "run_cargo llvm-cov test --quiet\n"
+        "run_cargo_raw() { :; }\n"
+        "run_cargo_raw llvm-cov show-env --sh\n"
+        "run_cargo_raw metadata --format-version 1 --no-deps --locked\n"
+        "run_cargo_raw test --include-ignored\n"
+        "--message-format=json\n"
+        "python3 scripts/coverage/run-test-binaries.py \\\n"
+        '  --max-parallel-binaries "${coverage_parallel_binaries}" \\\n'
+        '  --test-threads "${coverage_threads_per_binary}"\n'
         'coverage_min_free_gib="${KUC_COVERAGE_MIN_FREE_GIB:-2}"\n'
-        'df -Pk "${CARGO_TARGET_DIR:-target}"\n'
+        'df -Pk "${coverage_storage_dir}"\n'
         "run_cargo llvm-cov report --quiet \\\n"
         '  "${coverage_packages[@]}" --json --summary-only \\\n'
-        '  --output-path "${coverage_report_path}"\n'
-        "run_cargo llvm-cov --quiet \\\n"
-        '  "${coverage_build_args[@]}" \\\n'
+        '  --output-path "${coverage_report_path}" \\\n'
+        "  --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\\.rs$|[^/]+_tests\\.rs$)'\n"
         "  -p katana-ui-core \\\n"
         "  -p katana-ui-core-storybook \\\n"
         "  -p kuc-consumer-app \\\n"
-        "  --all-targets --all-features --locked \\\n"
-        "  --json \\\n"
-        "  --summary-only \\\n"
-        '  --output-path "${coverage_report_path}" \\\n'
-        "  --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\\.rs$|[^/]+_tests\\.rs$)' \\\n"
-        "  -- --include-ignored\n"
+        "  --all-targets --all-features --locked\n"
         'python3 scripts/assert-strict-coverage-json.py --validate-profile "${coverage_report_path}"\n'
         'write_coverage_profile_state "${pending_profile_signature}"\n'
         "coverage_transaction_active=0\n"

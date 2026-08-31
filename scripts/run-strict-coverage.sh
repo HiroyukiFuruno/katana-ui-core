@@ -23,6 +23,14 @@ run_cargo() {
   "${cargo_command[@]}" "$@"
 }
 
+run_cargo_raw() {
+  if [[ "${cargo_command[0]}" == "rtk" ]]; then
+    rtk proxy "${cargo_command[@]:1}" "$@"
+  else
+    "${cargo_command[@]}" "$@"
+  fi
+}
+
 display_number=99
 while [[ -e "/tmp/.X${display_number}-lock" || -S "/tmp/.X11-unix/X${display_number}" ]]; do
   display_number=$((display_number + 1))
@@ -72,17 +80,17 @@ export KUC_STORYBOOK_MOUSE_TRACE="${CARGO_TARGET_DIR:-target}/kuc-storybook-mous
 # LLVM更新で実行済みgeneric関数が未到達の最適化instanceとして集計されないようにする。
 export CARGO_PROFILE_TEST_OPT_LEVEL=0
 
-coverage_target_dir="${CARGO_TARGET_DIR:-target}/llvm-cov-target"
+coverage_storage_dir="${CARGO_TARGET_DIR:-target}"
+coverage_target_dir="${coverage_storage_dir}/llvm-cov-target"
 coverage_reuse="${KUC_COVERAGE_REUSE:-0}"
 coverage_test_threads="${COVERAGE_TEST_THREADS:-4}"
 coverage_supplement_target="${KUC_COVERAGE_SUPPLEMENT_TARGET:-lib}"
 coverage_supplement_filter="${KUC_COVERAGE_SUPPLEMENT_FILTER:-}"
 coverage_runtime="${KUC_COVERAGE_RUNTIME:-native}"
 coverage_image_id="${KUC_COVERAGE_IMAGE_ID:-}"
-coverage_profile_path="${CARGO_TARGET_DIR:-target}/kuc-workspace-coverage-profile-v2.sha256"
+coverage_profile_path="${coverage_storage_dir}/kuc-workspace-coverage-profile-v3.sha256"
 coverage_strict_state_path="${coverage_profile_path}.strict-state"
-coverage_report_path="${CARGO_TARGET_DIR:-target}/kuc-workspace-coverage-summary.json"
-coverage_supplement_report_path="${CARGO_TARGET_DIR:-target}/kuc-supplement-coverage-summary.json"
+coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"
 coverage_started_at="${SECONDS}"
 coverage_transaction_active=0
 
@@ -142,7 +150,7 @@ coverage_production_digest() {
 coverage_profile_signature() {
   {
     printf '%s\n' \
-      'version=2' \
+      'version=3' \
       'scope=full-workspace' \
       'packages=katana-ui-core,katana-ui-core-egui-adapter,katana-ui-core-storybook,katana-ui-core-svg-raster,katana-ui-core-text-raster,kuc-consumer-app' \
       'targets=all' \
@@ -156,6 +164,7 @@ coverage_profile_signature() {
       Justfile \
       scripts/run-strict-coverage.sh \
       scripts/assert-strict-coverage-json.py \
+      scripts/coverage/run-test-binaries.py \
       scripts/coverage/image-runtime-id.py \
       scripts/coverage/run-container.sh \
       scripts/coverage/run-in-container.sh \
@@ -237,7 +246,6 @@ esac
 case "${coverage_reuse}" in
   0)
     coverage_mode="clean"
-    coverage_build_args=()
     coverage_cleanup_mode="clean"
     pending_profile_signature="$(coverage_profile_signature)"
     ;;
@@ -253,7 +261,6 @@ case "${coverage_reuse}" in
         echo "coverage profile is incomplete or its production inputs changed; rerun full coverage before supplementing" >&2
         exit 1
       fi
-      coverage_build_args=(--no-clean)
       coverage_cleanup_mode="none"
       pending_profile_signature="${current_profile_signature}"
     else
@@ -261,11 +268,9 @@ case "${coverage_reuse}" in
       if [[ -f "${coverage_profile_path}" \
         && "$(<"${coverage_profile_path}")" == "${pending_profile_signature}" ]]; then
         coverage_mode="reuse"
-        coverage_build_args=(--no-clean)
         coverage_cleanup_mode="profraw"
       else
         coverage_mode="rebuild"
-        coverage_build_args=()
         coverage_cleanup_mode="workspace"
       fi
     fi
@@ -286,18 +291,25 @@ elif [[ ! "${coverage_test_threads}" =~ ^[1-9][0-9]*$ ]]; then
   echo "COVERAGE_TEST_THREADS must be auto or a positive integer" >&2
   exit 1
 fi
+coverage_parallel_binaries=2
+if ((coverage_test_threads < coverage_parallel_binaries)); then
+  coverage_parallel_binaries=1
+fi
+coverage_threads_per_binary="$((coverage_test_threads / coverage_parallel_binaries))"
 coverage_min_free_gib="${KUC_COVERAGE_MIN_FREE_GIB:-2}"
 if [[ ! "${coverage_min_free_gib}" =~ ^[1-9][0-9]*$ ]]; then
   echo "KUC_COVERAGE_MIN_FREE_GIB must be a positive integer" >&2
   exit 1
 fi
-coverage_available_kib="$(df -Pk "${CARGO_TARGET_DIR:-target}" | awk 'NR == 2 { print $4 }')"
+coverage_available_kib="$(df -Pk "${coverage_storage_dir}" | awk 'NR == 2 { print $4 }')"
 coverage_required_kib="$((coverage_min_free_gib * 1024 * 1024))"
 if ((coverage_available_kib < coverage_required_kib)); then
   echo "strict coverage requires at least ${coverage_min_free_gib} GiB free after cleanup" >&2
   exit 1
 fi
 invalidate_coverage_profile
+export CARGO_TARGET_DIR="${coverage_target_dir}"
+eval "$(run_cargo_raw llvm-cov show-env --sh)"
 case "${coverage_cleanup_mode}" in
   clean)
     run_cargo clean --target-dir "${coverage_target_dir}"
@@ -312,22 +324,16 @@ case "${coverage_cleanup_mode}" in
   none)
     ;;
 esac
-echo "coverage mode: ${coverage_mode}; scope: full; test threads: ${coverage_test_threads}"
+echo "coverage mode: ${coverage_mode}; scope: full; parallel binaries: ${coverage_parallel_binaries}; test threads per binary: ${coverage_threads_per_binary}"
 coverage_test_started_at="${SECONDS}"
 if [[ -n "${coverage_supplement_filter}" ]]; then
-  run_cargo llvm-cov test --quiet \
-    --no-clean \
+  run_cargo_raw test \
     -p katana-ui-core-egui-adapter \
     "${coverage_supplement_target_args[@]}" \
     --all-features \
     --locked \
-    --json \
-    --summary-only \
-    --output-path "${coverage_supplement_report_path}" \
-    --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)' \
-    -- \
+    "${coverage_supplement_filter}" -- \
     --include-ignored \
-    "${coverage_supplement_filter}" \
     --test-threads="${coverage_test_threads}"
   run_cargo llvm-cov report --quiet \
     "${coverage_packages[@]}" \
@@ -336,19 +342,32 @@ if [[ -n "${coverage_supplement_filter}" ]]; then
     --output-path "${coverage_report_path}" \
     --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)'
 else
-  run_cargo llvm-cov --quiet \
-    "${coverage_build_args[@]}" \
+  coverage_run_dir="${coverage_target_dir}/kuc-test-run-${BASHPID}"
+  coverage_metadata_path="${coverage_run_dir}/metadata.json"
+  coverage_artifacts_path="${coverage_run_dir}/artifacts.jsonl"
+  mkdir -p "${coverage_run_dir}"
+  run_cargo_raw metadata --format-version 1 --no-deps --locked \
+    >"${coverage_metadata_path}"
+  run_cargo_raw test \
     "${coverage_packages[@]}" \
     --all-targets \
     --all-features \
     --locked \
+    --no-run \
+    --message-format=json \
+    >"${coverage_artifacts_path}"
+  python3 scripts/coverage/run-test-binaries.py \
+    --artifact-json "${coverage_artifacts_path}" \
+    --metadata-json "${coverage_metadata_path}" \
+    --logs-dir "${coverage_run_dir}/logs" \
+    --max-parallel-binaries "${coverage_parallel_binaries}" \
+    --test-threads "${coverage_threads_per_binary}"
+  run_cargo llvm-cov report --quiet \
+    "${coverage_packages[@]}" \
     --json \
     --summary-only \
     --output-path "${coverage_report_path}" \
-    --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)' \
-    -- \
-    --include-ignored \
-    --test-threads="${coverage_test_threads}"
+    --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)'
 fi
 python3 scripts/assert-strict-coverage-json.py --validate-profile "${coverage_report_path}"
 write_coverage_profile_state "${pending_profile_signature}"

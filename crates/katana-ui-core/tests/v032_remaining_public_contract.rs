@@ -364,6 +364,29 @@ fn public_diagnostics_contract_covers_empty_scope_and_keyboard_boundaries() {
     let first_scope = scopes[0].key.clone();
     let second_scope = scopes[1].key.clone();
 
+    let mut boundary_list = DiagnosticsList::new("Boundary diagnostics")
+        .scope("one", "One", "Scope one")
+        .scope("two", "Two", "Scope two");
+    let missing_scope = DiagnosticsList::new("Other diagnostics")
+        .scope("missing", "Missing", "Missing scope")
+        .render_snapshot()
+        .scopes[0]
+        .key
+        .clone();
+    assert!(
+        boundary_list
+            .apply_action(DiagnosticsListAction::SelectScope(missing_scope))
+            .is_empty()
+    );
+    assert!(matches!(
+        boundary_list
+            .apply_action(DiagnosticsListAction::Keyboard(
+                DiagnosticKeyboardInput::ScopePrevious,
+            ))
+            .as_slice(),
+        [DiagnosticsListEvent::ScopeSelected { scope_key }] if scope_key.as_str() == "two"
+    ));
+
     for action in [
         DiagnosticsListAction::SetGroupBy(DiagnosticsGroupBy::Severity),
         DiagnosticsListAction::SetSortBy(DiagnosticsSortBy::Severity),

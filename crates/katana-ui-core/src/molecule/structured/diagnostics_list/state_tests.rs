@@ -3,6 +3,9 @@ use crate::molecule::structured::diagnostics_list::{
     DiagnosticAction, DiagnosticLocation, DiagnosticSeverity,
 };
 
+#[path = "state_preview_tests.rs"]
+mod preview_tests;
+
 fn scope(key: &str) -> DiagnosticScopeInput {
     DiagnosticScopeInput::new(key, format!("label-{key}"), format!("a11y-{key}"))
 }
@@ -15,6 +18,21 @@ fn item(id: &str, key: &str) -> DiagnosticItem {
         DiagnosticLocation::new("file.rs", 1, 1),
     )
     .scope(key)
+}
+
+#[test]
+fn reconcile_scope_selection_fails_closed_and_recovers_to_first_scope() {
+    let mut state = DiagnosticsListState {
+        selected_scope_key: Some(DiagnosticScopeKey::new("stale")),
+        ..DiagnosticsListState::default()
+    };
+
+    state.reconcile_scope_selection(&[]);
+    assert_eq!(state.selected_scope_key, None);
+
+    let first = scope("first");
+    state.reconcile_scope_selection(&[first.clone(), scope("second")]);
+    assert_eq!(state.selected_scope_key, Some(first.key));
 }
 
 #[test]
