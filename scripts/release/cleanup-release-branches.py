@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
@@ -102,7 +103,41 @@ def is_merged(repo_root: Path, branch: str, base: str) -> bool:
     )
 
 
-def is_remote_merged(repo_root: Path, branch: str, base: str) -> bool:
+def github_pr_merged(
+    repo_root: Path, branch: str, base: str, tip: str, repo: str | None
+) -> bool:
+    args = [
+        "pr",
+        "list",
+        "--state",
+        "merged",
+        "--head",
+        branch,
+        "--base",
+        base,
+        "--json",
+        "number,mergedAt,baseRefName,headRefOid",
+    ]
+    if repo:
+        args.extend(["--repo", repo])
+    try:
+        matches = run_gh(args, cwd=repo_root)
+        records = json.loads(matches)
+    except (RuntimeError, ValueError, TypeError):
+        return False
+    if not isinstance(records, list):
+        return False
+    return any(
+        isinstance(record, dict)
+        and record.get("baseRefName") == base
+        and record.get("mergedAt")
+        and record.get("headRefOid") == tip
+        for record in records
+    )
+
+
+def is_remote_merged(repo_root: Path, branch: str, base: str, repo: str | None) -> bool:
+    tip = run_git(["rev-parse", f"origin/{branch}"], cwd=repo_root)
     return (
         subprocess.run(
             ["git", "merge-base", "--is-ancestor", f"origin/{branch}", f"origin/{base}"],
@@ -110,6 +145,13 @@ def is_remote_merged(repo_root: Path, branch: str, base: str) -> bool:
             check=False,
         ).returncode
         == 0
+    ) or github_pr_merged(repo_root, branch, base, tip, repo)
+
+
+def is_branch_merged(repo_root: Path, branch: str, base: str, repo: str | None) -> bool:
+    tip = run_git(["rev-parse", branch], cwd=repo_root)
+    return is_merged(repo_root, branch, base) or github_pr_merged(
+        repo_root, branch, base, tip, repo
     )
 
 
@@ -152,7 +194,7 @@ class BranchState:
     remote_merged: bool
 
 
-def collect_branch_states(repo_root: Path, default: str) -> dict[str, BranchState]:
+def collect_branch_states(repo_root: Path, default: str, repo: str | None) -> dict[str, BranchState]:
     local_release = release_branches_local(repo_root)
     remote_release = release_branches_remote(repo_root)
     used_worktrees = worktree_usage(repo_root)
@@ -168,8 +210,8 @@ def collect_branch_states(repo_root: Path, default: str) -> dict[str, BranchStat
             path = used_worktrees.get(branch)
             if path is not None:
                 clean = worktree_is_clean(repo_root, path)
-        local_merged = is_merged(repo_root, branch, default) if local else False
-        remote_merged = is_remote_merged(repo_root, branch, default) if remote else False
+        local_merged = is_branch_merged(repo_root, branch, default, repo) if local else False
+        remote_merged = is_remote_merged(repo_root, branch, default, repo) if remote else False
         states[branch] = BranchState(local, remote, in_use, clean, local_merged, remote_merged)
     return states
 
@@ -236,7 +278,7 @@ def main() -> int:
     default = default_branch(repo_root)
     print(f"[cleanup] default branch detected: {default}")
     ensure_default_ready(repo_root, default)
-    states = collect_branch_states(repo_root, default)
+    states = collect_branch_states(repo_root, default, args.repo)
     print(f"[cleanup] candidates: {', '.join(sorted(states)) or 'none'}")
     return evaluate_and_cleanup(repo_root, default, states)
 

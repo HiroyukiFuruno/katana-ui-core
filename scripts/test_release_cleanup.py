@@ -35,6 +35,14 @@ class ReleaseCleanupFixture:
             'if [ "$1" = "release" ] && [ "$2" = "view" ]; then\n'
             "  exit 0\n"
             "fi\n"
+            'if [ "$1" = "pr" ] && [ "$2" = "list" ]; then\n'
+            '  if [ "${FAKE_GH_PR_LIST_FAIL:-0}" = "1" ]; then exit 1; fi\n'
+            '  case " $* " in\n'
+            '    *"--head ${FAKE_GH_MERGED_HEAD:-__none__} "*) printf \'[{"number":1,"mergedAt":"2026-08-31T00:00:00Z","baseRefName":"master","headRefOid":"%s"}]\\n\' "${FAKE_GH_MERGED_OID:-stale}" ;;\n'
+            '    *) printf \'[]\\n\' ;;\n'
+            "  esac\n"
+            "  exit 0\n"
+            "fi\n"
             "exit 1\n",
             encoding="utf-8",
         )
@@ -92,8 +100,35 @@ class ReleaseCleanupFixture:
             self._run(repo, "git", "worktree", "add", str(worktree), name)
             Path(worktree / "dirty.txt").write_text("dirty", encoding="utf-8")
 
+    def create_squash_merged_release_branch(self, repo: Path, name: str) -> None:
+        self._run(repo, "git", "checkout", "-b", name, "master")
+        self._write(repo / "CHANGELOG.md", f"{name}\n")
+        self._run(repo, "git", "add", "CHANGELOG.md")
+        self._run(repo, "git", "commit", "-m", f"{name} commit")
+        self._run(repo, "git", "checkout", "master")
+        self._run(repo, "git", "merge", "--squash", name)
+        self._run(repo, "git", "commit", "-m", f"squash merge {name}")
+        self._run(repo, "git", "push", "--force", "origin", "master")
+        self._run(repo, "git", "push", "--force", "-u", "origin", name)
+
     def run_cleanup(self, repo: Path, version: str) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
+        env["GITHUB_REPOSITORY"] = "test-org/test-repo"
+        env["PATH"] = f"{self.fake_bin}{os.pathsep}{env['PATH']}"
+        script = Path(__file__).with_name("release") / "cleanup-release-branches.py"
+        return subprocess.run(
+            [sys.executable, str(script), "--version", version],
+            cwd=repo,
+            text=True,
+            env=env,
+            capture_output=True,
+        )
+
+    def run_cleanup_with_env(
+        self, repo: Path, version: str, **extra_env: str
+    ) -> subprocess.CompletedProcess[str]:
+        env = os.environ.copy()
+        env.update(extra_env)
         env["GITHUB_REPOSITORY"] = "test-org/test-repo"
         env["PATH"] = f"{self.fake_bin}{os.pathsep}{env['PATH']}"
         script = Path(__file__).with_name("release") / "cleanup-release-branches.py"
@@ -185,6 +220,56 @@ class ReleaseCleanupTests(unittest.TestCase):
                 capture_output=True,
             ).stdout
             self.assertIn("release/v0.3.1", branches)
+        finally:
+            temporary.cleanup()
+
+    def test_removes_squash_merged_release_branch_from_github_pr_status(self) -> None:
+        repo, fixture, temporary = self._repo()
+        try:
+            fixture.create_squash_merged_release_branch(repo, "release/v0.3.1")
+            tip = subprocess.run(
+                ["git", "rev-parse", "release/v0.3.1"],
+                cwd=repo,
+                check=True,
+                text=True,
+                capture_output=True,
+            ).stdout.strip()
+            result = fixture.run_cleanup_with_env(
+                repo,
+                "v0.3.2",
+                FAKE_GH_MERGED_HEAD="release/v0.3.1",
+                FAKE_GH_MERGED_OID=tip,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("deleted local branch release/v0.3.1", result.stdout)
+            self.assertIn("deleted remote branch origin/release/v0.3.1", result.stdout)
+        finally:
+            temporary.cleanup()
+
+    def test_retain_same_named_release_branch_when_merged_pr_tip_is_stale(self) -> None:
+        repo, fixture, temporary = self._repo()
+        try:
+            fixture.create_squash_merged_release_branch(repo, "release/v0.3.1")
+            result = fixture.run_cleanup_with_env(
+                repo,
+                "v0.3.2",
+                FAKE_GH_MERGED_HEAD="release/v0.3.1",
+                FAKE_GH_MERGED_OID="old-release-tip",
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("retain release/v0.3.1: unmerged", result.stdout)
+        finally:
+            temporary.cleanup()
+
+    def test_retain_squash_merged_release_branch_when_pr_status_is_unavailable(self) -> None:
+        repo, fixture, temporary = self._repo()
+        try:
+            fixture.create_squash_merged_release_branch(repo, "release/v0.3.1")
+            result = fixture.run_cleanup_with_env(
+                repo, "v0.3.2", FAKE_GH_PR_LIST_FAIL="1"
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("retain release/v0.3.1: unmerged", result.stdout)
         finally:
             temporary.cleanup()
 
