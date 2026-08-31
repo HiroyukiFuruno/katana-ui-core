@@ -31,3 +31,7 @@ mod alignment_layout_tests;
 #[cfg(test)]
 #[path = "status_bar_failure_tests.rs"]
 mod failure_tests;
+
+#[cfg(test)]
+#[path = "status_bar_texture_identity_tests.rs"]
+mod texture_identity_tests;
