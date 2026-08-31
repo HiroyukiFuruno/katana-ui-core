@@ -80,29 +80,11 @@ impl RootEventDispatcher {
         if let Some(source_address) = output.source_address.as_mut() {
             payload.source_address_submissions = source_address.output.take_submissions();
         }
-        let envelope = RootEventEnvelope {
-            text: &payload.text,
-            toolbar: payload.toolbar.as_deref(),
-            floating: payload.floating.as_deref(),
-            search: payload.search.as_deref(),
-            context_menu: payload.context_menu.as_deref(),
-            status_bar: payload.status_bar.as_deref(),
-            diagnostics_list: payload.diagnostics_list.as_deref(),
-        };
-        let bytes = serialize_value(&envelope)?;
-        let mut fingerprint_bytes = bytes;
-        fingerprint_bytes.extend_from_slice(b"|kuc-source-address-count|");
-        fingerprint_bytes.extend_from_slice(
-            payload
-                .source_address_submissions
-                .len()
-                .to_string()
-                .as_bytes(),
-        );
+        let fingerprint = RootEventFingerprint::fingerprint_payload(&payload)?;
         Ok(
             EguiTextCommandSurfaceRootEventBatch::with_source_address_port(
                 payload,
-                hex::encode(Sha256::digest(fingerprint_bytes)),
+                fingerprint,
                 source_address_submission_port,
             ),
         )
@@ -133,9 +115,7 @@ impl RootEventFingerprint {
 }
 
 impl RootEventFingerprint {
-    pub(super) fn fingerprint_payload(
-        payload: &RootEventPayload,
-    ) -> Result<String, serde_json::Error> {
+    pub(super) fn fingerprint_payload(payload: &RootEventPayload) -> Result<String, String> {
         let envelope = RootEventEnvelope {
             text: &payload.text,
             toolbar: payload.toolbar.as_deref(),
@@ -145,6 +125,15 @@ impl RootEventFingerprint {
             status_bar: payload.status_bar.as_deref(),
             diagnostics_list: payload.diagnostics_list.as_deref(),
         };
-        serde_json::to_vec(&envelope).map(|bytes| hex::encode(Sha256::digest(bytes)))
+        let mut bytes = serialize_value(&envelope)?;
+        bytes.extend_from_slice(b"|kuc-source-address-count|");
+        bytes.extend_from_slice(
+            payload
+                .source_address_submissions
+                .len()
+                .to_string()
+                .as_bytes(),
+        );
+        Ok(hex::encode(Sha256::digest(bytes)))
     }
 }

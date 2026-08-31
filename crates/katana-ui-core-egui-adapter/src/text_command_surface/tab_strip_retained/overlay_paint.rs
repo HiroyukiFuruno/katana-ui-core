@@ -3,6 +3,7 @@ use super::{
     DRAG_GHOST_OFFSET_PX, TabStripPaintOperation, TabStripPaintOperationKind, TabStripPaintTexture,
     TabStripRetainedError, TabStripRetainedState,
 };
+use sha2::{Digest, Sha256};
 
 impl TabStripRetainedState {
     pub(super) fn paint_overlay_label(
@@ -19,8 +20,9 @@ impl TabStripRetainedState {
             .rasterizer
             .rasterize(text, ui.ctx().pixels_per_point())
             .map_err(TabStripRetainedError::Raster)?;
+        let raster_fingerprint = hex::encode(Sha256::digest(&raster.rgba_pixels));
         let texture = TabStripPaintTexture {
-            identity: format!("tab-strip-overlay:{prefix}:{index}"),
+            identity: format!("tab-strip-overlay:{prefix}:{index}:{raster_fingerprint}"),
             width: raster.width,
             height: raster.height,
             rgba_pixels: raster.rgba_pixels,
@@ -51,7 +53,7 @@ impl TabStripRetainedState {
             texture.height as usize,
             &texture.rgba_pixels,
         );
-        ui.painter().image(
+        ui.painter().with_clip_rect(clip_bounds).image(
             handle.id(),
             bounds,
             egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),

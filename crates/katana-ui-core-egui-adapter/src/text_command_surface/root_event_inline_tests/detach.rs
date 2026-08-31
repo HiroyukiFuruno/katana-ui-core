@@ -58,6 +58,48 @@ fn detach_projects_nonsearch_root_and_keeps_outer_receipt_cardinality() {
 }
 
 #[test]
+fn detach_refresh_keeps_source_submission_count_in_fingerprints() {
+    let batch_without_source = EguiTextCommandSurfaceRootEventBatch::new(
+        RootEventPayload {
+            search: Some(vec![CommandChromeSearchEvent::CloseRequested]),
+            ..RootEventPayload::empty()
+        },
+        String::new(),
+    );
+    let batch_with_source = EguiTextCommandSurfaceRootEventBatch::new(
+        RootEventPayload {
+            search: Some(vec![CommandChromeSearchEvent::CloseRequested]),
+            source_address_submissions: vec![source_submission()],
+            ..RootEventPayload::empty()
+        },
+        String::new(),
+    );
+    let _ = batch_without_source
+        .detach_search_events()
+        .expect("search detach without source succeeds");
+    let _ = batch_with_source
+        .detach_search_events()
+        .expect("search detach with source succeeds");
+    let mut without_forwarder = CountingForwarder { calls: 0 };
+    let mut with_forwarder = CountingForwarder { calls: 0 };
+    let without_receipt = batch_without_source
+        .forward_once(&mut without_forwarder)
+        .expect("batch without source forwards");
+    let with_receipt = batch_with_source
+        .forward_once(&mut with_forwarder)
+        .expect("batch with source forwards");
+
+    assert_ne!(
+        without_receipt.event_batch_fingerprint(),
+        with_receipt.event_batch_fingerprint()
+    );
+    assert_ne!(
+        without_receipt.correlation_fingerprint(),
+        with_receipt.correlation_fingerprint()
+    );
+}
+
+#[test]
 fn detached_search_cannot_be_retrieved_after_root_forward() {
     let batch = EguiTextCommandSurfaceRootEventBatch::new(
         RootEventPayload {

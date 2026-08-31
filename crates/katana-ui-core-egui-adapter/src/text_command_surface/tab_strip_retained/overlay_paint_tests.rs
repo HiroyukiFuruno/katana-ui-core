@@ -78,3 +78,77 @@ fn paint_overlay_label_records_text_raster_texture_plan() {
         TabStripPaintOperationKind::Texture { .. }
     ));
 }
+
+#[test]
+fn overlay_label_replaces_retained_texture_when_same_entry_is_renamed() {
+    let mut state = build_state();
+    let context = egui::Context::default();
+    let row = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(120.0, 24.0));
+    let mut first_operations = Vec::new();
+    let mut first = context.run_ui(egui::RawInput::default(), |ui| {
+        state
+            .paint_overlay_label(
+                ui,
+                &mut first_operations,
+                ui.max_rect(),
+                &TabStripText::new("Before"),
+                row,
+                "entry",
+                0,
+            )
+            .expect("initial overlay label should render");
+    });
+    let first_identity = overlay_texture_identity(&first_operations).to_owned();
+    first.textures_delta.clear();
+
+    let mut second_operations = Vec::new();
+    let mut second = context.run_ui(egui::RawInput::default(), |ui| {
+        state
+            .paint_overlay_label(
+                ui,
+                &mut second_operations,
+                ui.max_rect(),
+                &TabStripText::new("Renamed entry"),
+                row,
+                "entry",
+                0,
+            )
+            .expect("renamed overlay label should render");
+    });
+
+    assert_ne!(first_identity, overlay_texture_identity(&second_operations));
+    assert!(!second.textures_delta.set.is_empty());
+    second.textures_delta.clear();
+}
+
+#[test]
+fn overlay_texture_live_paint_uses_supplied_clip_bounds() {
+    let mut state = build_state();
+    let context = egui::Context::default();
+    let clip = egui::Rect::from_min_size(egui::pos2(8.0, 8.0), egui::vec2(12.0, 12.0));
+    let bounds = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(32.0, 32.0));
+    let texture = TabStripPaintTexture {
+        identity: "clipped-overlay-texture".to_owned(),
+        width: 4,
+        height: 4,
+        rgba_pixels: vec![255; 4 * 4 * 4],
+    };
+    let mut operations = Vec::new();
+    let mut output = context.run_ui(egui::RawInput::default(), |ui| {
+        state.paint_overlay_texture(ui, &mut operations, clip, &texture, bounds);
+    });
+
+    assert!(output.shapes.iter().any(|shape| shape.clip_rect == clip));
+    assert_eq!(operations[0].clip_bounds, super::ui_rect(clip));
+    output.textures_delta.clear();
+}
+
+fn overlay_texture_identity(operations: &[TabStripPaintOperation]) -> &str {
+    operations
+        .iter()
+        .find_map(|operation| match &operation.kind {
+            TabStripPaintOperationKind::Texture { texture, .. } => Some(texture.identity.as_str()),
+            TabStripPaintOperationKind::Fill { .. } => None,
+        })
+        .expect("overlay frame should contain a texture")
+}

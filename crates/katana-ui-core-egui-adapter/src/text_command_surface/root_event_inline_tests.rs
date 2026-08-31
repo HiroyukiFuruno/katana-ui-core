@@ -14,6 +14,7 @@ mod router_context {
 }
 
 mod detach {
+    use super::dispatch_setup::source_submission;
     use super::router_context::CountingForwarder;
     use super::*;
     include!("root_event_inline_tests/detach.rs");
