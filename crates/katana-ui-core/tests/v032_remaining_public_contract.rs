@@ -360,7 +360,9 @@ fn public_diagnostics_contract_covers_empty_scope_and_keyboard_boundaries() {
         .scope("two", "Two", "Scope two")
         .item(fixed)
         .item(warning);
-    let second_scope = list.render_snapshot().scopes[1].key.clone();
+    let scopes = list.render_snapshot().scopes;
+    let first_scope = scopes[0].key.clone();
+    let second_scope = scopes[1].key.clone();
 
     for action in [
         DiagnosticsListAction::SetGroupBy(DiagnosticsGroupBy::Severity),
@@ -398,6 +400,23 @@ fn public_diagnostics_contract_covers_empty_scope_and_keyboard_boundaries() {
         )))
         .as_slice(),
         [DiagnosticsListEvent::DiagnosticFixPreviewToggled { expanded: true, .. }]
+    ));
+    for input in [
+        DiagnosticKeyboardInput::ArrowLeft,
+        DiagnosticKeyboardInput::Enter,
+        DiagnosticKeyboardInput::Space,
+    ] {
+        assert!(
+            list.apply_action(DiagnosticsListAction::Keyboard(input))
+                .is_empty(),
+            "hidden retained selection must not activate from {input:?}"
+        );
+    }
+
+    assert!(matches!(
+        list.apply_action(DiagnosticsListAction::SelectScope(first_scope))
+            .as_slice(),
+        [DiagnosticsListEvent::ScopeSelected { .. }]
     ));
     assert!(matches!(
         list.apply_action(DiagnosticsListAction::Keyboard(

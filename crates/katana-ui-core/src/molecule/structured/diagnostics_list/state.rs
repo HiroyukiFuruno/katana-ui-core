@@ -1,7 +1,7 @@
 use super::{
     BulkFixSkipReason, DiagnosticId, DiagnosticItem, DiagnosticKeyboardInput, DiagnosticScopeInput,
     DiagnosticScopeKey, DiagnosticsListAction, DiagnosticsListEvent, DiagnosticsListOptions,
-    DiagnosticsListPlanner,
+    DiagnosticsListPlanner, retained_selection::selected_visible_id,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -112,10 +112,10 @@ impl DiagnosticsListState {
         match input {
             DiagnosticKeyboardInput::F8 => self.select_error(items, options, true),
             DiagnosticKeyboardInput::ShiftF8 => self.select_error(items, options, false),
-            DiagnosticKeyboardInput::Space => self.apply_selected_fix(items),
-            DiagnosticKeyboardInput::Enter => self.navigate_selected(),
-            DiagnosticKeyboardInput::ArrowRight => self.toggle_selected_preview(),
-            DiagnosticKeyboardInput::ArrowLeft => self.collapse_selected_preview(),
+            DiagnosticKeyboardInput::Space => self.apply_selected_fix(items, options),
+            DiagnosticKeyboardInput::Enter => self.navigate_selected(items, options),
+            DiagnosticKeyboardInput::ArrowRight => self.toggle_selected_preview(items, options),
+            DiagnosticKeyboardInput::ArrowLeft => self.collapse_selected_preview(items, options),
             DiagnosticKeyboardInput::ArrowUp => self.select_visible(items, options, false),
             DiagnosticKeyboardInput::ArrowDown => self.select_visible(items, options, true),
             DiagnosticKeyboardInput::ScopeNext => self.select_scope_relative(scopes, true),
@@ -180,26 +180,39 @@ impl DiagnosticsListState {
         self.select(id)
     }
 
-    fn apply_selected_fix(&self, items: &[DiagnosticItem]) -> Vec<DiagnosticsListEvent> {
-        self.selected_id
-            .clone()
-            .map_or_else(Vec::new, |id| apply_fix(items, id))
+    fn apply_selected_fix(
+        &self,
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+    ) -> Vec<DiagnosticsListEvent> {
+        selected_visible_id(self, items, options).map_or_else(Vec::new, |id| apply_fix(items, id))
     }
 
-    fn toggle_selected_preview(&mut self) -> Vec<DiagnosticsListEvent> {
-        self.selected_id
-            .clone()
+    fn toggle_selected_preview(
+        &mut self,
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+    ) -> Vec<DiagnosticsListEvent> {
+        selected_visible_id(self, items, options)
             .map_or_else(Vec::new, |id| self.toggle_fix_preview(id))
     }
 
-    fn navigate_selected(&self) -> Vec<DiagnosticsListEvent> {
-        self.selected_id.clone().map_or_else(Vec::new, |id| {
+    fn navigate_selected(
+        &self,
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+    ) -> Vec<DiagnosticsListEvent> {
+        selected_visible_id(self, items, options).map_or_else(Vec::new, |id| {
             vec![DiagnosticsListEvent::NavigateRequested { id }]
         })
     }
 
-    fn collapse_selected_preview(&mut self) -> Vec<DiagnosticsListEvent> {
-        let Some(id) = self.selected_id.clone() else {
+    fn collapse_selected_preview(
+        &mut self,
+        items: &[DiagnosticItem],
+        options: &DiagnosticsListOptions,
+    ) -> Vec<DiagnosticsListEvent> {
+        let Some(id) = selected_visible_id(self, items, options) else {
             return Vec::new();
         };
         if !self.expanded_ids.remove(&id) {

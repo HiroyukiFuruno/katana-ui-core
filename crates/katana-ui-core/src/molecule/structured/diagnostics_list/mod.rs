@@ -3,6 +3,7 @@ mod events;
 mod options;
 mod planner;
 mod render;
+mod retained_selection;
 mod state;
 mod types;
 

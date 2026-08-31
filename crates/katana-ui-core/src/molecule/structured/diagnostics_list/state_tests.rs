@@ -181,6 +181,55 @@ fn keyboard_navigation_respects_selected_scope_and_avoids_hidden_diagnostics() {
 }
 
 #[test]
+fn keyboard_activation_rejects_a_retained_selection_outside_the_selected_scope() {
+    let first = scope("a");
+    let second = scope("b");
+    let hidden = item("hidden", "a").quickfix(DiagnosticAction::new("fix-a", "fix"));
+    let visible = item("visible", "b").quickfix(DiagnosticAction::new("fix-b", "fix"));
+    let items = vec![hidden.clone(), visible];
+    let scopes = vec![first.clone(), second.clone()];
+    let options = DiagnosticsListOptions::default();
+    let mut state = DiagnosticsListState {
+        selected_scope_key: Some(first.key),
+        selected_id: Some(hidden.id.clone()),
+        expanded_ids: BTreeSet::from([hidden.id.clone()]),
+        ..DiagnosticsListState::default()
+    };
+
+    assert_eq!(
+        state.apply_action(
+            DiagnosticsListAction::SelectScope(second.key.clone()),
+            &items,
+            &scopes,
+            &options,
+        ),
+        vec![DiagnosticsListEvent::ScopeSelected {
+            scope_key: second.key,
+        }]
+    );
+    for input in [
+        DiagnosticKeyboardInput::Space,
+        DiagnosticKeyboardInput::Enter,
+        DiagnosticKeyboardInput::ArrowRight,
+        DiagnosticKeyboardInput::ArrowLeft,
+    ] {
+        assert!(
+            state
+                .apply_action(
+                    DiagnosticsListAction::Keyboard(input),
+                    &items,
+                    &scopes,
+                    &options,
+                )
+                .is_empty(),
+            "hidden retained selection must not activate from {input:?}"
+        );
+    }
+    assert_eq!(state.selected_id, Some(hidden.id.clone()));
+    assert!(state.expanded_ids.contains(&hidden.id));
+}
+
+#[test]
 fn confirm_bulk_apply_filters_items_outside_selected_scope() {
     let first = scope("a");
     let second = scope("b");

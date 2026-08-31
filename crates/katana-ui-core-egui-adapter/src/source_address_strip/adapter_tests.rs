@@ -1,5 +1,6 @@
 use super::{EguiSourceAddressStripAdapter, EguiSourceAddressStripOutput};
 use crate::source_address_strip::SourceAddressFrameEventClass;
+use crate::source_address_strip::SourceAddressRenderStyle;
 use katana_ui_core::atom::{TextAreaEvent, TextAreaKeyChord, TextAreaValidationError};
 use katana_ui_core::molecule::structured::source_address_strip::{
     SourceAddressAction, SourceAddressPresentation, SourceAddressStrip,
@@ -162,4 +163,44 @@ fn source_address_adapter_displays_input_enabled_after_host_enables_input() {
         &mut adapter,
         &mut strip
     ));
+}
+
+#[test]
+fn source_address_adapter_preserves_raster_evidence_only_on_successful_frame() {
+    let context = egui::Context::default();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-address-failed-frame")
+        .expect("adapter should initialize");
+    let mut strip = strip();
+
+    assert!(!render_source_address_strip(
+        &context,
+        &mut adapter,
+        &mut strip
+    ));
+    assert!(adapter.raster_evidence().is_some());
+
+    let mut failed_result = None;
+    let mut style = SourceAddressRenderStyle::default();
+    style.input_raster.font.size = f32::NAN;
+    crate::run_ui_discard(
+        &context,
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, SCREEN_SIZE)),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            failed_result = Some(adapter.show_with_style(ui, &mut strip, &style));
+        },
+    );
+    let error = match failed_result.expect("failed frame render attempted") {
+        Ok(_) => panic!("invalid style should fail and return error"),
+        Err(error) => error,
+    };
+
+    assert!(
+        error
+            .to_string()
+            .contains("source-address text surface failed")
+    );
+    assert!(adapter.raster_evidence().is_none());
 }

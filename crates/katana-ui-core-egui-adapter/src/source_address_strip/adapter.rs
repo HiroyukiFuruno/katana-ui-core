@@ -51,6 +51,7 @@ impl EguiSourceAddressStripAdapter {
         };
         let root_bounds = ui.available_rect_before_wrap();
         self.last_label_rasters.clear();
+        self.last_input_artifact = None;
         self.last_paint_plan = None;
         let enabled = strip.enabled();
         let visible = strip.presentation().visible().to_owned();
@@ -89,7 +90,6 @@ impl EguiSourceAddressStripAdapter {
                 &style.input_paint,
                 &EguiTextSurfaceInputPolicy::default(),
             )?;
-            self.last_input_artifact = Some(rendered.artifact.clone());
             paint_plan.operations.extend(
                 rendered
                     .artifact
@@ -204,6 +204,7 @@ impl EguiSourceAddressStripAdapter {
         }
         Paint::paint_button_plan(ui, self, Some(&paint_plan));
         self.last_paint_plan = Some(paint_plan);
+        self.last_input_artifact = Some(field.artifact.clone());
         self.surface = Some(surface);
         Ok(output)
     }
