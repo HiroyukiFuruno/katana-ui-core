@@ -1,13 +1,14 @@
 pub(crate) struct Interaction;
 
 impl Interaction {
-    pub(crate) fn activated_by_pointer_or_accesskit(
-        ui: &egui::Ui,
-        response: &egui::Response,
-    ) -> bool {
+    pub(crate) fn activated(ui: &egui::Ui, response: &egui::Response) -> bool {
+        let focused = response.has_focus();
         response.clicked()
             || ui.input(|input| {
                 input.has_accesskit_action_request(response.id, egui::accesskit::Action::Click)
+                    || focused
+                        && (input.key_pressed(egui::Key::Enter)
+                            || input.key_pressed(egui::Key::Space))
             })
     }
 

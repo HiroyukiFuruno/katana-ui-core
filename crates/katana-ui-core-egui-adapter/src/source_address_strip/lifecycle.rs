@@ -1,9 +1,14 @@
 use super::adapter::EguiSourceAddressStripAdapter;
 use super::types::{
-    EguiSourceAddressStripError, SourceAddressPaintPlan, SourceAddressRasterEvidenceReceipt,
+    EguiSourceAddressStripError, EguiSourceAddressStripOutput, SourceAddressPaintPlan,
+    SourceAddressRasterEvidenceReceipt,
 };
 use crate::text_surface::{EguiTextSurfaceAdapter, SharedTextMetrics};
 use crate::texture_cache::{DEFAULT_TEXTURE_CACHE_CAPACITY, RgbaTextureCache};
+use katana_ui_core::molecule::structured::source_address_strip::{
+    SourceAddressAction, SourceAddressStrip,
+};
+use katana_ui_core::text_surface::TextSurfaceEvent;
 use katana_ui_core_text_raster::{
     PlatformTextRasterConfig, PlatformTextRasterResources, PlatformTextRasterizer,
 };
@@ -97,5 +102,37 @@ impl EguiSourceAddressStripAdapter {
         self.artifact_paint_plan()
             .cloned()
             .ok_or(EguiSourceAddressStripError::PaintPlanNotProduced)
+    }
+
+    pub(super) fn apply_text_surface_events(
+        &self,
+        output: &mut EguiSourceAddressStripOutput,
+        strip: &mut SourceAddressStrip,
+        events: &[TextSurfaceEvent],
+    ) {
+        for event in events {
+            match event {
+                TextSurfaceEvent::TextArea(katana_ui_core::atom::TextAreaEvent::Change(value)) => {
+                    if let Some(event) =
+                        strip.apply_action(SourceAddressAction::SetDraft(value.clone()))
+                    {
+                        output.record(event);
+                    }
+                }
+                TextSurfaceEvent::FocusChanged(focused) => {
+                    if let Some(event) =
+                        strip.apply_action(SourceAddressAction::SetFocused(*focused))
+                    {
+                        output.record(event);
+                    }
+                }
+                TextSurfaceEvent::TextArea(katana_ui_core::atom::TextAreaEvent::Submit(_)) => {
+                    if let Some(event) = strip.apply_action(SourceAddressAction::Submit) {
+                        output.record(event);
+                    }
+                }
+                _ => {}
+            }
+        }
     }
 }

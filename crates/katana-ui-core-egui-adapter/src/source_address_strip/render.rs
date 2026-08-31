@@ -89,7 +89,7 @@ pub(super) fn show_entries(
             accessibility,
             strip.enabled(),
         );
-        if Interaction::activated_by_pointer_or_accesskit(ui, &button) {
+        if Interaction::activated(ui, &button) {
             let action = if history {
                 SourceAddressAction::SelectHistory(index)
             } else {

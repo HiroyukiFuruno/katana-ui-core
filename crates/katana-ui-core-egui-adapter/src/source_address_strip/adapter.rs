@@ -15,7 +15,7 @@ use katana_ui_core::molecule::structured::source_address_strip::{
 };
 use katana_ui_core::render_model::UiTextSpan;
 use katana_ui_core::text_surface::{
-    TextSurface, TextSurfaceEvent, TextSurfacePresentation, TextSurfaceProps, TextSurfaceViewport,
+    TextSurface, TextSurfacePresentation, TextSurfaceProps, TextSurfaceViewport,
 };
 use katana_ui_core_text_raster::PlatformTextRasterizer;
 
@@ -126,7 +126,7 @@ impl EguiSourceAddressStripAdapter {
                     label,
                     enabled,
                 );
-                if Interaction::activated_by_pointer_or_accesskit(ui, &button) {
+                if Interaction::activated(ui, &button) {
                     let action = if strip.history_open() {
                         SourceAddressAction::CloseHistory
                     } else {
@@ -159,7 +159,7 @@ impl EguiSourceAddressStripAdapter {
                     label,
                     enabled,
                 );
-                if Interaction::activated_by_pointer_or_accesskit(ui, &button) {
+                if Interaction::activated(ui, &button) {
                     let action = if strip.candidates_open() {
                         SourceAddressAction::CloseCandidates
                     } else {
@@ -180,7 +180,7 @@ impl EguiSourceAddressStripAdapter {
                 style,
             )?;
             Interaction::publish_button_accessibility(ui, submit.id, submit.rect, "開く", enabled);
-            if Interaction::activated_by_pointer_or_accesskit(ui, &submit)
+            if Interaction::activated(ui, &submit)
                 && let Some(event) = strip.apply_action(SourceAddressAction::Submit)
             {
                 output.record(event);
@@ -207,38 +207,6 @@ impl EguiSourceAddressStripAdapter {
         self.last_input_artifact = Some(field.artifact.clone());
         self.surface = Some(surface);
         Ok(output)
-    }
-
-    fn apply_text_surface_events(
-        &self,
-        output: &mut EguiSourceAddressStripOutput,
-        strip: &mut SourceAddressStrip,
-        events: &[TextSurfaceEvent],
-    ) {
-        for event in events {
-            match event {
-                TextSurfaceEvent::TextArea(katana_ui_core::atom::TextAreaEvent::Change(value)) => {
-                    if let Some(event) =
-                        strip.apply_action(SourceAddressAction::SetDraft(value.clone()))
-                    {
-                        output.record(event);
-                    }
-                }
-                TextSurfaceEvent::FocusChanged(focused) => {
-                    if let Some(event) =
-                        strip.apply_action(SourceAddressAction::SetFocused(*focused))
-                    {
-                        output.record(event);
-                    }
-                }
-                TextSurfaceEvent::TextArea(katana_ui_core::atom::TextAreaEvent::Submit(_)) => {
-                    if let Some(event) = strip.apply_action(SourceAddressAction::Submit) {
-                        output.record(event);
-                    }
-                }
-                _ => {}
-            }
-        }
     }
 }
 

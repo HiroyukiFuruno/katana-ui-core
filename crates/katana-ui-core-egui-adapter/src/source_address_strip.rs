@@ -19,3 +19,7 @@ pub use types::{
 #[cfg(test)]
 #[path = "source_address_strip_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "source_address_strip/adapter_keyboard_tests.rs"]
+mod adapter_keyboard_tests;
