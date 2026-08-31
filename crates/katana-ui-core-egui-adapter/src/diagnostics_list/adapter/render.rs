@@ -16,6 +16,7 @@ impl EguiDiagnosticsListAdapter {
         ui: &mut egui::Ui,
         diagnostics: &mut DiagnosticsList,
     ) -> Result<EguiDiagnosticsListOutput, EguiDiagnosticsListError> {
+        self.last_paint_plan = None;
         self.raster_evidence.clear();
         let scale = ui.ctx().pixels_per_point();
         let style = DiagnosticsListStyle::standard();

@@ -19,6 +19,10 @@ mod render;
 mod interaction_boundary_tests;
 
 #[cfg(test)]
+#[path = "adapter/action_boundary_tests.rs"]
+mod action_boundary_tests;
+
+#[cfg(test)]
 #[path = "adapter/texture_identity_tests.rs"]
 mod texture_identity_tests;
 

@@ -400,20 +400,31 @@ fn diagnostics_list_fails_closed_when_a_scope_label_cannot_be_rasterized() {
     let context = egui::Context::default();
     let mut adapter = EguiDiagnosticsListAdapter::new("invalid-scope-label")
         .expect("diagnostics adapter should initialize");
-    let mut diagnostics = DiagnosticsList::new("Diagnostics")
-        .scope("all", "", "All diagnostics")
-        .item(DiagnosticItem::new(
-            "error",
-            DiagnosticSeverity::Error,
-            "Error",
-            DiagnosticLocation::new("src/lib.rs", 1, 1),
-        ));
+    let mut diagnostics = DiagnosticsList::new("Diagnostics").item(DiagnosticItem::new(
+        "error",
+        DiagnosticSeverity::Error,
+        "Error",
+        DiagnosticLocation::new("src/lib.rs", 1, 1),
+    ));
+
+    frame(&context, &mut adapter, &mut diagnostics, Vec::new())
+        .expect("valid diagnostics frame must produce a retained plan");
+    assert!(adapter.artifact_paint_plan().is_some());
+    diagnostics.set_scopes(vec![(
+        "all".to_owned(),
+        String::new(),
+        "All diagnostics".to_owned(),
+    )]);
 
     let error = match frame(&context, &mut adapter, &mut diagnostics, Vec::new()) {
         Ok(_) => panic!("an empty scope label must fail closed"),
         Err(error) => error,
     };
     assert!(error.contains("platform text raster request must not be empty"));
+    assert!(
+        adapter.artifact_paint_plan().is_none(),
+        "a failed frame must not expose the prior successful paint plan"
+    );
 }
 
 fn many_diagnostics() -> DiagnosticsList {

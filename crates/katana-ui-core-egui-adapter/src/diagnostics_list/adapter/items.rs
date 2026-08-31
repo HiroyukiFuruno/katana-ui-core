@@ -111,10 +111,13 @@ impl EguiDiagnosticsListAdapter {
                 ),
                 egui::vec2(
                     super::super::paint::DIAGNOSTICS_DISCLOSURE_WIDTH,
-                    (item_height - super::super::paint::DIAGNOSTICS_DISCLOSURE_HEIGHT_INSET)
-                        .max(1.0),
+                    (clipped_bounds.height()
+                        - super::super::paint::DIAGNOSTICS_DISCLOSURE_HEIGHT_INSET)
+                        .max(0.0),
                 ),
-            );
+            )
+            .intersect(clipped_bounds)
+            .intersect(viewport);
             let expanded = snapshot.state.expanded_ids.contains(&item.id);
             let disclosure_response = ui.interact(
                 disclosure_bounds,
@@ -265,8 +268,22 @@ impl EguiDiagnosticsListAdapter {
             DiagnosticsTargetIdentity::fix(item.id.as_str()),
             crate::text_command_surface::accesskit_evidence::AccessKitTargetClass::DiagnosticsFix,
         );
+        let keyboard_activation = response.has_focus().then(|| {
+            ui.input(|input| {
+                [egui::Key::Enter, egui::Key::Space]
+                    .into_iter()
+                    .find(|key| input.key_pressed(*key))
+            })
+        });
+        if let Some(key) = keyboard_activation.flatten() {
+            ui.input_mut(|input| {
+                let modifiers = input.modifiers;
+                input.consume_key(modifiers, key);
+            });
+        }
         if DiagnosticsAccessibility::pointer_click_requested(ui, &response)
             || DiagnosticsAccessibility::accesskit_click_requested(ui, response.id)
+            || keyboard_activation.flatten().is_some()
         {
             output
                 .events
