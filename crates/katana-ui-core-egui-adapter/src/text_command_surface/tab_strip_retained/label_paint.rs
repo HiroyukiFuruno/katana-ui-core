@@ -6,6 +6,7 @@ use super::{
     TabStripPaintOperationKind, TabStripPaintTexture, TabStripRetainedError, TabStripRetainedState,
     TabStripTrailingControl, UiSvgRasterRequest,
 };
+use sha2::{Digest, Sha256};
 
 impl TabStripRetainedState {
     pub(super) fn render_label(
@@ -57,8 +58,9 @@ impl TabStripRetainedState {
                 self.forward_response_activation(ui, &response)?;
             }
         }
+        let raster_fingerprint = hex::encode(Sha256::digest(&raster.rgba_pixels));
         let texture = TabStripPaintTexture {
-            identity: format!("tab-strip:{path}"),
+            identity: format!("tab-strip:{path}:{raster_fingerprint}"),
             width: raster.width,
             height: raster.height,
             rgba_pixels: raster.rgba_pixels,

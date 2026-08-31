@@ -55,6 +55,70 @@ fn render_label_uses_active_background_when_tab_is_active() {
 }
 
 #[test]
+fn render_label_replaces_retained_texture_when_same_path_is_renamed() {
+    let mut state = build_state();
+    let context = egui::Context::default();
+    let bounds = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(240.0, 36.0));
+    let mut pending = false;
+    let mut first_operations = Vec::new();
+    let mut first = context.run_ui(egui::RawInput::default(), |ui| {
+        state
+            .render_label(
+                ui,
+                &mut first_operations,
+                TabStripLabelRenderRequest {
+                    text: &TabStripText::new("Before"),
+                    path: "stable-tab-path".to_owned(),
+                    x: 0.0,
+                    bounds,
+                    active: false,
+                    active_reveal_pending: &mut pending,
+                    interaction: TabStripLabelInteraction { route_path: None },
+                    draggable: false,
+                },
+            )
+            .expect("initial label should render");
+    });
+    let first_identity = texture_identity(&first_operations);
+    first.textures_delta.clear();
+
+    let mut second_operations = Vec::new();
+    let mut second = context.run_ui(egui::RawInput::default(), |ui| {
+        state
+            .render_label(
+                ui,
+                &mut second_operations,
+                TabStripLabelRenderRequest {
+                    text: &TabStripText::new("Renamed tab"),
+                    path: "stable-tab-path".to_owned(),
+                    x: 0.0,
+                    bounds,
+                    active: false,
+                    active_reveal_pending: &mut pending,
+                    interaction: TabStripLabelInteraction { route_path: None },
+                    draggable: false,
+                },
+            )
+            .expect("renamed label should render");
+    });
+    let second_identity = texture_identity(&second_operations);
+
+    assert_ne!(first_identity, second_identity);
+    assert!(!second.textures_delta.set.is_empty());
+    second.textures_delta.clear();
+}
+
+fn texture_identity(operations: &[TabStripPaintOperation]) -> &str {
+    operations
+        .iter()
+        .find_map(|operation| match &operation.kind {
+            TabStripPaintOperationKind::Texture { texture, .. } => Some(texture.identity.as_str()),
+            TabStripPaintOperationKind::Fill { .. } => None,
+        })
+        .expect("label frame should contain a texture")
+}
+
+#[test]
 fn render_tab_trailing_control_uses_pinned_and_close_icons() {
     let mut state = build_state();
     let bounds = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(160.0, 36.0));
