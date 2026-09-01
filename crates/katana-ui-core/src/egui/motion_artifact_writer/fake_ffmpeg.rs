@@ -97,10 +97,11 @@ fn compiled_fixture() -> &'static PathBuf {
             .arg(&executable)
             .output()
             .expect("native fixture should compile");
+        let stderr = String::from_utf8_lossy(&output.stderr);
         assert!(
             output.status.success(),
             "native fixture compilation failed: {}",
-            String::from_utf8_lossy(&output.stderr)
+            stderr
         );
         executable
     })

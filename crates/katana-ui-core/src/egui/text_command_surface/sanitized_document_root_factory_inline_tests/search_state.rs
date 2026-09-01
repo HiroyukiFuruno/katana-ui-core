@@ -32,7 +32,8 @@ fn current_search_unit_operations_use_physical_input_one_shot_routing() {
 fn projected_option_state_renders_and_is_acknowledged_by_a_newer_revision() {
     let text_events = Rc::new(RefCell::new(Vec::new()));
     let unit_events = Rc::new(RefCell::new(Vec::new()));
-    let factory = SanitizedDocumentRootFactory::new();
+    let default_factory = SanitizedDocumentRootFactory::default;
+    let factory = default_factory();
     let mut root = factory
         .retain(input_with_recorders_and_unit_targets_and_state(
             1,

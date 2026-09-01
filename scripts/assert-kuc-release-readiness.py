@@ -780,7 +780,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "export CARGO_PROFILE_TEST_OPT_LEVEL=0",
         'run_cargo clean --target-dir "${coverage_target_dir}"',
         'coverage_reuse="${KUC_COVERAGE_REUSE:-0}"',
-        'coverage_test_threads="${COVERAGE_TEST_THREADS:-4}"',
+        'coverage_test_threads="${COVERAGE_TEST_THREADS:-8}"',
         'coverage_supplement_target="${KUC_COVERAGE_SUPPLEMENT_TARGET:-lib}"',
         'coverage_supplement_filter="${KUC_COVERAGE_SUPPLEMENT_FILTER:-}"',
         'coverage_runtime="${KUC_COVERAGE_RUNTIME:-native}"',
@@ -2019,7 +2019,7 @@ def write_justfile_test_scope_self_test_file(
         'coverage_storage_dir="${CARGO_TARGET_DIR:-target}"\n'
         'coverage_target_dir="${coverage_storage_dir}/llvm-cov-target"\n'
         'coverage_reuse="${KUC_COVERAGE_REUSE:-0}"\n'
-        'coverage_test_threads="${COVERAGE_TEST_THREADS:-4}"\n'
+        'coverage_test_threads="${COVERAGE_TEST_THREADS:-8}"\n'
         'coverage_supplement_target="${KUC_COVERAGE_SUPPLEMENT_TARGET:-lib}"\n'
         'coverage_supplement_filter="${KUC_COVERAGE_SUPPLEMENT_FILTER:-}"\n'
         'coverage_runtime="${KUC_COVERAGE_RUNTIME:-native}"\n'

@@ -16,7 +16,7 @@ RTK_CMD := if RTK == "" { "" } else { RTK + " " }
 JOBS := env_var_or_default("JOBS", "2")
 CARGO := env_var_or_default("CARGO", RTK_CMD + "cargo")
 COVERAGE_BUILD_JOBS := env_var_or_default("CARGO_BUILD_JOBS", JOBS)
-COVERAGE_TEST_THREADS := env_var_or_default("COVERAGE_TEST_THREADS", "4")
+COVERAGE_TEST_THREADS := env_var_or_default("COVERAGE_TEST_THREADS", "8")
 KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"
 KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"
 VERSION := env_var_or_default("VERSION", `awk -F '"' '/^version = / { print $2; exit }' Cargo.toml`)
