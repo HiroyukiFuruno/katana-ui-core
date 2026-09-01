@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: KUC Storybook, KDV, and KLE use the shared platform text runtime
-KUC Storybook, KDV, and KLE SHALL use `katana-ui-core-text-raster` for platform emoji/font/raster/layout behavior. They MUST be thin adapters around the runtime and MUST NOT retain separate emoji segmentation, font-family lookup, or rich text raster caches.
+KUC Storybook, KDV, and KLE SHALL use `katana_ui_core::text_raster` with the `katana-ui-core` `text-raster` feature for platform emoji/font/raster/layout behavior. They MUST be thin adapters around the runtime and MUST NOT retain separate emoji segmentation, font-family lookup, or rich text raster caches.
 
 #### Scenario: Adapter dependency and source checks reject duplicate renderers
 - **WHEN** KUC/KDV/KLE adapter checks run

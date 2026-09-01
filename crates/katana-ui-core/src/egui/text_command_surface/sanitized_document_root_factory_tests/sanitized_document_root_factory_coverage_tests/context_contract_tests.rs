@@ -21,7 +21,7 @@ fn context_menu_parent_submenu_debug_is_opaque() {
 
 #[test]
 fn sanitized_document_root_factory_default_and_new_are_semantically_interchangeable() {
-    let default_factory = SanitizedDocumentRootFactory::default();
+    let default_factory = SanitizedDocumentRootFactory;
     let new_factory = SanitizedDocumentRootFactory::new();
     let _ = default_factory
         .retain(input(1, b"document-default", "本文 ⭐️"))

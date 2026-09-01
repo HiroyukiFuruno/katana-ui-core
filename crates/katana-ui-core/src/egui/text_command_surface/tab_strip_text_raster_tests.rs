@@ -10,15 +10,12 @@ fn rasterizes_japanese_and_color_emoji_without_egui_text_widgets() -> Result<(),
 
     assert!(raster.width > 0);
     assert!(raster.height > 0);
-    assert!(
-        raster
-            .rgba_pixels
-            .chunks_exact(RGBA_CHANNEL_COUNT)
-            .any(|rgba| {
-                let [red, green, blue, alpha] = [rgba[0], rgba[1], rgba[2], rgba[3]];
-                alpha > 0 && (red != green || green != blue)
-            })
-    );
+    let (rgba_chunks, remainder) = raster.rgba_pixels.as_chunks::<RGBA_CHANNEL_COUNT>();
+    assert!(remainder.is_empty());
+    assert!(rgba_chunks.iter().any(|rgba| {
+        let [red, green, blue, alpha] = *rgba;
+        alpha > 0 && (red != green || green != blue)
+    }));
     Ok(())
 }
 

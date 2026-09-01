@@ -137,7 +137,7 @@ fn render_group_skips_nested_children_when_collapsed() {
     });
     platform_output.textures_delta.clear();
 
-    assert!(operations.len() > 0);
+    assert!(!operations.is_empty());
     assert_eq!(
         candidates, 1,
         "collapsed group should not recurse into child descriptors"
@@ -234,7 +234,7 @@ fn render_tab_renders_trailing_control_when_present() {
     });
     platform_output.textures_delta.clear();
 
-    assert!(matches!(tab.capabilities.closeable, true));
+    assert!(tab.capabilities.closeable);
     assert!(x > 0.0);
     assert!(
         operations

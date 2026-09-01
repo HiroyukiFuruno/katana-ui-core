@@ -37,9 +37,9 @@ fn debug_impls_do_not_reveal_inner_payload_lengths() {
         assert!(!group_debug.contains(secret));
     }
     assert_eq!(format!("{:?}", swatch), "TabStripSwatchDescriptor(..)");
-    assert_eq!(format!("{:?}", &tab.target), "TabStripTabTarget(..)");
-    assert_eq!(format!("{:?}", &group.target), "TabStripGroupTarget(..)");
-    assert_eq!(format!("{:?}", &swatch.target), "TabStripSwatchTarget(..)");
+    assert_eq!(format!("{:?}", tab.target), "TabStripTabTarget(..)");
+    assert_eq!(format!("{:?}", group.target), "TabStripGroupTarget(..)");
+    assert_eq!(format!("{:?}", swatch.target), "TabStripSwatchTarget(..)");
     assert_eq!(
         format!("{:?}", TabStripText::new("value")),
         "TabStripText(..)"
@@ -68,7 +68,7 @@ fn navigation_and_control_formats_use_opaque_debug_shapes() {
         ),
     );
     assert_eq!(
-        format!("{:?}", &navigation),
+        format!("{:?}", navigation),
         "TabStripNavigationPresentation(..)"
     );
 }
@@ -84,7 +84,7 @@ fn menu_entry_and_context_layout_debug_paths_are_covered() {
     let menu = TabStripContextMenuPresentation::new().entry(entry);
 
     assert_eq!(
-        format!("{:?}", &menu),
+        format!("{:?}", menu),
         "TabStripContextMenuPresentation(..)"
     );
     assert_eq!(format!("{:?}", menu.entries[0]), "TabStripMenuEntry(..)");
@@ -118,7 +118,7 @@ fn popup_and_group_debug_variants_are_exercised() {
         )),
     );
     assert_eq!(
-        format!("{:?}", &popup),
+        format!("{:?}", popup),
         "TabStripGroupPopupPresentation(..)"
     );
 

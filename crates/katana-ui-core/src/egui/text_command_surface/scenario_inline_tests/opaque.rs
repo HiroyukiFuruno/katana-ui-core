@@ -105,9 +105,11 @@ fn workspace_tabs_scenario_keeps_drag_and_artifact_inside_the_same_opaque_root()
 const RGBA_CHANNEL_COUNT: usize = 4;
 
 fn rgba_color_count(pixels: &[u8], color: [u8; RGBA_CHANNEL_COUNT]) -> usize {
+    let (pixels, remainder) = pixels.as_chunks::<RGBA_CHANNEL_COUNT>();
+    assert!(remainder.is_empty());
     pixels
-        .chunks_exact(RGBA_CHANNEL_COUNT)
-        .filter(|pixel| *pixel == color)
+        .iter()
+        .filter(|pixel| **pixel == color)
         .count()
 }
 
@@ -158,7 +160,7 @@ fn motion_frame_capture_continuation_fails_closed_for_invalid_transition_combo()
 
     let mut no_continuation = None;
     assert!(matches!(
-        frame.capture_continuation(&locator, &mut no_continuation),
+        frame.capture_continuation(locator, &mut no_continuation),
         Err(FullTextCommandSurfaceMotionPlanError::InvalidTransition)
     ));
 
@@ -172,7 +174,7 @@ fn motion_frame_capture_continuation_fails_closed_for_invalid_transition_combo()
     };
     let mut continuation = None;
     trigger_frame
-        .capture_continuation(&locator, &mut continuation)
+        .capture_continuation(locator, &mut continuation)
         .expect("dropdown continuation opens through capture");
     assert_eq!(
         format!(
@@ -183,7 +185,7 @@ fn motion_frame_capture_continuation_fails_closed_for_invalid_transition_combo()
     );
 
     assert!(matches!(
-        trigger_frame.capture_continuation(&locator, &mut continuation),
+        trigger_frame.capture_continuation(locator, &mut continuation),
         Err(FullTextCommandSurfaceMotionPlanError::UnexpectedContinuation)
     ));
 
@@ -191,14 +193,14 @@ fn motion_frame_capture_continuation_fails_closed_for_invalid_transition_combo()
     frame.find_transition = FindMotionTransition::None;
     frame.dropdown_transition = DropdownMotionTransition::None;
     assert!(matches!(
-        frame.capture_continuation(&locator, &mut continuation),
+        frame.capture_continuation(locator, &mut continuation),
         Err(FullTextCommandSurfaceMotionPlanError::UnexpectedContinuation)
     ));
 
     frame.selection_transition = SelectionMotionTransition::None;
     frame.find_transition = FindMotionTransition::Begin;
     assert!(matches!(
-        frame.capture_continuation(&locator, &mut continuation),
+        frame.capture_continuation(locator, &mut continuation),
         Err(FullTextCommandSurfaceMotionPlanError::UnexpectedContinuation)
     ));
 
@@ -206,7 +208,7 @@ fn motion_frame_capture_continuation_fails_closed_for_invalid_transition_combo()
     frame.find_transition = FindMotionTransition::None;
     frame.dropdown_transition = DropdownMotionTransition::None;
     assert!(matches!(
-        frame.capture_continuation(&locator, &mut continuation),
+        frame.capture_continuation(locator, &mut continuation),
         Err(FullTextCommandSurfaceMotionPlanError::UnexpectedContinuation)
     ));
 }

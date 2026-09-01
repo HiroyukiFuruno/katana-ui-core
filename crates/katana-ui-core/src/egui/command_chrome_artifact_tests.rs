@@ -38,7 +38,7 @@ fn command_chrome_artifact_frames_preserve_distinct_payload_hashes() {
         actions: Vec::new(),
         dropdown: None,
         hidden_item_ids: vec!["hidden".to_string()],
-        focused_action_id: Some("focused".to_string().into()),
+        focused_action_id: Some("focused".to_string()),
         layers: vec![EguiCommandChromeDrawLayer::ActionFill],
     };
     let frame = CommandChromeArtifactFrame::new(

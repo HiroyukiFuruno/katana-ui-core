@@ -702,8 +702,7 @@ def justfile_lint_scope_failures(root: Path = ROOT) -> list[str]:
         'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"',
         "{{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --lib --all-features --locked -- -D warnings",
         "{{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --tests --no-default-features --locked -- -D warnings",
-        "for test_file in crates/katana-ui-core/tests/egui_*.rs",
-        '{{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --all-features --locked "${egui_test_args[@]}" -- -D warnings',
+        "{{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --all-targets --all-features --locked -- -D warnings",
         "{{CARGO}} clippy -j {{JOBS}} -p katana-ui-core-storybook -p kuc-consumer-app --all-targets --all-features --locked -- -D warnings",
     )
     forbidden = (
@@ -1885,7 +1884,7 @@ def write_justfile_lint_scope_self_test_file(root: Path, use_scoped_packages: bo
         "lint:\n"
         f"    {{{{CARGO}}}} clippy -j {{{{JOBS}}}} -p katana-ui-core --lib --all-features --locked -- {lint_flags}\n"
         f"    {{{{CARGO}}}} clippy -j {{{{JOBS}}}} -p katana-ui-core --tests --no-default-features --locked -- {lint_flags}\n"
-        '    egui_test_args=(); for test_file in crates/katana-ui-core/tests/egui_*.rs; do test_name="${test_file##*/}"; egui_test_args+=(--test "${test_name%.rs}"); done; {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --all-features --locked "${egui_test_args[@]}" -- -D warnings\n'
+        "    {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --all-targets --all-features --locked -- -D warnings\n"
         f"    {{{{CARGO}}}} clippy -j {{{{JOBS}}}} -p katana-ui-core-storybook -p kuc-consumer-app --all-targets --all-features --locked -- {lint_flags}\n"
     )
     dependency_wide = (

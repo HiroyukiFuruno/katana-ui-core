@@ -88,7 +88,9 @@ fn rounded_fill_masks_corner_pixels() {
         )
         .is_some()
     );
-    let opaque_pixels = pixels.chunks_exact(4).filter(|pixel| pixel[3] != 0).count();
+    let (pixel_chunks, remainder) = pixels.as_chunks::<4>();
+    assert!(remainder.is_empty());
+    let opaque_pixels = pixel_chunks.iter().filter(|pixel| pixel[3] != 0).count();
     assert_eq!(opaque_pixels, 5);
 }
 

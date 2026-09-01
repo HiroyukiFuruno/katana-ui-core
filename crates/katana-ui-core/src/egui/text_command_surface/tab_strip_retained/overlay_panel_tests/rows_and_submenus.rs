@@ -34,8 +34,8 @@ fn overlay_panel_records_separator_and_checked_rows() {
 
     let panel = panel.expect("panel rendered");
     assert_eq!(panel.row_positions.len(), 2);
-    assert_eq!(panel.closed, false);
-    assert!(matches!(panel.open_submenu, None));
+    assert!(!panel.closed);
+    assert!(panel.open_submenu.is_none());
     assert!(operations.len() >= 4);
 }
 
@@ -185,6 +185,6 @@ fn overlay_panel_opens_submenu_when_child_entry_is_hovered() {
         cursor
     );
     assert_eq!(panel.open_submenu, Some(0));
-    assert_eq!(panel.closed, false);
+    assert!(!panel.closed);
     assert!(!operations.is_empty());
 }

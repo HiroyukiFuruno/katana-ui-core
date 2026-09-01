@@ -208,10 +208,11 @@ mod tests {
             usize::from(8_u8) * usize::from(6_u8) * 4,
             raster.rgba_unmultiplied.len()
         );
+        let (pixel_chunks, remainder) = raster.rgba_unmultiplied.as_chunks::<4>();
+        assert!(remainder.is_empty());
         assert!(
-            raster
-                .rgba_unmultiplied
-                .chunks_exact(4)
+            pixel_chunks
+                .iter()
                 .any(|pixel| pixel[3] != 0 && pixel[1] > pixel[0])
         );
     }
@@ -225,10 +226,11 @@ mod tests {
                 .to_string();
         white.color = RgbaColor::new(18, 171, 52, 128);
         let raster = rasterizer.rasterize(&white).expect("raster must succeed");
+        let (pixel_chunks, remainder) = raster.rgba_unmultiplied.as_chunks::<4>();
+        assert!(remainder.is_empty());
         assert!(
-            raster
-                .rgba_unmultiplied
-                .chunks_exact(4)
+            pixel_chunks
+                .iter()
                 .any(|pixel| pixel[3] > 0 && pixel[3] <= 128 && pixel[1] > pixel[0])
         );
     }

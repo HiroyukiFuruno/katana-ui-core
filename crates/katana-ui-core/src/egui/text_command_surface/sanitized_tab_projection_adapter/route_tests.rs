@@ -14,18 +14,16 @@ fn tab_events_do_not_route_through_a_group_entry() {
         &SanitizedTabGroupTarget::from_opaque_bytes([1]),
     );
 
-    assert!(matches!(
-        routes.route_event(&CloseableTabStripEvent::TabSelected {
+    assert!(routes
+        .route_event(&CloseableTabStripEvent::TabSelected {
             tab_id: CloseableTabId::new("group"),
-        }),
-        None
-    ));
-    assert!(matches!(
-        routes.route_event(&CloseableTabStripEvent::TabCloseRequested {
+        })
+        .is_none());
+    assert!(routes
+        .route_event(&CloseableTabStripEvent::TabCloseRequested {
             tab_id: CloseableTabId::new("group"),
-        }),
-        None
-    ));
+        })
+        .is_none());
 }
 
 #[test]
@@ -36,11 +34,10 @@ fn group_events_do_not_route_through_a_tab_entry() {
         &SanitizedTabTarget::from_opaque_bytes([2]),
     );
 
-    assert!(matches!(
-        routes.route_event(&CloseableTabStripEvent::GroupCollapseChanged {
+    assert!(routes
+        .route_event(&CloseableTabStripEvent::GroupCollapseChanged {
             group_id: CloseableTabGroupId::new("tab"),
             collapsed: true,
-        }),
-        None
-    ));
+        })
+        .is_none());
 }

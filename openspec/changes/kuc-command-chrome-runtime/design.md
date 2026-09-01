@@ -44,13 +44,13 @@ emoji glyph、grapheme layout、hit-test の共通化を進めており、本 ch
 
 ### 1. Runtime と framework adapter を core crate から分離する
 
-`katana-ui-core-svg-raster` を workspace public crate とし、`katana-ui-core` の `UiIconProps` と
-`UiSvgPaintPolicy` を入力にする。`resvg` / `tiny-skia` はこの crate に閉じる。shared
-`katana-ui-core-egui-adapter` を optional adapter crate とし、`katana-ui-core`、SVG runtime、
-text-raster runtime、`egui` を依存に持たせる。`kuc-text-surface-adapter` が text-surface module を
-所有し、本 change は同 crate の command-chrome module だけを所有する。
+public `katana-ui-core` crate の `svg-raster` optional feature が `katana_ui_core::svg_raster` module を提供し、
+`UiIconProps` と `UiSvgPaintPolicy` を入力にする。`resvg` / `tiny-skia` はこの feature に閉じる。shared
+`egui` optional feature は `katana_ui_core::egui` adapter module を提供し、text-raster / SVG raster feature と
+`egui` dependency を有効化する。`kuc-text-surface-adapter` が text-surface module を所有し、本 change は同 module
+の command-chrome 部分だけを所有する。
 
-core crate に実装する案は framework-neutral boundary を破るため採用しない。Storybook private
+renderer/egui dependencyをdefault featureへ直接追加する案はframework-neutral boundaryを破るため採用しない。Storybook private
 module のままにする案は KLE/KDV が consumer になれず duplication を残すため採用しない。KLE が
 adapter を持つ案は consumer ごとに coordinate、texture cache、input lifecycle が分岐するため採用しない。
 
@@ -162,7 +162,7 @@ state machine になるため採用しない。
 
 ### 4.1 Shared egui command-chrome adapter contract
 
-`katana-ui-core-egui-adapter::command_chrome` は `EguiCommandChromeAdapter` を公開する。instance は
+`katana_ui_core::egui::command_chrome` は `EguiCommandChromeAdapter` を公開する。instance は
 KUC-owned `PlatformTextRasterizer`、`UiSvgRasterizer`、bounded RGBA texture cache、および query / replace
 用の KUC `TextSurface` state を所有する。query / replace state は `CommandChromeSearchStrip` の値と
 同期する controlled input であり、KLE/KDV の local `TextEdit` state、font atlas、glyph cache、検索 form
@@ -353,8 +353,8 @@ Storybook は同じ public component / adapter を載せ、scripted event sequen
 
 ## Open Questions
 
-- shared adapter crate は `katana-ui-core-egui-adapter` とする。text-surface と command-chrome は同 crate
-  内の別 module で実装し、text rasterizer / texture cache / font/input policy を duplicate しない。
+- shared adapter は `katana_ui_core::egui` module とする。text-surface と command-chrome は同 module
+  内の別 submodule で実装し、text rasterizer / texture cache / font/input policy を duplicate しない。
 - `SearchControlStrings` の result-summary formatter を structured token sequence にするか、host-provided
   formatter closure ではなく serializable template にするかは cross-platform serialization contract test を
   先に書いて決める。closure は DTO serialization を壊すため default 案にしない。

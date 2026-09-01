@@ -84,7 +84,7 @@ fn render_tab_records_drag_release_pending_on_drag_stopped() {
 
     assert!(state.drag_release_pending);
     assert!(
-        operations.len() > 0,
+        !operations.is_empty(),
         "rendering should emit operations even when drag state updates"
     );
     assert_eq!(

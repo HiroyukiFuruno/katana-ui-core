@@ -59,11 +59,7 @@ fn render_overlay_group_popup_submits_rename_when_text_is_entered() {
     );
     assert!(matches!(state.overlay, TabStripOverlayState::Closed));
     let operations = rename_path.borrow();
-    assert!(
-        operations
-            .iter()
-            .any(|operation| *operation == TabStripProposalOperationClass::RenameGroup)
-    );
+    assert!(operations.contains(&TabStripProposalOperationClass::RenameGroup));
 }
 
 #[test]

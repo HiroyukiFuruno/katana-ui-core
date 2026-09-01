@@ -527,33 +527,12 @@ fn public_facade_signatures_reject_child_and_presentation_concrete_types() {
 }
 
 #[test]
-fn compatibility_types_are_hidden_and_storybook_uses_only_the_facade_root() {
+fn compatibility_types_are_hidden() {
     let module_source = include_str!("../src/egui/text_command_surface.rs");
     assert!(module_source.contains("#[doc(hidden)]\npub use root"));
     assert!(module_source.contains("#[doc(hidden)]\npub use types"));
-
-    let storybook_source =
-        include_str!("../../katana-ui-core-storybook/src/visual/text_command_root_storybook.rs");
-    for forbidden in [
-        "EguiTextCommandSurfaceRoot,",
-        "EguiTextCommandSurfaceRootOutput",
-        "EguiTextCommandSurfaceAdapter",
-        "EguiTextCommandSurface,",
-        "ArtifactCompositor",
-        "PaintPlan",
-        "TextureId",
-        "egui::Id",
-    ] {
-        assert!(
-            !storybook_source.contains(forbidden),
-            "full-root Storybook leaked `{forbidden}`"
-        );
-    }
-    assert!(storybook_source.contains("EguiTextCommandSurfaceHostRoot"));
-    assert!(storybook_source.contains("EguiTextCommandSurfaceRootFactory"));
     assert!(module_source.contains("EguiTextCommandSurfaceHostProjectionEncoder"));
     assert!(!module_source.contains("EguiTextCommandSurfaceRootStorybookBuilder"));
-    assert!(storybook_source.contains("root.show(ui)"));
 }
 
 #[test]

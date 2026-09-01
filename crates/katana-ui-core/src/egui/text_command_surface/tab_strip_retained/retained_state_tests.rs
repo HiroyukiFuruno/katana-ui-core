@@ -160,7 +160,7 @@ fn show_projection_renders_navigation_and_preserves_scroll_state() {
     let output = output.expect("show_projection should emit output");
     assert!(matches!(state.overlay, TabStripOverlayState::Closed));
     assert!(!active_reveal_pending);
-    assert!(output.paint_plan.operations.len() > 0);
+    assert!(!output.paint_plan.operations.is_empty());
     assert!(output.overlay_paint_plan.is_none());
     assert_eq!(output.horizontal_scroll_offset, 0.0);
 }

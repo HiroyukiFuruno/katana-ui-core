@@ -72,3 +72,7 @@ OIDC連携だけで行う。長期の `CARGO_REGISTRY_TOKEN`、`cargo login`、�
 
 - `katana-ui-core` + `.github/workflows/release.yml`
 - `katana-ui-core` + `.github/workflows/release-publish-retry.yml`
+
+retry workflowは単一crateへ統合済みのrelease sourceだけを受け付ける。旧分割crateを
+列挙するtagはOIDC認証前にfail closedとし、対応していない認証経路で一部だけを
+再公開しない。

@@ -1,6 +1,6 @@
 ## Context
 
-`katana-ui-core-text-raster` は platform font resolution、RGBA raster、grapheme bounds、hit-test を返す。
+`katana_ui_core::text_raster` は `text-raster` optional feature の下で platform font resolution、RGBA raster、grapheme bounds、hit-test を返す。
 KUC `TextArea` は generic edit state/action/event を持つ。しかし actual surface の texture、pointer、
 keyboard、IME、selection/caret、gutter、annotation、accessibility、egui adapter は存在しない。その不足を
 KLE の `PlatformTextSurface` / `LineGutterModel` が埋めており、generic UI renderer が consumer に重複している。
@@ -43,7 +43,7 @@ editor migration の完了証拠ではない。
   request、read-only、accessibility を generic typed action/event で扱う。
 - line number / marker gutter と range annotation を host/domain-independent data にし、diagnostic/search/
   syntax/active-line の意味付けと document position は consumer に残す。
-- shared `katana-ui-core-egui-adapter` crate が text surface と command chrome の actual egui rendering を
+- shared `katana_ui_core::egui` module が `egui` optional feature の下で text surface と command chrome の actual egui rendering を
   所有する。
 - KLE は KUC surface props を editor DTO から組み立て、KUC event を editor domain event/action に map
   するだけにする。
@@ -79,7 +79,7 @@ raster/layout が唯一の source of truth である。consumer は byte/char of
 ### 公開 API 形状と依存方向
 
 `katana-ui-core` の new `text_surface` module は `TextArea` を内部 state machine として compose するが、
-`katana-ui-core-text-raster` を依存しない。core の public contract は次の additive types に限定する。
+`text-raster` feature を有効化しない。default core の public contract は次の additive types に限定する。
 
 | 型 | 所有者と責務 |
 |---|---|
@@ -90,8 +90,8 @@ raster/layout が唯一の source of truth である。consumer は byte/char of
 | `TextSurfaceLayout` | one raster/layout result を表す raster identity、content bounds、grapheme box、line box。platform pixel buffer/renderer handle は core に置かない |
 | `TextSurfaceFrameRecord` | one `TextSurfaceLayout` から導く text/selection/caret/preedit/annotation/gutter rect、hit target、scroll/focus/accessibility snapshot。adapter と artifact の共通 input |
 
-`katana-ui-core-text-raster` は `PlatformTextRaster` を `TextSurfaceLayout` に変換する adapter-only
-conversion を提供する。shared `katana-ui-core-egui-adapter` は platform raster の RGBA upload と actual
+`katana_ui_core::text_raster` は `PlatformTextRaster` を `TextSurfaceLayout` に変換する adapter-only
+conversion を提供する。shared `katana_ui_core::egui` module は platform raster の RGBA upload と actual
 egui input/draw を担当し、同じ `TextSurfaceFrameRecord` から Storybook artifact と AccessKit mapping を作る。
 KLE/KDV/KatanA はこの conversion/adapter を再実装せず、consumer domain DTO と KUC props/event の mapping
 だけを持つ。
@@ -243,8 +243,8 @@ offset、gutter の有無を core/actual adapter tests で固定する。
 
 ### One shared KUC egui adapter owns actual rendering
 
-`katana-ui-core-egui-adapter` を new optional workspace crate とし、`katana-ui-core`、text-raster、future
-SVG runtime、egui だけに依存させる。adapter instance が rasterizer、texture cache、focus、drag anchor、IME
+`katana-ui-core` の `egui` optional feature に `katana_ui_core::egui` module を置き、text-raster、SVG raster、
+egui だけを feature dependency として有効化する。adapter instance が rasterizer、texture cache、focus、drag anchor、IME
 output、accessibility bridge を持つ。KLE/KDV は use するだけで再実装しない。adapter は first-class
 `TextSurfaceFrameRecord` を先に生成し、RGBA texture upload、draw、pointer/keyboard/IME、AccessKit、
 Storybook artifact を同 record から処理する。
@@ -255,9 +255,9 @@ actual draw の boundary に限定する。
 
 ### Shared egui adapter の concrete contract
 
-shared crate `katana-ui-core-egui-adapter` は workspace member とし、`katana-ui-core`、
-`katana-ui-core-text-raster`、`katana-ui-core-svg-raster`、`egui` だけに依存する。KUC core、
-text-raster、SVG raster、KLE/KDV/KatanA host の依存方向を逆転させない。adapter crate の public API は
+shared `katana_ui_core::egui` module は `katana-ui-core` の `egui` optional feature に置き、
+`text-raster`、`svg-raster`、`egui` だけを feature dependency として有効化する。default core、
+text-raster、SVG raster、KLE/KDV/KatanA host の依存方向を逆転させない。adapter module の public API は
 KUC DTO と egui boundary type だけを受け、host callback、document、Markdown、clipboard backend、undo store、
 font path、command name を受けない。
 
@@ -314,20 +314,20 @@ TextSurface Storybook は次の二経路を明確に分ける。
 | 経路 | 所有者 | 用途 | acceptance evidence |
 | --- | --- | --- | --- |
 | existing `minifb` catalog | Storybook visual catalog | 全 component の一覧、既存 page navigation | TextSurface の renderer/input 正しさには使わない |
-| `eframe` TextSurface runtime | Storybook + `katana-ui-core-egui-adapter` | `text-area` page の interactive window、actual egui input/IME/focus | `EguiTextSurfaceAdapter::show` が返す frame record と adapter-owned artifact のみ |
+| `eframe` TextSurface runtime | Storybook + `katana_ui_core::egui` | `text-area` page の interactive window、actual egui input/IME/focus | `EguiTextSurfaceAdapter::show` が返す frame record と adapter-owned artifact のみ |
 | headless scripted runtime | Storybook + `egui::Context` | deterministic event sequence、motion artifact、numeric jitter | interactive runtime と同じ `show` path、同じ surface/adapter instance model |
 
-`eframe` は Storybook crate にだけ追加し、KUC core/text-raster crate には追加しない。`--open-window text-area`
+`eframe` は Storybook crate にだけ追加し、KUC default core と `text-raster` feature には追加しない。`--open-window text-area`
 は `eframe` TextSurface runtime へ dispatch し、その他の catalog page は既存 `minifb` runtime を維持する。これに
 より visible Storybook と scripted acceptance がともに shared adapter の actual `show(ui, ...)` path を通る。
 
 #### Shared paint-plan and artifact boundary
 
 artifact のために Storybook が canvas layout、glyph raster、scroll origin、selection/caret/IME/gutter/annotation
-geometryを再計算することは許可しない。`katana-ui-core-egui-adapter::text_surface` は one
+geometryを再計算することは許可しない。`katana_ui_core::egui::text_surface` は one
 `EguiTextSurfaceFrameRecord` と platform raster から one `TextSurfacePaintPlan` を作る。egui painter と artifact
 encoder はこの immutable plan の consumer であり、どちらも text layout を生成しない。artifact encoder は
-adapter crate に置き、Storybook は `TextSurfaceArtifactFrame`（record hash、paint-plan hash、RGBA pixel hash、
+`katana_ui_core::egui` module に置き、Storybook は `TextSurfaceArtifactFrame`（record hash、paint-plan hash、RGBA pixel hash、
 surface/viewport/content bounds、typed events）を受け取り PNG/GIF/manifest を保存するだけにする。
 
 `TextSurfaceArtifactFrame` は少なくとも script step id、monotonic frame index、`EguiTextSurfaceFrameRecord` の
@@ -526,7 +526,7 @@ consumer extension point. Keeping those paths private would force KLE/KDV to
 either duplicate pixel composition or depend on a Storybook crate; both violate
 the ownership boundary.
 
-`katana-ui-core-egui-adapter::artifact_compositor` therefore provides the only
+`katana_ui_core::egui::artifact_compositor` therefore provides the only
 public deterministic plan compositor. Its additive public request is composed
 of:
 
@@ -807,14 +807,14 @@ overlay order remain KUC-owned.
 - [range conversion] → KUC query 以外の grapheme conversion を consumer guard で禁止する。
 - [genericity] → DiagnosticsList/HoverCard/ContextMenu/ScrollArea は既存 KUC component を compose し、新規
   surface API は range/gutter/frame record の不足だけを扱う。
-- [cross-change dependency] → platform text-raster runtime 完了後に実装し、command chrome と adapter crate
+- [cross-change dependency] → platform text-raster runtime 完了後に実装し、command chrome と `katana_ui_core::egui` module
   を共有するが module ownership を `text_surface` / `command_chrome` に分離する。
 
 ## Migration Plan
 
 1. public platform text-raster runtime を完了し、KUC TextArea live integration を準備する。
 2. KUC TextSurface/gutter/annotation/frame-record model と framework-neutral test を追加する。
-3. shared `katana-ui-core-egui-adapter` crate に text-surface module を実装し、その後 command-chrome module を
+3. shared `katana_ui_core::egui` module に text-surface を実装し、その後 command-chrome submodule を
    追加する。texture/text logic を duplicate しない。
 4. KUC Storybook の `text-area` runtime を adapter live TextSurface に置換し、adapter-owned paint-plan/artifact
    encoder、actual egui scripted motion/manifest gate を追加する。existing Canvas catalog は TextSurface evidence

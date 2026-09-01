@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Existing release tag to publish, for example v0.3.3"
+        description: "Existing single-crate release tag to publish, v0.3.3 or newer"
         required: true
         type: string
 
@@ -49,6 +49,10 @@ jobs:
           test "$(git -C release-source rev-parse HEAD)" = "$(git -C release-source rev-list -n 1 "${RELEASE_TAG}")"
           cd release-source
           bash ../release-tools/scripts/release/verify-version.sh "${RELEASE_TAG}"
+          if grep -Eq '^[[:space:]]+katana-ui-core-(text-raster|svg-raster|egui-adapter)[[:space:]]*$' scripts/release/publish-crates.sh; then
+            echo "Retry supports consolidated single-crate releases only; refusing a legacy split-crate tag." >&2
+            exit 1
+          fi
 
       - name: Authenticate with crates.io
         id: crates_io_auth

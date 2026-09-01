@@ -3966,6 +3966,11 @@ class KucGuardrailsTest(unittest.TestCase):
         self.assertIn(
             'bash scripts/release/publish-crates.sh "${{ inputs.version }}"', source
         )
+        self.assertIn("Retry supports consolidated single-crate releases only", source)
+        self.assertLess(
+            source.index("Retry supports consolidated single-crate releases only"),
+            source.index("Authenticate with crates.io"),
+        )
         self.assertNotIn(
             "../release-tools/scripts/release/publish-crates.sh", source
         )

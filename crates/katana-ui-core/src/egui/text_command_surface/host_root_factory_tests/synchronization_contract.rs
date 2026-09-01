@@ -108,7 +108,7 @@ fn synchronize_with_same_presentation_and_same_revision_is_no_change() {
     )
     .expect("same revision token");
 
-    assert_eq!(root.synchronize(same_token).expect("synchronize"), false);
+    assert!(!root.synchronize(same_token).expect("synchronize"));
 }
 
 #[test]

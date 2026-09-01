@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Platform text raster runtime is public and framework-neutral
-KUC SHALL provide a public `katana-ui-core-text-raster` crate that depends on `katana-ui-core` and renderer libraries only. The crate MUST NOT expose egui, KLE, KDV, KatanA, windowing, clipboard, or file-IO types in its public API.
+KUC SHALL provide the public `katana_ui_core::text_raster` module behind the `katana-ui-core` `text-raster` optional feature. The default feature set MUST remain framework-neutral, and the module MUST NOT expose egui, KLE, KDV, KatanA, windowing, clipboard, or file-IO types in its public API.
 
 #### Scenario: Consumer constructs a renderer from generic configuration
 - **WHEN** a Rust consumer creates `PlatformTextRasterizer` from `PlatformTextRasterConfig`

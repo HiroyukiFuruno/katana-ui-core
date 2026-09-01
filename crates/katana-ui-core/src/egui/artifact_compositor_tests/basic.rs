@@ -120,18 +120,10 @@ fn public_api_composes_rounded_and_transparent_layers_with_clipping() {
         return;
     };
     assert!(frame.non_transparent_pixel_count > 0);
-    assert!(
-        frame
-            .rgba_pixels
-            .chunks_exact(4)
-            .any(|pixel| pixel == [0, 0, 0, 0])
-    );
-    assert!(
-        frame
-            .rgba_pixels
-            .chunks_exact(4)
-            .any(|pixel| pixel == [20, 40, 80, 255])
-    );
+    let (pixel_chunks, remainder) = frame.rgba_pixels.as_chunks::<4>();
+    assert!(remainder.is_empty());
+    assert!(pixel_chunks.iter().any(|pixel| pixel == &[0, 0, 0, 0]));
+    assert!(pixel_chunks.iter().any(|pixel| pixel == &[20, 40, 80, 255]));
 }
 
 #[test]

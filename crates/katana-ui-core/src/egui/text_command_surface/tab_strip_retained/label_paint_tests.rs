@@ -198,8 +198,8 @@ fn render_tab_trailing_control_uses_pinned_and_close_icons() {
             _ => None,
         });
 
-    assert!(matches!(pinned_identity, Some(_)));
-    assert!(matches!(close_identity, Some(_)));
+    assert!(pinned_identity.is_some());
+    assert!(close_identity.is_some());
     assert_ne!(pinned_identity, close_identity);
 }
 

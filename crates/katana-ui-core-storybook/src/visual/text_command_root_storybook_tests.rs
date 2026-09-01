@@ -11,6 +11,29 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[test]
+fn full_root_storybook_uses_only_the_public_facade_root() {
+    let source = include_str!("text_command_root_storybook.rs");
+    for forbidden in [
+        "EguiTextCommandSurfaceRoot,",
+        "EguiTextCommandSurfaceRootOutput",
+        "EguiTextCommandSurfaceAdapter",
+        "EguiTextCommandSurface,",
+        "ArtifactCompositor",
+        "PaintPlan",
+        "TextureId",
+        "egui::Id",
+    ] {
+        assert!(
+            !source.contains(forbidden),
+            "full-root Storybook leaked `{forbidden}`"
+        );
+    }
+    assert!(source.contains("EguiTextCommandSurfaceHostRoot"));
+    assert!(source.contains("EguiTextCommandSurfaceRootFactory"));
+    assert!(source.contains("root.show(ui)"));
+}
+
+#[test]
 fn full_root_trace_repeats_closed_evidence() -> Result<(), FullRootArtifactError> {
     let first = run_scripted_sequence()?;
     let second = run_scripted_sequence()?;

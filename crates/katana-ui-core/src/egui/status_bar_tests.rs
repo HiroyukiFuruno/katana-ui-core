@@ -221,18 +221,10 @@ fn unit_adapter_records_all_progress_shape_paint_contracts() {
         (ring_warning, [240, 190, 75, 255]),
         (pie, [240, 190, 75, 255]),
     ] {
-        assert!(
-            texture
-                .rgba_pixels
-                .chunks_exact(4)
-                .any(|pixel| pixel == foreground)
-        );
-        assert!(
-            texture
-                .rgba_pixels
-                .chunks_exact(4)
-                .any(|pixel| pixel == [80, 80, 80, 255])
-        );
+        let (pixel_chunks, remainder) = texture.rgba_pixels.as_chunks::<4>();
+        assert!(remainder.is_empty());
+        assert!(pixel_chunks.iter().any(|pixel| pixel == &foreground));
+        assert!(pixel_chunks.iter().any(|pixel| pixel == &[80, 80, 80, 255]));
     }
     assert_eq!(
         operations

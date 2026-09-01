@@ -13,7 +13,7 @@ adapter が欠けており、これらを KLE/KDV に実装すると platform �
   focus / dismiss event を用いる cursor-anchored floating command toolbar の contract を追加する。
 - `SearchControlStrip` を、host 注入の visible/accessibility string、capability state、close
   interaction、および find / navigation / replace の完全な renderer-neutral view model へ拡張する。
-- KUC 所有の optional egui command-chrome adapter を追加する。KUC props のみを描画し、KUC の
+- `katana-ui-core` の `egui` optional featureにKUC所有のcommand-chrome adapter moduleを追加する。KUC props のみを描画し、KUC の
   typed event のみを返す。host command 名、search/editor side effect は持たない。
 - Storybook の private SVG raster path を public runtime へ移し、duplicate rasterizer や
   host-specific semantics を防止する contract / adapter / guard を追加する。
@@ -38,7 +38,7 @@ adapter が欠けており、これらを KLE/KDV に実装すると platform �
 
 ## 影響範囲
 
-- SVG raster dependency は framework-neutral core crate 外の new KUC runtime crate に閉じる。
+- SVG raster dependency は `svg-raster` optional featureに閉じ、default coreへ漏らさない。
 - existing `Toolbar` / `SearchControlStrip` は内部 implementation として compose する。public
   struct literal / exhaustive enum match を壊さないため、icon、localized presentation、close、
   capability、floating lifecycle は新しい additive `CommandChrome` DTO/event に閉じる。
