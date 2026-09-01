@@ -44,7 +44,7 @@ impl Default for FakeFfmpegSpec {
 pub(super) fn install(root: &Path, spec: &FakeFfmpegSpec) -> PathBuf {
     std::fs::create_dir_all(root).expect("fake ffmpeg root should create");
     let path = root.join(format!("ffmpeg{}", std::env::consts::EXE_SUFFIX));
-    std::fs::copy(compiled_fixture(), &path).expect("fake ffmpeg executable should copy");
+    std::fs::hard_link(compiled_fixture(), &path).expect("fake ffmpeg executable should link");
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
