@@ -1,7 +1,7 @@
 use super::canvas::Canvas;
 use katana_ui_core::molecule::RgbaColor;
 use katana_ui_core::render_model::UiIconProps;
-use katana_ui_core_svg_raster::{UiSvgRasterRequest, UiSvgRasterizer};
+use katana_ui_core::svg_raster::{UiSvgRasterRequest, UiSvgRasterizer};
 use std::cell::RefCell;
 
 const RGBA_CHANNEL_COUNT: usize = 4;

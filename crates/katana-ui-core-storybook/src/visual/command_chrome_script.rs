@@ -1,4 +1,4 @@
-use katana_ui_core_egui_adapter::command_chrome::{
+use katana_ui_core::egui::command_chrome::{
     EguiCommandChromeFloatingOutput, EguiCommandChromeOutput, EguiCommandChromeSearchOutput,
 };
 

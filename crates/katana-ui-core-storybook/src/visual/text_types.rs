@@ -1,5 +1,5 @@
+use katana_ui_core::text_raster::PlatformTextRasterizer;
 use katana_ui_core::theme::FontToken;
-use katana_ui_core_text_raster::PlatformTextRasterizer;
 use std::cell::RefCell;
 
 pub struct TextRenderer {

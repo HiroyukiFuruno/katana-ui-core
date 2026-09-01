@@ -5,9 +5,9 @@ use super::context_menu_surface_integration_support::{
     item_bounds, pointer_anchor, pointer_event, pointer_from_bounds, run_combined_frame,
     run_text_frame, shift_f10_event, text_root_id,
 };
+use katana_ui_core::egui::context_menu::EguiContextMenuAdapter;
+use katana_ui_core::egui::text_surface::EguiTextSurfaceAdapter;
 use katana_ui_core::molecule::selection::{ContextMenuCloseReason, ContextMenuEvent};
-use katana_ui_core_egui_adapter::context_menu::EguiContextMenuAdapter;
-use katana_ui_core_egui_adapter::text_surface::EguiTextSurfaceAdapter;
 use std::io;
 
 const OUTSIDE_MARGIN_PX: f32 = 8.0;
@@ -20,7 +20,7 @@ pub(super) fn run_storybook_context_menu() -> Result<ContextMenuEvidence, Box<dy
     context.enable_accesskit();
     let mut text_adapter = EguiTextSurfaceAdapter::default();
     let mut text_surface = super::super::text_surface_fixture::text_surface_fixture();
-    let raster_config = katana_ui_core_text_raster::PlatformTextRasterConfig::default();
+    let raster_config = katana_ui_core::text_raster::PlatformTextRasterConfig::default();
     let mut menu_adapter = EguiContextMenuAdapter::new(raster_config)?;
     let pointer_anchor = pointer_anchor(&context, &mut text_adapter, &mut text_surface)?;
 
@@ -281,7 +281,7 @@ mod tests {
         context.enable_accesskit();
         let mut text_adapter = EguiTextSurfaceAdapter::default();
         let mut text_surface = crate::visual::text_surface_fixture::text_surface_fixture();
-        let raster_config = katana_ui_core_text_raster::PlatformTextRasterConfig::default();
+        let raster_config = katana_ui_core::text_raster::PlatformTextRasterConfig::default();
         let mut menu_adapter = EguiContextMenuAdapter::new(raster_config)?;
         let pointer_anchor = pointer_anchor(&context, &mut text_adapter, &mut text_surface)?;
 

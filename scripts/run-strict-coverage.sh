@@ -129,10 +129,7 @@ esac
 coverage_production_digest() {
   find \
     crates/katana-ui-core/src \
-    crates/katana-ui-core-egui-adapter/src \
     crates/katana-ui-core-storybook/src \
-    crates/katana-ui-core-svg-raster/src \
-    crates/katana-ui-core-text-raster/src \
     examples/kuc-consumer-app/src \
     -type f \
     -name '*.rs' \
@@ -152,7 +149,7 @@ coverage_profile_signature() {
     printf '%s\n' \
       'version=3' \
       'scope=full-workspace' \
-      'packages=katana-ui-core,katana-ui-core-egui-adapter,katana-ui-core-storybook,katana-ui-core-svg-raster,katana-ui-core-text-raster,kuc-consumer-app' \
+      'packages=katana-ui-core,katana-ui-core-storybook,kuc-consumer-app' \
       'targets=all' \
       'features=all' \
       'profile-test-opt-level=0'
@@ -170,10 +167,7 @@ coverage_profile_signature() {
       scripts/coverage/run-in-container.sh \
       scripts/coverage/Dockerfile \
       crates/katana-ui-core/Cargo.toml \
-      crates/katana-ui-core-egui-adapter/Cargo.toml \
       crates/katana-ui-core-storybook/Cargo.toml \
-      crates/katana-ui-core-svg-raster/Cargo.toml \
-      crates/katana-ui-core-text-raster/Cargo.toml \
       examples/kuc-consumer-app/Cargo.toml
     while IFS= read -r -d '' optional_input; do
       sha256sum "${optional_input}"
@@ -217,10 +211,7 @@ invalidate_coverage_profile() {
 
 coverage_packages=(
   -p katana-ui-core
-  -p katana-ui-core-egui-adapter
   -p katana-ui-core-storybook
-  -p katana-ui-core-svg-raster
-  -p katana-ui-core-text-raster
   -p kuc-consumer-app
 )
 if [[ -n "${coverage_supplement_filter}" && "${coverage_reuse}" != "1" ]]; then
@@ -328,7 +319,7 @@ echo "coverage mode: ${coverage_mode}; scope: full; parallel binaries: ${coverag
 coverage_test_started_at="${SECONDS}"
 if [[ -n "${coverage_supplement_filter}" ]]; then
   run_cargo_raw test \
-    -p katana-ui-core-egui-adapter \
+    -p katana-ui-core \
     "${coverage_supplement_target_args[@]}" \
     --all-features \
     --locked \

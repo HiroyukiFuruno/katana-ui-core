@@ -7,11 +7,11 @@ use crate::visual::text_surface_fixture::{
 };
 
 use super::facts;
-use katana_ui_core::molecule::command_chrome::CommandChromeFamilyId;
-use katana_ui_core_egui_adapter::text_command_surface::{
+use katana_ui_core::egui::text_command_surface::{
     EguiTextCommandSurface, EguiTextCommandSurfaceAdapter, EguiTextCommandSurfaceOutput,
     TextCommandSurfaceStyle,
 };
+use katana_ui_core::molecule::command_chrome::CommandChromeFamilyId;
 
 pub(crate) struct Harness;
 
@@ -29,7 +29,7 @@ impl Harness {
     pub(crate) fn run_frame_for_fact(
         events: Vec<egui::Event>,
     ) -> Result<facts::FrameFacts, Box<dyn std::error::Error>> {
-        let raster_config = katana_ui_core_text_raster::PlatformTextRasterConfig::default();
+        let raster_config = katana_ui_core::text_raster::PlatformTextRasterConfig::default();
         let mut adapter = EguiTextCommandSurfaceAdapter::with_text_raster_config(raster_config)?;
         let mut surface = EguiTextCommandSurface::new(text_surface_fixture())
             .with_toolbar(toolbar_fixture().command_family(CommandChromeFamilyId::new("primary")))

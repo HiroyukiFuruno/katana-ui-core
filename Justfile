@@ -18,7 +18,7 @@ CARGO := env_var_or_default("CARGO", RTK_CMD + "cargo")
 COVERAGE_BUILD_JOBS := env_var_or_default("CARGO_BUILD_JOBS", JOBS)
 COVERAGE_TEST_THREADS := env_var_or_default("COVERAGE_TEST_THREADS", "4")
 KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"
-KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-text-raster -p katana-ui-core-svg-raster -p katana-ui-core-egui-adapter -p katana-ui-core-storybook -p kuc-consumer-app"
+KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"
 VERSION := env_var_or_default("VERSION", `awk -F '"' '/^version = / { print $2; exit }' Cargo.toml`)
 VERSION_BARE := replace(VERSION, "v", "")
 COVERAGE_MIN_LINES := "100"
@@ -46,7 +46,9 @@ check-types:
 
 # Run strict Clippy checks
 lint:
-    {{CARGO}} clippy -j {{JOBS}} {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
+    {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --lib --all-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
+    {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --tests --no-default-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
+    {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core-storybook -p kuc-consumer-app --all-targets --all-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
 
 # Install shared KatanA AST lint CLI from crates.io
 ast-lint-install:
@@ -251,12 +253,6 @@ release-verify: check coverage
     bash scripts/release/verify-version.sh "{{VERSION}}"
     {{CARGO}} package -p katana-ui-core --locked --allow-dirty
     {{CARGO}} publish -p katana-ui-core --dry-run --locked --allow-dirty
-    # Dependent crates cannot resolve this release from crates.io before core is published.
-    # Validate their package file sets here; the release workflow performs normal verified
-    # packaging and publishing after each prerequisite appears in the registry.
-    {{CARGO}} package -p katana-ui-core-text-raster --locked --allow-dirty --list >/dev/null
-    {{CARGO}} package -p katana-ui-core-svg-raster --locked --allow-dirty --list >/dev/null
-    {{CARGO}} package -p katana-ui-core-egui-adapter --locked --allow-dirty --list >/dev/null
     bash scripts/release/verify-core-release-scope.sh "{{VERSION}}"
 
 # Verify release branch readiness before merging

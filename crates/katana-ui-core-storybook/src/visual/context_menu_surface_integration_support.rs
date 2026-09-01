@@ -3,17 +3,17 @@ use super::super::text_surface_fixture::{
     paint_style as text_paint_style, raster_style as text_raster_style,
 };
 use super::{context_menu_paint_style, context_menu_raster_style};
-use katana_ui_core::render_model::{RGBA_CHANNEL_COUNT, UiRect};
-use katana_ui_core_egui_adapter::artifact_compositor::{
+use katana_ui_core::egui::artifact_compositor::{
     ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor, ArtifactPaintPlanRef,
 };
-use katana_ui_core_egui_adapter::context_menu::{
+use katana_ui_core::egui::context_menu::{
     ContextMenuPaintOperationKind, EguiContextMenuAdapter, EguiContextMenuFrameRecord,
     EguiContextMenuOutput,
 };
-use katana_ui_core_egui_adapter::text_surface::{
+use katana_ui_core::egui::text_surface::{
     EguiTextSurfaceAdapter, EguiTextSurfaceOutput, TextSurfaceContextTargetAnchor,
 };
+use katana_ui_core::render_model::{RGBA_CHANNEL_COUNT, UiRect};
 use std::io;
 
 const TEXT_TARGET_X: f32 = 940.0;
@@ -305,7 +305,7 @@ mod tests {
 
     #[test]
     fn item_bounds_rejects_unknown_item_id() {
-        let record = katana_ui_core_egui_adapter::context_menu::EguiContextMenuFrameRecord {
+        let record = katana_ui_core::egui::context_menu::EguiContextMenuFrameRecord {
             bounds: UiRect::new(0, 0, 64, 64),
             viewport_bounds: UiRect::new(0, 0, 64, 64),
             highlighted_path: Vec::new(),
@@ -327,13 +327,13 @@ mod tests {
 
     #[test]
     fn item_bounds_returns_matching_bounds() -> Result<(), io::Error> {
-        let record = katana_ui_core_egui_adapter::context_menu::EguiContextMenuFrameRecord {
+        let record = katana_ui_core::egui::context_menu::EguiContextMenuFrameRecord {
             bounds: UiRect::new(0, 0, 64, 64),
             viewport_bounds: UiRect::new(0, 0, 64, 64),
             highlighted_path: Vec::new(),
             focused: false,
             items: vec![
-                katana_ui_core_egui_adapter::context_menu::EguiContextMenuItemFrame {
+                katana_ui_core::egui::context_menu::EguiContextMenuItemFrame {
                     id: "target".to_string(),
                     bounds: UiRect::new(4, 8, 16, 12),
                     disabled: false,

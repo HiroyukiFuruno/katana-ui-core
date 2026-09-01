@@ -1,5 +1,5 @@
 use super::command_chrome_surface::{CommandChromeSurface, CommandChromeSurfaceFrame};
-use katana_ui_core_egui_adapter::command_chrome::EguiCommandChromeError;
+use katana_ui_core::egui::command_chrome::EguiCommandChromeError;
 
 pub(super) struct CommandChromeStorybookApp {
     surface: CommandChromeSurface,

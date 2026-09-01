@@ -1,10 +1,10 @@
 use crate::visual::canvas::Canvas;
 use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::render_model::{UiTextSpan, UiTextSpanStyle};
-use katana_ui_core::theme::{FontFamily, FontToken};
-use katana_ui_core_text_raster::{
+use katana_ui_core::text_raster::{
     PlatformTextRaster, PlatformTextRasterConfig, PlatformTextRasterRequest, PlatformTextRasterizer,
 };
+use katana_ui_core::theme::{FontFamily, FontToken};
 use unicode_segmentation::UnicodeSegmentation;
 
 #[cfg(test)]

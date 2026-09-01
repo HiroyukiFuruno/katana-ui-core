@@ -13,19 +13,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 ALLOWED_PACKAGES = (
     "katana-ui-core",
-    "katana-ui-core-egui-adapter",
     "katana-ui-core-storybook",
-    "katana-ui-core-svg-raster",
-    "katana-ui-core-text-raster",
     "kuc-consumer-app",
 )
 MAX_SUPPORTED_PARALLEL_BINARIES = 2
-LONG_RUNNING_EXECUTABLE_PREFIXES = (
+HIGH_COST_EXECUTABLE_PREFIXES = (
     "katana_ui_core-",
-    "katana_ui_core_egui_adapter-",
     "katana_ui_core_storybook-",
     "native_window_contract-",
 )
+MEDIUM_COST_EXECUTABLE_PREFIXES = ("egui_",)
 class RunnerError(RuntimeError):
     pass
 def fail(message: str) -> None:
@@ -104,13 +101,19 @@ def parse_artifacts(path: str, allowed: dict[str, tuple[str, Path]]) -> list[tup
         if not isinstance(e, dict) or e.get("reason") != "compiler-artifact":
             continue
         profile = e.get("profile")
-        if not isinstance(profile, dict) or profile.get("test") is not True:
+        is_test_executable = isinstance(profile, dict) and profile.get("test") is True
+        repair_bind_executable = os.environ.get("KUC_COVERAGE_BIND_TARGET") == "1"
+        if not is_test_executable and not repair_bind_executable:
             continue
         pid = e.get("package_id")
         exe_raw = e.get("executable")
         if not isinstance(pid, str) or pid not in allowed:
+            if not is_test_executable:
+                continue
             fail(f"artifact line {line_no}: unknown package_id '{pid}'")
         if not isinstance(exe_raw, str) or not exe_raw:
+            if not is_test_executable:
+                continue
             fail(f"artifact line {line_no}: missing executable")
         name, manifest_dir = allowed[pid]
         exe = Path(exe_raw)
@@ -120,7 +123,15 @@ def parse_artifacts(path: str, allowed: dict[str, tuple[str, Path]]) -> list[tup
         if not exe.exists():
             fail(f"artifact line {line_no}: executable not found '{exe}'")
         if not os.access(exe, os.X_OK):
-            fail(f"artifact line {line_no}: executable not runnable '{exe}'")
+            if os.environ.get("KUC_COVERAGE_BIND_TARGET") == "1":
+                try:
+                    exe.chmod(exe.stat().st_mode | 0o111)
+                except OSError as error:
+                    fail(f"artifact line {line_no}: failed to restore executable mode '{exe}': {error}")
+            if not os.access(exe, os.X_OK):
+                fail(f"artifact line {line_no}: executable not runnable '{exe}'")
+        if not is_test_executable:
+            continue
         if exe in seen:
             fail(f"artifact line {line_no}: duplicate executable '{exe}'")
         seen.add(exe)
@@ -169,14 +180,19 @@ def emit_failures(failed: list[tuple[str, Path, int, Path, Path, float]]) -> Non
         if se.exists():
             print(se.read_text(errors="replace"), file=sys.stderr)
 def schedule_batches(binaries: list[tuple[str, Path, Path]], max_parallel: int) -> list[list[tuple[str, Path, Path]]]:
-    # Keep the known long-running library/native targets paired first so short
-    # contracts cannot leave half of the bounded CPU budget idle for minutes.
+    # 実測で長い library/native target を最初に開始し、短い egui contract 群が
+    # 13分級の Storybook library の開始を遅らせないようにする。
+    def cost(task: tuple[str, Path, Path]) -> int:
+        name = task[1].name
+        if name.startswith(HIGH_COST_EXECUTABLE_PREFIXES):
+            return 0
+        if name.startswith(MEDIUM_COST_EXECUTABLE_PREFIXES):
+            return 1
+        return 2
+
     ordered = sorted(
         enumerate(binaries),
-        key=lambda item: (
-            not item[1][1].name.startswith(LONG_RUNNING_EXECUTABLE_PREFIXES),
-            item[0],
-        ),
+        key=lambda item: (cost(item[1]), item[0]),
     )
     tasks = [binary for _index, binary in ordered]
     return [tasks[offset:offset + max_parallel] for offset in range(0, len(tasks), max_parallel)]
@@ -265,7 +281,7 @@ def self_test() -> int:
             ok[name] = exe(name, f"ok-{i}.py", "print('ok')")
         fail = exe(ALLOWED_PACKAGES[1], "fail.py", "import sys;print('bad', file=sys.stderr); sys.exit(1)")
         slow: dict[str, str] = {}
-        for i, name in enumerate(ALLOWED_PACKAGES[:4]):
+        for i, name in enumerate(ALLOWED_PACKAGES):
             delay = "0.8" if i == 0 else "0.1"
             slow[name] = exe(name, f"slow-{i}.py", slow_body.replace("DELAY", delay))
         def write_artifact(items: list[tuple[str, str]]) -> Path:
@@ -286,13 +302,51 @@ def self_test() -> int:
         if bad.returncode == 0 or "artifact JSON invalid" not in (bad.stdout or ""):
             print("self-test failed: malformed artifact", file=sys.stderr)
             return 1
+        bind_target_exe = dirs[ALLOWED_PACKAGES[0]] / "bind-target.py"
+        bind_target_exe.write_text("#!/usr/bin/env python3\nprint('bind target')\n")
+        bind_target_child = dirs[ALLOWED_PACKAGES[0]] / "bind-target-child.py"
+        bind_target_child.write_text("#!/usr/bin/env python3\nprint('bind target child')\n")
+        bind_target_items = [
+            (name, str(bind_target_exe) if index == 0 else ok[name])
+            for index, name in enumerate(ALLOWED_PACKAGES)
+        ]
+        bind_target_artifact = write_artifact(bind_target_items)
+        with bind_target_artifact.open("a") as artifact_file:
+            artifact_file.write(
+                json.dumps(
+                    {
+                        "reason": "compiler-artifact",
+                        "package_id": ids[ALLOWED_PACKAGES[0]],
+                        "executable": str(bind_target_child),
+                        "profile": {"test": False},
+                    }
+                )
+                + "\n"
+            )
+        bind_target = run_case(
+            script,
+            bind_target_artifact,
+            md,
+            root / "bind-target",
+            {
+                "LLVM_PROFILE_FILE": "cov-%p-%m.profraw",
+                "KUC_COVERAGE_BIND_TARGET": "1",
+            },
+        )
+        if (
+            bind_target.returncode != 0
+            or not os.access(bind_target_exe, os.X_OK)
+            or not os.access(bind_target_child, os.X_OK)
+        ):
+            print("self-test failed: bind target executable repair", file=sys.stderr)
+            return 1
         fail_case = [(n, fail if n == ALLOWED_PACKAGES[1] else ok[n]) for n in ALLOWED_PACKAGES]
         f = run_case(script, write_artifact(fail_case), md, root / "fail-log", {"LLVM_PROFILE_FILE": "cov-%p-%m.profraw"})
         if f.returncode != 1 or "bad" not in (f.stdout or ""):
             print("self-test failed: failure log", file=sys.stderr)
             return 1
         event = root / "parallel.log"
-        parallel = [(ALLOWED_PACKAGES[i], slow[ALLOWED_PACKAGES[i]]) for i in range(4)] + [(n, ok[n]) for n in ALLOWED_PACKAGES[4:]]
+        parallel = [(name, slow[name]) for name in ALLOWED_PACKAGES]
         par = run_case(script, write_artifact(parallel), md, root / "parallel", {"LLVM_PROFILE_FILE": "cov-%p-%4m.profraw", "KUC_SELFTEST_EVENT_FILE": str(event)})
         if par.returncode != 0 or parse_max_active(event) != MAX_SUPPORTED_PARALLEL_BINARIES:
             print("self-test failed: parallel", file=sys.stderr)
@@ -306,13 +360,15 @@ def self_test() -> int:
             return 1
         scheduled = schedule_batches([
             (ALLOWED_PACKAGES[0], Path("short"), root),
-            (ALLOWED_PACKAGES[1], Path("katana_ui_core_egui_adapter-heavy"), root),
+            (ALLOWED_PACKAGES[1], Path("egui_host_root_facade_contract-heavy"), root),
             (ALLOWED_PACKAGES[2], Path("katana_ui_core_storybook-heavy"), root),
+            (ALLOWED_PACKAGES[0], Path("katana_ui_core-heavy"), root),
+            (ALLOWED_PACKAGES[0], Path("native_window_contract-heavy"), root),
         ], MAX_SUPPORTED_PARALLEL_BINARIES)
-        if [task[1].name for task in scheduled[0]] != ["katana_ui_core_egui_adapter-heavy", "katana_ui_core_storybook-heavy"]:
+        if [task[1].name for task in scheduled[0]] != ["katana_ui_core_storybook-heavy", "katana_ui_core-heavy"]:
             print("self-test failed: long-running schedule", file=sys.stderr)
             return 1
-        print("self-test passed: 6/6")
+        print("self-test passed: 3/3")
         return 0
     finally:
         shutil.rmtree(root, ignore_errors=True)

@@ -2920,22 +2920,22 @@ muxer_capability_verified;
         source,
     )
     write_text(
-        root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root.rs",
+        root / "crates/katana-ui-core/src/egui/text_command_surface/host_root.rs",
         "pub fn retain(\n"
         "pub fn token(\n",
     )
     write_text(
-        root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root/types.rs",
+        root / "crates/katana-ui-core/src/egui/text_command_surface/host_root/types.rs",
         "pub struct EguiTextCommandSurfacePresentationToken;\n"
         "pub struct EguiTextCommandSurfaceHostProjectionEncoder;\n",
     )
     write_text(
-        root / "crates/katana-ui-core-egui-adapter/tests/host_root_facade_contract.rs",
+        root / "crates/katana-ui-core/tests/egui_host_root_facade_contract.rs",
         "opaque_tokens_and_transport_have_no_clone_or_serialize_derives\n"
         "compatibility_types_are_hidden_and_storybook_uses_only_the_facade_root\n",
     )
     write_text(
-        root / "crates/katana-ui-core-egui-adapter/tests/text_command_root_contract.rs",
+        root / "crates/katana-ui-core/tests/egui_text_command_root_contract.rs",
         "root_event_batch_forwards_once_and_returns_a_closed_receipt\n"
         "assert!(receipt.consumed_once())\n",
     )

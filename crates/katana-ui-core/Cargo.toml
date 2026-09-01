@@ -5,12 +5,26 @@ edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
 repository.workspace = true
-description = "Framework-neutral UI Core for the KatanA ecosystem (runtime / window / surface / widgets)"
+description = "UI Core for the KatanA ecosystem with optional raster and egui adapters"
 authors.workspace = true
 
+[features]
+default = []
+text-raster = ["dep:cosmic-text", "dep:sha2"]
+svg-raster = ["dep:resvg", "dep:tiny-skia"]
+egui = ["dep:egui", "dep:hex", "dep:sha2", "text-raster", "svg-raster"]
+storybook-artifacts = ["egui", "dep:image"]
+
 [dependencies]
+cosmic-text = { workspace = true, optional = true }
+egui = { workspace = true, optional = true }
+hex = { workspace = true, optional = true }
+image = { workspace = true, optional = true }
+resvg = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
+sha2 = { workspace = true, optional = true }
+tiny-skia = { workspace = true, optional = true }
 unicode-segmentation.workspace = true
 
 [dev-dependencies]

@@ -1,9 +1,9 @@
 use super::text_surface_artifact::TextSurfacePlanPixels;
-use katana_ui_core::text_surface::{TextSurfaceAccessibilityTree, TextSurfaceEvent};
-use katana_ui_core_egui_adapter::text_surface::{
+use katana_ui_core::egui::text_surface::{
     EguiTextSurfaceError, EguiTextSurfaceOutput, TextSurfaceArtifactFrame,
     TextSurfacePaintOperationKind,
 };
+use katana_ui_core::text_surface::{TextSurfaceAccessibilityTree, TextSurfaceEvent};
 use serde::Serialize;
 
 const RGBA_CHANNELS: usize = 4;

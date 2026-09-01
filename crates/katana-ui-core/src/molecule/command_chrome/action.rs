@@ -183,7 +183,7 @@ impl CommandChromeAction {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommandChromeMeasuredAction {
     action_id: ToolbarActionId,
     width: u32,
@@ -206,6 +206,12 @@ impl CommandChromeMeasuredAction {
     #[must_use]
     pub(crate) const fn width(&self) -> u32 {
         self.width
+    }
+}
+
+impl Clone for CommandChromeMeasuredAction {
+    fn clone(&self) -> Self {
+        Self::new(self.action_id.clone(), self.width)
     }
 }
 

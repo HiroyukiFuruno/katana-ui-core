@@ -11,7 +11,7 @@ on:
         required: false
         type: string
       publish_crates:
-        description: "Publish workspace crates to crates.io after GitHub Release is created"
+        description: "Publish katana-ui-core to crates.io after GitHub Release is created"
         required: false
         default: false
         type: boolean

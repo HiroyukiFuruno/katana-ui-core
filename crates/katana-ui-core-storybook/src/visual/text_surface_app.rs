@@ -1,11 +1,11 @@
 use super::text_surface_artifact::{TextSurfacePlanPixels, render_artifact_frame};
 use super::text_surface_fixture::{paint_style, raster_style, text_surface_fixture};
-use katana_ui_core::render_model::UiRect;
-use katana_ui_core::text_surface::TextSurface;
-use katana_ui_core_egui_adapter::text_surface::{
+use katana_ui_core::egui::text_surface::{
     EguiTextSurfaceAdapter, EguiTextSurfaceError, EguiTextSurfaceFrameRecord,
     TextSurfaceArtifactFrame, TextSurfacePaintStyle, TextSurfaceRasterStyle,
 };
+use katana_ui_core::render_model::UiRect;
+use katana_ui_core::text_surface::TextSurface;
 
 pub(super) struct TextSurfaceStorybookApp {
     adapter: EguiTextSurfaceAdapter,

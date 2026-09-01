@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import re
 import sys
+import tomllib
 
 from kuc_openspec_guardrails import KucOpenSpecGuardrails
 from kuc_workspace_tab_guardrails import WorkspaceTabGuardrails
@@ -42,6 +43,7 @@ class KucGuardrails:
 
     def run(self) -> list[str]:
         failures: list[str] = []
+        failures.extend(self.single_crate_distribution_failures())
         failures.extend(self.runtime_api_failures())
         failures.extend(self.callback_failures())
         failures.extend(self.storybook_leak_failures())
@@ -82,6 +84,86 @@ class KucGuardrails:
         failures.extend(self.public_app_shell_failures())
         failures.extend(self.openspec_evidence_failures())
         failures.extend(self.file_length_review_failures())
+        return failures
+
+    def single_crate_distribution_failures(self) -> list[str]:
+        """Keep all public KUC capabilities in the katana-ui-core package."""
+        core_root = self.root / "crates/katana-ui-core"
+        manifest_path = core_root / "Cargo.toml"
+        lib_path = core_root / "src/lib.rs"
+        if not manifest_path.exists() and not lib_path.exists():
+            return []
+
+        failures: list[str] = []
+        retired_crates = (
+            "katana-ui-core-text-raster",
+            "katana-ui-core-svg-raster",
+            "katana-ui-core-egui-adapter",
+        )
+        for crate in retired_crates:
+            manifest = self.root / "crates" / crate / "Cargo.toml"
+            if manifest.exists():
+                failures.append(
+                    f"{self.relative(manifest)}: retired capability must remain inside katana-ui-core"
+                )
+
+        if not manifest_path.exists():
+            return [
+                *failures,
+                "crates/katana-ui-core/Cargo.toml: single public package manifest is missing",
+            ]
+        manifest = tomllib.loads(self.read(manifest_path))
+        features = manifest.get("features", {})
+        if features.get("default") != []:
+            failures.append(
+                "crates/katana-ui-core/Cargo.toml: default features must remain empty"
+            )
+        for feature in ("text-raster", "svg-raster"):
+            if feature not in features:
+                failures.append(
+                    f"crates/katana-ui-core/Cargo.toml: missing public `{feature}` feature"
+                )
+        egui_features = features.get("egui")
+        if not isinstance(egui_features, list) or not {
+            "text-raster",
+            "svg-raster",
+        }.issubset(egui_features):
+            failures.append(
+                "crates/katana-ui-core/Cargo.toml: `egui` must enable text-raster and svg-raster"
+            )
+
+        if not lib_path.exists():
+            return [
+                *failures,
+                "crates/katana-ui-core/src/lib.rs: public module entrypoint is missing",
+            ]
+        lib_source = self.read(lib_path)
+        required_modules = (
+            ('#[cfg(feature = "egui")]\npub mod egui;', "egui"),
+            ('#[cfg(feature = "text-raster")]\npub mod text_raster;', "text_raster"),
+            ('#[cfg(feature = "svg-raster")]\npub mod svg_raster;', "svg_raster"),
+        )
+        for declaration, module in required_modules:
+            if declaration not in lib_source:
+                failures.append(
+                    f"crates/katana-ui-core/src/lib.rs: missing feature-gated public `{module}` module"
+                )
+            module_path = core_root / "src" / module
+            if not module_path.exists():
+                failures.append(
+                    f"{self.relative(module_path)}: public `{module}` module path is missing"
+                )
+
+        egui_tests = tuple((core_root / "tests").glob("egui_*.rs"))
+        if not egui_tests:
+            failures.append(
+                "crates/katana-ui-core/tests: moved egui integration contracts are missing"
+            )
+        for test_path in egui_tests:
+            if not self.read(test_path).startswith('#![cfg(feature = "egui")]\n'):
+                failures.append(
+                    f"{self.relative(test_path)}: egui integration contract must be feature-gated"
+                )
         return failures
 
     def rust_files(self, base: Path) -> list[Path]:
@@ -473,11 +555,14 @@ class KucGuardrails:
                     )
 
         dependency_files = (self.root / "crates/katana-ui-core/Cargo.toml",)
+        dependency_forbidden_tokens = tuple(
+            token for token in forbidden_tokens if token != "egui"
+        )
         for path in dependency_files:
             if not path.exists():
                 continue
             source = self.read(path).lower()
-            for token in forbidden_tokens:
+            for token in dependency_forbidden_tokens:
                 if re.search(rf"(?m)^\s*{re.escape(token)}\s*=", source):
                     failures.append(
                         f"{self.relative(path)}: generic grid must not add dependency `{token}`"
@@ -762,12 +847,17 @@ class KucGuardrails:
                 "crates/katana-ui-core-storybook/Cargo.toml: Storybook SVG runtime dependency file is missing"
             )
         else:
-            cargo_source = self.read(cargo_toml)
-            required_dependency = "katana-ui-core-svg-raster.workspace = true"
-            if required_dependency not in cargo_source:
+            manifest = tomllib.loads(self.read(cargo_toml))
+            core_dependency = manifest.get("dependencies", {}).get("katana-ui-core")
+            if not (
+                isinstance(core_dependency, dict)
+                and core_dependency.get("workspace") is True
+                and "storybook-artifacts" in core_dependency.get("features", [])
+            ):
                 failures.append(
-                    "crates/katana-ui-core-storybook/Cargo.toml: Storybook must depend on the public katana-ui-core-svg-raster runtime"
+                    "crates/katana-ui-core-storybook/Cargo.toml: Storybook must depend on katana-ui-core with the storybook-artifacts feature"
                 )
+            cargo_source = self.read(cargo_toml)
             for dependency in ("resvg", "tiny-skia"):
                 if re.search(rf"(?m)^\s*{re.escape(dependency)}(?:\.|\s|=)", cargo_source):
                     failures.append(
@@ -783,7 +873,7 @@ class KucGuardrails:
 
         source = self.read(icon_raster)
         required_tokens = (
-            "katana_ui_core_svg_raster",
+            "katana_ui_core::svg_raster",
             "UiSvgRasterRequest",
             "UiSvgRasterizer",
             "rasterize(&request)",
@@ -958,7 +1048,7 @@ class KucGuardrails:
 
         measurement_path = (
             self.root
-            / "crates/katana-ui-core-egui-adapter/src/text_surface/measurement.rs"
+            / "crates/katana-ui-core/src/egui/text_surface/measurement.rs"
         )
         if measurement_path.exists():
             source = self.read(measurement_path)
@@ -989,45 +1079,30 @@ class KucGuardrails:
         return match.group("args") if match else None
 
     def egui_text_surface_adapter_boundary_failures(self) -> list[str]:
-        adapter = self.root / "crates/katana-ui-core-egui-adapter"
-        if not adapter.exists():
+        core_root = self.root / "crates/katana-ui-core"
+        source_root = core_root / "src/egui/text_surface"
+        if not core_root.exists() and not source_root.exists():
             return []
 
         failures: list[str] = []
-        manifest = adapter / "Cargo.toml"
+        manifest = core_root / "Cargo.toml"
         if not manifest.exists():
             return [
-                "crates/katana-ui-core-egui-adapter/Cargo.toml: shared text surface adapter manifest is missing"
+                "crates/katana-ui-core/Cargo.toml: shared egui adapter manifest is missing"
             ]
         manifest_source = self.read(manifest)
-        required_dependencies = (
-            "egui.workspace = true",
-            "katana-ui-core.workspace = true",
-            "katana-ui-core-text-raster.workspace = true",
-            "katana-ui-core-svg-raster.workspace = true",
-        )
-        failures.extend(
-            "crates/katana-ui-core-egui-adapter/Cargo.toml: "
-            f"shared adapter dependency is missing `{dependency}`"
-            for dependency in required_dependencies
-            if dependency not in manifest_source
-        )
         forbidden_dependencies = (
-            "cosmic-text",
-            "resvg",
-            "tiny-skia",
             "katana-language-editor",
             "katana-document-viewer",
             "katana-render-runtime",
         )
         failures.extend(
-            "crates/katana-ui-core-egui-adapter/Cargo.toml: "
-            f"shared adapter must not directly depend on `{dependency}`"
+            "crates/katana-ui-core/Cargo.toml: "
+            f"shared egui module must not directly depend on `{dependency}`"
             for dependency in forbidden_dependencies
             if re.search(rf"(?m)^\s*{re.escape(dependency)}(?:\.|\s|=)", manifest_source)
         )
 
-        source_root = adapter / "src/text_surface"
         forbidden_tokens = (
             "egui::TextEdit",
             "TextEdit::",
@@ -1155,7 +1230,7 @@ class KucGuardrails:
         return failures
 
     def artifact_compositor_boundary_failures(self) -> list[str]:
-        adapter_root = self.root / "crates/katana-ui-core-egui-adapter/src"
+        adapter_root = self.root / "crates/katana-ui-core/src/egui"
         public_entry = adapter_root / "artifact_compositor.rs"
         if not public_entry.exists():
             return []
@@ -1228,7 +1303,7 @@ class KucGuardrails:
         return failures
 
     def egui_command_chrome_adapter_boundary_failures(self) -> list[str]:
-        source_root = self.root / "crates/katana-ui-core-egui-adapter/src"
+        source_root = self.root / "crates/katana-ui-core/src/egui"
         paths = tuple(sorted(source_root.glob("command_chrome*.rs")))
         if not paths:
             return []
@@ -1277,11 +1352,11 @@ class KucGuardrails:
         return failures
 
     def context_menu_adapter_boundary_failures(self) -> list[str]:
-        adapter_root = self.root / "crates/katana-ui-core-egui-adapter/src/context_menu"
+        adapter_root = self.root / "crates/katana-ui-core/src/egui/context_menu"
         types_path = adapter_root / "types.rs"
         adapter_path = adapter_root / "adapter.rs"
-        compositor_types = self.root / "crates/katana-ui-core-egui-adapter/src/artifact_compositor_types.rs"
-        compositor_paint = self.root / "crates/katana-ui-core-egui-adapter/src/artifact_compositor_paint.rs"
+        compositor_types = self.root / "crates/katana-ui-core/src/egui/artifact_compositor_types.rs"
+        compositor_paint = self.root / "crates/katana-ui-core/src/egui/artifact_compositor_paint.rs"
         storybook_root = self.root / "crates/katana-ui-core-storybook/src/visual"
         storybook_sources = tuple(sorted(storybook_root.glob("context_menu_surface*.rs")))
         if not adapter_root.exists() and not storybook_sources:
@@ -1373,7 +1448,7 @@ class KucGuardrails:
 
     def text_command_surface_artifact_order_ownership_failures(self) -> list[str]:
         """Keep root artifact order private and read-only to consumers."""
-        types = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/types.rs"
+        types = self.root / "crates/katana-ui-core/src/egui/text_command_surface/types.rs"
         if not types.exists():
             return []
         source = self.read(types)
@@ -1398,14 +1473,14 @@ class KucGuardrails:
         return failures
 
     def text_command_surface_adapter_boundary_failures(self) -> list[str]:
-        adapter = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface.rs"
-        adapter_artifact = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/artifact.rs"
-        adapter_composition = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/composition.rs"
-        adapter_model = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/model.rs"
-        adapter_synchronization = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/synchronization.rs"
-        adapter_types = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/types.rs"
-        floating_adapter = self.root / "crates/katana-ui-core-egui-adapter/src/command_chrome_floating.rs"
-        dropdown_adapter = self.root / "crates/katana-ui-core-egui-adapter/src/command_chrome_dropdown.rs"
+        adapter = self.root / "crates/katana-ui-core/src/egui/text_command_surface.rs"
+        adapter_artifact = self.root / "crates/katana-ui-core/src/egui/text_command_surface/artifact.rs"
+        adapter_composition = self.root / "crates/katana-ui-core/src/egui/text_command_surface/composition.rs"
+        adapter_model = self.root / "crates/katana-ui-core/src/egui/text_command_surface/model.rs"
+        adapter_synchronization = self.root / "crates/katana-ui-core/src/egui/text_command_surface/synchronization.rs"
+        adapter_types = self.root / "crates/katana-ui-core/src/egui/text_command_surface/types.rs"
+        floating_adapter = self.root / "crates/katana-ui-core/src/egui/command_chrome_floating.rs"
+        dropdown_adapter = self.root / "crates/katana-ui-core/src/egui/command_chrome_dropdown.rs"
         storybook = self.root / "crates/katana-ui-core-storybook/src/visual/text_command_surface_integration_tests.rs"
         storybook_facts = self.root / "crates/katana-ui-core-storybook/src/visual/text_command_surface_integration_tests/facts.rs"
         storybook_harness = self.root / "crates/katana-ui-core-storybook/src/visual/text_command_surface_integration_tests/harness.rs"
@@ -1431,7 +1506,7 @@ class KucGuardrails:
                 failures.append(f"{self.relative(path)}: text-command surface path is incomplete")
         if not adapter.exists() or not storybook.exists():
             return failures
-        adapter_modules = self.root / "crates/katana-ui-core-egui-adapter/src/text_command_surface"
+        adapter_modules = self.root / "crates/katana-ui-core/src/egui/text_command_surface"
         adapter_module_paths = (
             path
             for path in self.rust_files(adapter_modules)
@@ -1600,11 +1675,11 @@ class KucGuardrails:
 
     def text_command_surface_context_menu_root_contract_failures(self) -> list[str]:
         """Keep ContextMenu styling, controlled state, and AccessKit proof in the root."""
-        adapter_root = self.root / "crates/katana-ui-core-egui-adapter"
-        types = adapter_root / "src/text_command_surface/types.rs"
-        synchronization = adapter_root / "src/text_command_surface/synchronization.rs"
-        context_menu = adapter_root / "src/text_command_surface/context_menu.rs"
-        test = adapter_root / "tests/text_command_surface/context_menu.rs"
+        adapter_root = self.root / "crates/katana-ui-core/src/egui"
+        types = adapter_root / "text_command_surface/types.rs"
+        synchronization = adapter_root / "text_command_surface/synchronization.rs"
+        context_menu = adapter_root / "text_command_surface/context_menu.rs"
+        test = self.root / "crates/katana-ui-core/tests/text_command_surface/context_menu.rs"
         paths = (types, synchronization, context_menu, test)
         if not any(path.exists() for path in paths):
             return []

@@ -670,7 +670,7 @@ def justfile_fmt_scope_failures(root: Path = ROOT) -> list[str]:
         return [f"{path_label(justfile, root)}: Justfile is missing"]
     source = justfile.read_text(encoding="utf-8")
     required = (
-        'KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-text-raster -p katana-ui-core-svg-raster -p katana-ui-core-egui-adapter -p katana-ui-core-storybook -p kuc-consumer-app"',
+        'KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"',
         "{{CARGO}} fmt {{KUC_FORMAT_PACKAGES}}",
         "{{CARGO}} fmt {{KUC_FORMAT_PACKAGES}} -- --check",
     )
@@ -700,7 +700,9 @@ def justfile_lint_scope_failures(root: Path = ROOT) -> list[str]:
     source = justfile.read_text(encoding="utf-8")
     required = (
         'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"',
-        "{{CARGO}} clippy -j {{JOBS}} {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked -- -D warnings",
+        "{{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --lib --all-features --locked -- -D warnings",
+        "{{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --tests --no-default-features --locked -- -D warnings",
+        "{{CARGO}} clippy -j {{JOBS}} -p katana-ui-core-storybook -p kuc-consumer-app --all-targets --all-features --locked -- -D warnings",
     )
     forbidden = (
         'RUSTFLAGS="-D warnings" {{CARGO}} clippy',
@@ -808,10 +810,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "scripts/coverage/run-in-container.sh",
         "scripts/coverage/Dockerfile",
         "crates/katana-ui-core/Cargo.toml",
-        "crates/katana-ui-core-egui-adapter/Cargo.toml",
         "crates/katana-ui-core-storybook/Cargo.toml",
-        "crates/katana-ui-core-svg-raster/Cargo.toml",
-        "crates/katana-ui-core-text-raster/Cargo.toml",
         "examples/kuc-consumer-app/Cargo.toml",
         "rust-toolchain.toml",
         "config.toml",
@@ -867,6 +866,8 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
             "python3 scripts/coverage/image-runtime-id.py",
             '^runtime-v1:sha256:[0-9a-f]{64}$',
             '"${coverage_test_threads}" != "auto"',
+            "KUC_COVERAGE_HOST_TARGET_DIR",
+            'coverage_target_mount="${KUC_COVERAGE_HOST_TARGET_DIR}:/tmp/kuc-target"',
             "docker run --rm",
             "--env KUC_COVERAGE_RUNTIME=container",
             '--env KUC_COVERAGE_IMAGE_ID="${coverage_image_id}"',
@@ -1851,7 +1852,7 @@ def write_storybook_requirement_gate_self_test_files(
 def write_justfile_fmt_scope_self_test_file(root: Path, use_scoped_packages: bool) -> None:
     root.mkdir(parents=True, exist_ok=True)
     scoped_packages = (
-        'KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-text-raster -p katana-ui-core-svg-raster -p katana-ui-core-egui-adapter -p katana-ui-core-storybook -p kuc-consumer-app"\n'
+        'KUC_FORMAT_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"\n'
         "\n"
         "fmt:\n"
         "    {{CARGO}} fmt {{KUC_FORMAT_PACKAGES}}\n"
@@ -1880,7 +1881,9 @@ def write_justfile_lint_scope_self_test_file(root: Path, use_scoped_packages: bo
         'KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"\n'
         "\n"
         "lint:\n"
-        f"    {{{{CARGO}}}} clippy -j {{{{JOBS}}}} {{{{KUC_WORKSPACE_PACKAGES}}}} --all-targets --all-features --locked -- {lint_flags}\n"
+        f"    {{{{CARGO}}}} clippy -j {{{{JOBS}}}} -p katana-ui-core --lib --all-features --locked -- {lint_flags}\n"
+        f"    {{{{CARGO}}}} clippy -j {{{{JOBS}}}} -p katana-ui-core --tests --no-default-features --locked -- {lint_flags}\n"
+        f"    {{{{CARGO}}}} clippy -j {{{{JOBS}}}} -p katana-ui-core-storybook -p kuc-consumer-app --all-targets --all-features --locked -- {lint_flags}\n"
     )
     dependency_wide = (
         "lint:\n"
@@ -1971,6 +1974,8 @@ def write_justfile_test_scope_self_test_file(
         "set -euo pipefail\n"
         'coverage_image="image"\n'
         'coverage_test_threads="auto"\n'
+        'KUC_COVERAGE_HOST_TARGET_DIR="/tmp/kuc-coverage"\n'
+        'coverage_target_mount="${KUC_COVERAGE_HOST_TARGET_DIR}:/tmp/kuc-target"\n'
         'if [[ "${coverage_test_threads}" != "auto" && ! "${coverage_test_threads}" =~ ^[1-9][0-9]*$ ]]; then exit 1; fi\n'
         f"{identity_command}"
         'if [[ ! "${coverage_image_id}" =~ ^runtime-v1:sha256:[0-9a-f]{64}$ ]]; then exit 1; fi\n'
@@ -2043,10 +2048,7 @@ def write_justfile_test_scope_self_test_file(
         "scripts/coverage/run-in-container.sh\n"
         "scripts/coverage/Dockerfile\n"
         "crates/katana-ui-core/Cargo.toml\n"
-        "crates/katana-ui-core-egui-adapter/Cargo.toml\n"
         "crates/katana-ui-core-storybook/Cargo.toml\n"
-        "crates/katana-ui-core-svg-raster/Cargo.toml\n"
-        "crates/katana-ui-core-text-raster/Cargo.toml\n"
         "examples/kuc-consumer-app/Cargo.toml\n"
         "rust-toolchain.toml\n"
         "config.toml\n"

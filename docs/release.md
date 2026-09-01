@@ -5,7 +5,7 @@
 `release/vX.Y.Z` ブランチから `master` へ取り込み依頼（Pull Request）を作る。
 取り込み依頼では通常の品質ゲート（quality gate）とリリース前検査を必須にする。
 取り込み（merge）後は自動実行基盤（GitHub Actions）がタグ（tag）、GitHubリリース（GitHub Release）、crates.io公開を実行する。
-4つの公開crate、private Storybook、consumer contractを同じrelease gateで検証する。
+単一の公開crate、private Storybook、consumer contractを同じrelease gateで検証する。
 
 ## 必須検査
 
@@ -27,9 +27,9 @@ GitHub のブランチ保護（branch protection）では、KUC repo 内で次�
 - カバレッジ（coverage）。関数・行ともに100%を必須にする
 - `Cargo.toml` の版番号（version）とブランチ版番号（branch version）の一致
 - 対象版番号（version）が公開済みrelease lineから自然な次版であること
-- 4つの公開crateについて、対象版番号（version）がcrates.ioに未公開であること
+- `katana-ui-core` について、対象版番号（version）がcrates.ioに未公開であること
 - `katana-ui-core` の梱包（package）と公開の事前実行（publish dry-run）
-- 依存する3 crateの梱包内容確認。未公開の同版coreを事前解決できないため、通常の検証付きpublishは公開時に依存順で行う
+- workspace package は `katana-ui-core`、`katana-ui-core-storybook`、`kuc-consumer-app` の3 packageに限定すること
 
 ## 公開順序
 
@@ -39,9 +39,7 @@ GitHub のブランチ保護（branch protection）では、KUC repo 内で次�
 1. `just VERSION=vX.Y.Z release-check`
 2. リリースタグ（release tag）作成
 3. GitHubリリース（GitHub Release）作成
-4. `katana-ui-core` をcrates.ioに公開し、レジストリ反映を確認
-5. `katana-ui-core-text-raster` と `katana-ui-core-svg-raster` を公開し、各反映を確認
-6. `katana-ui-core-egui-adapter` を公開し、反映を確認
+4. GitHub Actions の OIDC Trusted Publishing で `katana-ui-core` だけをcrates.ioに公開し、レジストリ反映を確認
 
 ## リリース後の自動クリーンアップ
 
@@ -65,15 +63,12 @@ GitHub のブランチ保護（branch protection）では、KUC repo 内で次�
 
 保持対象が存在した場合、`cleanup` は失敗扱いとなり、release ワークフローでの失敗報告トリガーとなる。
 
-## 必要な秘匿値
+## crates.io 認証
 
-自動実行基盤（GitHub Actions）には次の秘匿値（secret）が必要。
-値はcrates.ioの API トークン（API token）を使う。
+公開は `rust-lang/crates-io-auth-action` と crates.io Trusted Publishing の
+OIDC連携だけで行う。長期の `CARGO_REGISTRY_TOKEN`、`cargo login`、ローカルからの
+`cargo publish` は使用しない。Trusted Publisher は次の組み合わせを登録し、Actions が
+発行した短期 token を `publish-crates.sh` に渡す。
 
-repo root で実行する。
-
-```bash
-gh secret set CARGO_REGISTRY_TOKEN
-```
-
-トークン（token）は秘匿値として扱い、リポジトリ（repository）に保存しない。
+- `katana-ui-core` + `.github/workflows/release.yml`
+- `katana-ui-core` + `.github/workflows/release-publish-retry.yml`

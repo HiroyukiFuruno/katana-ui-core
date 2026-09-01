@@ -2,7 +2,7 @@ use super::FULL_ROOT_MANIFEST_FILE_NAME;
 use super::model::{FullRootArtifactError, FullRootManifest};
 use super::process;
 use super::sequence::{run_scripted_sequence, validate_sequence};
-use katana_ui_core_egui_adapter::FullRootArtifactWriter;
+use katana_ui_core::egui::FullRootArtifactWriter;
 use std::fs;
 use std::path::Path;
 

@@ -176,6 +176,35 @@ class KucGuardrailsTest(unittest.TestCase):
 
             self.assertEqual([], failures)
 
+    def test_allows_optional_egui_dependency_outside_neutral_grid_module(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            grid = root / "crates/katana-ui-core/src/molecule/generic_grid"
+            required = (
+                grid / "mod.rs",
+                grid / "axis.rs",
+                grid / "axis_types.rs",
+                grid / "component.rs",
+                grid / "component_types.rs",
+                grid / "geometry.rs",
+                grid / "selection.rs",
+                root / "crates/katana-ui-core/src/render_model/typed_grid.rs",
+                root / "crates/katana-ui-core/src/render_model/typed_grid_types.rs",
+                root / "crates/katana-ui-core/tests/generic_grid_axis_contract.rs",
+                root / "crates/katana-ui-core/tests/generic_grid_component_contract.rs",
+                root / "examples/kuc-consumer-app/tests/generic_public_contract.rs",
+            )
+            for path in required:
+                write_text(path, "struct NeutralGrid;\n")
+            write_text(
+                root / "crates/katana-ui-core/Cargo.toml",
+                "[dependencies]\negui = { workspace = true, optional = true }\n",
+            )
+
+            failures = KucGuardrails(root).generic_grid_boundary_failures()
+
+            self.assertEqual([], failures)
+
     def test_rejects_preset_tab_scroll_clip_hit_guard_gap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1888,12 +1917,86 @@ class KucGuardrailsTest(unittest.TestCase):
 
             self.assertEqual([], failures)
 
+    def test_single_crate_distribution_requires_feature_gated_public_modules(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core/Cargo.toml",
+                "[features]\n"
+                "default = []\n"
+                'text-raster = ["dep:cosmic-text"]\n'
+                'svg-raster = ["dep:resvg"]\n'
+                'egui = ["text-raster", "svg-raster"]\n',
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/lib.rs",
+                '#[cfg(feature = "egui")]\npub mod egui;\n'
+                '#[cfg(feature = "text-raster")]\npub mod text_raster;\n'
+                '#[cfg(feature = "svg-raster")]\npub mod svg_raster;\n',
+            )
+            for module in ("egui", "text_raster", "svg_raster"):
+                write_text(root / f"crates/katana-ui-core/src/{module}/mod.rs", "")
+            write_text(
+                root / "crates/katana-ui-core/tests/egui_contract.rs",
+                '#![cfg(feature = "egui")]\n',
+            )
+
+            failures = KucGuardrails(root).single_crate_distribution_failures()
+
+            self.assertEqual([], failures)
+
+    def test_single_crate_distribution_rejects_ungated_egui_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "crates/katana-ui-core/Cargo.toml",
+                "[features]\ndefault = []\n"
+                'text-raster = []\nsvg-raster = []\n'
+                'egui = ["text-raster", "svg-raster"]\n',
+            )
+            write_text(
+                root / "crates/katana-ui-core/src/lib.rs",
+                '#[cfg(feature = "egui")]\npub mod egui;\n'
+                '#[cfg(feature = "text-raster")]\npub mod text_raster;\n'
+                '#[cfg(feature = "svg-raster")]\npub mod svg_raster;\n',
+            )
+            for module in ("egui", "text_raster", "svg_raster"):
+                write_text(root / f"crates/katana-ui-core/src/{module}/mod.rs", "")
+            write_text(
+                root / "crates/katana-ui-core/tests/egui_contract.rs",
+                "use katana_ui_core::egui;\n",
+            )
+
+            failures = KucGuardrails(root).single_crate_distribution_failures()
+
+            self.assertTrue(
+                any("egui integration contract must be feature-gated" in item for item in failures),
+                failures,
+            )
+
+    def test_single_crate_distribution_rejects_retired_package_reintroduction(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(root / "crates/katana-ui-core/Cargo.toml", "[features]\ndefault = []\n")
+            write_text(root / "crates/katana-ui-core/src/lib.rs", "")
+            write_text(
+                root / "crates/katana-ui-core-egui-adapter/Cargo.toml",
+                "[package]\nname = \"katana-ui-core-egui-adapter\"\n",
+            )
+
+            failures = KucGuardrails(root).single_crate_distribution_failures()
+
+            self.assertTrue(
+                any("retired capability must remain inside katana-ui-core" in item for item in failures),
+                failures,
+            )
+
     def test_rejects_storybook_private_svg_raster_dependencies(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_text(
                 root / "crates/katana-ui-core-storybook/Cargo.toml",
-                "[dependencies]\nresvg.workspace = true\ntiny-skia.workspace = true\n",
+                "[dependencies]\nkatana-ui-core = { workspace = true }\nresvg.workspace = true\ntiny-skia.workspace = true\n",
             )
             write_text(
                 root / "crates/katana-ui-core-storybook/src/visual/ui_tree_canvas_svg_icon.rs",
@@ -1905,7 +2008,7 @@ class KucGuardrailsTest(unittest.TestCase):
             failures = KucGuardrails(root).storybook_svg_runtime_boundary_failures()
 
             self.assertTrue(
-                any("must depend on the public katana-ui-core-svg-raster runtime" in failure for failure in failures),
+                any("must depend on katana-ui-core with the storybook-artifacts feature" in failure for failure in failures),
                 failures,
             )
             self.assertTrue(
@@ -1918,11 +2021,11 @@ class KucGuardrailsTest(unittest.TestCase):
             root = Path(tmp)
             write_text(
                 root / "crates/katana-ui-core-storybook/Cargo.toml",
-                "[dependencies]\nkatana-ui-core-svg-raster.workspace = true\n",
+                "[dependencies]\nkatana-ui-core = { workspace = true, features = [\"storybook-artifacts\"] }\n",
             )
             write_text(
                 root / "crates/katana-ui-core-storybook/src/visual/ui_tree_canvas_svg_icon.rs",
-                "use katana_ui_core_svg_raster::{UiSvgRasterRequest, UiSvgRasterizer};\n"
+                "use katana_ui_core::svg_raster::{UiSvgRasterRequest, UiSvgRasterizer};\n"
                 "fn draw(request: UiSvgRasterRequest, rasterizer: &mut UiSvgRasterizer) {\n"
                 "    let _ = rasterizer.rasterize(&request);\n"
                 "}\n",
@@ -1969,22 +2072,22 @@ class KucGuardrailsTest(unittest.TestCase):
     def test_rejects_missing_retained_context_presentation_and_root_style_literals(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            adapter = root / "crates/katana-ui-core-egui-adapter"
+            adapter = root / "crates/katana-ui-core/src/egui"
             write_text(
-                adapter / "src/text_command_surface/types.rs",
+                adapter / "text_command_surface/types.rs",
                 "pub struct EguiTextCommandSurfacePresentation {}\n"
                 "impl TextCommandSurfaceStyle { fn context_menu_raster_style() {} fn context_menu_paint_style() {} }\n",
             )
             write_text(
-                adapter / "src/text_command_surface/synchronization.rs",
+                adapter / "text_command_surface/synchronization.rs",
                 "fn synchronize_context_menu() {}\n",
             )
             write_text(
-                adapter / "src/text_command_surface/context_menu.rs",
+                adapter / "text_command_surface/context_menu.rs",
                 "fn show() { let color = [1, 2, 3, 4]; }\n",
             )
             write_text(
-                adapter / "tests/text_command_surface/context_menu.rs",
+                root / "crates/katana-ui-core/tests/text_command_surface/context_menu.rs",
                 "context_menu: Some(context_menu)\n"
                 "ContextMenuEvent::TypeAheadMatched\n"
                 "fn assert_focus_restored() {}\n"
@@ -2021,7 +2124,7 @@ class KucGuardrailsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_text(
-                root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/types.rs",
+                root / "crates/katana-ui-core/src/egui/text_command_surface/types.rs",
                 "pub struct EguiTextCommandSurfaceOutput {\n"
                 "    pub artifact_order: Vec<EguiTextCommandSurfaceChild>,\n"
                 "}\n",
@@ -2134,17 +2237,13 @@ class KucGuardrailsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_text(
-                root / "crates/katana-ui-core-egui-adapter/Cargo.toml",
+                root / "crates/katana-ui-core/Cargo.toml",
                 "[dependencies]\n"
-                "egui.workspace = true\n"
-                "katana-ui-core.workspace = true\n"
-                "katana-ui-core-text-raster.workspace = true\n"
-                "katana-ui-core-svg-raster.workspace = true\n"
                 "cosmic-text.workspace = true\n"
                 "katana-language-editor.workspace = true\n",
             )
             write_text(
-                root / "crates/katana-ui-core-egui-adapter/src/text_surface/adapter.rs",
+                root / "crates/katana-ui-core/src/egui/text_surface/adapter.rs",
                 "fn draw() {\n"
                 "    let _ = egui::TextEdit::singleline(&mut String::new());\n"
                 "    let _ = FontDefinitions::default();\n"
@@ -2155,7 +2254,6 @@ class KucGuardrailsTest(unittest.TestCase):
 
             failures = KucGuardrails(root).egui_text_surface_adapter_boundary_failures()
 
-            self.assertTrue(any("cosmic-text" in failure for failure in failures), failures)
             self.assertTrue(any("katana-language-editor" in failure for failure in failures), failures)
             self.assertTrue(any("egui::TextEdit" in failure for failure in failures), failures)
             self.assertTrue(any("FontDefinitions" in failure for failure in failures), failures)
@@ -2166,16 +2264,11 @@ class KucGuardrailsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_text(
-                root / "crates/katana-ui-core-egui-adapter/Cargo.toml",
-                "[dependencies]\n"
-                "egui.workspace = true\n"
-                "katana-ui-core.workspace = true\n"
-                "katana-ui-core-text-raster.workspace = true\n"
-                "katana-ui-core-svg-raster.workspace = true\n",
+                root / "crates/katana-ui-core/Cargo.toml", "[dependencies]\negui.workspace = true\n",
             )
             write_text(
-                root / "crates/katana-ui-core-egui-adapter/src/text_surface/adapter.rs",
-                "use katana_ui_core_text_raster::PlatformTextRasterizer;\n"
+                root / "crates/katana-ui-core/src/egui/text_surface/adapter.rs",
+                "use crate::text_raster::PlatformTextRasterizer;\n"
                 "fn draw(_rasterizer: &mut PlatformTextRasterizer) {}\n",
             )
 
@@ -2187,7 +2280,7 @@ class KucGuardrailsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_text(
-                root / "crates/katana-ui-core-egui-adapter/src/command_chrome_future.rs",
+                root / "crates/katana-ui-core/src/egui/command_chrome_future.rs",
                 "fn draw() {\n"
                 "    let _ = egui::TextEdit::singleline(&mut String::new());\n"
                 "    let _ = egui::Popup::from_response;\n"
@@ -3809,7 +3902,7 @@ class KucGuardrailsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             write_text(
-                root / "crates/katana-ui-core-egui-adapter/src/artifact_compositor.rs",
+                root / "crates/katana-ui-core/src/egui/artifact_compositor.rs",
                 "mod artifact_compositor_types;\n"
                 "mod artifact_compositor_paint;\n"
                 "pub struct ArtifactCompositor;\n"
@@ -3829,18 +3922,13 @@ class KucGuardrailsTest(unittest.TestCase):
                 any("blend_texture(" in failure for failure in failures), failures
             )
 
-    def test_release_publish_script_uses_dependency_order_and_registry_waits(self) -> None:
+    def test_release_publish_script_publishes_only_katana_ui_core(self) -> None:
         root = Path(__file__).resolve().parents[1]
         source = (root / "scripts/release/publish-crates.sh").read_text(encoding="utf-8")
-        packages = [
-            "katana-ui-core",
-            "katana-ui-core-text-raster",
-            "katana-ui-core-svg-raster",
-            "katana-ui-core-egui-adapter",
-        ]
-        positions = [source.index(f"  {package}\n") for package in packages]
-
-        self.assertEqual(sorted(positions), positions)
+        self.assertIn("  katana-ui-core\n", source)
+        self.assertNotIn("katana-ui-core-egui-adapter", source)
+        self.assertNotIn("katana-ui-core-svg-raster", source)
+        self.assertNotIn("katana-ui-core-text-raster", source)
         self.assertIn('wait_until_available "${package}"', source)
         self.assertIn('cargo publish -p "${package}" --locked', source)
         self.assertNotIn("--token", source)
@@ -3868,17 +3956,12 @@ class KucGuardrailsTest(unittest.TestCase):
                 )
                 self.assertNotIn("secrets.CARGO_REGISTRY_TOKEN", source)
 
-    def test_release_scope_guard_lists_exactly_four_public_crates(self) -> None:
+    def test_release_scope_guard_lists_only_katana_ui_core_as_public(self) -> None:
         root = Path(__file__).resolve().parents[1]
         source = (root / "scripts/release/verify-core-release-scope.sh").read_text(
             encoding="utf-8"
         )
-        expected = (
-            "expected_publishable=$'katana-ui-core\\n"
-            "katana-ui-core-egui-adapter\\n"
-            "katana-ui-core-svg-raster\\n"
-            "katana-ui-core-text-raster'"
-        )
+        expected = "expected_publishable=$'katana-ui-core'"
 
         self.assertIn(expected, source)
         self.assertIn('p["publish"] != []', source)

@@ -7,11 +7,11 @@ use super::text_surface_script_types::{
     ScriptedEguiFrame, TextSurfaceArtifactError, TextSurfaceArtifactStep, TextSurfaceScriptResult,
     has_colored_star_texture,
 };
+use katana_ui_core::egui::text_surface::{EguiTextSurfaceAdapter, EguiTextSurfaceError};
 use katana_ui_core::render_model::UiRect;
 use katana_ui_core::text_surface::{
     TextSurface, TextSurfaceClipboardOperation, TextSurfaceEvent, TextSurfaceHistoryOperation,
 };
-use katana_ui_core_egui_adapter::text_surface::{EguiTextSurfaceAdapter, EguiTextSurfaceError};
 
 pub(super) fn run_scripted_sequence() -> Result<TextSurfaceScriptResult, TextSurfaceArtifactError> {
     let context = egui::Context::default();

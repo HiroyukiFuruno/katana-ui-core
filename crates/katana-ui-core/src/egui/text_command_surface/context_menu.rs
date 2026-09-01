@@ -1,0 +1,51 @@
+use crate::egui::context_menu::{EguiContextMenuAdapter, EguiContextMenuOutput};
+use crate::egui::text_command_surface::types::{
+    EguiTextCommandSurface, EguiTextCommandSurfaceAdapter, EguiTextCommandSurfaceError,
+    TextCommandSurfaceStyle,
+};
+use crate::egui::text_surface::EguiTextSurfaceOutput;
+
+impl EguiTextCommandSurfaceAdapter {
+    pub(super) fn show_context_menu(
+        &mut self,
+        ui: &mut egui::Ui,
+        surface: &mut EguiTextCommandSurface,
+        text: &EguiTextSurfaceOutput,
+        style: &TextCommandSurfaceStyle,
+    ) -> Result<Option<EguiContextMenuOutput>, EguiTextCommandSurfaceError> {
+        let Some(presentation) = surface.context_menu.clone() else {
+            self.context_menu = None;
+            self.context_target = None;
+            return Ok(None);
+        };
+        if let Some(adapter) = self.context_menu.as_mut() {
+            adapter.synchronize_presentation(presentation);
+            if let Some(target) = text.context_target.clone() {
+                self.context_target = Some(target);
+            }
+            if let Some(target) = self.context_target.clone() {
+                adapter.request_open(target);
+            }
+            let output = adapter.show(
+                ui,
+                &style.context_menu_raster_style(),
+                &style.context_menu_paint_style(),
+            )?;
+            if output.events.iter().any(|event| {
+                matches!(
+                    event,
+                    crate::molecule::selection::ContextMenuEvent::Closed { .. }
+                )
+            }) {
+                self.context_target = None;
+            }
+            return Ok(Some(output));
+        }
+        let adapter = EguiContextMenuAdapter::with_resources_and_metrics(
+            &self.text_raster_resources,
+            std::rc::Rc::clone(&self.metrics),
+        );
+        self.context_menu = Some(adapter);
+        self.show_context_menu(ui, surface, text, style)
+    }
+}

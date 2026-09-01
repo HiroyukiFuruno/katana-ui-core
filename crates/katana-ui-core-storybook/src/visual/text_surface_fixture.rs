@@ -1,4 +1,8 @@
 use katana_ui_core::atom::TextArea;
+use katana_ui_core::egui::text_surface::{
+    TextSurfaceAnnotationPaint, TextSurfaceGutterPaint, TextSurfacePaintStyle,
+    TextSurfaceRasterStyle,
+};
 use katana_ui_core::render_model::UiTextSpan;
 use katana_ui_core::text_surface::{
     TextSurface, TextSurfaceAnnotation, TextSurfaceAnnotationStyle,
@@ -6,10 +10,6 @@ use katana_ui_core::text_surface::{
     TextSurfacePresentation, TextSurfaceProps, TextSurfaceViewport,
 };
 use katana_ui_core::theme::{FontFamily, FontToken};
-use katana_ui_core_egui_adapter::text_surface::{
-    TextSurfaceAnnotationPaint, TextSurfaceGutterPaint, TextSurfacePaintStyle,
-    TextSurfaceRasterStyle,
-};
 
 pub(super) const SURFACE_WIDTH: f32 = 960.0;
 pub(super) const SURFACE_HEIGHT: f32 = 288.0;

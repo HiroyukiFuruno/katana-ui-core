@@ -1,6 +1,6 @@
 pub use super::error::FullRootArtifactError;
 use super::{PAGE, ROOT_IDENTITY};
-use katana_ui_core_egui_adapter::{
+use katana_ui_core::egui::{
     FullRootArtifact, text_command_surface::EguiTextCommandSurfaceHostRootFrame,
 };
 use serde::Serialize;
@@ -249,7 +249,7 @@ pub(super) fn absolute_path(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use katana_ui_core_egui_adapter::text_command_surface::{
+    use katana_ui_core::egui::text_command_surface::{
         EguiTextCommandSurfaceRootEventBatchForwardError, EguiTextCommandSurfaceRootFactoryError,
     };
 

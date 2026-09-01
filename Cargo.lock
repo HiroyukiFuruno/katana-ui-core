@@ -1596,9 +1596,9 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc0fef456e4baa96da950455cd02c081ca953b141298e41db3fc7e36b1da849c"
+checksum = "e17592d60ebacc7d5e169f4663c5f84f9161cc90328abcfe8456f41e4dfcb284"
 
 [[package]]
 name = "hex"
@@ -1881,31 +1881,23 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
+ "cosmic-text",
+ "egui",
+ "hex",
+ "image",
+ "resvg",
  "serde",
  "serde_json",
+ "sha2",
+ "tiny-skia 0.12.0",
  "unicode-segmentation",
 ]
 
 [[package]]
-name = "katana-ui-core-egui-adapter"
-version = "0.3.2"
-dependencies = [
- "egui",
- "hex",
- "image",
- "katana-ui-core",
- "katana-ui-core-svg-raster",
- "katana-ui-core-text-raster",
- "serde",
- "serde_json",
- "sha2",
-]
-
-[[package]]
 name = "katana-ui-core-storybook"
-version = "0.3.2"
+version = "0.3.3"
 dependencies = [
  "eframe",
  "egui",
@@ -1913,31 +1905,9 @@ dependencies = [
  "image",
  "katana-markdown-model",
  "katana-ui-core",
- "katana-ui-core-egui-adapter",
- "katana-ui-core-svg-raster",
- "katana-ui-core-text-raster",
  "minifb",
  "serde",
  "serde_json",
- "sha2",
- "unicode-segmentation",
-]
-
-[[package]]
-name = "katana-ui-core-svg-raster"
-version = "0.3.2"
-dependencies = [
- "katana-ui-core",
- "resvg",
- "tiny-skia 0.12.0",
-]
-
-[[package]]
-name = "katana-ui-core-text-raster"
-version = "0.3.2"
-dependencies = [
- "cosmic-text",
- "katana-ui-core",
  "sha2",
  "unicode-segmentation",
 ]

@@ -88,6 +88,8 @@ fn renderer_accessors_expose_injected_chrome_data_without_host_semantics() {
         .icon(icon())
         .tooltip("注入 tooltip")
         .accessibility_label("注入 accessibility")
+        .accelerator(KeyCombo::command_or_control("k"))
+        .group_id("editing")
         .split(split.clone());
     let mut toolbar = icon_toolbar().action(action);
 
@@ -99,6 +101,7 @@ fn renderer_accessors_expose_injected_chrome_data_without_host_semantics() {
         action.accessibility_label_model()
     );
     assert_eq!(Some(&split), action.split_model());
+    assert!(format!("{:?}", toolbar.toolbar_options()).contains("editing"));
     assert_eq!(
         vec![CommandChromeToolbarEvent::FocusChanged {
             action_id: "command-id".into(),
@@ -108,6 +111,22 @@ fn renderer_accessors_expose_injected_chrome_data_without_host_semantics() {
         })
     );
     assert_eq!(Some("command-id".into()), toolbar.focused_action_id_model());
+    assert_eq!(
+        vec![
+            CommandChromeToolbarEvent::AcceleratorTriggered {
+                action_id: "command-id".into(),
+                combo: KeyCombo::command_or_control("k"),
+            },
+            CommandChromeToolbarEvent::CommandActivated {
+                action_id: "command-id".into(),
+            },
+        ],
+        toolbar.apply_action(CommandChromeToolbarAction::TriggerAccelerator {
+            input: katana_ui_core::molecule::toolbar::ToolbarKeyInput::new("k")
+                .command_or_control(),
+            focus: katana_ui_core::molecule::toolbar::ToolbarFocusState::new("surface"),
+        })
+    );
 }
 
 #[test]
@@ -142,15 +161,18 @@ fn command_chrome_delegates_overflow_priority_to_existing_toolbar_planner() {
         .action(action("save", 100))
         .action(action("search", 10))
         .action(action("export", 10));
-    let plan = toolbar.plan_overflow(
-        90,
-        10,
-        &[
-            CommandChromeMeasuredAction::new("save", 40),
-            CommandChromeMeasuredAction::new("search", 40),
-            CommandChromeMeasuredAction::new("export", 40),
-        ],
-    );
+    let measured = vec![
+        CommandChromeMeasuredAction::new("save", 40),
+        CommandChromeMeasuredAction::new("search", 40),
+        CommandChromeMeasuredAction::new("export", 40),
+    ];
+    let cloned_measurements = vec![
+        measured[0].clone(),
+        measured[1].clone(),
+        measured[2].clone(),
+    ];
+    assert_eq!(measured, cloned_measurements);
+    let plan = toolbar.plan_overflow(90, 10, &cloned_measurements);
 
     assert_eq!(vec!["save", "search"], plan.visible_action_ids());
     assert_eq!(vec!["export"], plan.hidden_action_ids());

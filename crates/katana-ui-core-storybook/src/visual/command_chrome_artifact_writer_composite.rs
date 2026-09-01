@@ -1,10 +1,10 @@
 use crate::visual::command_chrome_artifact::{CommandChromePlanPixels, RGBA_CHANNELS};
 use crate::visual::command_chrome_script_types::CommandChromeArtifactError;
-use katana_ui_core::render_model::UiRect;
-use katana_ui_core_egui_adapter::artifact_compositor::{
+use katana_ui_core::egui::artifact_compositor::{
     ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor, ArtifactPaintPlanRef,
 };
-use katana_ui_core_egui_adapter::command_chrome::CommandChromePaintPlan;
+use katana_ui_core::egui::command_chrome::CommandChromePaintPlan;
+use katana_ui_core::render_model::UiRect;
 
 const ALPHA_CHANNEL: usize = 3;
 
@@ -43,12 +43,12 @@ pub(super) fn render_composite_pixels(
 #[cfg(test)]
 mod tests {
     use super::{RGBA_CHANNELS, has_non_zero_pixel, render_composite_pixels};
-    use katana_ui_core::render_model::UiRect;
-    use katana_ui_core_egui_adapter::command_chrome::CommandChromePaintOperationKind::Fill;
-    use katana_ui_core_egui_adapter::command_chrome::{
+    use katana_ui_core::egui::command_chrome::CommandChromePaintOperationKind::Fill;
+    use katana_ui_core::egui::command_chrome::{
         CommandChromePaintOperation, CommandChromePaintOperationKind, CommandChromePaintPlan,
         CommandChromePaintTexture, EguiCommandChromeDrawLayer,
     };
+    use katana_ui_core::render_model::UiRect;
 
     const CANVAS: UiRect = UiRect::new(0, 0, 4, 4);
     const SEARCH: UiRect = UiRect::new(0, 0, 4, 4);

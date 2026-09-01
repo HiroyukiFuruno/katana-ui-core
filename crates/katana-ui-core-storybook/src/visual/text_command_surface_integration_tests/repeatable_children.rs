@@ -46,21 +46,20 @@ impl RepeatableChildrenScenario {
         let context = egui::Context::default();
         context.enable_accesskit();
         let mut adapter =
-            katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurfaceAdapter::with_text_raster_config(katana_ui_core_text_raster::PlatformTextRasterConfig::default())?;
-        let mut surface =
-            katana_ui_core_egui_adapter::text_command_surface::EguiTextCommandSurface::new(
-                text_surface_fixture::text_surface_fixture(),
-            )
-            .with_toolbar(
-                command_chrome_fixture::toolbar_fixture()
-                    .command_family(CommandChromeFamilyId::new("primary")),
-            )
-            .with_floating_toolbar(
-                command_chrome_fixture::floating_toolbar_fixture()
-                    .command_family(CommandChromeFamilyId::new("floating")),
-                katana_ui_core::molecule::command_chrome::FloatingCommandToolbarVisibility::Closed,
-            )
-            .with_search_strip(command_chrome_fixture::search_fixture(false));
+            katana_ui_core::egui::text_command_surface::EguiTextCommandSurfaceAdapter::with_text_raster_config(katana_ui_core::text_raster::PlatformTextRasterConfig::default())?;
+        let mut surface = katana_ui_core::egui::text_command_surface::EguiTextCommandSurface::new(
+            text_surface_fixture::text_surface_fixture(),
+        )
+        .with_toolbar(
+            command_chrome_fixture::toolbar_fixture()
+                .command_family(CommandChromeFamilyId::new("primary")),
+        )
+        .with_floating_toolbar(
+            command_chrome_fixture::floating_toolbar_fixture()
+                .command_family(CommandChromeFamilyId::new("floating")),
+            katana_ui_core::molecule::command_chrome::FloatingCommandToolbarVisibility::Closed,
+        )
+        .with_search_strip(command_chrome_fixture::search_fixture(false));
         let style = harness::Harness::style();
         let (_initial_full, initial_output) =
             harness::Harness::run_frame(&context, &mut adapter, &mut surface, &style, Vec::new())?;

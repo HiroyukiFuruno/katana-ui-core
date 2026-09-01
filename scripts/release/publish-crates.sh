@@ -4,9 +4,6 @@ set -euo pipefail
 version="$(bash "$(dirname "$0")/verify-version.sh" "${1:-}" | awk -F= '$1 == "version_bare" { print $2 }')"
 packages=(
   katana-ui-core
-  katana-ui-core-text-raster
-  katana-ui-core-svg-raster
-  katana-ui-core-egui-adapter
 )
 
 if [[ -z "${CARGO_REGISTRY_TOKEN:-}" ]]; then

@@ -55,19 +55,21 @@ theme / event / render_model
 
 ## Framework 方針
 
-`katana-ui-core` の中核 crate（core crate）は framework-specific UI に依存しません。
-framework-specific な接続は、中立 DTO / trait / render model を消費する独立 adapter crate に閉じます。
+`katana-ui-core` は、framework-neutral な中核 API と、必要な実装を feature で選択できる単一の公開 crate です。
+framework-specific な接続は `egui` module に閉じ、text / SVG raster もそれぞれの module と feature に閉じます。
 
-| crate | 役割 | 公開 |
+| package / module | 役割 | 公開 |
 |---|---|---|
 | `katana-ui-core` | framework-neutral な UI model / state / event / render contract | crates.io |
-| `katana-ui-core-text-raster` | platform font、color emoji、grapheme、RGBA text raster | crates.io |
-| `katana-ui-core-svg-raster` | renderer-neutral な SVG icon raster | crates.io |
-| `katana-ui-core-egui-adapter` | KUC contract と egui input / output の接続 | crates.io |
+| `katana_ui_core::text_raster` (`text-raster`) | platform font、color emoji、grapheme、RGBA text raster | `katana-ui-core` の opt-in module |
+| `katana_ui_core::svg_raster` (`svg-raster`) | renderer-neutral な SVG icon raster | `katana-ui-core` の opt-in module |
+| `katana_ui_core::egui` (`egui`) | KUC contract と egui input / output の接続 | `katana-ui-core` の opt-in module |
 | `katana-ui-core-storybook` | 実部品を操作する private harness | 非公開 |
 | `kuc-consumer-app` | framework-neutral consumer contract | 非公開 |
 
-release gate は4つの公開crateとprivate consumer / Storybookの契約をまとめて検証します。
+既定 feature は framework-neutral な core のみです。`egui` feature は `egui`、`text-raster`、
+`svg-raster` を有効化し、各 module は同じ `katana-ui-core` package から利用します。
+release gate は単一の公開 package と private consumer / Storybookの契約をまとめて検証します。
 
 OS ネイティブのドラッグ&ドロップ（native drag and drop）は、中核 crate に OS 固有型を持ち込みません。
 外部変換層は OS ファイル一覧、URL、テキストを `os/file-list`、`os/url`、`os/text` の `DragData` に変換し、`NativeDragDropBridge` 経由で `DragStart` / `Drop` / `DragCancel` を KUC event に渡します。
