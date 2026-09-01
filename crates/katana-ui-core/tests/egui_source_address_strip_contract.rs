@@ -1091,7 +1091,10 @@ fn rectangles_overlap(
 }
 
 fn chromatic_pixels(rgba: &[u8]) -> usize {
-    rgba.chunks_exact(4)
+    let (pixels, remainder) = rgba.as_chunks::<4>();
+    assert!(remainder.is_empty());
+    pixels
+        .iter()
         .filter(|pixel| pixel[3] > 0 && (pixel[0] != pixel[1] || pixel[1] != pixel[2]))
         .count()
 }

@@ -205,10 +205,11 @@ fn actual_egui_floating_toolbar_uses_core_placement_rasters_tooltip_and_accesski
             .expect("tooltip platform text texture was absent from the composed plan");
     assert!(contains(tooltip_bounds, tooltip_texture_bounds));
     assert!(tooltip_texture.identity.contains("太字 ⭐️"));
+    let (pixels, remainder) = tooltip_texture.rgba_pixels.as_chunks::<4>();
+    assert!(remainder.is_empty());
     assert!(
-        tooltip_texture
-            .rgba_pixels
-            .chunks_exact(4)
+        pixels
+            .iter()
             .any(|rgba| rgba[3] > 0 && (rgba[0] != rgba[1] || rgba[1] != rgba[2]))
     );
 }

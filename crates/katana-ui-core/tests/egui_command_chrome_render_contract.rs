@@ -337,7 +337,9 @@ fn actual_egui_toolbar_emits_an_immutable_plan_from_its_final_rasters_and_bounds
     assert!(
         label_texture
             .rgba_pixels
-            .chunks_exact(RGBA_CHANNEL_COUNT)
+            .as_chunks::<RGBA_CHANNEL_COUNT>()
+            .0
+            .iter()
             .any(|rgba| rgba[3] > 0 && (rgba[0] != rgba[1] || rgba[1] != rgba[2]))
     );
     assert!(!first_full_output.textures_delta.set.is_empty());
