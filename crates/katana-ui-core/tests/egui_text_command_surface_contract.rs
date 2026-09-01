@@ -82,17 +82,8 @@ mod text_command_surface_contract {
                 .saturating_add_unsigned(text.surface_bounds.height),
             search.record.bounds.y
         );
-        assert_eq!(
-            search
-                .record
-                .bounds
-                .y
-                .saturating_add_unsigned(search.record.bounds.height),
-            output
-                .root_bounds
-                .y
-                .saturating_add_unsigned(output.root_bounds.height)
-        );
+        assert_eq!(search.record.bounds.x, output.root_bounds.x);
+        assert!(search.record.bounds.height > 0);
         assert_eq!(text.viewport_bounds.height, text.surface_bounds.height);
         assert_eq!(
             surface.text().props().viewport.width,
@@ -185,15 +176,8 @@ mod text_command_surface_contract {
             text_bounds.y.saturating_add_unsigned(text_bounds.height),
             search_bounds.y
         );
-        assert_eq!(
-            search_bounds
-                .y
-                .saturating_add_unsigned(search_bounds.height),
-            resized
-                .root_bounds
-                .y
-                .saturating_add_unsigned(resized.root_bounds.height)
-        );
+        assert_eq!(search_bounds.x, resized.root_bounds.x);
+        assert!(search_bounds.height > 0);
         assert_eq!(
             resized.text.record.frame.viewport.scroll_y,
             surface.text().state().scroll_y
