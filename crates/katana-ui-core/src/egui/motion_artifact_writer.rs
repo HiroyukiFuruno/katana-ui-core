@@ -1,5 +1,7 @@
 mod constants;
 mod error;
+#[cfg(test)]
+mod fake_ffmpeg;
 mod ffmpeg;
 mod process;
 #[cfg(test)]

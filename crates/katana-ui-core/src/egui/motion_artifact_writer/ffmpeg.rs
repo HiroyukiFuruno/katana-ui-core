@@ -267,9 +267,10 @@ fn process_detail(output: &Output) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{DEFAULT_ENCODER, DEFAULT_MUXER, ROOT_IMAGE_PATTERN, STAGE_DIMENSIONS_PREFIX};
+    use super::STAGE_DIMENSIONS_PREFIX;
     use super::{Ffmpeg, MotionArtifactSettings, discover_version, parse_framemd5_dimensions};
     use crate::egui::motion_artifact_writer::error::MotionArtifactError;
+    use crate::egui::motion_artifact_writer::fake_ffmpeg::{FakeFfmpegSpec, install};
     use crate::egui::system::ProcessService;
     use std::path::PathBuf;
     use std::process::Output;
@@ -302,13 +303,12 @@ mod tests {
         }
     }
 
-    fn write_ffmpeg_script(root: &std::path::Path, body: &str) -> PathBuf {
+    #[cfg(unix)]
+    fn write_self_disabling_script(root: &std::path::Path, body: &str) -> PathBuf {
         let path = root.join("ffmpeg");
         let body = format!("#!/bin/sh\n{body}\n");
         std::fs::write(&path, body).expect("script should write");
-        #[cfg(unix)]
         use std::os::unix::fs::PermissionsExt;
-        #[cfg(unix)]
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
             .expect("script should be executable");
         path
@@ -316,7 +316,11 @@ mod tests {
 
     #[test]
     fn rejects_empty_version_output() {
-        let script = write_ffmpeg_script(&tempfile_dir("motion-ffmpeg-empty"), "exit 0");
+        let spec = FakeFfmpegSpec {
+            version: None,
+            ..FakeFfmpegSpec::default()
+        };
+        let script = install(&tempfile_dir("motion-ffmpeg-empty"), &spec);
         assert!(matches!(
             Ffmpeg::discover_at(&script),
             Err(MotionArtifactError::Encoder(_))
@@ -326,22 +330,7 @@ mod tests {
     #[test]
     fn discover_parses_encoder_and_muxer_lines() {
         let dir = tempfile_dir("motion-ffmpeg-discover");
-        let script = write_ffmpeg_script(
-            &dir,
-            &format!(
-                r#"if [ "$1" = "-version" ]; then
-  echo "ffmpeg version 1.0"
-elif [ "$1" = "-hide_banner" ] && [ "$3" = "error" ] && [ "$4" = "-encoders" ]; then
-  echo " V....  {DEFAULT_ENCODER}"
-elif [ "$1" = "-hide_banner" ] && [ "$3" = "error" ] && [ "$4" = "-formats" ]; then
-  echo " E....  {DEFAULT_MUXER}"
-else
-  exit 1
-fi
-exit 0
-"#
-            ),
-        );
+        let script = install(&dir, &FakeFfmpegSpec::default());
         let ffmpeg = Ffmpeg::discover_at(&script).expect("discover should pass");
         assert_eq!(ffmpeg.version, "ffmpeg version 1.0");
     }
@@ -349,29 +338,28 @@ exit 0
     #[test]
     fn discover_rejects_encoder_and_muxer_failures() {
         let cases = [
-            (
-                "encoder-status",
-                "if [ \"$1\" = \"-version\" ]; then echo version; exit 0; fi\nif [ \"$4\" = \"-encoders\" ]; then echo encoder-failed >&2; exit 1; fi".to_string(),
-            ),
-            (
-                "encoder-missing",
-                "if [ \"$1\" = \"-version\" ]; then echo version; exit 0; fi\nexit 0".into(),
-            ),
-            (
-                "format-status",
-                format!(
-                    "if [ \"$1\" = \"-version\" ]; then echo version; exit 0; fi\nif [ \"$4\" = \"-encoders\" ]; then echo ' V.... {DEFAULT_ENCODER}'; exit 0; fi\necho format-failed >&2; exit 1"
-                ),
-            ),
-            (
-                "format-missing",
-                format!(
-                    "if [ \"$1\" = \"-version\" ]; then echo version; exit 0; fi\nif [ \"$4\" = \"-encoders\" ]; then echo ' V.... {DEFAULT_ENCODER}'; fi\nexit 0"
-                ),
-            ),
+            FakeFfmpegSpec {
+                encoder_status: 1,
+                ..FakeFfmpegSpec::default()
+            },
+            FakeFfmpegSpec {
+                encoder: None,
+                ..FakeFfmpegSpec::default()
+            },
+            FakeFfmpegSpec {
+                muxer_status: 1,
+                ..FakeFfmpegSpec::default()
+            },
+            FakeFfmpegSpec {
+                muxer: None,
+                ..FakeFfmpegSpec::default()
+            },
         ];
-        for (label, body) in cases {
-            let script = write_ffmpeg_script(&tempfile_dir(label), &body);
+        for (index, spec) in cases.iter().enumerate() {
+            let script = install(
+                &tempfile_dir(&format!("motion-ffmpeg-discovery-failure-{index}")),
+                spec,
+            );
             assert!(matches!(
                 Ffmpeg::discover_at(&script),
                 Err(MotionArtifactError::Encoder(_))
@@ -379,21 +367,23 @@ exit 0
         }
     }
 
+    #[cfg(unix)]
     #[test]
     fn discover_reports_process_launch_failures_after_version_and_encoder_queries() {
         let version_dir = tempfile_dir("motion-ffmpeg-version-launch");
         let version_script =
-            write_ffmpeg_script(&version_dir, "echo version\nchmod -x \"$0\"\nexit 0");
+            write_self_disabling_script(&version_dir, "echo version\nchmod -x \"$0\"\nexit 0");
         assert!(matches!(
             Ffmpeg::discover_at(&version_script),
             Err(MotionArtifactError::Encoder(_))
         ));
 
         let encoder_dir = tempfile_dir("motion-ffmpeg-encoder-launch");
-        let encoder_script = write_ffmpeg_script(
+        let encoder_script = write_self_disabling_script(
             &encoder_dir,
             &format!(
-                "if [ \"$1\" = \"-version\" ]; then echo version; exit 0; fi\necho ' V.... {DEFAULT_ENCODER}'\nchmod -x \"$0\"\nexit 0"
+                "if [ \"$1\" = \"-version\" ]; then echo version; exit 0; fi\necho ' V.... {}'\nchmod -x \"$0\"\nexit 0",
+                super::DEFAULT_ENCODER
             ),
         );
         assert!(matches!(
@@ -404,26 +394,29 @@ exit 0
 
     #[test]
     fn discover_uses_path_lookup() {
-        let _guard = super::super::TEST_ENV_LOCK.lock().unwrap();
+        let _guard = super::super::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let root = tempfile_dir("motion-ffmpeg-path-discover");
-        let _script = write_ffmpeg_script(
-            &root,
-            &format!(
-                "if [ \"$1\" = \"-version\" ]; then echo version; elif [ \"$4\" = \"-encoders\" ]; then echo ' V.... {DEFAULT_ENCODER}'; else echo ' E.... {DEFAULT_MUXER}'; fi"
-            ),
-        );
+        let _script = install(&root, &FakeFfmpegSpec::default());
         let _path_guard = PathEnvGuard::with_root(root.as_path());
         assert!(Ffmpeg::discover().is_ok());
     }
 
     #[test]
     fn find_executable_discovers_from_temp_path() {
-        let _guard = super::super::TEST_ENV_LOCK.lock().unwrap();
+        let _guard = super::super::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let root = tempfile_dir("motion-ffmpeg-exec");
-        let _script = write_ffmpeg_script(&root, "echo version");
+        let _script = install(&root, &FakeFfmpegSpec::default());
         let _path_guard = PathEnvGuard::with_root(root.as_path());
         let found = super::find_executable("ffmpeg").expect("ffmpeg should be discovered");
-        assert!(found.ends_with("ffmpeg"));
+        let expected_name = format!("ffmpeg{}", std::env::consts::EXE_SUFFIX);
+        assert_eq!(
+            found.file_name().and_then(std::ffi::OsStr::to_str),
+            Some(expected_name.as_str())
+        );
         drop(_path_guard);
     }
 
@@ -489,24 +482,11 @@ exit 0
     #[test]
     fn decode_requires_dimensions_prefix() {
         let dir = tempfile_dir("motion-ffmpeg-decode");
-        let script = write_ffmpeg_script(
-            &dir,
-            &format!(
-                r#"if [ "$1" = "-version" ]; then
-  echo "ffmpeg version 1.0"
-elif [ "$1" = "-hide_banner" ] && [ "$3" = "error" ] && [ "$4" = "-encoders" ]; then
-  echo " V....  {DEFAULT_ENCODER}"
-elif [ "$1" = "-hide_banner" ] && [ "$3" = "error" ] && [ "$4" = "-formats" ]; then
-  echo " E....  {DEFAULT_MUXER}"
-elif echo "$@" | grep -q framemd5; then
-  echo "No dimensions here"
-else
-  exit 0
-fi
-exit 0
-"#
-            ),
-        );
+        let spec = FakeFfmpegSpec {
+            dimensions: None,
+            ..FakeFfmpegSpec::default()
+        };
+        let script = install(&dir, &spec);
         let ffmpeg = Ffmpeg::discover_at(&script).expect("discovery should pass");
         let err = ffmpeg
             .decode(&dir.join("missing.mp4"))
@@ -517,33 +497,7 @@ exit 0
     #[test]
     fn encode_and_decode_happy_path() {
         let dir = tempfile_dir("motion-ffmpeg-encode");
-        let script = write_ffmpeg_script(
-            &dir,
-            &format!(
-                r#"if [ "$1" = "-version" ]; then
-  echo "ffmpeg version 1.0"
-elif [ "$1" = "-hide_banner" ] && [ "$3" = "error" ] && [ "$4" = "-encoders" ]; then
-  echo " V....  {DEFAULT_ENCODER}"
-elif [ "$1" = "-hide_banner" ] && [ "$3" = "error" ] && [ "$4" = "-formats" ]; then
-  echo " E....  {DEFAULT_MUXER}"
-elif echo "$@" | grep -q framemd5; then
-  echo "{STAGE_DIMENSIONS_PREFIX}2x1"
-  echo "0, 0, 0, 1, 6, 0123456789abcdef0123456789abcdef"
-  echo "0, 1, 1, 1, 6, fedcba9876543210fedcba9876543210"
-elif echo "$@" | grep -q "{0}"; then
-  output=""
-  for arg in "$@"; do
-    output="$arg"
-  done
-  printf "motion" > "$output"
-else
-  exit 1
-fi
-exit 0
-"#,
-                ROOT_IMAGE_PATTERN
-            ),
-        );
+        let script = install(&dir, &FakeFfmpegSpec::default());
         let ffmpeg = Ffmpeg::discover_at(&script).expect("discover should pass");
         let mp4_path = dir.join("motion.mp4");
         ffmpeg
@@ -576,7 +530,12 @@ exit 0
         );
         assert!(missing.decode(&dir.join("missing.mp4")).is_err());
 
-        let failing_script = write_ffmpeg_script(&dir, "echo process-failed >&2\nexit 1");
+        let spec = FakeFfmpegSpec {
+            encode_status: 1,
+            frame_status: 1,
+            ..FakeFfmpegSpec::default()
+        };
+        let failing_script = install(&dir, &spec);
         let failing = Ffmpeg {
             path: failing_script,
             version: "failing".into(),
@@ -617,8 +576,14 @@ exit 0
 
     #[test]
     fn discover_version_fails_for_non_zero_exit() {
+        let dir = tempfile_dir("motion-ffmpeg-version-status");
+        let spec = FakeFfmpegSpec {
+            version_status: 1,
+            ..FakeFfmpegSpec::default()
+        };
+        let executable = install(&dir, &spec);
         let service = ProcessService;
-        assert!(discover_version(std::path::Path::new("/bin/false"), &service).is_err());
+        assert!(discover_version(&executable, &service).is_err());
     }
 
     fn tempfile_dir(label: &str) -> PathBuf {

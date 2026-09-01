@@ -24,7 +24,11 @@ pub(super) struct FileIdentity {
     changed_seconds: i64,
     #[cfg(unix)]
     changed_nanoseconds: i64,
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    volume_serial_number: Option<u32>,
+    #[cfg(windows)]
+    file_index: Option<u64>,
+    #[cfg(not(any(unix, windows)))]
     created: Option<SystemTime>,
 }
 
@@ -122,7 +126,17 @@ fn file_identity(metadata: &fs::Metadata) -> FileIdentity {
         }
     }
 
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+
+        FileIdentity {
+            volume_serial_number: metadata.volume_serial_number(),
+            file_index: metadata.file_index(),
+        }
+    }
+
+    #[cfg(not(any(unix, windows)))]
     {
         FileIdentity {
             created: metadata.created().ok(),

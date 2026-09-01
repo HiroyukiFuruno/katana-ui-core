@@ -221,6 +221,7 @@ fn write_gif(images: &[RgbaImage], path: &Path, delay_ms: u32) -> std::io::Resul
 mod tests {
     use super::*;
     use crate::egui::motion_artifact_writer::MotionArtifactError;
+    use crate::egui::motion_artifact_writer::fake_ffmpeg::{FakeFfmpegSpec, install};
     use crate::egui::{FullRootArtifact, OpaqueMotionReceiptSequence, OpaqueRootArtifactReceipt};
     use image::ColorType;
     use image::ImageEncoder;
@@ -335,42 +336,16 @@ mod tests {
         )
     }
 
-    fn fake_ffmpeg_script(root: &std::path::Path, decode_dimensions: &str) -> PathBuf {
-        let path = root.join("ffmpeg");
-        let body = format!(
-            r#"if [ "$1" = "-version" ]; then
-  echo "ffmpeg version 1.0"
-elif [ "$1" = "-hide_banner" ] && [ "$3" = "error" ] && [ "$4" = "-encoders" ]; then
-  echo " V....  libx264rgb"
-elif [ "$1" = "-hide_banner" ] && [ "$3" = "error" ] && [ "$4" = "-formats" ]; then
-  echo " E....  mp4"
-elif echo "$@" | grep -q framemd5; then
-  echo "{decode_dimensions}"
-  echo "0, 0, 0, 1, 6, 0123456789abcdef0123456789abcdef"
-  echo "0, 1, 1, 1, 6, fedcba9876543210fedcba9876543210"
-else
-  arg=""
-  for token in "$@"; do
-    arg="$token"
-  done
-  printf "motion" > "$arg"
-fi
-exit 0
-"#
-        );
-        std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).expect("ffmpeg script should write");
-        #[cfg(unix)]
-        use std::os::unix::fs::PermissionsExt;
-        #[cfg(unix)]
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
-            .expect("ffmpeg script should execute");
-        path
-    }
-
     fn with_fake_ffmpeg<R>(decode_dimensions: &str, test: impl FnOnce(&std::path::Path) -> R) -> R {
-        let _guard = super::super::TEST_ENV_LOCK.lock().unwrap();
+        let _guard = super::super::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let root = tempfile_dir("motion-process-ffmpeg");
-        let _script = fake_ffmpeg_script(&root, decode_dimensions);
+        let spec = FakeFfmpegSpec {
+            dimensions: Some(decode_dimensions.into()),
+            ..FakeFfmpegSpec::default()
+        };
+        let _executable = install(&root, &spec);
         let _path = PathEnvGuard::with_root(&root);
         test(&root)
     }
@@ -380,52 +355,16 @@ exit 0
         decoded_hashes: &[&str],
         test: impl FnOnce(&std::path::Path),
     ) {
-        let _guard = super::super::TEST_ENV_LOCK.lock().unwrap();
+        let _guard = super::super::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
         let root = tempfile_dir("motion-process-ffmpeg-hash-series");
-        let path = root.join("ffmpeg");
-        let mut source_body = String::new();
-        for hash in source_hashes {
-            source_body.push_str(&format!("    echo \"{hash}\"\n"));
-        }
-        let mut decoded_body = String::new();
-        for hash in decoded_hashes {
-            decoded_body.push_str(&format!("    echo \"{hash}\"\n"));
-        }
-
-        let body = [
-            "if [ \"$1\" = \"-version\" ]; then\n",
-            "  echo \"ffmpeg version 1.0\"\n",
-            "elif [ \"$1\" = \"-hide_banner\" ] && [ \"$3\" = \"error\" ] && [ \"$4\" = \"-encoders\" ]; then\n",
-            "  echo \" V....  libx264rgb\"\n",
-            "elif [ \"$1\" = \"-hide_banner\" ] && [ \"$3\" = \"error\" ] && [ \"$4\" = \"-formats\" ]; then\n",
-            "  echo \" E....  mp4\"\n",
-            "elif echo \"$@\" | grep -q framemd5; then\n",
-            "  if echo \"$@\" | grep -q -- \"-start_number\"; then\n",
-            "    echo \"#dimensions 0:2x1\"\n",
-            "{source_body}",
-            "  else\n",
-            "    echo \"#dimensions 0:2x1\"\n",
-            "{decoded_body}",
-            "  fi\n",
-            "else\n",
-            "  arg=\"\"\n",
-            "  for token in \"$@\"; do\n",
-            "    arg=\"$token\"\n",
-            "  done\n",
-            "  printf \"motion\" > \"$arg\"\n",
-            "fi\n",
-            "exit 0\n",
-        ]
-        .concat();
-        let body = body
-            .replace("{source_body}", &source_body)
-            .replace("{decoded_body}", &decoded_body);
-        std::fs::write(&path, format!("#!/bin/sh\n{body}")).expect("ffmpeg script should write");
-        #[cfg(unix)]
-        use std::os::unix::fs::PermissionsExt;
-        #[cfg(unix)]
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
-            .expect("ffmpeg script should execute");
+        let spec = FakeFfmpegSpec {
+            source_hashes: source_hashes.iter().map(|hash| (*hash).into()).collect(),
+            decoded_hashes: decoded_hashes.iter().map(|hash| (*hash).into()).collect(),
+            ..FakeFfmpegSpec::default()
+        };
+        let _executable = install(&root, &spec);
         let _path = PathEnvGuard::with_root(&root);
         test(&root)
     }
