@@ -273,6 +273,7 @@ mod tests {
     use crate::egui::motion_artifact_writer::fake_ffmpeg::{FakeFfmpegSpec, install};
     use crate::egui::system::ProcessService;
     use std::path::PathBuf;
+    #[cfg(unix)]
     use std::process::Output;
 
     #[derive(Default)]

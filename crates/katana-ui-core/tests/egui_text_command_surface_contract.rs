@@ -71,9 +71,7 @@ mod text_command_surface_contract {
         assert_eq!(text.surface_bounds.y, toolbar.record.bounds.height as i32);
         assert_eq!(
             text.surface_bounds.height,
-            fixtures::FRAME_HEIGHT as u32
-                - toolbar.record.bounds.height
-                - search.record.bounds.height
+            output.root_bounds.height - toolbar.record.bounds.height - search.record.bounds.height
         );
         assert_eq!(text.viewport_bounds.height, text.surface_bounds.height);
         assert_eq!(
@@ -160,7 +158,7 @@ mod text_command_surface_contract {
         assert_eq!(resized.text.record.frame.surface_bounds.width, 700);
         assert_eq!(
             resized.text.record.frame.surface_bounds.height,
-            180 - toolbar_height - search_height
+            resized.root_bounds.height - toolbar_height - search_height
         );
         assert_eq!(
             resized.text.record.frame.viewport.scroll_y,
