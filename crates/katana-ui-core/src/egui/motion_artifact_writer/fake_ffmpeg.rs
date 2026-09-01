@@ -1,11 +1,13 @@
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::OnceLock;
 
 use super::constants::{DEFAULT_ENCODER, DEFAULT_MUXER, STAGE_DIMENSIONS_PREFIX};
+use crate::egui::system::ProcessService;
 
 const FIRST_HASH: &str = "0, 0, 0, 1, 6, 0123456789abcdef0123456789abcdef";
 const SECOND_HASH: &str = "0, 1, 1, 1, 6, fedcba9876543210fedcba9876543210";
+#[cfg(unix)]
+const TEST_EXECUTABLE_PERMISSIONS: u32 = 0o755;
 
 pub(super) struct FakeFfmpegSpec {
     pub version: Option<String>,
@@ -46,8 +48,11 @@ pub(super) fn install(root: &Path, spec: &FakeFfmpegSpec) -> PathBuf {
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755))
-            .expect("fake ffmpeg should be executable");
+        std::fs::set_permissions(
+            &path,
+            std::fs::Permissions::from_mode(TEST_EXECUTABLE_PERMISSIONS),
+        )
+        .expect("fake ffmpeg should be executable");
     }
     std::fs::write(path.with_extension("fixture"), encode_spec(spec))
         .expect("fake ffmpeg fixture should write");
@@ -82,7 +87,10 @@ fn compiled_fixture() -> &'static PathBuf {
         let source = root.join("main.rs");
         let executable = root.join(format!("fixture{}", std::env::consts::EXE_SUFFIX));
         std::fs::write(&source, FIXTURE_SOURCE).expect("native fixture source should write");
-        let output = Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()))
+        let mut command = ProcessService::create_command(
+            std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()),
+        );
+        let output = command
             .args(["--edition=2024", "-O"])
             .arg(&source)
             .arg("-o")
