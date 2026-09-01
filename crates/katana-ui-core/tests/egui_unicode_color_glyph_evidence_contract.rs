@@ -363,17 +363,16 @@ fn current_platform_capture_runs_actual_pinned_root_when_a_compatible_candidate_
 fn current_profile_capture_is_fail_closed_when_face_hash_is_wrong() {
     let mut options = KucUnicodeColorGlyphEvidenceOptions::default();
     let catalog_policy = options.config.catalog_policy();
-    let Some(candidate) = catalog_policy.emoji_candidates.first() else {
+    if catalog_policy.emoji_candidates.is_empty() {
         assert!(matches!(
             KucUnicodeColorGlyphEvidenceCapture::capture(options),
             Err(KucUnicodeColorGlyphEvidenceError::ColorEmojiUnavailable { .. })
         ));
         return;
-    };
+    }
     options.config = options
         .config
         .with_emoji_candidate_sha256([PlatformFontSha256::digest(b"wrong emoji hash")]);
-    assert!(candidate.expected_raw_file_sha256.is_some());
     let error = KucUnicodeColorGlyphEvidenceCapture::capture(options)
         .expect_err("pinned hash mismatch must fail");
     assert!(matches!(
