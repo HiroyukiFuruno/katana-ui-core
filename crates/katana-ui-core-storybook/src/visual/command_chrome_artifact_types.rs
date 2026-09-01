@@ -1,13 +1,13 @@
 use crate::visual::command_chrome_artifact::CommandChromePlanPixels;
+use katana_ui_core::egui::command_chrome::{
+    EguiCommandChromeFloatingOutput, EguiCommandChromeOutput, EguiCommandChromeSearchOutput,
+};
 use katana_ui_core::molecule::command_chrome::{
     CommandChromeDropdownCloseReason, CommandChromeSearchEvent, CommandChromeToolbarEvent,
     FloatingCommandToolbarCloseReason, FloatingCommandToolbarEvent,
 };
 use katana_ui_core::render_model::UiRect;
 use katana_ui_core::text_surface::TextSurfaceEvent;
-use katana_ui_core_egui_adapter::command_chrome::{
-    EguiCommandChromeFloatingOutput, EguiCommandChromeOutput, EguiCommandChromeSearchOutput,
-};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone)]

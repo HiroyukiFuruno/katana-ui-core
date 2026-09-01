@@ -3,13 +3,13 @@ use super::CommandChromeScriptFrame;
 use super::command_chrome_script_frame::{
     center, click_events, push_events, query_bounds, replace_bounds, search_control,
 };
+use katana_ui_core::egui::command_chrome::EguiCommandChromeAdapter;
 use katana_ui_core::interaction::placement::Rect;
 use katana_ui_core::molecule::command_chrome::{
     CommandChromeSearchPresentation, CommandChromeSearchStrip, CommandChromeToolbar,
     FloatingCommandToolbar, FloatingCommandToolbarPresentation, FloatingCommandToolbarVisibility,
     SearchControlIcons,
 };
-use katana_ui_core_egui_adapter::command_chrome::EguiCommandChromeAdapter;
 
 const CONTROLLED_ANCHOR_X: i32 = 1_080;
 const CONTROLLED_ANCHOR_Y: i32 = 620;

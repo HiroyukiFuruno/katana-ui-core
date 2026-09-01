@@ -1,4 +1,4 @@
-use katana_ui_core_egui_adapter::text_command_surface::{
+use katana_ui_core::egui::text_command_surface::{
     EguiTextCommandSurfaceRootEventBatchForwardError, EguiTextCommandSurfaceRootFactoryError,
 };
 

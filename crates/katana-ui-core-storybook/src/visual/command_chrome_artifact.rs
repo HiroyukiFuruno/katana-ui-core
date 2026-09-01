@@ -1,8 +1,8 @@
-use katana_ui_core::render_model::UiRect;
-use katana_ui_core_egui_adapter::artifact_compositor::{
+use katana_ui_core::egui::artifact_compositor::{
     ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor, ArtifactPaintPlanRef,
 };
-use katana_ui_core_egui_adapter::command_chrome::CommandChromePaintPlan;
+use katana_ui_core::egui::command_chrome::CommandChromePaintPlan;
+use katana_ui_core::render_model::UiRect;
 
 pub(super) const RGBA_CHANNELS: usize = 4;
 const ALPHA_CHANNEL: usize = 3;
@@ -39,7 +39,7 @@ pub(super) fn paint_plan_has_star_variation_selector(plan: &CommandChromePaintPl
     plan.operations.iter().any(|operation| {
         matches!(
             &operation.kind,
-            katana_ui_core_egui_adapter::command_chrome::CommandChromePaintOperationKind::Texture { texture, .. }
+            katana_ui_core::egui::command_chrome::CommandChromePaintOperationKind::Texture { texture, .. }
                 if texture.identity.contains("⭐️")
         )
     })
@@ -47,7 +47,7 @@ pub(super) fn paint_plan_has_star_variation_selector(plan: &CommandChromePaintPl
 
 pub(super) fn paint_plan_has_colored_star_texture(plan: &CommandChromePaintPlan) -> bool {
     plan.operations.iter().any(|operation| {
-        let katana_ui_core_egui_adapter::command_chrome::CommandChromePaintOperationKind::Texture {
+        let katana_ui_core::egui::command_chrome::CommandChromePaintOperationKind::Texture {
             texture,
             ..
         } = &operation.kind
@@ -66,9 +66,9 @@ pub(super) fn paint_plan_has_colored_star_texture(plan: &CommandChromePaintPlan)
 
 pub(super) fn texture_identities(plan: &CommandChromePaintPlan) -> Vec<String> {
     plan.operations.iter().filter_map(|operation| match &operation.kind {
-        katana_ui_core_egui_adapter::command_chrome::CommandChromePaintOperationKind::Texture { texture, .. } => Some(texture.identity.clone()),
-        katana_ui_core_egui_adapter::command_chrome::CommandChromePaintOperationKind::Fill { .. }
-        | katana_ui_core_egui_adapter::command_chrome::CommandChromePaintOperationKind::RoundedFill { .. } => None,
+        katana_ui_core::egui::command_chrome::CommandChromePaintOperationKind::Texture { texture, .. } => Some(texture.identity.clone()),
+        katana_ui_core::egui::command_chrome::CommandChromePaintOperationKind::Fill { .. }
+        | katana_ui_core::egui::command_chrome::CommandChromePaintOperationKind::RoundedFill { .. } => None,
     }).collect()
 }
 
@@ -78,12 +78,12 @@ mod tests {
         RGBA_CHANNELS, paint_plan_has_colored_star_texture, paint_plan_has_star_variation_selector,
         render_command_chrome_plan, texture_identities,
     };
-    use katana_ui_core::render_model::UiRect;
-    use katana_ui_core_egui_adapter::command_chrome::{
+    use katana_ui_core::egui::command_chrome::{
         CommandChromePaintOperation, CommandChromePaintOperationKind::Fill,
         CommandChromePaintOperationKind::Texture, CommandChromePaintPlan,
         CommandChromePaintTexture, EguiCommandChromeDrawLayer,
     };
+    use katana_ui_core::render_model::UiRect;
 
     const CANVAS: UiRect = UiRect::new(0, 0, 16, 16);
 

@@ -18,16 +18,14 @@ use super::text_surface_fixture::{
     paint_style as text_paint_style, raster_style as text_raster_style, text_presentation,
 };
 use eframe::egui;
-use katana_ui_core::molecule::selection::ContextMenuItemKind;
-use katana_ui_core_egui_adapter::context_menu::{
-    ContextMenuPresentation, ContextMenuPresentationItem,
-};
-use katana_ui_core_egui_adapter::text_command_surface::{
+use katana_ui_core::egui::context_menu::{ContextMenuPresentation, ContextMenuPresentationItem};
+use katana_ui_core::egui::text_command_surface::{
     EguiTextCommandSurfaceFloatingPresentation, EguiTextCommandSurfaceHostProjectionEncoder,
     EguiTextCommandSurfaceHostRoot, EguiTextCommandSurfacePresentation,
     EguiTextCommandSurfaceRootFactory, EguiTextCommandSurfaceSearchPresentation,
     TextCommandSurfaceStyle,
 };
+use katana_ui_core::molecule::selection::ContextMenuItemKind;
 use std::path::Path;
 
 pub use model::FullRootArtifactError;

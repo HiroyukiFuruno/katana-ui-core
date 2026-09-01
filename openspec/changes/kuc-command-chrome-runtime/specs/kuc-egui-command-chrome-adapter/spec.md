@@ -2,15 +2,16 @@
 
 ### Requirement: Egui command chrome adapter SHALL remain a KUC-owned optional boundary
 
-KUC SHALL provide an optional egui adapter crate that consumes only KUC command
-chrome DTOs, SVG/text raster outputs, theme values, and egui input/context. It
+KUC SHALL provide `katana_ui_core::egui` behind the `katana-ui-core` `egui`
+optional feature. The module consumes only KUC command chrome DTOs, SVG/text
+raster outputs, theme values, and egui input/context. It
 SHALL return only KUC typed actions/events and SHALL not contain KatanA, KLE,
 KDV, Markdown, editor, viewer, or host callback types.
 
 #### Scenario: adapter compiles without host dependencies
 
-- **WHEN** the adapter crate is built in the KUC workspace
-- **THEN** its dependency graph contains KUC runtime crates and egui only at the framework boundary
+- **WHEN** `katana-ui-core` is built with the `egui` feature
+- **THEN** its feature dependency graph contains KUC raster modules and egui only at the framework boundary
 - **AND** no host application crate or host command enum is required
 
 ### Requirement: Adapter SHALL use KUC raster output for icons and command-chrome text

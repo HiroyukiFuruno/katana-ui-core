@@ -193,19 +193,22 @@ class StorybookUiHarness:
                 "encoder_capability_verified",
                 "muxer_capability_verified",
             ),
-            "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root.rs": (
+            "crates/katana-ui-core/src/egui/text_command_surface/host_root.rs": (
                 "pub fn retain(",
                 "pub fn token(",
             ),
-            "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root/types.rs": (
+            "crates/katana-ui-core/src/egui/text_command_surface/host_root/types.rs": (
                 "pub struct EguiTextCommandSurfacePresentationToken",
                 "pub struct EguiTextCommandSurfaceHostProjectionEncoder",
             ),
-            "crates/katana-ui-core-egui-adapter/tests/host_root_facade_contract.rs": (
+            "crates/katana-ui-core/tests/egui_host_root_facade_contract.rs": (
                 "opaque_tokens_and_transport_have_no_clone_or_serialize_derives",
-                "compatibility_types_are_hidden_and_storybook_uses_only_the_facade_root",
+                "compatibility_types_are_hidden",
             ),
-            "crates/katana-ui-core-egui-adapter/tests/text_command_root_contract.rs": (
+            "crates/katana-ui-core-storybook/src/visual/text_command_root_storybook_tests.rs": (
+                "full_root_storybook_uses_only_the_public_facade_root",
+            ),
+            "crates/katana-ui-core/tests/egui_text_command_root_contract.rs": (
                 "root_event_batch_forwards_once_and_returns_a_closed_receipt",
                 "assert!(receipt.consumed_once())",
             ),

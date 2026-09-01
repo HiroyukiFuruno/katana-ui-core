@@ -1,0 +1,147 @@
+use super::*;
+
+#[test]
+fn public_api_preserves_mixed_order_clips_and_repeats_hashes() {
+    let text = text_plan(TextSurfacePaintOperationKind::Fill {
+        bounds: UiRect::new(DRAW_START_X, CANVAS_Y, DRAW_WIDTH, ONE_PIXEL),
+        color_rgba: [255, 0, 0, 255],
+    });
+    let chrome = chrome_plan(CommandChromePaintOperationKind::Fill {
+        bounds: UiRect::new(OVERLAY_X, CANVAS_Y, ONE_PIXEL, ONE_PIXEL),
+        color_rgba: [0, 0, 255, 128],
+    });
+    let plans = [
+        ArtifactPaintPlanRef::TextSurface(&text),
+        ArtifactPaintPlanRef::CommandChrome(&chrome),
+    ];
+    let request = ArtifactCompositeRequest {
+        canvas: ArtifactCanvasBounds::new(UiRect::new(
+            CANVAS_X,
+            CANVAS_Y,
+            SURFACE_WIDTH,
+            SURFACE_HEIGHT,
+        )),
+        plans: &plans,
+    };
+    let Some(first) = require_ok(
+        ArtifactCompositor::compose(request.clone()),
+        "valid plans compose",
+    ) else {
+        return;
+    };
+    let Some(second) = require_ok(ArtifactCompositor::compose(request), "repeat plans compose")
+    else {
+        return;
+    };
+    assert_eq!(first, second);
+    assert_eq!(first.non_transparent_pixel_count, 2);
+    assert_eq!(&first.rgba_pixels[0..4], &[255, 0, 0, 255]);
+    assert_eq!(&first.rgba_pixels[4..8], &[127, 0, 128, 255]);
+}
+
+#[test]
+fn public_api_rejects_malformed_texture_and_zero_canvas() {
+    let texture = TextSurfacePaintTexture {
+        identity: "star-vs16".to_owned(),
+        width: 2,
+        height: 1,
+        rgba_pixels: vec![255, 255, 0, 255],
+    };
+    let text = text_plan(TextSurfacePaintOperationKind::Texture {
+        bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, ONE_PIXEL),
+        texture,
+    });
+    let plans = [ArtifactPaintPlanRef::TextSurface(&text)];
+    assert!(matches!(
+        ArtifactCompositor::compose(ArtifactCompositeRequest {
+            canvas: ArtifactCanvasBounds::new(UiRect::new(
+                CANVAS_X,
+                CANVAS_Y,
+                SURFACE_WIDTH,
+                SURFACE_HEIGHT
+            )),
+            plans: &plans
+        }),
+        Err(ArtifactCompositeError::TextureByteLength { .. })
+    ));
+    assert!(matches!(
+        ArtifactCompositor::compose(ArtifactCompositeRequest {
+            canvas: ArtifactCanvasBounds::new(UiRect::new(0, 0, 0, ONE_PIXEL)),
+            plans: &plans
+        }),
+        Err(ArtifactCompositeError::ZeroCanvas)
+    ));
+}
+
+#[test]
+fn public_api_rejects_canvas_edge_overflow() {
+    let text = text_plan(TextSurfacePaintOperationKind::Fill {
+        bounds: UiRect::new(CANVAS_X, CANVAS_Y, ONE_PIXEL, ONE_PIXEL),
+        color_rgba: [0, 0, 0, 0],
+    });
+    let plans = [ArtifactPaintPlanRef::TextSurface(&text)];
+    assert!(matches!(
+        ArtifactCompositor::compose(ArtifactCompositeRequest {
+            canvas: ArtifactCanvasBounds::new(UiRect::new(i32::MAX, 0, 1, 1)),
+            plans: &plans
+        }),
+        Err(ArtifactCompositeError::Overflow { .. })
+    ));
+}
+
+#[test]
+fn public_api_composes_rounded_and_transparent_layers_with_clipping() {
+    let rounded = CommandChromePaintPlan {
+        surface_bounds: UiRect::new(OVERLAY_X, CANVAS_Y, 3, 3),
+        operations: vec![CommandChromePaintOperation {
+            layer: EguiCommandChromeDrawLayer::PanelFill,
+            clip_bounds: UiRect::new(OVERLAY_X, CANVAS_Y, 3, 3),
+            kind: CommandChromePaintOperationKind::RoundedFill {
+                bounds: UiRect::new(OVERLAY_X, CANVAS_Y, 3, 3),
+                color_rgba: [20, 40, 80, 255],
+                radius_px: 2,
+            },
+        }],
+    };
+    let transparent = text_plan(TextSurfacePaintOperationKind::Fill {
+        bounds: UiRect::new(CANVAS_X, CANVAS_Y, SURFACE_WIDTH, SURFACE_HEIGHT),
+        color_rgba: [255, 255, 255, 0],
+    });
+    let Some(frame) = require_ok(
+        ArtifactCompositor::compose(ArtifactCompositeRequest {
+            canvas: ArtifactCanvasBounds::new(UiRect::new(CANVAS_X, CANVAS_Y, 3, 3)),
+            plans: &[
+                ArtifactPaintPlanRef::CommandChrome(&rounded),
+                ArtifactPaintPlanRef::TextSurface(&transparent),
+            ],
+        }),
+        "rounded fill with transparent overlay composes",
+    ) else {
+        return;
+    };
+    assert!(frame.non_transparent_pixel_count > 0);
+    let (pixel_chunks, remainder) = frame.rgba_pixels.as_chunks::<4>();
+    assert!(remainder.is_empty());
+    assert!(pixel_chunks.iter().any(|pixel| pixel == &[0, 0, 0, 0]));
+    assert!(pixel_chunks.iter().any(|pixel| pixel == &[20, 40, 80, 255]));
+}
+
+#[test]
+fn public_api_rejects_zero_dimension_texture_before_sampling() {
+    let text = text_plan(TextSurfacePaintOperationKind::Texture {
+        bounds: UiRect::new(CANVAS_X, CANVAS_Y, ONE_PIXEL, ONE_PIXEL),
+        texture: TextSurfacePaintTexture {
+            identity: "empty".to_owned(),
+            width: 0,
+            height: 1,
+            rgba_pixels: Vec::new(),
+        },
+    });
+    let result = ArtifactCompositor::compose(ArtifactCompositeRequest {
+        canvas: ArtifactCanvasBounds::new(UiRect::new(CANVAS_X, CANVAS_Y, ONE_PIXEL, ONE_PIXEL)),
+        plans: &[ArtifactPaintPlanRef::TextSurface(&text)],
+    });
+    assert!(
+        matches!(result, Err(ArtifactCompositeError::ZeroTexture { identity }) if identity == "empty")
+    );
+}

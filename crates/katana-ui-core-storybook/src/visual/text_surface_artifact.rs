@@ -1,10 +1,10 @@
 use image::codecs::gif::GifEncoder;
 use image::{Delay, Frame, RgbaImage};
-use katana_ui_core::render_model::UiRect;
-use katana_ui_core_egui_adapter::artifact_compositor::{
+use katana_ui_core::egui::artifact_compositor::{
     ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor, ArtifactPaintPlanRef,
 };
-use katana_ui_core_egui_adapter::text_surface::TextSurfaceArtifactFrame;
+use katana_ui_core::egui::text_surface::TextSurfaceArtifactFrame;
+use katana_ui_core::render_model::UiRect;
 use std::fs::File;
 use std::path::Path;
 

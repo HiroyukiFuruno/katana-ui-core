@@ -4,7 +4,7 @@ KLE は OS emoji を `egui::TextEdit` の font atlas に任せ、KDV は独自�
 
 ## What Changes
 
-- `katana-ui-core-text-raster` という public renderer runtime crate を追加する。`katana-ui-core` の domain contract を入力にして、platform font selection、rich text shaping、color glyph raster、grapheme bounds、hit-test を提供する。
+- public `katana-ui-core` crate の `text-raster` optional feature が提供する `katana_ui_core::text_raster` module に renderer runtime を置く。module は `katana-ui-core` の domain contract を入力にして、platform font selection、rich text shaping、color glyph raster、grapheme bounds、hit-test を提供する。
 - `UiEmojiTextSegments` と `UiTextSpan` を唯一の emoji/run 分割 source of truth とし、KLE/KDV 固有の emoji segmentation、OS font-family lookup、raster cache を禁止する。
 - stable input/configuration に対して font system や raster cache を再初期化しない contract を設け、interactive text input の layout jitter を防ぐ。
 - KUC Storybook 内部の text raster 実装を public runtime へ移し、KDV と KLE は thin adapter として同じ runtime を利用する。
@@ -23,7 +23,7 @@ KLE は OS emoji を `egui::TextEdit` の font atlas に任せ、KDV は独自�
 
 ## Impact
 
-- `Cargo.toml` と `crates/katana-ui-core-text-raster/` に renderer runtime と `cosmic-text` 依存を追加する。
-- `crates/katana-ui-core-storybook/` の internal text raster を runtime crate へ移行する。
-- local KDV の document/export text rendering と local KLE の emoji editor surface/Storybook artifact が同 crate の adapter を使う。
+- `crates/katana-ui-core/Cargo.toml` の `text-raster` feature と `katana_ui_core::text_raster` module に renderer runtime と `cosmic-text` optional dependency を追加する。
+- `crates/katana-ui-core-storybook/` の internal text raster を `katana_ui_core::text_raster` module へ移行する。
+- local KDV の document/export text rendering と local KLE の emoji editor surface/Storybook artifact が同 module の adapter boundary を使う。
 - `katana-ui-core` core crate の public UI DTO と framework-neutral 依存境界は維持する。

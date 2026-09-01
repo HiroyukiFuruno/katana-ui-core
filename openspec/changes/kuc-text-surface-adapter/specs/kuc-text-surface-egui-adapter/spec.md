@@ -2,13 +2,11 @@
 
 ### Requirement: shared KUC egui adapter SHALL own actual text-surface rendering
 
-`katana-ui-core-egui-adapter` SHALL be the only KUC-owned actual egui renderer
-for TextSurface and command chrome. It SHALL depend on KUC runtime/model crates
-and egui at the framework boundary, and SHALL not import host application types.
+The `katana_ui_core::egui` module, enabled only by the `katana-ui-core` `egui` optional feature, SHALL be the only KUC-owned actual egui renderer for TextSurface and command chrome. It SHALL enable only KUC runtime/model feature dependencies and egui at the framework boundary, and SHALL not import host application types.
 
 #### Scenario: adapter build has no consumer application dependency
 
-- **WHEN** the adapter crate is built in the KUC workspace
+- **WHEN** `katana-ui-core` is built with the `egui` optional feature
 - **THEN** it compiles without KatanA, KLE, KDV, Markdown, viewer, or host callback crates
 - **AND** its public API accepts and returns only KUC types plus egui boundary values
 

@@ -3,18 +3,16 @@ use super::super::text_surface_fixture::{
     paint_style as text_paint_style, raster_style as text_raster_style, text_surface_fixture,
 };
 use super::{command_chrome_surface_fixture, show_command_chrome};
+use katana_ui_core::egui::artifact_compositor::{
+    ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor, ArtifactPaintPlanRef,
+};
+use katana_ui_core::egui::text_surface::{EguiTextSurfaceAdapter, TextSurfacePaintOperationKind};
 use katana_ui_core::interaction::placement::Rect;
 use katana_ui_core::molecule::command_chrome::{
     FloatingCommandToolbarPresentation, FloatingCommandToolbarVisibility,
 };
 use katana_ui_core::render_model::UiRect;
 use katana_ui_core::text_surface::TextSurfacePresentation;
-use katana_ui_core_egui_adapter::artifact_compositor::{
-    ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor, ArtifactPaintPlanRef,
-};
-use katana_ui_core_egui_adapter::text_surface::{
-    EguiTextSurfaceAdapter, TextSurfacePaintOperationKind,
-};
 use std::io;
 
 const STAR: &str = "⭐️";
@@ -217,7 +215,7 @@ fn accesskit_labels(output: egui::FullOutput) -> Vec<String> {
 }
 
 fn text_plan_has_colored_star(
-    plan: &katana_ui_core_egui_adapter::text_surface::TextSurfacePaintPlan,
+    plan: &katana_ui_core::egui::text_surface::TextSurfacePaintPlan,
 ) -> bool {
     plan.operations.iter().any(|operation| {
         let TextSurfacePaintOperationKind::Texture { texture, .. } = &operation.kind else {

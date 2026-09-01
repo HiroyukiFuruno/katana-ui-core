@@ -1,9 +1,9 @@
 use crate::visual::text_command_surface_integration_tests::facts;
-use katana_ui_core::render_model::UiRect;
-use katana_ui_core_egui_adapter::artifact_compositor::ArtifactPaintPlanRef;
-use katana_ui_core_egui_adapter::text_command_surface::{
+use katana_ui_core::egui::artifact_compositor::ArtifactPaintPlanRef;
+use katana_ui_core::egui::text_command_surface::{
     EguiTextCommandSurfaceChild, EguiTextCommandSurfaceOutput,
 };
+use katana_ui_core::render_model::UiRect;
 
 pub(crate) struct Assertions;
 

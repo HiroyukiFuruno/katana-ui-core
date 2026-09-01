@@ -1,9 +1,9 @@
-use katana_ui_core::molecule::selection::ContextMenuItemKind;
-use katana_ui_core::theme::{FontFamily, FontToken};
-use katana_ui_core_egui_adapter::context_menu::{
+use katana_ui_core::egui::context_menu::{
     ContextMenuPaintStyle, ContextMenuPresentation, ContextMenuPresentationItem,
     ContextMenuRasterStyle,
 };
+use katana_ui_core::molecule::selection::ContextMenuItemKind;
+use katana_ui_core::theme::{FontFamily, FontToken};
 
 const FONT_SIZE_PX: f32 = 15.0;
 const FONT_WEIGHT: u16 = 400;

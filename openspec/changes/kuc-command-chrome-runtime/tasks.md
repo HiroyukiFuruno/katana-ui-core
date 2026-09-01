@@ -8,7 +8,7 @@
 
 ## 1. Public SVG Icon Raster Runtime
 
-- [x] 1.1 `katana-ui-core-svg-raster` crate の workspace/public API を追加し、core crate に raster dependency を漏らさない
+- [x] 1.1 `katana-ui-core` の `svg-raster` optional feature に `katana_ui_core::svg_raster` public module を追加し、default core に raster dependency を漏らさない
 - [x] 1.2 `UiSvgRasterRequest` / `UiSvgRaster` / metadata / typed error / bounded rasterizer cache を実装し、physical size・unpremultiplied RGBA・cache key の contract を固定する
 - [x] 1.3 `UiSvgPaintPolicy` の currentColor / stroke / fill / alpha 正規化を実装し、invalid SVG・zero/oversize/overflow が Unicode/emoji fallback なしの typed error になることを検証する
 - [x] 1.4 identical request の pixel equality/cache reuse、color/policy/size cache split、deterministic eviction、maximum allocation を数値 unit test で検証する
@@ -34,7 +34,7 @@
 
 - [x] 4.1a `CommandChromeAction` / `CommandChromeToolbar` の renderer-neutral accessor と TextSurface controlled-value synchronization を additive に追加し、core compatibility test で固定する
 - [/] 4.1b `EguiCommandChromeAdapter` と shared bounded RGBA texture cache を追加し、text / SVG raster only dependency boundary を compile test で固定する。toolbar/search/floating/tooltip と generic menu-only / split-secondary dropdown は actual-egui input まで実装済みで、same-record artifact integration は未完了
-- [/] 4.1 shared `katana-ui-core-egui-adapter` の command-chrome module を `kuc-text-surface-adapter` と整合させて追加し、core crate と host application への framework/host dependency leak を compile test で防ぐ。toolbar/search/floating/tooltip/dropdown boundary は実装済みだが、artifact contract は未完了
+- [/] 4.1 shared `katana_ui_core::egui` の command-chrome module を `kuc-text-surface-adapter` と整合させて追加し、default core と host application への framework/host dependency leak を compile test で防ぐ。toolbar/search/floating/tooltip/dropdown boundary は実装済みだが、artifact contract は未完了
 - [/] 4.2a injected raster/paint style と `EguiCommandChromeFrameRecord` を追加し、toolbar / floating / search の same-record draw contract を数値 test で固定する。toolbar/search/floating/tooltip と dropdown trigger/menu/item/accessibility record は実装済みで、egui draw と deterministic artifact の equality test は未実装
 - [x] 4.2 adapter が SVG runtime RGBA texture と platform text-raster layout を使って toolbar/search chrome を描画し、`egui::TextEdit` / font registration / OS font lookup / glyph icon fallback を使わないことを AST test で検証する
 - [/] 4.3a query / replace を shared TextSurface で actual egui / IME input から typed search action へ変換し、button / option / navigation / replace / close を real event で検証する。Japanese/`⭐️`/IME/keys/disabled/focus arbitration、icon tooltip、floating composition、generic menu-only / split-secondary dropdown は実証済みだが same-record artifact は未完了

@@ -36,7 +36,7 @@ emoji/日本語の表示、caret、input jitter、accessibility が再び diverg
 
 - KUC `platform-text-raster-runtime` の public raster/layout API を prerequisite とするが、raster runtime
   自体に host/editor semantics を入れない。
-- KUC `kuc-command-chrome-runtime` と one shared optional egui adapter crate を利用し、adapter の ownership
+- KUC `kuc-command-chrome-runtime` と one shared `katana_ui_core::egui` optional moduleを利用し、adapter の ownership
   を consumer repo に分散させない。
 - KLE は generic surface renderer/gutter/annotation input logic を削除して editor-domain mapping に縮小する。
 - KDV は text surface が必要な場所で同 adapter を consumer として利用できる。viewer/export 固有 Markdown

@@ -1,5 +1,5 @@
 use super::model::{DecoderEvidence, FrameRate, FullRootArtifactError, Mp4Artifact};
-use katana_ui_core_egui_adapter::{FullRootArtifact, MotionArtifactSettings, MotionArtifactWriter};
+use katana_ui_core::egui::{FullRootArtifact, MotionArtifactSettings, MotionArtifactWriter};
 use std::path::Path;
 
 pub(super) const VIDEO_ENCODER: &str = "libx264rgb";

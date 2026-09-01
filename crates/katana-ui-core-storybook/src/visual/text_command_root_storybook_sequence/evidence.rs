@@ -4,7 +4,7 @@ use super::super::model::{
 use super::super::{FRAME_HEIGHT, FRAME_WIDTH};
 use super::scenario::Scenario;
 use eframe::egui;
-use katana_ui_core_egui_adapter::text_command_surface::{
+use katana_ui_core::egui::text_command_surface::{
     EguiTextCommandSurfaceHostRoot, EguiTextCommandSurfaceRootEventTransport,
     KucRootEventBatchForwarder,
 };

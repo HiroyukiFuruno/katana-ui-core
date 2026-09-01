@@ -1,6 +1,6 @@
 ## 1. Public Runtime Boundary
 
-- [x] 1.1 `crates/katana-ui-core-text-raster` を workspace member として追加し、`katana-ui-core` と renderer dependency だけを持つ public crate boundary を確立する
+- [x] 1.1 public `katana-ui-core` crate の `text-raster` optional feature と `katana_ui_core::text_raster` module を追加し、default core に renderer dependency を漏らさない public module boundary を確立する
 - [x] 1.2 `PlatformTextRasterizer`、configuration、request、raster/layout、grapheme bounds、hit-test、typed error/report を KatanA/KLE/KDV 型なしで定義する
 - [x] 1.3 `UiEmojiTextSegments` / `UiTextSpanStyle::emoji` から text run を構成し、platform proportional/monospace/emoji font resolution を generic configuration に閉じる
 

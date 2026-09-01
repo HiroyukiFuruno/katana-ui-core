@@ -50,7 +50,8 @@ fn consumer_stable_state_id_propagates_to_command_chrome_search_strip() {
 fn controlled_search_presentation_updates_without_synthesizing_an_interaction_event() {
     let mut strip =
         CommandChromeSearchStrip::new(SearchControlStrip::new("legacy"), japanese_strings());
-    let strings = japanese_strings();
+    let mut strings = japanese_strings();
+    strings.strip = text("同期後の検索");
     assert!(
         strip.synchronize_presentation(CommandChromeSearchPresentation {
             query: "日本語 ⭐️".to_string(),
@@ -67,6 +68,7 @@ fn controlled_search_presentation_updates_without_synthesizing_an_interaction_ev
     assert_eq!(strip.query_model(), "日本語 ⭐️");
     assert_eq!(strip.replace_value_model(), "置換");
     assert_eq!(strip.result_count_model(), Some(2));
+    assert_eq!(strip.strings_model().strip.visible, "同期後の検索");
 }
 
 #[test]

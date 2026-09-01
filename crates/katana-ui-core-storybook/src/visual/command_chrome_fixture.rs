@@ -1,3 +1,7 @@
+use katana_ui_core::egui::command_chrome::{
+    CommandChromePaintStyle, CommandChromeRasterStyle, EguiCommandChromeSearchStyle,
+};
+use katana_ui_core::egui::text_surface::{TextSurfacePaintStyle, TextSurfaceRasterStyle};
 use katana_ui_core::interaction::placement::Rect;
 use katana_ui_core::molecule::command_chrome::{
     CommandChromeAction, CommandChromeCapability, CommandChromeDropdown, CommandChromeDropdownItem,
@@ -9,10 +13,6 @@ use katana_ui_core::molecule::command_chrome::{
 use katana_ui_core::molecule::structured::{ReplaceMode, SearchControlStrip, SearchOptions};
 use katana_ui_core::render_model::UiNodeId;
 use katana_ui_core::theme::{FontFamily, FontToken};
-use katana_ui_core_egui_adapter::command_chrome::{
-    CommandChromePaintStyle, CommandChromeRasterStyle, EguiCommandChromeSearchStyle,
-};
-use katana_ui_core_egui_adapter::text_surface::{TextSurfacePaintStyle, TextSurfaceRasterStyle};
 
 pub(super) const FRAME_WIDTH: f32 = 1280.0;
 pub(super) const FRAME_HEIGHT: f32 = 720.0;

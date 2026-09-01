@@ -1,10 +1,10 @@
-use katana_ui_core::render_model::UiRect;
-use katana_ui_core_egui_adapter::artifact_compositor::{
+use katana_ui_core::egui::artifact_compositor::{
     ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor,
 };
-use katana_ui_core_egui_adapter::text_command_surface::{
+use katana_ui_core::egui::text_command_surface::{
     EguiTextCommandSurfaceChild, EguiTextCommandSurfaceOutput,
 };
+use katana_ui_core::render_model::UiRect;
 
 const ARTIFACT_PLAN_COUNT_VISIBLE_TEXT: usize = 3;
 const ARTIFACT_PLAN_COUNT_VISIBLE_TEXT_AND_FLOATING: usize = 4;

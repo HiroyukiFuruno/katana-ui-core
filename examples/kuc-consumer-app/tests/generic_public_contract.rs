@@ -4,12 +4,16 @@ use katana_ui_core::interaction::{
     UiSurfaceGestureController, UiSurfaceGestureInput, UiSurfaceGestureOverride,
     UiSurfaceHostEvent, UiSurfacePoint,
 };
+use katana_ui_core::molecule::command_chrome::{
+    CommandChromeAction, CommandChromeMeasuredAction, CommandChromeToolbar,
+};
 use katana_ui_core::molecule::structured::{
     DiagnosticAction, DiagnosticId, DiagnosticItem, DiagnosticKeyboardInput, DiagnosticLocation,
     DiagnosticSeverity, DiagnosticsGroupBy, DiagnosticsList, DiagnosticsListAction,
     DiagnosticsListEvent, DiagnosticsListOptions, DiagnosticsSortBy, SourceAddressAction,
     SourceAddressEntry, SourceAddressEvent, SourceAddressPresentation, SourceAddressStrip,
 };
+use katana_ui_core::molecule::toolbar::{ToolbarPriority, ToolbarStrategy};
 use katana_ui_core::render_model::{UiNodeKind, UiRect, UiStateId};
 use katana_ui_core::widget::molecules::{
     ChoiceItem, ComboBox, ContextMenu, ContextMenuAction, ContextMenuAnchor, ContextMenuEvent,
@@ -68,6 +72,29 @@ fn consumer_app_public_shell_contains_real_toolbar_controls() {
     assert_eq!("main", toolbar.children()[2].props().interaction.value);
     assert_eq!(3, toolbar.children()[3].props().interaction.item_count);
     assert_eq!(3, toolbar.children()[4].props().interaction.item_count);
+}
+
+#[test]
+fn consumer_can_plan_command_chrome_overflow_with_owned_action_identity() {
+    let toolbar = CommandChromeToolbar::new()
+        .overflow_strategy(ToolbarStrategy::Menu)
+        .action(CommandChromeAction::new("primary", "Primary").priority(ToolbarPriority::new(100)))
+        .action(
+            CommandChromeAction::new("secondary", "Secondary").priority(ToolbarPriority::new(10)),
+        );
+    let owned_identity = String::from("primary");
+    let plan = toolbar.plan_overflow(
+        50,
+        10,
+        &[
+            CommandChromeMeasuredAction::new(owned_identity, 40),
+            CommandChromeMeasuredAction::new(String::from("secondary"), 40),
+        ],
+    );
+
+    assert_eq!(plan.visible_action_ids(), vec!["primary"]);
+    assert_eq!(plan.hidden_action_ids(), vec!["secondary"]);
+    assert!(plan.overflow_trigger_visible());
 }
 
 #[test]

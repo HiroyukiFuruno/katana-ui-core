@@ -1,12 +1,12 @@
 use super::command_chrome_fixture::{
     floating_fixture, paint_style, raster_style, search_fixture, search_style, toolbar_fixture,
 };
-use katana_ui_core::molecule::command_chrome::{
-    CommandChromeSearchStrip, CommandChromeToolbar, FloatingCommandToolbar,
-};
-use katana_ui_core_egui_adapter::command_chrome::{
+use katana_ui_core::egui::command_chrome::{
     EguiCommandChromeAdapter, EguiCommandChromeError, EguiCommandChromeFloatingOutput,
     EguiCommandChromeOutput, EguiCommandChromeSearchOutput,
+};
+use katana_ui_core::molecule::command_chrome::{
+    CommandChromeSearchStrip, CommandChromeToolbar, FloatingCommandToolbar,
 };
 
 const TOOLBAR_TO_FLOATING_GAP_PX: f32 = 12.0;

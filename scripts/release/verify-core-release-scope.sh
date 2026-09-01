@@ -11,7 +11,7 @@ workspace_packages="$(
     | python3 -c 'import json, sys; data = json.load(sys.stdin); print("\n".join(sorted(p["name"] for p in data["packages"])))'
 )"
 
-expected_workspace=$'katana-ui-core\nkatana-ui-core-egui-adapter\nkatana-ui-core-storybook\nkatana-ui-core-svg-raster\nkatana-ui-core-text-raster\nkuc-consumer-app'
+expected_workspace=$'katana-ui-core\nkatana-ui-core-storybook\nkuc-consumer-app'
 if [[ "$workspace_packages" != "$expected_workspace" ]]; then
   echo "workspace release scope failed"
   echo "$workspace_packages"
@@ -22,11 +22,11 @@ publishable_packages="$(
   cargo metadata --no-deps --locked --format-version 1 \
     | python3 -c 'import json, sys; data = json.load(sys.stdin); print("\n".join(sorted(p["name"] for p in data["packages"] if p["publish"] != [])))'
 )"
-expected_publishable=$'katana-ui-core\nkatana-ui-core-egui-adapter\nkatana-ui-core-svg-raster\nkatana-ui-core-text-raster'
+expected_publishable=$'katana-ui-core'
 if [[ "$publishable_packages" != "$expected_publishable" ]]; then
   echo "publishable crate scope failed"
   echo "$publishable_packages"
   exit 1
 fi
 
-echo "workspace release scope verified: four public crates and two private consumers."
+echo "workspace release scope verified: one public crate and two private consumers."

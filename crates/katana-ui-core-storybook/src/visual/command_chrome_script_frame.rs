@@ -1,11 +1,11 @@
 use super::super::command_chrome_fixture::{FRAME_HEIGHT, FRAME_WIDTH};
 use super::super::command_chrome_surface::show_command_chrome;
 use super::{CommandChromeScriptError, CommandChromeScriptFrame};
+use katana_ui_core::egui::command_chrome::EguiCommandChromeAdapter;
 use katana_ui_core::molecule::command_chrome::{
     CommandChromeSearchStrip, CommandChromeToolbar, FloatingCommandToolbar,
 };
 use katana_ui_core::render_model::UiRect;
-use katana_ui_core_egui_adapter::command_chrome::EguiCommandChromeAdapter;
 
 const CENTER_DIVISOR: f32 = 2.0;
 

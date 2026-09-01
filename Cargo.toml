@@ -1,16 +1,13 @@
 [workspace]
 members = [
     "crates/katana-ui-core",
-    "crates/katana-ui-core-text-raster",
-    "crates/katana-ui-core-svg-raster",
-    "crates/katana-ui-core-egui-adapter",
     "crates/katana-ui-core-storybook",
     "examples/kuc-consumer-app",
 ]
 resolver = "2"
 
 [workspace.package]
-version = "0.3.2"
+version = "0.3.3"
 edition = "2024"
 license = "MIT"
 repository = "https://github.com/HiroyukiFuruno/katana-ui-core"
@@ -18,10 +15,7 @@ rust-version = "1.95.0"
 authors = ["Hiroyuki Furuno"]
 
 [workspace.dependencies]
-katana-ui-core = { version = "0.3.2", path = "crates/katana-ui-core" }
-katana-ui-core-text-raster = { version = "0.3.2", path = "crates/katana-ui-core-text-raster" }
-katana-ui-core-svg-raster = { version = "0.3.2", path = "crates/katana-ui-core-svg-raster" }
-katana-ui-core-egui-adapter = { version = "0.3.2", path = "crates/katana-ui-core-egui-adapter" }
+katana-ui-core = { version = "0.3.3", path = "crates/katana-ui-core" }
 cosmic-text = "0.19.0"
 eframe = "0.36"
 egui = "0.36"
@@ -34,6 +28,7 @@ serde_json = "1.0.151"
 sha2 = "0.11.0"
 tiny-skia = "0.12"
 unicode-segmentation = "1.13.3"
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
 
 [profile.test]
 opt-level = 2

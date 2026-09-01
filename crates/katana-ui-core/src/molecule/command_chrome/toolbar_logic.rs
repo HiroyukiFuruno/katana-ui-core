@@ -338,13 +338,40 @@ mod coverage_tests {
 
     #[test]
     fn plan_overflow_ignores_unknown_measured_actions() {
+        let split = crate::molecule::toolbar::SplitAction::new(
+            crate::molecule::toolbar::SplitActionPart::new(),
+            crate::molecule::toolbar::SplitActionPart::new(),
+        );
+        let accelerator = KeyCombo::command_or_control("s");
+        let split_action = CommandChromeAction::new("split", "Split")
+            .accelerator(accelerator.clone())
+            .group_id("editing")
+            .split(split.clone())
+            .tooltip("Split options")
+            .accessibility_label("Split command");
+        assert_eq!(Some(&split), split_action.split_model());
+        assert_eq!(
+            split_action.to_toolbar_action(),
+            crate::molecule::toolbar::ToolbarAction::new("split", "Split")
+                .accelerator(accelerator)
+                .group_id("editing")
+                .split(split)
+                .tooltip("Split options")
+                .accessibility_label("Split command")
+        );
+
         let toolbar = CommandChromeToolbar::new()
             .action(CommandChromeAction::new("left", "Left"))
             .action(CommandChromeAction::new("right", "Right"));
         let measurements = vec![
-            CommandChromeMeasuredAction::new("left", 10),
+            CommandChromeMeasuredAction::new(
+                crate::molecule::toolbar::ToolbarActionId::new("left"),
+                10,
+            ),
             CommandChromeMeasuredAction::new("missing", 20),
         ];
+        let cloned_left = measurements[0].clone();
+        assert_eq!(measurements[0], cloned_left);
         let plan = toolbar.plan_overflow(64, 16, &measurements);
         let expected =
             ToolbarOverflowPlanner::plan(&crate::molecule::toolbar::ToolbarOverflowInput::new(

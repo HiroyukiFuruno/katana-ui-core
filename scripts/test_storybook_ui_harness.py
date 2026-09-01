@@ -74,11 +74,28 @@ class StorybookUiHarnessTest(unittest.TestCase):
 
     def test_rejects_text_command_root_without_facade_mp4_or_manifest_evidence(self) -> None:
         required_tokens = (
-            "EguiTextCommandSurfaceHostProjectionEncoder::token",
-            '"framemd5"',
-            '"text-command-root-manifest.json"',
+            (
+                "EguiTextCommandSurfaceHostProjectionEncoder::token",
+                "crates/katana-ui-core-storybook/src/visual/text_command_root_storybook.rs",
+            ),
+            (
+                '"framemd5"',
+                "crates/katana-ui-core-storybook/src/visual/text_command_root_storybook.rs",
+            ),
+            (
+                '"text-command-root-manifest.json"',
+                "crates/katana-ui-core-storybook/src/visual/text_command_root_storybook.rs",
+            ),
+            (
+                "compatibility_types_are_hidden",
+                "crates/katana-ui-core/tests/egui_host_root_facade_contract.rs",
+            ),
+            (
+                "full_root_storybook_uses_only_the_public_facade_root",
+                "crates/katana-ui-core-storybook/src/visual/text_command_root_storybook_tests.rs",
+            ),
         )
-        for missing_token in required_tokens:
+        for missing_token, expected_path in required_tokens:
             with self.subTest(missing_token=missing_token), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 write_minimal_repo(root, option_arm='"button" => &BUTTON_OPTIONS,')
@@ -88,8 +105,7 @@ class StorybookUiHarnessTest(unittest.TestCase):
 
                 self.assertIn(
                     "text-command-root: runtime contract missing "
-                    f"`{missing_token}` in "
-                    "crates/katana-ui-core-storybook/src/visual/text_command_root_storybook.rs",
+                    f"`{missing_token}` in {expected_path}",
                     failures,
                 )
 
@@ -2913,29 +2929,40 @@ decoder: DecoderEvidence;
 encoder_capability_verified;
 muxer_capability_verified;
 """.strip()
+    core_contract = (
+        "opaque_tokens_and_transport_have_no_clone_or_serialize_derives\n"
+        "compatibility_types_are_hidden\n"
+    )
+    storybook_contract = "full_root_storybook_uses_only_the_public_facade_root\n"
     if missing_token is not None:
         source = source.replace(missing_token, "", 1)
+        core_contract = core_contract.replace(missing_token, "", 1)
+        storybook_contract = storybook_contract.replace(missing_token, "", 1)
     write_text(
         root / "crates/katana-ui-core-storybook/src/visual/text_command_root_storybook.rs",
         source,
     )
     write_text(
-        root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root.rs",
+        root / "crates/katana-ui-core/src/egui/text_command_surface/host_root.rs",
         "pub fn retain(\n"
         "pub fn token(\n",
     )
     write_text(
-        root / "crates/katana-ui-core-egui-adapter/src/text_command_surface/host_root/types.rs",
+        root / "crates/katana-ui-core/src/egui/text_command_surface/host_root/types.rs",
         "pub struct EguiTextCommandSurfacePresentationToken;\n"
         "pub struct EguiTextCommandSurfaceHostProjectionEncoder;\n",
     )
     write_text(
-        root / "crates/katana-ui-core-egui-adapter/tests/host_root_facade_contract.rs",
-        "opaque_tokens_and_transport_have_no_clone_or_serialize_derives\n"
-        "compatibility_types_are_hidden_and_storybook_uses_only_the_facade_root\n",
+        root / "crates/katana-ui-core/tests/egui_host_root_facade_contract.rs",
+        core_contract,
     )
     write_text(
-        root / "crates/katana-ui-core-egui-adapter/tests/text_command_root_contract.rs",
+        root
+        / "crates/katana-ui-core-storybook/src/visual/text_command_root_storybook_tests.rs",
+        storybook_contract,
+    )
+    write_text(
+        root / "crates/katana-ui-core/tests/egui_text_command_root_contract.rs",
         "root_event_batch_forwards_once_and_returns_a_closed_receipt\n"
         "assert!(receipt.consumed_once())\n",
     )

@@ -2,8 +2,9 @@
 
 ### Requirement: KUC SHALL provide a renderer-neutral SVG icon raster runtime
 
-KUC SHALL provide a public runtime crate that accepts `UiIconProps`, physical
-pixel dimensions, and a semantic `RgbaColor`, and returns unpremultiplied RGBA
+KUC SHALL provide public `katana_ui_core::svg_raster` behind the
+`katana-ui-core` `svg-raster` optional feature. The module accepts `UiIconProps`,
+physical pixel dimensions, and a semantic `RgbaColor`, and returns unpremultiplied RGBA
 pixels plus deterministic metadata. The runtime SHALL not accept or expose
 KatanA, KLE, KDV, Markdown, editor, viewer, or host command types.
 
