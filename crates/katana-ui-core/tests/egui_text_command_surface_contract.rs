@@ -68,10 +68,30 @@ mod text_command_surface_contract {
 
         assert_eq!(text.surface_bounds.width, output.root_bounds.width);
         assert_eq!(text.viewport_bounds.width, text.surface_bounds.width - 40);
-        assert_eq!(text.surface_bounds.y, toolbar.record.bounds.height as i32);
         assert_eq!(
-            text.surface_bounds.height,
-            output.root_bounds.height - toolbar.record.bounds.height - search.record.bounds.height
+            text.surface_bounds.y,
+            toolbar
+                .record
+                .bounds
+                .y
+                .saturating_add_unsigned(toolbar.record.bounds.height)
+        );
+        assert_eq!(
+            text.surface_bounds
+                .y
+                .saturating_add_unsigned(text.surface_bounds.height),
+            search.record.bounds.y
+        );
+        assert_eq!(
+            search
+                .record
+                .bounds
+                .y
+                .saturating_add_unsigned(search.record.bounds.height),
+            output
+                .root_bounds
+                .y
+                .saturating_add_unsigned(output.root_bounds.height)
         );
         assert_eq!(text.viewport_bounds.height, text.surface_bounds.height);
         assert_eq!(
@@ -141,24 +161,38 @@ mod text_command_surface_contract {
             egui::vec2(700.0, 180.0),
             Vec::new(),
         )?;
-        let toolbar_height = resized
+        let toolbar_bounds = resized
             .toolbar
             .as_ref()
             .expect("resized toolbar output")
             .record
-            .bounds
-            .height;
-        let search_height = resized
+            .bounds;
+        let search_bounds = resized
             .search
             .as_ref()
             .expect("resized search output")
             .record
-            .bounds
-            .height;
+            .bounds;
+        let text_bounds = resized.text.record.frame.surface_bounds;
         assert_eq!(resized.text.record.frame.surface_bounds.width, 700);
         assert_eq!(
-            resized.text.record.frame.surface_bounds.height,
-            resized.root_bounds.height - toolbar_height - search_height
+            text_bounds.y,
+            toolbar_bounds
+                .y
+                .saturating_add_unsigned(toolbar_bounds.height)
+        );
+        assert_eq!(
+            text_bounds.y.saturating_add_unsigned(text_bounds.height),
+            search_bounds.y
+        );
+        assert_eq!(
+            search_bounds
+                .y
+                .saturating_add_unsigned(search_bounds.height),
+            resized
+                .root_bounds
+                .y
+                .saturating_add_unsigned(resized.root_bounds.height)
         );
         assert_eq!(
             resized.text.record.frame.viewport.scroll_y,
