@@ -48,6 +48,7 @@ check-types:
 lint:
     {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --lib --all-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
     {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --tests --no-default-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
+    egui_test_args=(); for test_file in crates/katana-ui-core/tests/egui_*.rs; do test_name="${test_file##*/}"; egui_test_args+=(--test "${test_name%.rs}"); done; {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --all-features --locked "${egui_test_args[@]}" -- -D warnings
     {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core-storybook -p kuc-consumer-app --all-targets --all-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
 
 # Install shared KatanA AST lint CLI from crates.io

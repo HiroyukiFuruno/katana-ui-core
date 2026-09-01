@@ -330,8 +330,7 @@ fn search_projection_rejects_enabled_without_target() {
         .localized_presentation(search_localized())
         .next_enabled(true)
         .build()
-        .err()
-        .expect("missing target should fail");
+        .expect_err("missing target should fail");
 
     assert!(matches!(
         error,
@@ -353,10 +352,10 @@ fn document_root_factory_synchronize_paths() {
     let mut root = factory.retain(input_base()).expect("retain succeeds");
 
     let unchanged = input_base();
-    assert_eq!(
-        root.synchronize(unchanged)
-            .expect("same revision keeps unchanged"),
-        false
+    assert!(
+        !root
+            .synchronize(unchanged)
+            .expect("same revision keeps unchanged")
     );
 
     let stale = SanitizedDocumentRootInput::new(
@@ -408,10 +407,10 @@ fn document_root_render_record_accessors_and_forwarders() {
     assert_eq!(record.revision(), 1);
     assert_eq!(record.presentation_revision(), 1);
     assert_eq!(record.state_revision(), 0);
-    assert!(record.rgba_hash().len() > 0);
-    assert!(record.paint_plan_hash().len() > 0);
-    assert!(record.record_hash().len() > 0);
-    assert!(record.accessibility_snapshot_hash().len() > 0);
+    assert!(!record.rgba_hash().is_empty());
+    assert!(!record.paint_plan_hash().is_empty());
+    assert!(!record.record_hash().is_empty());
+    assert!(!record.accessibility_snapshot_hash().is_empty());
 
     let dims = record.dimensions();
     assert!(dims.width() > 0);

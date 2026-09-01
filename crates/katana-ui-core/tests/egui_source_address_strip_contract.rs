@@ -1005,8 +1005,7 @@ fn direct_frame_path_with_no_accesskit_keeps_state_transitions_predictable() -> 
     assert!(
         typed
             .event_classes()
-            .iter()
-            .any(|class| *class == SourceAddressFrameEventClass::DraftChanged),
+            .contains(&SourceAddressFrameEventClass::DraftChanged),
         "direct text input must still emit a draft change"
     );
     Ok(())

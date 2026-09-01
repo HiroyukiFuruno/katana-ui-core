@@ -3956,6 +3956,20 @@ class KucGuardrailsTest(unittest.TestCase):
                 )
                 self.assertNotIn("secrets.CARGO_REGISTRY_TOKEN", source)
 
+    def test_release_publish_retry_uses_the_immutable_tag_publish_script(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        source = (root / ".github/workflows/release-publish-retry.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("cd release-source", source)
+        self.assertIn(
+            'bash scripts/release/publish-crates.sh "${{ inputs.version }}"', source
+        )
+        self.assertNotIn(
+            "../release-tools/scripts/release/publish-crates.sh", source
+        )
+
     def test_release_scope_guard_lists_only_katana_ui_core_as_public(self) -> None:
         root = Path(__file__).resolve().parents[1]
         source = (root / "scripts/release/verify-core-release-scope.sh").read_text(

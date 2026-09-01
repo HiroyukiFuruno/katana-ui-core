@@ -373,7 +373,7 @@ fn current_profile_capture_is_fail_closed_when_face_hash_is_wrong() {
     options.config = options
         .config
         .with_emoji_candidate_sha256([PlatformFontSha256::digest(b"wrong emoji hash")]);
-    let _ = matches!(candidate.expected_raw_file_sha256, Some(_));
+    assert!(candidate.expected_raw_file_sha256.is_some());
     let error = KucUnicodeColorGlyphEvidenceCapture::capture(options)
         .expect_err("pinned hash mismatch must fail");
     assert!(matches!(

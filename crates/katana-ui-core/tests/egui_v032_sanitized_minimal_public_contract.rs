@@ -38,7 +38,7 @@ fn default_factory_renders_without_optional_projections() {
         "本文 ⭐️",
         SanitizedDocumentRootStyleKey::Default,
     );
-    let mut root = SanitizedDocumentRootFactory::default()
+    let mut root = SanitizedDocumentRootFactory
         .retain(input)
         .expect("minimal sanitized root is retained");
     let frame = run_frame(&mut root).expect("minimal sanitized root renders");

@@ -276,14 +276,30 @@ def self_test() -> int:
             write_binary(p, body)
             return str(p)
         ok = {}
-        slow_body = "import os,time\nn=__file__\nf=os.getenv('KUC_SELFTEST_EVENT_FILE')\nif f: open(f,'a',encoding='utf-8').write(f'{time.time()}\\t{n}\\tstart\\n')\ntime.sleep(DELAY)\nif f: open(f,'a',encoding='utf-8').write(f'{time.time()}\\t{n}\\tend\\n')\n"
         for i, name in enumerate(ALLOWED_PACKAGES):
             ok[name] = exe(name, f"ok-{i}.py", "print('ok')")
         fail = exe(ALLOWED_PACKAGES[1], "fail.py", "import sys;print('bad', file=sys.stderr); sys.exit(1)")
         slow: dict[str, str] = {}
-        for i, name in enumerate(ALLOWED_PACKAGES):
-            delay = "0.8" if i == 0 else "0.1"
-            slow[name] = exe(name, f"slow-{i}.py", slow_body.replace("DELAY", delay))
+        event_start = "import os,time\nfrom pathlib import Path\nn=__file__\nf=os.getenv('KUC_SELFTEST_EVENT_FILE')\nif f: open(f,'a',encoding='utf-8').write(f'{time.time()}\\t{n}\\tstart\\n')\n"
+        event_end = "if f: open(f,'a',encoding='utf-8').write(f'{time.time()}\\t{n}\\tend\\n')\n"
+        refill_marker = "Path(os.environ['KUC_SELFTEST_REFILL_MARKER'])"
+        slow[ALLOWED_PACKAGES[0]] = exe(
+            ALLOWED_PACKAGES[0],
+            "slow-0.py",
+            event_start
+            + f"marker={refill_marker}\ndeadline=time.monotonic()+2\nwhile not marker.exists() and time.monotonic()<deadline: time.sleep(0.01)\n"
+            + event_end,
+        )
+        slow[ALLOWED_PACKAGES[1]] = exe(
+            ALLOWED_PACKAGES[1],
+            "slow-1.py",
+            event_start + "time.sleep(0.1)\n" + event_end,
+        )
+        slow[ALLOWED_PACKAGES[2]] = exe(
+            ALLOWED_PACKAGES[2],
+            "slow-2.py",
+            event_start + f"{refill_marker}.touch()\ntime.sleep(0.1)\n" + event_end,
+        )
         def write_artifact(items: list[tuple[str, str]]) -> Path:
             p = root / f"artifact-{time.time_ns()}.json"
             p.write_text("".join(json.dumps({"reason": "compiler-artifact", "package_id": ids[n], "executable": e, "profile": {"test": True}}) + "\n" for n, e in items))
@@ -347,7 +363,17 @@ def self_test() -> int:
             return 1
         event = root / "parallel.log"
         parallel = [(name, slow[name]) for name in ALLOWED_PACKAGES]
-        par = run_case(script, write_artifact(parallel), md, root / "parallel", {"LLVM_PROFILE_FILE": "cov-%p-%4m.profraw", "KUC_SELFTEST_EVENT_FILE": str(event)})
+        par = run_case(
+            script,
+            write_artifact(parallel),
+            md,
+            root / "parallel",
+            {
+                "LLVM_PROFILE_FILE": "cov-%p-%4m.profraw",
+                "KUC_SELFTEST_EVENT_FILE": str(event),
+                "KUC_SELFTEST_REFILL_MARKER": str(root / "refill.marker"),
+            },
+        )
         if par.returncode != 0 or parse_max_active(event) != MAX_SUPPORTED_PARALLEL_BINARIES:
             print("self-test failed: parallel", file=sys.stderr)
             return 1

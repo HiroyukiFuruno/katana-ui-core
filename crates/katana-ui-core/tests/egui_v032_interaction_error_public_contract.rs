@@ -196,7 +196,7 @@ fn search_trace_one_shot_and_fail_closed_when_not_applied() {
     assert_eq!(format!("{trace:?}"), "KucOpaqueSearchTraceContinuation(..)");
 
     assert!(matches!(
-        trace.advance(&locator),
+        trace.advance(locator),
         Err(KucSearchTraceContinuationError::NotApplied)
     ));
 
@@ -216,7 +216,7 @@ fn search_trace_one_shot_and_fail_closed_when_not_applied() {
     let other_output = render(&context, &mut other, Vec::new());
     let other_locator = other_output.interaction_locator();
     assert!(matches!(
-        trace.advance(&other_locator),
+        trace.advance(other_locator),
         Err(KucSearchTraceContinuationError::RootMismatch),
     ));
 }
@@ -248,7 +248,7 @@ fn click_continuation_is_one_shot_and_fail_closed_for_unapplied_or_wrong_root() 
         .expect("click continuation");
 
     assert!(matches!(
-        continuation.advance(&locator),
+        continuation.advance(locator),
         Err(KucOpaqueClickContinuationError::NotApplied)
     ));
 
@@ -265,7 +265,7 @@ fn click_continuation_is_one_shot_and_fail_closed_for_unapplied_or_wrong_root() 
     let mut mismatch_raw = egui::RawInput::default();
     assert_eq!(mismatch.apply_to_raw_input_once(&mut mismatch_raw), Ok(()));
     assert!(matches!(
-        mismatch.advance(&other_locator),
+        mismatch.advance(other_locator),
         Err(KucOpaqueClickContinuationError::RootMismatch)
     ));
 
@@ -281,7 +281,7 @@ fn click_continuation_is_one_shot_and_fail_closed_for_unapplied_or_wrong_root() 
     let pressed_output = render(&context, &mut root, raw.events.clone());
     let pressed_locator = pressed_output.interaction_locator();
     let mut pressed = applied
-        .advance(&pressed_locator)
+        .advance(pressed_locator)
         .expect("click press phase")
         .expect("click continuation advanced");
     assert_eq!(format!("{pressed:?}"), "KucOpaqueClickContinuation(..)");
@@ -291,7 +291,7 @@ fn click_continuation_is_one_shot_and_fail_closed_for_unapplied_or_wrong_root() 
     let release_output = render(&context, &mut root, press_raw.events);
     let release_locator = release_output.interaction_locator();
     let mut release = pressed
-        .advance(&release_locator)
+        .advance(release_locator)
         .expect("click continuation progresses to release")
         .expect("click continuation in release phase");
     assert_eq!(format!("{release:?}"), "KucOpaqueClickContinuation(..)");
@@ -302,7 +302,7 @@ fn click_continuation_is_one_shot_and_fail_closed_for_unapplied_or_wrong_root() 
     let done_locator = done_output.interaction_locator();
     assert_eq!(
         release
-            .advance(&done_locator)
+            .advance(done_locator)
             .expect("click continuation completed")
             .map(|_| ()),
         None
@@ -333,7 +333,7 @@ fn text_selection_continuation_is_fail_closed_without_floating_output() {
     let mut aim_input = egui::RawInput::default();
     assert_eq!(continuation.apply_to_raw_input_once(&mut aim_input), Ok(()));
     let mut continuation = continuation
-        .advance(&render(&context, &mut root, aim_input.events).interaction_locator())
+        .advance(render(&context, &mut root, aim_input.events).interaction_locator())
         .expect("selection press phase")
         .expect("selection press continuation");
 
@@ -343,7 +343,7 @@ fn text_selection_continuation_is_fail_closed_without_floating_output() {
         Ok(())
     );
     let mut continuation = continuation
-        .advance(&render(&context, &mut root, press_input.events).interaction_locator())
+        .advance(render(&context, &mut root, press_input.events).interaction_locator())
         .expect("selection midpoint phase")
         .expect("selection midpoint continuation");
 
@@ -353,14 +353,14 @@ fn text_selection_continuation_is_fail_closed_without_floating_output() {
         Ok(())
     );
     let mut continuation = continuation
-        .advance(&render(&context, &mut root, midpoint_input.events).interaction_locator())
+        .advance(render(&context, &mut root, midpoint_input.events).interaction_locator())
         .expect("selection end phase")
         .expect("selection end continuation");
 
     let mut end_input = egui::RawInput::default();
     assert_eq!(continuation.apply_to_raw_input_once(&mut end_input), Ok(()));
     let mut continuation = continuation
-        .advance(&render(&context, &mut root, end_input.events).interaction_locator())
+        .advance(render(&context, &mut root, end_input.events).interaction_locator())
         .expect("selection release phase")
         .expect("selection release continuation");
 
@@ -370,7 +370,7 @@ fn text_selection_continuation_is_fail_closed_without_floating_output() {
         Ok(())
     );
     let final_error = continuation
-        .advance(&render(&context, &mut root, release_input.events).interaction_locator())
+        .advance(render(&context, &mut root, release_input.events).interaction_locator())
         .expect_err("floating not visible");
     assert_eq!(
         final_error,
