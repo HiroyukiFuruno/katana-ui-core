@@ -1893,6 +1893,7 @@ dependencies = [
  "sha2",
  "tiny-skia 0.12.0",
  "unicode-segmentation",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

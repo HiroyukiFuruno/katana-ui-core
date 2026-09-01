@@ -25,9 +25,9 @@ pub(super) struct FileIdentity {
     #[cfg(unix)]
     changed_nanoseconds: i64,
     #[cfg(windows)]
-    volume_serial_number: Option<u32>,
+    volume_serial_number: u32,
     #[cfg(windows)]
-    file_index: Option<u64>,
+    file_index: u64,
     #[cfg(not(any(unix, windows)))]
     created: Option<SystemTime>,
 }
@@ -106,42 +106,63 @@ pub(super) fn family_from_loaded_file(
 pub(super) fn file_stamp(path: &Path) -> std::io::Result<FileStamp> {
     let metadata = fs::metadata(path)?;
     Ok(FileStamp {
-        identity: file_identity(&metadata),
+        identity: file_identity(path, &metadata)?,
         length: metadata.len(),
         modified: metadata.modified().ok(),
         created: metadata.created().ok(),
     })
 }
 
-fn file_identity(metadata: &fs::Metadata) -> FileIdentity {
+fn file_identity(_path: &Path, _metadata: &fs::Metadata) -> std::io::Result<FileIdentity> {
     #[cfg(unix)]
     {
         use std::os::unix::fs::MetadataExt;
 
-        FileIdentity {
-            device: metadata.dev(),
-            inode: metadata.ino(),
-            changed_seconds: metadata.ctime(),
-            changed_nanoseconds: metadata.ctime_nsec(),
-        }
+        Ok(FileIdentity {
+            device: _metadata.dev(),
+            inode: _metadata.ino(),
+            changed_seconds: _metadata.ctime(),
+            changed_nanoseconds: _metadata.ctime_nsec(),
+        })
     }
 
     #[cfg(windows)]
     {
-        use std::os::windows::fs::MetadataExt;
-
-        FileIdentity {
-            volume_serial_number: metadata.volume_serial_number(),
-            file_index: metadata.file_index(),
-        }
+        windows_file_identity(_path)
     }
 
     #[cfg(not(any(unix, windows)))]
     {
-        FileIdentity {
-            created: metadata.created().ok(),
-        }
+        Ok(FileIdentity {
+            created: _metadata.created().ok(),
+        })
     }
+}
+
+#[cfg(windows)]
+fn windows_file_identity(path: &Path) -> std::io::Result<FileIdentity> {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Storage::FileSystem::{
+        BY_HANDLE_FILE_INFORMATION, GetFileInformationByHandle,
+    };
+
+    const FILE_INDEX_HIGH_SHIFT: u32 = 32;
+
+    let file = fs::File::open(path)?;
+    let mut information = BY_HANDLE_FILE_INFORMATION::default();
+    /* SAFETY: `file` owns a valid handle for this call, `information` is writable for its complete
+    C layout, and the handle remains alive until after the call returns. */
+    let succeeded = unsafe {
+        GetFileInformationByHandle(file.as_raw_handle(), std::ptr::from_mut(&mut information))
+    };
+    if succeeded == 0 {
+        return Err(std::io::Error::last_os_error());
+    }
+    Ok(FileIdentity {
+        volume_serial_number: information.dwVolumeSerialNumber,
+        file_index: (u64::from(information.nFileIndexHigh) << FILE_INDEX_HIGH_SHIFT)
+            | u64::from(information.nFileIndexLow),
+    })
 }
 
 fn lock_or_recover<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
