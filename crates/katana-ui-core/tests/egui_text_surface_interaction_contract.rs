@@ -1505,10 +1505,11 @@ fn actual_egui_range_icon_marker_owns_bounds_hits_accesskit_and_artifact()
             _ => None,
         })
         .expect("KUC paint plan must place SVG texture at marker bounds");
+    let (pixels, remainder) = marker_texture.rgba_pixels.as_chunks::<4>();
+    assert!(remainder.is_empty());
     assert!(
-        marker_texture
-            .rgba_pixels
-            .chunks_exact(4)
+        pixels
+            .iter()
             .any(|pixel| { pixel[3] == u8::MAX && pixel[0] != pixel[1] && pixel[1] != pixel[2] })
     );
     assert_eq!(first.record, first.artifact.record);
