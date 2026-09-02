@@ -49,10 +49,21 @@ def default_branch(repo_root: Path) -> str:
     ref = run_git(
         ["symbolic-ref", "refs/remotes/origin/HEAD"],
         cwd=repo_root,
+        check=False,
     )
-    if not ref.startswith("refs/remotes/origin/"):
-        raise RuntimeError(f"unexpected origin HEAD reference: {ref}")
-    return ref.rsplit("/", 1)[1]
+    prefix = "refs/remotes/origin/"
+    if ref.startswith(prefix):
+        return ref.removeprefix(prefix)
+
+    remote_head = run_git(
+        ["ls-remote", "--symref", "origin", "HEAD"],
+        cwd=repo_root,
+    )
+    remote_prefix = "ref: refs/heads/"
+    for line in remote_head.splitlines():
+        if line.startswith(remote_prefix) and line.endswith("\tHEAD"):
+            return line.removeprefix(remote_prefix).removesuffix("\tHEAD")
+    raise RuntimeError("origin HEAD does not identify a default branch")
 
 
 def release_branches_local(repo_root: Path) -> set[str]:
