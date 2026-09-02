@@ -176,6 +176,27 @@ class ReleaseCleanupTests(unittest.TestCase):
         finally:
             temporary.cleanup()
 
+    def test_removes_merged_branch_when_origin_head_tracking_ref_is_missing(self) -> None:
+        repo, fixture, temporary = self._repo()
+        try:
+            fixture.create_release_branch(repo, "release/v0.3.1", merged_into_default=True)
+            fixture._run(
+                repo,
+                "git",
+                "symbolic-ref",
+                "--delete",
+                "refs/remotes/origin/HEAD",
+            )
+
+            result = fixture.run_cleanup(repo, "v0.3.2")
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("default branch detected: master", result.stdout)
+            self.assertIn("deleted local branch release/v0.3.1", result.stdout)
+            self.assertIn("deleted remote branch origin/release/v0.3.1", result.stdout)
+        finally:
+            temporary.cleanup()
+
     def test_retain_dirty_release_branch(self) -> None:
         repo, fixture, temporary = self._repo()
         try:
