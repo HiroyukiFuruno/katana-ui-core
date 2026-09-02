@@ -266,13 +266,15 @@ impl EguiTextCommandSurfaceAdapter {
             self.text.request_focus_for_next_frame(true);
         }
         ui.allocate_rect(root, egui::Sense::hover());
+        let accesskit = super::accesskit_evidence::finish_frame(ui.ctx());
         let children = RootChildOutputs {
             toolbar,
             floating,
             search,
             context_menu,
             source_address,
-            accesskit_evidence: super::accesskit_evidence::finish_frame(ui.ctx()),
+            accesskit_evidence: accesskit.entries,
+            accesskit_text_input_nodes: accesskit.text_input_nodes,
             ordered_artifacts: Vec::new(),
             status_bar,
             diagnostics_list,

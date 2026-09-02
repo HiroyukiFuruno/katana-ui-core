@@ -90,6 +90,7 @@ jobs:
       - name: Release check
         env:
           GH_TOKEN: ${{ github.token }}
+          KUC_COVERAGE_EPHEMERAL_CLEANUP: "1"
         run: just VERSION="${{ steps.version.outputs.version }}" release-check
 
       - name: Create release tag

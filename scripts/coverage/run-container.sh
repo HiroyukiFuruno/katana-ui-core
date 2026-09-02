@@ -81,5 +81,6 @@ docker run --rm \
   --env KUC_COVERAGE_IMAGE_ID="${coverage_image_id}" \
   --env KUC_COVERAGE_SUPPLEMENT_TARGET \
   --env KUC_COVERAGE_SUPPLEMENT_FILTER \
+  --env KUC_COVERAGE_EPHEMERAL_CLEANUP \
   "${coverage_image}" \
   bash scripts/coverage/run-in-container.sh

@@ -367,6 +367,10 @@ if python3 scripts/assert-strict-coverage-json.py "${coverage_report_path}"; the
   write_coverage_strict_state "passed:${pending_profile_signature}"
 else
   write_coverage_strict_state "failed:${pending_profile_signature}"
+  # 失敗したCIでも不足行を特定できるよう、同じprofile・scopeの診断をログへ残す。
+  run_cargo_raw llvm-cov report --show-missing-lines --quiet \
+    "${coverage_packages[@]}" \
+    --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)'
   echo "coverage test and report elapsed seconds: $((SECONDS - coverage_test_started_at))"
   echo "strict coverage elapsed seconds: $((SECONDS - coverage_started_at))"
   exit 1

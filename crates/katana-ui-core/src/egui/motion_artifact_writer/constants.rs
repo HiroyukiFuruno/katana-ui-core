@@ -7,6 +7,12 @@ pub(super) const ROOT_IMAGE_PATTERN: &str = "frame-%03d.png";
 pub(super) const DEFAULT_GIF_FILENAME: &str = "motion.gif";
 pub(super) const DEFAULT_MP4_FILENAME: &str = "motion.mp4";
 pub(super) const DEFAULT_MANIFEST_FILENAME: &str = "motion-manifest.json";
+pub(super) const VARIABLE_VIEWPORT_SCHEMA: &str = "kuc.variable-viewport-motion.v1";
+pub(super) const VARIABLE_VIEWPORT_GIF_FILENAME: &str = "variable-viewport-motion.gif";
+pub(super) const VARIABLE_VIEWPORT_MP4_FILENAME: &str = "variable-viewport-motion.mp4";
+pub(super) const VARIABLE_VIEWPORT_MANIFEST_FILENAME: &str =
+    "variable-viewport-motion-manifest.json";
+pub(super) const VARIABLE_VIEWPORT_STAGING_DIRECTORY: &str = "variable-viewport-frames";
 
 pub(super) const STAGE_NAME_PREFIX: &str = "frame-";
 pub(super) const STAGE_NAME_WIDTH: usize = 3;

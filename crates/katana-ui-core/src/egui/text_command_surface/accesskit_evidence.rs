@@ -2,6 +2,7 @@ use crate::render_model::UiRect;
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 
+use super::accesskit_projection::AccessKitTextInputNode;
 use super::root::KucRootEventBatchContext;
 
 const LEDGER_ID: &str = "kuc.text-command.accesskit-evidence";
@@ -34,6 +35,12 @@ pub(crate) struct AccessKitEvidence {
     pub(crate) target_class: AccessKitTargetClass,
 }
 
+#[derive(Debug, Clone, Default)]
+pub(crate) struct AccessKitFrameEvidence {
+    pub(crate) entries: Vec<AccessKitEvidence>,
+    pub(crate) text_input_nodes: Vec<AccessKitTextInputNode>,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct BoundAccessKitEvidence {
     root_identity: String,
@@ -63,7 +70,7 @@ impl BoundAccessKitEvidence {
 }
 
 #[derive(Debug, Clone, Default)]
-struct Ledger(Vec<AccessKitEvidence>);
+struct Ledger(AccessKitFrameEvidence);
 
 fn ledger_id() -> egui::Id {
     egui::Id::new(LEDGER_ID)
@@ -79,7 +86,15 @@ impl AccessKitEvidenceLedger {
     fn record(ctx: &egui::Context, evidence: AccessKitEvidence) {
         ctx.data_mut(|data| {
             let mut ledger = data.get_temp::<Ledger>(ledger_id()).unwrap_or_default();
-            ledger.0.push(evidence);
+            ledger.0.entries.push(evidence);
+            data.insert_temp(ledger_id(), ledger);
+        });
+    }
+
+    fn record_text_input_node(ctx: &egui::Context, node: AccessKitTextInputNode) {
+        ctx.data_mut(|data| {
+            let mut ledger = data.get_temp::<Ledger>(ledger_id()).unwrap_or_default();
+            ledger.0.text_input_nodes.push(node);
             data.insert_temp(ledger_id(), ledger);
         });
     }
@@ -142,7 +157,7 @@ impl AccessKitEvidenceLedger {
         );
     }
 
-    fn finish_frame(ctx: &egui::Context) -> Vec<AccessKitEvidence> {
+    fn finish_frame(ctx: &egui::Context) -> AccessKitFrameEvidence {
         ctx.data_mut(|data| data.get_temp::<Ledger>(ledger_id()).unwrap_or_default().0)
     }
 
@@ -169,6 +184,9 @@ pub(crate) const begin_frame: fn(&egui::Context) = AccessKitEvidenceLedger::begi
 #[allow(non_upper_case_globals)]
 pub(crate) const record: fn(&egui::Context, AccessKitEvidence) = AccessKitEvidenceLedger::record;
 #[allow(non_upper_case_globals)]
+pub(crate) const record_text_input_node: fn(&egui::Context, AccessKitTextInputNode) =
+    AccessKitEvidenceLedger::record_text_input_node;
+#[allow(non_upper_case_globals)]
 pub(crate) const publish_labeled_button_accesskit: PublishLabeledButtonAccessKit =
     AccessKitEvidenceLedger::publish_labeled_button_accesskit;
 #[allow(non_upper_case_globals)]
@@ -182,7 +200,7 @@ pub(crate) const record_custom: fn(
     AccessKitTargetClass,
 ) = AccessKitEvidenceLedger::record_custom;
 #[allow(non_upper_case_globals)]
-pub(crate) const finish_frame: fn(&egui::Context) -> Vec<AccessKitEvidence> =
+pub(crate) const finish_frame: fn(&egui::Context) -> AccessKitFrameEvidence =
     AccessKitEvidenceLedger::finish_frame;
 #[allow(non_upper_case_globals)]
 pub(crate) const snapshot_hash: fn(&[AccessKitEvidence]) -> Result<String, String> =
