@@ -115,12 +115,7 @@ impl KucUnicodeColorGlyphEvidenceCapture {
             accesskit_text_input: Some(accesskit_text_input),
             accesskit_text_snapshot_hash: final_frame.accessibility().snapshot_hash().to_string(),
             root_frame_hash: final_frame.record_hash().to_string(),
-            root_record_hash: committed
-                .output
-                .evidence_text
-                .artifact
-                .frame_record_hash
-                .clone(),
+            root_record_hash: final_frame.record_hash().to_string(),
             root_rgba_hash: final_frame.rgba_hash().to_string(),
         };
         super::validation::KucUnicodeColorGlyphEvidenceBuilder::build(input)

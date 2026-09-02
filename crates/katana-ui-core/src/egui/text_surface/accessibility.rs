@@ -14,7 +14,7 @@ pub(super) fn publish_accesskit(
 ) {
     let runs = text_runs(root_id, layout);
     let mut auxiliary = accessibility_nodes(root_id, &record.frame.accessibility);
-    ui.ctx().accesskit_node_builder(root_id, |node| {
+    let text_input_node = ui.ctx().accesskit_node_builder(root_id, |node| {
         let root = &record.frame.accessibility.root;
         node.set_role(if single_line {
             egui::accesskit::Role::TextInput
@@ -41,7 +41,14 @@ pub(super) fn publish_accesskit(
         }
         let selection = text_selection(&runs, record.frame.selection.range);
         node.set_text_selection(selection);
+        crate::egui::text_command_surface::accesskit_projection::AccessKitTextInputNode::from_accesskit_node(node)
     });
+    if let Some(node) = text_input_node {
+        crate::egui::text_command_surface::accesskit_evidence::record_text_input_node(
+            ui.ctx(),
+            node,
+        );
+    }
     let child_id = root_id.with("kuc-text-surface-accessibility-children");
     let child_ui = ui.new_child(
         egui::UiBuilder::new()

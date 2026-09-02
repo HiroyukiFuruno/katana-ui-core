@@ -238,5 +238,9 @@ fn capture_runs_through_trace_flow_when_font_is_pinned() {
         evidence.profile.profile_id,
         PlatformFontProfile::current().as_str()
     );
+    assert_eq!(
+        evidence.root_record_hash, evidence.root_frame_hash,
+        "semantic evidence must bind to the enclosing root record used by opaque receipts"
+    );
     assert!(!evidence.accesskit_text_input.value.is_empty());
 }

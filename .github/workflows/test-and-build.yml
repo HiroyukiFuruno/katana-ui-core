@@ -141,4 +141,6 @@ jobs:
         if: >-
           matrix.os == 'ubuntu-latest' &&
           !startsWith(github.head_ref, 'release/v')
+        env:
+          KUC_COVERAGE_EPHEMERAL_CLEANUP: "1"
         run: just coverage

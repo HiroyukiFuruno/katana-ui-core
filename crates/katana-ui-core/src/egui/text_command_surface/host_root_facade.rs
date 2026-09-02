@@ -1,4 +1,4 @@
-#[cfg(test)]
+#[cfg(any(test, feature = "storybook-artifacts"))]
 use super::super::root::EguiTextCommandSurfaceRootOutput;
 use super::super::root::{
     EguiTextCommandSurfaceRootEventBatchForwardError,
@@ -65,6 +65,11 @@ impl EguiTextCommandSurfaceHostRoot {
 }
 
 impl EguiTextCommandSurfaceHostRootFrame {
+    #[cfg(feature = "storybook-artifacts")]
+    pub(crate) const fn artifact_output(&self) -> &EguiTextCommandSurfaceRootOutput {
+        &self.output
+    }
+
     #[must_use]
     pub const fn record(&self) -> &EguiTextCommandSurfaceHostRootRecord {
         &self.record

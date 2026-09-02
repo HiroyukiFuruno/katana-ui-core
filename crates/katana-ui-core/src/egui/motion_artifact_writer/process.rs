@@ -195,11 +195,11 @@ impl MotionArtifactWriter {
     }
 }
 
-fn json_error(error: serde_json::Error) -> MotionArtifactError {
+pub(super) fn json_error(error: serde_json::Error) -> MotionArtifactError {
     MotionArtifactError::Json(error.to_string())
 }
 
-fn write_gif(images: &[RgbaImage], path: &Path, delay_ms: u32) -> std::io::Result<()> {
+pub(super) fn write_gif(images: &[RgbaImage], path: &Path, delay_ms: u32) -> std::io::Result<()> {
     let file = std::fs::File::create(path)?;
     let mut encoder = GifEncoder::new(file);
     let frames = images
