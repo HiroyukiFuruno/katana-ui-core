@@ -512,6 +512,26 @@ mod tests {
     }
 
     #[test]
+    fn staging_encoder_writes_and_decodes_png_with_a_file() {
+        let root = temp_dir("file-png-writer");
+        let path = root.join("frame-000.png");
+        let image = RgbaImage::from_pixel(1, 1, Rgba([1, 2, 3, u8::MAX]));
+        let mut writer = std::fs::File::create(&path).expect("PNG output should create");
+
+        frames::encode_staging_frame(&image, &path, &mut writer)
+            .expect("PNG should encode through a file");
+
+        assert_eq!(
+            image::open(&path)
+                .expect("encoded PNG should decode")
+                .to_rgba8()
+                .get_pixel(0, 0)
+                .0,
+            [1, 2, 3, u8::MAX]
+        );
+    }
+
+    #[test]
     fn staging_frame_writer_propagates_encoder_failure_without_publishing_a_frame() {
         let root = temp_dir("staging-encoder-failure");
         let staging = root.join("staging");
@@ -545,6 +565,23 @@ mod tests {
                 MotionArtifactError::EmptySequence
             ))
         );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn variable_viewport_writer_rejects_non_utf8_output_before_any_writes() {
+        use std::os::unix::ffi::OsStringExt;
+
+        let root = temp_dir("non-utf8-output");
+        let output = root.join(std::ffi::OsString::from_vec(vec![b'o', 0xff]));
+        assert_eq!(
+            MotionArtifactWriter::new()
+                .write_opaque_variable_viewport(&OpaqueMotionReceiptSequence::new(), &output),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::InvalidSettings
+            ))
+        );
+        assert!(!output.exists(), "invalid output must not be created");
     }
 
     #[test]
@@ -691,6 +728,20 @@ mod tests {
         assert_eq!(
             frames::read_bounded_file(&path, 3).expect("exactly bounded file should read"),
             b"abc"
+        );
+        let initial_length = std::fs::metadata(&path)
+            .expect("bounded fixture metadata should read")
+            .len();
+        let reader = std::fs::File::open(&path).expect("bounded fixture should open");
+        let mut appender = std::fs::OpenOptions::new()
+            .append(true)
+            .open(&path)
+            .expect("bounded fixture should reopen for append");
+        std::io::Write::write_all(&mut appender, b"d")
+            .expect("bounded fixture should grow after opening reader");
+        assert_eq!(
+            frames::read_bounded(reader, initial_length, 3),
+            Err(MotionArtifactError::InvalidSettings)
         );
         assert!(matches!(
             frames::read_bounded(std::io::Cursor::new(b"abcd"), 0, 3),
@@ -1368,6 +1419,17 @@ mod tests {
                 MotionArtifactError::Io(_)
             ))
         ));
+        assert!(matches!(
+            publish_scratch_file(
+                &staged,
+                &output,
+                "missing-parent/output.gif",
+                &root.join("missing-parent").join("output.gif"),
+            ),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::Io(_)
+            ))
+        ));
     }
 
     #[test]
@@ -1402,6 +1464,39 @@ mod tests {
                 .join(VARIABLE_VIEWPORT_STAGING_DIRECTORY)
                 .join("frame-000.png")
                 .exists()
+        );
+    }
+
+    #[test]
+    fn public_frame_publisher_preserves_occupied_frame() {
+        let root = temp_dir("public-frame-occupied");
+        let scratch = root.join("scratch");
+        std::fs::create_dir(&scratch).expect("scratch directory should create");
+        let scratch_frame = scratch.join("frame-000.png");
+        std::fs::write(&scratch_frame, b"normalized frame").expect("scratch frame should write");
+        let output = root.join("output");
+        let output_capability =
+            open_output_directory(&output).expect("output directory should open");
+        let public_staging = claim_public_staging_directory(&output_capability, &output)
+            .expect("public staging directory should claim");
+        let occupied = output
+            .join(VARIABLE_VIEWPORT_STAGING_DIRECTORY)
+            .join("frame-000.png");
+        std::fs::write(&occupied, b"existing frame").expect("occupied frame should write");
+
+        assert_eq!(
+            publish_public_frames(&scratch, &public_staging, &output, 1),
+            Err(VariableViewportMotionArtifactError::OccupiedOutputTarget {
+                path: occupied.clone(),
+            })
+        );
+        assert_eq!(
+            std::fs::read(&occupied).expect("occupied frame should remain readable"),
+            b"existing frame"
+        );
+        assert_eq!(
+            std::fs::read(&scratch_frame).expect("scratch frame should remain readable"),
+            b"normalized frame"
         );
     }
 

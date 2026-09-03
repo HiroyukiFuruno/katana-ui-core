@@ -54,7 +54,7 @@
 - [ ] CI容量不足: ephemeral GitHub-hosted Linuxだけで検証済みhost buildと成功済みcoverage buildを順に解放し、全テスト・100%coverage・package/dry-runの完全gateを通す。ローカルcache/summary/他worktreeは保護する。
 - [/] Ready後P1 `PRRT_kwDOSYoxuc6exjX1`: 同一commit frameの実Node getter値・scalar sequence・有効boundsを検証し、最終TreeUpdateとhash一致を全46frame実FFmpeg試験で確認。82811051でreply/resolve、just check3973 tests成功。
 - [/] P2 `PRRT_kwDOSYoxuc6eyMCY`: 上限内でもmetadata初期長とEOF長の一致を要求する提案は、既存仕様が上限超過拒否と読後SHA/provenance検証であるため不採用。独立監査後、根拠をreply/resolve済み。仕様・検証範囲は変更しない。
-- [ ] strict coverage: 先行eb2066cの未実行11行に対し、I/O失敗と公開直前の3成果物衝突の回帰、全caseを維持したtest enum化を追加。Linuxの限定計測で現行writerの未実行行0を確認。失敗時のmissing-lines診断も追加済み。最新HEADの完全な100%gate成功は引き続き必須。
+- [ ] strict coverage: 2030c01のclean CIで残った3行を関数別に特定し、同じunit instanceの非UTF-8出力先拒否、実Fileのmetadata取得後の成長拒否、文字列パスのI/Oエラーを回帰テストで補強した。さらにencoder失敗時のpartial frame非公開、非空working-set、JSON不正provenanceを直接回帰化した。最新release HEADの完全な100%gate成功を引き続き必須とする。
 - [/] ユーザー承認済み。進捗報告だけで終了せず、Draft review → Ready → required checks → merge → GitHub Release/crates.io 公開確認 → cleanup → Issue #34 close まで継続する。
 
 ## 7. KDV registry compatibility corrective release
