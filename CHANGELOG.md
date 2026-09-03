@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-09-04
+
+### Added
+
+- Published the additive, framework-neutral `raster_host` API required by registry consumers, including the `raster-host` feature for KDV document rendering (Issues #35 and #37).
+- Published typed per-side custom grid borders and the ScrollArea/Grid atomic-layout contract through the public `katana-ui-core` crate.
+
+### Fixed
+
+- Restored registry-only KDV compatibility without path or Git dependency overrides, while preserving Storybook's legacy root facade compatibility.
+
 ## [0.3.4] - 2026-09-02
 
 ### Added
