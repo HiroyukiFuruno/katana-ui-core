@@ -26,7 +26,7 @@
 ## 5. リリース検証
 
 - [x] 5.1 直接・推移依存と `Cargo.lock` を監査し、既存品質 gate を維持できる互換版を確認する
-- [ ] 5.2 focused test、`just check`、100% strict coverage、`just VERSION=v0.3.5 release-check`、`git diff --check` を入力保護修正後の最新 release HEAD で成功させる
+- [x] 5.2 focused test、`just check`、100% strict coverage、`just VERSION=v0.3.5 release-check`、`git diff --check` を入力保護修正後の最新 release HEAD で成功させる
 - [x] 5.3 Issue #34 と OpenSpec の追跡可能性、changelog、version を v0.3.4 release 成果物へ反映する
 
 ## 6. User Review Phase
