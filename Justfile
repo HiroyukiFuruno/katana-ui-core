@@ -75,6 +75,7 @@ kuc-guardrails: consumer-app-contract
     python3 scripts/test_kuc_guardrails.py
     python3 scripts/test_next_storybook_page_change.py
     python3 scripts/coverage/run-test-binaries.py --self-test
+    python3 scripts/test_coverage_ci_storage.py
     python3 scripts/test_storybook_reflection_audit.py
     python3 scripts/test_storybook_ui_harness.py
     python3 scripts/test_storybook_ui_harness_public_options.py
@@ -155,6 +156,7 @@ test: unit-test
 
 # Run coverage as a release confidence gate
 coverage: fmt-check ast-lint
+    bash scripts/coverage/prepare-ci-storage.sh "{{REPO_ROOT}}"
     just coverage-container
 
 # Rerun the full strict suite while reusing unchanged coverage build artifacts during iteration.

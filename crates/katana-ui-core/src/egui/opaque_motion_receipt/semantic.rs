@@ -1,3 +1,4 @@
+use crate::egui::text_command_surface::accesskit_projection::AccessKitTextInputNode;
 use crate::egui::text_command_surface::{
     CONTROL_STAR_TEXT, EguiTextCommandSurfaceHostRootFrame, IME_PREEDIT_TEXT, STAR_TEXT,
 };
@@ -13,6 +14,8 @@ pub(crate) struct MotionFrameSemanticEvidence {
     pub(crate) star_hit_test_seen: bool,
     pub(crate) ime_preedit_event_seen: bool,
     pub(crate) ime_commit_event_seen: bool,
+    pub(crate) expected_accesskit_text_input_value: String,
+    pub(crate) accesskit_text_input_nodes: Vec<AccessKitTextInputNode>,
     pub(crate) accesskit_snapshot_hash: String,
 }
 
@@ -68,6 +71,11 @@ pub(super) fn motion_semantics(
         star_hit_test_seen,
         ime_preedit_event_seen,
         ime_commit_event_seen,
-        accesskit_snapshot_hash: frame.record().accessibility_snapshot_hash().to_owned(),
+        expected_accesskit_text_input_value: raster.text.clone(),
+        accesskit_snapshot_hash: match output.accesskit_text_input_nodes.as_slice() {
+            [node] => node.snapshot_hash(),
+            _ => String::new(),
+        },
+        accesskit_text_input_nodes: output.accesskit_text_input_nodes.clone(),
     }
 }

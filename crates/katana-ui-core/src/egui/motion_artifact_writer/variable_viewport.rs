@@ -1,5 +1,6 @@
 mod error;
 mod frames;
+mod output;
 mod semantic;
 
 pub use error::VariableViewportMotionArtifactError;
@@ -10,7 +11,7 @@ use std::path::Path;
 use super::constants::{
     DEFAULT_ENCODER, DEFAULT_FPS_DENOMINATOR, DEFAULT_FPS_NUMERATOR, DEFAULT_MUXER,
     VARIABLE_VIEWPORT_GIF_FILENAME, VARIABLE_VIEWPORT_MANIFEST_FILENAME,
-    VARIABLE_VIEWPORT_MP4_FILENAME, VARIABLE_VIEWPORT_SCHEMA, VARIABLE_VIEWPORT_STAGING_DIRECTORY,
+    VARIABLE_VIEWPORT_MP4_FILENAME, VARIABLE_VIEWPORT_SCHEMA,
 };
 use super::error::MotionArtifactError;
 use super::ffmpeg::Ffmpeg;
@@ -19,17 +20,32 @@ use super::types::{
     MotionArtifactSettings, MotionArtifactWriter, VariableViewportMotionArtifact,
     VariableViewportMotionArtifactManifest,
 };
-use super::validation::{expected_stage_name, hash_sha256, io_error, validate_settings};
+use super::validation::{hash_sha256, io_error, validate_settings};
 use frames::{load_receipts, normalize_frames, write_staging_frames};
+use output::{
+    claim_public_staging_directory, open_output_directory, private_scratch_directory,
+    publish_public_frames, publish_scratch_file, reject_occupied_output_targets,
+    reject_scratch_output_overlap, verify_public_artifact_file, verify_public_frame_files,
+    verify_public_output_directories, write_new_output,
+};
 use semantic::semantic_evidence;
 
 impl MotionArtifactWriter {
-    /// Writes one fixed-canvas artifact from a KUC-issued variable viewport sequence.
+    /// KUC 発行の可変 viewport シーケンスから固定 canvas の成果物を 1 つ出力する。
+    ///
+    /// `output_dir` 自体は既存でもよいが、staging directory、GIF、MP4、manifest の各出力先は
+    /// 存在してはならない。再出力には新しい出力先を使用する。
+    /// export が失敗した場合、writer 自身が作成した staging と一部の出力が残ることがある。
+    /// pathname の identity 検証は各検証時点の観測であり、出力 namespace をロックしない。
+    /// 安定した成果物 path が必要な間は、caller が出力先への外部変更を防ぐこと。
     pub fn write_opaque_variable_viewport(
         &self,
         sequence: &OpaqueMotionReceiptSequence,
         output_dir: &Path,
     ) -> Result<VariableViewportMotionArtifact, VariableViewportMotionArtifactError> {
+        if output_dir.to_str().is_none() {
+            return Err(MotionArtifactError::InvalidSettings.into());
+        }
         if sequence.is_empty() {
             return Err(MotionArtifactError::EmptySequence.into());
         }
@@ -58,20 +74,28 @@ impl MotionArtifactWriter {
         };
         validate_settings(settings)?;
 
-        std::fs::create_dir_all(output_dir).map_err(io_error)?;
-        let staging_dir = output_dir.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY);
-        std::fs::create_dir_all(&staging_dir).map_err(io_error)?;
-        reject_source_staging_overlap(sequence, &staging_dir)?;
+        let output = open_output_directory(output_dir)?;
+        reject_occupied_output_targets(&output, output_dir)?;
+        let temporary_parent = std::env::temp_dir();
+        let scratch = private_scratch_directory(&temporary_parent)?;
+        let scratch_dir = scratch.path();
+        reject_scratch_output_overlap(scratch_dir, output_dir)?;
+        let public_staging = claim_public_staging_directory(&output, output_dir)?;
         let normalized = normalize_frames(&loaded.images, width, height);
-        write_staging_frames(&normalized, &staging_dir)?;
+        write_staging_frames(&normalized, scratch_dir)?;
 
         let gif_path = output_dir.join(VARIABLE_VIEWPORT_GIF_FILENAME);
-        write_gif(&normalized, &gif_path, settings.fps_denominator).map_err(io_error)?;
+        let scratch_gif_path = scratch_dir.join(VARIABLE_VIEWPORT_GIF_FILENAME);
+        write_gif(&normalized, &scratch_gif_path, settings.fps_denominator).map_err(io_error)?;
         let mp4_path = output_dir.join(VARIABLE_VIEWPORT_MP4_FILENAME);
+        let scratch_mp4_path = scratch_dir.join(VARIABLE_VIEWPORT_MP4_FILENAME);
         let ffmpeg = Ffmpeg::discover()?;
-        let source_evidence = ffmpeg.source_evidence(&staging_dir, normalized.len(), settings)?;
-        ffmpeg.encode(&mp4_path, &staging_dir, normalized.len(), settings)?;
-        let decoded_evidence = ffmpeg.decode(&mp4_path)?;
+        if ffmpeg.path.to_str().is_none() {
+            return Err(MotionArtifactError::InvalidSettings.into());
+        }
+        let source_evidence = ffmpeg.source_evidence(scratch_dir, normalized.len(), settings)?;
+        ffmpeg.encode(&scratch_mp4_path, scratch_dir, normalized.len(), settings)?;
+        let decoded_evidence = ffmpeg.decode(&scratch_mp4_path)?;
         if decoded_evidence.frame_hashes.len() != normalized.len()
             || decoded_evidence.width != width
             || decoded_evidence.height != height
@@ -106,9 +130,9 @@ impl MotionArtifactWriter {
             semantic_evidence,
             frame_sequence_sha256: loaded.frame_sequence_sha256,
             gif_path: gif_path.display().to_string(),
-            gif_sha256: hash_sha256(&std::fs::read(&gif_path).map_err(io_error)?),
+            gif_sha256: hash_sha256(&std::fs::read(&scratch_gif_path).map_err(io_error)?),
             mp4_path: mp4_path.display().to_string(),
-            mp4_sha256: hash_sha256(&std::fs::read(&mp4_path).map_err(io_error)?),
+            mp4_sha256: hash_sha256(&std::fs::read(&scratch_mp4_path).map_err(io_error)?),
             ffmpeg_path: ffmpeg.path.display().to_string(),
             ffmpeg_version: ffmpeg.version,
             encoder: DEFAULT_ENCODER,
@@ -117,11 +141,32 @@ impl MotionArtifactWriter {
         };
         manifest.canonical_sha256 =
             hash_sha256(&serde_json::to_vec(&manifest).map_err(json_error)?);
-        std::fs::write(
+        verify_public_output_directories(&output, &public_staging, output_dir)?;
+        let frames =
+            publish_public_frames(scratch_dir, &public_staging, output_dir, normalized.len())?;
+        let gif = publish_scratch_file(
+            &scratch_gif_path,
+            &output,
+            VARIABLE_VIEWPORT_GIF_FILENAME,
+            &gif_path,
+        )?;
+        let mp4 = publish_scratch_file(
+            &scratch_mp4_path,
+            &output,
+            VARIABLE_VIEWPORT_MP4_FILENAME,
+            &mp4_path,
+        )?;
+        let manifest_file = write_new_output(
+            &output,
+            VARIABLE_VIEWPORT_MANIFEST_FILENAME,
             &manifest_path,
-            serde_json::to_vec_pretty(&manifest).map_err(json_error)?,
-        )
-        .map_err(io_error)?;
+            &serde_json::to_vec_pretty(&manifest).map_err(json_error)?,
+        )?;
+        verify_public_output_directories(&output, &public_staging, output_dir)?;
+        verify_public_artifact_file(&gif, &gif_path)?;
+        verify_public_artifact_file(&mp4, &mp4_path)?;
+        verify_public_artifact_file(&manifest_file, &manifest_path)?;
+        verify_public_frame_files(&frames, output_dir)?;
 
         Ok(VariableViewportMotionArtifact::from_parts(
             manifest,
@@ -130,76 +175,92 @@ impl MotionArtifactWriter {
     }
 }
 
-fn reject_source_staging_overlap(
-    sequence: &OpaqueMotionReceiptSequence,
-    staging_dir: &Path,
-) -> Result<(), MotionArtifactError> {
-    let staging_metadata = std::fs::symlink_metadata(staging_dir).map_err(io_error)?;
-    if staging_metadata.file_type().is_symlink() {
-        return Err(MotionArtifactError::Io(format!(
-            "staging directory must not be a symlink: {}",
-            staging_dir.display()
-        )));
-    }
-    for (index, _opaque) in sequence.receipts().iter().enumerate() {
-        let staging_frame = staging_dir
-            .join(expected_stage_name(index))
-            .with_extension("png");
-        let staging_metadata = match std::fs::symlink_metadata(&staging_frame) {
-            Ok(metadata) => metadata,
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
-            Err(error) => return Err(io_error(error)),
-        };
-        if staging_metadata.file_type().is_symlink() {
-            return Err(MotionArtifactError::Io(format!(
-                "staging output must not be a symlink: {}",
-                staging_frame.display()
-            )));
-        }
-        #[cfg(unix)]
-        if paths_share_file_identity(_opaque.artifact().png_path(), &staging_frame)? {
-            return Err(MotionArtifactError::Io(format!(
-                "staging output overlaps source receipt PNG: {}",
-                _opaque.artifact().png_path().display()
-            )));
-        }
-        #[cfg(not(unix))]
-        {
-            return Err(MotionArtifactError::Io(format!(
-                "existing staging output must be rejected before write: {}",
-                staging_frame.display()
-            )));
-        }
-    }
-    Ok(())
-}
-
-#[cfg(unix)]
-fn paths_share_file_identity(
-    source: &Path,
-    destination: &Path,
-) -> Result<bool, MotionArtifactError> {
-    let source_metadata = std::fs::metadata(source).map_err(io_error)?;
-    let destination_metadata = std::fs::metadata(destination).map_err(io_error)?;
-
-    use std::os::unix::fs::MetadataExt;
-
-    Ok(source_metadata.dev() == destination_metadata.dev()
-        && source_metadata.ino() == destination_metadata.ino())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::egui::motion_artifact_writer::constants::VARIABLE_VIEWPORT_STAGING_DIRECTORY;
     use crate::egui::motion_artifact_writer::fake_ffmpeg::{FakeFfmpegSpec, install};
     use crate::egui::motion_artifact_writer::types::VariableViewportSourceViewport;
     use crate::egui::opaque_motion_receipt::MotionFrameSemanticEvidence;
     use crate::egui::text_command_surface::STAR_TEXT;
+    use crate::egui::text_command_surface::accesskit_projection::{
+        AccessKitTextInputBounds, AccessKitTextInputNode, AccessKitTextInputRole,
+    };
     use crate::egui::{FullRootArtifact, OpaqueRootArtifactReceipt};
+    #[cfg(unix)]
+    use cap_fs_ext::DirExt;
     use image::{ColorType, ImageEncoder, Rgba, RgbaImage};
     use std::sync::atomic::{AtomicU64, Ordering};
 
     static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+    #[cfg(unix)]
+    #[derive(Clone, Copy)]
+    enum ReplacementKind {
+        Regular,
+        Hardlink,
+        Symlink,
+        DanglingSymlink,
+    }
+
+    #[cfg(unix)]
+    impl ReplacementKind {
+        const ALL: [Self; 4] = [
+            Self::Regular,
+            Self::Hardlink,
+            Self::Symlink,
+            Self::DanglingSymlink,
+        ];
+
+        const fn label(self) -> &'static str {
+            match self {
+                Self::Regular => "regular",
+                Self::Hardlink => "hardlink",
+                Self::Symlink => "symlink",
+                Self::DanglingSymlink => "dangling-symlink",
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[derive(Clone, Copy)]
+    enum OccupiedTargetKind {
+        StagingSymlink,
+        GifHardlink,
+        Mp4Symlink,
+        GifDanglingSymlink,
+        ManifestHardlink,
+    }
+
+    #[cfg(unix)]
+    impl OccupiedTargetKind {
+        const ALL: [Self; 5] = [
+            Self::StagingSymlink,
+            Self::GifHardlink,
+            Self::Mp4Symlink,
+            Self::GifDanglingSymlink,
+            Self::ManifestHardlink,
+        ];
+
+        const fn label(self) -> &'static str {
+            match self {
+                Self::StagingSymlink => "staging-symlink",
+                Self::GifHardlink => "gif-hardlink",
+                Self::Mp4Symlink => "mp4-symlink",
+                Self::GifDanglingSymlink => "gif-dangling-symlink",
+                Self::ManifestHardlink => "manifest-hardlink",
+            }
+        }
+
+        const fn target(self) -> &'static str {
+            match self {
+                Self::StagingSymlink => VARIABLE_VIEWPORT_STAGING_DIRECTORY,
+                Self::GifHardlink | Self::GifDanglingSymlink => VARIABLE_VIEWPORT_GIF_FILENAME,
+                Self::Mp4Symlink => VARIABLE_VIEWPORT_MP4_FILENAME,
+                Self::ManifestHardlink => VARIABLE_VIEWPORT_MANIFEST_FILENAME,
+            }
+        }
+    }
 
     struct PathEnvGuard(Option<std::ffi::OsString>);
 
@@ -224,6 +285,11 @@ mod tests {
                 unsafe { std::env::set_var("PATH", saved) };
             }
         }
+    }
+
+    #[test]
+    fn path_env_guard_without_a_saved_path_is_a_noop() {
+        drop(PathEnvGuard(None));
     }
 
     fn temp_dir(label: &str) -> std::path::PathBuf {
@@ -337,7 +403,24 @@ mod tests {
             star_hit_test_seen: true,
             ime_preedit_event_seen,
             ime_commit_event_seen,
+            expected_accesskit_text_input_value: "⭐️入力".to_owned(),
+            accesskit_text_input_nodes: vec![valid_accesskit_text_input_node()],
             accesskit_snapshot_hash: format!("accesskit-{root_record_hash}"),
+        }
+    }
+
+    fn valid_accesskit_text_input_node() -> AccessKitTextInputNode {
+        let value = "⭐️入力".to_owned();
+        AccessKitTextInputNode {
+            role: AccessKitTextInputRole::MultilineTextInput,
+            scalar_sequence: value.chars().map(u32::from).collect(),
+            value: Some(value),
+            bounds: Some(AccessKitTextInputBounds {
+                x0_bits: 0.0_f64.to_bits(),
+                y0_bits: 0.0_f64.to_bits(),
+                x1_bits: 320.0_f64.to_bits(),
+                y1_bits: 240.0_f64.to_bits(),
+            }),
         }
     }
 
@@ -419,12 +502,37 @@ mod tests {
         let root = temp_dir("readonly-png-writer");
         let readonly_path = root.join("readonly.bin");
         std::fs::write(&readonly_path, []).expect("read-only fixture should write");
-        let readonly = std::fs::File::open(readonly_path).expect("fixture should open read-only");
+        let mut readonly =
+            std::fs::File::open(readonly_path).expect("fixture should open read-only");
         let image = RgbaImage::from_pixel(1, 1, Rgba([255, 0, 0, 255]));
         assert!(matches!(
-            frames::encode_staging_frame(&image, Path::new("frame-000.png"), readonly),
+            frames::encode_staging_frame(&image, Path::new("frame-000.png"), &mut readonly),
             Err(MotionArtifactError::InvalidPng { .. })
         ));
+    }
+
+    #[test]
+    fn staging_frame_writer_propagates_encoder_failure_without_publishing_a_frame() {
+        let root = temp_dir("staging-encoder-failure");
+        let staging = root.join("staging");
+        std::fs::create_dir(&staging).expect("staging directory should create");
+        let image = RgbaImage::from_pixel(1, 1, Rgba([255, 0, 0, 255]));
+        let mut failing_encoder =
+            |_image: &RgbaImage, path: &Path, _writer: &mut dyn std::io::Write| {
+                Err(MotionArtifactError::InvalidPng {
+                    path: path.to_path_buf(),
+                    reason: "fixture encoder failure".into(),
+                })
+            };
+
+        assert!(matches!(
+            frames::write_staging_frames_with_encoder(&[image], &staging, &mut failing_encoder),
+            Err(MotionArtifactError::InvalidPng { .. })
+        ));
+        assert!(
+            !staging.join("frame-000.png").exists(),
+            "a failed encoder must not publish a partial frame"
+        );
     }
 
     #[test]
@@ -436,136 +544,6 @@ mod tests {
             Err(VariableViewportMotionArtifactError::Motion(
                 MotionArtifactError::EmptySequence
             ))
-        );
-    }
-
-    #[test]
-    fn variable_viewport_writer_preserves_source_receipts_when_staging_would_overlap() {
-        let root = temp_dir("source-staging-overlap");
-        let output = root.join("output");
-        let source = output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY);
-        std::fs::create_dir_all(&source).expect("source staging directory should create");
-        let sequence = variable_sequence(&source);
-        let original = std::fs::read(source.join("frame-000.png"))
-            .expect("source receipt should exist before write");
-
-        let error = MotionArtifactWriter::new()
-            .write_opaque_variable_viewport(&sequence, &output)
-            .expect_err("overlapping staging must be rejected");
-
-        assert!(
-            error
-                .to_string()
-                .contains("staging output overlaps source receipt PNG")
-        );
-        assert_eq!(
-            std::fs::read(source.join("frame-000.png"))
-                .expect("source receipt should survive rejected write"),
-            original
-        );
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn staging_overlap_rejects_a_symlinked_staging_directory() {
-        let root = temp_dir("source-staging-directory-symlink");
-        let source = root.join("source");
-        let staging_target = root.join("staging-target");
-        let staging_link = root.join("staging-link");
-        std::fs::create_dir_all(&source).expect("source directory should create");
-        std::fs::create_dir_all(&staging_target).expect("staging target should create");
-        let sequence = variable_sequence(&source);
-        std::os::unix::fs::symlink(&staging_target, &staging_link)
-            .expect("staging directory symlink should create");
-
-        let error = reject_source_staging_overlap(&sequence, &staging_link)
-            .expect_err("symlinked staging directory must be rejected");
-
-        assert!(
-            error
-                .to_string()
-                .contains("staging directory must not be a symlink")
-        );
-    }
-
-    #[test]
-    fn staging_overlap_reports_an_unusable_staging_path() {
-        let root = temp_dir("source-staging-not-directory");
-        let source = root.join("source");
-        let staging_file = root.join("staging-file");
-        std::fs::create_dir_all(&source).expect("source directory should create");
-        let sequence = variable_sequence(&source);
-        std::fs::write(&staging_file, b"not a directory")
-            .expect("staging file fixture should write");
-
-        let error = reject_source_staging_overlap(&sequence, &staging_file)
-            .expect_err("staging path without child entries must be rejected");
-
-        assert!(matches!(error, MotionArtifactError::Io(_)));
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn staging_overlap_detects_a_source_file_by_identity() {
-        let root = temp_dir("source-staging-identity");
-        let staging = root.join("staging");
-        std::fs::create_dir_all(&staging).expect("staging directory should create");
-        let sequence = variable_sequence(&staging);
-
-        let error = reject_source_staging_overlap(&sequence, &staging)
-            .expect_err("source receipt at staging destination must be rejected");
-
-        assert!(
-            error
-                .to_string()
-                .contains("staging output overlaps source receipt PNG")
-        );
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn staging_overlap_allows_an_unrelated_existing_staging_file() {
-        let root = temp_dir("source-staging-unrelated");
-        let source = root.join("source");
-        let staging = root.join("staging");
-        std::fs::create_dir_all(&source).expect("source directory should create");
-        std::fs::create_dir_all(&staging).expect("staging directory should create");
-        let sequence = variable_sequence(&source);
-        std::fs::write(staging.join("frame-000.png"), b"stale staging output")
-            .expect("unrelated staging fixture should write");
-
-        reject_source_staging_overlap(&sequence, &staging)
-            .expect("unrelated existing staging output must be safe to replace");
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn variable_viewport_writer_rejects_staging_symlink_to_source_receipt() {
-        let root = temp_dir("source-staging-symlink");
-        let source = root.join("source");
-        let output = root.join("output");
-        let staging = output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY);
-        std::fs::create_dir_all(&source).expect("source directory should create");
-        std::fs::create_dir_all(&staging).expect("staging directory should create");
-        let sequence = variable_sequence(&source);
-        let source_frame = source.join("frame-000.png");
-        let original =
-            std::fs::read(&source_frame).expect("source receipt should exist before write");
-        std::os::unix::fs::symlink(&source_frame, staging.join("frame-000.png"))
-            .expect("staging symlink should create");
-
-        let error = MotionArtifactWriter::new()
-            .write_opaque_variable_viewport(&sequence, &output)
-            .expect_err("symlinked staging output must be rejected");
-
-        assert!(
-            error
-                .to_string()
-                .contains("staging output must not be a symlink")
-        );
-        assert_eq!(
-            std::fs::read(source_frame).expect("source receipt should survive rejected write"),
-            original
         );
     }
 
@@ -601,6 +579,22 @@ mod tests {
             load_receipts(&[missing_manifest]),
             Err(MotionArtifactError::MissingProvenance(_))
         ));
+
+        let invalid_provenance = receipt(&root, "frame-000", 1, 1, &[255, 0, 0, 255]);
+        std::fs::write(invalid_provenance.artifact().manifest_path(), b"{")
+            .expect("test provenance should become invalid JSON");
+        assert!(matches!(
+            load_receipts(&[invalid_provenance]),
+            Err(MotionArtifactError::Json(_))
+        ));
+    }
+
+    #[test]
+    fn normalized_working_set_accepts_a_valid_nonempty_receipt() {
+        let root = temp_dir("working-set");
+        let receipt = receipt(&root, "frame-000", 1, 1, &[255, 0, 0, 255]);
+
+        assert!(frames::validate_normalized_working_set(&[receipt]).is_ok());
     }
 
     #[test]
@@ -648,6 +642,75 @@ mod tests {
         assert!(matches!(
             load_receipts(&[corrupt]),
             Err(MotionArtifactError::InvalidPng { .. })
+        ));
+    }
+
+    #[test]
+    fn variable_receipt_validation_bounds_encoded_png_and_provenance_reads() {
+        let root = temp_dir("bounded-receipt-inputs");
+        let oversized_png = receipt(&root, "frame-000", 1, 1, &[255, 0, 0, 255]);
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(oversized_png.artifact().png_path())
+            .expect("PNG fixture should open")
+            .set_len(frames::MAX_VARIABLE_VIEWPORT_ENCODED_PNG_BYTES + 1)
+            .expect("PNG fixture should become sparse and oversized");
+        assert!(matches!(
+            load_receipts(&[oversized_png]),
+            Err(MotionArtifactError::InvalidSettings)
+        ));
+
+        let provenance_root = root.join("provenance");
+        std::fs::create_dir(&provenance_root).expect("provenance root should create");
+        let oversized_provenance = receipt(&provenance_root, "frame-000", 1, 1, &[0, 255, 0, 255]);
+        std::fs::OpenOptions::new()
+            .write(true)
+            .open(oversized_provenance.artifact().manifest_path())
+            .expect("provenance fixture should open")
+            .set_len(frames::MAX_VARIABLE_VIEWPORT_PROVENANCE_BYTES + 1)
+            .expect("provenance fixture should become sparse and oversized");
+        assert!(matches!(
+            load_receipts(&[oversized_provenance]),
+            Err(MotionArtifactError::InvalidSettings)
+        ));
+    }
+
+    #[test]
+    fn bounded_receipt_read_enforces_boundary_growth_and_io_errors() {
+        struct ReadFailure;
+
+        impl std::io::Read for ReadFailure {
+            fn read(&mut self, _buffer: &mut [u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::other("reader failed"))
+            }
+        }
+
+        let root = temp_dir("bounded-receipt-read");
+        let path = root.join("bytes");
+        std::fs::write(&path, b"abc").expect("bounded fixture should write");
+        assert_eq!(
+            frames::read_bounded_file(&path, 3).expect("exactly bounded file should read"),
+            b"abc"
+        );
+        assert!(matches!(
+            frames::read_bounded(std::io::Cursor::new(b"abcd"), 0, 3),
+            Err(MotionArtifactError::InvalidSettings)
+        ));
+        assert!(matches!(
+            frames::read_bounded(ReadFailure, 0, 3),
+            Err(MotionArtifactError::Io(_))
+        ));
+        assert!(matches!(
+            frames::read_bounded(std::io::Cursor::new([]), u64::MAX, 3),
+            Err(MotionArtifactError::InvalidSettings)
+        ));
+        assert!(matches!(
+            frames::read_bounded(std::io::Cursor::new([]), 0, u64::MAX),
+            Err(MotionArtifactError::InvalidSettings)
+        ));
+        assert!(matches!(
+            frames::read_bounded_file(&root.join("missing"), 3),
+            Err(MotionArtifactError::Io(_))
         ));
     }
 
@@ -731,16 +794,888 @@ mod tests {
         );
         assert!(!manifest.canonical_sha256.is_empty());
         assert!(artifact.manifest_path().is_file());
+        let staging = output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY);
+        for index in 0..manifest.source_frame_count {
+            assert!(
+                staging
+                    .join(super::super::validation::expected_stage_name(index))
+                    .with_extension("png")
+                    .is_file(),
+                "public staging must contain normalized frame {index}"
+            );
+        }
+        assert_eq!(
+            hash_sha256(
+                &std::fs::read(output.join(VARIABLE_VIEWPORT_GIF_FILENAME))
+                    .expect("published GIF should read"),
+            ),
+            manifest.gif_sha256
+        );
+        assert_eq!(
+            hash_sha256(
+                &std::fs::read(output.join(VARIABLE_VIEWPORT_MP4_FILENAME))
+                    .expect("published MP4 should read"),
+            ),
+            manifest.mp4_sha256
+        );
 
-        let normalized = image::open(
-            output
-                .join(VARIABLE_VIEWPORT_STAGING_DIRECTORY)
-                .join("frame-000.png"),
-        )
-        .expect("normalized frame should decode")
-        .to_rgba8();
+        let normalized = image::open(staging.join("frame-000.png"))
+            .expect("normalized frame should decode")
+            .to_rgba8();
         assert_eq!(normalized.get_pixel(0, 0).0, [255, 0, 0, 255]);
         assert_eq!(normalized.get_pixel(1, 1).0, [0, 0, 0, 255]);
+    }
+
+    #[test]
+    fn public_staging_claim_serializes_exports() {
+        let output = temp_dir("concurrent-staging-claim");
+        let first_output = open_output_directory(&output).expect("output directory should open");
+        let second_output = first_output
+            .try_clone()
+            .expect("output directory should clone");
+        let staging = output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY);
+        let barrier = std::sync::Barrier::new(2);
+        let results = std::thread::scope(|scope| {
+            let first = scope.spawn(|| {
+                barrier.wait();
+                claim_public_staging_directory(&first_output, &output)
+            });
+            let second = scope.spawn(|| {
+                barrier.wait();
+                claim_public_staging_directory(&second_output, &output)
+            });
+            [
+                first.join().expect("first claim should finish"),
+                second.join().expect("second claim should finish"),
+            ]
+        });
+        assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+        assert_eq!(
+            results.iter().filter(|result| {
+                matches!(result, Err(VariableViewportMotionArtifactError::OccupiedOutputTarget { path }) if path == &staging)
+            }).count(),
+            1
+        );
+        assert!(staging.is_dir());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn pinned_directories_preserve_receipts_after_output_and_staging_paths_swap() {
+        use std::os::unix::fs::symlink;
+
+        let root = temp_dir("pinned-directory-path-swap");
+        let source = root.join("source");
+        let output = root.join("output");
+        std::fs::create_dir_all(&source).expect("source directory should create");
+        let sequence = variable_sequence(&source);
+        let input = sequence
+            .receipts()
+            .iter()
+            .map(|receipt| {
+                (
+                    receipt.artifact().png_path().to_path_buf(),
+                    std::fs::read(receipt.artifact().png_path()).expect("source PNG should read"),
+                    receipt.artifact().manifest_path().to_path_buf(),
+                    std::fs::read(receipt.artifact().manifest_path())
+                        .expect("source provenance should read"),
+                )
+            })
+            .collect::<Vec<_>>();
+        let output_capability =
+            open_output_directory(&output).expect("output directory should open");
+        let staging_capability = claim_public_staging_directory(&output_capability, &output)
+            .expect("staging claim should succeed");
+        let displaced_staging = root.join("displaced-staging");
+        std::fs::rename(
+            output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY),
+            &displaced_staging,
+        )
+        .expect("staging directory should rename");
+        symlink(&source, output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY))
+            .expect("replacement staging symlink should create");
+        let displaced_output = root.join("displaced-output");
+        std::fs::rename(&output, &displaced_output).expect("output directory should rename");
+        symlink(&source, &output).expect("replacement output symlink should create");
+
+        write_new_output(
+            &output_capability,
+            VARIABLE_VIEWPORT_GIF_FILENAME,
+            &output.join(VARIABLE_VIEWPORT_GIF_FILENAME),
+            b"safe GIF",
+        )
+        .expect("pinned output should write outside replacement symlink");
+        write_new_output(
+            &staging_capability,
+            "frame-000.png",
+            &output
+                .join(VARIABLE_VIEWPORT_STAGING_DIRECTORY)
+                .join("frame-000.png"),
+            b"safe frame",
+        )
+        .expect("pinned staging should write outside replacement symlink");
+        assert!(matches!(
+            verify_public_output_directories(&output_capability, &staging_capability, &output),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::Io(_)
+            ))
+        ));
+
+        assert_eq!(
+            std::fs::read(displaced_output.join(VARIABLE_VIEWPORT_GIF_FILENAME))
+                .expect("pinned GIF should remain in displaced output"),
+            b"safe GIF"
+        );
+        assert_eq!(
+            std::fs::read(displaced_staging.join("frame-000.png"),)
+                .expect("pinned frame should remain in independently displaced staging"),
+            b"safe frame"
+        );
+        for (png_path, png, manifest_path, manifest) in input {
+            assert_eq!(
+                std::fs::read(png_path).expect("source PNG should remain readable"),
+                png
+            );
+            assert_eq!(
+                std::fs::read(manifest_path).expect("source provenance should remain readable"),
+                manifest
+            );
+        }
+        assert!(load_receipts(sequence.receipts()).is_ok());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn public_directory_identity_accepts_a_symlink_to_the_pinned_output() {
+        use std::os::unix::fs::symlink;
+
+        let root = temp_dir("pinned-directory-original-symlink");
+        let output = root.join("output");
+        let output_capability =
+            open_output_directory(&output).expect("output directory should open");
+        let staging_capability = claim_public_staging_directory(&output_capability, &output)
+            .expect("staging claim should succeed");
+        let displaced_output = root.join("displaced-output");
+        std::fs::rename(&output, &displaced_output).expect("output directory should rename");
+        symlink(&displaced_output, &output).expect("original output symlink should create");
+
+        verify_public_output_directories(&output_capability, &staging_capability, &output)
+            .expect("symlink to the pinned output should remain publishable");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn public_staging_identity_rejects_a_replacement_after_capability_writes() {
+        use std::os::unix::fs::symlink;
+
+        let root = temp_dir("pinned-staging-identity-replacement");
+        let output = root.join("output");
+        let replacement = root.join("replacement");
+        std::fs::create_dir(&replacement).expect("replacement directory should create");
+        let output_capability =
+            open_output_directory(&output).expect("output directory should open");
+        let staging_capability = claim_public_staging_directory(&output_capability, &output)
+            .expect("staging claim should succeed");
+        write_new_output(
+            &staging_capability,
+            "frame-000.png",
+            &output
+                .join(VARIABLE_VIEWPORT_STAGING_DIRECTORY)
+                .join("frame-000.png"),
+            b"safe frame",
+        )
+        .expect("pinned staging should write before replacement");
+        let displaced_staging = root.join("displaced-staging");
+        std::fs::rename(
+            output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY),
+            &displaced_staging,
+        )
+        .expect("staging directory should rename");
+        symlink(
+            &replacement,
+            output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY),
+        )
+        .expect("replacement staging symlink should create");
+
+        assert!(matches!(
+            verify_public_output_directories(&output_capability, &staging_capability, &output),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::Io(_)
+            ))
+        ));
+        assert_eq!(
+            std::fs::read(displaced_staging.join("frame-000.png"))
+                .expect("pinned frame should remain in displaced staging"),
+            b"safe frame"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn public_directory_identity_preserves_missing_path_errors() {
+        let root = temp_dir("pinned-directory-identity-missing-path");
+        let output = root.join("output");
+        let output_capability =
+            open_output_directory(&output).expect("output directory should open");
+        let staging_capability = claim_public_staging_directory(&output_capability, &output)
+            .expect("staging claim should succeed");
+        std::fs::remove_dir(output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY))
+            .expect("staging directory should remove");
+
+        assert!(matches!(
+            verify_public_output_directories(&output_capability, &staging_capability, &output),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::Io(_)
+            ))
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn public_artifact_identity_rejects_replaced_entries() {
+        use std::os::unix::fs::symlink;
+
+        for filename in [
+            VARIABLE_VIEWPORT_GIF_FILENAME,
+            VARIABLE_VIEWPORT_MP4_FILENAME,
+            VARIABLE_VIEWPORT_MANIFEST_FILENAME,
+        ] {
+            let root = temp_dir(&format!("pinned-artifact-identity-{filename}"));
+            let output = root.join("output");
+            let output_capability =
+                open_output_directory(&output).expect("output directory should open");
+            let artifact_path = output.join(filename);
+            let artifact = write_new_output(
+                &output_capability,
+                filename,
+                &artifact_path,
+                b"published artifact",
+            )
+            .expect("pinned artifact should write");
+            verify_public_artifact_file(&artifact, &artifact_path)
+                .expect("unchanged artifact should verify");
+
+            let same_file_alias = output.join(format!("{filename}.same-file"));
+            std::fs::hard_link(&artifact_path, &same_file_alias)
+                .expect("same-file alias should create");
+            std::fs::remove_file(&artifact_path).expect("published artifact should remove");
+            std::fs::hard_link(&same_file_alias, &artifact_path)
+                .expect("same-file replacement should create");
+            verify_public_artifact_file(&artifact, &artifact_path)
+                .expect("same file alias should remain publishable");
+
+            for replacement in ReplacementKind::ALL {
+                std::fs::remove_file(&artifact_path)
+                    .expect("same-file artifact should remove before replacement");
+                let replacement_path = output.join(format!("{filename}.{}", replacement.label()));
+                match replacement {
+                    ReplacementKind::Regular => {
+                        std::fs::write(&artifact_path, b"unrelated artifact")
+                            .expect("regular replacement should write");
+                    }
+                    ReplacementKind::Hardlink => {
+                        std::fs::write(&replacement_path, b"unrelated artifact")
+                            .expect("hard-link source should write");
+                        std::fs::hard_link(&replacement_path, &artifact_path)
+                            .expect("hard-link replacement should create");
+                    }
+                    ReplacementKind::Symlink => {
+                        std::fs::write(&replacement_path, b"unrelated artifact")
+                            .expect("symlink target should write");
+                        symlink(&replacement_path, &artifact_path)
+                            .expect("symlink replacement should create");
+                    }
+                    ReplacementKind::DanglingSymlink => {
+                        symlink(&replacement_path, &artifact_path)
+                            .expect("dangling symlink replacement should create");
+                    }
+                }
+                assert!(matches!(
+                    verify_public_artifact_file(&artifact, &artifact_path),
+                    Err(VariableViewportMotionArtifactError::Motion(
+                        MotionArtifactError::Io(_)
+                    ))
+                ));
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn public_frame_identity_rejects_replaced_entries_in_an_unchanged_staging_directory() {
+        use std::os::unix::fs::symlink;
+
+        for replacement in ReplacementKind::ALL {
+            let root = temp_dir(&format!("pinned-frame-identity-{}", replacement.label()));
+            let output = root.join("output");
+            let output_capability =
+                open_output_directory(&output).expect("output directory should open");
+            let staging_capability = claim_public_staging_directory(&output_capability, &output)
+                .expect("staging claim should succeed");
+            let frame_path = output
+                .join(VARIABLE_VIEWPORT_STAGING_DIRECTORY)
+                .join("frame-000.png");
+            let frame = write_new_output(
+                &staging_capability,
+                "frame-000.png",
+                &frame_path,
+                b"normalized frame",
+            )
+            .expect("pinned frame should write");
+            verify_public_output_directories(&output_capability, &staging_capability, &output)
+                .expect("unchanged public directories should verify");
+            verify_public_frame_files(std::slice::from_ref(&frame), &output)
+                .expect("unchanged public frame should verify");
+
+            std::fs::remove_file(&frame_path)
+                .expect("public frame should remove before replacement");
+            let replacement_path = output.join(format!("frame-000.{}", replacement.label()));
+            match replacement {
+                ReplacementKind::Regular => {
+                    std::fs::write(&frame_path, b"unrelated frame")
+                        .expect("regular replacement should write");
+                }
+                ReplacementKind::Hardlink => {
+                    std::fs::write(&replacement_path, b"unrelated frame")
+                        .expect("hard-link source should write");
+                    std::fs::hard_link(&replacement_path, &frame_path)
+                        .expect("hard-link replacement should create");
+                }
+                ReplacementKind::Symlink => {
+                    std::fs::write(&replacement_path, b"unrelated frame")
+                        .expect("symlink target should write");
+                    symlink(&replacement_path, &frame_path)
+                        .expect("symlink replacement should create");
+                }
+                ReplacementKind::DanglingSymlink => {
+                    symlink(&replacement_path, &frame_path)
+                        .expect("dangling symlink replacement should create");
+                }
+            }
+
+            verify_public_output_directories(&output_capability, &staging_capability, &output)
+                .expect("staging directory identity should remain unchanged");
+            assert!(matches!(
+                verify_public_frame_files(std::slice::from_ref(&frame), &output),
+                Err(VariableViewportMotionArtifactError::Motion(
+                    MotionArtifactError::Io(_)
+                ))
+            ));
+        }
+    }
+
+    #[test]
+    fn scratch_directory_rejects_a_caller_output_overlap() {
+        let root = temp_dir("scratch-output-overlap");
+        let output = root.join("output");
+        let scratch = output.join("scratch");
+        std::fs::create_dir_all(&scratch).expect("overlapping scratch should create");
+        assert_eq!(
+            reject_scratch_output_overlap(&scratch, &output),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::InvalidSettings
+            ))
+        );
+        assert!(matches!(
+            reject_scratch_output_overlap(&root.join("missing"), &output),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::Io(_)
+            ))
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn private_scratch_directory_rejects_a_non_utf8_parent_before_creation() {
+        use std::os::unix::ffi::OsStringExt;
+
+        let root = temp_dir("non-utf8-scratch-parent");
+        let temporary_parent = root.join(std::ffi::OsString::from_vec(vec![b't', 0xff]));
+        assert!(matches!(
+            private_scratch_directory(&temporary_parent),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::InvalidSettings
+            ))
+        ));
+        assert!(
+            !temporary_parent.exists(),
+            "rejected temporary parent must not be created"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn pinned_directories_reject_late_output_entries_without_changing_receipts() {
+        use std::os::unix::fs::symlink;
+
+        for target_name in [
+            VARIABLE_VIEWPORT_GIF_FILENAME,
+            VARIABLE_VIEWPORT_MP4_FILENAME,
+            VARIABLE_VIEWPORT_MANIFEST_FILENAME,
+        ] {
+            for entry_kind in ReplacementKind::ALL {
+                let root = temp_dir(&format!("late-{target_name}-{}", entry_kind.label()));
+                let source = root.join("source");
+                let output = root.join("output");
+                std::fs::create_dir_all(&source).expect("source directory should create");
+                std::fs::create_dir_all(&output).expect("output directory should create");
+                let sequence = variable_sequence(&source);
+                let input = sequence
+                    .receipts()
+                    .iter()
+                    .map(|receipt| {
+                        (
+                            receipt.artifact().png_path().to_path_buf(),
+                            std::fs::read(receipt.artifact().png_path())
+                                .expect("source PNG should read"),
+                            receipt.artifact().manifest_path().to_path_buf(),
+                            std::fs::read(receipt.artifact().manifest_path())
+                                .expect("source provenance should read"),
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                let output_capability =
+                    open_output_directory(&output).expect("output directory should open");
+                claim_public_staging_directory(&output_capability, &output)
+                    .expect("staging claim should succeed");
+                let scratch = root.join("scratch");
+                std::fs::create_dir_all(&scratch).expect("scratch directory should create");
+                let staged = scratch.join("staged-output");
+                std::fs::write(&staged, b"staged output").expect("staged output should write");
+                let target = output.join(target_name);
+
+                match entry_kind {
+                    ReplacementKind::Regular => {
+                        std::fs::write(&target, b"existing output")
+                            .expect("late regular output should write");
+                    }
+                    ReplacementKind::Hardlink => {
+                        std::fs::hard_link(&input[0].0, &target)
+                            .expect("late hard link should create");
+                    }
+                    ReplacementKind::Symlink => {
+                        symlink(&input[0].0, &target).expect("late symlink should create");
+                    }
+                    ReplacementKind::DanglingSymlink => {
+                        symlink(source.join("missing-output"), &target)
+                            .expect("late dangling symlink should create");
+                    }
+                }
+
+                let original_target_bytes = std::fs::read(&target).ok();
+                let original_link = std::fs::read_link(&target).ok();
+                assert_eq!(
+                    publish_scratch_file(&staged, &output_capability, target_name, &target),
+                    Err(VariableViewportMotionArtifactError::OccupiedOutputTarget {
+                        path: target.clone(),
+                    })
+                );
+                assert_eq!(std::fs::read(&target).ok(), original_target_bytes);
+                assert_eq!(std::fs::read_link(&target).ok(), original_link);
+                assert_eq!(
+                    std::fs::read(&staged).expect("staged output should remain readable"),
+                    b"staged output"
+                );
+                for (png_path, png, manifest_path, manifest) in input {
+                    assert_eq!(
+                        std::fs::read(png_path).expect("source PNG should remain readable"),
+                        png
+                    );
+                    assert_eq!(
+                        std::fs::read(manifest_path)
+                            .expect("source provenance should remain readable"),
+                        manifest
+                    );
+                }
+                assert!(load_receipts(sequence.receipts()).is_ok());
+            }
+        }
+    }
+
+    #[test]
+    fn pinned_output_allows_exactly_one_concurrent_final_output() {
+        let output = temp_dir("concurrent-final-publish");
+        let output_capability =
+            open_output_directory(&output).expect("output directory should open");
+        let first_capability = output_capability
+            .try_clone()
+            .expect("output directory should clone");
+        let second_capability = output_capability
+            .try_clone()
+            .expect("output directory should clone");
+        let scratch = temp_dir("concurrent-final-publish-scratch");
+        let first = scratch.join("first-output");
+        let second = scratch.join("second-output");
+        std::fs::write(&first, b"first").expect("first staged output should write");
+        std::fs::write(&second, b"second").expect("second staged output should write");
+        let target = output.join(VARIABLE_VIEWPORT_GIF_FILENAME);
+        let barrier = std::sync::Barrier::new(2);
+        let results = std::thread::scope(|scope| {
+            let first_worker = scope.spawn(|| {
+                barrier.wait();
+                publish_scratch_file(
+                    &first,
+                    &first_capability,
+                    VARIABLE_VIEWPORT_GIF_FILENAME,
+                    &target,
+                )
+            });
+            let second_worker = scope.spawn(|| {
+                barrier.wait();
+                publish_scratch_file(
+                    &second,
+                    &second_capability,
+                    VARIABLE_VIEWPORT_GIF_FILENAME,
+                    &target,
+                )
+            });
+            [
+                first_worker.join().expect("first publisher should finish"),
+                second_worker
+                    .join()
+                    .expect("second publisher should finish"),
+            ]
+        });
+        assert_eq!(results.iter().filter(|result| result.is_ok()).count(), 1);
+        assert_eq!(
+            results
+                .iter()
+                .filter(|result| {
+                    matches!(result, Err(VariableViewportMotionArtifactError::OccupiedOutputTarget { path }) if path == &target)
+                })
+                .count(),
+            1
+        );
+        let published = std::fs::read(&target).expect("one output should publish");
+        assert!(published == b"first" || published == b"second");
+    }
+
+    #[test]
+    fn pinned_output_preserves_io_errors() {
+        let root = temp_dir("pinned-output-io");
+        let output = open_output_directory(&root).expect("output directory should open");
+        let staged = root.join("staged-output");
+        std::fs::write(&staged, b"staged output").expect("staged output should write");
+
+        assert!(matches!(
+            publish_scratch_file(
+                &staged,
+                &output,
+                Path::new("missing-parent").join("output.gif"),
+                &root.join("missing-parent").join("output.gif"),
+            ),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::Io(_)
+            ))
+        ));
+    }
+
+    #[test]
+    fn staging_and_public_frame_writes_preserve_io_errors() {
+        let root = temp_dir("staging-public-frame-io");
+        let staging_file = root.join("staging-file");
+        std::fs::write(&staging_file, b"not a directory")
+            .expect("staging file blocker should write");
+        let image = RgbaImage::from_pixel(1, 1, Rgba([1, 2, 3, u8::MAX]));
+
+        assert!(matches!(
+            write_staging_frames(&[image], &staging_file),
+            Err(MotionArtifactError::Io(_))
+        ));
+
+        let scratch = root.join("scratch");
+        std::fs::create_dir(&scratch).expect("scratch directory should create");
+        let output = root.join("output");
+        let output_capability =
+            open_output_directory(&output).expect("output directory should open");
+        let public_staging = claim_public_staging_directory(&output_capability, &output)
+            .expect("public staging directory should claim");
+
+        assert!(matches!(
+            publish_public_frames(&scratch, &public_staging, &output, 1),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::Io(_)
+            ))
+        ));
+        assert!(
+            !output
+                .join(VARIABLE_VIEWPORT_STAGING_DIRECTORY)
+                .join("frame-000.png")
+                .exists()
+        );
+    }
+
+    #[test]
+    fn scratch_publisher_preserves_missing_source_io_error() {
+        let root = temp_dir("scratch-publisher-source-io");
+        let output = open_output_directory(&root).expect("output directory should open");
+        let missing = root.join("missing-scratch-file");
+        let published = root.join("output.gif");
+
+        assert!(matches!(
+            publish_scratch_file(&missing, &output, "output.gif", &published),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::Io(_)
+            ))
+        ));
+        assert!(!published.exists());
+    }
+
+    #[test]
+    fn variable_viewport_writer_rejects_late_public_artifact_collisions() {
+        let _lock = super::super::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+
+        for target_name in [
+            VARIABLE_VIEWPORT_GIF_FILENAME,
+            VARIABLE_VIEWPORT_MP4_FILENAME,
+            VARIABLE_VIEWPORT_MANIFEST_FILENAME,
+        ] {
+            let root = temp_dir(&format!("late-public-{target_name}"));
+            let source = root.join("source");
+            let output = root.join("output");
+            let ffmpeg = root.join("bin");
+            std::fs::create_dir_all(&source).expect("source directory should create");
+            let target = output.join(target_name);
+            install(
+                &ffmpeg,
+                &FakeFfmpegSpec {
+                    dimensions: Some("#dimensions 0:2x2".to_owned()),
+                    late_output: Some(target.display().to_string()),
+                    ..FakeFfmpegSpec::default()
+                },
+            );
+            let _path = PathEnvGuard::prepend(&ffmpeg);
+            let sequence = variable_sequence(&source);
+
+            assert_eq!(
+                MotionArtifactWriter::new().write_opaque_variable_viewport(&sequence, &output),
+                Err(VariableViewportMotionArtifactError::OccupiedOutputTarget {
+                    path: target.clone(),
+                })
+            );
+            assert_eq!(
+                std::fs::read(&target).expect("late target should remain readable"),
+                b"late public output"
+            );
+            assert!(load_receipts(sequence.receipts()).is_ok());
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn public_staging_open_rejects_a_symlink_after_claim() {
+        let output = temp_dir("late-staging-symlink");
+        let source = temp_dir("late-staging-symlink-source");
+        let sequence = variable_sequence(&source);
+        let staging = output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY);
+        let output_capability =
+            open_output_directory(&output).expect("output directory should open");
+        output_capability
+            .create_dir(VARIABLE_VIEWPORT_STAGING_DIRECTORY)
+            .expect("staging claim should succeed");
+        std::fs::remove_dir(&staging).expect("claimed staging should remove");
+        std::os::unix::fs::symlink(&source, &staging).expect("late symlink should create");
+        assert!(
+            output_capability
+                .open_dir_nofollow(VARIABLE_VIEWPORT_STAGING_DIRECTORY)
+                .is_err()
+        );
+        assert!(load_receipts(sequence.receipts()).is_ok());
+    }
+
+    #[test]
+    fn output_directory_open_preserves_io_errors() {
+        let root = temp_dir("staging-claim-io");
+        let output = root.join("not-a-directory");
+        std::fs::write(&output, b"file").expect("output blocker should write");
+        assert!(matches!(
+            open_output_directory(&output),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::Io(_)
+            ))
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn occupied_output_preflight_preserves_metadata_io_errors() {
+        let root = temp_dir("occupied-output-metadata-io");
+        let output = root.join("not-a-directory");
+        std::fs::write(&output, b"file").expect("output blocker should write");
+        let malformed_output = cap_std::fs::Dir::from_std_file(
+            std::fs::File::open(&output).expect("output blocker should open"),
+        );
+
+        assert!(matches!(
+            reject_occupied_output_targets(&malformed_output, &output),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::Io(_)
+            ))
+        ));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn public_staging_claim_preserves_io_errors_after_pinned_output_removal() {
+        let root = temp_dir("removed-pinned-output");
+        let output = root.join("output");
+        let output_capability =
+            open_output_directory(&output).expect("output directory should open");
+        std::fs::remove_dir(&output).expect("empty output directory should remove");
+
+        assert!(matches!(
+            claim_public_staging_directory(&output_capability, &output),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::Io(_)
+            ))
+        ));
+    }
+
+    #[test]
+    fn variable_viewport_writer_preserves_receipts_in_overlapping_staging_directory() {
+        let root = temp_dir("overlapping-staging-directory");
+        let output = root.join("output");
+        let staging = output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY);
+        std::fs::create_dir_all(&staging).expect("staging directory should create");
+        let sequence = variable_sequence(&staging);
+        let input = sequence
+            .receipts()
+            .iter()
+            .map(|receipt| {
+                (
+                    receipt.artifact().png_path().to_path_buf(),
+                    std::fs::read(receipt.artifact().png_path()).expect("source PNG should read"),
+                    receipt.artifact().manifest_path().to_path_buf(),
+                    std::fs::read(receipt.artifact().manifest_path())
+                        .expect("source provenance should read"),
+                )
+            })
+            .collect::<Vec<_>>();
+
+        let error = MotionArtifactWriter::new()
+            .write_opaque_variable_viewport(&sequence, &output)
+            .expect_err("overlapping staging directory must reject before writing");
+        assert_eq!(
+            error,
+            VariableViewportMotionArtifactError::OccupiedOutputTarget { path: staging }
+        );
+        for (png_path, png, manifest_path, manifest) in input {
+            assert_eq!(
+                std::fs::read(png_path).expect("source PNG should remain readable"),
+                png
+            );
+            assert_eq!(
+                std::fs::read(manifest_path).expect("source provenance should remain readable"),
+                manifest
+            );
+        }
+        assert!(load_receipts(sequence.receipts()).is_ok());
+        for target in [
+            VARIABLE_VIEWPORT_GIF_FILENAME,
+            VARIABLE_VIEWPORT_MP4_FILENAME,
+            VARIABLE_VIEWPORT_MANIFEST_FILENAME,
+        ] {
+            assert!(
+                std::fs::symlink_metadata(output.join(target)).is_err(),
+                "rejected export must not create {target}"
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn variable_viewport_writer_preserves_receipts_when_output_targets_alias_inputs() {
+        use std::os::unix::fs::symlink;
+
+        for occupied_target in OccupiedTargetKind::ALL {
+            let root = temp_dir(occupied_target.label());
+            let source = root.join("source");
+            let output = root.join("output");
+            std::fs::create_dir_all(&source).expect("source directory should create");
+            std::fs::create_dir_all(&output).expect("output directory should create");
+            let sequence = variable_sequence(&source);
+            let input = sequence
+                .receipts()
+                .iter()
+                .map(|receipt| {
+                    (
+                        receipt.artifact().png_path().to_path_buf(),
+                        std::fs::read(receipt.artifact().png_path())
+                            .expect("source PNG should read"),
+                        receipt.artifact().manifest_path().to_path_buf(),
+                        std::fs::read(receipt.artifact().manifest_path())
+                            .expect("source provenance should read"),
+                    )
+                })
+                .collect::<Vec<_>>();
+            let occupied = output.join(occupied_target.target());
+
+            match occupied_target {
+                OccupiedTargetKind::StagingSymlink => {
+                    symlink(&source, &occupied).expect("staging symlink should create");
+                }
+                OccupiedTargetKind::GifHardlink => {
+                    std::fs::hard_link(&input[0].0, &occupied)
+                        .expect("GIF hard link should create");
+                }
+                OccupiedTargetKind::Mp4Symlink => {
+                    symlink(&input[0].0, &occupied).expect("MP4 symlink should create");
+                }
+                OccupiedTargetKind::GifDanglingSymlink => {
+                    symlink(source.join("missing.png"), &occupied)
+                        .expect("dangling GIF symlink should create");
+                }
+                OccupiedTargetKind::ManifestHardlink => {
+                    std::fs::hard_link(&input[0].2, &occupied)
+                        .expect("manifest hard link should create");
+                }
+            }
+
+            let error = MotionArtifactWriter::new()
+                .write_opaque_variable_viewport(&sequence, &output)
+                .expect_err("occupied output target must reject before writing");
+            assert_eq!(
+                error,
+                VariableViewportMotionArtifactError::OccupiedOutputTarget {
+                    path: occupied.clone(),
+                }
+            );
+            for (png_path, png, manifest_path, manifest) in input {
+                assert_eq!(
+                    std::fs::read(png_path).expect("source PNG should remain readable"),
+                    png
+                );
+                assert_eq!(
+                    std::fs::read(manifest_path).expect("source provenance should remain readable"),
+                    manifest
+                );
+            }
+            assert!(
+                load_receipts(sequence.receipts()).is_ok(),
+                "all receipts must remain valid after the rejected export"
+            );
+        }
+    }
+
+    #[test]
+    fn variable_viewport_writer_reports_output_metadata_errors_before_writing() {
+        let root = temp_dir("output-metadata-error");
+        let source = root.join("source");
+        let output = root.join("not-a-directory");
+        std::fs::create_dir_all(&source).expect("source directory should create");
+        std::fs::write(&output, b"file").expect("output blocker should write");
+        let sequence = variable_sequence(&source);
+
+        let error = MotionArtifactWriter::new()
+            .write_opaque_variable_viewport(&sequence, &output)
+            .expect_err("metadata errors must stop export before writing");
+        assert!(matches!(
+            error,
+            VariableViewportMotionArtifactError::Motion(MotionArtifactError::Io(_))
+        ));
+        assert!(load_receipts(sequence.receipts()).is_ok());
     }
 
     #[test]
@@ -803,6 +1738,77 @@ mod tests {
                 accesskit_snapshot_hash: String::new(),
                 ..unrelated.clone()
             },
+            MotionFrameSemanticEvidence {
+                accesskit_text_input_nodes: Vec::new(),
+                ..unrelated.clone()
+            },
+            MotionFrameSemanticEvidence {
+                accesskit_text_input_nodes: vec![AccessKitTextInputNode {
+                    value: None,
+                    ..valid_accesskit_text_input_node()
+                }],
+                ..unrelated.clone()
+            },
+            MotionFrameSemanticEvidence {
+                accesskit_text_input_nodes: vec![AccessKitTextInputNode {
+                    bounds: None,
+                    ..valid_accesskit_text_input_node()
+                }],
+                ..unrelated.clone()
+            },
+            MotionFrameSemanticEvidence {
+                accesskit_text_input_nodes: vec![AccessKitTextInputNode {
+                    role: AccessKitTextInputRole::Other,
+                    ..valid_accesskit_text_input_node()
+                }],
+                ..unrelated.clone()
+            },
+            MotionFrameSemanticEvidence {
+                accesskit_text_input_nodes: vec![AccessKitTextInputNode {
+                    scalar_sequence: vec![0x2b50],
+                    ..valid_accesskit_text_input_node()
+                }],
+                ..unrelated.clone()
+            },
+            MotionFrameSemanticEvidence {
+                accesskit_text_input_nodes: vec![AccessKitTextInputNode {
+                    bounds: Some(AccessKitTextInputBounds {
+                        x1_bits: 0.0_f64.to_bits(),
+                        ..valid_accesskit_text_input_node()
+                            .bounds
+                            .expect("valid node should define bounds")
+                    }),
+                    ..valid_accesskit_text_input_node()
+                }],
+                ..unrelated.clone()
+            },
+            MotionFrameSemanticEvidence {
+                accesskit_text_input_nodes: vec![
+                    valid_accesskit_text_input_node(),
+                    valid_accesskit_text_input_node(),
+                ],
+                ..unrelated.clone()
+            },
+            MotionFrameSemanticEvidence {
+                accesskit_text_input_nodes: vec![AccessKitTextInputNode {
+                    value: Some("別の入力".to_owned()),
+                    scalar_sequence: "別の入力".chars().map(u32::from).collect(),
+                    ..valid_accesskit_text_input_node()
+                }],
+                ..unrelated.clone()
+            },
+            MotionFrameSemanticEvidence {
+                accesskit_text_input_nodes: vec![AccessKitTextInputNode {
+                    bounds: Some(AccessKitTextInputBounds {
+                        x0_bits: f64::NAN.to_bits(),
+                        ..valid_accesskit_text_input_node()
+                            .bounds
+                            .expect("valid node should define bounds")
+                    }),
+                    ..valid_accesskit_text_input_node()
+                }],
+                ..unrelated.clone()
+            },
         ] {
             let receipt = metadata_receipt_with_semantics("frame-000", 1, 1, Some(invalid));
             assert!(matches!(
@@ -825,6 +1831,42 @@ mod tests {
             semantic::semantic_serialization_error(serializer_error),
             VariableViewportMotionArtifactError::InvalidSemanticEvidence(_)
         ));
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn variable_viewport_writer_rejects_a_non_utf8_ffmpeg_executable_path() {
+        use std::os::unix::ffi::OsStringExt;
+
+        let _lock = super::super::TEST_ENV_LOCK
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let root = temp_dir("non-utf8-ffmpeg-path");
+        let source = root.join("source");
+        let output = root.join("output");
+        let ffmpeg = root.join(std::ffi::OsString::from_vec(vec![b'b', b'i', b'n', 0xff]));
+        std::fs::create_dir_all(&source).expect("source directory should create");
+        install(&ffmpeg, &FakeFfmpegSpec::default());
+        let _path = PathEnvGuard::prepend(&ffmpeg);
+        let sequence = variable_sequence(&source);
+
+        assert!(matches!(
+            MotionArtifactWriter::new().write_opaque_variable_viewport(&sequence, &output),
+            Err(VariableViewportMotionArtifactError::Motion(
+                MotionArtifactError::InvalidSettings
+            ))
+        ));
+        assert!(load_receipts(sequence.receipts()).is_ok());
+        for target in [
+            VARIABLE_VIEWPORT_GIF_FILENAME,
+            VARIABLE_VIEWPORT_MP4_FILENAME,
+            VARIABLE_VIEWPORT_MANIFEST_FILENAME,
+        ] {
+            assert!(
+                std::fs::symlink_metadata(output.join(target)).is_err(),
+                "non-UTF-8 ffmpeg must reject before public {target} publication"
+            );
+        }
     }
 
     #[test]

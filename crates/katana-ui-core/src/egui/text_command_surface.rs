@@ -1,6 +1,7 @@
 //! KUC-owned root composition for a text surface and its generic command chrome.
 
 pub(crate) mod accesskit_evidence;
+pub(crate) mod accesskit_projection;
 mod artifact;
 mod composition;
 mod context_menu;

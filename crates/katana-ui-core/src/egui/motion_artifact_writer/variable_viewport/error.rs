@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use super::super::error::MotionArtifactError;
 
 /// Error returned by the additive variable-viewport artifact writer.
@@ -5,6 +7,7 @@ use super::super::error::MotionArtifactError;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VariableViewportMotionArtifactError {
     Motion(MotionArtifactError),
+    OccupiedOutputTarget { path: PathBuf },
     InvalidSemanticEvidence(String),
     UnrelatedSemanticEvidence { root_record_hash: String },
 }
@@ -13,6 +16,11 @@ impl std::fmt::Display for VariableViewportMotionArtifactError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Motion(error) => error.fmt(formatter),
+            Self::OccupiedOutputTarget { path } => write!(
+                formatter,
+                "variable viewport output target already exists: {}",
+                path.display()
+            ),
             Self::InvalidSemanticEvidence(reason) => {
                 write!(formatter, "invalid motion semantic evidence: {reason}")
             }
@@ -28,7 +36,9 @@ impl std::error::Error for VariableViewportMotionArtifactError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Motion(error) => Some(error),
-            Self::InvalidSemanticEvidence(_) | Self::UnrelatedSemanticEvidence { .. } => None,
+            Self::OccupiedOutputTarget { .. }
+            | Self::InvalidSemanticEvidence(_)
+            | Self::UnrelatedSemanticEvidence { .. } => None,
         }
     }
 }
@@ -48,6 +58,12 @@ mod tests {
         let motion = VariableViewportMotionArtifactError::from(MotionArtifactError::EmptySequence);
         assert!(motion.to_string().contains("empty"));
         assert!(std::error::Error::source(&motion).is_some());
+
+        let occupied = VariableViewportMotionArtifactError::OccupiedOutputTarget {
+            path: "/tmp/output.gif".into(),
+        };
+        assert!(occupied.to_string().contains("output.gif"));
+        assert!(std::error::Error::source(&occupied).is_none());
 
         let invalid =
             VariableViewportMotionArtifactError::InvalidSemanticEvidence("missing star".into());

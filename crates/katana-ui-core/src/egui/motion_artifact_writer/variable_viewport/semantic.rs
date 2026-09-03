@@ -47,10 +47,10 @@ pub(super) fn semantic_evidence(
         |evidence| evidence.ime_commit_event_seen,
         "IME commit",
     )?;
-    if commit.accesskit_snapshot_hash.is_empty() {
+    if !valid_commit_accesskit_evidence(commit) {
         return Err(
             VariableViewportMotionArtifactError::InvalidSemanticEvidence(
-                "commit frame AccessKit snapshot is required".into(),
+                "commit frame actual AccessKit text input evidence is required".into(),
             ),
         );
     }
@@ -90,6 +90,32 @@ fn valid_star_evidence(evidence: &MotionFrameSemanticEvidence, expected_star: &[
     evidence.star_scalar_sequence == expected_star
         && evidence.star_chromatic_pixel_count > evidence.control_star_chromatic_pixel_count
         && evidence.star_hit_test_seen
+}
+
+fn valid_commit_accesskit_evidence(evidence: &MotionFrameSemanticEvidence) -> bool {
+    let [node] = evidence.accesskit_text_input_nodes.as_slice() else {
+        return false;
+    };
+    let Some(value) = node.value.as_deref() else {
+        return false;
+    };
+    let expected_scalars = value.chars().map(u32::from).collect::<Vec<_>>();
+    let Some(bounds) = node.bounds else {
+        return false;
+    };
+    let x0 = f64::from_bits(bounds.x0_bits);
+    let y0 = f64::from_bits(bounds.y0_bits);
+    let x1 = f64::from_bits(bounds.x1_bits);
+    let y1 = f64::from_bits(bounds.y1_bits);
+
+    !evidence.accesskit_snapshot_hash.is_empty()
+        && node.is_text_input()
+        && value == evidence.expected_accesskit_text_input_value
+        && value.contains("入力")
+        && node.scalar_sequence == expected_scalars
+        && [x0, y0, x1, y1].into_iter().all(f64::is_finite)
+        && x1 > x0
+        && y1 > y0
 }
 
 fn find_observation<'a>(

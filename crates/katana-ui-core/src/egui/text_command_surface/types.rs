@@ -200,6 +200,7 @@ pub struct EguiTextCommandSurfaceOutput {
     pub(crate) diagnostics_list: Option<crate::egui::diagnostics_list::EguiDiagnosticsListOutput>,
     pub(crate) preview: Option<super::editor_viewport_render::EditorPreviewRootOutput>,
     pub(crate) accesskit_evidence: Vec<super::accesskit_evidence::AccessKitEvidence>,
+    pub(crate) accesskit_text_input_nodes: Vec<super::accesskit_projection::AccessKitTextInputNode>,
     artifact_order: Vec<EguiTextCommandSurfaceChild>,
 }
 
@@ -210,6 +211,7 @@ pub(super) struct RootChildOutputs {
     pub context_menu: Option<EguiContextMenuOutput>,
     pub source_address: Option<SourceAddressRootOutput>,
     pub accesskit_evidence: Vec<super::accesskit_evidence::AccessKitEvidence>,
+    pub(crate) accesskit_text_input_nodes: Vec<super::accesskit_projection::AccessKitTextInputNode>,
     pub(super) ordered_artifacts: Vec<EguiTextCommandSurfaceChild>,
     pub status_bar: Option<crate::egui::status_bar::EguiStatusBarOutput>,
     pub diagnostics_list: Option<crate::egui::diagnostics_list::EguiDiagnosticsListOutput>,
@@ -235,6 +237,7 @@ impl EguiTextCommandSurfaceOutput {
             diagnostics_list: children.diagnostics_list,
             preview: children.preview,
             accesskit_evidence: children.accesskit_evidence,
+            accesskit_text_input_nodes: children.accesskit_text_input_nodes,
             artifact_order: children.ordered_artifacts,
         }
     }

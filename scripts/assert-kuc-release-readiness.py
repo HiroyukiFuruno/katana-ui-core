@@ -733,7 +733,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked",
         "bash scripts/run-strict-coverage.sh",
         "{{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --locked",
-        "coverage: fmt-check ast-lint\n    just coverage-container",
+        'coverage: fmt-check ast-lint\n    bash scripts/coverage/prepare-ci-storage.sh "{{REPO_ROOT}}"\n    just coverage-container',
         "coverage-iterate: fmt-check ast-lint\n    just coverage-container-iterate",
         "coverage-adapter-supplement test_target test_filter: fmt-check ast-lint\n    KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} just coverage-container-adapter-supplement",
         "KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh",
@@ -744,6 +744,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "python3 scripts/assert-strict-coverage-json.py --self-test",
         "python3 scripts/coverage/image-runtime-id.py --self-test",
         "python3 scripts/coverage/run-test-binaries.py --self-test",
+        "python3 scripts/test_coverage_ci_storage.py",
         "release-check: release-target-check fmt-check ast-lint release-readiness-check release-verify",
         'release-local-cleanup:\n    python3 scripts/release/cleanup-release-branches.py --version "{{VERSION}}" --repo "{{RELEASE_REPO}}"',
     )
@@ -845,6 +846,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         'coverage_min_free_gib="${KUC_COVERAGE_MIN_FREE_GIB:-2}"',
         'df -Pk "${coverage_storage_dir}"',
         "run_cargo llvm-cov report --quiet",
+        "run_cargo_raw llvm-cov report --show-missing-lines",
         "--json",
         '--output-path "${coverage_report_path}"',
         "python3 scripts/assert-strict-coverage-json.py",
@@ -1048,6 +1050,8 @@ def coverage_workflow_routing_failures(root: Path = ROOT) -> list[str]:
             "        if: >-\n"
             "          matrix.os == 'ubuntu-latest' &&\n"
             "          !startsWith(github.head_ref, 'release/v')\n"
+            "        env:\n"
+            '          KUC_COVERAGE_EPHEMERAL_CLEANUP: "1"\n'
             "        run: just coverage\n"
         )
         if ci_coverage_block not in ci_source:
@@ -1917,6 +1921,7 @@ def write_justfile_test_scope_self_test_file(
         "    {{CARGO}} test {{KUC_WORKSPACE_PACKAGES}} --all-targets --all-features --locked\n"
         "\n"
         "coverage: fmt-check ast-lint\n"
+        '    bash scripts/coverage/prepare-ci-storage.sh "{{REPO_ROOT}}"\n'
         "    just coverage-container\n"
         "\n"
         "coverage-iterate: fmt-check ast-lint\n"
@@ -1947,6 +1952,7 @@ def write_justfile_test_scope_self_test_file(
         "    python3 scripts/assert-strict-coverage-json.py --self-test\n"
         "    python3 scripts/coverage/image-runtime-id.py --self-test\n"
         "    python3 scripts/coverage/run-test-binaries.py --self-test\n"
+        "    python3 scripts/test_coverage_ci_storage.py\n"
         "\n"
         "release-check: release-target-check fmt-check ast-lint release-readiness-check release-verify\n"
         "\n"
@@ -2111,6 +2117,7 @@ def write_justfile_test_scope_self_test_file(
         '  write_coverage_strict_state "passed:${pending_profile_signature}"\n'
         "else\n"
         '  write_coverage_strict_state "failed:${pending_profile_signature}"\n'
+        "  run_cargo_raw llvm-cov report --show-missing-lines\n"
         "fi\n"
     )
     (scripts / "run-strict-coverage.sh").write_text(
@@ -2188,6 +2195,8 @@ def write_coverage_workflow_routing_self_test_files(
         "name: CI\nsteps:\n"
         "      - name: Run coverage\n"
         f"{coverage_condition}"
+        "        env:\n"
+        '          KUC_COVERAGE_EPHEMERAL_CLEANUP: "1"\n'
         "        run: just coverage\n",
         encoding="utf-8",
     )

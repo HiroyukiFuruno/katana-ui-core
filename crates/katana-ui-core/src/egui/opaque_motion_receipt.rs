@@ -228,6 +228,8 @@ mod tests {
                 star_hit_test_seen: true,
                 ime_preedit_event_seen: true,
                 ime_commit_event_seen: true,
+                expected_accesskit_text_input_value: "⭐️入力".into(),
+                accesskit_text_input_nodes: Vec::new(),
                 accesskit_snapshot_hash: "accesskit".into(),
             }),
         );

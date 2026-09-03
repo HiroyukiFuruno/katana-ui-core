@@ -31,6 +31,8 @@ pub struct EguiTextCommandSurfaceRootOutput {
     pub(super) events: EguiTextCommandSurfaceRootEventBatch,
     pub(crate) evidence_text: EguiTextSurfaceOutput,
     pub(crate) evidence_composite: ArtifactCompositeFrame,
+    pub(crate) accesskit_text_input_nodes:
+        Vec<super::super::accesskit_projection::AccessKitTextInputNode>,
     pub(super) locator: interaction_locator::KucInteractionLocator,
     pub(super) artifact_order: Vec<super::super::types::EguiTextCommandSurfaceChild>,
     #[cfg(test)]

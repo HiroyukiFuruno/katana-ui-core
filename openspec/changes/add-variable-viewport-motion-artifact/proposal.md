@@ -23,6 +23,6 @@ KUC が発行する full-motion plan には resize により viewport 寸法が�
 ## Impact
 
 - `katana_ui_core::egui::MotionArtifactWriter` に additive な公開 API を追加する。
-- motion artifact の正規化処理、manifest 型、fake ffmpeg を含む unit/integration test が対象となる。
+- motion artifact の正規化処理、manifest 型、失敗注入用の unit test と実FFmpegによる全motion planの integration test が対象となる。
 - 既存の `write` / `write_opaque` と固定寸法 manifest schema の意味は変更しない。
-- 新しい外部依存は追加しない。
+- 出力先の差し替えによる入力破壊と返却pathの不整合を防ぐため、`storybook-artifacts` feature 限定で `cap-std`、`cap-fs-ext`、`same-file`、`tempfile` を追加する。default feature と公開crateの分割方針は変更しない。

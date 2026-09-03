@@ -17,17 +17,21 @@ text-raster = ["dep:cosmic-text", "dep:sha2", "dep:windows-sys"]
 svg-raster = ["dep:resvg", "dep:tiny-skia"]
 raster-host = ["text-raster", "svg-raster", "dep:image"]
 egui = ["dep:egui", "dep:hex", "dep:sha2", "text-raster", "svg-raster"]
-storybook-artifacts = ["egui", "dep:image"]
+storybook-artifacts = ["egui", "dep:cap-fs-ext", "dep:cap-std", "dep:image", "dep:same-file", "dep:tempfile"]
 
 [dependencies]
+cap-fs-ext = { workspace = true, optional = true }
+cap-std = { workspace = true, optional = true }
 cosmic-text = { workspace = true, optional = true }
 egui = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
 image = { workspace = true, optional = true }
 resvg = { workspace = true, optional = true }
+same-file = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 sha2 = { workspace = true, optional = true }
+tempfile = { workspace = true, optional = true }
 tiny-skia = { workspace = true, optional = true }
 unicode-segmentation.workspace = true
 
