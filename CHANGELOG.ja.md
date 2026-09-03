@@ -9,6 +9,21 @@
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-09-02
+
+### 追加
+
+- KUC-issued frame の raster や paint plan を公開せず、可変 viewport の full-motion sequence を一つの固定 canvas GIF/MP4 artifact へ正規化する additive な opaque writer を追加した（Issue #34）。
+- source viewport 寸法と PNG hash、正規化 source/decode hash、root provenance、Unicode/IME/hit-test/AccessKit evidence を結合する専用の versioned manifest を追加した。
+
+### 変更
+
+- 完全な release quality gate を維持したまま、互換性のある推移的依存を更新した。
+
+### 修正
+
+- 既存の固定寸法 `write_opaque` 契約を維持しつつ、resize stage を consumer 側の composite や input 書き換えなしで新しい可変 viewport 経路へ渡せるようにした。
+
 ## [0.3.2] - 2026-08-29
 
 ### 追加

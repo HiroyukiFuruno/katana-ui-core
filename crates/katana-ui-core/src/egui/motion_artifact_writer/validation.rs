@@ -29,7 +29,14 @@ pub(super) fn expected_stage_name(index: usize) -> String {
 
 pub(super) fn validate_provenance(receipt: &FullRootArtifact) -> Result<(), MotionArtifactError> {
     let manifest = std::fs::read(receipt.manifest_path()).map_err(io_error)?;
-    let value: serde_json::Value = match serde_json::from_slice(&manifest) {
+    validate_provenance_bytes(receipt, &manifest)
+}
+
+pub(super) fn validate_provenance_bytes(
+    receipt: &FullRootArtifact,
+    manifest: &[u8],
+) -> Result<(), MotionArtifactError> {
+    let value: serde_json::Value = match serde_json::from_slice(manifest) {
         Ok(value) => value,
         Err(error) => return Err(MotionArtifactError::Json(error.to_string())),
     };

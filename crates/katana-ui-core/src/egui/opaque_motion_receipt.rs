@@ -2,10 +2,22 @@ use crate::egui::text_command_surface::EguiTextCommandSurfaceHostRootFrame;
 use crate::egui::{FullRootArtifact, FullRootArtifactError, FullRootArtifactWriter};
 use std::path::Path;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+mod semantic;
+pub(crate) use semantic::MotionFrameSemanticEvidence;
+
+#[derive(Debug, Clone)]
 pub struct OpaqueRootArtifactReceipt {
     artifact: FullRootArtifact,
+    motion_semantics: Option<MotionFrameSemanticEvidence>,
 }
+
+impl PartialEq for OpaqueRootArtifactReceipt {
+    fn eq(&self, other: &Self) -> bool {
+        self.artifact == other.artifact
+    }
+}
+
+impl Eq for OpaqueRootArtifactReceipt {}
 
 impl OpaqueRootArtifactReceipt {
     #[must_use]
@@ -16,11 +28,29 @@ impl OpaqueRootArtifactReceipt {
     pub(crate) fn artifact(&self) -> &FullRootArtifact {
         &self.artifact
     }
+
+    pub(crate) fn motion_semantics(&self) -> Option<&MotionFrameSemanticEvidence> {
+        self.motion_semantics.as_ref()
+    }
+
+    #[cfg(test)]
+    pub(crate) fn from_test_parts(
+        artifact: FullRootArtifact,
+        motion_semantics: Option<MotionFrameSemanticEvidence>,
+    ) -> Self {
+        Self {
+            artifact,
+            motion_semantics,
+        }
+    }
 }
 
 impl From<FullRootArtifact> for OpaqueRootArtifactReceipt {
     fn from(artifact: FullRootArtifact) -> Self {
-        Self { artifact }
+        Self {
+            artifact,
+            motion_semantics: None,
+        }
     }
 }
 
@@ -58,7 +88,10 @@ impl OpaqueRootArtifactReceiptWriter {
     ) -> Result<OpaqueRootArtifactReceipt, OpaqueRootArtifactReceiptError> {
         FullRootArtifactWriter::new()
             .write(frame, output_dir, stage_id)
-            .map(OpaqueRootArtifactReceipt::from)
+            .map(|artifact| OpaqueRootArtifactReceipt {
+                artifact,
+                motion_semantics: Some(semantic::motion_semantics(frame)),
+            })
             .map_err(OpaqueRootArtifactReceiptError::Artifact)
     }
 }
@@ -170,5 +203,36 @@ mod tests {
         );
         let _: &dyn std::error::Error = &error;
         let _ = OpaqueRootArtifactReceiptWriter::new();
+    }
+
+    #[test]
+    fn opaque_receipt_equality_ignores_private_semantic_cache() {
+        let artifact = FullRootArtifact::from_test_parts(
+            "frame-000".into(),
+            "frame-000.png".into(),
+            "frame-000.manifest.json".into(),
+            1,
+            1,
+            "record".into(),
+            "pixel".into(),
+            "png".into(),
+        );
+        let without_cache = OpaqueRootArtifactReceipt::from(artifact.clone());
+        let with_cache = OpaqueRootArtifactReceipt::from_test_parts(
+            artifact,
+            Some(MotionFrameSemanticEvidence {
+                root_record_hash: "record".into(),
+                star_scalar_sequence: vec![0x2b50, 0xfe0f],
+                star_chromatic_pixel_count: 1,
+                control_star_chromatic_pixel_count: 0,
+                star_hit_test_seen: true,
+                ime_preedit_event_seen: true,
+                ime_commit_event_seen: true,
+                expected_accesskit_text_input_value: "⭐️入力".into(),
+                accesskit_text_input_nodes: Vec::new(),
+                accesskit_snapshot_hash: "accesskit".into(),
+            }),
+        );
+        assert_eq!(without_cache, with_cache);
     }
 }

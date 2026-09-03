@@ -236,6 +236,7 @@ impl EguiTextCommandSurfaceRoot {
         Ok(EguiTextCommandSurfaceRootOutput {
             evidence_text: output.text,
             evidence_composite: composite,
+            accesskit_text_input_nodes: output.accesskit_text_input_nodes,
             locator,
             artifact_order,
             frame,

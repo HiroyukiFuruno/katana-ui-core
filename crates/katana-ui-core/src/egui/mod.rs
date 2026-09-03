@@ -31,7 +31,9 @@ pub use full_root_artifact_writer::{
 #[cfg(feature = "storybook-artifacts")]
 pub use motion_artifact_writer::{
     MotionArtifact, MotionArtifactError, MotionArtifactManifest, MotionArtifactSettings,
-    MotionArtifactWriter,
+    MotionArtifactWriter, VariableViewportMotionArtifact, VariableViewportMotionArtifactError,
+    VariableViewportMotionArtifactManifest, VariableViewportSemanticEvidence,
+    VariableViewportSourceViewport,
 };
 #[cfg(feature = "storybook-artifacts")]
 pub use opaque_motion_receipt::{

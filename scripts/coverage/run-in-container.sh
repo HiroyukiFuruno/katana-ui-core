@@ -33,3 +33,12 @@ tar \
 
 cd "${workspace}"
 bash scripts/run-strict-coverage.sh
+
+# 成功済みcoverageのbuildだけを解放し、後続package検証とsummaryを保持する。
+if [[ "${KUC_COVERAGE_EPHEMERAL_CLEANUP:-0}" == "1" ]]; then
+  if [[ "${KUC_COVERAGE_REUSE:-0}" != "0" || "${CARGO_TARGET_DIR:-}" != "/tmp/kuc-target" ]]; then
+    echo "ephemeral coverage cleanup requires a clean run with the dedicated target" >&2
+    exit 1
+  fi
+  cargo clean --target-dir /tmp/kuc-target/llvm-cov-target
+fi

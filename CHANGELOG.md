@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-09-02
+
+### Added
+
+- Added an additive opaque writer for variable-viewport full-motion sequences that normalizes KUC-issued frames into one fixed-canvas GIF/MP4 artifact without exposing raster or paint-plan internals (Issue #34).
+- Added a dedicated versioned manifest that binds source viewport dimensions and PNG hashes, normalized source/decode hashes, root provenance, and Unicode/IME/hit-test/AccessKit evidence.
+
+### Changed
+
+- Updated compatible transitive dependencies while preserving the complete release quality gates.
+
+### Fixed
+
+- Preserved the existing fixed-dimension `write_opaque` contract while allowing resize stages to use the new variable-viewport path without consumer-side compositing or input rewriting.
+
 ## [0.3.2] - 2026-08-30
 
 ### Added

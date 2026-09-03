@@ -21,6 +21,7 @@ pub(super) struct FakeFfmpegSpec {
     pub decoded_hashes: Vec<String>,
     pub encode_status: i32,
     pub frame_status: i32,
+    pub late_output: Option<String>,
 }
 
 impl Default for FakeFfmpegSpec {
@@ -37,6 +38,7 @@ impl Default for FakeFfmpegSpec {
             decoded_hashes: vec![FIRST_HASH.into(), SECOND_HASH.into()],
             encode_status: 0,
             frame_status: 0,
+            late_output: None,
         }
     }
 }
@@ -72,6 +74,10 @@ fn encode_spec(spec: &FakeFfmpegSpec) -> String {
         ("decoded_hashes", &spec.decoded_hashes.join("|")),
         ("encode_status", &spec.encode_status.to_string()),
         ("frame_status", &spec.frame_status.to_string()),
+        (
+            "late_output",
+            spec.late_output.as_deref().unwrap_or_default(),
+        ),
     ]
     .into_iter()
     .map(|(key, value)| format!("{key}={value}\n"))
@@ -118,7 +124,10 @@ fn main() {
         .lines()
         .filter_map(|line| line.split_once('='))
         .collect::<HashMap<_, _>>();
-    let args = std::env::args().skip(1).collect::<Vec<_>>();
+    let args = std::env::args_os()
+        .skip(1)
+        .map(|arg| arg.into_string().expect("fixture UTF-8 argument"))
+        .collect::<Vec<_>>();
 
     if args.iter().any(|arg| arg == "-version") {
         emit(values["version"]);
@@ -137,6 +146,10 @@ fn main() {
         finish(values["muxer_status"]);
     }
     if args.iter().any(|arg| arg == "framemd5") {
+        if !args.iter().any(|arg| arg == "-start_number") && !values["late_output"].is_empty() {
+            std::fs::write(values["late_output"], b"late public output")
+                .expect("late output should write");
+        }
         emit(values["dimensions"]);
         let hashes = if args.iter().any(|arg| arg == "-start_number") {
             values["source_hashes"]
