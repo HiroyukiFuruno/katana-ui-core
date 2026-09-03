@@ -93,6 +93,33 @@ coverage_strict_state_path="${coverage_profile_path}.strict-state"
 coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"
 coverage_started_at="${SECONDS}"
 coverage_transaction_active=0
+readonly cargo_cache_tag_signature="Signature: 8a477f597d28d172789f06886806bc55"
+
+ensure_coverage_target_cache_dir() {
+  if [[ -L "${coverage_target_dir}" ]]; then
+    echo "strict coverage target must not be a symlink" >&2
+    exit 1
+  fi
+  mkdir -p "${coverage_target_dir}"
+
+  local cache_tag="${coverage_target_dir}/CACHEDIR.TAG"
+  if [[ -e "${cache_tag}" ]]; then
+    if [[ -L "${cache_tag}" || ! -f "${cache_tag}" \
+      || "$(head -n 1 "${cache_tag}")" != "${cargo_cache_tag_signature}" ]]; then
+      echo "strict coverage target has an invalid Cargo cache marker" >&2
+      exit 1
+    fi
+    return
+  fi
+
+  # WHY: cargo-llvm-cov の専用 target は Cargo 自身が marker を置かず、
+  # bind mount の再実行で Cargo の安全な cleanup が拒否されるため。
+  printf '%s\n%s\n%s\n' \
+    "${cargo_cache_tag_signature}" \
+    "# This file is a cache directory tag created by cargo." \
+    "# For information about cache directory tags see https://bford.info/cachedir/" \
+    >"${cache_tag}"
+}
 
 native_coverage_runtime_id() {
   {
@@ -298,6 +325,7 @@ if ((coverage_available_kib < coverage_required_kib)); then
   echo "strict coverage requires at least ${coverage_min_free_gib} GiB free after cleanup" >&2
   exit 1
 fi
+ensure_coverage_target_cache_dir
 invalidate_coverage_profile
 export CARGO_TARGET_DIR="${coverage_target_dir}"
 eval "$(run_cargo_raw llvm-cov show-env --sh)"

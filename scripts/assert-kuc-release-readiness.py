@@ -955,6 +955,9 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
     profile_invalidate = coverage_source.find("write_coverage_profile_state in-progress")
     strict_invalidate = coverage_source.find("write_coverage_strict_state in-progress")
     transaction_start = coverage_source.find("\ninvalidate_coverage_profile\n")
+    cache_marker_prepare = coverage_source.rfind(
+        "ensure_coverage_target_cache_dir", 0, transaction_start
+    )
     mutation_positions = (
         coverage_source.find('run_cargo clean --target-dir "${coverage_target_dir}"'),
         coverage_source.find("run_cargo llvm-cov clean --profraw-only"),
@@ -985,6 +988,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         <= transaction_begin
         < profile_invalidate
         < strict_invalidate
+        < cache_marker_prepare
         < transaction_start
         < min(mutation_positions)
         <= max(mutation_positions)
@@ -2034,6 +2038,7 @@ def write_justfile_test_scope_self_test_file(
         "write_coverage_state() { :; }\n"
         "write_coverage_profile_state() { :; }\n"
         "write_coverage_strict_state() { :; }\n"
+        "ensure_coverage_target_cache_dir() { :; }\n"
         "invalidate_coverage_profile() {\n"
         "  coverage_transaction_active=1\n"
         "  write_coverage_profile_state in-progress\n"
@@ -2064,6 +2069,7 @@ def write_justfile_test_scope_self_test_file(
         "echo \"coverage profile is incomplete or its production inputs changed; rerun full coverage before supplementing\"\n"
         "echo \"container coverage requires a validated runtime image identity\"\n"
         "echo \"native coverage does not accept KUC_COVERAGE_IMAGE_ID\"\n"
+        "ensure_coverage_target_cache_dir\n"
         "invalidate_coverage_profile\n"
         'run_cargo clean --target-dir "${coverage_target_dir}"\n'
         "run_cargo llvm-cov clean --profraw-only\n"

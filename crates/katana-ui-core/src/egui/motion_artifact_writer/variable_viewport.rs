@@ -19,7 +19,7 @@ use super::types::{
     MotionArtifactSettings, MotionArtifactWriter, VariableViewportMotionArtifact,
     VariableViewportMotionArtifactManifest,
 };
-use super::validation::{hash_sha256, io_error, validate_settings};
+use super::validation::{expected_stage_name, hash_sha256, io_error, validate_settings};
 use frames::{load_receipts, normalize_frames, write_staging_frames};
 use semantic::semantic_evidence;
 
@@ -61,6 +61,7 @@ impl MotionArtifactWriter {
         std::fs::create_dir_all(output_dir).map_err(io_error)?;
         let staging_dir = output_dir.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY);
         std::fs::create_dir_all(&staging_dir).map_err(io_error)?;
+        reject_source_staging_overlap(sequence, &staging_dir)?;
         let normalized = normalize_frames(&loaded.images, width, height);
         write_staging_frames(&normalized, &staging_dir)?;
 
@@ -127,6 +128,26 @@ impl MotionArtifactWriter {
             manifest_path,
         ))
     }
+}
+
+fn reject_source_staging_overlap(
+    sequence: &OpaqueMotionReceiptSequence,
+    staging_dir: &Path,
+) -> Result<(), MotionArtifactError> {
+    let canonical_staging_dir = std::fs::canonicalize(staging_dir).map_err(io_error)?;
+    for (index, opaque) in sequence.receipts().iter().enumerate() {
+        let staging_frame = canonical_staging_dir
+            .join(expected_stage_name(index))
+            .with_extension("png");
+        let source_frame = std::fs::canonicalize(opaque.artifact().png_path()).map_err(io_error)?;
+        if source_frame == staging_frame {
+            return Err(MotionArtifactError::Io(format!(
+                "staging output overlaps source receipt PNG: {}",
+                source_frame.display()
+            )));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -377,6 +398,32 @@ mod tests {
             Err(VariableViewportMotionArtifactError::Motion(
                 MotionArtifactError::EmptySequence
             ))
+        );
+    }
+
+    #[test]
+    fn variable_viewport_writer_preserves_source_receipts_when_staging_would_overlap() {
+        let root = temp_dir("source-staging-overlap");
+        let output = root.join("output");
+        let source = output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY);
+        std::fs::create_dir_all(&source).expect("source staging directory should create");
+        let sequence = variable_sequence(&source);
+        let original = std::fs::read(source.join("frame-000.png"))
+            .expect("source receipt should exist before write");
+
+        let error = MotionArtifactWriter::new()
+            .write_opaque_variable_viewport(&sequence, &output)
+            .expect_err("overlapping staging must be rejected");
+
+        assert!(
+            error
+                .to_string()
+                .contains("staging output overlaps source receipt PNG")
+        );
+        assert_eq!(
+            std::fs::read(source.join("frame-000.png"))
+                .expect("source receipt should survive rejected write"),
+            original
         );
     }
 

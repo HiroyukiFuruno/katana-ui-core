@@ -52,7 +52,7 @@ tar \
   --exclude='./.git' \
   --exclude='./target' \
   --exclude='./.codex' \
-  --exclude='./tmp/trash' \
+  --exclude='./tmp' \
   -C "${repo_root}" \
   -cf - . \
   | tar -C "${coverage_source_snapshot}" -xf -
