@@ -26,16 +26,16 @@
 ## 5. リリース検証
 
 - [x] 5.1 直接・推移依存と `Cargo.lock` を監査し、既存品質 gate を維持できる互換版を確認する
-- [ ] 5.2 focused test、`just check`、`just VERSION=v0.3.4 release-check`、`git diff --check` を入力保護修正後の最新 HEAD で成功させる
+- [ ] 5.2 focused test、`just check`、100% strict coverage、`just VERSION=v0.3.5 release-check`、`git diff --check` を入力保護修正後の最新 release HEAD で成功させる
 - [x] 5.3 Issue #34 と OpenSpec の追跡可能性、changelog、version を v0.3.4 release 成果物へ反映する
 
 ## 6. User Review Phase
 
 - [x] 6.1 PR工程を `Draft作成 → review → 指摘対応・reply/resolve → Ready化 → merge` の順序へ固定し、Draft省略を禁止する
 - [x] 6.2 `release/v0.3.4` をpushしてDraft PRを作成し、`@codex review` と自己レビューを実行する
-- [ ] 6.3 review指摘を優先度分類し、P0/P1を必ず修正して各threadへreply/resolve後、最新HEADで再検証してReady化する
-- [ ] 6.4 required checks完了後にmergeし、Release workflow、tag、GitHub Release、crates.io `katana-ui-core@0.3.4` を個別に確認する
-- [ ] 6.5 `branch-hygiene` に従ってbranch/worktreeを整理し、Issue #34へ完了証跡を反映してcloseする
+- [x] 6.3 `v0.3.4` scopeのreview指摘を優先度分類し、P0/P1を修正して各threadへreply/resolve後、Ready化した
+- [x] 6.4 `v0.3.4` scopeをmergeし、tag、GitHub Release、crates.io `katana-ui-core@0.3.4` を個別に確認した。ただしKDV必須の`raster-host` featureはこの公開artifactに含まれない
+- [ ] 6.5 `branch-hygiene` に従って `v0.3.5` 完了後のbranch/worktreeを整理し、Issue #34/#35/#37へ完了証跡を反映してcloseする
 
 ## レビュー追跡
 
@@ -54,5 +54,16 @@
 - [ ] CI容量不足: ephemeral GitHub-hosted Linuxだけで検証済みhost buildと成功済みcoverage buildを順に解放し、全テスト・100%coverage・package/dry-runの完全gateを通す。ローカルcache/summary/他worktreeは保護する。
 - [/] Ready後P1 `PRRT_kwDOSYoxuc6exjX1`: 同一commit frameの実Node getter値・scalar sequence・有効boundsを検証し、最終TreeUpdateとhash一致を全46frame実FFmpeg試験で確認。82811051でreply/resolve、just check3973 tests成功。
 - [/] P2 `PRRT_kwDOSYoxuc6eyMCY`: 上限内でもmetadata初期長とEOF長の一致を要求する提案は、既存仕様が上限超過拒否と読後SHA/provenance検証であるため不採用。独立監査後、根拠をreply/resolve済み。仕様・検証範囲は変更しない。
-- [ ] strict coverage: 2030c01のclean CIで残った3行を関数別に特定し、同じunit instanceの非UTF-8出力先拒否、実Fileのmetadata取得後の成長拒否、文字列パスのI/Oエラーを回帰テストで補強した。Linuxの単一object・新規profrawによる限定78testsは成功し、variable_viewport1506/1506、frames231/231、output190/190、functions111/111を確認。最新HEADの完全な100%gate成功を引き続き必須とする。
+- [ ] strict coverage: 2030c01のclean CIで残った3行を関数別に特定し、同じunit instanceの非UTF-8出力先拒否、実Fileのmetadata取得後の成長拒否、文字列パスのI/Oエラーを回帰テストで補強した。さらにencoder失敗時のpartial frame非公開、非空working-set、JSON不正provenanceを直接回帰化した。最新release HEADの完全な100%gate成功を引き続き必須とする。
 - [/] ユーザー承認済み。進捗報告だけで終了せず、Draft review → Ready → required checks → merge → GitHub Release/crates.io 公開確認 → cleanup → Issue #34 close まで継続する。
+
+## 7. KDV registry compatibility corrective release
+
+- [x] 7.1 crates.io `katana-ui-core@0.3.4` とGitHub Release `v0.3.4` を確認し、公開artifactに `raster-host` feature がないためKDVのregistry-only解決がfail-closedすることを記録する。関連: KUC #35、KDV #44/#48。
+- [ ] 7.2 Draft PR #38をmaster向けに統合し、最新headに対するfresh review、P0/P1のreply/resolve、required checksを完了する。
+- [/] PR #38 P1 `PRRT_kwDOSYoxuc6e9IMt`: rootのlegacy Storybook raster familyを同一のprivate型群へ揃え、registry向けcore APIは`raster_host` namespaceへ限定した。root Canvasからroot rendererへ渡す型互換回帰を追加し、push後にreply/resolveする。
+- [/] PR #38 P2 `PRRT_kwDOSYoxuc6e9IMx`: grid textをfull cell boundsのanchorのままclipped bounds内へclipし、custom border描画とは独立させた。数値回帰を追加し、push後にreply/resolveする。
+- [/] PR #38 P1 `PRRT_kwDOSYoxuc6e9bKf`: ScrollArea直下のGridを逐次child containerではなく原子nodeとして描画し、viewport優先・total fallbackの高さを確保した。direct Grid二段の描画/位置回帰と高さ単体回帰を追加し、core 1577 tests成功後にpushしてreply/resolveする。
+- [ ] 7.3 masterから唯一の `release/v0.3.5` を作成し、version/changelog/lockfileと全互換依存を更新する。
+- [ ] 7.4 `v0.3.5` のfull quality gate、100% strict coverage、package/publish dry-run、3 OS CI、Draft reviewとrequired checksを完了する。
+- [ ] 7.5 release workflowによるtag、GitHub Release、crates.io `katana-ui-core@0.3.5` を個別に確認し、registry consumerで`raster-host`とper-side custom border APIを解決する。

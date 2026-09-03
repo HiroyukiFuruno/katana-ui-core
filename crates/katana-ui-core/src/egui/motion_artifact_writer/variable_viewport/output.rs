@@ -199,7 +199,7 @@ pub(super) fn publish_scratch_file(
     output_path: &Path,
 ) -> Result<same_file::Handle, VariableViewportMotionArtifactError> {
     let mut source = std::fs::File::open(scratch_path).map_err(io_error)?;
-    let mut destination = open_new_output(output, filename, output_path)?;
+    let mut destination = open_new_output(output, filename.as_ref(), output_path)?;
     std::io::copy(&mut source, &mut destination).map_err(io_error)?;
     same_file::Handle::from_file(destination.into_std())
         .map_err(io_error)
@@ -212,7 +212,7 @@ pub(super) fn write_new_output(
     output_path: &Path,
     bytes: &[u8],
 ) -> Result<same_file::Handle, VariableViewportMotionArtifactError> {
-    let mut destination = open_new_output(output, filename, output_path)?;
+    let mut destination = open_new_output(output, filename.as_ref(), output_path)?;
     destination.write_all(bytes).map_err(io_error)?;
     same_file::Handle::from_file(destination.into_std())
         .map_err(io_error)
@@ -221,7 +221,7 @@ pub(super) fn write_new_output(
 
 fn open_new_output(
     output: &Dir,
-    filename: impl AsRef<Path>,
+    filename: &Path,
     output_path: &Path,
 ) -> Result<cap_std::fs::File, VariableViewportMotionArtifactError> {
     let mut options = OpenOptions::new();

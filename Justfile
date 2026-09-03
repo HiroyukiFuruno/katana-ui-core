@@ -101,12 +101,17 @@ kuc-guardrails: consumer-app-contract
     python3 scripts/assert-storybook-consumer-contract.py --self-test
     python3 scripts/assert-storybook-consumer-contract.py
     python3 scripts/assert-kuc-guardrails.py
-    bash scripts/assert-core-dependency-boundary.sh
-    bash scripts/assert-core-public-api-neutral.sh
+    just raster-host-contract
     python3 scripts/assert-root-plan-task-drift.py
 
 # Backward-compatible alias for older local workflows
 kuw-guardrails: kuc-guardrails
+
+# Verify the registry-safe raster host compiles without GUI runtime dependencies.
+raster-host-contract:
+    {{CARGO}} check -p katana-ui-core --no-default-features --features raster-host --locked
+    CARGO="{{CARGO}}" bash scripts/assert-core-dependency-boundary.sh
+    bash scripts/assert-core-public-api-neutral.sh
 
 # Install repository-local git hooks
 install-hooks:

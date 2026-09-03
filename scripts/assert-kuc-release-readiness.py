@@ -780,6 +780,11 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         "--include-ignored",
         "export CARGO_PROFILE_TEST_OPT_LEVEL=0",
         'run_cargo clean --target-dir "${coverage_target_dir}"',
+        'readonly coverage_target_owner_signature="katana-ui-core strict coverage target v1"',
+        'readonly coverage_target_owner_filename=".kuc-strict-coverage-target-v1"',
+        "strict coverage target is unowned and not empty",
+        "restore_coverage_target_owner_marker_after_cleanup()",
+        "coverage_target_ownership_verified=1",
         'coverage_reuse="${KUC_COVERAGE_REUSE:-0}"',
         'coverage_test_threads="${COVERAGE_TEST_THREADS:-8}"',
         'coverage_supplement_target="${KUC_COVERAGE_SUPPLEMENT_TARGET:-lib}"',
@@ -957,6 +962,9 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
     profile_invalidate = coverage_source.find("write_coverage_profile_state in-progress")
     strict_invalidate = coverage_source.find("write_coverage_strict_state in-progress")
     transaction_start = coverage_source.find("\ninvalidate_coverage_profile\n")
+    cache_marker_prepare = coverage_source.rfind(
+        "ensure_coverage_target_cache_dir", 0, transaction_start
+    )
     mutation_positions = (
         coverage_source.find('run_cargo clean --target-dir "${coverage_target_dir}"'),
         coverage_source.find("run_cargo llvm-cov clean --profraw-only"),
@@ -987,6 +995,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         <= transaction_begin
         < profile_invalidate
         < strict_invalidate
+        < cache_marker_prepare
         < transaction_start
         < min(mutation_positions)
         <= max(mutation_positions)
@@ -2024,6 +2033,9 @@ def write_justfile_test_scope_self_test_file(
         "export CARGO_PROFILE_TEST_OPT_LEVEL=0\n"
         'coverage_storage_dir="${CARGO_TARGET_DIR:-target}"\n'
         'coverage_target_dir="${coverage_storage_dir}/llvm-cov-target"\n'
+        'readonly coverage_target_owner_signature="katana-ui-core strict coverage target v1"\n'
+        'readonly coverage_target_owner_filename=".kuc-strict-coverage-target-v1"\n'
+        'echo "strict coverage target is unowned and not empty"\n'
         'coverage_reuse="${KUC_COVERAGE_REUSE:-0}"\n'
         'coverage_test_threads="${COVERAGE_TEST_THREADS:-8}"\n'
         'coverage_supplement_target="${KUC_COVERAGE_SUPPLEMENT_TARGET:-lib}"\n'
@@ -2031,6 +2043,7 @@ def write_justfile_test_scope_self_test_file(
         'coverage_runtime="${KUC_COVERAGE_RUNTIME:-native}"\n'
         'coverage_image_id="${KUC_COVERAGE_IMAGE_ID:-}"\n'
         "coverage_transaction_active=0\n"
+        "coverage_target_ownership_verified=1\n"
         'coverage_profile_path="${coverage_storage_dir}/kuc-workspace-coverage-profile-v3.sha256"\n'
         'coverage_strict_state_path="${coverage_profile_path}.strict-state"\n'
         'coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"\n'
@@ -2040,6 +2053,8 @@ def write_justfile_test_scope_self_test_file(
         "write_coverage_state() { :; }\n"
         "write_coverage_profile_state() { :; }\n"
         "write_coverage_strict_state() { :; }\n"
+        "ensure_coverage_target_cache_dir() { :; }\n"
+        "restore_coverage_target_owner_marker_after_cleanup() { :; }\n"
         "invalidate_coverage_profile() {\n"
         "  coverage_transaction_active=1\n"
         "  write_coverage_profile_state in-progress\n"
@@ -2070,10 +2085,12 @@ def write_justfile_test_scope_self_test_file(
         "echo \"coverage profile is incomplete or its production inputs changed; rerun full coverage before supplementing\"\n"
         "echo \"container coverage requires a validated runtime image identity\"\n"
         "echo \"native coverage does not accept KUC_COVERAGE_IMAGE_ID\"\n"
+        "ensure_coverage_target_cache_dir\n"
         "invalidate_coverage_profile\n"
         'run_cargo clean --target-dir "${coverage_target_dir}"\n'
         "run_cargo llvm-cov clean --profraw-only\n"
         "run_cargo llvm-cov clean --workspace\n"
+        "restore_coverage_target_owner_marker_after_cleanup\n"
         'echo "coverage mode: ${coverage_mode}"\n'
         "run_cargo_raw() { :; }\n"
         "run_cargo_raw llvm-cov show-env --sh\n"

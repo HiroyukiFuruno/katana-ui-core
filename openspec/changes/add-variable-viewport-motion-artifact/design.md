@@ -78,6 +78,7 @@ AccessKitはhashの非空判定だけでは検証済みとしない。KUCの有�
 2. 既存 consumer は変更不要で、固定 viewport では従来の `write_opaque` を継続利用する。
 3. KLE は registry 公開後に可変 viewport full plan だけ新 API へ移行する。
 4. 問題があれば consumer は従来の segment 出力へ戻せる。既存 API/schema の rollback は不要である。
+5. `v0.3.4` の公開artifactには KDV が必要とする `raster-host` feature が含まれなかったため、#35/#37 の公開境界は是正patch `v0.3.5` で registry に公開してから KDV が採用する。
 
 ## Open Questions
 

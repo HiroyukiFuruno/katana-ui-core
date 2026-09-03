@@ -2,6 +2,8 @@
 
 mod catalog;
 mod panel;
+#[cfg(test)]
+mod raster_host_parity_tests;
 mod requirements;
 mod storybook_svg_fixtures;
 #[cfg(target_os = "macos")]
@@ -9,6 +11,11 @@ mod system;
 #[cfg(test)]
 mod test_assert;
 mod visual;
+
+/// Private Storybook's thin bridge to the registry-safe raster host.
+pub mod raster_host {
+    pub use katana_ui_core::raster_host::*;
+}
 
 pub use catalog::{
     StoryCatalog, StoryCatalogReport, StoryDetailContent, StoryExample,
@@ -25,6 +32,19 @@ pub use visual::{
     UiTreeHostActionHitQuery, UiTreeInteractionSurface, UiTreeInteractionTarget, UiTreeNodeHit,
     UiTreeRenderArea, UiTreeStorybookHost, UiTreeSurfaceHost,
 };
+
+/// GUI-specific Storybook runtime types.
+///
+/// Generic registry consumers use [`raster_host`]. Root exports retain the
+/// complete private Storybook raster family for backward-compatible window use.
+pub mod visual_runtime {
+    pub use crate::visual::{
+        Canvas, CanvasBlitRequest, RgbaBlitRequest, SelectableTextRun, StorybookPresentation,
+        TextRenderer, UiTreeCanvasRenderer, UiTreeHitRect, UiTreeHostActionHit,
+        UiTreeHostActionHitQuery, UiTreeInteractionSurface, UiTreeInteractionTarget, UiTreeNodeHit,
+        UiTreeRenderArea, UiTreeStorybookHost, UiTreeSurfaceHost,
+    };
+}
 
 /// 起動直後に Storybook の操作性が見える代表ページを開く。
 pub const DEFAULT_STORYBOOK_PAGE: &str = "text-input";

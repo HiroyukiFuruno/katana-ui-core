@@ -12,6 +12,8 @@ mod typed_disclosure;
 mod typed_drag;
 #[path = "typed_grid.rs"]
 mod typed_grid;
+#[path = "typed_grid_border.rs"]
+mod typed_grid_border;
 #[path = "typed_grid_types.rs"]
 mod typed_grid_types;
 #[path = "typed_icon.rs"]
@@ -41,10 +43,10 @@ pub use typed_disclosure::{
 };
 pub use typed_drag::{UiDragHandleProps, UiDragPreviewProps, UiDropIndicatorProps};
 pub use typed_grid::{
-    UiGridCell, UiGridCellAppearance, UiGridCellSpan, UiGridCoordinate, UiGridDataBar,
-    UiGridHorizontalAlignment, UiGridIcon, UiGridIndexRange, UiGridProps, UiGridRating,
-    UiGridSelection, UiGridValidationError, UiGridVerticalAlignment, UiGridViewport,
-    UiGridVisibleRange,
+    UiGridBorderLineStyle, UiGridBorderSide, UiGridCell, UiGridCellAppearance, UiGridCellBorders,
+    UiGridCellSpan, UiGridCoordinate, UiGridDataBar, UiGridHorizontalAlignment, UiGridIcon,
+    UiGridIndexRange, UiGridProps, UiGridRating, UiGridSelection, UiGridValidationError,
+    UiGridVerticalAlignment, UiGridViewport, UiGridVisibleRange,
 };
 pub use typed_icon::{UiIconProps, UiSvgPaintPolicy};
 pub use typed_modal::{

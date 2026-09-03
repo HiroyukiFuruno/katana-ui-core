@@ -93,6 +93,77 @@ coverage_strict_state_path="${coverage_profile_path}.strict-state"
 coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"
 coverage_started_at="${SECONDS}"
 coverage_transaction_active=0
+coverage_target_ownership_verified=0
+readonly cargo_cache_tag_signature="Signature: 8a477f597d28d172789f06886806bc55"
+readonly coverage_target_owner_signature="katana-ui-core strict coverage target v1"
+readonly coverage_target_owner_filename=".kuc-strict-coverage-target-v1"
+
+ensure_coverage_target_cache_dir() {
+  if [[ -L "${coverage_target_dir}" ]]; then
+    echo "strict coverage target must not be a symlink" >&2
+    exit 1
+  fi
+  mkdir -p "${coverage_target_dir}"
+
+  local cache_tag="${coverage_target_dir}/CACHEDIR.TAG"
+  local owner_marker="${coverage_target_dir}/${coverage_target_owner_filename}"
+  if [[ -e "${owner_marker}" || -L "${owner_marker}" ]]; then
+    if [[ -L "${owner_marker}" || ! -f "${owner_marker}" \
+      || "$(<"${owner_marker}")" != "${coverage_target_owner_signature}" ]]; then
+      echo "strict coverage target has an invalid KUC ownership marker" >&2
+      exit 1
+    fi
+  elif [[ -n "$(find "${coverage_target_dir}" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+    echo "strict coverage target is unowned and not empty: ${coverage_target_dir}" >&2
+    exit 1
+  else
+    printf '%s\n' "${coverage_target_owner_signature}" >"${owner_marker}"
+  fi
+  coverage_target_ownership_verified=1
+
+  if [[ -e "${cache_tag}" || -L "${cache_tag}" ]]; then
+    if [[ -L "${cache_tag}" || ! -f "${cache_tag}" \
+      || "$(head -n 1 "${cache_tag}")" != "${cargo_cache_tag_signature}" ]]; then
+      echo "strict coverage target has an invalid Cargo cache marker" >&2
+      exit 1
+    fi
+    return
+  fi
+
+  # WHY: KUC が新規または空の専用 target の所有権を先に記録してから、
+  # cargo-llvm-cov の cleanup を許可する Cargo cache marker を作る。
+  printf '%s\n%s\n%s\n' \
+    "${cargo_cache_tag_signature}" \
+    "# This file is a cache directory tag created by cargo." \
+    "# For information about cache directory tags see https://bford.info/cachedir/" \
+    >"${cache_tag}"
+}
+
+restore_coverage_target_owner_marker_after_cleanup() {
+  if [[ "${coverage_target_ownership_verified}" != "1" ]]; then
+    echo "strict coverage target ownership was not verified before cleanup" >&2
+    exit 1
+  fi
+  if [[ -L "${coverage_target_dir}" ]]; then
+    echo "strict coverage target must not be a symlink" >&2
+    exit 1
+  fi
+  mkdir -p "${coverage_target_dir}"
+
+  local owner_marker="${coverage_target_dir}/${coverage_target_owner_filename}"
+  if [[ -e "${owner_marker}" || -L "${owner_marker}" ]]; then
+    if [[ -L "${owner_marker}" || ! -f "${owner_marker}" \
+      || "$(<"${owner_marker}")" != "${coverage_target_owner_signature}" ]]; then
+      echo "strict coverage target has an invalid KUC ownership marker" >&2
+      exit 1
+    fi
+    return
+  fi
+
+  # WHY: cargo clean は target 内の非Cargoファイルも削除し得る。cleanup 前に
+  # 検証済みの専用 target に限り、次回の unowned 判定を避ける marker を復元する。
+  printf '%s\n' "${coverage_target_owner_signature}" >"${owner_marker}"
+}
 
 native_coverage_runtime_id() {
   {
@@ -298,6 +369,7 @@ if ((coverage_available_kib < coverage_required_kib)); then
   echo "strict coverage requires at least ${coverage_min_free_gib} GiB free after cleanup" >&2
   exit 1
 fi
+ensure_coverage_target_cache_dir
 invalidate_coverage_profile
 export CARGO_TARGET_DIR="${coverage_target_dir}"
 eval "$(run_cargo_raw llvm-cov show-env --sh)"
@@ -315,6 +387,7 @@ case "${coverage_cleanup_mode}" in
   none)
     ;;
 esac
+restore_coverage_target_owner_marker_after_cleanup
 echo "coverage mode: ${coverage_mode}; scope: full; parallel binaries: ${coverage_parallel_binaries}; test threads per binary: ${coverage_threads_per_binary}"
 coverage_test_started_at="${SECONDS}"
 if [[ -n "${coverage_supplement_filter}" ]]; then

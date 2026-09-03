@@ -94,6 +94,22 @@ fn accesskit_input_hash(node: &egui::accesskit::Node) -> Option<String> {
 }
 
 #[test]
+fn variable_viewport_consumer_rejects_an_empty_receipt_sequence() {
+    let output_directory = tempfile::tempdir().expect("artifact directory must create");
+    assert!(matches!(
+        MotionArtifactWriter::new().write_opaque_variable_viewport(
+            &OpaqueMotionReceiptSequence::new(),
+            output_directory.path(),
+        ),
+        Err(
+            katana_ui_core::egui::VariableViewportMotionArtifactError::Motion(
+                katana_ui_core::egui::MotionArtifactError::EmptySequence
+            )
+        )
+    ));
+}
+
+#[test]
 fn full_motion_plan_exports_a_variable_viewport_artifact_with_bound_semantics() {
     let plan = FullTextCommandSurfaceMotionPlan::issue(
         FullTextCommandSurfaceMotionPlan::minimum_frame_count(),
@@ -184,6 +200,19 @@ fn full_motion_plan_exports_a_variable_viewport_artifact_with_bound_semantics() 
         );
     }
 
+    let non_directory_output = output_directory.path().join("not-a-directory");
+    std::fs::write(&non_directory_output, b"not a directory")
+        .expect("non-directory output fixture should write");
+    assert!(matches!(
+        MotionArtifactWriter::new()
+            .write_opaque_variable_viewport(&sequence, &non_directory_output),
+        Err(
+            katana_ui_core::egui::VariableViewportMotionArtifactError::Motion(
+                katana_ui_core::egui::MotionArtifactError::Io(_)
+            )
+        )
+    ));
+
     let artifact = MotionArtifactWriter::new()
         .write_opaque_variable_viewport(&sequence, output_directory.path())
         .expect("the full KUC motion plan must export through the public API");
@@ -258,4 +287,10 @@ fn full_motion_plan_exports_a_variable_viewport_artifact_with_bound_semantics() 
         assert!(!bytes.is_empty());
         assert_eq!(sha256(&bytes), *expected_hash);
     }
+
+    assert!(matches!(
+        MotionArtifactWriter::new()
+            .write_opaque_variable_viewport(&sequence, output_directory.path()),
+        Err(katana_ui_core::egui::VariableViewportMotionArtifactError::OccupiedOutputTarget { .. })
+    ));
 }

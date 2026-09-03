@@ -113,6 +113,10 @@ jobs:
       - name: Check types
         run: just check-types
 
+      - name: Verify registry-safe raster host
+        if: matrix.os != 'windows-latest'
+        run: just raster-host-contract
+
       - name: Check formatting
         if: matrix.os != 'windows-latest'
         run: just fmt-check

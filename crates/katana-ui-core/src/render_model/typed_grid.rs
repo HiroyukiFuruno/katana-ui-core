@@ -1,3 +1,4 @@
+pub use super::typed_grid_border::{UiGridBorderLineStyle, UiGridBorderSide, UiGridCellBorders};
 pub use super::typed_grid_types::{
     UiGridCell, UiGridCellAppearance, UiGridCellSpan, UiGridCoordinate, UiGridDataBar,
     UiGridHorizontalAlignment, UiGridIcon, UiGridIndexRange, UiGridProps, UiGridRating,

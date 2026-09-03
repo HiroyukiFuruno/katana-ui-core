@@ -19,6 +19,15 @@ while IFS= read -r line; do
   esac
 done <<<"$tree"
 
+raster_tree="$("${CARGO_CMD[@]}" tree -p katana-ui-core --no-default-features --features raster-host --locked --prefix none)"
+while IFS= read -r line; do
+  case "$line" in
+    eframe\ v*|egui\ v*|winit\ v*)
+      failures+=("raster-host must not link a GUI runtime: $line")
+      ;;
+  esac
+done <<<"$raster_tree"
+
 if [ "${#failures[@]}" -gt 0 ]; then
   printf '%s\n' "core dependency boundary failed"
   printf -- '- %s\n' "${failures[@]}"

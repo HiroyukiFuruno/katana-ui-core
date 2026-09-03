@@ -2,7 +2,7 @@ use crate::egui::OpaqueRootArtifactReceipt;
 use image::{GenericImageView, ImageDecoder, Rgba, RgbaImage};
 use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
-use std::io::Read;
+use std::io::{Read, Write};
 use std::path::Path;
 
 use super::super::error::MotionArtifactError;
@@ -18,6 +18,9 @@ pub(super) const MAX_VARIABLE_VIEWPORT_ENCODED_PNG_BYTES: u64 =
     MAX_VARIABLE_VIEWPORT_WORKING_SET_BYTES / 16;
 pub(super) const MAX_VARIABLE_VIEWPORT_PROVENANCE_BYTES: u64 = 1024 * 1024;
 const BOUNDED_READ_CHUNK_BYTES: usize = 64 * 1024;
+
+pub(super) type StagingFrameEncoder =
+    dyn FnMut(&RgbaImage, &Path, &mut dyn Write) -> Result<(), MotionArtifactError>;
 
 pub(super) struct LoadedReceipts {
     pub(super) images: Vec<RgbaImage>,
@@ -74,25 +77,30 @@ pub(super) fn load_receipts(
             MAX_VARIABLE_VIEWPORT_PROVENANCE_BYTES,
         )?;
         validate_provenance_bytes(receipt, &provenance)?;
-        let decoder =
-            image::codecs::png::PngDecoder::new(std::io::Cursor::new(&bytes)).map_err(|error| {
-                MotionArtifactError::InvalidPng {
+        let decoder = match image::codecs::png::PngDecoder::new(std::io::Cursor::new(&bytes)) {
+            Ok(decoder) => decoder,
+            Err(error) => {
+                return Err(MotionArtifactError::InvalidPng {
                     path: receipt.png_path().to_path_buf(),
                     reason: error.to_string(),
-                }
-            })?;
+                });
+            }
+        };
         if decoder.color_type() != image::ColorType::Rgba8 {
             return Err(MotionArtifactError::InvalidPng {
                 path: receipt.png_path().to_path_buf(),
                 reason: "PNG color type is not RGBA8".into(),
             });
         }
-        let image = image::load_from_memory_with_format(&bytes, image::ImageFormat::Png).map_err(
-            |error| MotionArtifactError::InvalidPng {
-                path: receipt.png_path().to_path_buf(),
-                reason: error.to_string(),
-            },
-        )?;
+        let image = match image::load_from_memory_with_format(&bytes, image::ImageFormat::Png) {
+            Ok(image) => image,
+            Err(error) => {
+                return Err(MotionArtifactError::InvalidPng {
+                    path: receipt.png_path().to_path_buf(),
+                    reason: error.to_string(),
+                });
+            }
+        };
         if image.dimensions() != (receipt.width(), receipt.height()) {
             return Err(MotionArtifactError::WrongDimensions {
                 path: receipt.png_path().to_path_buf(),
@@ -237,12 +245,21 @@ pub(super) fn write_staging_frames(
     images: &[RgbaImage],
     staging_dir: &Path,
 ) -> Result<(), MotionArtifactError> {
+    let mut encoder = encode_staging_frame;
+    write_staging_frames_with_encoder(images, staging_dir, &mut encoder)
+}
+
+pub(super) fn write_staging_frames_with_encoder(
+    images: &[RgbaImage],
+    staging_dir: &Path,
+    encoder: &mut StagingFrameEncoder,
+) -> Result<(), MotionArtifactError> {
     for (index, image) in images.iter().enumerate() {
         let path = staging_dir
             .join(expected_stage_name(index))
             .with_extension("png");
         let mut bytes = Vec::new();
-        encode_staging_frame(image, &path, &mut bytes)?;
+        encoder(image, &path, &mut bytes)?;
         std::fs::write(path, bytes).map_err(io_error)?;
     }
     Ok(())
@@ -251,19 +268,20 @@ pub(super) fn write_staging_frames(
 pub(super) fn encode_staging_frame(
     image: &RgbaImage,
     path: &Path,
-    writer: impl std::io::Write,
+    writer: &mut dyn Write,
 ) -> Result<(), MotionArtifactError> {
     use image::ImageEncoder;
 
-    image::codecs::png::PngEncoder::new(writer)
-        .write_image(
-            image.as_raw(),
-            image.width(),
-            image.height(),
-            image::ColorType::Rgba8.into(),
-        )
-        .map_err(|error| MotionArtifactError::InvalidPng {
+    if let Err(error) = image::codecs::png::PngEncoder::new(writer).write_image(
+        image.as_raw(),
+        image.width(),
+        image.height(),
+        image::ColorType::Rgba8.into(),
+    ) {
+        return Err(MotionArtifactError::InvalidPng {
             path: path.to_path_buf(),
             reason: error.to_string(),
-        })
+        });
+    }
+    Ok(())
 }

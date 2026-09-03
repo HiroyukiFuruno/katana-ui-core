@@ -14,6 +14,7 @@ CORE_API_PATHS=(
   "$CORE_SRC/render_model"
   "$CORE_SRC/widget"
   "$CORE_SRC/adapter_contract"
+  "$CORE_SRC/raster_host"
 )
 
 violations="$(
@@ -29,7 +30,7 @@ if [ -n "$violations" ]; then
 fi
 
 platform_violations="$(
-  rg -n "(/System/Library/Fonts|/Library/Fonts|/usr/share/fonts|C:\\\\Windows\\\\Fonts|\\b(AppKit|UIKit|CoreText|DirectWrite|fontconfig|winit|tao|x11rb|wayland_client|cocoa)::)" \
+  rg -n "(/System/Library/Fonts|/Library/Fonts|/usr/share/fonts|C:\\\\Windows\\\\Fonts|\\b(AppKit|UIKit|CoreText|DirectWrite|fontconfig|eframe|egui|winit|tao|x11rb|wayland_client|cocoa)::)" \
     "${CORE_API_PATHS[@]}" \
     --glob '*.rs'
 )" || true

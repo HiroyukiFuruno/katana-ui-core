@@ -1,4 +1,4 @@
-use crate::visual::UiTreeNodeHit;
+use crate::raster_host::UiTreeNodeHit;
 use katana_document_viewer::{
     ViewerMediaControlAction, ViewerMediaControlKind, ViewerMediaControlSet,
 };

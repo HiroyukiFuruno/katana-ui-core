@@ -287,6 +287,11 @@ mod tests {
         }
     }
 
+    #[test]
+    fn path_env_guard_without_a_saved_path_is_a_noop() {
+        drop(PathEnvGuard(None));
+    }
+
     fn temp_dir(label: &str) -> std::path::PathBuf {
         let sequence = TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
         let path = std::env::temp_dir().join(format!(
@@ -497,10 +502,11 @@ mod tests {
         let root = temp_dir("readonly-png-writer");
         let readonly_path = root.join("readonly.bin");
         std::fs::write(&readonly_path, []).expect("read-only fixture should write");
-        let readonly = std::fs::File::open(readonly_path).expect("fixture should open read-only");
+        let mut readonly =
+            std::fs::File::open(readonly_path).expect("fixture should open read-only");
         let image = RgbaImage::from_pixel(1, 1, Rgba([255, 0, 0, 255]));
         assert!(matches!(
-            frames::encode_staging_frame(&image, Path::new("frame-000.png"), readonly),
+            frames::encode_staging_frame(&image, Path::new("frame-000.png"), &mut readonly),
             Err(MotionArtifactError::InvalidPng { .. })
         ));
     }
@@ -510,9 +516,9 @@ mod tests {
         let root = temp_dir("file-png-writer");
         let path = root.join("frame-000.png");
         let image = RgbaImage::from_pixel(1, 1, Rgba([1, 2, 3, u8::MAX]));
-        let writer = std::fs::File::create(&path).expect("PNG output should create");
+        let mut writer = std::fs::File::create(&path).expect("PNG output should create");
 
-        frames::encode_staging_frame(&image, &path, writer)
+        frames::encode_staging_frame(&image, &path, &mut writer)
             .expect("PNG should encode through a file");
 
         assert_eq!(
@@ -522,6 +528,30 @@ mod tests {
                 .get_pixel(0, 0)
                 .0,
             [1, 2, 3, u8::MAX]
+        );
+    }
+
+    #[test]
+    fn staging_frame_writer_propagates_encoder_failure_without_publishing_a_frame() {
+        let root = temp_dir("staging-encoder-failure");
+        let staging = root.join("staging");
+        std::fs::create_dir(&staging).expect("staging directory should create");
+        let image = RgbaImage::from_pixel(1, 1, Rgba([255, 0, 0, 255]));
+        let mut failing_encoder =
+            |_image: &RgbaImage, path: &Path, _writer: &mut dyn std::io::Write| {
+                Err(MotionArtifactError::InvalidPng {
+                    path: path.to_path_buf(),
+                    reason: "fixture encoder failure".into(),
+                })
+            };
+
+        assert!(matches!(
+            frames::write_staging_frames_with_encoder(&[image], &staging, &mut failing_encoder),
+            Err(MotionArtifactError::InvalidPng { .. })
+        ));
+        assert!(
+            !staging.join("frame-000.png").exists(),
+            "a failed encoder must not publish a partial frame"
         );
     }
 
@@ -586,6 +616,22 @@ mod tests {
             load_receipts(&[missing_manifest]),
             Err(MotionArtifactError::MissingProvenance(_))
         ));
+
+        let invalid_provenance = receipt(&root, "frame-000", 1, 1, &[255, 0, 0, 255]);
+        std::fs::write(invalid_provenance.artifact().manifest_path(), b"{")
+            .expect("test provenance should become invalid JSON");
+        assert!(matches!(
+            load_receipts(&[invalid_provenance]),
+            Err(MotionArtifactError::Json(_))
+        ));
+    }
+
+    #[test]
+    fn normalized_working_set_accepts_a_valid_nonempty_receipt() {
+        let root = temp_dir("working-set");
+        let receipt = receipt(&root, "frame-000", 1, 1, &[255, 0, 0, 255]);
+
+        assert!(frames::validate_normalized_working_set(&[receipt]).is_ok());
     }
 
     #[test]

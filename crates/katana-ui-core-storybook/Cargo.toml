@@ -14,7 +14,7 @@ eframe.workspace = true
 egui.workspace = true
 hex.workspace = true
 image.workspace = true
-katana-ui-core = { workspace = true, features = ["storybook-artifacts"] }
+katana-ui-core = { workspace = true, features = ["raster-host", "storybook-artifacts"] }
 minifb.workspace = true
 serde.workspace = true
 serde_json.workspace = true

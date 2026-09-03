@@ -1,7 +1,7 @@
 use super::media_control_tests_support as support;
 use crate::document_viewer::KucDiagramControlResolver;
 use crate::test_assert::KucTestExpect;
-use crate::visual::{UiTreeHitRect, UiTreeNodeHit, UiTreeRenderArea, UiTreeSurfaceHost};
+use crate::raster_host::{UiTreeHitRect, UiTreeNodeHit, UiTreeRenderArea, UiTreeSurfaceHost};
 use katana_document_viewer::{
     DiagramViewportState, ViewerDiagramKind, ViewerMediaControlAction, ViewerMediaControlKind,
     ViewerNodeKind,
