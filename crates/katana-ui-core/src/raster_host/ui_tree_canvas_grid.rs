@@ -76,21 +76,31 @@ impl UiTreeGridRenderer {
                 palette.muted_border,
             );
         }
-        if !cell.text.trim().is_empty() {
-            let text_size = if cell.appearance.font_size_px == 0 {
-                DEFAULT_TEXT_SIZE_PX
-            } else {
-                f32::from(cell.appearance.font_size_px)
-            };
-            let text_color =
-                parse_color(cell.appearance.text_color.as_deref()).unwrap_or(palette.text);
-            text.draw(
-                canvas,
-                &cell.text,
-                clipped.x.saturating_add(CELL_TEXT_INSET_PX),
-                clipped.y.saturating_add(CELL_TEXT_INSET_PX),
-                text_size,
-                text_color,
+        if !cell.text.trim().is_empty()
+            && let Some(bounds) = positioned_rect(cell.bounds, origin_x, origin_y)
+        {
+            canvas.with_clip(
+                clipped.x,
+                clipped.y,
+                clipped.width,
+                clipped.height,
+                &mut |canvas| {
+                    let text_size = if cell.appearance.font_size_px == 0 {
+                        DEFAULT_TEXT_SIZE_PX
+                    } else {
+                        f32::from(cell.appearance.font_size_px)
+                    };
+                    let text_color =
+                        parse_color(cell.appearance.text_color.as_deref()).unwrap_or(palette.text);
+                    text.draw(
+                        canvas,
+                        &cell.text,
+                        bounds.x.saturating_add(CELL_TEXT_INSET_PX),
+                        bounds.y.saturating_add(CELL_TEXT_INSET_PX),
+                        text_size,
+                        text_color,
+                    );
+                },
             );
         }
 
@@ -274,6 +284,34 @@ mod tests {
 
         assert_eq!(0x112233, pixel_at(&canvas, 2, 2));
         assert!(canvas.non_background_pixels(BACKGROUND) > 20);
+    }
+
+    #[test]
+    fn grid_renderer_clips_text_to_the_visible_cell_without_moving_its_anchor() {
+        let cell = UiGridCell {
+            bounds: UiRect::new(1, 1, 20, 12),
+            clipped_bounds: UiRect::new(5, 1, 10, 12),
+            text: "MMMM".to_owned(),
+            appearance: UiGridCellAppearance {
+                text_color: Some("#AA00CC".to_owned()),
+                font_size_px: 12,
+                ..UiGridCellAppearance::default()
+            },
+            ..UiGridCell::default()
+        };
+        let canvas = render_grid(cell, 16, 16, false);
+        let text_columns: Vec<_> = (0..canvas.width())
+            .filter(|&x| (0..canvas.height()).any(|y| pixel_at(&canvas, x, y) != BACKGROUND))
+            .collect();
+
+        assert!(
+            text_columns.iter().all(|&x| (5..15).contains(&x)),
+            "text must not escape clipped_bounds"
+        );
+        assert!(
+            text_columns.iter().any(|&x| x < 8),
+            "text must retain the full cell anchor instead of shifting to clipped_bounds"
+        );
     }
 
     #[test]

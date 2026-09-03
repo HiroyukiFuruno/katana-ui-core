@@ -23,30 +23,26 @@ pub use catalog::{
 };
 use katana_ui_core::theme::ThemeSnapshot;
 pub use panel::StorybookPanel;
-pub use raster_host::{
-    UiTreeCanvasRenderer, UiTreeHitRect, UiTreeHostActionHit, UiTreeHostActionHitQuery,
-    UiTreeInteractionSurface, UiTreeInteractionTarget, UiTreeNodeHit, UiTreeRenderArea,
-    UiTreeStorybookHost, UiTreeSurfaceHost,
-};
 pub use visual::FullRootArtifactError;
 pub use visual::TextSurfaceArtifactError;
 pub use visual::{
     Canvas, CanvasBlitRequest, RgbaBlitRequest, SelectableTextRun, StorybookKeyboardRuntimeReport,
     StorybookPresentation, StorybookRuntimeReport, StorybookVisual, StorybookVisualError,
-    StorybookWindowRun, TextRenderer,
+    StorybookWindowRun, TextRenderer, UiTreeCanvasRenderer, UiTreeHitRect, UiTreeHostActionHit,
+    UiTreeHostActionHitQuery, UiTreeInteractionSurface, UiTreeInteractionTarget, UiTreeNodeHit,
+    UiTreeRenderArea, UiTreeStorybookHost, UiTreeSurfaceHost,
 };
 
 /// GUI-specific Storybook runtime types.
 ///
-/// Generic raster and hit-test consumers use the root `UiTree*` exports, which
-/// are provided by `katana_ui_core::raster_host`. This namespace remains only
-/// for the private Storybook window runtime.
+/// Generic registry consumers use [`raster_host`]. Root exports retain the
+/// complete private Storybook raster family for backward-compatible window use.
 pub mod visual_runtime {
     pub use crate::visual::{
-        Canvas, CanvasBlitRequest, RgbaBlitRequest, SelectableTextRun, TextRenderer,
-        UiTreeCanvasRenderer, UiTreeHitRect, UiTreeHostActionHit, UiTreeHostActionHitQuery,
-        UiTreeInteractionSurface, UiTreeInteractionTarget, UiTreeNodeHit, UiTreeRenderArea,
-        UiTreeStorybookHost, UiTreeSurfaceHost,
+        Canvas, CanvasBlitRequest, RgbaBlitRequest, SelectableTextRun, StorybookPresentation,
+        TextRenderer, UiTreeCanvasRenderer, UiTreeHitRect, UiTreeHostActionHit,
+        UiTreeHostActionHitQuery, UiTreeInteractionSurface, UiTreeInteractionTarget, UiTreeNodeHit,
+        UiTreeRenderArea, UiTreeStorybookHost, UiTreeSurfaceHost,
     };
 }
 
