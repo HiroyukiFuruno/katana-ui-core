@@ -188,10 +188,13 @@ fn draw_visible_children(
 
 #[cfg(test)]
 mod tests {
-    use super::draw_visible_node;
+    use super::{draw_scroll_area, draw_visible_node};
     use crate::raster_host::ui_tree_canvas_palette::UiTreeCanvasPalette;
     use crate::raster_host::{Canvas, UiTreeCanvasRenderer, UiTreeRenderArea};
-    use crate::render_model::{UiDimension, UiNode, UiNodeKind};
+    use crate::render_model::{
+        UiDimension, UiGridCell, UiGridCellAppearance, UiGridProps, UiGridViewport, UiNode,
+        UiNodeKind, UiRect, UiScrollAreaProps,
+    };
     use crate::theme::ThemeSnapshot;
 
     #[test]
@@ -226,5 +229,63 @@ mod tests {
         );
 
         assert_eq!(60, logical_y);
+    }
+
+    #[test]
+    fn scroll_area_renders_direct_grids_and_reserves_each_grid_height() {
+        let theme = ThemeSnapshot::dark();
+        let renderer = UiTreeCanvasRenderer::new(theme.clone());
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 24,
+            height: 32,
+            scroll_y: 0.0,
+        };
+        let node = UiNode::new(UiNodeKind::ScrollArea, "")
+            .scroll_area(UiScrollAreaProps {
+                viewport_width: 24,
+                viewport_height: 32,
+                content_width: 24,
+                content_height: 32,
+                ..UiScrollAreaProps::default()
+            })
+            .child(colored_grid("#AA0000"))
+            .child(colored_grid("#00AA00"));
+        let mut canvas = Canvas::new(area.width, area.height, palette.background);
+        let mut y = 0;
+
+        draw_scroll_area(&renderer, &mut canvas, &node, 0, &mut y, area, palette);
+
+        assert_eq!(32, y);
+        let first_grid_pixel = pixel_at(&canvas, 1, 1);
+        let second_grid_pixel = pixel_at(&canvas, 1, 17);
+        assert_ne!(palette.background, first_grid_pixel);
+        assert_ne!(palette.background, second_grid_pixel);
+        assert_ne!(first_grid_pixel, second_grid_pixel);
+    }
+
+    fn colored_grid(fill_color: &str) -> UiNode {
+        UiNode::new(UiNodeKind::Grid, "").grid(UiGridProps {
+            total_width: 24,
+            total_height: 16,
+            viewport: UiGridViewport::new(24, 16),
+            show_grid_lines: false,
+            cells: vec![UiGridCell {
+                bounds: UiRect::new(0, 0, 24, 16),
+                clipped_bounds: UiRect::new(0, 0, 24, 16),
+                appearance: UiGridCellAppearance {
+                    fill_color: Some(fill_color.to_owned()),
+                    ..UiGridCellAppearance::default()
+                },
+                ..UiGridCell::default()
+            }],
+            ..UiGridProps::default()
+        })
+    }
+
+    fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> u32 {
+        canvas.pixels()[y * canvas.width() + x]
     }
 }

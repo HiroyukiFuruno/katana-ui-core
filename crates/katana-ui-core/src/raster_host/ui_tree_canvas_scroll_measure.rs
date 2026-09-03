@@ -35,6 +35,7 @@ pub(super) fn measured_node_height(
             .max()
             .unwrap_or(TEXT_HEIGHT),
         UiNodeKind::ScrollArea => node.props().scroll_area.viewport_height as usize,
+        UiNodeKind::Grid => grid_height(node),
         UiNodeKind::ImageSurface => {
             let image = &node.props().image_surface;
             logical_image_height(image)
@@ -155,6 +156,16 @@ fn container_height(
         .saturating_add(dimension_px(&node.props().common.padding.bottom))
 }
 
+fn grid_height(node: &UiNode) -> usize {
+    let grid = &node.props().grid;
+    let height = if grid.viewport.height > 0 {
+        grid.viewport.height
+    } else {
+        grid.total_height
+    };
+    usize::try_from(height).unwrap_or(usize::MAX)
+}
+
 fn children_height(
     node: &UiNode,
     text_context: UiTreeTextContext<'_>,
@@ -177,11 +188,7 @@ fn children_height(
 fn is_layout_container(node: &UiNode) -> bool {
     matches!(
         node.kind(),
-        UiNodeKind::AlignCenter
-            | UiNodeKind::AlignNode
-            | UiNodeKind::Column
-            | UiNodeKind::Grid
-            | UiNodeKind::Stack
+        UiNodeKind::AlignCenter | UiNodeKind::AlignNode | UiNodeKind::Column | UiNodeKind::Stack
     )
 }
 
@@ -194,7 +201,7 @@ mod tests {
     use katana_ui_core::atom::Text;
     use katana_ui_core::facade::UiCoreFacade;
     use katana_ui_core::molecule::Accordion;
-    use katana_ui_core::render_model::UiDimension;
+    use katana_ui_core::render_model::{UiDimension, UiGridProps, UiGridViewport};
     use katana_ui_core::theme::ThemeSnapshot;
 
     #[test]
@@ -290,6 +297,31 @@ mod tests {
             0,
             child_render_area(area, &padded, 0, ContainerPadding::from_node(&padded)).x
         );
+    }
+
+    #[test]
+    fn grid_measurement_uses_viewport_then_total_height_without_incremental_children() {
+        let context = text_context();
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 120,
+            height: 80,
+            scroll_y: 0.0,
+        };
+        let viewport_grid = UiNode::new(UiNodeKind::Grid, "").grid(UiGridProps {
+            total_height: 90,
+            viewport: UiGridViewport::new(120, 24),
+            ..UiGridProps::default()
+        });
+        let total_grid = UiNode::new(UiNodeKind::Grid, "").grid(UiGridProps {
+            total_height: 90,
+            ..UiGridProps::default()
+        });
+
+        assert_eq!(24, measured_node_height(&viewport_grid, context, 0, area));
+        assert_eq!(90, measured_node_height(&total_grid, context, 0, area));
+        assert!(!can_render_children_incrementally(&viewport_grid));
     }
 
     fn text_context() -> UiTreeTextContext<'static> {

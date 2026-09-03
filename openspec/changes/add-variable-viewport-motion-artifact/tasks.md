@@ -63,6 +63,7 @@
 - [ ] 7.2 Draft PR #38をmaster向けに統合し、最新headに対するfresh review、P0/P1のreply/resolve、required checksを完了する。
 - [/] PR #38 P1 `PRRT_kwDOSYoxuc6e9IMt`: rootのlegacy Storybook raster familyを同一のprivate型群へ揃え、registry向けcore APIは`raster_host` namespaceへ限定した。root Canvasからroot rendererへ渡す型互換回帰を追加し、push後にreply/resolveする。
 - [/] PR #38 P2 `PRRT_kwDOSYoxuc6e9IMx`: grid textをfull cell boundsのanchorのままclipped bounds内へclipし、custom border描画とは独立させた。数値回帰を追加し、push後にreply/resolveする。
+- [/] PR #38 P1 `PRRT_kwDOSYoxuc6e9bKf`: ScrollArea直下のGridを逐次child containerではなく原子nodeとして描画し、viewport優先・total fallbackの高さを確保した。direct Grid二段の描画/位置回帰と高さ単体回帰を追加し、core 1577 tests成功後にpushしてreply/resolveする。
 - [ ] 7.3 masterから唯一の `release/v0.3.5` を作成し、version/changelog/lockfileと全互換依存を更新する。
 - [ ] 7.4 `v0.3.5` のfull quality gate、100% strict coverage、package/publish dry-run、3 OS CI、Draft reviewとrequired checksを完了する。
 - [ ] 7.5 release workflowによるtag、GitHub Release、crates.io `katana-ui-core@0.3.5` を個別に確認し、registry consumerで`raster-host`とper-side custom border APIを解決する。
