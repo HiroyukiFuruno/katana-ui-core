@@ -1,4 +1,4 @@
-use crate::visual::{Canvas, UiTreeHostActionHit, UiTreeRenderArea, UiTreeStorybookHost};
+use crate::raster_host::{Canvas, UiTreeHostActionHit, UiTreeRenderArea, UiTreeStorybookHost};
 use katana_document_viewer::PreviewOutput;
 use katana_ui_core::render_model::{UiCursor, UiNodeId};
 

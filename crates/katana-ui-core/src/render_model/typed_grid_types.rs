@@ -1,4 +1,5 @@
 use super::super::UiRect;
+use super::typed_grid_border::UiGridCellBorders;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -101,6 +102,8 @@ pub struct UiGridCellAppearance {
     pub data_bar: Option<UiGridDataBar>,
     pub icon: Option<UiGridIcon>,
     pub rating: Option<UiGridRating>,
+    #[serde(default)]
+    pub borders: UiGridCellBorders,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -225,4 +228,54 @@ const fn default_grid_span() -> usize {
 
 const fn default_show_grid_lines() -> bool {
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::typed_grid_border::{UiGridBorderLineStyle, UiGridBorderSide};
+    use super::{UiGridCellAppearance, UiGridCellBorders};
+    use crate::test_assert::KucTestExpect;
+
+    #[test]
+    fn legacy_grid_cell_appearance_deserializes_with_empty_borders() {
+        let mut legacy = serde_json::to_value(UiGridCellAppearance::default())
+            .kuc_expect("grid cell appearance must serialize");
+        legacy
+            .as_object_mut()
+            .kuc_expect("serialized grid cell appearance must be an object")
+            .remove("borders");
+        let appearance: UiGridCellAppearance =
+            serde_json::from_value(legacy).kuc_expect("legacy cell appearance must deserialize");
+
+        assert_eq!(UiGridCellBorders::default(), appearance.borders);
+    }
+
+    #[test]
+    fn grid_cell_appearance_retains_independent_border_sides() {
+        let borders = UiGridCellBorders {
+            left: UiGridBorderSide::solid("#B7C4CE"),
+            right: UiGridBorderSide {
+                line_style: UiGridBorderLineStyle::Double,
+                color: Some("#113355".to_owned()),
+            },
+            top: UiGridBorderSide {
+                line_style: UiGridBorderLineStyle::Dotted,
+                color: Some("#AA5500".to_owned()),
+            },
+            bottom: UiGridBorderSide::default(),
+        };
+        let appearance = UiGridCellAppearance {
+            borders: borders.clone(),
+            ..UiGridCellAppearance::default()
+        };
+
+        assert!(appearance.borders.left.is_visible());
+        assert_eq!(
+            UiGridBorderLineStyle::Double,
+            appearance.borders.right.line_style
+        );
+        assert_eq!(Some("#AA5500"), appearance.borders.top.color.as_deref());
+        assert!(!appearance.borders.bottom.is_visible());
+        assert_eq!(borders, appearance.borders);
+    }
 }

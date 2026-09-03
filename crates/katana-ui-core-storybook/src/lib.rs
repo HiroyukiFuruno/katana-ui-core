@@ -2,6 +2,8 @@
 
 mod catalog;
 mod panel;
+#[cfg(test)]
+mod raster_host_parity_tests;
 mod requirements;
 mod storybook_svg_fixtures;
 #[cfg(target_os = "macos")]
@@ -9,6 +11,11 @@ mod system;
 #[cfg(test)]
 mod test_assert;
 mod visual;
+
+/// Private Storybook's thin bridge to the registry-safe raster host.
+pub mod raster_host {
+    pub use katana_ui_core::raster_host::*;
+}
 
 pub use catalog::{
     StoryCatalog, StoryCatalogReport, StoryDetailContent, StoryExample,

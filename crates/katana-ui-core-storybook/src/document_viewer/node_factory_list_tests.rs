@@ -1,6 +1,6 @@
 use super::KucNodeFactory;
 use crate::test_assert::KucTestExpect;
-use crate::{Canvas, UiTreeCanvasRenderer, UiTreeRenderArea, UiTreeSurfaceHost};
+use crate::raster_host::{Canvas, UiTreeCanvasRenderer, UiTreeRenderArea, UiTreeSurfaceHost};
 use katana_document_viewer::{ViewerTaskState, ViewerTextSpan, ViewerTextStyle};
 use katana_ui_core::render_model::{
     UI_TASK_TOGGLE_ACTION_ID, UiCursor, UiDimension, UiHostActionPlan, UiNodeKind,

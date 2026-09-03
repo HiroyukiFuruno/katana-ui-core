@@ -1,5 +1,5 @@
 use super::{DocumentViewerStorybookHost, KucViewerConfig};
-use crate::{Canvas, UiTreeRenderArea};
+use crate::raster_host::{Canvas, UiTreeRenderArea};
 use katana_document_viewer::{
     KDV_INTERACTIVE_PREVIEW_SURFACE_PADDING_PX, MarkdownSource, PreviewConfig,
     PreviewOutputFactory, PreviewSurfaceImage, ViewerInteractionConfig, ViewerMode,

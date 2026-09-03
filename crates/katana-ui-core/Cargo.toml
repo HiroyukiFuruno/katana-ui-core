@@ -15,6 +15,7 @@ all-features = true
 default = []
 text-raster = ["dep:cosmic-text", "dep:sha2", "dep:windows-sys"]
 svg-raster = ["dep:resvg", "dep:tiny-skia"]
+raster-host = ["text-raster", "svg-raster", "dep:image"]
 egui = ["dep:egui", "dep:hex", "dep:sha2", "text-raster", "svg-raster"]
 storybook-artifacts = ["egui", "dep:image"]
 
