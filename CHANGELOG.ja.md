@@ -9,6 +9,17 @@
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-09-04
+
+### 追加
+
+- registry consumer が必要とする additive かつ framework-neutral な `raster_host` API と、KDV 文書描画用の `raster-host` feature を公開した（Issue #35、#37）。
+- 型付き per-side custom grid border と ScrollArea/Grid の原子的 layout 契約を公開 `katana-ui-core` crate から提供した。
+
+### 修正
+
+- path / Git dependency override を使わない registry-only の KDV 互換性を復旧しつつ、Storybook の legacy root facade 互換性を維持した。
+
 ## [0.3.4] - 2026-09-02
 
 ### 追加
