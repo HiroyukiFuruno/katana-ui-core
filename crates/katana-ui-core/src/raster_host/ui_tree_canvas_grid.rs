@@ -94,13 +94,21 @@ impl UiTreeGridRenderer {
             );
         }
 
-        UiTreeGridBorderRenderer::draw_cell_borders(
-            canvas,
-            &cell.appearance.borders,
-            cell.bounds,
-            origin_x,
-            origin_y,
-            palette.muted_border,
+        canvas.with_clip(
+            clipped.x,
+            clipped.y,
+            clipped.width,
+            clipped.height,
+            &mut |canvas| {
+                UiTreeGridBorderRenderer::draw_cell_borders(
+                    canvas,
+                    &cell.appearance.borders,
+                    cell.bounds,
+                    origin_x,
+                    origin_y,
+                    palette.muted_border,
+                );
+            },
         );
     }
 }
@@ -211,6 +219,29 @@ mod tests {
         assert_eq!(0x00BB00, pixel_at(&canvas, 0, 1));
         assert_ne!(0xAA0000, pixel_at(&canvas, 0, 2));
         assert_eq!(BACKGROUND, pixel_at(&canvas, 4, 1));
+    }
+
+    #[test]
+    fn grid_renderer_clips_custom_borders_to_positioned_cell_bounds() {
+        let cell = UiGridCell {
+            bounds: UiRect::new(1, 1, 6, 6),
+            clipped_bounds: UiRect::new(1, 3, 6, 2),
+            appearance: UiGridCellAppearance {
+                borders: UiGridCellBorders {
+                    left: UiGridBorderSide::solid("#AA0000"),
+                    top: UiGridBorderSide::solid("#00BB00"),
+                    bottom: UiGridBorderSide::solid("#0000CC"),
+                    ..UiGridCellBorders::default()
+                },
+                ..UiGridCellAppearance::default()
+            },
+            ..UiGridCell::default()
+        };
+        let canvas = render_grid(cell, 10, 10, false);
+
+        assert_eq!(BACKGROUND, pixel_at(&canvas, 1, 1));
+        assert_eq!(0xAA0000, pixel_at(&canvas, 1, 3));
+        assert_eq!(BACKGROUND, pixel_at(&canvas, 1, 5));
     }
 
     #[test]

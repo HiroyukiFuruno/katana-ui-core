@@ -1,4 +1,7 @@
-use crate::{StoryCatalog, raster_host as wrapper};
+use crate::{
+    StoryCatalog, UiTreeCanvasRenderer, UiTreeStorybookHost, UiTreeSurfaceHost,
+    raster_host as wrapper,
+};
 use katana_ui_core::{
     raster_host as core,
     render_model::{UiNode, UiNodeKind},
@@ -34,10 +37,18 @@ fn catalog_render_area() -> core::UiTreeRenderArea {
 }
 
 #[test]
-fn wrapper_uses_the_public_core_types() {
+fn public_storybook_api_uses_the_public_core_host_types() {
     assert_eq!(
-        TypeId::of::<wrapper::Canvas>(),
-        TypeId::of::<core::Canvas>()
+        TypeId::of::<UiTreeCanvasRenderer>(),
+        TypeId::of::<core::UiTreeCanvasRenderer>()
+    );
+    assert_eq!(
+        TypeId::of::<UiTreeSurfaceHost>(),
+        TypeId::of::<core::UiTreeSurfaceHost>()
+    );
+    assert_eq!(
+        TypeId::of::<UiTreeStorybookHost>(),
+        TypeId::of::<core::UiTreeStorybookHost>()
     );
     assert_eq!(
         TypeId::of::<wrapper::UiTreeSurfaceHost>(),
@@ -52,7 +63,7 @@ fn wrapper_and_public_host_keep_raster_and_hit_results_identical() {
         .stable_node_id("kdv-public-raster-host");
     let mut wrapped_canvas = wrapper::Canvas::new(RENDER_WIDTH, RENDER_HEIGHT, BACKGROUND);
     let mut direct_canvas = core::Canvas::new(RENDER_WIDTH, RENDER_HEIGHT, BACKGROUND);
-    let wrapped_host = wrapper::UiTreeSurfaceHost::new(theme.clone());
+    let wrapped_host = UiTreeSurfaceHost::new(theme.clone());
     let direct_host = core::UiTreeSurfaceHost::new(theme);
 
     wrapped_host.render(&mut wrapped_canvas, &root, render_area());
@@ -68,11 +79,12 @@ fn wrapper_and_public_host_keep_raster_and_hit_results_identical() {
 
 #[test]
 fn public_raster_host_renders_every_storybook_catalog_tree() {
-    let host = core::UiTreeSurfaceHost::new(ThemeSnapshot::light());
+    let host = UiTreeSurfaceHost::new(ThemeSnapshot::light());
     let area = catalog_render_area();
 
     for example in StoryCatalog.examples() {
-        let mut canvas = core::Canvas::new(CATALOG_RENDER_WIDTH, CATALOG_RENDER_HEIGHT, BACKGROUND);
+        let mut canvas =
+            wrapper::Canvas::new(CATALOG_RENDER_WIDTH, CATALOG_RENDER_HEIGHT, BACKGROUND);
         host.render(&mut canvas, example.tree.root(), area);
 
         assert_eq!(
@@ -83,13 +95,9 @@ fn public_raster_host_renders_every_storybook_catalog_tree() {
         );
         let host_actions = host.host_action_hits(example.tree.root(), area);
         let node_hits = host.document_node_hits(example.tree.root(), area);
-        let _ = core::UiTreeSurfaceHost::interaction_target_for_hits_at(
-            &host_actions,
-            &node_hits,
-            0.0,
-            0.0,
-        );
-        let _ = core::UiTreeSurfaceHost::hits_at(&host_actions, 0.0, 0.0);
-        let _ = core::UiTreeSurfaceHost::cursor_at(&host_actions, 0.0, 0.0);
+        let _ =
+            UiTreeSurfaceHost::interaction_target_for_hits_at(&host_actions, &node_hits, 0.0, 0.0);
+        let _ = UiTreeSurfaceHost::hits_at(&host_actions, 0.0, 0.0);
+        let _ = UiTreeSurfaceHost::cursor_at(&host_actions, 0.0, 0.0);
     }
 }

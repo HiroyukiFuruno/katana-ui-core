@@ -134,20 +134,58 @@ fn reject_source_staging_overlap(
     sequence: &OpaqueMotionReceiptSequence,
     staging_dir: &Path,
 ) -> Result<(), MotionArtifactError> {
-    let canonical_staging_dir = std::fs::canonicalize(staging_dir).map_err(io_error)?;
-    for (index, opaque) in sequence.receipts().iter().enumerate() {
-        let staging_frame = canonical_staging_dir
+    let staging_metadata = std::fs::symlink_metadata(staging_dir).map_err(io_error)?;
+    if staging_metadata.file_type().is_symlink() {
+        return Err(MotionArtifactError::Io(format!(
+            "staging directory must not be a symlink: {}",
+            staging_dir.display()
+        )));
+    }
+    for (index, _opaque) in sequence.receipts().iter().enumerate() {
+        let staging_frame = staging_dir
             .join(expected_stage_name(index))
             .with_extension("png");
-        let source_frame = std::fs::canonicalize(opaque.artifact().png_path()).map_err(io_error)?;
-        if source_frame == staging_frame {
+        let staging_metadata = match std::fs::symlink_metadata(&staging_frame) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(io_error(error)),
+        };
+        if staging_metadata.file_type().is_symlink() {
+            return Err(MotionArtifactError::Io(format!(
+                "staging output must not be a symlink: {}",
+                staging_frame.display()
+            )));
+        }
+        #[cfg(unix)]
+        if paths_share_file_identity(_opaque.artifact().png_path(), &staging_frame)? {
             return Err(MotionArtifactError::Io(format!(
                 "staging output overlaps source receipt PNG: {}",
-                source_frame.display()
+                _opaque.artifact().png_path().display()
+            )));
+        }
+        #[cfg(not(unix))]
+        {
+            return Err(MotionArtifactError::Io(format!(
+                "existing staging output must be rejected before write: {}",
+                staging_frame.display()
             )));
         }
     }
     Ok(())
+}
+
+#[cfg(unix)]
+fn paths_share_file_identity(
+    source: &Path,
+    destination: &Path,
+) -> Result<bool, MotionArtifactError> {
+    let source_metadata = std::fs::metadata(source).map_err(io_error)?;
+    let destination_metadata = std::fs::metadata(destination).map_err(io_error)?;
+
+    use std::os::unix::fs::MetadataExt;
+
+    Ok(source_metadata.dev() == destination_metadata.dev()
+        && source_metadata.ino() == destination_metadata.ino())
 }
 
 #[cfg(test)]
@@ -423,6 +461,110 @@ mod tests {
         assert_eq!(
             std::fs::read(source.join("frame-000.png"))
                 .expect("source receipt should survive rejected write"),
+            original
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn staging_overlap_rejects_a_symlinked_staging_directory() {
+        let root = temp_dir("source-staging-directory-symlink");
+        let source = root.join("source");
+        let staging_target = root.join("staging-target");
+        let staging_link = root.join("staging-link");
+        std::fs::create_dir_all(&source).expect("source directory should create");
+        std::fs::create_dir_all(&staging_target).expect("staging target should create");
+        let sequence = variable_sequence(&source);
+        std::os::unix::fs::symlink(&staging_target, &staging_link)
+            .expect("staging directory symlink should create");
+
+        let error = reject_source_staging_overlap(&sequence, &staging_link)
+            .expect_err("symlinked staging directory must be rejected");
+
+        assert!(
+            error
+                .to_string()
+                .contains("staging directory must not be a symlink")
+        );
+    }
+
+    #[test]
+    fn staging_overlap_reports_an_unusable_staging_path() {
+        let root = temp_dir("source-staging-not-directory");
+        let source = root.join("source");
+        let staging_file = root.join("staging-file");
+        std::fs::create_dir_all(&source).expect("source directory should create");
+        let sequence = variable_sequence(&source);
+        std::fs::write(&staging_file, b"not a directory")
+            .expect("staging file fixture should write");
+
+        let error = reject_source_staging_overlap(&sequence, &staging_file)
+            .expect_err("staging path without child entries must be rejected");
+
+        assert!(matches!(error, MotionArtifactError::Io(_)));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn staging_overlap_detects_a_source_file_by_identity() {
+        let root = temp_dir("source-staging-identity");
+        let staging = root.join("staging");
+        std::fs::create_dir_all(&staging).expect("staging directory should create");
+        let sequence = variable_sequence(&staging);
+
+        let error = reject_source_staging_overlap(&sequence, &staging)
+            .expect_err("source receipt at staging destination must be rejected");
+
+        assert!(
+            error
+                .to_string()
+                .contains("staging output overlaps source receipt PNG")
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn staging_overlap_allows_an_unrelated_existing_staging_file() {
+        let root = temp_dir("source-staging-unrelated");
+        let source = root.join("source");
+        let staging = root.join("staging");
+        std::fs::create_dir_all(&source).expect("source directory should create");
+        std::fs::create_dir_all(&staging).expect("staging directory should create");
+        let sequence = variable_sequence(&source);
+        std::fs::write(staging.join("frame-000.png"), b"stale staging output")
+            .expect("unrelated staging fixture should write");
+
+        reject_source_staging_overlap(&sequence, &staging)
+            .expect("unrelated existing staging output must be safe to replace");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn variable_viewport_writer_rejects_staging_symlink_to_source_receipt() {
+        let root = temp_dir("source-staging-symlink");
+        let source = root.join("source");
+        let output = root.join("output");
+        let staging = output.join(VARIABLE_VIEWPORT_STAGING_DIRECTORY);
+        std::fs::create_dir_all(&source).expect("source directory should create");
+        std::fs::create_dir_all(&staging).expect("staging directory should create");
+        let sequence = variable_sequence(&source);
+        let source_frame = source.join("frame-000.png");
+        let original =
+            std::fs::read(&source_frame).expect("source receipt should exist before write");
+        std::os::unix::fs::symlink(&source_frame, staging.join("frame-000.png"))
+            .expect("staging symlink should create");
+
+        let error = MotionArtifactWriter::new()
+            .write_opaque_variable_viewport(&sequence, &output)
+            .expect_err("symlinked staging output must be rejected");
+
+        assert!(
+            error
+                .to_string()
+                .contains("staging output must not be a symlink")
+        );
+        assert_eq!(
+            std::fs::read(source_frame).expect("source receipt should survive rejected write"),
             original
         );
     }
