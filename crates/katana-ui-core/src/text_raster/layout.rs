@@ -46,11 +46,11 @@ impl ResolvedTextFaces {
         }
     }
 
-    pub(super) fn proportional(&self) -> Option<&str> {
+    pub(crate) fn proportional(&self) -> Option<&str> {
         self.proportional.as_deref()
     }
 
-    pub(super) fn monospace(&self) -> Option<&str> {
+    pub(crate) fn monospace(&self) -> Option<&str> {
         self.monospace.as_deref()
     }
 }

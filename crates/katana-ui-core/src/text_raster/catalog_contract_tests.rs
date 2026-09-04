@@ -64,8 +64,17 @@ fn catalog_policy_hash_mismatch_is_rejected_by_with_catalog() {
         Some(PlatformFontSha256::from_bytes([0xCD; 32]));
     let catalog = PlatformFontCatalog::new(policy);
 
+    let catalog = Arc::new(catalog);
     assert!(matches!(
-        PlatformTextRasterizer::with_catalog(Arc::new(catalog), config),
+        PlatformTextRasterizer::with_catalog(Arc::clone(&catalog), config.clone()),
+        Err(PlatformTextRasterError::CatalogConfigurationMismatch)
+    ));
+    assert!(matches!(
+        PlatformTextRasterizer::with_catalog_and_face_selection(
+            catalog,
+            config,
+            crate::text_raster::PlatformTextFaceSelection::FirstCandidate,
+        ),
         Err(PlatformTextRasterError::CatalogConfigurationMismatch)
     ));
 }

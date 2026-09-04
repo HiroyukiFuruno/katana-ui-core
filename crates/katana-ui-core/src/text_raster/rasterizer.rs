@@ -201,3 +201,7 @@ impl PlatformTextRasterizer {
 fn cache_key(request: &PlatformTextRasterRequest) -> String {
     format!("{request:?}")
 }
+
+#[cfg(test)]
+#[path = "rasterizer_tests.rs"]
+mod tests;
