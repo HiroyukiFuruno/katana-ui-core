@@ -14,21 +14,34 @@ use std::sync::atomic::{AtomicU64, Ordering};
 const TEXT_COLOR: [u8; 4] = [245, 245, 245, 255];
 const TEST_FONT_SIZE_PX: f32 = 18.0;
 const TEST_FONT_WEIGHT: u16 = 400;
+const SOURCE_IDENTITY_TEXT: &str = "Candidate source Regular Monospace";
 
 static NEXT_TEST_PATH: AtomicU64 = AtomicU64::new(0);
 
 fn installed_font_candidate() -> io::Result<(PathBuf, String)> {
-    FontSystem::new()
+    let mut font_system = FontSystem::new();
+    let candidates = font_system
         .db()
         .faces()
-        .find_map(|face| match &face.source {
+        .filter_map(|face| match &face.source {
             Source::File(path) => face
                 .families
                 .first()
-                .map(|(family, _)| (path.clone(), family.to_string())),
+                .map(|(family, _)| (face.id, face.weight, path.clone(), family.to_string())),
             _ => None,
         })
-        .ok_or_else(|| io::Error::other("a file-backed system font is required"))
+        .collect::<Vec<_>>();
+    let (_, _, path, family) = candidates
+        .into_iter()
+        .find(|(face_id, weight, _, _)| {
+            font_system.get_font(*face_id, *weight).is_some_and(|font| {
+                SOURCE_IDENTITY_TEXT
+                    .chars()
+                    .all(|character| font.as_swash().charmap().map(character) != 0)
+            })
+        })
+        .ok_or_else(|| io::Error::other("a Latin-capable file-backed system font is required"))?;
+    Ok((path, family))
 }
 
 fn missing_font_path() -> PathBuf {
