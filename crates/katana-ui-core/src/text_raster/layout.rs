@@ -1,4 +1,5 @@
 use crate::render_model::UiTextSpan;
+use crate::text_raster::catalog::PlatformRegularFontFaces;
 use crate::text_raster::catalog_types::PlatformColorEmojiFaceRecord;
 use crate::text_raster::model::{
     PlatformTextGraphemeBounds, PlatformTextMetrics, PlatformTextMetricsRequest,
@@ -44,6 +45,13 @@ impl ResolvedTextFaces {
             proportional,
             monospace,
         }
+    }
+
+    pub(crate) fn from_candidate_faces(candidates: PlatformRegularFontFaces) -> Self {
+        Self::from_first_candidates(
+            candidates.proportional.map(|face| face.selection_family),
+            candidates.monospace.map(|face| face.selection_family),
+        )
     }
 
     pub(crate) fn proportional(&self) -> Option<&str> {

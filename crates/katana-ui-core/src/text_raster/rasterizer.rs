@@ -18,6 +18,7 @@ pub struct PlatformTextRasterizer {
     cache: HashMap<String, PlatformTextRaster>,
     cache_order: VecDeque<String>,
     cache_capacity: usize,
+    face_selection: PlatformTextFaceSelection,
     text_faces: ResolvedTextFaces,
     stats: PlatformTextRasterStats,
 }
@@ -69,13 +70,12 @@ impl PlatformTextRasterizer {
         config: PlatformTextRasterConfig,
         face_selection: PlatformTextFaceSelection,
     ) -> Self {
-        let regular_font_families = catalog.regular_font_families();
+        let regular_font_faces = catalog.regular_font_faces();
         let text_faces = match face_selection {
             PlatformTextFaceSelection::System => ResolvedTextFaces::default(),
-            PlatformTextFaceSelection::FirstCandidate => ResolvedTextFaces::from_first_candidates(
-                regular_font_families.proportional,
-                regular_font_families.monospace,
-            ),
+            PlatformTextFaceSelection::FirstCandidate => {
+                ResolvedTextFaces::from_candidate_faces(regular_font_faces)
+            }
         };
         Self {
             catalog,
@@ -83,6 +83,7 @@ impl PlatformTextRasterizer {
             cache: HashMap::new(),
             cache_order: VecDeque::new(),
             cache_capacity: config.cache_capacity.max(MIN_CACHE_CAPACITY),
+            face_selection,
             text_faces,
             stats: PlatformTextRasterStats {
                 font_database_loads: INITIAL_FONT_DATABASE_LOADS,
@@ -136,7 +137,7 @@ impl PlatformTextRasterizer {
         }
         let emoji_face = self.catalog.emoji_face().clone();
         self.catalog
-            .with_font_system(|font_system| {
+            .with_font_system_for_face_selection(self.face_selection, |font_system| {
                 TextLayoutRasterizer::measure(font_system, request, &emoji_face, &self.text_faces)
             })
             .map_err(|_| PlatformTextRasterError::CatalogAccess)?
@@ -155,7 +156,7 @@ impl PlatformTextRasterizer {
         let emoji_face = self.catalog.emoji_face().clone();
         let raster = self
             .catalog
-            .with_font_system(|font_system| {
+            .with_font_system_for_face_selection(self.face_selection, |font_system| {
                 TextLayoutRasterizer::rasterize(
                     font_system,
                     &mut self.swash_cache,

@@ -121,7 +121,11 @@ fn regular_candidates_resolve_the_first_loaded_family() -> io::Result<()> {
     let catalog = PlatformFontCatalog::new(policy);
 
     assert_eq!(
-        catalog.regular_font_families().proportional.as_deref(),
+        catalog
+            .regular_font_faces()
+            .proportional
+            .as_ref()
+            .map(|face| face.family.as_str()),
         Some(expected_family.as_str())
     );
     assert_eq!(catalog.stats().candidate_load_attempts, 2);
