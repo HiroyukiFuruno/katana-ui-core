@@ -1,6 +1,6 @@
 use crate::text_raster::catalog::PlatformFontCatalog;
-use crate::text_raster::config::PlatformTextRasterConfig;
-use crate::text_raster::layout::TextLayoutRasterizer;
+use crate::text_raster::config::{PlatformTextFaceSelection, PlatformTextRasterConfig};
+use crate::text_raster::layout::{ResolvedTextFaces, TextLayoutRasterizer};
 use crate::text_raster::model::{
     PlatformTextMetrics, PlatformTextMetricsRequest, PlatformTextRaster, PlatformTextRasterError,
     PlatformTextRasterReport, PlatformTextRasterRequest, PlatformTextRasterStats,
@@ -18,24 +18,45 @@ pub struct PlatformTextRasterizer {
     cache: HashMap<String, PlatformTextRaster>,
     cache_order: VecDeque<String>,
     cache_capacity: usize,
+    text_faces: ResolvedTextFaces,
     stats: PlatformTextRasterStats,
 }
 
 impl PlatformTextRasterizer {
     #[must_use]
     pub fn new(config: PlatformTextRasterConfig) -> Self {
+        Self::new_with_face_selection(config, PlatformTextFaceSelection::System)
+    }
+
+    #[must_use]
+    pub fn new_with_face_selection(
+        config: PlatformTextRasterConfig,
+        face_selection: PlatformTextFaceSelection,
+    ) -> Self {
         let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
-        Self::from_matching_catalog(catalog, config)
+        Self::from_matching_catalog_with_face_selection(catalog, config, face_selection)
     }
 
     pub fn with_catalog(
         catalog: Arc<PlatformFontCatalog>,
         config: PlatformTextRasterConfig,
     ) -> Result<Self, PlatformTextRasterError> {
+        Self::with_catalog_and_face_selection(catalog, config, PlatformTextFaceSelection::System)
+    }
+
+    pub fn with_catalog_and_face_selection(
+        catalog: Arc<PlatformFontCatalog>,
+        config: PlatformTextRasterConfig,
+        face_selection: PlatformTextFaceSelection,
+    ) -> Result<Self, PlatformTextRasterError> {
         if catalog.policy() != &config.catalog_policy() {
             return Err(PlatformTextRasterError::CatalogConfigurationMismatch);
         }
-        Ok(Self::from_matching_catalog(catalog, config))
+        Ok(Self::from_matching_catalog_with_face_selection(
+            catalog,
+            config,
+            face_selection,
+        ))
     }
 
     #[must_use]
@@ -43,16 +64,26 @@ impl PlatformTextRasterizer {
         Arc::clone(&self.catalog)
     }
 
-    pub(crate) fn from_matching_catalog(
+    pub(crate) fn from_matching_catalog_with_face_selection(
         catalog: Arc<PlatformFontCatalog>,
         config: PlatformTextRasterConfig,
+        face_selection: PlatformTextFaceSelection,
     ) -> Self {
+        let regular_font_families = catalog.regular_font_families();
+        let text_faces = match face_selection {
+            PlatformTextFaceSelection::System => ResolvedTextFaces::default(),
+            PlatformTextFaceSelection::FirstCandidate => ResolvedTextFaces::from_first_candidates(
+                regular_font_families.proportional,
+                regular_font_families.monospace,
+            ),
+        };
         Self {
             catalog,
             swash_cache: SwashCache::new(),
             cache: HashMap::new(),
             cache_order: VecDeque::new(),
             cache_capacity: config.cache_capacity.max(MIN_CACHE_CAPACITY),
+            text_faces,
             stats: PlatformTextRasterStats {
                 font_database_loads: INITIAL_FONT_DATABASE_LOADS,
                 ..PlatformTextRasterStats::default()
@@ -106,7 +137,7 @@ impl PlatformTextRasterizer {
         let emoji_face = self.catalog.emoji_face().clone();
         self.catalog
             .with_font_system(|font_system| {
-                TextLayoutRasterizer::measure(font_system, request, &emoji_face)
+                TextLayoutRasterizer::measure(font_system, request, &emoji_face, &self.text_faces)
             })
             .map_err(|_| PlatformTextRasterError::CatalogAccess)?
     }
@@ -130,6 +161,7 @@ impl PlatformTextRasterizer {
                     &mut self.swash_cache,
                     request,
                     &emoji_face,
+                    &self.text_faces,
                 )
             })
             .map_err(|_| PlatformTextRasterError::CatalogAccess)??;

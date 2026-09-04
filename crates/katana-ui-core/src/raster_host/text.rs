@@ -1,6 +1,8 @@
 use crate::raster_host::canvas::Canvas;
 use katana_ui_core::facade::UiCoreFacade;
-use katana_ui_core::text_raster::{PlatformTextRasterConfig, PlatformTextRasterizer};
+use katana_ui_core::text_raster::{
+    PlatformTextFaceSelection, PlatformTextRasterConfig, PlatformTextRasterizer,
+};
 
 #[path = "text_types.rs"]
 mod text_types;
@@ -14,10 +16,25 @@ use text_runtime::{default_line_height, resolve_font, ui_span};
 
 impl TextRenderer {
     pub fn load(facade: &UiCoreFacade, role: &str) -> Self {
+        Self::load_with_text_raster_config(
+            facade,
+            role,
+            PlatformTextRasterConfig::default(),
+            PlatformTextFaceSelection::System,
+        )
+    }
+
+    pub fn load_with_text_raster_config(
+        facade: &UiCoreFacade,
+        role: &str,
+        text_raster_config: PlatformTextRasterConfig,
+        face_selection: PlatformTextFaceSelection,
+    ) -> Self {
         let font = resolve_font(facade, role);
         Self {
-            rasterizer: std::cell::RefCell::new(PlatformTextRasterizer::new(
-                PlatformTextRasterConfig::default(),
+            rasterizer: std::cell::RefCell::new(PlatformTextRasterizer::new_with_face_selection(
+                text_raster_config,
+                face_selection,
             )),
             font,
         }

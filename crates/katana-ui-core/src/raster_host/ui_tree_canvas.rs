@@ -19,6 +19,7 @@ use super::ui_tree_canvas_tree::UiTreeViewRenderer;
 use super::ui_tree_canvas_types::UiTreeRenderArea;
 use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::render_model::{UiDimension, UiNode, UiNodeKind, UiVisualRole};
+use katana_ui_core::text_raster::{PlatformTextFaceSelection, PlatformTextRasterConfig};
 use katana_ui_core::theme::ThemeSnapshot;
 
 #[path = "ui_tree_canvas_geometry.rs"]
@@ -42,13 +43,46 @@ const DOCUMENT_EXPORT_BODY_FONT_ROLE: &str = "document-export-body";
 impl UiTreeCanvasRenderer {
     #[must_use]
     pub fn new(theme: ThemeSnapshot) -> Self {
+        Self::with_text_raster_config(
+            theme,
+            PlatformTextRasterConfig::default(),
+            PlatformTextFaceSelection::System,
+        )
+    }
+
+    #[must_use]
+    pub fn with_text_raster_config(
+        theme: ThemeSnapshot,
+        text_raster_config: PlatformTextRasterConfig,
+        face_selection: PlatformTextFaceSelection,
+    ) -> Self {
         let facade = UiCoreFacade::new(theme.clone());
         Self {
             palette: UiTreeCanvasPalette::from_theme(&theme),
-            text: TextRenderer::load(&facade, facade.default_font_role()),
-            document_text: TextRenderer::load(&facade, DOCUMENT_BODY_FONT_ROLE),
-            export_text: TextRenderer::load(&facade, DOCUMENT_EXPORT_BODY_FONT_ROLE),
-            code_text: TextRenderer::load(&facade, "code"),
+            text: TextRenderer::load_with_text_raster_config(
+                &facade,
+                facade.default_font_role(),
+                text_raster_config.clone(),
+                face_selection,
+            ),
+            document_text: TextRenderer::load_with_text_raster_config(
+                &facade,
+                DOCUMENT_BODY_FONT_ROLE,
+                text_raster_config.clone(),
+                face_selection,
+            ),
+            export_text: TextRenderer::load_with_text_raster_config(
+                &facade,
+                DOCUMENT_EXPORT_BODY_FONT_ROLE,
+                text_raster_config.clone(),
+                face_selection,
+            ),
+            code_text: TextRenderer::load_with_text_raster_config(
+                &facade,
+                "code",
+                text_raster_config,
+                face_selection,
+            ),
             typography: UiTreeDocumentTypography::from_theme(&theme),
             scroll_height_cache: std::cell::RefCell::new(MeasuredNodeHeightCache::default()),
         }

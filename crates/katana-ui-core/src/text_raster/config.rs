@@ -13,6 +13,13 @@ const HEX_CHARS_PER_BYTE: usize = 2;
 #[cfg(any(test, target_os = "linux"))]
 const HEX_RADIX: u32 = 16;
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum PlatformTextFaceSelection {
+    #[default]
+    System,
+    FirstCandidate,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlatformTextRasterConfig {
     pub proportional_candidates: Vec<PathBuf>,
@@ -114,6 +121,14 @@ impl PlatformTextRasterConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn text_face_selection_defaults_to_system_resolution() {
+        assert_eq!(
+            PlatformTextFaceSelection::default(),
+            PlatformTextFaceSelection::System
+        );
+    }
 
     #[test]
     fn pinned_linux_emoji_hash_parser_accepts_exact_sha256() {

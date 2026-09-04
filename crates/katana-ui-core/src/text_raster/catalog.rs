@@ -16,10 +16,17 @@ pub struct PlatformFontCatalogStats {
     pub candidate_load_attempts: usize,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct PlatformRegularFontFamilies {
+    pub(crate) proportional: Option<String>,
+    pub(crate) monospace: Option<String>,
+}
+
 pub struct PlatformFontCatalog {
     policy: PlatformFontCatalogPolicy,
     font_system: Mutex<FontSystem>,
     emoji_face: PlatformColorEmojiFaceRecord,
+    regular_font_families: PlatformRegularFontFamilies,
     stats: PlatformFontCatalogStats,
 }
 
@@ -35,12 +42,13 @@ impl PlatformFontCatalog {
             let emoji_face = PlatformColorEmojiFaceResolver::resolve(&policy, &mut loader);
             (emoji_face, loader.load_attempts)
         };
-        let regular_load_attempts =
+        let (regular_load_attempts, regular_font_families) =
             catalog_cache::load_regular_candidates(&mut font_system, &policy);
         Self {
             policy,
             font_system: Mutex::new(font_system),
             emoji_face,
+            regular_font_families,
             stats: PlatformFontCatalogStats {
                 font_database_discoveries: 1,
                 candidate_load_attempts: emoji_load_attempts + regular_load_attempts,
@@ -61,6 +69,11 @@ impl PlatformFontCatalog {
     #[must_use]
     pub const fn stats(&self) -> PlatformFontCatalogStats {
         self.stats
+    }
+
+    #[must_use]
+    pub(crate) fn regular_font_families(&self) -> PlatformRegularFontFamilies {
+        self.regular_font_families.clone()
     }
 
     #[must_use]

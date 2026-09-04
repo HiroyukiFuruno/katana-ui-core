@@ -16,7 +16,7 @@ pub use catalog_types::{
     PlatformEmojiFontObservation, PlatformFontCatalogError, PlatformFontCatalogFingerprint,
     PlatformFontCatalogPolicy, PlatformFontProfile, PlatformFontSha256,
 };
-pub use config::PlatformTextRasterConfig;
+pub use config::{PlatformTextFaceSelection, PlatformTextRasterConfig};
 pub use model::{
     PlatformTextGraphemeAdvance, PlatformTextGraphemeBounds, PlatformTextGraphemeRange,
     PlatformTextHit, PlatformTextMetrics, PlatformTextMetricsFrame, PlatformTextMetricsRequest,

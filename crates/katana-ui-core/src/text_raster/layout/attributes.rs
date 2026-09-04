@@ -4,7 +4,7 @@ use crate::text_raster::model::{PlatformTextRasterError, RGBA_ALPHA_INDEX, RGBA_
 use crate::theme::{FontFamily, FontToken};
 use cosmic_text::{Attrs, Color, Family, Style as FontStyle, Weight};
 
-use super::{BOLD_WEIGHT, REGULAR_WEIGHT};
+use super::{BOLD_WEIGHT, REGULAR_WEIGHT, ResolvedTextFaces};
 
 pub(super) fn normalized_runs(spans: &[UiTextSpan]) -> Vec<UiTextSpan> {
     spans.to_vec()
@@ -15,10 +15,17 @@ pub(super) fn attrs_for_span<'a>(
     span: &UiTextSpan,
     fallback_color_rgba: [u8; RGBA_CHANNEL_COUNT],
     emoji_face: &'a PlatformColorEmojiFaceRecord,
+    text_faces: &'a ResolvedTextFaces,
 ) -> Result<Attrs<'a>, PlatformTextRasterError> {
     let style = &span.style;
     Ok(Attrs::new()
-        .family(family_for(font.family, style, &span.text, emoji_face)?)
+        .family(family_for(
+            font.family,
+            style,
+            &span.text,
+            emoji_face,
+            text_faces,
+        )?)
         .weight(Weight(if style.bold {
             BOLD_WEIGHT
         } else {
@@ -37,6 +44,7 @@ fn family_for<'a>(
     style: &UiTextSpanStyle,
     text: &str,
     emoji_face: &'a PlatformColorEmojiFaceRecord,
+    text_faces: &'a ResolvedTextFaces,
 ) -> Result<Family<'a>, PlatformTextRasterError> {
     if style.emoji {
         return emoji_face
@@ -48,9 +56,15 @@ fn family_for<'a>(
     }
     Ok(
         if text.is_ascii() && (style.monospace || family == FontFamily::Monospace) {
-            Family::Monospace
+            text_faces
+                .monospace()
+                .map(Family::Name)
+                .unwrap_or(Family::Monospace)
         } else {
-            Family::SansSerif
+            text_faces
+                .proportional()
+                .map(Family::Name)
+                .unwrap_or(Family::SansSerif)
         },
     )
 }

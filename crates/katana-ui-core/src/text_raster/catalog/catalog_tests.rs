@@ -109,6 +109,26 @@ fn loaded_family_lookup_ignores_non_file_font_sources() -> io::Result<()> {
 }
 
 #[test]
+fn regular_candidates_resolve_the_first_loaded_family() -> io::Result<()> {
+    let candidate = installed_font_candidate()?;
+    let expected_family = candidate.expected_family.clone();
+    let policy = PlatformFontCatalogPolicy::new(
+        PlatformFontProfile::current(),
+        vec![test_file(), candidate.source_file_path.clone()],
+        Vec::new(),
+        Vec::new(),
+    );
+    let catalog = PlatformFontCatalog::new(policy);
+
+    assert_eq!(
+        catalog.regular_font_families().proportional.as_deref(),
+        Some(expected_family.as_str())
+    );
+    assert_eq!(catalog.stats().candidate_load_attempts, 2);
+    Ok(())
+}
+
+#[test]
 fn same_length_replacement_rehashes_a_different_file_identity() -> io::Result<()> {
     let path = test_file();
     let replacement = path.with_extension("replacement");

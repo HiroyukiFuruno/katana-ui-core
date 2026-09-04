@@ -1,5 +1,6 @@
-use super::{UiTreeRenderArea, UiTreeStorybookHost};
+use super::{Canvas, UiTreeRenderArea, UiTreeStorybookHost};
 use crate::test_assert::KucTestExpect;
+use crate::text_raster::{PlatformTextFaceSelection, PlatformTextRasterConfig};
 use katana_ui_core::atom::{Text, Toggle};
 use katana_ui_core::molecule::{SettingsControl, SettingsField, SettingsList, SettingsSection};
 use katana_ui_core::render_model::{UiCursor, UiHostActionSpec, UiNode, UiNodeId};
@@ -60,6 +61,21 @@ fn host_returns_node_interaction_target_when_no_action_exists() {
     assert_eq!(UiNodeId::new("readable-text"), target.node_id);
     assert!(target.action.is_none());
     assert_eq!(UiCursor::Default, target.cursor);
+}
+
+#[test]
+fn host_renders_with_the_opt_in_first_candidate_face_policy() {
+    let root: UiNode = UiNode::from(Text::new("KatanA Storybook text"));
+    let host = UiTreeStorybookHost::with_text_raster_config(
+        ThemeSnapshot::light(),
+        PlatformTextRasterConfig::default(),
+        PlatformTextFaceSelection::FirstCandidate,
+    );
+    let mut canvas = Canvas::new(TEST_AREA_WIDTH, SMALL_AREA_HEIGHT, 0);
+
+    host.render(&mut canvas, &root, small_area());
+
+    assert!(canvas.non_background_pixels(0) > 0);
 }
 
 #[test]

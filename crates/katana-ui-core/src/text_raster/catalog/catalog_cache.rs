@@ -66,11 +66,11 @@ pub(super) fn read_cached_file_hash(
 pub(super) fn load_regular_candidates(
     font_system: &mut FontSystem,
     policy: &crate::text_raster::catalog_types::PlatformFontCatalogPolicy,
-) -> usize {
+) -> (usize, super::PlatformRegularFontFamilies) {
     use std::collections::HashSet;
 
     let mut loaded_paths = HashSet::new();
-    policy
+    let load_attempts = policy
         .proportional_candidates
         .iter()
         .chain(&policy.monospace_candidates)
@@ -79,7 +79,24 @@ pub(super) fn load_regular_candidates(
             let _ = font_system.db_mut().load_font_file(path);
             1
         })
-        .sum()
+        .sum();
+    let regular_font_families = super::PlatformRegularFontFamilies {
+        proportional: first_family_from_loaded_candidates(
+            font_system,
+            &policy.proportional_candidates,
+        ),
+        monospace: first_family_from_loaded_candidates(font_system, &policy.monospace_candidates),
+    };
+    (load_attempts, regular_font_families)
+}
+
+fn first_family_from_loaded_candidates(
+    font_system: &FontSystem,
+    candidates: &[PathBuf],
+) -> Option<String> {
+    candidates
+        .iter()
+        .find_map(|candidate| family_from_loaded_file(font_system, candidate, ""))
 }
 
 pub(super) fn family_from_loaded_file(
