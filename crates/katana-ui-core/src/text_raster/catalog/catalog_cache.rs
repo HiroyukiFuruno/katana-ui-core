@@ -66,11 +66,11 @@ pub(super) fn read_cached_file_hash(
 pub(super) fn load_regular_candidates(
     font_system: &mut FontSystem,
     policy: &crate::text_raster::catalog_types::PlatformFontCatalogPolicy,
-) -> usize {
+) -> (usize, super::PlatformRegularFontFaces) {
     use std::collections::HashSet;
 
     let mut loaded_paths = HashSet::new();
-    policy
+    let load_attempts = policy
         .proportional_candidates
         .iter()
         .chain(&policy.monospace_candidates)
@@ -79,7 +79,75 @@ pub(super) fn load_regular_candidates(
             let _ = font_system.db_mut().load_font_file(path);
             1
         })
-        .sum()
+        .sum();
+    let mut regular_font_faces = super::PlatformRegularFontFaces {
+        proportional: first_face_from_loaded_candidates(
+            font_system,
+            &policy.proportional_candidates,
+        ),
+        monospace: first_face_from_loaded_candidates(font_system, &policy.monospace_candidates),
+    };
+    assign_selection_families(font_system, &mut regular_font_faces);
+    (load_attempts, regular_font_faces)
+}
+
+fn first_face_from_loaded_candidates(
+    font_system: &FontSystem,
+    candidates: &[PathBuf],
+) -> Option<super::PlatformRegularFontFace> {
+    candidates
+        .iter()
+        .find_map(|candidate| face_from_loaded_file(font_system, candidate))
+}
+
+fn face_from_loaded_file(
+    font_system: &FontSystem,
+    source_file_path: &Path,
+) -> Option<super::PlatformRegularFontFace> {
+    font_system.db().faces().find_map(|face| {
+        let path = file_path_from_source(&face.source)?;
+        if path != source_file_path {
+            return None;
+        }
+        let (family, _) = face.families.first()?;
+        Some(super::PlatformRegularFontFace {
+            family: family.clone(),
+            source_file_path: path.to_path_buf(),
+            selection_family: String::new(),
+        })
+    })
+}
+
+fn assign_selection_families(
+    font_system: &FontSystem,
+    faces: &mut super::PlatformRegularFontFaces,
+) {
+    let mut assigned = std::collections::HashSet::new();
+    if let Some(face) = &mut faces.proportional {
+        face.selection_family = next_selection_family(font_system, "proportional", &mut assigned);
+    }
+    if let Some(face) = &mut faces.monospace {
+        face.selection_family = next_selection_family(font_system, "monospace", &mut assigned);
+    }
+}
+
+fn next_selection_family(
+    font_system: &FontSystem,
+    role: &str,
+    assigned: &mut std::collections::HashSet<String>,
+) -> String {
+    let mut ordinal = 0_u64;
+    loop {
+        let candidate = format!("__kuc_first_candidate_{role}_{ordinal}__");
+        let exists_in_catalog = font_system
+            .db()
+            .faces()
+            .any(|face| face.families.iter().any(|(family, _)| family == &candidate));
+        if !exists_in_catalog && assigned.insert(candidate.clone()) {
+            return candidate;
+        }
+        ordinal = ordinal.saturating_add(1);
+    }
 }
 
 pub(super) fn family_from_loaded_file(
@@ -90,10 +158,7 @@ pub(super) fn family_from_loaded_file(
     let families = font_system
         .db()
         .faces()
-        .filter(|face| match &face.source {
-            cosmic_text::fontdb::Source::File(path) => path == source_file_path,
-            _ => false,
-        })
+        .filter(|face| file_path_from_source(&face.source) == Some(source_file_path))
         .flat_map(|face| face.families.iter().map(|(family, _)| family.clone()))
         .collect::<Vec<_>>();
     families
@@ -101,6 +166,16 @@ pub(super) fn family_from_loaded_file(
         .find(|family| family.as_str() == expected_family)
         .cloned()
         .or_else(|| families.into_iter().next())
+}
+
+pub(super) fn file_path_from_source(
+    source: &cosmic_text::fontdb::Source,
+) -> Option<&std::path::Path> {
+    match source {
+        cosmic_text::fontdb::Source::File(path)
+        | cosmic_text::fontdb::Source::SharedFile(path, _) => Some(path),
+        cosmic_text::fontdb::Source::Binary(_) => None,
+    }
 }
 
 pub(super) fn file_stamp(path: &Path) -> std::io::Result<FileStamp> {

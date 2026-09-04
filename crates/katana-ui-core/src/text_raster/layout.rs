@@ -1,4 +1,5 @@
 use crate::render_model::UiTextSpan;
+use crate::text_raster::catalog::PlatformRegularFontFaces;
 use crate::text_raster::catalog_types::PlatformColorEmojiFaceRecord;
 use crate::text_raster::model::{
     PlatformTextGraphemeBounds, PlatformTextMetrics, PlatformTextMetricsRequest,
@@ -29,6 +30,39 @@ const OPAQUE_COLOR_CHANNEL: u8 = u8::MAX;
 
 pub(crate) struct TextLayoutRasterizer;
 
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct ResolvedTextFaces {
+    proportional: Option<String>,
+    monospace: Option<String>,
+}
+
+impl ResolvedTextFaces {
+    pub(crate) fn from_first_candidates(
+        proportional: Option<String>,
+        monospace: Option<String>,
+    ) -> Self {
+        Self {
+            proportional,
+            monospace,
+        }
+    }
+
+    pub(crate) fn from_candidate_faces(candidates: PlatformRegularFontFaces) -> Self {
+        Self::from_first_candidates(
+            candidates.proportional.map(|face| face.selection_family),
+            candidates.monospace.map(|face| face.selection_family),
+        )
+    }
+
+    pub(crate) fn proportional(&self) -> Option<&str> {
+        self.proportional.as_deref()
+    }
+
+    pub(crate) fn monospace(&self) -> Option<&str> {
+        self.monospace.as_deref()
+    }
+}
+
 pub(crate) struct LayoutRaster {
     pub(crate) width: usize,
     pub(crate) height: usize,
@@ -41,6 +75,7 @@ impl TextLayoutRasterizer {
         font_system: &mut FontSystem,
         request: &PlatformTextMetricsRequest,
         emoji_face: &PlatformColorEmojiFaceRecord,
+        text_faces: &ResolvedTextFaces,
     ) -> Result<PlatformTextMetrics, PlatformTextRasterError> {
         if request.text.is_empty() {
             return Err(PlatformTextRasterError::EmptyText);
@@ -67,6 +102,7 @@ impl TextLayoutRasterizer {
                     span,
                     [OPAQUE_COLOR_CHANNEL; RGBA_CHANNEL_COUNT],
                     emoji_face,
+                    text_faces,
                 )
                 .map(|attrs| (span.text.as_str(), attrs))
             })
@@ -105,6 +141,7 @@ impl TextLayoutRasterizer {
         swash_cache: &mut SwashCache,
         request: &PlatformTextRasterRequest,
         emoji_face: &PlatformColorEmojiFaceRecord,
+        text_faces: &ResolvedTextFaces,
     ) -> Result<LayoutRaster, PlatformTextRasterError> {
         let scale = request.normalized_scale_factor();
         let metrics = Metrics::new(
@@ -122,8 +159,14 @@ impl TextLayoutRasterizer {
         let rich_text = runs
             .iter()
             .map(|span| {
-                attrs_for_span(&request.font, span, request.fallback_color_rgba, emoji_face)
-                    .map(|attrs| (span.text.as_str(), attrs))
+                attrs_for_span(
+                    &request.font,
+                    span,
+                    request.fallback_color_rgba,
+                    emoji_face,
+                    text_faces,
+                )
+                .map(|attrs| (span.text.as_str(), attrs))
             })
             .collect::<Result<Vec<_>, _>>();
         let rich_text = rich_text?;

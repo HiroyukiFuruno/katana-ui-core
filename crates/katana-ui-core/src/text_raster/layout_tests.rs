@@ -37,7 +37,12 @@ fn direct_layout_measure_rejects_empty_text_before_shaping() {
     let request = PlatformTextMetricsRequest::from_text("", font(), 1.0);
 
     assert_eq!(
-        TextLayoutRasterizer::measure(&mut font_system, &request, &unavailable_emoji_face(),),
+        TextLayoutRasterizer::measure(
+            &mut font_system,
+            &request,
+            &unavailable_emoji_face(),
+            &ResolvedTextFaces::default(),
+        ),
         Err(PlatformTextRasterError::EmptyText)
     );
 }
@@ -48,7 +53,12 @@ fn direct_layout_measure_rejects_nonfinite_scale_factor_before_shaping() {
     let request = PlatformTextMetricsRequest::from_text("coverage", font(), f32::NAN);
 
     assert_eq!(
-        TextLayoutRasterizer::measure(&mut font_system, &request, &unavailable_emoji_face(),),
+        TextLayoutRasterizer::measure(
+            &mut font_system,
+            &request,
+            &unavailable_emoji_face(),
+            &ResolvedTextFaces::default(),
+        ),
         Err(PlatformTextRasterError::NonFiniteLayoutExtent)
     );
 }

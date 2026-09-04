@@ -1,27 +1,23 @@
 mod catalog_cache;
 #[cfg(test)]
 mod catalog_tests;
+mod emoji_loader;
+mod selection;
+mod types;
 
 use crate::text_raster::catalog_types::{
-    PlatformColorEmojiFaceRecord, PlatformColorEmojiFaceResolver, PlatformEmojiFontCandidate,
-    PlatformEmojiFontLoadError, PlatformEmojiFontLoader, PlatformEmojiFontObservation,
-    PlatformFontCatalogError, PlatformFontCatalogPolicy,
+    PlatformColorEmojiFaceRecord, PlatformColorEmojiFaceResolver, PlatformFontCatalogError,
+    PlatformFontCatalogPolicy,
 };
-use cosmic_text::FontSystem;
+use crate::text_raster::config::PlatformTextFaceSelection;
+use cosmic_text::{FontSystem, fontdb::Database};
+use emoji_loader::SystemEmojiFontLoader;
 use std::sync::Mutex;
+pub use types::{PlatformFontCatalog, PlatformFontCatalogStats};
+pub(crate) use types::{PlatformRegularFontFace, PlatformRegularFontFaces};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct PlatformFontCatalogStats {
-    pub font_database_discoveries: usize,
-    pub candidate_load_attempts: usize,
-}
-
-pub struct PlatformFontCatalog {
-    policy: PlatformFontCatalogPolicy,
-    font_system: Mutex<FontSystem>,
-    emoji_face: PlatformColorEmojiFaceRecord,
-    stats: PlatformFontCatalogStats,
-}
+#[cfg(test)]
+use emoji_loader::{font_file_load_error, load_candidate_font, load_font_file};
 
 impl PlatformFontCatalog {
     #[must_use]
@@ -35,12 +31,14 @@ impl PlatformFontCatalog {
             let emoji_face = PlatformColorEmojiFaceResolver::resolve(&policy, &mut loader);
             (emoji_face, loader.load_attempts)
         };
-        let regular_load_attempts =
+        let (regular_load_attempts, regular_font_faces) =
             catalog_cache::load_regular_candidates(&mut font_system, &policy);
         Self {
             policy,
             font_system: Mutex::new(font_system),
+            first_candidate_font_system: Mutex::new(None),
             emoji_face,
+            regular_font_faces,
             stats: PlatformFontCatalogStats {
                 font_database_discoveries: 1,
                 candidate_load_attempts: emoji_load_attempts + regular_load_attempts,
@@ -64,6 +62,11 @@ impl PlatformFontCatalog {
     }
 
     #[must_use]
+    pub(crate) fn regular_font_faces(&self) -> PlatformRegularFontFaces {
+        self.regular_font_faces.clone()
+    }
+
+    #[must_use]
     pub fn fingerprint(&self) -> crate::text_raster::PlatformFontCatalogFingerprint {
         self.emoji_face.catalog_fingerprint
     }
@@ -78,79 +81,59 @@ impl PlatformFontCatalog {
             .map_err(|_| PlatformFontCatalogError::FontSystemLockPoisoned)?;
         Ok(operation(&mut font_system))
     }
-}
 
-struct SystemEmojiFontLoader<'a> {
-    font_system: &'a mut FontSystem,
-    load_attempts: usize,
-}
-
-impl PlatformEmojiFontLoader for SystemEmojiFontLoader<'_> {
-    fn load(
-        &mut self,
-        candidate: &PlatformEmojiFontCandidate,
-    ) -> Result<PlatformEmojiFontObservation, PlatformEmojiFontLoadError> {
-        self.load_attempts += 1;
-        let raw_file_sha256 = catalog_cache::read_cached_file_hash(&candidate.source_file_path)
-            .map_err(|error| {
-                if error.kind() == std::io::ErrorKind::NotFound {
-                    PlatformEmojiFontLoadError::Missing {
-                        source_file_path: candidate.source_file_path.clone(),
-                    }
-                } else {
-                    PlatformEmojiFontLoadError::Io {
-                        source_file_path: candidate.source_file_path.clone(),
-                        message: error.to_string(),
-                    }
-                }
-            })?;
-        load_candidate_font(self.font_system, candidate)?;
-        let actual_family = catalog_cache::family_from_loaded_file(
-            self.font_system,
-            &candidate.source_file_path,
-            &candidate.expected_family,
-        )
-        .ok_or_else(|| PlatformEmojiFontLoadError::FaceNotFound {
-            source_file_path: candidate.source_file_path.clone(),
-        })?;
-        Ok(PlatformEmojiFontObservation {
-            actual_family,
-            source_file_path: candidate.source_file_path.clone(),
-            raw_file_sha256,
-        })
+    pub(crate) fn with_font_system_for_face_selection<T>(
+        &self,
+        face_selection: PlatformTextFaceSelection,
+        operation: impl FnOnce(&mut FontSystem) -> T,
+    ) -> Result<T, PlatformFontCatalogError> {
+        if face_selection == PlatformTextFaceSelection::System || self.regular_font_faces.is_empty()
+        {
+            return self.with_font_system(operation);
+        }
+        self.with_first_candidate_font_system(operation)
     }
-}
 
-fn load_font_file(
-    font_system: &mut FontSystem,
-    candidate: &PlatformEmojiFontCandidate,
-) -> std::io::Result<()> {
-    font_system
-        .db_mut()
-        .load_font_file(&candidate.source_file_path)
-}
+    fn with_first_candidate_font_system<T>(
+        &self,
+        operation: impl FnOnce(&mut FontSystem) -> T,
+    ) -> Result<T, PlatformFontCatalogError> {
+        {
+            let mut selected_font_system = self
+                .first_candidate_font_system
+                .lock()
+                .map_err(|_| PlatformFontCatalogError::FontSystemLockPoisoned)?;
+            if let Some(font_system) = selected_font_system.as_mut() {
+                return Ok(operation(font_system));
+            }
+        }
 
-fn load_candidate_font(
-    font_system: &mut FontSystem,
-    candidate: &PlatformEmojiFontCandidate,
-) -> Result<(), PlatformEmojiFontLoadError> {
-    load_font_file(font_system, candidate).map_err(|error| font_file_load_error(candidate, error))
-}
+        let (locale, database) = self.clone_font_database()?;
+        let selected_font_system =
+            selection::first_candidate_font_system(locale, database, &self.regular_font_faces);
+        let mut cached_font_system = self
+            .first_candidate_font_system
+            .lock()
+            .map_err(|_| PlatformFontCatalogError::FontSystemLockPoisoned)?;
+        let font_system = cached_font_system.get_or_insert(selected_font_system);
+        Ok(operation(font_system))
+    }
 
-fn font_file_load_error(
-    candidate: &PlatformEmojiFontCandidate,
-    error: std::io::Error,
-) -> PlatformEmojiFontLoadError {
-    PlatformEmojiFontLoadError::Io {
-        source_file_path: candidate.source_file_path.clone(),
-        message: error.to_string(),
+    fn clone_font_database(&self) -> Result<(String, Database), PlatformFontCatalogError> {
+        let font_system = self
+            .font_system
+            .lock()
+            .map_err(|_| PlatformFontCatalogError::FontSystemLockPoisoned)?;
+        Ok((font_system.locale().to_owned(), font_system.db().clone()))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_raster::catalog_types::PlatformFontProfile;
+    use crate::text_raster::catalog_types::{
+        PlatformEmojiFontCandidate, PlatformEmojiFontLoadError, PlatformFontProfile,
+    };
 
     #[test]
     fn catalog_exposes_requested_policy_and_stable_fingerprint() {

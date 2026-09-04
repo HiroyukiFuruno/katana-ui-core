@@ -6,6 +6,7 @@ use super::ui_tree_canvas_types::{
     UiTreeRenderArea,
 };
 use katana_ui_core::render_model::{UiCursor, UiNode, UiNodeId};
+use katana_ui_core::text_raster::{PlatformTextFaceSelection, PlatformTextRasterConfig};
 use katana_ui_core::theme::ThemeSnapshot;
 
 pub struct UiTreeStorybookHost {
@@ -15,8 +16,25 @@ pub struct UiTreeStorybookHost {
 impl UiTreeStorybookHost {
     #[must_use]
     pub fn new(theme: ThemeSnapshot) -> Self {
+        Self::with_text_raster_config(
+            theme,
+            PlatformTextRasterConfig::default(),
+            PlatformTextFaceSelection::System,
+        )
+    }
+
+    #[must_use]
+    pub fn with_text_raster_config(
+        theme: ThemeSnapshot,
+        text_raster_config: PlatformTextRasterConfig,
+        face_selection: PlatformTextFaceSelection,
+    ) -> Self {
         Self {
-            renderer: UiTreeCanvasRenderer::new(theme),
+            renderer: UiTreeCanvasRenderer::with_text_raster_config(
+                theme,
+                text_raster_config,
+                face_selection,
+            ),
         }
     }
 
