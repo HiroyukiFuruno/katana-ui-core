@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-09-05
+
+### Added
+
+- Added typed, opt-in canonical proportional and monospace face selection to the public raster host APIs: `UiTreeCanvasRenderer`, `UiTreeStorybookHost`, and `UiTreeSurfaceHost` (Issue #41).
+
+### Fixed
+
+- Preserved the existing `System` generic-family default and emoji contract while allowing registry-only consumers to reproduce their platform candidate policy without path or Git overrides.
+
+### Changed
+
+- Audited direct and transitive dependencies and updated compatible `Cargo.lock` resolutions before the release gate.
+
 ## [0.3.5] - 2026-09-04
 
 ### Added

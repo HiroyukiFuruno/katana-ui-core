@@ -9,6 +9,20 @@
 
 ## [Unreleased]
 
+## [0.3.6] - 2026-09-05
+
+### 追加
+
+- 公開 raster host API の `UiTreeCanvasRenderer`、`UiTreeStorybookHost`、`UiTreeSurfaceHost` に、canonical proportional/monospace face を型付きで opt-in 選択する機能を追加した（Issue #41）。
+
+### 修正
+
+- 既存の `System` generic-family default と emoji 契約を維持したまま、registry-only consumer が path / Git override なしで platform candidate policy を再現できるようにした。
+
+### 変更
+
+- 直接・推移依存を監査し、release gate 前に `Cargo.lock` の互換性がある解決を更新した。
+
 ## [0.3.5] - 2026-09-04
 
 ### 追加
