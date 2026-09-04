@@ -4,7 +4,11 @@ use crate::text_raster::{
     PlatformTextRasterRequest,
 };
 use crate::theme::{FontFamily, FontToken};
-use cosmic_text::{Attrs, Buffer, Family, FontSystem, Metrics, Shaping, fontdb::Source};
+use cosmic_text::{
+    Attrs, Buffer, Family, FontSystem, Metrics, Shaping, Style,
+    fontdb::{Database, Source},
+};
+use std::collections::HashSet;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -14,34 +18,44 @@ use std::sync::atomic::{AtomicU64, Ordering};
 const TEXT_COLOR: [u8; 4] = [245, 245, 245, 255];
 const TEST_FONT_SIZE_PX: f32 = 18.0;
 const TEST_FONT_WEIGHT: u16 = 400;
-const SOURCE_IDENTITY_TEXT: &str = "Candidate source Regular Monospace";
+const SOURCE_IDENTITY_TEXT: &str = "Candidate source";
 
 static NEXT_TEST_PATH: AtomicU64 = AtomicU64::new(0);
 
 fn installed_font_candidate() -> io::Result<(PathBuf, String)> {
-    let mut font_system = FontSystem::new();
-    let candidates = font_system
+    let mut candidate_paths = HashSet::new();
+    let (path, family) = FontSystem::new()
         .db()
         .faces()
         .filter_map(|face| match &face.source {
-            Source::File(path) => face
-                .families
-                .first()
-                .map(|(family, _)| (face.id, face.weight, path.clone(), family.to_string())),
+            Source::File(path) => candidate_paths.insert(path.clone()).then(|| path.clone()),
             _ => None,
         })
-        .collect::<Vec<_>>();
-    let (_, _, path, family) = candidates
-        .into_iter()
-        .find(|(face_id, weight, _, _)| {
-            font_system.get_font(*face_id, *weight).is_some_and(|font| {
-                SOURCE_IDENTITY_TEXT
-                    .chars()
-                    .all(|character| font.as_swash().charmap().map(character) != 0)
-            })
-        })
+        .find_map(loaded_candidate_with_identity_text)
         .ok_or_else(|| io::Error::other("a Latin-capable file-backed system font is required"))?;
     Ok((path, family))
+}
+
+fn loaded_candidate_with_identity_text(path: PathBuf) -> Option<(PathBuf, String)> {
+    let mut database = Database::new();
+    database.load_font_file(&path).ok()?;
+    let mut font_system = FontSystem::new_with_locale_and_db(String::new(), database);
+    let (face_id, weight, style, family) = font_system.db().faces().next().and_then(|face| {
+        face.families
+            .first()
+            .map(|(family, _)| (face.id, face.weight, face.style, family.clone()))
+    })?;
+    if weight.0 != TEST_FONT_WEIGHT || style != Style::Normal {
+        return None;
+    }
+    font_system
+        .get_font(face_id, weight)
+        .is_some_and(|font| {
+            SOURCE_IDENTITY_TEXT
+                .chars()
+                .all(|character| font.as_swash().charmap().map(character) != 0)
+        })
+        .then_some((path, family))
 }
 
 fn missing_font_path() -> PathBuf {

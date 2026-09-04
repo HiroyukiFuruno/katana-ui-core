@@ -136,7 +136,8 @@ fn next_selection_family(
     role: &str,
     assigned: &mut std::collections::HashSet<String>,
 ) -> String {
-    for ordinal in 0_u64.. {
+    let mut ordinal = 0_u64;
+    loop {
         let candidate = format!("__kuc_first_candidate_{role}_{ordinal}__");
         let exists_in_catalog = font_system
             .db()
@@ -145,8 +146,8 @@ fn next_selection_family(
         if !exists_in_catalog && assigned.insert(candidate.clone()) {
             return candidate;
         }
+        ordinal = ordinal.saturating_add(1);
     }
-    unreachable!("unbounded selection-family ordinal must find an unused value")
 }
 
 pub(super) fn family_from_loaded_file(

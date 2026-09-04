@@ -133,6 +133,43 @@ fn regular_candidates_resolve_the_first_loaded_family() -> io::Result<()> {
 }
 
 #[test]
+fn regular_candidates_skip_existing_selection_family_names() -> io::Result<()> {
+    let candidate = installed_font_candidate()?;
+    let reserved_selection_family = "__kuc_first_candidate_proportional_0__";
+    let mut font_system = FontSystem::new();
+    let mut existing = font_system
+        .db()
+        .faces()
+        .next()
+        .cloned()
+        .ok_or_else(|| io::Error::other("a system font face is required"))?;
+    existing.id = cosmic_text::fontdb::ID::dummy();
+    existing.families = existing
+        .families
+        .into_iter()
+        .map(|(_, language)| (reserved_selection_family.to_owned(), language))
+        .collect();
+    font_system.db_mut().push_face_info(existing);
+    let policy = PlatformFontCatalogPolicy::new(
+        PlatformFontProfile::current(),
+        vec![candidate.source_file_path],
+        Vec::new(),
+        Vec::new(),
+    );
+
+    let (_, faces) = catalog_cache::load_regular_candidates(&mut font_system, &policy);
+
+    assert_eq!(
+        faces
+            .proportional
+            .as_ref()
+            .map(|face| face.selection_family.as_str()),
+        Some("__kuc_first_candidate_proportional_1__")
+    );
+    Ok(())
+}
+
+#[test]
 fn same_length_replacement_rehashes_a_different_file_identity() -> io::Result<()> {
     let path = test_file();
     let replacement = path.with_extension("replacement");
