@@ -10,8 +10,15 @@ use crate::raster_host::ui_tree_canvas_text_line_width::{
 
 impl UiTreeHostActionHitCollector<'_> {
     pub(super) fn text_hit_height(&self, node: &UiNode, x: usize) -> usize {
-        UiTreeTextRenderer::measure_node_height(self.text_context(), node, x, self.area)
-            .max(TEXT_HEIGHT)
+        let height =
+            UiTreeTextRenderer::measure_node_height(self.text_context(), node, x, self.area);
+        if UiTreeTextMetrics::has_active_document_role_typography(
+            &node.props().text.role,
+            self.typography,
+        ) {
+            return height;
+        }
+        height.max(TEXT_HEIGHT)
     }
 
     pub(super) fn text_span_hit_width(&self, node: &UiNode, text: &str) -> usize {

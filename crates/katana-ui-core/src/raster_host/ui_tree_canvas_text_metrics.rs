@@ -53,7 +53,7 @@ mod metric_roles;
 #[path = "ui_tree_canvas_text_metric_scaling.rs"]
 mod metric_scaling;
 
-use document_overrides::with_document_typography;
+use document_overrides::{has_active_document_role_typography, with_document_typography};
 pub(in crate::raster_host) use document_typography::UiTreeDocumentTypography;
 use metric_roles::{
     compact_heading_font_size, compact_heading_line_height, html_body_font_size,
@@ -79,6 +79,13 @@ pub(super) struct UiTreeTextMetrics {
 }
 
 impl UiTreeTextMetrics {
+    pub(super) fn has_active_document_role_typography(
+        role: &str,
+        typography: UiTreeDocumentTypography,
+    ) -> bool {
+        has_active_document_role_typography(role, typography.document_typography)
+    }
+
     #[cfg(test)]
     pub(super) fn for_node(node: &UiNode) -> Self {
         Self::for_node_with_typography(node, UiTreeDocumentTypography::default())

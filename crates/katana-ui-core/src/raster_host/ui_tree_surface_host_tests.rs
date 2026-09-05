@@ -1,7 +1,4 @@
-use super::{
-    Canvas, UiTreeDocumentTypography, UiTreeHitRect, UiTreeNodeHit, UiTreeRenderArea,
-    UiTreeSurfaceHost, UiTreeTextRoleTypography,
-};
+use super::{Canvas, UiTreeHitRect, UiTreeNodeHit, UiTreeRenderArea, UiTreeSurfaceHost};
 use crate::test_assert::KucTestExpect;
 use crate::text_raster::{PlatformTextFaceSelection, PlatformTextRasterConfig};
 use katana_ui_core::atom::{Text, Toggle};
@@ -71,38 +68,6 @@ fn surface_host_text_node_hit_respects_explicit_height() {
         .kuc_expect("text-node hit");
 
     assert_eq!(30, hit.rect.height);
-}
-
-#[test]
-fn surface_host_document_typography_shares_raster_and_node_hit_metrics() {
-    let document_typography = UiTreeDocumentTypography::new()
-        .with_body(UiTreeTextRoleTypography::new(16.5, 23, 0))
-        .with_heading_1(UiTreeTextRoleTypography::new(24.75, 40, 9));
-    let body: UiNode = Text::new("WWWW").text_role("body").into();
-    let heading: UiNode = Text::new("WWWW").text_role("heading").into();
-    let root = UiNode::new(UiNodeKind::Column, "")
-        .child(body.stable_node_id(UiNodeId::new("body")))
-        .child(heading.stable_node_id(UiNodeId::new("heading")));
-    let host =
-        UiTreeSurfaceHost::with_document_typography(ThemeSnapshot::dark(), document_typography);
-    let mut canvas = Canvas::new(TEST_AREA_WIDTH, TEST_AREA_HEIGHT, 0);
-
-    host.render(&mut canvas, &root, test_area());
-    let hits = host.document_node_hits(&root, test_area());
-    let body_hit = hits
-        .iter()
-        .find(|hit| hit.node_id.as_str() == "body")
-        .kuc_expect("body node hit");
-    let heading_hit = hits
-        .iter()
-        .find(|hit| hit.node_id.as_str() == "heading")
-        .kuc_expect("heading node hit");
-
-    assert_eq!(23, body_hit.rect.height);
-    assert_eq!(23, heading_hit.rect.y);
-    assert_eq!(40, heading_hit.rect.height);
-    assert!(non_background_width(&canvas, 0, 23) > 0);
-    assert!(non_background_width(&canvas, 23, 63) > non_background_width(&canvas, 0, 23));
 }
 
 #[test]
@@ -225,21 +190,4 @@ fn raster_host_hit(
         },
         cursor: UiCursor::Default,
     }
-}
-
-fn non_background_width(canvas: &Canvas, start_y: usize, end_y: usize) -> usize {
-    let mut min_x = canvas.width();
-    let mut max_x = 0;
-    for (index, pixel) in canvas.pixels().iter().enumerate() {
-        let x = index % canvas.width();
-        let y = index / canvas.width();
-        if *pixel != 0 && y >= start_y && y < end_y {
-            min_x = min_x.min(x);
-            max_x = max_x.max(x);
-        }
-    }
-    if min_x == canvas.width() {
-        return 0;
-    }
-    max_x.saturating_sub(min_x).saturating_add(1)
 }

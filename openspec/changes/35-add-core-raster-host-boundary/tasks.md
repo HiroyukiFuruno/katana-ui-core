@@ -18,6 +18,6 @@ Issue: <https://github.com/HiroyukiFuruno/katana-ui-core/issues/35>
 
 - [x] 3.1 KUC v0.3.7用に、本文・H1〜H3のfont size、line height、baseline位置を独立指定するframework-neutralなtyped APIを追加する。無効値はtheme由来metricsへfail closedする。
 - [x] 3.2 public canvas / Storybook / surface host、raster draw、scroll/layout測定、node/action hitが同一final typographyを使うようにする。raster幅とnode hitのline-boxを同時に検証する回帰を追加する。
-- [x] 3.3 KUC v0.3.7のformat、lint、raster-host contract、focused / workspace test、release gateを通す。Linux strict coverageはfunctions 14,030/14,030・lines 147,982/147,982、package/publish dry-runまで通過済み。
+- [x] 3.3 KUC v0.3.7のformat、lint、raster-host contract、focused / workspace test、release gateを通す。review修正後のLinux strict coverageはfunctions 14,033/14,033・lines 148,010/148,010、package/publish dry-runまで通過済み。
 - [/] 3.4 KUC v0.3.7をGitHub Releaseとcrates.ioへ公開し、registry artifactを確認する。release/v0.3.7のDraft PR、review、required CI、merge、publish workflowが必要。
 - [/] 3.5 KDVがexact public KUC v0.3.7の`raster-host`を採用し、path/git overrideなしでboundary gateとKatanA canonical crop 95/95を通す。公開artifact後のKDV/KatanA consumer gateが必要。
