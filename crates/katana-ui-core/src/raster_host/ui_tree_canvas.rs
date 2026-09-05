@@ -1,4 +1,5 @@
 use super::canvas::Canvas;
+use super::document_typography::UiTreeDocumentTypography as UiTreeDocumentTypographyOverrides;
 use super::text::TextRenderer;
 use super::ui_tree_canvas_choice_control::UiTreeChoiceControlRenderer;
 use super::ui_tree_canvas_context_menu::UiTreeContextMenuRenderer;
@@ -43,10 +44,20 @@ const DOCUMENT_EXPORT_BODY_FONT_ROLE: &str = "document-export-body";
 impl UiTreeCanvasRenderer {
     #[must_use]
     pub fn new(theme: ThemeSnapshot) -> Self {
-        Self::with_text_raster_config(
+        Self::with_document_typography(theme, UiTreeDocumentTypographyOverrides::default())
+    }
+
+    /// Creates a renderer with optional document-role typography overrides.
+    #[must_use]
+    pub fn with_document_typography(
+        theme: ThemeSnapshot,
+        document_typography: UiTreeDocumentTypographyOverrides,
+    ) -> Self {
+        Self::with_text_raster_config_and_document_typography(
             theme,
             PlatformTextRasterConfig::default(),
             PlatformTextFaceSelection::System,
+            document_typography,
         )
     }
 
@@ -55,6 +66,22 @@ impl UiTreeCanvasRenderer {
         theme: ThemeSnapshot,
         text_raster_config: PlatformTextRasterConfig,
         face_selection: PlatformTextFaceSelection,
+    ) -> Self {
+        Self::with_text_raster_config_and_document_typography(
+            theme,
+            text_raster_config,
+            face_selection,
+            UiTreeDocumentTypographyOverrides::default(),
+        )
+    }
+
+    /// Creates a renderer with explicit text-raster and document-role typography settings.
+    #[must_use]
+    pub fn with_text_raster_config_and_document_typography(
+        theme: ThemeSnapshot,
+        text_raster_config: PlatformTextRasterConfig,
+        face_selection: PlatformTextFaceSelection,
+        document_typography: UiTreeDocumentTypographyOverrides,
     ) -> Self {
         let facade = UiCoreFacade::new(theme.clone());
         Self {
@@ -83,7 +110,10 @@ impl UiTreeCanvasRenderer {
                 text_raster_config,
                 face_selection,
             ),
-            typography: UiTreeDocumentTypography::from_theme(&theme),
+            typography: UiTreeDocumentTypography::from_theme_with_document_typography(
+                &theme,
+                document_typography,
+            ),
             scroll_height_cache: std::cell::RefCell::new(MeasuredNodeHeightCache::default()),
         }
     }
@@ -237,7 +267,52 @@ impl UiTreeCanvasRenderer {
 #[cfg(test)]
 mod direct_render_tests {
     use super::*;
-    use katana_ui_core::molecule::Accordion;
+    use katana_ui_core::{atom::Text, molecule::Accordion};
+
+    #[test]
+    fn legacy_text_raster_constructor_keeps_theme_document_metrics() {
+        let theme = ThemeSnapshot::dark();
+        let legacy_renderer = UiTreeCanvasRenderer::with_text_raster_config(
+            theme.clone(),
+            PlatformTextRasterConfig::default(),
+            PlatformTextFaceSelection::System,
+        );
+        let default_renderer = UiTreeCanvasRenderer::new(theme);
+        let node: UiNode = Text::new("body").text_role("body").into();
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 200,
+            height: 100,
+            scroll_y: 0.0,
+        };
+        let mut legacy_canvas =
+            Canvas::new(area.width, area.height, legacy_renderer.palette.background);
+        let mut default_canvas =
+            Canvas::new(area.width, area.height, default_renderer.palette.background);
+        let mut legacy_y = 0;
+        let mut default_y = 0;
+
+        legacy_renderer.render_node(
+            &mut legacy_canvas,
+            &node,
+            0,
+            &mut legacy_y,
+            area,
+            legacy_renderer.palette,
+        );
+        default_renderer.render_node(
+            &mut default_canvas,
+            &node,
+            0,
+            &mut default_y,
+            area,
+            default_renderer.palette,
+        );
+
+        assert_eq!(default_y, legacy_y);
+        assert_eq!(default_canvas.pixels(), legacy_canvas.pixels());
+    }
 
     #[test]
     fn render_node_skips_offscreen_fixed_height_and_dispatches_accordion() {

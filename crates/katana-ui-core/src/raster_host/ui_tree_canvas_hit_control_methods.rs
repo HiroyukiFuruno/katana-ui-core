@@ -1,27 +1,30 @@
 use super::{
     INDENT, NODE_GAP, SettingsListLayoutMetrics, TEXT_HEIGHT, UI_LINK_OPEN_ACTION_ID, UiNode,
-    UiTreeHitRect, UiTreeHostActionHitCollector, button_dimensions, checkbox_row_height,
-    checkbox_row_width, dimension_px, image_target_size, logical_image_height_exact,
-    logical_image_width_exact, remaining_width, toggle_dimensions,
+    UiTreeHitRect, UiTreeHostActionHitCollector, UiTreeTextMetrics, button_dimensions,
+    checkbox_row_height, checkbox_row_width, dimension_px, image_target_size,
+    logical_image_height_exact, logical_image_width_exact, remaining_width, toggle_dimensions,
 };
 use katana_ui_core::render_model::UiVisualRole;
 
 impl UiTreeHostActionHitCollector<'_> {
     pub(super) fn accordion(&mut self, node: &UiNode, x: usize) {
+        let document_accordion = node.props().text.role == "html-accordion";
+        let header_height =
+            UiTreeTextMetrics::for_node_with_typography(node, self.typography).line_height;
         self.push_node_action_hits(
             node,
             UiTreeHitRect {
                 x,
                 y: self.y,
                 width: remaining_width(self.area, x),
-                height: TEXT_HEIGHT,
+                height: header_height,
             },
         );
-        self.y = self.y.saturating_add(TEXT_HEIGHT);
+        self.y = self.y.saturating_add(header_height);
         if !node.props().interaction.open {
             return;
         }
-        let child_x = if node.props().text.role == "html-accordion" {
+        let child_x = if document_accordion {
             x
         } else {
             x.saturating_add(INDENT)
@@ -29,7 +32,7 @@ impl UiTreeHostActionHitCollector<'_> {
         for child in node.children() {
             self.node(child, child_x);
         }
-        if node.props().text.role != "html-accordion" {
+        if !document_accordion {
             self.y = self.y.saturating_add(NODE_GAP);
         }
     }

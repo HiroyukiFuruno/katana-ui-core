@@ -44,6 +44,8 @@ const DOCUMENT_CODE_FONT_ROLE: &str = "document-code";
 const MARKDOWN_HEADING_1_RASTER_VERTICAL_SCALE: f32 = 7.0 / 5.0;
 const KATANA_LONG_HEADING_2_TOP_MARGIN_PX: usize = 15;
 
+#[path = "ui_tree_canvas_text_metrics_document_overrides.rs"]
+mod document_overrides;
 #[path = "ui_tree_canvas_text_document_typography.rs"]
 mod document_typography;
 #[path = "ui_tree_canvas_text_metric_roles.rs"]
@@ -51,6 +53,7 @@ mod metric_roles;
 #[path = "ui_tree_canvas_text_metric_scaling.rs"]
 mod metric_scaling;
 
+use document_overrides::{has_active_document_role_typography, with_document_typography};
 pub(in crate::raster_host) use document_typography::UiTreeDocumentTypography;
 use metric_roles::{
     compact_heading_font_size, compact_heading_line_height, html_body_font_size,
@@ -76,6 +79,13 @@ pub(super) struct UiTreeTextMetrics {
 }
 
 impl UiTreeTextMetrics {
+    pub(super) fn has_active_document_role_typography(
+        role: &str,
+        typography: UiTreeDocumentTypography,
+    ) -> bool {
+        has_active_document_role_typography(role, typography.document_typography)
+    }
+
     #[cfg(test)]
     pub(super) fn for_node(node: &UiNode) -> Self {
         Self::for_node_with_typography(node, UiTreeDocumentTypography::default())
@@ -87,6 +97,11 @@ impl UiTreeTextMetrics {
     ) -> Self {
         let mut metrics = Self::for_role(&node.props().text.role);
         metrics = metrics.with_typography(&node.props().text.role, typography);
+        metrics = with_document_typography(
+            metrics,
+            &node.props().text.role,
+            typography.document_typography,
+        );
         let top_padding = dimension_px(&node.props().common.padding.top);
         if node.props().text.role == "code" && top_padding > 0 {
             metrics.top_margin = top_padding;
@@ -269,6 +284,9 @@ impl UiTreeTextMetrics {
 #[cfg(test)]
 mod tests {
     use super::{UiTreeDocumentTypography, UiTreeTextMetrics};
+    use crate::raster_host::{
+        UiTreeDocumentTypography as UiTreeDocumentTypographyOverrides, UiTreeTextRoleTypography,
+    };
     use katana_ui_core::atom::Text;
     use katana_ui_core::render_model::{
         UiCommonProps, UiDimension, UiEdgeInsets, UiNode, UiNodeKind, UiTextProps,
@@ -511,6 +529,56 @@ mod tests {
 
         assert!((metrics.font_size - 21.0).abs() < 0.02);
         assert_eq!(40, metrics.line_height);
+    }
+
+    #[test]
+    fn explicit_document_role_typography_keeps_font_line_height_and_baseline_independent() {
+        let body = UiTreeTextRoleTypography::new(16.5, 23, 0);
+        let heading = UiTreeTextRoleTypography::new(23.4, 34, 8);
+        let document_typography = UiTreeDocumentTypographyOverrides::new()
+            .with_body(body)
+            .with_heading_2(heading)
+            .with_heading_3(UiTreeTextRoleTypography::new(22.0, 30, 7));
+        let body_node: UiNode = Text::new("body").text_role("body").into();
+        let heading_node: UiNode = Text::new("Long Heading").text_role("heading-2-long").into();
+        let heading_3_node: UiNode = Text::new("Heading").text_role("heading-3").into();
+
+        let theme = ThemeSnapshot::dark();
+        let typography = UiTreeDocumentTypography::from_theme_with_document_typography(
+            &theme,
+            document_typography,
+        );
+        let body_metrics = UiTreeTextMetrics::for_node_with_typography(&body_node, typography);
+        let heading_metrics =
+            UiTreeTextMetrics::for_node_with_typography(&heading_node, typography);
+        let heading_3_metrics =
+            UiTreeTextMetrics::for_node_with_typography(&heading_3_node, typography);
+
+        assert_eq!(16.5, body_metrics.font_size);
+        assert_eq!(23, body_metrics.line_height);
+        assert_eq!(0, body_metrics.top_margin);
+        assert_eq!(23.4, heading_metrics.font_size);
+        assert_eq!(34, heading_metrics.line_height);
+        assert_eq!(8, heading_metrics.top_margin);
+        assert_eq!(22.0, heading_3_metrics.font_size);
+        assert_eq!(30, heading_3_metrics.line_height);
+        assert_eq!(7, heading_3_metrics.top_margin);
+    }
+
+    #[test]
+    fn invalid_document_role_typography_keeps_theme_derived_metrics() {
+        let node: UiNode = Text::new("body").text_role("body").into();
+        let theme = ThemeSnapshot::dark();
+        let theme_typography = UiTreeDocumentTypography::from_theme(&theme);
+        let invalid_override = UiTreeDocumentTypographyOverrides::new()
+            .with_body(UiTreeTextRoleTypography::new(0.0, 23, 0));
+        let invalid_typography =
+            UiTreeDocumentTypography::from_theme_with_document_typography(&theme, invalid_override);
+
+        assert_eq!(
+            UiTreeTextMetrics::for_node_with_typography(&node, theme_typography),
+            UiTreeTextMetrics::for_node_with_typography(&node, invalid_typography)
+        );
     }
 
     #[test]

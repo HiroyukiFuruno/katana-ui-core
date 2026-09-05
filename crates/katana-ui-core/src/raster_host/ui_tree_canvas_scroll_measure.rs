@@ -1,7 +1,10 @@
 use super::ui_tree_canvas_hit_metrics::child_container_x;
-use super::ui_tree_canvas_hit_metrics::{NODE_GAP, TEXT_HEIGHT, dimension_px, has_absolute_child};
+use super::ui_tree_canvas_hit_metrics::{
+    INDENT, NODE_GAP, TEXT_HEIGHT, dimension_px, has_absolute_child,
+};
 use super::ui_tree_canvas_image_metrics::logical_image_height;
 use super::ui_tree_canvas_text::{UiTreeTextContext, UiTreeTextRenderer};
+use super::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 use super::ui_tree_canvas_tree_parts;
 use super::ui_tree_canvas_types::UiTreeRenderArea;
 use katana_ui_core::render_model::{UiNode, UiNodeKind, UiVisualRole};
@@ -133,9 +136,24 @@ fn accordion_height(
     x: usize,
     area: UiTreeRenderArea,
 ) -> usize {
-    let mut height = TEXT_HEIGHT;
+    let document_accordion = node.props().text.role == "html-accordion";
+    let mut height =
+        UiTreeTextMetrics::for_node_with_typography(node, text_context.typography).line_height;
     if node.props().interaction.open {
-        height = height.saturating_add(children_height(node, text_context, x, area));
+        let child_x = if document_accordion {
+            x
+        } else {
+            x.saturating_add(INDENT)
+        };
+        height = height.saturating_add(
+            node.children()
+                .iter()
+                .map(|child| measured_node_height(child, text_context, child_x, area))
+                .sum(),
+        );
+        if !document_accordion {
+            height = height.saturating_add(NODE_GAP);
+        }
     }
     height
 }
@@ -197,11 +215,15 @@ mod tests {
     use super::*;
     use crate::raster_host::text::TextRenderer;
     use crate::raster_host::ui_tree_canvas_palette::UiTreeCanvasPalette;
-    use crate::raster_host::ui_tree_canvas_text_metrics::UiTreeDocumentTypography;
+    use crate::raster_host::{
+        UiTreeTextRoleTypography, ui_tree_canvas_text_metrics::UiTreeDocumentTypography,
+    };
     use katana_ui_core::atom::Text;
     use katana_ui_core::facade::UiCoreFacade;
     use katana_ui_core::molecule::Accordion;
-    use katana_ui_core::render_model::{UiDimension, UiGridProps, UiGridViewport};
+    use katana_ui_core::render_model::{
+        UiDimension, UiGridProps, UiGridViewport, UiNode, UiTextProps,
+    };
     use katana_ui_core::theme::ThemeSnapshot;
 
     #[test]
@@ -243,6 +265,44 @@ mod tests {
         );
         assert_eq!(90, child_area.width);
         assert_eq!(8, child_area.x);
+    }
+
+    #[test]
+    fn document_accordion_scroll_measurement_uses_final_typography() {
+        let theme = ThemeSnapshot::dark();
+        let mut context = text_context();
+        context.typography = UiTreeDocumentTypography::from_theme_with_document_typography(
+            &theme,
+            crate::raster_host::UiTreeDocumentTypography::new()
+                .with_body(UiTreeTextRoleTypography::new(10.0, 12, 0)),
+        );
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 120,
+            height: 160,
+            scroll_y: 0.0,
+        };
+        let child: UiNode = Text::new("Body").text_role("body").into();
+        let accordion =
+            UiNode::from(Accordion::new("Details").open(true).child(child)).text(UiTextProps {
+                role: "html-accordion".to_owned(),
+                ..UiTextProps::default()
+            });
+
+        assert_eq!(24, measured_node_height(&accordion, context, 0, area));
+
+        let closed = UiNode::from(
+            Accordion::new("Details")
+                .open(false)
+                .child(Text::new("Body").text_role("body")),
+        )
+        .text(UiTextProps {
+            role: "html-accordion".to_owned(),
+            ..UiTextProps::default()
+        });
+
+        assert_eq!(12, measured_node_height(&closed, context, 0, area));
     }
 
     #[test]
