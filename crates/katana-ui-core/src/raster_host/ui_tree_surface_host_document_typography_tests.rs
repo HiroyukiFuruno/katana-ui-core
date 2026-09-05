@@ -97,6 +97,51 @@ fn surface_host_document_typography_keeps_sub_legacy_line_heights_in_action_layo
     assert_eq!(child_action.rect, child_node.rect);
 }
 
+#[test]
+fn surface_host_document_typography_applies_preview_accordion_hit_metrics() {
+    let document_typography =
+        UiTreeDocumentTypography::new().with_body(UiTreeTextRoleTypography::new(10.0, 12, 0));
+    let body: UiNode = Text::new("Body").text_role("body").into();
+    let body = body
+        .stable_node_id(UiNodeId::new("body"))
+        .host_action(UiHostActionSpec::command("body", "Body"));
+    let child: UiNode = Text::new("Child").text_role("body").into();
+    let child = child
+        .stable_node_id(UiNodeId::new("child"))
+        .host_action(UiHostActionSpec::command("child", "Child"));
+    let accordion = UiNode::from(Accordion::new("Details").open(true).child(child))
+        .text(UiTextProps {
+            role: "html-accordion-preview".to_owned(),
+            ..UiTextProps::default()
+        })
+        .stable_node_id(UiNodeId::new("accordion"));
+    let root = UiNode::new(UiNodeKind::Column, "")
+        .child(body)
+        .child(accordion);
+    let host =
+        UiTreeSurfaceHost::with_document_typography(ThemeSnapshot::dark(), document_typography);
+    let action_hits = host.document_host_action_hits(&root, test_area());
+    let node_hits = host.document_node_hits(&root, test_area());
+    let accordion_action = action_hits
+        .iter()
+        .find(|hit| hit.action.action_id == "ui.disclosure.toggle")
+        .kuc_expect("preview accordion action hit");
+    let child_action = action_hits
+        .iter()
+        .find(|hit| hit.action.action_id == "child")
+        .kuc_expect("preview accordion child action hit");
+    let child_node = node_hits
+        .iter()
+        .find(|hit| hit.node_id.as_str() == "child")
+        .kuc_expect("preview accordion child node hit");
+
+    assert_eq!(12, accordion_action.rect.y);
+    assert_eq!(12, accordion_action.rect.height);
+    assert_eq!(24, child_action.rect.y);
+    assert_eq!(12, child_action.rect.height);
+    assert_eq!(child_action.rect, child_node.rect);
+}
+
 fn test_area() -> UiTreeRenderArea {
     UiTreeRenderArea {
         x: 0,

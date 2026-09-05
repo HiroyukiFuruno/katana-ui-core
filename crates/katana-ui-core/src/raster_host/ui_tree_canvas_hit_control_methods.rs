@@ -9,11 +9,8 @@ use katana_ui_core::render_model::UiVisualRole;
 impl UiTreeHostActionHitCollector<'_> {
     pub(super) fn accordion(&mut self, node: &UiNode, x: usize) {
         let document_accordion = node.props().text.role == "html-accordion";
-        let header_height = if document_accordion {
-            UiTreeTextMetrics::for_node_with_typography(node, self.typography).line_height
-        } else {
-            TEXT_HEIGHT
-        };
+        let header_height =
+            UiTreeTextMetrics::for_node_with_typography(node, self.typography).line_height;
         self.push_node_action_hits(
             node,
             UiTreeHitRect {
