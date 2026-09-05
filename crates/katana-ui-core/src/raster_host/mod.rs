@@ -16,6 +16,7 @@ pub(crate) mod canvas_scale;
 pub(crate) mod canvas_scroll;
 pub(crate) mod canvas_text_selection;
 pub(crate) mod canvas_viewport;
+pub mod document_typography;
 pub(crate) mod layout_metrics;
 pub(crate) mod palette;
 pub(crate) mod presentation;
@@ -110,6 +111,7 @@ mod ui_tree_storybook_host_tests;
 mod ui_tree_surface_host_tests;
 
 pub use canvas::Canvas;
+pub use document_typography::{UiTreeDocumentTypography, UiTreeTextRoleTypography};
 pub use presentation::StorybookPresentation;
 pub use text::TextRenderer;
 pub use text_selection::SelectableTextRun;

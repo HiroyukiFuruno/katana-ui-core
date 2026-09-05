@@ -1956,9 +1956,9 @@ dependencies = [
 
 [[package]]
 name = "katana-markdown-model"
-version = "0.2.1"
+version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aef09b1c471bba0040036f685d8a0006b01c88c0d69df6e3de0a1558954e4d27"
+checksum = "d48e086deb2a387487cbaa546837b860dca600e8784d1b076d56f4eb15ad11ce"
 dependencies = [
  "serde",
  "serde_json",
@@ -1968,7 +1968,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core"
-version = "0.3.6"
+version = "0.3.7"
 dependencies = [
  "cap-fs-ext",
  "cap-std",
@@ -1989,7 +1989,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core-storybook"
-version = "0.3.6"
+version = "0.3.7"
 dependencies = [
  "eframe",
  "egui",

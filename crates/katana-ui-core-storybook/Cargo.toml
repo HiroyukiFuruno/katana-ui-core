@@ -22,7 +22,7 @@ sha2.workspace = true
 unicode-segmentation.workspace = true
 
 [dev-dependencies]
-katana-markdown-model = "0.2.1"
+katana-markdown-model = "0.2.2"
 
 [[bin]]
 name = "katana-ui-core-storybook"

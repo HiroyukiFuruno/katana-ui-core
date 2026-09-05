@@ -1,4 +1,5 @@
 use super::canvas::Canvas;
+use super::document_typography::UiTreeDocumentTypography;
 use super::ui_tree_canvas::UiTreeCanvasRenderer;
 use super::ui_tree_canvas_context_menu::UiTreeContextMenuRenderer;
 use super::ui_tree_canvas_types::{
@@ -16,10 +17,20 @@ pub struct UiTreeStorybookHost {
 impl UiTreeStorybookHost {
     #[must_use]
     pub fn new(theme: ThemeSnapshot) -> Self {
-        Self::with_text_raster_config(
+        Self::with_document_typography(theme, UiTreeDocumentTypography::default())
+    }
+
+    /// Creates a host with optional document-role typography overrides.
+    #[must_use]
+    pub fn with_document_typography(
+        theme: ThemeSnapshot,
+        document_typography: UiTreeDocumentTypography,
+    ) -> Self {
+        Self::with_text_raster_config_and_document_typography(
             theme,
             PlatformTextRasterConfig::default(),
             PlatformTextFaceSelection::System,
+            document_typography,
         )
     }
 
@@ -29,11 +40,28 @@ impl UiTreeStorybookHost {
         text_raster_config: PlatformTextRasterConfig,
         face_selection: PlatformTextFaceSelection,
     ) -> Self {
+        Self::with_text_raster_config_and_document_typography(
+            theme,
+            text_raster_config,
+            face_selection,
+            UiTreeDocumentTypography::default(),
+        )
+    }
+
+    /// Creates a host with explicit text-raster and document-role typography settings.
+    #[must_use]
+    pub fn with_text_raster_config_and_document_typography(
+        theme: ThemeSnapshot,
+        text_raster_config: PlatformTextRasterConfig,
+        face_selection: PlatformTextFaceSelection,
+        document_typography: UiTreeDocumentTypography,
+    ) -> Self {
         Self {
-            renderer: UiTreeCanvasRenderer::with_text_raster_config(
+            renderer: UiTreeCanvasRenderer::with_text_raster_config_and_document_typography(
                 theme,
                 text_raster_config,
                 face_selection,
+                document_typography,
             ),
         }
     }

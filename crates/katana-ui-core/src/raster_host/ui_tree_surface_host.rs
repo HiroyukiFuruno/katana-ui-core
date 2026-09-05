@@ -1,4 +1,5 @@
 use super::canvas::Canvas;
+use super::document_typography::UiTreeDocumentTypography;
 use super::ui_tree_canvas_types::{
     UiTreeHostActionHit, UiTreeInteractionTarget, UiTreeNodeHit, UiTreeRenderArea,
 };
@@ -14,10 +15,20 @@ pub struct UiTreeSurfaceHost {
 impl UiTreeSurfaceHost {
     #[must_use]
     pub fn new(theme: ThemeSnapshot) -> Self {
-        Self::with_text_raster_config(
+        Self::with_document_typography(theme, UiTreeDocumentTypography::default())
+    }
+
+    /// Creates a surface host with optional document-role typography overrides.
+    #[must_use]
+    pub fn with_document_typography(
+        theme: ThemeSnapshot,
+        document_typography: UiTreeDocumentTypography,
+    ) -> Self {
+        Self::with_text_raster_config_and_document_typography(
             theme,
             PlatformTextRasterConfig::default(),
             PlatformTextFaceSelection::System,
+            document_typography,
         )
     }
 
@@ -27,11 +38,28 @@ impl UiTreeSurfaceHost {
         text_raster_config: PlatformTextRasterConfig,
         face_selection: PlatformTextFaceSelection,
     ) -> Self {
+        Self::with_text_raster_config_and_document_typography(
+            theme,
+            text_raster_config,
+            face_selection,
+            UiTreeDocumentTypography::default(),
+        )
+    }
+
+    /// Creates a surface host with explicit raster and document-role typography settings.
+    #[must_use]
+    pub fn with_text_raster_config_and_document_typography(
+        theme: ThemeSnapshot,
+        text_raster_config: PlatformTextRasterConfig,
+        face_selection: PlatformTextFaceSelection,
+        document_typography: UiTreeDocumentTypography,
+    ) -> Self {
         Self {
-            host: UiTreeStorybookHost::with_text_raster_config(
+            host: UiTreeStorybookHost::with_text_raster_config_and_document_typography(
                 theme,
                 text_raster_config,
                 face_selection,
+                document_typography,
             ),
         }
     }
