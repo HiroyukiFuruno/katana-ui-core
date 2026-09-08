@@ -26,9 +26,12 @@ pub(super) fn apply_scroll(
     ConsumerArtifactPlanError,
 > {
     let focused = complete_text_focus(root, context, frame)?;
+    let before_scroll_y = focused.text_scroll_y();
     let before = focused.record().record_hash().to_owned();
     let scrolled = show_frame(root, context, raw_input(GenericInteractionClass::Scroll))?;
-    ensure_record_changed(&before, scrolled.record().record_hash()).map(|()| scrolled)
+    ensure_scroll_changed(before_scroll_y, scrolled.text_scroll_y())?;
+    ensure_record_changed(&before, scrolled.record().record_hash())?;
+    Ok(scrolled)
 }
 
 pub(super) fn ensure_record_changed(
@@ -38,6 +41,18 @@ pub(super) fn ensure_record_changed(
     if before == after {
         return Err(interaction_error(
             "text interaction did not change the retained text target",
+        ));
+    }
+    Ok(())
+}
+
+pub(super) fn ensure_scroll_changed(
+    before_scroll_y: i32,
+    after_scroll_y: i32,
+) -> Result<(), ConsumerArtifactPlanError> {
+    if before_scroll_y == after_scroll_y {
+        return Err(interaction_error(
+            "scroll interaction did not move the retained viewport",
         ));
     }
     Ok(())

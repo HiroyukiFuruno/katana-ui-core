@@ -147,10 +147,13 @@ pub(super) fn complete_semantic_bindings(
 }
 
 fn presentation() -> EguiTextCommandSurfacePresentation {
+    let scroll_targets = (1..=80)
+        .map(|index| format!("scroll target {index:02}"))
+        .collect::<Vec<_>>()
+        .join("\n");
     let surface = TextSurface::new(TextSurfaceProps::new(
-        TextArea::new("consumer-artifact-plan").value(
-            "consumer artifact\nscroll target 01\nscroll target 02\nscroll target 03\nscroll target 04\nscroll target 05\nscroll target 06\nscroll target 07\nscroll target 08\nscroll target 09\nscroll target 10\nscroll target 11\nscroll target 12",
-        ),
+        TextArea::new("consumer-artifact-plan")
+            .value(format!("consumer artifact\n{scroll_targets}")),
         Vec::new(),
         TextSurfaceViewport::new(0, 0, TEST_SURFACE_WIDTH, TEST_SURFACE_HEIGHT),
     ));

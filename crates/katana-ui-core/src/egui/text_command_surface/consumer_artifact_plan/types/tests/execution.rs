@@ -1,5 +1,5 @@
 use super::super::support::{map_root_error, sha256};
-use super::super::text_interactions::ensure_record_changed;
+use super::super::text_interactions::{ensure_record_changed, ensure_scroll_changed};
 use super::super::unicode_evidence::{
     artifact_unicode_evidence_options, bind_unicode_evidence, capture_unicode_evidence,
 };
@@ -257,6 +257,15 @@ fn text_interaction_requires_a_record_change() {
     assert!(matches!(
         ensure_record_changed("same", "same"),
         Err(ConsumerArtifactPlanError::Artifact(message)) if message == "KUC interaction protocol failed: text interaction did not change the retained text target"
+    ));
+}
+
+#[test]
+fn scroll_interaction_requires_a_retained_viewport_offset_change() {
+    assert_eq!(ensure_scroll_changed(0, 24), Ok(()));
+    assert!(matches!(
+        ensure_scroll_changed(0, 0),
+        Err(ConsumerArtifactPlanError::Artifact(message)) if message == "KUC interaction protocol failed: scroll interaction did not move the retained viewport"
     ));
 }
 

@@ -81,6 +81,10 @@ impl EguiTextCommandSurfaceHostRootFrame {
         self.output.interaction_locator()
     }
 
+    pub(crate) const fn text_scroll_y(&self) -> i32 {
+        self.output.evidence_text.record.frame.viewport.scroll_y
+    }
+
     /// Forwards the closed event transport exactly once.
     pub fn forward_events_once<Forwarder>(
         &self,

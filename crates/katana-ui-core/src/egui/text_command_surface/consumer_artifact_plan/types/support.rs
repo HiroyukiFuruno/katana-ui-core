@@ -53,7 +53,7 @@ pub(super) fn raw_input(class: GenericInteractionClass) -> egui::RawInput {
         | GenericInteractionClass::ContextMenu => Vec::new(),
         GenericInteractionClass::Scroll => vec![egui::Event::MouseWheel {
             unit: egui::MouseWheelUnit::Point,
-            delta: egui::vec2(0.0, -24.0),
+            delta: egui::vec2(0.0, 24.0),
             modifiers: egui::Modifiers::NONE,
             phase: egui::TouchPhase::Move,
         }],
