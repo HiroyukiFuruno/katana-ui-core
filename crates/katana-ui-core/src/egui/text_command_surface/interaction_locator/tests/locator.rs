@@ -64,7 +64,7 @@ fn accesskit_activation_targets_the_current_resolved_response_node_once() {
     );
     let expected_node = egui::Id::new(("test", "activate")).accesskit_id();
     let mut request = current
-        .request_accesskit_activation("activate")
+        .request_accesskit_activation("activate", KucInteractionActionClass::Toolbar)
         .expect("current actionable target");
     let mut input = egui::RawInput::default();
 
@@ -88,11 +88,11 @@ fn accesskit_activation_targets_the_current_resolved_response_node_once() {
 fn accesskit_activation_fails_closed_for_each_unusable_target_state() {
     let missing = locator("root", KUC_LOCATOR_REQUEST_REVISION, Vec::new());
     assert!(matches!(
-        missing.request_accesskit_activation("activate"),
+        missing.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
         Err(KucInteractionLocatorError::Missing)
     ));
 
-    let ambiguous = locator(
+    let distinct_classes = locator(
         "root",
         KUC_LOCATOR_REQUEST_REVISION,
         vec![
@@ -104,8 +104,27 @@ fn accesskit_activation_fails_closed_for_each_unusable_target_state() {
             ),
         ],
     );
+    assert!(
+        distinct_classes
+            .request_accesskit_activation("activate", KucInteractionActionClass::Toolbar)
+            .is_ok()
+    );
+    assert!(
+        distinct_classes
+            .request_accesskit_activation("activate", KucInteractionActionClass::FloatingToolbar)
+            .is_ok()
+    );
+
+    let ambiguous = locator(
+        "root",
+        KUC_LOCATOR_REQUEST_REVISION,
+        vec![
+            target("activate", KucInteractionActionClass::Toolbar, false),
+            target("activate", KucInteractionActionClass::Toolbar, false),
+        ],
+    );
     assert!(matches!(
-        ambiguous.request_accesskit_activation("activate"),
+        ambiguous.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
         Err(KucInteractionLocatorError::Ambiguous)
     ));
 
@@ -119,10 +138,10 @@ fn accesskit_activation_fails_closed_for_each_unusable_target_state() {
         )],
     );
     duplicate
-        .request_accesskit_activation("activate")
+        .request_accesskit_activation("activate", KucInteractionActionClass::Toolbar)
         .expect("first activation request");
     assert!(matches!(
-        duplicate.request_accesskit_activation("activate"),
+        duplicate.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
         Err(KucInteractionLocatorError::Duplicate)
     ));
 
@@ -139,7 +158,7 @@ fn accesskit_activation_fails_closed_for_each_unusable_target_state() {
         .hidden
         .insert(("activate".to_owned(), KucInteractionActionClass::Toolbar));
     assert!(matches!(
-        hidden.request_accesskit_activation("activate"),
+        hidden.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
         Err(KucInteractionLocatorError::Hidden)
     ));
 
@@ -149,7 +168,7 @@ fn accesskit_activation_fails_closed_for_each_unusable_target_state() {
         vec![target("activate", KucInteractionActionClass::Toolbar, true)],
     );
     assert!(matches!(
-        disabled.request_accesskit_activation("activate"),
+        disabled.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
         Err(KucInteractionLocatorError::Disabled)
     ));
 
@@ -166,7 +185,7 @@ fn accesskit_activation_fails_closed_for_each_unusable_target_state() {
         .ambiguous_bounds
         .push(overlapping.targets[0].evidence.bounds);
     assert!(matches!(
-        overlapping.request_accesskit_activation("activate"),
+        overlapping.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
         Err(KucInteractionLocatorError::Ambiguous)
     ));
 }

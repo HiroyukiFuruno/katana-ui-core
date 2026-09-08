@@ -10,7 +10,6 @@ pub(super) fn render_stage(
     root: &mut EguiTextCommandSurfaceHostRoot,
     context: &egui::Context,
     class: GenericInteractionClass,
-    leaf_target: &str,
     action_target: &str,
 ) -> Result<
     crate::egui::text_command_surface::EguiTextCommandSurfaceHostRootFrame,
@@ -50,7 +49,7 @@ pub(super) fn render_stage(
         GenericInteractionClass::ContextMenu => apply_context_menu(root, context, frame, class),
         GenericInteractionClass::Search => complete_search_trace(root, context, frame),
         GenericInteractionClass::AccessibilityActivation => {
-            apply_accesskit_activation(root, context, frame, leaf_target)
+            apply_accesskit_activation(root, context, frame, action_target)
         }
         _ => Ok(frame),
     }
@@ -80,14 +79,14 @@ fn apply_accesskit_activation(
     root: &mut EguiTextCommandSurfaceHostRoot,
     context: &egui::Context,
     frame: crate::egui::text_command_surface::EguiTextCommandSurfaceHostRootFrame,
-    leaf_target: &str,
+    action_target: &str,
 ) -> Result<
     crate::egui::text_command_surface::EguiTextCommandSurfaceHostRootFrame,
     ConsumerArtifactPlanError,
 > {
     let mut request = frame
         .interaction_locator()
-        .request_accesskit_activation(leaf_target)
+        .request_accesskit_activation(action_target, KucInteractionActionClass::Toolbar)
         .map_err(interaction_error)?;
     let mut input = raw_input(GenericInteractionClass::AccessibilityActivation);
     request

@@ -1,15 +1,21 @@
-use super::{KucInteractionLocator, KucInteractionLocatorError, KucOpaqueInteractionRequest};
+use super::{
+    KucInteractionActionClass, KucInteractionLocator, KucInteractionLocatorError,
+    KucOpaqueInteractionRequest,
+};
 
 impl KucInteractionLocator {
     /// Resolves one current actionable AccessKit node and issues its click request exactly once.
     pub fn request_accesskit_activation(
         &self,
         action_identity: &str,
+        action_class: KucInteractionActionClass,
     ) -> Result<KucOpaqueInteractionRequest, KucInteractionLocatorError> {
         let targets = self
             .targets
             .iter()
-            .filter(|target| target.action_identity == action_identity)
+            .filter(|target| {
+                target.action_identity == action_identity && target.action_class == action_class
+            })
             .collect::<Vec<_>>();
         let [target] = targets.as_slice() else {
             return Err(if targets.is_empty() {

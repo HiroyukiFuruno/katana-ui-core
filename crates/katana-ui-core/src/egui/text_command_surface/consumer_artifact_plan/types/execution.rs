@@ -183,13 +183,7 @@ impl IssuedConsumerArtifactPlan {
         };
         self.failed_stage = Some(index);
         let result = (|| {
-            let frame = render_stage(
-                &mut self.root,
-                context,
-                interaction,
-                leaf.as_str(),
-                action_target.as_str(),
-            )?;
+            let frame = render_stage(&mut self.root, context, interaction, action_target.as_str())?;
             let receipt = write_stage_artifact(&frame, output_dir, &stage_id)?;
             let artifact = receipt.artifact().clone();
             validate_decoded_png(&artifact)?;
