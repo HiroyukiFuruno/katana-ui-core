@@ -198,6 +198,7 @@ pub struct KucOpaqueTextSelectionContinuation {
     pub(super) frame_serial: u64,
     pub(super) geometry: TextSelectionGeometry,
     pub(super) phase: TextSelectionPhase,
+    pub(super) requires_floating_output: bool,
     pub(super) applied: bool,
 }
 

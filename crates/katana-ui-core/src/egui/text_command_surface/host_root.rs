@@ -60,6 +60,12 @@ impl std::fmt::Debug for EguiTextCommandSurfaceHostTargetToken {
 }
 
 impl EguiTextCommandSurfacePresentationToken {
+    /// Returns the opaque projection revision without disclosing its target or payload.
+    #[must_use]
+    pub const fn revision(&self) -> u64 {
+        self.revision
+    }
+
     /// Creates a non-reusable presentation token from host-projected opaque bytes.
     #[must_use]
     pub fn from_opaque_bytes(
@@ -250,6 +256,15 @@ impl EguiTextCommandSurfaceRootFactory {
         Ok(EguiTextCommandSurfaceHostRoot {
             process: HostRootProcess::retain(decoded, token.revision)?,
         })
+    }
+
+    /// Validates that two opaque presentations target the same retained root.
+    pub(crate) fn has_same_root_identity(
+        &self,
+        left: &EguiTextCommandSurfacePresentationToken,
+        right: &EguiTextCommandSurfacePresentationToken,
+    ) -> Result<bool, EguiTextCommandSurfaceRootFactoryError> {
+        Ok(decode_token(left)?.identity == decode_token(right)?.identity)
     }
 
     /// Retains a root with a non-wire host effect lease.

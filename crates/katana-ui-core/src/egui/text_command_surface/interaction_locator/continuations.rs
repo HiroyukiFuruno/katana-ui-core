@@ -68,7 +68,7 @@ impl KucOpaqueTextSelectionContinuation {
                 if !current.selection_established {
                     return Err(KucTextSelectionContinuationError::SelectionNotEstablished);
                 }
-                if !current.floating_visible {
+                if self.requires_floating_output && !current.floating_visible {
                     return Err(KucTextSelectionContinuationError::FloatingNotVisible);
                 }
                 return Ok(None);
@@ -79,6 +79,7 @@ impl KucOpaqueTextSelectionContinuation {
             frame_serial: current.frame_serial,
             geometry: self.geometry,
             phase,
+            requires_floating_output: self.requires_floating_output,
             applied: false,
         }))
     }

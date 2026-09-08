@@ -8,7 +8,7 @@ use super::{
 };
 use crate::atom::TextAreaEvent;
 use crate::molecule::command_chrome::CommandChromeSearchEvent;
-use crate::molecule::structured::SearchControlStripEvent;
+use crate::molecule::structured::{SearchControlStripEvent, SearchOptionKind, SearchOptions};
 use crate::text_surface::TextSurfaceEvent;
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -42,6 +42,14 @@ impl FullTextCommandSurfaceScenarioSession {
     ) -> Result<EguiTextCommandSurfaceHostProjectionLease, FullTextCommandSurfaceScenarioError>
     {
         self.issue_lease()
+    }
+
+    /// Restores a search strip that this session previously closed.
+    ///
+    /// The retained session owns search visibility, so consumers do not need a
+    /// parallel visible flag or child-model callback to reopen it.
+    pub fn reopen_search(&self) {
+        self.state.borrow_mut().search_visible = Some(true);
     }
 
     fn issue_lease(
@@ -92,12 +100,24 @@ impl ScenarioSessionState {
             presentation.text.selection_start = start;
             presentation.text.selection_end = end;
         }
-        if let Some(search) = &mut presentation.search {
+        if self.search_visible == Some(false) {
+            presentation.search = None;
+        } else if let Some(search) = &mut presentation.search {
             if let Some(query) = &self.search_query {
                 search.value.query.clone_from(query);
             }
+            if let Some(options) = self.search_options {
+                search.value.options = options;
+            }
+            if let Some(mode) = self.replace_mode {
+                search.value.replace_mode = mode;
+            }
             if let Some(value) = &self.replace_value {
                 search.value.replace_value.clone_from(value);
+            }
+            if let Some((result_count, active_index)) = self.result_position {
+                search.value.result_count = Some(result_count);
+                search.value.active_index = active_index;
             }
         }
         presentation
@@ -114,11 +134,28 @@ impl ScenarioSessionState {
         if let Some(selection) = accepted_selection {
             self.selection = Some(selection);
         }
+        if let Some(visible) = update.search_visible {
+            self.search_visible = Some(visible);
+        }
         if let Some(query) = update.search_query {
             self.search_query = Some(query);
         }
+        if !update.search_option_changes.is_empty() {
+            let options = self
+                .search_options
+                .get_or_insert_with(SearchOptions::default);
+            for (option, enabled) in update.search_option_changes {
+                set_search_option(options, option, enabled);
+            }
+        }
+        if let Some(mode) = update.replace_mode {
+            self.replace_mode = Some(mode);
+        }
         if let Some(value) = update.replace_value {
             self.replace_value = Some(value);
+        }
+        if let Some(position) = update.result_position {
+            self.result_position = Some(position);
         }
     }
 }
@@ -141,27 +178,56 @@ impl ScenarioSessionUpdate {
             }
         }
         for event in context.search_events() {
-            let CommandChromeSearchEvent::Strip { event } = event else {
-                continue;
-            };
-            match event {
-                SearchControlStripEvent::SearchQueryChanged(value) => {
-                    update.search_query = Some(value.clone());
-                }
-                SearchControlStripEvent::ReplaceValueChanged(value) => {
-                    update.replace_value = Some(value.clone());
-                }
-                _ => {}
-            }
+            update.apply_search_event(event);
         }
         update
+    }
+
+    fn apply_search_event(&mut self, event: &CommandChromeSearchEvent) {
+        match event {
+            CommandChromeSearchEvent::CloseRequested => self.search_visible = Some(false),
+            CommandChromeSearchEvent::Strip { event } => match event {
+                SearchControlStripEvent::SearchQueryChanged(value) => {
+                    self.search_query = Some(value.clone());
+                }
+                SearchControlStripEvent::SearchOptionChanged { option, enabled } => {
+                    self.search_option_changes.push((*option, *enabled));
+                }
+                SearchControlStripEvent::ReplaceModeChanged(value) => {
+                    self.replace_mode = Some(*value);
+                }
+                SearchControlStripEvent::ReplaceValueChanged(value) => {
+                    self.replace_value = Some(value.clone());
+                }
+                SearchControlStripEvent::SearchResultPositionChanged {
+                    result_count,
+                    active_index,
+                } => {
+                    self.result_position = Some((*result_count, *active_index));
+                }
+                SearchControlStripEvent::SearchNavigationRequested { .. }
+                | SearchControlStripEvent::ReplaceRequested { .. } => {}
+            },
+        }
     }
 
     const fn is_empty(&self) -> bool {
         self.text.is_none()
             && self.selection.is_none()
+            && self.search_visible.is_none()
             && self.search_query.is_none()
+            && self.search_option_changes.is_empty()
+            && self.replace_mode.is_none()
             && self.replace_value.is_none()
+            && self.result_position.is_none()
+    }
+}
+
+fn set_search_option(options: &mut SearchOptions, option: SearchOptionKind, enabled: bool) {
+    match option {
+        SearchOptionKind::MatchCase => options.match_case = enabled,
+        SearchOptionKind::WholeWord => options.whole_word = enabled,
+        SearchOptionKind::UseRegex => options.use_regex = enabled,
     }
 }
 

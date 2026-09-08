@@ -2,6 +2,7 @@ use super::command_chrome_artifact::{
     CommandChromeArtifactFrame, EguiCommandChromeFloatingArtifactFrame,
     EguiCommandChromeSearchArtifactFrame,
 };
+use crate::egui::raster_extent::LogicalRasterExtent;
 use crate::egui::text_surface::SharedTextMetrics;
 use crate::egui::text_surface::{
     EguiTextSurfaceAdapter, EguiTextSurfaceError, EguiTextSurfaceFrameRecord,
@@ -251,8 +252,8 @@ impl RenderedRaster {
     ) -> Self {
         Self {
             identity,
-            width: physical_to_logical(width, scale),
-            height: physical_to_logical(height, scale),
+            width: LogicalRasterExtent::from_physical(width as usize, scale),
+            height: LogicalRasterExtent::from_physical(height as usize, scale),
             physical_width: width,
             physical_height: height,
             pixels,
@@ -262,8 +263,4 @@ impl RenderedRaster {
 
 pub(super) fn logical_to_physical(value: u32, scale: f32) -> u32 {
     ((value as f32 * scale).round().max(1.0)) as u32
-}
-
-fn physical_to_logical(value: u32, scale: f32) -> u32 {
-    ((value as f32 / scale.max(1.0)).ceil().max(1.0)) as u32
 }

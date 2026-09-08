@@ -4,6 +4,7 @@
 //! texture upload, input conversion, and accessibility projection stay here.
 
 mod closeable_tab_strip_adapter;
+mod raster_extent;
 #[cfg(feature = "storybook-artifacts")]
 mod system;
 mod texture_cache;

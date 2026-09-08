@@ -5,6 +5,7 @@ use super::types::{
     EguiStatusBarError, EguiStatusBarOutput, StatusBarLabelRasterEvidence, StatusBarPaintOperation,
     StatusBarPaintOperationKind, StatusBarPaintPlan, StatusBarPaintTexture, StatusBarRenderStyle,
 };
+use crate::egui::raster_extent::LogicalRasterExtent;
 use crate::molecule::{
     ProgressMeterShape, StatusBar, StatusBarAction, StatusBarSegment, StatusBarSegmentAlignment,
 };
@@ -227,10 +228,9 @@ impl EguiStatusBarAdapter {
             chromatic_pixel_count: raster.chromatic_pixel_count(),
             sha256: raster_fingerprint,
         });
-        let image = egui::Rect::from_center_size(
-            bounds.center(),
-            egui::vec2(raster.width as f32 / scale, raster.height as f32 / scale),
-        );
+        let (width, height) = LogicalRasterExtent::size(&raster, scale);
+        let image =
+            egui::Rect::from_center_size(bounds.center(), egui::vec2(width as f32, height as f32));
         paint_plan.operations.push(StatusBarPaintOperation {
             clip_bounds: StatusBarPaint::ui_rect(bounds),
             kind: StatusBarPaintOperationKind::Texture {
