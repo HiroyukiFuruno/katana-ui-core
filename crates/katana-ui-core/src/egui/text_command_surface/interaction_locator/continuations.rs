@@ -65,7 +65,7 @@ impl KucOpaqueTextSelectionContinuation {
             TextSelectionPhase::MoveToMidpoint => TextSelectionPhase::MoveToEnd,
             TextSelectionPhase::MoveToEnd => TextSelectionPhase::Release,
             TextSelectionPhase::Release => {
-                if !current.selection_established {
+                if self.requires_floating_output && !current.selection_established {
                     return Err(KucTextSelectionContinuationError::SelectionNotEstablished);
                 }
                 if self.requires_floating_output && !current.floating_visible {

@@ -1,19 +1,18 @@
 use super::stage_interactions::render_stage;
 use super::support::{
     cleanup_stage_output, map_root_error, preflight_output, sha256, validate_decoded_png,
-    write_manifest,
+    write_manifest, write_stage_artifact,
 };
 use super::unicode_evidence::{bind_unicode_evidence, capture_unicode_evidence};
 use super::{
-    ConsumerArtifactEvidence, ConsumerArtifactForwardingReceipt, ConsumerArtifactPlanError,
-    ConsumerArtifactPlanV1, ConsumerArtifactStageBinding, EguiTextCommandSurfaceHostRoot,
-    GenericEffectClass, GenericInteractionClass, SCHEMA_VERSION,
+    ConsumerArtifactEvidence, ConsumerArtifactForwardingReceipt, ConsumerArtifactLeafId,
+    ConsumerArtifactPlanError, ConsumerArtifactPlanV1, ConsumerArtifactStageBinding,
+    EguiTextCommandSurfaceHostRoot, GenericEffectClass, GenericInteractionClass, SCHEMA_VERSION,
 };
-use crate::egui::OpaqueRootArtifactReceiptWriter;
 use crate::egui::text_command_surface::{
     EguiTextCommandSurfaceRootFactory, KucUnicodeColorGlyphEvidenceOptions,
 };
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
 /// KUC issuer for opaque consumer artifact plans.
@@ -131,6 +130,7 @@ impl ConsumerArtifactPlanIssuer {
             failed_stage: None,
             root_revision: plan.initial_revision,
             receipt_root_identity_fingerprint: None,
+            issued_receipts: BTreeMap::new(),
         })
     }
 }
@@ -145,6 +145,7 @@ pub struct IssuedConsumerArtifactPlan {
     failed_stage: Option<usize>,
     root_revision: u64,
     receipt_root_identity_fingerprint: Option<String>,
+    issued_receipts: BTreeMap<String, (ConsumerArtifactLeafId, String, u64)>,
 }
 
 impl IssuedConsumerArtifactPlan {
@@ -162,10 +163,11 @@ impl IssuedConsumerArtifactPlan {
             .receipt_root_identity_fingerprint
             .as_deref()
             .ok_or(ConsumerArtifactPlanError::ReceiptCrossBind)?;
-        let leaf = receipt.leaf.clone();
-        let stage_id = receipt.stage_id.clone();
-        let root_revision = receipt.root_revision;
-        receipt.consume_once(root_identity_fingerprint, &leaf, &stage_id, root_revision)
+        let (leaf, stage_id, root_revision) = self
+            .issued_receipts
+            .get(&receipt.fingerprint)
+            .ok_or(ConsumerArtifactPlanError::ReceiptCrossBind)?;
+        receipt.consume_once(root_identity_fingerprint, leaf, stage_id, *root_revision)
     }
 
     pub fn execute_next(
@@ -250,6 +252,14 @@ impl IssuedConsumerArtifactPlan {
         })();
         match result {
             Ok(evidence) => {
+                self.issued_receipts.insert(
+                    evidence.receipt.fingerprint.clone(),
+                    (
+                        evidence.receipt.leaf.clone(),
+                        evidence.receipt.stage_id.clone(),
+                        evidence.receipt.root_revision,
+                    ),
+                );
                 self.next_stage += 1;
                 self.prepared_stage = None;
                 self.failed_stage = None;
@@ -283,14 +293,4 @@ pub(super) fn show_frame(
 
 pub(super) fn interaction_error(error: impl std::fmt::Display) -> ConsumerArtifactPlanError {
     ConsumerArtifactPlanError::Artifact(format!("KUC interaction protocol failed: {error}"))
-}
-
-fn write_stage_artifact(
-    frame: &crate::egui::text_command_surface::EguiTextCommandSurfaceHostRootFrame,
-    output_dir: &Path,
-    stage_id: &str,
-) -> Result<crate::egui::OpaqueRootArtifactReceipt, ConsumerArtifactPlanError> {
-    OpaqueRootArtifactReceiptWriter::new()
-        .write(frame, output_dir, stage_id)
-        .map_err(|error| ConsumerArtifactPlanError::Artifact(error.to_string()))
 }

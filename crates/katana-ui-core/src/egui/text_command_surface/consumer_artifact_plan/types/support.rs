@@ -1,8 +1,8 @@
 use super::{
     ConsumerArtifactEvidence, ConsumerArtifactPlanError, GenericInteractionClass, SCHEMA_VERSION,
 };
-use crate::egui::FullRootArtifact;
 use crate::egui::text_command_surface::EguiTextCommandSurfaceRootFactoryError;
+use crate::egui::{FullRootArtifact, OpaqueRootArtifactReceiptWriter};
 use image::GenericImageView;
 use sha2::{Digest, Sha256};
 use std::path::Path;
@@ -229,4 +229,14 @@ pub(super) fn validate_decoded_png(
 
 pub(super) fn sha256(bytes: &[u8]) -> String {
     hex::encode(Sha256::digest(bytes))
+}
+
+pub(super) fn write_stage_artifact(
+    frame: &crate::egui::text_command_surface::EguiTextCommandSurfaceHostRootFrame,
+    output_dir: &Path,
+    stage_id: &str,
+) -> Result<crate::egui::OpaqueRootArtifactReceipt, ConsumerArtifactPlanError> {
+    OpaqueRootArtifactReceiptWriter::new()
+        .write(frame, output_dir, stage_id)
+        .map_err(|error| ConsumerArtifactPlanError::Artifact(error.to_string()))
 }

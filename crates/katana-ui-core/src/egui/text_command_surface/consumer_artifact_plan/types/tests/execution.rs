@@ -99,19 +99,18 @@ fn issued_plan_executes_stages_and_collects_expected_artifact_evidence() {
 
 #[test]
 #[cfg(target_os = "linux")]
-fn forwarding_receipts_reject_a_different_retained_root() {
+fn forwarding_receipts_reject_a_different_issued_plan() {
     let context = egui::Context::default();
     let mut first_plan = ConsumerArtifactPlanIssuer::new()
         .issue(ConsumerArtifactPlanV1::new(
             1,
-            complete_bindings(1, b"first-receipt-root"),
+            complete_bindings(1, b"shared-receipt-root"),
         ))
         .expect("first plan");
+    let mut second_bindings = complete_bindings(1, b"shared-receipt-root");
+    second_bindings[0].leaf = ConsumerArtifactLeafId::new("other-plan-leaf").expect("leaf");
     let mut second_plan = ConsumerArtifactPlanIssuer::new()
-        .issue(ConsumerArtifactPlanV1::new(
-            1,
-            complete_bindings(1, b"second-receipt-root"),
-        ))
+        .issue(ConsumerArtifactPlanV1::new(1, second_bindings))
         .expect("second plan");
     let first = first_plan
         .execute_next(&context, temp_dir("first-receipt-root").as_path())
