@@ -107,10 +107,11 @@ fn forwarding_receipts_reject_a_different_issued_plan() {
             complete_bindings(1, b"shared-receipt-root"),
         ))
         .expect("first plan");
-    let mut second_bindings = complete_bindings(1, b"shared-receipt-root");
-    second_bindings[0].leaf = ConsumerArtifactLeafId::new("other-plan-leaf").expect("leaf");
     let mut second_plan = ConsumerArtifactPlanIssuer::new()
-        .issue(ConsumerArtifactPlanV1::new(1, second_bindings))
+        .issue(ConsumerArtifactPlanV1::new(
+            1,
+            complete_bindings(1, b"shared-receipt-root"),
+        ))
         .expect("second plan");
     let first = first_plan
         .execute_next(&context, temp_dir("first-receipt-root").as_path())

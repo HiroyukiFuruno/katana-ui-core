@@ -6,6 +6,9 @@ use crate::egui::{FullRootArtifact, OpaqueRootArtifactReceiptWriter};
 use image::GenericImageView;
 use sha2::{Digest, Sha256};
 use std::path::Path;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_ISSUED_PLAN_IDENTITY: AtomicU64 = AtomicU64::new(1);
 
 const STAGE_WIDTH: f32 = 1280.0;
 const STAGE_HEIGHT: f32 = 720.0;
@@ -229,6 +232,10 @@ pub(super) fn validate_decoded_png(
 
 pub(super) fn sha256(bytes: &[u8]) -> String {
     hex::encode(Sha256::digest(bytes))
+}
+
+pub(super) fn next_issued_plan_identity() -> u64 {
+    NEXT_ISSUED_PLAN_IDENTITY.fetch_add(1, Ordering::Relaxed)
 }
 
 pub(super) fn write_stage_artifact(

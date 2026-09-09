@@ -1,7 +1,7 @@
 use super::stage_interactions::render_stage;
 use super::support::{
-    cleanup_stage_output, map_root_error, preflight_output, sha256, validate_decoded_png,
-    write_manifest, write_stage_artifact,
+    cleanup_stage_output, map_root_error, next_issued_plan_identity, preflight_output, sha256,
+    validate_decoded_png, write_manifest, write_stage_artifact,
 };
 use super::unicode_evidence::{bind_unicode_evidence, capture_unicode_evidence};
 use super::{
@@ -130,6 +130,7 @@ impl ConsumerArtifactPlanIssuer {
             failed_stage: None,
             root_revision: plan.initial_revision,
             receipt_root_identity_fingerprint: None,
+            issuance_nonce: next_issued_plan_identity(),
             issued_receipts: BTreeMap::new(),
         })
     }
@@ -145,6 +146,7 @@ pub struct IssuedConsumerArtifactPlan {
     failed_stage: Option<usize>,
     root_revision: u64,
     receipt_root_identity_fingerprint: Option<String>,
+    issuance_nonce: u64,
     issued_receipts: BTreeMap<String, (ConsumerArtifactLeafId, String, u64)>,
 }
 
@@ -211,7 +213,8 @@ impl IssuedConsumerArtifactPlan {
             self.receipt_root_identity_fingerprint = Some(root_identity_fingerprint.clone());
             let receipt_fingerprint = sha256(
                 format!(
-                    "{root_identity_fingerprint}:{}:{}:{}",
+                    "{}:{root_identity_fingerprint}:{}:{}:{}",
+                    self.issuance_nonce,
                     leaf.0,
                     stage_id,
                     frame.record().record_hash()
