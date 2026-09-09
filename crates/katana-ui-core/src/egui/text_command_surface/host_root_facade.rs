@@ -95,6 +95,14 @@ impl EguiTextCommandSurfaceHostRootFrame {
             .contains_command_activation(action_identity, floating)
     }
 
+    pub(crate) const fn context_menu_is_visible(&self) -> bool {
+        self.output.context_menu_is_visible()
+    }
+
+    pub(crate) fn contains_context_menu_opened(&self) -> bool {
+        self.output.events().contains_context_menu_opened()
+    }
+
     /// Forwards the closed event transport exactly once.
     pub fn forward_events_once<Forwarder>(
         &self,

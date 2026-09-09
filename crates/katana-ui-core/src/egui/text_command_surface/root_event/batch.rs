@@ -10,6 +10,7 @@ use super::{
 use crate::molecule::command_chrome::{
     CommandChromeSearchEvent, CommandChromeToolbarEvent, FloatingCommandToolbarEvent,
 };
+use crate::molecule::selection::ContextMenuEvent;
 use std::cell::{Cell, RefCell};
 
 impl EguiTextCommandSurfaceRootEventBatch {
@@ -96,6 +97,21 @@ impl EguiTextCommandSurfaceRootEventBatch {
                 })
             })
         }
+    }
+
+    pub(crate) fn contains_context_menu_opened(&self) -> bool {
+        let transport = self.transport.borrow();
+        transport.as_ref().is_some_and(|transport| {
+            transport
+                .payload
+                .context_menu
+                .as_ref()
+                .is_some_and(|events| {
+                    events
+                        .iter()
+                        .any(|event| matches!(event, ContextMenuEvent::Opened { .. }))
+                })
+        })
     }
 
     #[cfg(test)]

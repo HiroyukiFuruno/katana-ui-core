@@ -233,12 +233,17 @@ impl EguiTextCommandSurfaceRoot {
             &bound_evidence,
         );
         let artifact_order = output.artifact_order().to_vec();
+        let context_menu_visible = output
+            .context_menu
+            .as_ref()
+            .is_some_and(|value| value.record.is_some() && value.artifact.is_some());
         Ok(EguiTextCommandSurfaceRootOutput {
             evidence_text: output.text,
             evidence_composite: composite,
             accesskit_text_input_nodes: output.accesskit_text_input_nodes,
             locator,
             artifact_order,
+            context_menu_visible,
             frame,
             events,
             #[cfg(test)]
@@ -281,6 +286,11 @@ impl EguiTextCommandSurfaceRootOutput {
     #[must_use]
     pub fn artifact_order(&self) -> &[super::types::EguiTextCommandSurfaceChild] {
         &self.artifact_order
+    }
+
+    #[must_use]
+    pub(crate) const fn context_menu_is_visible(&self) -> bool {
+        self.context_menu_visible
     }
 }
 

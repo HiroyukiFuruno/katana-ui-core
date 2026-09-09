@@ -117,10 +117,18 @@ pub(super) fn complete_semantic_bindings(
                 }
                 _ => format!("semantic-stage-{index}"),
             };
+            let mut presentation = semantic_presentation();
+            if interaction == GenericInteractionClass::ContextMenu {
+                presentation
+                    .context_menu
+                    .as_mut()
+                    .expect("semantic context menu")
+                    .visible = true;
+            }
             let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
                 initial_revision + index as u64,
                 target.to_vec(),
-                semantic_presentation(),
+                presentation,
                 TextCommandSurfaceStyle::standard().expect("standard style"),
             )
             .expect("token should encode");

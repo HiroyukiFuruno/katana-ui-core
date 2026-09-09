@@ -6,6 +6,8 @@ use super::text_interactions::{
 use super::{ConsumerArtifactPlanError, EguiTextCommandSurfaceHostRoot, GenericInteractionClass};
 use crate::egui::text_command_surface::{KucInteractionActionClass, KucInteractionSelector};
 
+const RESIZED_VIEWPORT_DIMENSIONS: (u32, u32) = (900, 520);
+
 pub(super) fn render_stage(
     root: &mut EguiTextCommandSurfaceHostRoot,
     context: &egui::Context,
@@ -19,7 +21,8 @@ pub(super) fn render_stage(
         GenericInteractionClass::TextInput
         | GenericInteractionClass::ImeCommit
         | GenericInteractionClass::Scroll
-        | GenericInteractionClass::Search => GenericInteractionClass::Selection,
+        | GenericInteractionClass::Search
+        | GenericInteractionClass::ViewportResize => GenericInteractionClass::Selection,
         _ => class,
     };
     let frame = show_frame(root, context, raw_input(initial_class))?;
@@ -51,7 +54,7 @@ pub(super) fn render_stage(
         GenericInteractionClass::AccessibilityActivation => {
             apply_accesskit_activation(root, context, frame, action_target)
         }
-        _ => Ok(frame),
+        GenericInteractionClass::ViewportResize => apply_viewport_resize(root, context, frame),
     }
 }
 
@@ -72,7 +75,12 @@ fn apply_context_menu(
     request
         .apply_to_raw_input_once(&mut input)
         .map_err(interaction_error)?;
-    show_frame(root, context, input)
+    let applied = show_frame(root, context, input)?;
+    ensure_context_menu_opened(
+        applied.contains_context_menu_opened(),
+        applied.context_menu_is_visible(),
+    )
+    .map(|()| applied)
 }
 
 fn apply_accesskit_activation(
@@ -92,7 +100,33 @@ fn apply_accesskit_activation(
     request
         .apply_to_raw_input_once(&mut input)
         .map_err(interaction_error)?;
-    show_frame(root, context, input)
+    let applied = show_frame(root, context, input)?;
+    ensure_bound_action_event(applied.contains_command_activation(action_target, false))
+        .map(|()| applied)
+}
+
+fn apply_viewport_resize(
+    root: &mut EguiTextCommandSurfaceHostRoot,
+    context: &egui::Context,
+    frame: crate::egui::text_command_surface::EguiTextCommandSurfaceHostRootFrame,
+) -> Result<
+    crate::egui::text_command_surface::EguiTextCommandSurfaceHostRootFrame,
+    ConsumerArtifactPlanError,
+> {
+    let before = frame.record().dimensions();
+    show_frame(
+        root,
+        context,
+        raw_input(GenericInteractionClass::ViewportResize),
+    )
+    .and_then(|resized| {
+        let after = resized.record().dimensions();
+        ensure_viewport_resize(
+            (before.width(), before.height()),
+            (after.width(), after.height()),
+        )
+        .map(|()| resized)
+    })
 }
 
 fn apply_bound_action(
@@ -130,6 +164,38 @@ fn ensure_bound_action_event(observed: bool) -> Result<(), ConsumerArtifactPlanE
     Ok(())
 }
 
+fn ensure_context_menu_opened(
+    observed_event: bool,
+    visible: bool,
+) -> Result<(), ConsumerArtifactPlanError> {
+    if !observed_event {
+        return Err(interaction_error(
+            "context menu did not emit an opened event",
+        ));
+    }
+    if !visible {
+        return Err(interaction_error("context menu was not visible"));
+    }
+    Ok(())
+}
+
+fn ensure_viewport_resize(
+    before: (u32, u32),
+    after: (u32, u32),
+) -> Result<(), ConsumerArtifactPlanError> {
+    if before == after {
+        return Err(interaction_error(
+            "viewport resize did not change root dimensions",
+        ));
+    }
+    if after != RESIZED_VIEWPORT_DIMENSIONS {
+        return Err(interaction_error(
+            "viewport resize did not produce the requested root dimensions",
+        ));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -144,5 +210,34 @@ mod tests {
                     .to_owned(),
             ))
         );
+    }
+
+    #[test]
+    fn context_menu_requires_open_event_and_visible_state() {
+        assert_eq!(ensure_context_menu_opened(true, true), Ok(()));
+        assert!(matches!(
+            ensure_context_menu_opened(false, true),
+            Err(ConsumerArtifactPlanError::Artifact(message)) if message == "KUC interaction protocol failed: context menu did not emit an opened event"
+        ));
+        assert!(matches!(
+            ensure_context_menu_opened(true, false),
+            Err(ConsumerArtifactPlanError::Artifact(message)) if message == "KUC interaction protocol failed: context menu was not visible"
+        ));
+    }
+
+    #[test]
+    fn viewport_resize_requires_changed_requested_dimensions() {
+        assert_eq!(
+            ensure_viewport_resize((1280, 720), RESIZED_VIEWPORT_DIMENSIONS),
+            Ok(())
+        );
+        assert!(matches!(
+            ensure_viewport_resize(RESIZED_VIEWPORT_DIMENSIONS, RESIZED_VIEWPORT_DIMENSIONS),
+            Err(ConsumerArtifactPlanError::Artifact(message)) if message == "KUC interaction protocol failed: viewport resize did not change root dimensions"
+        ));
+        assert!(matches!(
+            ensure_viewport_resize((1280, 720), (901, 520)),
+            Err(ConsumerArtifactPlanError::Artifact(message)) if message == "KUC interaction protocol failed: viewport resize did not produce the requested root dimensions"
+        ));
     }
 }
