@@ -37,7 +37,8 @@ mod foreign_consumer {
     use katana_ui_core::egui::text_command_surface::{
         ConsumerArtifactLeafId, ConsumerArtifactPlanError, ConsumerArtifactPlanIssuer,
         ConsumerArtifactPlanV1, ConsumerArtifactStageBinding,
-        EguiTextCommandSurfacePresentationToken, GenericEffectClass, GenericInteractionClass,
+        EguiTextCommandSurfacePresentationToken, FullTextCommandSurfaceScenarioId,
+        FullTextCommandSurfaceScenarioSession, GenericEffectClass, GenericInteractionClass,
     };
 
     pub(super) fn issue_stage_count(
@@ -55,6 +56,34 @@ mod foreign_consumer {
         ConsumerArtifactPlanIssuer::new()
             .issue(plan)
             .map(|issued| issued.remaining_stage_count())
+    }
+
+    pub(super) fn issue_full_plan_from_opaque_scenario_leases()
+    -> Result<usize, Box<dyn std::error::Error>> {
+        let session =
+            FullTextCommandSurfaceScenarioSession::new(FullTextCommandSurfaceScenarioId::Selection);
+        let mut leases = Vec::with_capacity(GenericInteractionClass::FULL_EDITOR_SEQUENCE.len());
+        leases.push(session.retain_lease()?);
+        for _ in 1..GenericInteractionClass::FULL_EDITOR_SEQUENCE.len() {
+            leases.push(session.synchronize_lease()?);
+        }
+        let bindings = GenericInteractionClass::FULL_EDITOR_SEQUENCE
+            .into_iter()
+            .zip(leases)
+            .enumerate()
+            .map(|(index, (interaction, lease))| {
+                Ok(ConsumerArtifactStageBinding::from_host_projection_lease(
+                    ConsumerArtifactLeafId::new(format!("foreign-stage-{index}"))?,
+                    interaction,
+                    GenericEffectClass::NoHostEffect,
+                    lease,
+                ))
+            })
+            .collect::<Result<Vec<_>, Box<dyn std::error::Error>>>()?;
+        ConsumerArtifactPlanIssuer::new()
+            .issue(ConsumerArtifactPlanV1::new(1, bindings))
+            .map(|issued| issued.remaining_stage_count())
+            .map_err(Into::into)
     }
 }
 
@@ -74,4 +103,13 @@ fn consumer_plan_rejects_invalid_leaf_identifier() {
         ConsumerArtifactLeafId::new("\0"),
         Err(ConsumerArtifactPlanError::InvalidLeafId)
     ));
+}
+
+#[test]
+fn foreign_consumer_can_issue_full_plan_from_opaque_scenario_leases() {
+    assert_eq!(
+        foreign_consumer::issue_full_plan_from_opaque_scenario_leases()
+            .expect("opaque leases must create the full consumer plan"),
+        10
+    );
 }

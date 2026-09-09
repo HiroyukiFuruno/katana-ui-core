@@ -1,5 +1,7 @@
 use super::{ConsumerArtifactLeafId, GenericEffectClass, GenericInteractionClass};
-use crate::egui::text_command_surface::EguiTextCommandSurfacePresentationToken;
+use crate::egui::text_command_surface::{
+    EguiTextCommandSurfaceHostProjectionLease, EguiTextCommandSurfacePresentationToken,
+};
 
 /// One plan binding. Its presentation token remains opaque and is consumed by KUC.
 pub struct ConsumerArtifactStageBinding {
@@ -11,6 +13,18 @@ pub struct ConsumerArtifactStageBinding {
 }
 
 impl ConsumerArtifactStageBinding {
+    /// Consumes one KUC-issued opaque lease without exposing its token or host router.
+    #[must_use]
+    pub fn from_host_projection_lease(
+        leaf: ConsumerArtifactLeafId,
+        interaction: GenericInteractionClass,
+        effect: GenericEffectClass,
+        lease: EguiTextCommandSurfaceHostProjectionLease,
+    ) -> Self {
+        let token = lease.into_consumer_artifact_token();
+        Self::new(leaf, interaction, effect, token)
+    }
+
     #[must_use]
     pub fn new(
         leaf: ConsumerArtifactLeafId,

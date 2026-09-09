@@ -2,6 +2,9 @@
 
 #[path = "host_root/command_families.rs"]
 mod host_root_command_families;
+#[cfg(feature = "storybook-artifacts")]
+#[path = "host_root/consumer_artifact.rs"]
+mod host_root_consumer_artifact;
 #[path = "host_root/errors.rs"]
 mod host_root_errors;
 #[path = "host_root_facade.rs"]
