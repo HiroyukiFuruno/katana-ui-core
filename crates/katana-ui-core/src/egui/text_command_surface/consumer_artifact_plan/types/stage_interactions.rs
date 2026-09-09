@@ -113,5 +113,36 @@ fn apply_bound_action(
     request
         .apply_to_raw_input_once(&mut input)
         .map_err(interaction_error)?;
-    show_frame(root, context, input)
+    let applied = show_frame(root, context, input)?;
+    ensure_bound_action_event(applied.contains_command_activation(
+        action_target,
+        action_class == KucInteractionActionClass::FloatingToolbar,
+    ))
+    .map(|()| applied)
+}
+
+fn ensure_bound_action_event(observed: bool) -> Result<(), ConsumerArtifactPlanError> {
+    if !observed {
+        return Err(interaction_error(
+            "bound action did not emit an activation event",
+        ));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bound_action_requires_its_activation_event() {
+        assert_eq!(ensure_bound_action_event(true), Ok(()));
+        assert_eq!(
+            ensure_bound_action_event(false),
+            Err(ConsumerArtifactPlanError::Artifact(
+                "KUC interaction protocol failed: bound action did not emit an activation event"
+                    .to_owned(),
+            ))
+        );
+    }
 }

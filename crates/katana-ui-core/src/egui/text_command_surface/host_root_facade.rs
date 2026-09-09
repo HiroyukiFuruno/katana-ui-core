@@ -85,6 +85,16 @@ impl EguiTextCommandSurfaceHostRootFrame {
         self.output.evidence_text.record.frame.viewport.scroll_y
     }
 
+    pub(crate) fn contains_command_activation(
+        &self,
+        action_identity: &str,
+        floating: bool,
+    ) -> bool {
+        self.output
+            .events()
+            .contains_command_activation(action_identity, floating)
+    }
+
     /// Forwards the closed event transport exactly once.
     pub fn forward_events_once<Forwarder>(
         &self,

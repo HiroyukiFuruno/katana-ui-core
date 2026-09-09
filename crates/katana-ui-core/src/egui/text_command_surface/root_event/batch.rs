@@ -71,6 +71,33 @@ impl EguiTextCommandSurfaceRootEventBatch {
         self.event_cardinality.get() != 0
     }
 
+    pub(crate) fn contains_command_activation(
+        &self,
+        action_identity: &str,
+        floating: bool,
+    ) -> bool {
+        let transport = self.transport.borrow();
+        let Some(transport) = transport.as_ref() else {
+            return false;
+        };
+        if floating {
+            transport.payload.floating.as_ref().is_some_and(|events| {
+                events.iter().any(|event| {
+                    matches!(event, FloatingCommandToolbarEvent::Toolbar {
+                        event: CommandChromeToolbarEvent::CommandActivated { action_id },
+                    } if action_id.as_str() == action_identity)
+                })
+            })
+        } else {
+            transport.payload.toolbar.as_ref().is_some_and(|events| {
+                events.iter().any(|event| {
+                    matches!(event, CommandChromeToolbarEvent::CommandActivated { action_id }
+                        if action_id.as_str() == action_identity)
+                })
+            })
+        }
+    }
+
     #[cfg(test)]
     pub(crate) fn event_cardinality(&self) -> usize {
         self.event_cardinality.get()
