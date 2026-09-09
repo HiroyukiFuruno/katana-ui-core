@@ -14,6 +14,7 @@ fn text_selection_continuation_walks_phases_and_reports_end_state_failures() {
         frame_serial: KUC_TEXT_SELECTION_FRAME_START,
         geometry: search_text_geometry_points(),
         phase: TextSelectionPhase::Aim,
+        requires_floating_output: true,
         applied: false,
     };
     let mut input = egui::RawInput::default();
@@ -86,6 +87,7 @@ fn text_selection_continuation_walks_phases_and_reports_end_state_failures() {
         frame_serial: KUC_TEXT_SELECTION_FRAME_FOURTH,
         geometry: search_text_geometry_points(),
         phase: TextSelectionPhase::Release,
+        requires_floating_output: true,
         applied: false,
     };
     assert_eq!(release.apply_to_raw_input_once(&mut input), Ok(()));
@@ -103,6 +105,7 @@ fn text_selection_continuation_walks_phases_and_reports_end_state_failures() {
         frame_serial: KUC_TEXT_SELECTION_FRAME_FOURTH,
         geometry: search_text_geometry_points(),
         phase: TextSelectionPhase::Release,
+        requires_floating_output: true,
         applied: true,
     };
     let mut locator = text_selection_locator_for_continue("root", KUC_TEXT_SELECTION_FRAME_FIFTH);
@@ -125,6 +128,27 @@ fn text_selection_continuation_walks_phases_and_reports_end_state_failures() {
         new_release().advance(&locator),
         Err(KucTextSelectionContinuationError::FloatingNotVisible)
     ));
+
+    let focus_release = || KucOpaqueTextSelectionContinuation {
+        root_identity: "root".to_owned(),
+        frame_serial: KUC_TEXT_SELECTION_FRAME_FOURTH,
+        geometry: search_text_geometry_points(),
+        phase: TextSelectionPhase::Release,
+        requires_floating_output: false,
+        applied: true,
+    };
+    assert!(focus_release().advance(&locator).is_ok());
+    let mut unfocused_selection = locator_for_continue(
+        "root",
+        KUC_TEXT_SELECTION_FRAME_FIFTH,
+        Vec::new(),
+        true,
+        false,
+        true,
+        false,
+    );
+    unfocused_selection.selection_established = false;
+    assert!(focus_release().advance(&unfocused_selection).is_ok());
 
     let mut already_applied = start();
     assert_eq!(already_applied.apply_to_raw_input_once(&mut input), Ok(()));

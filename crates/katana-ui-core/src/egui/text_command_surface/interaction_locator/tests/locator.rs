@@ -52,6 +52,184 @@ fn request_is_opaque_and_raw_input_is_mutated_once() {
 }
 
 #[test]
+fn accesskit_activation_targets_the_current_resolved_response_node_once() {
+    let current = locator(
+        "root",
+        KUC_LOCATOR_REQUEST_REVISION,
+        vec![target(
+            "activate",
+            KucInteractionActionClass::Toolbar,
+            false,
+        )],
+    );
+    let expected_node = egui::Id::new(("test", "activate")).accesskit_id();
+    let mut request = current
+        .request_accesskit_activation("activate", KucInteractionActionClass::Toolbar)
+        .expect("current actionable target");
+    let mut input = egui::RawInput::default();
+
+    request
+        .apply_to_raw_input_once(&mut input)
+        .expect("one-shot request applies");
+    assert!(matches!(
+        input.events.as_slice(),
+        [egui::Event::AccessKitActionRequest(request)]
+            if request.action == egui::accesskit::Action::Click
+                && request.target_tree == egui::accesskit::TreeId::ROOT
+                && request.target_node == expected_node
+    ));
+    assert_eq!(
+        request.apply_to_raw_input_once(&mut input),
+        Err(KucInteractionRequestError::AlreadyQueued)
+    );
+}
+
+#[test]
+fn accesskit_activation_fails_closed_for_each_unusable_target_state() {
+    let missing = locator("root", KUC_LOCATOR_REQUEST_REVISION, Vec::new());
+    assert!(matches!(
+        missing.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
+        Err(KucInteractionLocatorError::Missing)
+    ));
+
+    let distinct_classes = locator(
+        "root",
+        KUC_LOCATOR_REQUEST_REVISION,
+        vec![
+            target("activate", KucInteractionActionClass::Toolbar, false),
+            target(
+                "activate",
+                KucInteractionActionClass::FloatingToolbar,
+                false,
+            ),
+        ],
+    );
+    assert!(
+        distinct_classes
+            .request_accesskit_activation("activate", KucInteractionActionClass::Toolbar)
+            .is_ok()
+    );
+    assert!(
+        distinct_classes
+            .request_accesskit_activation("activate", KucInteractionActionClass::FloatingToolbar)
+            .is_ok()
+    );
+
+    let ambiguous = locator(
+        "root",
+        KUC_LOCATOR_REQUEST_REVISION,
+        vec![
+            target("activate", KucInteractionActionClass::Toolbar, false),
+            target("activate", KucInteractionActionClass::Toolbar, false),
+        ],
+    );
+    assert!(matches!(
+        ambiguous.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
+        Err(KucInteractionLocatorError::Ambiguous)
+    ));
+
+    let duplicate = locator(
+        "root",
+        KUC_LOCATOR_REQUEST_REVISION,
+        vec![target(
+            "activate",
+            KucInteractionActionClass::Toolbar,
+            false,
+        )],
+    );
+    duplicate
+        .request_accesskit_activation("activate", KucInteractionActionClass::Toolbar)
+        .expect("first activation request");
+    assert!(matches!(
+        duplicate.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
+        Err(KucInteractionLocatorError::Duplicate)
+    ));
+
+    let mut hidden = locator(
+        "root",
+        KUC_LOCATOR_REQUEST_REVISION,
+        vec![target(
+            "activate",
+            KucInteractionActionClass::Toolbar,
+            false,
+        )],
+    );
+    hidden
+        .hidden
+        .insert(("activate".to_owned(), KucInteractionActionClass::Toolbar));
+    assert!(matches!(
+        hidden.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
+        Err(KucInteractionLocatorError::Hidden)
+    ));
+
+    let disabled = locator(
+        "root",
+        KUC_LOCATOR_REQUEST_REVISION,
+        vec![target("activate", KucInteractionActionClass::Toolbar, true)],
+    );
+    assert!(matches!(
+        disabled.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
+        Err(KucInteractionLocatorError::Disabled)
+    ));
+
+    let mut overlapping = locator(
+        "root",
+        KUC_LOCATOR_REQUEST_REVISION,
+        vec![target(
+            "activate",
+            KucInteractionActionClass::Toolbar,
+            false,
+        )],
+    );
+    overlapping
+        .ambiguous_bounds
+        .push(overlapping.targets[0].evidence.bounds);
+    assert!(matches!(
+        overlapping.request_accesskit_activation("activate", KucInteractionActionClass::Toolbar),
+        Err(KucInteractionLocatorError::Ambiguous)
+    ));
+}
+
+#[test]
+fn explicit_target_binding_resolves_one_action_in_a_full_toolbar() {
+    let current = locator(
+        "root",
+        KUC_LOCATOR_REQUEST_REVISION,
+        vec![
+            target("bold", KucInteractionActionClass::Toolbar, false),
+            target("italic", KucInteractionActionClass::Toolbar, false),
+        ],
+    );
+    let mut request = current
+        .request(KucInteractionSelector::new(
+            "italic",
+            KucInteractionActionClass::Toolbar,
+        ))
+        .expect("bound toolbar action");
+    let mut input = egui::RawInput::default();
+    request
+        .apply_to_raw_input_once(&mut input)
+        .expect("KUC-issued request applies");
+    assert_eq!(input.events.len(), REQUEST_EVENT_COUNT_THREE);
+
+    assert!(matches!(
+        locator(
+            "root",
+            KUC_FRAME_STEP_ONE,
+            vec![
+                target("first", KucInteractionActionClass::Toolbar, false),
+                target("second", KucInteractionActionClass::Toolbar, false),
+            ],
+        )
+        .request(KucInteractionSelector::new(
+            "missing",
+            KucInteractionActionClass::Toolbar,
+        )),
+        Err(KucInteractionLocatorError::Missing)
+    ));
+}
+
+#[test]
 fn locator_rejects_disabled_missing_ambiguous_and_duplicate_without_raw_mutation() {
     let disabled = locator(
         "root",
@@ -91,6 +269,53 @@ fn locator_rejects_disabled_missing_ambiguous_and_duplicate_without_raw_mutation
         ambiguous.request(selector),
         Err(KucInteractionLocatorError::Duplicate)
     ));
+}
+
+#[test]
+fn locator_selects_distinct_toolbar_targets_by_action_identity() {
+    let locator = locator(
+        "root",
+        KUC_LOCATOR_REQUEST_REVISION,
+        vec![
+            target(
+                "toolbar-action-a",
+                KucInteractionActionClass::Toolbar,
+                false,
+            ),
+            target(
+                "toolbar-action-b",
+                KucInteractionActionClass::Toolbar,
+                false,
+            ),
+        ],
+    );
+    let mut input = egui::RawInput::default();
+    let a = locator
+        .request(KucInteractionSelector::new(
+            "toolbar-action-a",
+            KucInteractionActionClass::Toolbar,
+        ))
+        .expect("action-a is available");
+    let b = locator
+        .request(KucInteractionSelector::new(
+            "toolbar-action-b",
+            KucInteractionActionClass::Toolbar,
+        ))
+        .expect("action-b is available");
+    locator
+        .queue_request(a, &mut input)
+        .expect("queue action-a");
+    locator
+        .queue_request(b, &mut input)
+        .expect("queue action-b");
+    assert_eq!(
+        input
+            .events
+            .iter()
+            .filter(|event| matches!(event, egui::Event::PointerButton { .. }))
+            .count(),
+        4
+    );
 }
 
 #[test]

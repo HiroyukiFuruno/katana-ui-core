@@ -23,3 +23,18 @@ fn command_chrome_error_conversions_preserve_specific_failure_context() {
         "command chrome artifact serialization failed: invalid frame"
     );
 }
+
+#[test]
+fn rendered_raster_reserves_and_paints_the_common_logical_extent_at_hidpi_scales() {
+    for scale in [1.0, 1.5, 2.0] {
+        let raster = RenderedRaster::new("label".to_string(), 37, 23, Vec::new(), scale);
+        assert_eq!(
+            raster.width,
+            crate::egui::raster_extent::LogicalRasterExtent::from_physical(37, scale)
+        );
+        assert_eq!(
+            raster.height,
+            crate::egui::raster_extent::LogicalRasterExtent::from_physical(23, scale)
+        );
+    }
+}

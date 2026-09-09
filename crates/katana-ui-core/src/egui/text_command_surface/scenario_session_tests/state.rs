@@ -8,6 +8,7 @@ fn state_accepts_exact_japanese_vs16_and_zwj_text() {
             selection: Some((0, value.len())),
             search_query: None,
             replace_value: None,
+            ..ScenarioSessionUpdate::default()
         },
         &value,
     );
@@ -31,6 +32,7 @@ fn invalid_utf8_selection_does_not_replace_the_last_valid_selection() {
             selection: Some((0, value.len())),
             search_query: None,
             replace_value: None,
+            ..ScenarioSessionUpdate::default()
         },
         &value,
     );
@@ -40,6 +42,7 @@ fn invalid_utf8_selection_does_not_replace_the_last_valid_selection() {
             selection: Some((1, value.len())),
             search_query: None,
             replace_value: None,
+            ..ScenarioSessionUpdate::default()
         },
         &value,
     );
@@ -65,6 +68,7 @@ fn replacement_input_never_changes_generic_text() {
             selection: None,
             search_query: Some(String::from("query")),
             replace_value: Some(String::from("replacement")),
+            ..ScenarioSessionUpdate::default()
         },
         &original,
     );
@@ -161,6 +165,7 @@ fn utf8_selection_boundaries_are_respected_before_replacing_previous_selection()
             selection: Some((0, 2)),
             search_query: None,
             replace_value: None,
+            ..ScenarioSessionUpdate::default()
         },
         &value,
     );
@@ -171,6 +176,7 @@ fn utf8_selection_boundaries_are_respected_before_replacing_previous_selection()
             selection: Some((1, 3)),
             search_query: None,
             replace_value: None,
+            ..ScenarioSessionUpdate::default()
         },
         &value,
     );
@@ -187,6 +193,7 @@ fn utf8_selection_boundaries_are_respected_before_replacing_previous_selection()
             selection: Some((0, value.len() + 1)),
             search_query: None,
             replace_value: None,
+            ..ScenarioSessionUpdate::default()
         },
         &value,
     );
@@ -197,3 +204,58 @@ fn utf8_selection_boundaries_are_respected_before_replacing_previous_selection()
         "selection exceeding UTF-8 text length must not replace last valid range"
     );
 }
+
+#[test]
+fn search_projection_preserves_visible_state_and_only_kuc_owned_values() {
+    use crate::molecule::structured::{ReplaceMode, SearchOptionKind};
+
+    let text = String::from("original ⭐️");
+    let mut state = ScenarioSessionState::default();
+    state.apply(
+        ScenarioSessionUpdate {
+            search_visible: Some(false),
+            search_query: Some(String::from("needle")),
+            search_option_changes: vec![
+                (SearchOptionKind::MatchCase, true),
+                (SearchOptionKind::UseRegex, true),
+            ],
+            replace_mode: Some(ReplaceMode::Visible),
+            replace_value: Some(String::from("replacement")),
+            result_position: Some((4, Some(2))),
+            ..ScenarioSessionUpdate::default()
+        },
+        &text,
+    );
+
+    assert!(
+        state
+            .presentation(super::FullTextCommandSurfaceScenarioId::Find)
+            .search
+            .is_none()
+    );
+
+    state.apply(
+        ScenarioSessionUpdate {
+            search_visible: Some(true),
+            ..ScenarioSessionUpdate::default()
+        },
+        &text,
+    );
+    let search = state
+        .presentation(super::FullTextCommandSurfaceScenarioId::Find)
+        .search
+        .expect("explicit reopen projects search");
+    assert_eq!(search.value.query, "needle");
+    assert!(search.value.options.match_case);
+    assert!(search.value.options.use_regex);
+    assert_eq!(search.value.replace_mode, ReplaceMode::Visible);
+    assert_eq!(search.value.replace_value, "replacement");
+    assert_eq!(search.value.result_count, Some(4));
+    assert_eq!(search.value.active_index, Some(2));
+    assert_eq!(
+        state.text, None,
+        "search state must not invent a document change"
+    );
+}
+
+mod search_events;

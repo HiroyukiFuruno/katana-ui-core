@@ -6,6 +6,7 @@ use super::types::{
     DiagnosticsListPaintPlan, DiagnosticsListPaintTexture, DiagnosticsListRasterEvidence,
     DiagnosticsListStyle, EguiDiagnosticsListError,
 };
+use crate::egui::raster_extent::LogicalRasterExtent;
 use crate::molecule::CodeDiffLineKind;
 use crate::render_model::UiRect;
 use crate::render_model::{UiTextSpan, UiTextSpanStyle};
@@ -76,20 +77,12 @@ impl EguiDiagnosticsListAdapter {
         style: &DiagnosticsListStyle,
         scale: f32,
     ) -> Result<(), EguiDiagnosticsListError> {
-        let raster = self.text_rasterizer.rasterize(&PlatformTextRasterRequest {
-            spans: UiTextSpan::emoji_marked_spans(
-                text,
-                UiTextSpanStyle {
-                    color_rgba: style.text,
-                    ..UiTextSpanStyle::default()
-                },
-            ),
-            font: style.font.clone(),
-            fallback_color_rgba: style.text,
-            line_height_px: style.font.size * DIAGNOSTICS_TEXT_LINE_HEIGHT_SCALE,
-            max_width_px: Some(bounds.width() * scale),
-            scale_factor: scale,
-        })?;
+        let raster = self.text_rasterizer.rasterize(&diagnostics_text_request(
+            text,
+            style,
+            Some(bounds.width()),
+            scale,
+        ))?;
         let pixels: Vec<u8> = raster.rgba_pixels.iter().flatten().copied().collect();
         let pixel_hash = hex::encode(Sha256::digest(&pixels));
         self.raster_evidence.push(DiagnosticsListRasterEvidence {
@@ -99,9 +92,10 @@ impl EguiDiagnosticsListAdapter {
             chromatic_pixel_count: raster.chromatic_pixel_count(),
             sha256: pixel_hash.clone(),
         });
+        let (width, height) = LogicalRasterExtent::size(&raster, scale);
         let image = egui::Rect::from_min_size(
             bounds.left_top() + egui::vec2(DIAGNOSTICS_SMALL_INSET, DIAGNOSTICS_SMALL_INSET),
-            egui::vec2(raster.width as f32 / scale, raster.height as f32 / scale),
+            egui::vec2(width as f32, height as f32),
         );
         plan.operations.push(DiagnosticsListPaintOperation {
             clip_bounds: DiagnosticsPaint::ui_rect(bounds),
@@ -124,15 +118,10 @@ impl EguiDiagnosticsListAdapter {
         style: &DiagnosticsListStyle,
         scale: f32,
     ) -> Result<f32, EguiDiagnosticsListError> {
-        Ok(self
+        let raster = self
             .text_rasterizer
-            .rasterize(&PlatformTextRasterRequest::from_text(
-                text,
-                style.font.clone(),
-                style.text,
-            ))?
-            .width as f32
-            / scale)
+            .rasterize(&diagnostics_text_request(text, style, None, scale))?;
+        Ok(LogicalRasterExtent::size(&raster, scale).0 as f32)
     }
 
     pub(super) fn paint_plan(&mut self, ui: &egui::Ui, plan: &DiagnosticsListPaintPlan) {
@@ -240,5 +229,27 @@ impl EguiDiagnosticsListAdapter {
             self.paint_text(plan, line_bounds, &line_text, style, scale)?;
         }
         Ok(())
+    }
+}
+
+pub(super) fn diagnostics_text_request(
+    text: &str,
+    style: &DiagnosticsListStyle,
+    max_width_px: Option<f32>,
+    scale: f32,
+) -> PlatformTextRasterRequest {
+    PlatformTextRasterRequest {
+        spans: UiTextSpan::emoji_marked_spans(
+            text,
+            UiTextSpanStyle {
+                color_rgba: style.text,
+                ..UiTextSpanStyle::default()
+            },
+        ),
+        font: style.font.clone(),
+        fallback_color_rgba: style.text,
+        line_height_px: style.font.size * DIAGNOSTICS_TEXT_LINE_HEIGHT_SCALE,
+        max_width_px,
+        scale_factor: scale,
     }
 }

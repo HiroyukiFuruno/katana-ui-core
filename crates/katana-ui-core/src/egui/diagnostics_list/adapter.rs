@@ -26,6 +26,10 @@ mod action_boundary_tests;
 #[path = "adapter/texture_identity_tests.rs"]
 mod texture_identity_tests;
 
+#[cfg(test)]
+#[path = "adapter/hidpi_contract_tests.rs"]
+mod hidpi_contract_tests;
+
 pub(super) struct DiagnosticsRenderLayout<'a> {
     pub(super) style: &'a DiagnosticsListStyle,
     pub(super) surface: egui::Rect,

@@ -12,26 +12,72 @@ fn physical_search_trace_routes_query_non_value_and_close_events() {
         session.synchronize_lease().expect("initial frame lease"),
         egui::RawInput::default(),
     );
-    let mut continuation = initial
+    let match_case = initial
+        .search_record
+        .as_ref()
+        .and_then(|record| {
+            record
+                .controls
+                .iter()
+                .find(|control| control.control_id.ends_with(":match-case"))
+        })
+        .expect("search exposes match-case control")
+        .bounds;
+    let pointer = egui::pos2(
+        match_case.x as f32 + match_case.width as f32 / 2.0,
+        match_case.y as f32 + match_case.height as f32 / 2.0,
+    );
+    let pointer_event = |pressed| egui::Event::PointerButton {
+        pos: pointer,
+        button: egui::PointerButton::Primary,
+        pressed,
+        modifiers: egui::Modifiers::NONE,
+    };
+    let _ = render_and_forward(
+        &context,
+        &mut root,
+        session.synchronize_lease().expect("match-case press lease"),
+        egui::RawInput {
+            events: vec![egui::Event::PointerMoved(pointer), pointer_event(true)],
+            ..egui::RawInput::default()
+        },
+    );
+    let toggled = render_and_forward(
+        &context,
+        &mut root,
+        session
+            .synchronize_lease()
+            .expect("match-case release lease"),
+        egui::RawInput {
+            events: vec![pointer_event(false)],
+            ..egui::RawInput::default()
+        },
+    );
+    assert_eq!(
+        session
+            .state
+            .borrow()
+            .search_options
+            .map(|options| options.match_case),
+        Some(true)
+    );
+
+    let mut continuation = toggled
         .interaction_locator()
         .begin_search_trace()
         .expect("search continuation");
 
-    for step in 0..7 {
+    for _ in 0..7 {
         let mut input = egui::RawInput::default();
         continuation
             .apply_to_raw_input_once(&mut input)
             .expect("search step applies");
-        let output = if step == 6 {
-            render_current_and_forward(&context, &mut root, input)
-        } else {
-            render_and_forward(
-                &context,
-                &mut root,
-                session.synchronize_lease().expect("search frame lease"),
-                input,
-            )
-        };
+        let output = render_and_forward(
+            &context,
+            &mut root,
+            session.synchronize_lease().expect("search frame lease"),
+            input,
+        );
         match continuation
             .advance(output.interaction_locator())
             .expect("search step advances")
@@ -41,12 +87,51 @@ fn physical_search_trace_routes_query_non_value_and_close_events() {
         }
     }
 
-    assert!(session
-        .state
-        .borrow()
-        .search_query
-        .as_deref()
-        .is_some_and(|query| query.contains("入力 ⭐️")));
+    assert!(
+        session
+            .state
+            .borrow()
+            .search_query
+            .as_deref()
+            .is_some_and(|query| query.contains("入力 ⭐️"))
+    );
+    assert!(
+        session.state.borrow().search_visible == Some(false),
+        "the close receipt must update the next session projection"
+    );
+    assert!(
+        session.state.borrow().result_position.is_none(),
+        "navigation receipts must not invent a result position"
+    );
+
+    session.reopen_search();
+    let reopened = render_and_forward(
+        &context,
+        &mut root,
+        session.synchronize_lease().expect("reopened session lease"),
+        egui::RawInput::default(),
+    );
+    assert!(
+        reopened.search_record.is_some(),
+        "explicit reopen restores search"
+    );
+    assert!(
+        reopened
+            .search_record
+            .as_ref()
+            .expect("reopened search record")
+            .controls
+            .iter()
+            .any(|control| control.control_id.ends_with(":match-case") && control.active)
+    );
+    assert!(
+        !reopened.accesskit_text_input_nodes.is_empty(),
+        "the reopened frame retains current AccessKit evidence"
+    );
+    assert!(
+        reopened.evidence_composite.non_transparent_pixel_count > 0,
+        "the reopened frame retains KUC-owned frame evidence"
+    );
 }
 
 #[test]
@@ -110,8 +195,10 @@ fn physical_replace_input_is_extracted_from_the_actual_root_context() {
     );
     let update = ScenarioSessionUpdate::from_context(&changed.events().current_context());
 
-    assert!(update
-        .replace_value
-        .as_deref()
-        .is_some_and(|value| value.contains("replacement ⭐️")));
+    assert!(
+        update
+            .replace_value
+            .as_deref()
+            .is_some_and(|value| value.contains("replacement ⭐️"))
+    );
 }

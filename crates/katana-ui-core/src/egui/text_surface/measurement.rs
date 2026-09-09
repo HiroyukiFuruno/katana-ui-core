@@ -2,6 +2,7 @@ use super::artifact_model::EguiTextSurfaceError;
 use super::model::SharedTextMetrics;
 use super::model::TextSurfaceRasterStyle;
 use super::raster::{RasterFrame, rasterize_gutter_label};
+use crate::egui::raster_extent::LogicalRasterExtent;
 use crate::render_model::UiRect;
 use crate::text_raster::PlatformTextRasterizer;
 use crate::text_surface::{TextSurface, TextSurfaceLayout, TextSurfaceViewportSizing};
@@ -27,8 +28,10 @@ pub(super) fn placeholder_bounds(
     scale_factor: f32,
 ) -> Option<UiRect> {
     placeholder.map(|value| {
-        let width = logical_extent(value.raster.width, scale_factor).min(content_bounds.width);
-        let height = logical_extent(value.raster.height, scale_factor).min(content_bounds.height);
+        let width = LogicalRasterExtent::from_physical(value.raster.width, scale_factor)
+            .min(content_bounds.width);
+        let height = LogicalRasterExtent::from_physical(value.raster.height, scale_factor)
+            .min(content_bounds.height);
         UiRect::new(content_bounds.x, content_bounds.y, width, height)
     })
 }
@@ -48,9 +51,11 @@ pub(super) fn controlled_gutter_width(
         .unwrap_or(1)
         .to_string();
     let raster = rasterize_gutter_label(rasterizer, &label, style, scale_factor, metrics)?;
-    Ok(logical_extent(raster.width, scale_factor)
-        .saturating_add(AUTOMATIC_GUTTER_LABEL_PADDING)
-        .max(AUTOMATIC_GUTTER_MIN_WIDTH))
+    Ok(
+        LogicalRasterExtent::from_physical(raster.width, scale_factor)
+            .saturating_add(AUTOMATIC_GUTTER_LABEL_PADDING)
+            .max(AUTOMATIC_GUTTER_MIN_WIDTH),
+    )
 }
 
 pub(super) fn surface_extent_for_ui(ui: &Ui, surface: &mut TextSurface) -> (f32, f32) {
@@ -73,8 +78,4 @@ pub(super) fn surface_extent_for_ui(ui: &Ui, surface: &mut TextSurface) -> (f32,
             )
         }
     }
-}
-
-fn logical_extent(value: usize, scale_factor: f32) -> u32 {
-    ((value as f32 / scale_factor.max(1.0)).ceil().max(1.0)) as u32
 }

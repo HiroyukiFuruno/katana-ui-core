@@ -56,3 +56,8 @@ mod detach_lifecycle {
     use super::*;
     include!("root_event_inline_tests/detach_lifecycle.rs");
 }
+
+mod action_activation {
+    use super::*;
+    include!("root_event_inline_tests/action_activation.rs");
+}

@@ -81,6 +81,28 @@ impl EguiTextCommandSurfaceHostRootFrame {
         self.output.interaction_locator()
     }
 
+    pub(crate) const fn text_scroll_y(&self) -> i32 {
+        self.output.evidence_text.record.frame.viewport.scroll_y
+    }
+
+    pub(crate) fn contains_command_activation(
+        &self,
+        action_identity: &str,
+        floating: bool,
+    ) -> bool {
+        self.output
+            .events()
+            .contains_command_activation(action_identity, floating)
+    }
+
+    pub(crate) const fn context_menu_is_visible(&self) -> bool {
+        self.output.context_menu_is_visible()
+    }
+
+    pub(crate) fn contains_context_menu_opened(&self) -> bool {
+        self.output.events().contains_context_menu_opened()
+    }
+
     /// Forwards the closed event transport exactly once.
     pub fn forward_events_once<Forwarder>(
         &self,

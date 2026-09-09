@@ -12,6 +12,7 @@ use crate::egui::context_menu::EguiContextMenuFrameRecord;
 use std::cell::RefCell;
 use std::collections::HashSet;
 
+mod accesskit_activation;
 mod click;
 mod continuations;
 mod locator;

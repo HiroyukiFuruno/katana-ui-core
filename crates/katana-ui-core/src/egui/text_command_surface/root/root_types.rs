@@ -35,6 +35,7 @@ pub struct EguiTextCommandSurfaceRootOutput {
         Vec<super::super::accesskit_projection::AccessKitTextInputNode>,
     pub(super) locator: interaction_locator::KucInteractionLocator,
     pub(super) artifact_order: Vec<super::super::types::EguiTextCommandSurfaceChild>,
+    pub(super) context_menu_visible: bool,
     #[cfg(test)]
     pub(crate) toolbar_record: Option<crate::egui::command_chrome::EguiCommandChromeFrameRecord>,
     #[cfg(test)]

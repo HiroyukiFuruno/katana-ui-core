@@ -4,6 +4,8 @@ pub(crate) mod accesskit_evidence;
 pub(crate) mod accesskit_projection;
 mod artifact;
 mod composition;
+#[cfg(feature = "storybook-artifacts")]
+mod consumer_artifact_plan;
 mod context_menu;
 mod editor_viewport_projection_lease;
 mod editor_viewport_render;
@@ -27,6 +29,13 @@ mod types;
 mod unicode_evidence;
 
 pub use artifact::EguiTextCommandSurfaceArtifactError;
+#[cfg(feature = "storybook-artifacts")]
+pub use consumer_artifact_plan::{
+    ConsumerArtifactEvidence, ConsumerArtifactForwardingReceipt, ConsumerArtifactLeafId,
+    ConsumerArtifactPlanError, ConsumerArtifactPlanIssuer, ConsumerArtifactPlanV1,
+    ConsumerArtifactStageBinding, GenericEffectClass, GenericInteractionClass,
+    IssuedConsumerArtifactPlan,
+};
 pub use editor_viewport_projection_lease::{
     EditorViewportProjectionError, EditorViewportProjectionLease,
 };

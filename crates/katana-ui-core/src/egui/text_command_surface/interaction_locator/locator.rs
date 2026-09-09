@@ -108,6 +108,20 @@ impl KucInteractionLocator {
     pub fn begin_text_selection(
         &self,
     ) -> Result<KucOpaqueTextSelectionContinuation, KucTextSelectionContinuationError> {
+        self.begin_text_interaction(true)
+    }
+
+    /// Starts a KUC-owned text focus trace without requiring floating command output.
+    pub fn begin_text_focus(
+        &self,
+    ) -> Result<KucOpaqueTextSelectionContinuation, KucTextSelectionContinuationError> {
+        self.begin_text_interaction(false)
+    }
+
+    fn begin_text_interaction(
+        &self,
+        requires_floating_output: bool,
+    ) -> Result<KucOpaqueTextSelectionContinuation, KucTextSelectionContinuationError> {
         let geometry = self
             .selection_geometry
             .ok_or(KucTextSelectionContinuationError::Unavailable)?;
@@ -116,6 +130,7 @@ impl KucInteractionLocator {
             frame_serial: self.frame_serial,
             geometry,
             phase: TextSelectionPhase::Aim,
+            requires_floating_output,
             applied: false,
         })
     }
