@@ -24,7 +24,23 @@ struct ConsumerArtifactManifest<'a> {
     root_record_hash: &'a str,
     accesskit_snapshot_hash: &'a str,
     unicode_evidence_hash: &'a str,
+    unicode_evidence_payload_sha256: String,
+    unicode_evidence_file: &'a str,
     forwarding_receipt_fingerprint: &'a str,
+}
+
+type ManifestSerializer =
+    for<'a> fn(&'a ConsumerArtifactManifest<'a>) -> Result<Vec<u8>, serde_json::Error>;
+type ManifestWriter = fn(&Path, &[u8]) -> std::io::Result<()>;
+
+fn serialize_manifest<'a>(
+    manifest: &'a ConsumerArtifactManifest<'a>,
+) -> Result<Vec<u8>, serde_json::Error> {
+    serde_json::to_vec(manifest)
+}
+
+fn write_manifest_bytes(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    std::fs::write(path, bytes)
 }
 
 pub(super) fn map_root_error(
@@ -78,7 +94,12 @@ pub(super) fn preflight_output(
     output_dir: &Path,
     stage_id: &str,
 ) -> Result<(), ConsumerArtifactPlanError> {
-    for suffix in [".png", ".manifest.json", ".consumer-artifact.json"] {
+    for suffix in [
+        ".png",
+        ".manifest.json",
+        ".consumer-artifact.json",
+        ".unicode-evidence.json",
+    ] {
         let path = output_dir.join(format!("{stage_id}{suffix}"));
         if path.exists() {
             return Err(ConsumerArtifactPlanError::ExistingMedia(path));
@@ -91,7 +112,12 @@ pub(super) fn cleanup_stage_output(
     output_dir: &Path,
     stage_id: &str,
 ) -> Result<(), ConsumerArtifactPlanError> {
-    for suffix in [".png", ".manifest.json", ".consumer-artifact.json"] {
+    for suffix in [
+        ".png",
+        ".manifest.json",
+        ".consumer-artifact.json",
+        ".unicode-evidence.json",
+    ] {
         let path = output_dir.join(format!("{stage_id}{suffix}"));
         if path.exists() {
             std::fs::remove_file(&path)
@@ -105,6 +131,29 @@ pub(super) fn write_manifest(
     output_dir: &Path,
     evidence: &ConsumerArtifactEvidence,
 ) -> Result<(), ConsumerArtifactPlanError> {
+    write_manifest_with_dependencies(
+        output_dir,
+        evidence,
+        serialize_manifest,
+        write_manifest_bytes,
+    )
+}
+
+fn write_manifest_with_dependencies(
+    output_dir: &Path,
+    evidence: &ConsumerArtifactEvidence,
+    serializer: ManifestSerializer,
+    writer: ManifestWriter,
+) -> Result<(), ConsumerArtifactPlanError> {
+    let unicode_evidence_file = format!("{}.unicode-evidence.json", evidence.stage_id);
+    let unicode_evidence_path = output_dir.join(&unicode_evidence_file);
+    if unicode_evidence_path.exists() {
+        return Err(ConsumerArtifactPlanError::ExistingMedia(
+            unicode_evidence_path,
+        ));
+    }
+    std::fs::write(&unicode_evidence_path, evidence.unicode_evidence_json())
+        .map_err(|error| ConsumerArtifactPlanError::Artifact(error.to_string()))?;
     let manifest = ConsumerArtifactManifest {
         schema: "kuc.consumer-full-editor-artifact.v1",
         schema_version: SCHEMA_VERSION,
@@ -116,15 +165,44 @@ pub(super) fn write_manifest(
         root_record_hash: &evidence.root_record_hash,
         accesskit_snapshot_hash: &evidence.accesskit_snapshot_hash,
         unicode_evidence_hash: &evidence.unicode_evidence_hash,
+        unicode_evidence_payload_sha256: sha256(evidence.unicode_evidence_json()),
+        unicode_evidence_file: &unicode_evidence_file,
         forwarding_receipt_fingerprint: &evidence.receipt.fingerprint,
     };
-    let bytes = json_bytes(&manifest)?;
+    let bytes = serializer(&manifest)
+        .map_err(|error| ConsumerArtifactPlanError::Artifact(error.to_string()))?;
     let path = output_dir.join(format!("{}.consumer-artifact.json", evidence.stage_id));
     if path.exists() {
         return Err(ConsumerArtifactPlanError::ExistingMedia(path));
     }
-    std::fs::write(&path, bytes)
-        .map_err(|error| ConsumerArtifactPlanError::Artifact(error.to_string()))
+    writer(&path, &bytes).map_err(|error| ConsumerArtifactPlanError::Artifact(error.to_string()))
+}
+
+#[cfg(test)]
+pub(super) fn write_manifest_with_forced_serialization_failure(
+    output_dir: &Path,
+    evidence: &ConsumerArtifactEvidence,
+) -> Result<(), ConsumerArtifactPlanError> {
+    write_manifest_with_dependencies(
+        output_dir,
+        evidence,
+        |_| {
+            Err(serde_json::Error::io(std::io::Error::other(
+                "intentional serialization failure",
+            )))
+        },
+        write_manifest_bytes,
+    )
+}
+
+#[cfg(test)]
+pub(super) fn write_manifest_with_forced_write_failure(
+    output_dir: &Path,
+    evidence: &ConsumerArtifactEvidence,
+) -> Result<(), ConsumerArtifactPlanError> {
+    write_manifest_with_dependencies(output_dir, evidence, serialize_manifest, |_, _| {
+        Err(std::io::Error::other("intentional manifest write failure"))
+    })
 }
 
 pub(super) fn json_bytes<T: serde::Serialize>(

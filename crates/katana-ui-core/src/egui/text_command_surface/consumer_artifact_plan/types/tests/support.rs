@@ -168,6 +168,7 @@ fn opaque_artifact_values_expose_safe_debug_output() {
         leaf,
         stage_id: "consumer-stage-0000".to_owned(),
         root_revision: 1,
+        root_identity_fingerprint: sha256(b"debug-root"),
         consumed: false,
         fingerprint: sha256(b"debug-fingerprint"),
     };

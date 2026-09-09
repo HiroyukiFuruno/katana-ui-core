@@ -130,6 +130,7 @@ impl ConsumerArtifactPlanIssuer {
             prepared_stage: None,
             failed_stage: None,
             root_revision: plan.initial_revision,
+            receipt_root_identity_fingerprint: None,
         })
     }
 }
@@ -143,12 +144,28 @@ pub struct IssuedConsumerArtifactPlan {
     prepared_stage: Option<usize>,
     failed_stage: Option<usize>,
     root_revision: u64,
+    receipt_root_identity_fingerprint: Option<String>,
 }
 
 impl IssuedConsumerArtifactPlan {
     #[must_use]
     pub fn remaining_stage_count(&self) -> usize {
         self.bindings.len().saturating_sub(self.next_stage)
+    }
+
+    /// Consumes one receipt only when it originated from this retained root.
+    pub fn consume_forwarding_receipt_once(
+        &self,
+        receipt: ConsumerArtifactForwardingReceipt,
+    ) -> Result<(), ConsumerArtifactPlanError> {
+        let root_identity_fingerprint = self
+            .receipt_root_identity_fingerprint
+            .as_deref()
+            .ok_or(ConsumerArtifactPlanError::ReceiptCrossBind)?;
+        let leaf = receipt.leaf.clone();
+        let stage_id = receipt.stage_id.clone();
+        let root_revision = receipt.root_revision;
+        receipt.consume_once(root_identity_fingerprint, &leaf, &stage_id, root_revision)
     }
 
     pub fn execute_next(
@@ -188,8 +205,16 @@ impl IssuedConsumerArtifactPlan {
             let artifact = receipt.artifact().clone();
             validate_decoded_png(&artifact)?;
             let root_revision = self.root_revision + index as u64;
+            let root_identity_fingerprint = sha256(frame.record().identity().as_bytes());
+            self.receipt_root_identity_fingerprint = Some(root_identity_fingerprint.clone());
             let receipt_fingerprint = sha256(
-                format!("{}:{}:{}", leaf.0, stage_id, frame.record().record_hash()).as_bytes(),
+                format!(
+                    "{root_identity_fingerprint}:{}:{}:{}",
+                    leaf.0,
+                    stage_id,
+                    frame.record().record_hash()
+                )
+                .as_bytes(),
             );
             let unicode_json = capture_unicode_evidence(self.unicode_evidence_options.clone())?;
             let unicode_hash = bind_unicode_evidence(
@@ -210,10 +235,12 @@ impl IssuedConsumerArtifactPlan {
                 root_record_hash: artifact.root_record_hash().to_owned(),
                 accesskit_snapshot_hash: frame.record().accessibility_snapshot_hash().to_owned(),
                 unicode_evidence_hash: unicode_hash,
+                unicode_evidence_json: unicode_json,
                 receipt: ConsumerArtifactForwardingReceipt {
                     leaf: leaf.clone(),
                     stage_id: stage_id.clone(),
                     root_revision: self.root_revision + index as u64,
+                    root_identity_fingerprint,
                     consumed: false,
                     fingerprint: receipt_fingerprint,
                 },

@@ -1,5 +1,6 @@
 use super::super::super::support::{
     json_bytes, preflight_output, sha256, validate_decoded_png, write_manifest,
+    write_manifest_with_forced_serialization_failure, write_manifest_with_forced_write_failure,
 };
 use super::super::super::*;
 use super::super::temp_dir;
@@ -96,26 +97,47 @@ fn support_validates_artifacts_receipts_and_manifest_output() {
         leaf: leaf.clone(),
         stage_id: "consumer-stage-0000".to_owned(),
         root_revision: 77,
+        root_identity_fingerprint: sha256(b"root-a"),
         consumed: false,
         fingerprint: sha256(b"fingerprint"),
     };
     assert_eq!(
         receipt.consume_once(
+            &sha256(b"root-a"),
             &ConsumerArtifactLeafId::new("leaf-b").expect("leaf"),
             "consumer-stage-0000",
             77,
         ),
         Err(ConsumerArtifactPlanError::ReceiptCrossBind)
     );
+    let accepted_receipt = ConsumerArtifactForwardingReceipt {
+        leaf: ConsumerArtifactLeafId::new("leaf-a").expect("leaf"),
+        stage_id: "consumer-stage-0000".to_owned(),
+        root_revision: 77,
+        root_identity_fingerprint: sha256(b"root-a"),
+        consumed: false,
+        fingerprint: sha256(b"accepted-fingerprint"),
+    };
+    assert_eq!(
+        accepted_receipt.consume_once(
+            &sha256(b"root-a"),
+            &ConsumerArtifactLeafId::new("leaf-a").expect("leaf"),
+            "consumer-stage-0000",
+            77,
+        ),
+        Ok(())
+    );
     let reused_receipt = ConsumerArtifactForwardingReceipt {
         leaf: ConsumerArtifactLeafId::new("leaf-a").expect("leaf"),
         stage_id: "consumer-stage-0000".to_owned(),
         root_revision: 77,
+        root_identity_fingerprint: sha256(b"root-a"),
         consumed: true,
         fingerprint: sha256(b"consumed-fingerprint"),
     };
     assert_eq!(
         reused_receipt.consume_once(
+            &sha256(b"root-a"),
             &ConsumerArtifactLeafId::new("leaf-a").expect("leaf"),
             "consumer-stage-0000",
             77,
@@ -131,10 +153,12 @@ fn support_validates_artifacts_receipts_and_manifest_output() {
         root_record_hash: "root-record".to_owned(),
         accesskit_snapshot_hash: "accesskit".to_owned(),
         unicode_evidence_hash: "unicode".to_owned(),
+        unicode_evidence_json: r#"{"glyph":"日本語⭐️"}"#.as_bytes().to_vec(),
         receipt: ConsumerArtifactForwardingReceipt {
             leaf: ConsumerArtifactLeafId::new("leaf-a").expect("leaf"),
             stage_id: "consumer-stage-0001".to_owned(),
             root_revision: 77,
+            root_identity_fingerprint: sha256(b"root-a"),
             consumed: false,
             fingerprint: sha256(b"manifest-fingerprint"),
         },
@@ -148,10 +172,12 @@ fn support_validates_artifacts_receipts_and_manifest_output() {
         root_record_hash: "root-record".to_owned(),
         accesskit_snapshot_hash: "accesskit".to_owned(),
         unicode_evidence_hash: "unicode".to_owned(),
+        unicode_evidence_json: r#"{"glyph":"日本語⭐️"}"#.as_bytes().to_vec(),
         receipt: ConsumerArtifactForwardingReceipt {
             leaf: ConsumerArtifactLeafId::new("leaf-a").expect("leaf"),
             stage_id: "consumer-stage-0000".to_owned(),
             root_revision: 77,
+            root_identity_fingerprint: sha256(b"root-a"),
             consumed: false,
             fingerprint: sha256(b"duplicate-manifest"),
         },
@@ -173,10 +199,12 @@ fn support_validates_artifacts_receipts_and_manifest_output() {
         root_record_hash: "root-record".to_owned(),
         accesskit_snapshot_hash: "accesskit".to_owned(),
         unicode_evidence_hash: "unicode".to_owned(),
+        unicode_evidence_json: r#"{"glyph":"日本語⭐️"}"#.as_bytes().to_vec(),
         receipt: ConsumerArtifactForwardingReceipt {
             leaf: ConsumerArtifactLeafId::new("leaf-write-error").expect("leaf"),
             stage_id: "consumer-stage-write-error".to_owned(),
             root_revision: 77,
+            root_identity_fingerprint: sha256(b"root-a"),
             consumed: false,
             fingerprint: sha256(b"write-error-manifest"),
         },
@@ -197,5 +225,38 @@ fn support_validates_artifacts_receipts_and_manifest_output() {
         manifest["forwarding_receipt_fingerprint"]
             .as_str()
             .is_some_and(|fingerprint| !fingerprint.is_empty())
+    );
+    assert_eq!(
+        manifest["unicode_evidence_file"],
+        serde_json::json!("consumer-stage-0001.unicode-evidence.json")
+    );
+    let unicode_evidence = std::fs::read(output.join("consumer-stage-0001.unicode-evidence.json"))
+        .expect("Unicode evidence should be published");
+    assert_eq!(unicode_evidence, evidence.unicode_evidence_json());
+    assert_eq!(
+        manifest["unicode_evidence_payload_sha256"],
+        serde_json::json!(sha256(&unicode_evidence))
+    );
+    assert!(matches!(
+        write_manifest_with_forced_serialization_failure(
+            temp_dir("manifest-serialization-failure").as_path(),
+            &evidence,
+        ),
+        Err(ConsumerArtifactPlanError::Artifact(message))
+            if message == "intentional serialization failure"
+    ));
+    assert!(matches!(
+        write_manifest_with_forced_write_failure(
+            temp_dir("manifest-write-failure").as_path(),
+            &evidence,
+        ),
+        Err(ConsumerArtifactPlanError::Artifact(message))
+            if message == "intentional manifest write failure"
+    ));
+    assert_eq!(
+        write_manifest(output.as_path(), &evidence),
+        Err(ConsumerArtifactPlanError::ExistingMedia(
+            output.join("consumer-stage-0001.unicode-evidence.json")
+        ))
     );
 }

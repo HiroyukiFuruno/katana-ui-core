@@ -1,3 +1,4 @@
+use super::super::execution::interaction_error;
 use super::super::support::{map_root_error, sha256};
 use super::super::text_interactions::{ensure_record_changed, ensure_scroll_changed};
 use super::super::unicode_evidence::{
@@ -29,10 +30,16 @@ fn assert_stage_evidence(
     assert_eq!(evidence.root_record_hash().len(), SHA256_HEX_LENGTH);
     assert_eq!(evidence.accesskit_snapshot_hash().len(), SHA256_HEX_LENGTH);
     assert_eq!(evidence.unicode_evidence_hash().len(), SHA256_HEX_LENGTH);
+    assert!(serde_json::from_slice::<serde_json::Value>(evidence.unicode_evidence_json()).is_ok());
     assert!(output_dir.join(format!("{stage_id}.png")).is_file());
     assert!(
         output_dir
             .join(format!("{stage_id}.consumer-artifact.json"))
+            .is_file()
+    );
+    assert!(
+        output_dir
+            .join(format!("{stage_id}.unicode-evidence.json"))
             .is_file()
     );
 }
@@ -83,13 +90,38 @@ fn issued_plan_executes_stages_and_collects_expected_artifact_evidence() {
     );
     assert_eq!(plan.remaining_stage_count(), 8);
     assert_eq!(
-        second.into_forwarding_receipt().consume_once(
-            &ConsumerArtifactLeafId::new("leaf-b").expect("leaf"),
-            "consumer-stage-0001",
-            8,
-        ),
+        plan.consume_forwarding_receipt_once(second.into_forwarding_receipt()),
         Ok(())
     );
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn forwarding_receipts_reject_a_different_retained_root() {
+    let context = egui::Context::default();
+    let mut first_plan = ConsumerArtifactPlanIssuer::new()
+        .issue(ConsumerArtifactPlanV1::new(
+            1,
+            complete_bindings(1, b"first-receipt-root"),
+        ))
+        .expect("first plan");
+    let mut second_plan = ConsumerArtifactPlanIssuer::new()
+        .issue(ConsumerArtifactPlanV1::new(
+            1,
+            complete_bindings(1, b"second-receipt-root"),
+        ))
+        .expect("second plan");
+    let first = first_plan
+        .execute_next(&context, temp_dir("first-receipt-root").as_path())
+        .expect("first evidence");
+    second_plan
+        .execute_next(&context, temp_dir("second-receipt-root").as_path())
+        .expect("second evidence");
+
+    assert!(matches!(
+        second_plan.consume_forwarding_receipt_once(first.into_forwarding_receipt()),
+        Err(ConsumerArtifactPlanError::ReceiptCrossBind)
+    ));
 }
 
 #[test]
@@ -313,6 +345,16 @@ fn root_errors_are_mapped_to_artifact_plan_errors() {
         map_root_error(EguiTextCommandSurfaceRootFactoryError::Root("kuc root".to_string())),
         ConsumerArtifactPlanError::Root(reason) if reason == "kuc root"
     ));
+}
+
+#[test]
+fn interaction_errors_are_mapped_to_artifact_plan_errors() {
+    assert_eq!(
+        interaction_error("semantic action was rejected"),
+        ConsumerArtifactPlanError::Artifact(
+            "KUC interaction protocol failed: semantic action was rejected".to_owned()
+        )
+    );
 }
 
 #[test]

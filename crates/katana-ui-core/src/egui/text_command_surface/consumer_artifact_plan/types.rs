@@ -109,7 +109,7 @@ impl ConsumerArtifactPlanV1 {
         }
     }
 }
-/// Stage evidence that contains hashes only; host target and token bytes never leave KUC.
+/// Stage evidence that excludes host targets and token bytes while publishing Unicode observations.
 pub struct ConsumerArtifactEvidence {
     stage_id: String,
     leaf: ConsumerArtifactLeafId,
@@ -119,6 +119,7 @@ pub struct ConsumerArtifactEvidence {
     root_record_hash: String,
     accesskit_snapshot_hash: String,
     unicode_evidence_hash: String,
+    unicode_evidence_json: Vec<u8>,
     receipt: ConsumerArtifactForwardingReceipt,
 }
 
@@ -155,42 +156,12 @@ impl ConsumerArtifactEvidence {
     pub fn unicode_evidence_hash(&self) -> &str {
         &self.unicode_evidence_hash
     }
+    #[must_use]
+    pub fn unicode_evidence_json(&self) -> &[u8] {
+        &self.unicode_evidence_json
+    }
     pub fn into_forwarding_receipt(self) -> ConsumerArtifactForwardingReceipt {
         self.receipt
-    }
-}
-
-/// Non-serializable, one-shot acknowledgement bound to exactly one issued stage.
-pub struct ConsumerArtifactForwardingReceipt {
-    leaf: ConsumerArtifactLeafId,
-    stage_id: String,
-    root_revision: u64,
-    consumed: bool,
-    fingerprint: String,
-}
-
-impl ConsumerArtifactForwardingReceipt {
-    pub fn consume_once(
-        mut self,
-        leaf: &ConsumerArtifactLeafId,
-        stage_id: &str,
-        root_revision: u64,
-    ) -> Result<(), ConsumerArtifactPlanError> {
-        if self.consumed {
-            return Err(ConsumerArtifactPlanError::ReceiptReuse);
-        }
-        if &self.leaf != leaf || self.stage_id != stage_id || self.root_revision != root_revision {
-            return Err(ConsumerArtifactPlanError::ReceiptCrossBind);
-        }
-        self.consumed = true;
-        let _ = &self.fingerprint;
-        Ok(())
-    }
-}
-
-impl std::fmt::Debug for ConsumerArtifactForwardingReceipt {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        formatter.write_str("ConsumerArtifactForwardingReceipt(..)")
     }
 }
 
@@ -286,6 +257,7 @@ impl std::fmt::Display for ConsumerArtifactPlanError {
 impl std::error::Error for ConsumerArtifactPlanError {}
 
 mod execution;
+mod receipt;
 mod stage_binding;
 mod stage_interactions;
 mod support;
@@ -295,3 +267,4 @@ mod text_interactions;
 mod unicode_evidence;
 
 pub use execution::{ConsumerArtifactPlanIssuer, IssuedConsumerArtifactPlan};
+pub use receipt::ConsumerArtifactForwardingReceipt;
