@@ -30,7 +30,9 @@ fn assert_stage_evidence(
     assert_eq!(evidence.root_record_hash().len(), SHA256_HEX_LENGTH);
     assert_eq!(evidence.accesskit_snapshot_hash().len(), SHA256_HEX_LENGTH);
     assert_eq!(evidence.unicode_evidence_hash().len(), SHA256_HEX_LENGTH);
-    assert!(serde_json::from_slice::<serde_json::Value>(evidence.unicode_evidence_json()).is_ok());
+    let unicode_evidence: serde_json::Value =
+        serde_json::from_slice(evidence.unicode_evidence_json()).expect("Unicode evidence JSON");
+    assert!(unicode_evidence["catalog_face"]["source_file_path"].is_null());
     assert!(output_dir.join(format!("{stage_id}.png")).is_file());
     assert!(
         output_dir
