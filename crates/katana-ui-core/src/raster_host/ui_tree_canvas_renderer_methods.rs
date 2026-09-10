@@ -238,7 +238,7 @@ fn hover_surface_child_clip_height(node: &UiNode, requested_height: usize) -> us
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::raster_host::{UiTreeDocumentTypography, UiTreeTextRoleTypography};
+    use crate::raster_host::{UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography};
     use katana_ui_core::render_model::{UiDimension, UiInteractionState, UiPosition, UiTextProps};
     use katana_ui_core::theme::ThemeSnapshot;
 
@@ -422,9 +422,9 @@ mod tests {
             scroll_y: 0.0,
         };
         let low_baseline = UiTreeDocumentTypography::new()
-            .with_body(UiTreeTextRoleTypography::new(24.0, 40.0, 8.0));
+            .with_body_baseline(UiTreeTextRoleBaselineTypography::new(24.0, 40.0, 8.0));
         let high_baseline = UiTreeDocumentTypography::new()
-            .with_body(UiTreeTextRoleTypography::new(24.0, 40.0, 18.0));
+            .with_body_baseline(UiTreeTextRoleBaselineTypography::new(24.0, 40.0, 18.0));
         let low_renderer =
             UiTreeCanvasRenderer::with_document_typography(theme.clone(), low_baseline);
         let high_renderer =

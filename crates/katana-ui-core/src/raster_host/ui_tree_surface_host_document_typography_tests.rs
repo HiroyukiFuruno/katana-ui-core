@@ -1,5 +1,6 @@
 use super::{
-    Canvas, UiTreeDocumentTypography, UiTreeRenderArea, UiTreeSurfaceHost, UiTreeTextRoleTypography,
+    Canvas, UiTreeDocumentTypography, UiTreeRenderArea, UiTreeSurfaceHost,
+    UiTreeTextRoleBaselineTypography, UiTreeTextRoleTypography,
 };
 use crate::test_assert::KucTestExpect;
 use katana_ui_core::atom::Text;
@@ -13,8 +14,8 @@ const TEST_AREA_HEIGHT: usize = 80;
 #[test]
 fn surface_host_document_typography_shares_raster_and_node_hit_metrics() {
     let document_typography = UiTreeDocumentTypography::new()
-        .with_body(UiTreeTextRoleTypography::new(16.5, 23.0, 18.5))
-        .with_heading_1(UiTreeTextRoleTypography::new(24.75, 40.0, 30.0));
+        .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.5, 23.0, 18.5))
+        .with_heading_1_baseline(UiTreeTextRoleBaselineTypography::new(24.75, 40.0, 30.0));
     let body: UiNode = Text::new("WWWW").text_role("body").into();
     let heading: UiNode = Text::new("WWWW").text_role("heading").into();
     let root = UiNode::new(UiNodeKind::Column, "")
@@ -45,7 +46,7 @@ fn surface_host_document_typography_shares_raster_and_node_hit_metrics() {
 #[test]
 fn surface_host_document_typography_keeps_sub_legacy_line_heights_in_action_layout() {
     let document_typography =
-        UiTreeDocumentTypography::new().with_body(UiTreeTextRoleTypography::new(10.0, 12.0, 0.0));
+        UiTreeDocumentTypography::new().with_body(UiTreeTextRoleTypography::new(10.0, 12, 0));
     let body: UiNode = Text::new("Body").text_role("body").into();
     let body = body
         .stable_node_id(UiNodeId::new("body"))
@@ -100,7 +101,7 @@ fn surface_host_document_typography_keeps_sub_legacy_line_heights_in_action_layo
 #[test]
 fn surface_host_document_typography_applies_preview_accordion_hit_metrics() {
     let document_typography =
-        UiTreeDocumentTypography::new().with_body(UiTreeTextRoleTypography::new(10.0, 12.0, 0.0));
+        UiTreeDocumentTypography::new().with_body(UiTreeTextRoleTypography::new(10.0, 12, 0));
     let body: UiNode = Text::new("Body").text_role("body").into();
     let body = body
         .stable_node_id(UiNodeId::new("body"))

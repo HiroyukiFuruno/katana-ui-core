@@ -9,11 +9,28 @@ pub struct ConsumerArtifactStageBinding {
     pub(super) interaction: GenericInteractionClass,
     pub(super) effect: GenericEffectClass,
     pub(super) token: Option<EguiTextCommandSurfacePresentationToken>,
+    pub(super) lease: Option<EguiTextCommandSurfaceHostProjectionLease>,
     action_target: Option<String>,
 }
 
 impl ConsumerArtifactStageBinding {
-    /// Consumes one KUC-issued opaque lease without exposing its token or host router.
+    pub(super) fn token(&self) -> Option<&EguiTextCommandSurfacePresentationToken> {
+        self.token.as_ref().or_else(|| {
+            self.lease
+                .as_ref()
+                .map(EguiTextCommandSurfaceHostProjectionLease::token)
+        })
+    }
+
+    pub(super) fn take_token(&mut self) -> Option<EguiTextCommandSurfacePresentationToken> {
+        self.token.take()
+    }
+
+    pub(super) fn take_root_lease(&mut self) -> Option<EguiTextCommandSurfaceHostProjectionLease> {
+        self.lease.take()
+    }
+
+    /// Retains one KUC-issued lease without exposing its token or host router.
     #[must_use]
     pub fn from_host_projection_lease(
         leaf: ConsumerArtifactLeafId,
@@ -22,8 +39,14 @@ impl ConsumerArtifactStageBinding {
         effect: GenericEffectClass,
         lease: EguiTextCommandSurfaceHostProjectionLease,
     ) -> Self {
-        let token = lease.into_consumer_artifact_token();
-        Self::new_with_action_target(leaf, action_target, interaction, effect, token)
+        Self {
+            leaf,
+            interaction,
+            effect,
+            token: None,
+            lease: Some(lease),
+            action_target: Some(action_target.into()),
+        }
     }
 
     #[must_use]
@@ -50,6 +73,7 @@ impl ConsumerArtifactStageBinding {
             interaction,
             effect,
             token: Some(token),
+            lease: None,
             action_target: Some(action_target.into()),
         }
     }

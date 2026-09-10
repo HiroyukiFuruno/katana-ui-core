@@ -37,8 +37,8 @@ mod foreign_consumer {
     use katana_ui_core::egui::text_command_surface::{
         ConsumerArtifactLeafId, ConsumerArtifactPlanError, ConsumerArtifactPlanIssuer,
         ConsumerArtifactPlanV1, ConsumerArtifactStageBinding,
-        EguiTextCommandSurfacePresentationToken, FullTextCommandSurfaceScenarioId,
-        FullTextCommandSurfaceScenarioSession, GenericEffectClass, GenericInteractionClass,
+        EguiTextCommandSurfacePresentationToken, FullTextCommandSurfaceScenarioSession,
+        GenericEffectClass, GenericInteractionClass,
     };
 
     const KUC_CONSUMER_ARTIFACT_ACTION_TARGET: &str = "kuc.rich.inline-strong";
@@ -62,9 +62,7 @@ mod foreign_consumer {
 
     pub(super) fn issue_full_plan_from_opaque_scenario_leases()
     -> Result<usize, Box<dyn std::error::Error>> {
-        let session = FullTextCommandSurfaceScenarioSession::new(
-            FullTextCommandSurfaceScenarioId::ConsumerArtifact,
-        );
+        let session = FullTextCommandSurfaceScenarioSession::new_consumer_artifact();
         let mut leases = Vec::with_capacity(GenericInteractionClass::FULL_EDITOR_SEQUENCE.len());
         leases.push(session.retain_lease()?);
         for _ in 1..GenericInteractionClass::FULL_EDITOR_SEQUENCE.len() {
@@ -93,9 +91,7 @@ mod foreign_consumer {
     #[cfg(target_os = "linux")]
     pub(super) fn execute_full_plan_from_opaque_scenario_leases()
     -> Result<(), Box<dyn std::error::Error>> {
-        let session = FullTextCommandSurfaceScenarioSession::new(
-            FullTextCommandSurfaceScenarioId::ConsumerArtifact,
-        );
+        let session = FullTextCommandSurfaceScenarioSession::new_consumer_artifact();
         let mut leases = Vec::with_capacity(GenericInteractionClass::FULL_EDITOR_SEQUENCE.len());
         leases.push(session.retain_lease()?);
         for _ in 1..GenericInteractionClass::FULL_EDITOR_SEQUENCE.len() {

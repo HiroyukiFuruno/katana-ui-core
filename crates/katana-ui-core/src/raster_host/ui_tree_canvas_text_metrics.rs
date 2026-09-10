@@ -298,7 +298,8 @@ impl UiTreeTextMetrics {
 mod tests {
     use super::{UiTreeDocumentTypography, UiTreeTextMetrics};
     use crate::raster_host::{
-        UiTreeDocumentTypography as UiTreeDocumentTypographyOverrides, UiTreeTextRoleTypography,
+        UiTreeDocumentTypography as UiTreeDocumentTypographyOverrides,
+        UiTreeTextRoleBaselineTypography, UiTreeTextRoleTypography,
     };
     use katana_ui_core::atom::Text;
     use katana_ui_core::render_model::{
@@ -546,12 +547,12 @@ mod tests {
 
     #[test]
     fn explicit_document_role_typography_keeps_font_line_height_and_baseline_independent() {
-        let body = UiTreeTextRoleTypography::new(16.5, 23.0, 0.0);
-        let heading = UiTreeTextRoleTypography::new(23.4, 34.0, 8.0);
+        let body = UiTreeTextRoleBaselineTypography::new(16.5, 23.0, 0.0);
+        let heading = UiTreeTextRoleBaselineTypography::new(23.4, 34.0, 8.0);
         let document_typography = UiTreeDocumentTypographyOverrides::new()
-            .with_body(body)
-            .with_heading_2(heading)
-            .with_heading_3(UiTreeTextRoleTypography::new(22.0, 30.0, 7.0));
+            .with_body_baseline(body)
+            .with_heading_2_baseline(heading)
+            .with_heading_3_baseline(UiTreeTextRoleBaselineTypography::new(22.0, 30.0, 7.0));
         let body_node: UiNode = Text::new("body").text_role("body").into();
         let heading_node: UiNode = Text::new("Long Heading").text_role("heading-2-long").into();
         let heading_3_node: UiNode = Text::new("Heading").text_role("heading-3").into();
@@ -590,7 +591,7 @@ mod tests {
         let theme = ThemeSnapshot::dark();
         let theme_typography = UiTreeDocumentTypography::from_theme(&theme);
         let invalid_override = UiTreeDocumentTypographyOverrides::new()
-            .with_body(UiTreeTextRoleTypography::new(0.0, 23.0, 0.0));
+            .with_body(UiTreeTextRoleTypography::new(0.0, 23, 0));
         let invalid_typography =
             UiTreeDocumentTypography::from_theme_with_document_typography(&theme, invalid_override);
 

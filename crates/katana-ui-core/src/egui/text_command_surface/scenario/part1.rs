@@ -136,7 +136,6 @@ pub enum FullTextCommandSurfaceScenarioId {
     ResizeScrollIme,
     NavigationInput,
     WorkspaceTabs,
-    ConsumerArtifact,
 }
 
 /// An opaque deterministic input stage. Coordinates and event payloads stay KUC-owned.

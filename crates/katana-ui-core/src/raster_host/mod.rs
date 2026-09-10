@@ -115,7 +115,9 @@ mod ui_tree_surface_host_document_typography_tests;
 mod ui_tree_surface_host_tests;
 
 pub use canvas::Canvas;
-pub use document_typography::{UiTreeDocumentTypography, UiTreeTextRoleTypography};
+pub use document_typography::{
+    UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography, UiTreeTextRoleTypography,
+};
 pub use presentation::StorybookPresentation;
 pub use text::TextRenderer;
 pub use text_selection::SelectableTextRun;

@@ -274,7 +274,7 @@ mod tests {
         context.typography = UiTreeDocumentTypography::from_theme_with_document_typography(
             &theme,
             crate::raster_host::UiTreeDocumentTypography::new()
-                .with_body(UiTreeTextRoleTypography::new(10.0, 12.0, 0.0)),
+                .with_body(UiTreeTextRoleTypography::new(10.0, 12, 0)),
         );
         let area = UiTreeRenderArea {
             x: 0,
