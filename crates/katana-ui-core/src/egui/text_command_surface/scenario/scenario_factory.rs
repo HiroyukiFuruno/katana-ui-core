@@ -1,7 +1,7 @@
 use super::{
     FullTextCommandSurfaceScenario, FullTextCommandSurfaceScenarioError,
     FullTextCommandSurfaceScenarioId, NoopRouter, consumer_artifact_presentation, issue_lease,
-    presentation, stages,
+    consumer_artifact_stages, presentation, stages,
 };
 
 /// Issues generic full-surface scenarios without exposing fixture geometry or semantics.
@@ -30,7 +30,7 @@ impl FullTextCommandSurfaceScenarioFactory {
         Ok(FullTextCommandSurfaceScenario {
             id: FullTextCommandSurfaceScenarioId::Resting,
             lease: Some(lease),
-            stages: stages(FullTextCommandSurfaceScenarioId::Resting),
+            stages: consumer_artifact_stages(),
         })
     }
 
@@ -93,6 +93,7 @@ mod tests {
             .expect("consumer artifact scenario remains issuable");
 
         assert_eq!(scenario.id(), FullTextCommandSurfaceScenarioId::Resting);
-        assert!(!scenario.stages().is_empty());
+        assert_eq!(scenario.stages().len(), 10);
+        assert!(scenario.stages().iter().any(|stage| stage.event_count() > 0));
     }
 }
