@@ -55,6 +55,24 @@ fn text_change_forwarding_updates_the_next_session_projection() {
 }
 
 #[test]
+fn additive_consumer_artifact_session_issues_and_renders_its_projection() {
+    let session = FullTextCommandSurfaceScenarioSession::new_consumer_artifact();
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(session.retain_lease().expect("consumer artifact lease"))
+        .expect("consumer artifact root retains");
+    let output = render_and_forward(
+        &egui::Context::default(),
+        &mut root,
+        session
+            .synchronize_lease()
+            .expect("consumer artifact lease synchronizes"),
+        egui::RawInput::default(),
+    );
+
+    assert!(!output.evidence_text.record.frame.layout_identity.is_empty());
+}
+
+#[test]
 fn physical_selection_is_retained_by_the_next_scenario_projection() {
     let session =
         FullTextCommandSurfaceScenarioSession::new(FullTextCommandSurfaceScenarioId::Selection);
