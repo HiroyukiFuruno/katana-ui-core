@@ -13,8 +13,8 @@ const TEST_AREA_HEIGHT: usize = 80;
 #[test]
 fn surface_host_document_typography_shares_raster_and_node_hit_metrics() {
     let document_typography = UiTreeDocumentTypography::new()
-        .with_body(UiTreeTextRoleTypography::new(16.5, 23.0, 0.0))
-        .with_heading_1(UiTreeTextRoleTypography::new(24.75, 40.0, 9.0));
+        .with_body(UiTreeTextRoleTypography::new(16.5, 23.0, 18.5))
+        .with_heading_1(UiTreeTextRoleTypography::new(24.75, 40.0, 30.0));
     let body: UiNode = Text::new("WWWW").text_role("body").into();
     let heading: UiNode = Text::new("WWWW").text_role("heading").into();
     let root = UiNode::new(UiNodeKind::Column, "")
