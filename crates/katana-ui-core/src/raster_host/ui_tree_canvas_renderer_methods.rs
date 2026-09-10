@@ -220,6 +220,50 @@ mod tests {
     }
 
     #[test]
+    fn integer_child_starts_at_fractional_text_boundary_on_scaled_canvas() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::with_document_typography(
+            theme,
+            UiTreeDocumentTypography::new()
+                .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5)),
+        );
+        let column: UiNode = UiNode::new(UiNodeKind::Column, "")
+            .child(Text::new("first").text_role("body"))
+            .child(UiNode::new(UiNodeKind::Button, "button").height(UiDimension::px(20)));
+        let mut canvas = Canvas::new_scaled(180, 80, 2.0, palette.background);
+        let mut y = 0;
+
+        renderer.draw_container(
+            &mut canvas,
+            &column,
+            0,
+            &mut y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 80,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+
+        let physical_width = canvas.width();
+        assert_ne!(
+            palette.selection,
+            canvas.pixels()[62 * physical_width],
+            "a 31.5px text extent must not let the following button overwrite physical row 62"
+        );
+        assert_eq!(
+            palette.selection,
+            canvas.pixels()[63 * physical_width],
+            "a 31.5px text extent must place the following button at physical row 63 at scale 2"
+        );
+        assert_eq!(52, y, "the integer child keeps the existing logical extent");
+    }
+
+    #[test]
     fn document_accordions_keep_fractional_extent_for_export_and_preview_roles() {
         let theme = ThemeSnapshot::dark();
         let palette = UiTreeCanvasPalette::from_theme(&theme);

@@ -76,7 +76,9 @@ impl UiTreeCanvasRenderer {
             return;
         }
         let mut physical_y = physical_start;
-        self.render_node(canvas, node, x, &mut physical_y, area, palette);
+        canvas.with_fractional_y_origin(*logical_y, physical_start, |canvas| {
+            self.render_node(canvas, node, x, &mut physical_y, area, palette);
+        });
         *logical_y += physical_y.saturating_sub(physical_start) as f32;
     }
 

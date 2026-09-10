@@ -159,6 +159,7 @@ fn canvas_from_pixels(width: usize, height: usize, pixels: Vec<u32>) -> Canvas {
         pixels,
         clip: None,
         text_runs: Vec::new(),
+        physical_y_offset: 0,
     }
 }
 

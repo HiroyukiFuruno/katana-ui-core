@@ -7,6 +7,7 @@ pub(crate) mod canvas;
 pub(crate) mod canvas_blit;
 pub(crate) mod canvas_clip;
 pub(crate) mod canvas_color;
+pub(crate) mod canvas_fractional_y;
 pub(crate) mod canvas_model;
 pub(crate) mod canvas_physical;
 pub(crate) mod canvas_png;

@@ -12,6 +12,8 @@ pub(crate) use text_types::{RichTextLineSpan, RichTextStyle};
 mod text_line_box;
 #[path = "text_runtime.rs"]
 mod text_runtime;
+#[path = "text_runtime_paint.rs"]
+mod text_runtime_paint;
 #[path = "text_style.rs"]
 mod text_style;
 use text_runtime::{default_line_height, resolve_font, ui_span};
