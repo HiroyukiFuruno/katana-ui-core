@@ -22,12 +22,14 @@ const TRANSPARENT_RGBA: [u8; RGBA_COMPONENT_COUNT] = [0; RGBA_COMPONENT_COUNT];
 const VERTICAL_SCALE_COVERAGE_ROWS_PER_UNIT: f32 = 6.0;
 
 impl TextRenderer {
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn draw_request(
         &self,
         canvas: &mut Canvas,
         spans: Vec<UiTextSpan>,
         x: isize,
-        y: f32,
+        paint_origin_y: f32,
+        text_run_origin_y: f32,
         scale_factor: f32,
         raster_vertical_scale: f32,
         font: FontToken,
@@ -40,8 +42,15 @@ impl TextRenderer {
         let Some(raster) = self.rasterize(spans, font, scale_factor, line_height_px) else {
             return;
         };
-        draw_raster(canvas, &raster, x, y, scale_factor, raster_vertical_scale);
-        record_runtime_text_run(canvas, &text, &raster, x, y);
+        draw_raster(
+            canvas,
+            &raster,
+            x,
+            paint_origin_y,
+            scale_factor,
+            raster_vertical_scale,
+        );
+        record_runtime_text_run(canvas, &text, &raster, x, text_run_origin_y);
     }
 
     pub(super) fn measure_request(

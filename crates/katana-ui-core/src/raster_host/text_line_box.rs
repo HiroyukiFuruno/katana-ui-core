@@ -85,6 +85,7 @@ impl TextRenderer {
             spans,
             x,
             origin_y,
+            line_box_top,
             scale,
             raster_vertical_scale,
             font,

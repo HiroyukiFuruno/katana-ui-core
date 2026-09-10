@@ -29,6 +29,18 @@ fn fractional_y_fill_preserves_physical_boundaries_and_canvas_clipping() {
     assert_eq!(Some(BACKGROUND), pixel_at(&canvas, 0, 6));
 }
 
+#[test]
+fn fill_rect_at_logical_y_skips_fully_clipped_negative_rectangles() {
+    let mut canvas = Canvas::new_scaled(4, 4, 2.0, BACKGROUND);
+
+    canvas.fill_rect_at_logical_y(0, -1.0, 4, 1.0, FILL);
+
+    assert!(canvas.pixels().iter().all(|pixel| *pixel == BACKGROUND));
+
+    canvas.fill_rect_at_logical_y(0, 0.0, 4, 1.0, FILL);
+    assert_eq!(Some(FILL), pixel_at(&canvas, 0, 0));
+}
+
 fn pixel_at(canvas: &Canvas, x: usize, y: usize) -> Option<u32> {
     canvas
         .pixels()

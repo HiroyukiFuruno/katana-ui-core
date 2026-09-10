@@ -172,13 +172,15 @@ impl Canvas {
         }
         let left = self.to_physical_x(x);
         let top = physical_fractional_position(y, self.scale_factor()).min(self.height());
+        let bottom =
+            physical_fractional_position(y + height, self.scale_factor()).min(self.height());
         if left >= self.width() || top >= self.height() {
             return None;
         }
         let right = self.to_physical_x(x.saturating_add(width)).max(left + 1);
-        let bottom = physical_fractional_position(y + height, self.scale_factor())
-            .min(self.height())
-            .max(top + 1);
+        if bottom <= top {
+            return None;
+        }
         let rect = CanvasClip {
             x: left,
             y: top,
