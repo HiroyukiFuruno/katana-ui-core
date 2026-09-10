@@ -17,8 +17,7 @@ impl UiTreeTextRenderer {
         area: UiTreeRenderArea,
     ) {
         let logical_start = *logical_y;
-        let mut physical_y = logical_canvas_boundary(logical_start);
-        Self::draw_node(canvas, context, node, x, &mut physical_y, area);
+        Self::draw_node_at_logical_y(canvas, context, node, x, logical_start, area);
         *logical_y = logical_start + logical_advance_height(context, node, x, area);
     }
 }
@@ -48,6 +47,6 @@ fn logical_advance_height(
         * metrics.line_box_height
 }
 
-fn logical_canvas_boundary(value: f32) -> usize {
+pub(super) fn logical_canvas_boundary(value: f32) -> usize {
     value.floor().max(0.0) as usize
 }

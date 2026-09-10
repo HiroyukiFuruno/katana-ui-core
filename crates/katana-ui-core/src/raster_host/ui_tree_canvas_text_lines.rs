@@ -1,5 +1,5 @@
 use super::super::canvas::Canvas;
-use super::super::text::{RichTextStyle, TextRenderer};
+use super::super::text::TextRenderer;
 use super::super::ui_tree_canvas_palette::UiTreeCanvasPalette;
 use super::super::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 use super::super::ui_tree_canvas_text_role::UiTreeTextRoleRenderer;
@@ -8,6 +8,8 @@ use katana_ui_core::render_model::{UiNode, UiTextSpan};
 
 #[path = "ui_tree_canvas_text_lines_decoration.rs"]
 mod line_decoration;
+#[path = "ui_tree_canvas_text_lines_plain.rs"]
+mod plain;
 #[path = "ui_tree_canvas_text_lines_rich_span.rs"]
 mod rich_span;
 #[path = "ui_tree_canvas_text_span_style.rs"]
@@ -23,6 +25,7 @@ use crate::raster_host::ui_tree_canvas_text_line_width::{
 };
 pub(super) use line_decoration::underline_y_offset;
 use line_decoration::{TextDecorationLine, decoration_y, underline_part_bounds};
+use plain::draw_plain_at_logical_y as draw_plain_lines_at_logical_y;
 use rich_span::rich_line_span;
 use span_style::{draw_span_background, should_strikethrough, should_underline, span_color};
 use text_wrap::UiTreeTextWrap;
@@ -44,6 +47,7 @@ pub(super) struct UiTreeTextLineContext<'a> {
 }
 
 impl UiTreeTextLines {
+    #[cfg(test)]
     pub(super) fn draw_plain(
         canvas: &mut Canvas,
         context: UiTreeTextLineContext<'_>,
@@ -51,67 +55,34 @@ impl UiTreeTextLines {
         x: usize,
         y: usize,
     ) {
-        for (index, line) in UiTreeTextWrap::plain_lines(
-            context.renderer,
-            context.node,
-            x,
-            context.area,
-            context.metrics,
-        )
-        .iter()
-        .enumerate()
-        {
-            let Some(line_box_top) = visible_line_y(index, y, context.area, context.metrics) else {
-                continue;
-            };
-            let color = UiTreeTextRoleRenderer::line_color(context.node, context.palette, index);
-            let bold = UiTreeTextRoleRenderer::line_bold(context.node, index);
-            let style = RichTextStyle::new(context.metrics.font_size, color)
-                .bold(bold)
-                .raster_vertical_scale(context.metrics.raster_vertical_scale);
-            let width = if bold {
-                context.renderer.measure_width_rich(line, style)
-            } else {
-                context
-                    .renderer
-                    .measure_width(line, context.metrics.font_size)
-            }
-            .max(1);
-            let line_x = UiTreeTextRoleRenderer::line_x(
-                context.node,
-                origin_x,
-                x,
-                context.area,
-                width,
-                index,
-            );
-            if let Some(baseline) = context.metrics.baseline_from_line_box_top {
-                context.renderer.draw_signed_styled_in_line_box(
-                    canvas,
-                    line,
-                    line_x,
-                    line_box_top,
-                    context.metrics.line_box_height,
-                    baseline,
-                    style,
-                );
-            } else {
-                context.renderer.draw_signed_styled(
-                    canvas,
-                    line,
-                    line_x,
-                    line_box_top.round().max(0.0) as usize,
-                    style,
-                );
-            }
-        }
+        Self::draw_plain_at_logical_y(canvas, context, origin_x, x, y as f32);
     }
 
+    pub(super) fn draw_plain_at_logical_y(
+        canvas: &mut Canvas,
+        context: UiTreeTextLineContext<'_>,
+        origin_x: usize,
+        x: usize,
+        y: f32,
+    ) {
+        draw_plain_lines_at_logical_y(canvas, context, origin_x, x, y);
+    }
+
+    #[cfg(test)]
     pub(super) fn draw_spans(
         canvas: &mut Canvas,
         context: UiTreeTextLineContext<'_>,
         x: usize,
         y: usize,
+    ) {
+        Self::draw_spans_at_logical_y(canvas, context, x, y as f32);
+    }
+
+    pub(super) fn draw_spans_at_logical_y(
+        canvas: &mut Canvas,
+        context: UiTreeTextLineContext<'_>,
+        x: usize,
+        y: f32,
     ) {
         let lines = UiTreeTextWrap::span_lines(
             SpanTextRenderers::new(context.renderer, context.code_renderer),
@@ -194,8 +165,25 @@ impl UiTreeTextLines {
                 }
                 cursor_x += width as isize;
             }
-            let raster_baseline = if let Some(baseline) = context.metrics.baseline_from_line_box_top
-            {
+            let raster_baseline = context.renderer.rich_line_raster_baseline(
+                &rich_line,
+                context.metrics.line_box_height,
+                canvas.scale_factor(),
+            );
+            for (background_x, width, span_style) in &span_backgrounds {
+                draw_span_background(
+                    canvas,
+                    *background_x,
+                    line_box_top,
+                    *width,
+                    *span_style,
+                    context.palette,
+                    context.metrics,
+                    raster_baseline,
+                );
+            }
+
+            if let Some(baseline) = context.metrics.baseline_from_line_box_top {
                 context.renderer.draw_rich_line_signed_in_line_box(
                     canvas,
                     &rich_line,
@@ -203,27 +191,13 @@ impl UiTreeTextLines {
                     line_box_top,
                     context.metrics.line_box_height,
                     baseline,
-                )
+                );
             } else {
                 context.renderer.draw_rich_line_signed(
                     canvas,
                     &rich_line,
                     line_x,
                     line_box_top.round().max(0.0) as usize,
-                );
-                0.0
-            };
-
-            for (background_x, width, span_style) in span_backgrounds {
-                draw_span_background(
-                    canvas,
-                    background_x,
-                    line_box_top,
-                    width,
-                    span_style,
-                    context.palette,
-                    context.metrics,
-                    raster_baseline,
                 );
             }
 
@@ -275,7 +249,7 @@ fn canvas_x(x: isize) -> Option<usize> {
 
 fn visible_line_y(
     line_index: usize,
-    y: usize,
+    y: f32,
     area: UiTreeRenderArea,
     metrics: UiTreeTextMetrics,
 ) -> Option<f32> {
@@ -289,7 +263,7 @@ fn visible_line_y(
     if line_top >= viewport_bottom {
         return None;
     }
-    Some(y as f32 + (line_top - scroll_y).max(0.0))
+    Some(y + (line_top - scroll_y).max(0.0))
 }
 
 const fn underline_line_thickness() -> usize {

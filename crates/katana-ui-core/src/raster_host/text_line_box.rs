@@ -4,6 +4,25 @@ use katana_ui_core::render_model::UiTextSpan;
 use katana_ui_core::theme::FontToken;
 
 impl TextRenderer {
+    pub(crate) fn rich_line_raster_baseline(
+        &self,
+        spans: &[RichTextLineSpan],
+        line_box_height: f32,
+        scale_factor: f32,
+    ) -> f32 {
+        let font = self.font_with_size(
+            spans
+                .first()
+                .map(|span| span.style.size)
+                .unwrap_or(self.font.size),
+        );
+        let spans = spans
+            .iter()
+            .map(|span| ui_span(&span.text, span.style))
+            .collect::<Vec<_>>();
+        self.raster_baseline(&spans, font, line_box_height, scale_factor)
+    }
+
     pub(crate) fn draw_signed_styled_in_line_box(
         &self,
         canvas: &mut Canvas,
