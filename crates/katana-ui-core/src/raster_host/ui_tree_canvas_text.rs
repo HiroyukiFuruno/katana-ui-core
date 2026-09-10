@@ -5,6 +5,8 @@ use super::ui_tree_canvas_text_role::UiTreeTextRoleRenderer;
 use super::ui_tree_canvas_types::UiTreeRenderArea;
 use katana_ui_core::render_model::{UiDimension, UiNode};
 
+#[path = "ui_tree_canvas_text_cursor.rs"]
+mod text_cursor;
 #[path = "ui_tree_canvas_text_lines.rs"]
 mod text_lines;
 #[path = "ui_tree_canvas_text_table.rs"]
@@ -376,6 +378,73 @@ mod tests {
             min_x >= 96,
             "text ink must start after the 40px left margin: min_x={min_x}"
         );
+    }
+
+    #[test]
+    fn adjacent_fractional_text_nodes_keep_their_combined_logical_extent() {
+        let mut context = text_context();
+        context.typography = UiTreeDocumentTypography::from_theme_with_document_typography(
+            &ThemeSnapshot::light(),
+            crate::raster_host::UiTreeDocumentTypography::new().with_body_baseline(
+                crate::raster_host::UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5),
+            ),
+        );
+        let first: UiNode = Text::new("first").text_role("body").into();
+        let second: UiNode = Text::new("second").text_role("body").into();
+        let area = render_area();
+        let mut canvas = Canvas::new(320, 120, 0xffffff);
+        let mut logical_y = 0.0;
+
+        UiTreeTextRenderer::draw_node_with_logical_cursor(
+            &mut canvas,
+            context,
+            &first,
+            0,
+            &mut logical_y,
+            area,
+        );
+        UiTreeTextRenderer::draw_node_with_logical_cursor(
+            &mut canvas,
+            context,
+            &second,
+            0,
+            &mut logical_y,
+            area,
+        );
+
+        assert_eq!(63.0, logical_y);
+    }
+
+    #[test]
+    fn logical_text_cursor_uses_explicit_height_and_table_content_height() {
+        let context = text_context();
+        let area = render_area();
+        let mut canvas = Canvas::new(320, 220, 0xffffff);
+        let explicit = table_node_with_height(80);
+        let table: UiNode = Text::new("Header\nTable after list")
+            .text_role("table")
+            .into();
+        let mut logical_y = 0.0;
+
+        UiTreeTextRenderer::draw_node_with_logical_cursor(
+            &mut canvas,
+            context,
+            &explicit,
+            56,
+            &mut logical_y,
+            area,
+        );
+        assert_eq!(80.0, logical_y);
+
+        UiTreeTextRenderer::draw_node_with_logical_cursor(
+            &mut canvas,
+            context,
+            &table,
+            56,
+            &mut logical_y,
+            area,
+        );
+        assert_eq!(212.0, logical_y);
     }
 
     #[test]

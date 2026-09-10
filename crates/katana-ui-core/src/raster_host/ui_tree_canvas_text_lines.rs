@@ -152,18 +152,11 @@ impl UiTreeTextLines {
             let mut cursor_x = line_x;
             let mut rich_line = Vec::with_capacity(render_line.len());
             let mut decorations = Vec::new();
+            let mut span_backgrounds = Vec::with_capacity(render_line.len());
             for span in render_line {
                 let width = span_part_width(renderers, span, context.metrics, preserve_whitespace);
                 if let Some(background_x) = canvas_x(cursor_x) {
-                    draw_span_background(
-                        canvas,
-                        background_x,
-                        line_box_top,
-                        width,
-                        span.style,
-                        context.palette,
-                        context.metrics,
-                    );
+                    span_backgrounds.push((background_x, width, span.style));
                 }
                 let color = span_color(span, context.palette);
                 rich_line.push(rich_line_span(context, renderers, span, color));
@@ -220,6 +213,20 @@ impl UiTreeTextLines {
                 );
                 0.0
             };
+
+            for (background_x, width, span_style) in span_backgrounds {
+                draw_span_background(
+                    canvas,
+                    background_x,
+                    line_box_top,
+                    width,
+                    span_style,
+                    context.palette,
+                    context.metrics,
+                    raster_baseline,
+                );
+            }
+
             for decoration in decorations {
                 let y = decoration_y(
                     line_box_top,

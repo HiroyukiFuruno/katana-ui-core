@@ -7,6 +7,7 @@ use super::{
 };
 use crate::raster_host::text::RichTextStyle;
 use crate::raster_host::ui_tree_canvas_scroll_measure::measured_node_height;
+use crate::raster_host::ui_tree_canvas_text::UiTreeTextRenderer;
 
 impl UiTreeCanvasRenderer {
     pub(super) fn draw_container(
@@ -31,6 +32,7 @@ impl UiTreeCanvasRenderer {
         let child_x = child_container_x(node, x).saturating_add(padding.left);
         let child_area = child_render_area(area, node, child_x, padding);
         *y = y.saturating_add(padding.top);
+        let mut logical_y = *y as f32;
         let requested_height = dimension_px(&node.props().common.height);
         if requested_height > 0 {
             let clip_height = hover_surface_child_clip_height(node, requested_height);
@@ -41,26 +43,41 @@ impl UiTreeCanvasRenderer {
                 clip_height,
                 &mut |canvas| {
                     for (index, child) in node.children().iter().enumerate() {
-                        self.draw_container_child(canvas, child, child_x, y, child_area, palette);
+                        self.draw_container_child(
+                            canvas,
+                            child,
+                            child_x,
+                            y,
+                            &mut logical_y,
+                            child_area,
+                            palette,
+                        );
                         if index + 1 < node.children().len() {
-                            *y = y.saturating_add(gap_after_child(
-                                node,
-                                child,
-                                &node.children()[index + 1],
-                            ));
+                            logical_y +=
+                                gap_after_child(node, child, &node.children()[index + 1]) as f32;
+                            *y = logical_y.ceil() as usize;
                         }
                     }
                 },
             );
         } else {
             for (index, child) in node.children().iter().enumerate() {
-                self.draw_container_child(canvas, child, child_x, y, child_area, palette);
+                self.draw_container_child(
+                    canvas,
+                    child,
+                    child_x,
+                    y,
+                    &mut logical_y,
+                    child_area,
+                    palette,
+                );
                 if index + 1 < node.children().len() {
-                    *y =
-                        y.saturating_add(gap_after_child(node, child, &node.children()[index + 1]));
+                    logical_y += gap_after_child(node, child, &node.children()[index + 1]) as f32;
+                    *y = logical_y.ceil() as usize;
                 }
             }
         }
+        *y = logical_y.ceil() as usize;
         *y = y.saturating_add(padding.bottom);
         draw_hover_surface(
             canvas,
@@ -79,16 +96,31 @@ impl UiTreeCanvasRenderer {
         child: &UiNode,
         child_x: usize,
         y: &mut usize,
+        logical_y: &mut f32,
         area: UiTreeRenderArea,
         palette: UiTreeCanvasPalette,
     ) {
+        if child.kind() == UiNodeKind::Text {
+            UiTreeTextRenderer::draw_node_with_logical_cursor(
+                canvas,
+                self.text_context(palette),
+                child,
+                child_x,
+                logical_y,
+                area,
+            );
+            *y = logical_y.ceil() as usize;
+            return;
+        }
         let height =
             self.measured_scroll_node_height(child, self.text_context(palette), child_x, area);
         if is_outside_vertical_viewport(*y, height, area) {
             *y = y.saturating_add(height);
+            *logical_y = *y as f32;
             return;
         }
         self.render_node(canvas, child, child_x, y, area, palette);
+        *logical_y = *y as f32;
     }
 
     fn hover_surface_height(
@@ -239,8 +271,42 @@ fn hover_surface_child_clip_height(node: &UiNode, requested_height: usize) -> us
 mod tests {
     use super::*;
     use crate::raster_host::{UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography};
+    use katana_ui_core::atom::Text;
     use katana_ui_core::render_model::{UiDimension, UiInteractionState, UiPosition, UiTextProps};
     use katana_ui_core::theme::ThemeSnapshot;
+
+    #[test]
+    fn container_keeps_fractional_extent_across_adjacent_text_nodes() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::with_document_typography(
+            theme,
+            UiTreeDocumentTypography::new()
+                .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5)),
+        );
+        let column: UiNode = UiNode::new(UiNodeKind::Column, "")
+            .child(Text::new("first").text_role("body"))
+            .child(Text::new("second").text_role("body"));
+        let mut canvas = Canvas::new(180, 80, palette.background);
+        let mut y = 0;
+
+        renderer.draw_container(
+            &mut canvas,
+            &column,
+            0,
+            &mut y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 80,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+
+        assert_eq!(63, y);
+    }
 
     #[test]
     fn container_renderer_covers_fixed_clip_offscreen_child_and_invisible_overlay() {
@@ -287,7 +353,7 @@ mod tests {
         assert!(labeled_y >= TEXT_HEIGHT);
 
         let offscreen =
-            UiNode::new(UiNodeKind::Column, "").child(UiNode::new(UiNodeKind::Text, "outside"));
+            UiNode::new(UiNodeKind::Column, "").child(UiNode::new(UiNodeKind::Button, "outside"));
         let mut offscreen_y = 0;
         renderer.draw_container(
             &mut canvas,
