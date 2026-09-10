@@ -34,7 +34,7 @@ impl TextRenderer {
         line_box_top: f32,
         line_box_height: f32,
         baseline_from_line_box_top: f32,
-    ) {
+    ) -> f32 {
         let raster_vertical_scale = spans
             .iter()
             .map(|span| span.style.raster_vertical_scale)
@@ -58,7 +58,7 @@ impl TextRenderer {
             baseline_from_line_box_top,
             raster_vertical_scale,
             font,
-        );
+        )
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -72,9 +72,9 @@ impl TextRenderer {
         baseline_from_line_box_top: f32,
         raster_vertical_scale: f32,
         font: FontToken,
-    ) {
+    ) -> f32 {
         let scale = canvas.scale_factor();
-        let raster_baseline = self.raster_baseline(font.clone(), line_box_height, scale);
+        let raster_baseline = self.raster_baseline(&spans, font.clone(), line_box_height, scale);
         let origin_y = draw_origin_for_target_baseline(
             line_box_top,
             baseline_from_line_box_top,
@@ -90,6 +90,7 @@ impl TextRenderer {
             font,
             line_box_height,
         );
+        raster_baseline
     }
 }
 

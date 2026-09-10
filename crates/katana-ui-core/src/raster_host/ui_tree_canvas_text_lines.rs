@@ -1,5 +1,5 @@
 use super::super::canvas::Canvas;
-use super::super::text::{RichTextLineSpan, RichTextStyle, TextRenderer};
+use super::super::text::{RichTextStyle, TextRenderer};
 use super::super::ui_tree_canvas_palette::UiTreeCanvasPalette;
 use super::super::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 use super::super::ui_tree_canvas_text_role::UiTreeTextRoleRenderer;
@@ -8,6 +8,8 @@ use katana_ui_core::render_model::{UiNode, UiTextSpan};
 
 #[path = "ui_tree_canvas_text_lines_decoration.rs"]
 mod line_decoration;
+#[path = "ui_tree_canvas_text_lines_rich_span.rs"]
+mod rich_span;
 #[path = "ui_tree_canvas_text_span_style.rs"]
 mod span_style;
 #[path = "ui_tree_canvas_text_wrap.rs"]
@@ -17,10 +19,11 @@ mod wrap_state;
 
 use crate::raster_host::ui_tree_canvas_text_line_width::{
     SpanTextRenderers, preserves_whitespace, span_line_width, span_part_width,
-    span_rich_text_style, span_visible_part_bounds,
+    span_visible_part_bounds,
 };
 pub(super) use line_decoration::underline_y_offset;
-use line_decoration::{TextDecorationLine, underline_part_bounds};
+use line_decoration::{TextDecorationLine, decoration_y, underline_part_bounds};
+use rich_span::rich_line_span;
 use span_style::{draw_span_background, should_strikethrough, should_underline, span_color};
 use text_wrap::UiTreeTextWrap;
 
@@ -155,7 +158,7 @@ impl UiTreeTextLines {
                     draw_span_background(
                         canvas,
                         background_x,
-                        line_box_top.round().max(0.0) as usize,
+                        line_box_top,
                         width,
                         span.style,
                         context.palette,
@@ -175,8 +178,7 @@ impl UiTreeTextLines {
                     );
                     decorations.push(TextDecorationLine {
                         x: cursor_x.saturating_add(decoration_x as isize),
-                        y: (line_box_top.round().max(0.0) as usize)
-                            .saturating_add(underline_y_offset(context.metrics, context.node)),
+                        legacy_offset: underline_y_offset(context.metrics, context.node),
                         width: decoration_width,
                         color,
                         thickness: underline_line_thickness(),
@@ -191,8 +193,7 @@ impl UiTreeTextLines {
                     );
                     decorations.push(TextDecorationLine {
                         x: cursor_x.saturating_add(decoration_x as isize),
-                        y: (line_box_top.round().max(0.0) as usize)
-                            .saturating_add(context.metrics.strikethrough_offset),
+                        legacy_offset: context.metrics.strikethrough_offset,
                         width: decoration_width,
                         color,
                         thickness: STRIKETHROUGH_LINE_THICKNESS,
@@ -200,7 +201,8 @@ impl UiTreeTextLines {
                 }
                 cursor_x += width as isize;
             }
-            if let Some(baseline) = context.metrics.baseline_from_line_box_top {
+            let raster_baseline = if let Some(baseline) = context.metrics.baseline_from_line_box_top
+            {
                 context.renderer.draw_rich_line_signed_in_line_box(
                     canvas,
                     &rich_line,
@@ -208,7 +210,7 @@ impl UiTreeTextLines {
                     line_box_top,
                     context.metrics.line_box_height,
                     baseline,
-                );
+                )
             } else {
                 context.renderer.draw_rich_line_signed(
                     canvas,
@@ -216,9 +218,16 @@ impl UiTreeTextLines {
                     line_x,
                     line_box_top.round().max(0.0) as usize,
                 );
-            }
+                0.0
+            };
             for decoration in decorations {
-                decoration.draw(canvas);
+                let y = decoration_y(
+                    line_box_top,
+                    context.metrics.baseline_from_line_box_top,
+                    raster_baseline,
+                    decoration.legacy_offset,
+                );
+                decoration.draw(canvas, y);
             }
         }
     }
@@ -278,18 +287,6 @@ fn visible_line_y(
 
 const fn underline_line_thickness() -> usize {
     UNDERLINE_LINE_THICKNESS
-}
-
-fn rich_line_span(
-    context: UiTreeTextLineContext<'_>,
-    renderers: SpanTextRenderers<'_>,
-    span: &katana_ui_core::render_model::UiTextSpan,
-    color: u32,
-) -> RichTextLineSpan {
-    renderers.for_span(span).rich_line_span(
-        span.text.clone(),
-        span_rich_text_style(span, context.metrics, color),
-    )
 }
 
 #[cfg(test)]

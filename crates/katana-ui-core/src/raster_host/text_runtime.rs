@@ -80,12 +80,14 @@ impl TextRenderer {
 
     pub(super) fn raster_baseline(
         &self,
+        spans: &[UiTextSpan],
         font: FontToken,
         line_box_height: f32,
         scale_factor: f32,
     ) -> f32 {
         let scale = normalized_scale_factor(scale_factor);
-        let mut request = PlatformTextRasterRequest::from_text("Hg", font, TRANSPARENT_RGBA);
+        let mut request = PlatformTextRasterRequest::from_text(" ", font, TRANSPARENT_RGBA);
+        request.spans = spans.to_vec();
         request.line_height_px = line_box_height;
         request.scale_factor = scale;
         self.rasterizer

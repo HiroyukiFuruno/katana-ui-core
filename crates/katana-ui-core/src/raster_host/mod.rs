@@ -74,6 +74,8 @@ pub(crate) mod ui_tree_surface_host;
 #[cfg(test)]
 mod canvas_extensions_regression_tests;
 #[cfg(test)]
+mod canvas_fractional_y_tests;
+#[cfg(test)]
 mod canvas_regression_tests;
 #[cfg(test)]
 mod canvas_retina_regression_tests;
