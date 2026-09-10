@@ -32,7 +32,7 @@ pub(super) fn draw_span_background(
             x,
             y,
             width,
-            metrics.highlight_height as f32,
+            metrics.highlight_box_height(),
             CURRENT_HIGHLIGHT_BACKGROUND,
         );
         return;
@@ -42,7 +42,7 @@ pub(super) fn draw_span_background(
             x,
             y,
             width,
-            metrics.highlight_height as f32,
+            metrics.highlight_box_height(),
             HIGHLIGHT_BACKGROUND,
         );
         return;
@@ -198,6 +198,48 @@ mod tests {
 
         assert_eq!(Some(palette.background), pixel_at(&canvas, 20, 62));
         assert_eq!(Some(super::HIGHLIGHT_BACKGROUND), pixel_at(&canvas, 20, 63));
+    }
+
+    #[test]
+    fn document_highlight_backgrounds_preserve_fractional_height_between_lines() {
+        let palette = UiTreeCanvasPalette::from_theme(&ThemeSnapshot::dark());
+        let mut metrics = metrics_for_test();
+        metrics.line_height = 32;
+        metrics.line_box_height = 31.5;
+        metrics.baseline_from_line_box_top = Some(12.0);
+        metrics.highlight_height = 32;
+        let mut canvas = Canvas::new_scaled(80, 64, 2.0, palette.background);
+
+        draw_span_background(
+            &mut canvas,
+            10,
+            0.0,
+            20,
+            UiTextSpanStyle {
+                highlight: true,
+                ..UiTextSpanStyle::default()
+            },
+            palette,
+            metrics,
+        );
+        draw_span_background(
+            &mut canvas,
+            10,
+            31.5,
+            20,
+            UiTextSpanStyle {
+                current_highlight: true,
+                ..UiTextSpanStyle::default()
+            },
+            palette,
+            metrics,
+        );
+
+        assert_eq!(Some(super::HIGHLIGHT_BACKGROUND), pixel_at(&canvas, 20, 62));
+        assert_eq!(
+            Some(super::CURRENT_HIGHLIGHT_BACKGROUND),
+            pixel_at(&canvas, 20, 63)
+        );
     }
 
     fn metrics_for_test() -> UiTreeTextMetrics {

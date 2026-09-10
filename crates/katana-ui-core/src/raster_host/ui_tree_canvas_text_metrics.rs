@@ -88,6 +88,11 @@ impl UiTreeTextMetrics {
         has_active_document_role_typography(role, typography.document_typography)
     }
 
+    pub(super) fn highlight_box_height(&self) -> f32 {
+        self.baseline_from_line_box_top
+            .map_or(self.highlight_height as f32, |_| self.line_box_height)
+    }
+
     #[cfg(test)]
     pub(super) fn for_node(node: &UiNode) -> Self {
         Self::for_node_with_typography(node, UiTreeDocumentTypography::default())
