@@ -71,7 +71,7 @@ impl FullTextCommandSurfaceScenarioSession {
     ) -> Result<EguiTextCommandSurfaceHostProjectionLease, FullTextCommandSurfaceScenarioError>
     {
         let presentation = if self.consumer_artifact {
-            consumer_artifact_presentation()
+            self.state.borrow().consumer_artifact_presentation()
         } else {
             self.state.borrow().presentation(self.id)
         };
@@ -107,7 +107,17 @@ impl ScenarioSessionState {
         &self,
         id: FullTextCommandSurfaceScenarioId,
     ) -> super::EguiTextCommandSurfacePresentation {
-        let mut presentation = scenario::presentation(id);
+        self.apply_to_presentation(scenario::presentation(id))
+    }
+
+    fn consumer_artifact_presentation(&self) -> super::EguiTextCommandSurfacePresentation {
+        self.apply_to_presentation(consumer_artifact_presentation())
+    }
+
+    fn apply_to_presentation(
+        &self,
+        mut presentation: super::EguiTextCommandSurfacePresentation,
+    ) -> super::EguiTextCommandSurfacePresentation {
         if let Some(text) = &self.text {
             presentation.text.value.clone_from(text);
             presentation.text.annotations.clear();
