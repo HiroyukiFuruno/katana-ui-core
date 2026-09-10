@@ -1,13 +1,11 @@
 use super::{
-    Canvas, ContainerPadding, INDENT, NODE_GAP, TEXT_HEIGHT, UiNode, UiNodeKind,
-    UiTreeCanvasPalette, UiTreeCanvasRenderer, UiTreeRenderArea, UiTreeSettingsContext,
-    UiTreeTextMetrics, UiVisualRole, absolute_child_rect, child_container_x, child_render_area,
-    dimension_px, draw_hover_surface, draw_label, gap_after_child, has_absolute_child, is_absolute,
-    is_outside_vertical_viewport, remaining_width, should_draw_container_label, stack_frame_height,
+    Canvas, ContainerPadding, TEXT_HEIGHT, UiNode, UiNodeKind, UiTreeCanvasPalette,
+    UiTreeCanvasRenderer, UiTreeRenderArea, UiTreeSettingsContext, UiVisualRole,
+    absolute_child_rect, child_container_x, child_render_area, dimension_px, draw_hover_surface,
+    draw_label, gap_after_child, has_absolute_child, is_absolute, remaining_width,
+    should_draw_container_label, stack_frame_height,
 };
-use crate::raster_host::text::RichTextStyle;
 use crate::raster_host::ui_tree_canvas_scroll_measure::measured_node_height;
-use crate::raster_host::ui_tree_canvas_text::UiTreeTextRenderer;
 
 impl UiTreeCanvasRenderer {
     pub(super) fn draw_container(
@@ -90,39 +88,6 @@ impl UiTreeCanvasRenderer {
         );
     }
 
-    fn draw_container_child(
-        &self,
-        canvas: &mut Canvas,
-        child: &UiNode,
-        child_x: usize,
-        y: &mut usize,
-        logical_y: &mut f32,
-        area: UiTreeRenderArea,
-        palette: UiTreeCanvasPalette,
-    ) {
-        if child.kind() == UiNodeKind::Text {
-            UiTreeTextRenderer::draw_node_with_logical_cursor(
-                canvas,
-                self.text_context(palette),
-                child,
-                child_x,
-                logical_y,
-                area,
-            );
-            *y = logical_y.ceil() as usize;
-            return;
-        }
-        let height =
-            self.measured_scroll_node_height(child, self.text_context(palette), child_x, area);
-        if is_outside_vertical_viewport(*y, height, area) {
-            *y = y.saturating_add(height);
-            *logical_y = *y as f32;
-            return;
-        }
-        self.render_node(canvas, child, child_x, y, area, palette);
-        *logical_y = *y as f32;
-    }
-
     fn hover_surface_height(
         &self,
         node: &UiNode,
@@ -192,60 +157,6 @@ impl UiTreeCanvasRenderer {
         *y = frame_top.saturating_add(frame_height);
     }
 
-    pub(super) fn draw_accordion(
-        &self,
-        canvas: &mut Canvas,
-        node: &UiNode,
-        x: usize,
-        y: &mut usize,
-        area: UiTreeRenderArea,
-        palette: UiTreeCanvasPalette,
-    ) {
-        let document_accordion = node.props().text.role == "html-accordion";
-        let metrics = UiTreeTextMetrics::for_node_with_typography(node, self.typography);
-        let label = if document_accordion {
-            node.props().label.clone()
-        } else if node.props().interaction.open {
-            format!("v {}", node.props().label)
-        } else {
-            format!("> {}", node.props().label)
-        };
-        if let Some(baseline_from_line_box_top) = metrics.baseline_from_line_box_top {
-            self.text.draw_signed_styled_in_line_box(
-                canvas,
-                &label,
-                x as isize,
-                (y.saturating_add(metrics.top_margin)) as f32,
-                metrics.line_box_height,
-                baseline_from_line_box_top,
-                RichTextStyle::new(metrics.font_size, palette.text),
-            );
-        } else {
-            self.text.draw(
-                canvas,
-                &label,
-                x,
-                y.saturating_add(metrics.top_margin),
-                metrics.font_size,
-                palette.text,
-            );
-        }
-        *y = y.saturating_add(metrics.line_height);
-        if node.props().interaction.open {
-            let child_x = if document_accordion {
-                x
-            } else {
-                x.saturating_add(INDENT)
-            };
-            for child in node.children() {
-                self.render_node(canvas, child, child_x, y, area, palette);
-            }
-            if !document_accordion {
-                *y = y.saturating_add(NODE_GAP);
-            }
-        }
-    }
-
     pub(super) fn settings_context(
         &self,
         area: UiTreeRenderArea,
@@ -306,6 +217,96 @@ mod tests {
         );
 
         assert_eq!(63, y);
+    }
+
+    #[test]
+    fn document_accordions_keep_fractional_extent_for_export_and_preview_roles() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::with_document_typography(
+            theme,
+            UiTreeDocumentTypography::new()
+                .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5)),
+        );
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 80,
+            scroll_y: 0.0,
+        };
+
+        for role in ["html-accordion", "html-accordion-preview"] {
+            let column = UiNode::new(UiNodeKind::Column, "")
+                .child(
+                    UiNode::new(UiNodeKind::Accordion, "first").text(UiTextProps {
+                        role: role.to_owned(),
+                        ..UiTextProps::default()
+                    }),
+                )
+                .child(
+                    UiNode::new(UiNodeKind::Accordion, "second").text(UiTextProps {
+                        role: role.to_owned(),
+                        ..UiTextProps::default()
+                    }),
+                );
+            let mut canvas = Canvas::new(180, 80, palette.background);
+            let mut y = 0;
+
+            renderer.draw_container(&mut canvas, &column, 0, &mut y, area, palette);
+
+            assert_eq!(63, y, "{role} must retain both 31.5px header extents");
+        }
+    }
+
+    #[test]
+    fn open_document_accordion_keeps_fractional_extent_across_non_text_children() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::with_document_typography(
+            theme,
+            UiTreeDocumentTypography::new()
+                .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5)),
+        );
+        let open = UiInteractionState {
+            open: true,
+            ..UiInteractionState::default()
+        };
+        let column = UiNode::new(UiNodeKind::Column, "")
+            .child(
+                UiNode::new(UiNodeKind::Accordion, "first")
+                    .text(UiTextProps {
+                        role: "html-accordion".to_owned(),
+                        ..UiTextProps::default()
+                    })
+                    .interaction(open)
+                    .child(UiNode::new(UiNodeKind::Button, "button").height(UiDimension::px(20))),
+            )
+            .child(
+                UiNode::new(UiNodeKind::Accordion, "second").text(UiTextProps {
+                    role: "html-accordion".to_owned(),
+                    ..UiTextProps::default()
+                }),
+            );
+        let mut canvas = Canvas::new(180, 120, palette.background);
+        let mut y = 0;
+
+        renderer.draw_container(
+            &mut canvas,
+            &column,
+            0,
+            &mut y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 120,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+
+        assert_eq!(83, y);
     }
 
     #[test]

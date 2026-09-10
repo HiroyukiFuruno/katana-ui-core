@@ -25,6 +25,8 @@ use katana_ui_core::theme::ThemeSnapshot;
 
 #[path = "ui_tree_canvas_geometry.rs"]
 mod geometry;
+#[path = "ui_tree_canvas_renderer_cursor.rs"]
+mod renderer_cursor;
 #[path = "ui_tree_canvas_renderer_methods.rs"]
 mod renderer_methods;
 #[path = "ui_tree_canvas_renderer_types.rs"]
