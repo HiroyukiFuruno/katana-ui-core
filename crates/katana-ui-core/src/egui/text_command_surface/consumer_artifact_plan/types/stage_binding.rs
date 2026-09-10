@@ -17,12 +17,13 @@ impl ConsumerArtifactStageBinding {
     #[must_use]
     pub fn from_host_projection_lease(
         leaf: ConsumerArtifactLeafId,
+        action_target: impl Into<String>,
         interaction: GenericInteractionClass,
         effect: GenericEffectClass,
         lease: EguiTextCommandSurfaceHostProjectionLease,
     ) -> Self {
         let token = lease.into_consumer_artifact_token();
-        Self::new(leaf, interaction, effect, token)
+        Self::new_with_action_target(leaf, action_target, interaction, effect, token)
     }
 
     #[must_use]

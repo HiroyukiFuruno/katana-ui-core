@@ -15,7 +15,9 @@ pub(super) fn presentation(
     text.automatic_gutter = Some(TextSurfaceAutomaticGutterPresentation::new());
     if matches!(
         id,
-        FullTextCommandSurfaceScenarioId::Find | FullTextCommandSurfaceScenarioId::WorkspaceTabs
+        FullTextCommandSurfaceScenarioId::Find
+            | FullTextCommandSurfaceScenarioId::WorkspaceTabs
+            | FullTextCommandSurfaceScenarioId::ConsumerArtifact
     ) {
         text.annotations = generic_find_annotations(&text.value);
     }
@@ -25,7 +27,12 @@ pub(super) fn presentation(
         text_state_id: Some(UiStateId::new("kuc-scenario-text")),
         text,
         toolbar: Some(toolbar(readonly)),
-        floating: matches!(id, FullTextCommandSurfaceScenarioId::Selection).then(|| {
+        floating: matches!(
+            id,
+            FullTextCommandSurfaceScenarioId::Selection
+                | FullTextCommandSurfaceScenarioId::ConsumerArtifact
+        )
+        .then(|| {
             EguiTextCommandSurfaceFloatingPresentation {
                 toolbar: toolbar(false),
                 visibility: FloatingCommandToolbarVisibility::Visible,
@@ -33,12 +40,17 @@ pub(super) fn presentation(
         }),
         search: matches!(
             id,
-            FullTextCommandSurfaceScenarioId::Find
+                FullTextCommandSurfaceScenarioId::Find
                 | FullTextCommandSurfaceScenarioId::WorkspaceTabs
+                | FullTextCommandSurfaceScenarioId::ConsumerArtifact
         )
         .then(search),
-        context_menu: matches!(id, FullTextCommandSurfaceScenarioId::Context)
-            .then(|| context_menu(true)),
+        context_menu: matches!(
+            id,
+            FullTextCommandSurfaceScenarioId::Context
+                | FullTextCommandSurfaceScenarioId::ConsumerArtifact
+        )
+        .then(|| context_menu(true)),
     }
 }
 

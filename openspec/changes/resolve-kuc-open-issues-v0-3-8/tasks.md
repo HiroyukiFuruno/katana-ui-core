@@ -39,7 +39,7 @@
 ## 6. v0.3.9 corrective consumer-boundary release（KUC #40）
 
 - [x] 6.1 KUC-issued opaque host projection lease を consumer artifact stage binding へ直接移送する public API を追加し、presentation token、host router、renderer、`RawInput` を consumer に公開しない。
-- [x] 6.2 foreign-consumer contract で selection scenario の全 10 stage を opaque lease から発行する regression を追加し、format、AST lint、workspace check、`just check`、`git diff --check` を通す。
+- [x] 6.2 foreign-consumer contract で KUC-owned `ConsumerArtifact` scenario の全 10 stage を opaque lease から発行・実行する regression を追加し、leaf ID と host action target を分離して、format、AST lint、workspace check、`just check`、`git diff --check` を通す。
 - [x] 6.3 v0.3.9 の release note と OpenSpec evidence を更新する。
 - [/] 6.4 Draft PR #47 を作成し、review、指摘対応・reply/resolve、P0/P1=0、Ready化、required 3 OS CI を完了して merge する。
 - [ ] 6.5 merge後に tag、GitHub Release、crates.io `katana-ui-core@0.3.9` を個別に確認する。

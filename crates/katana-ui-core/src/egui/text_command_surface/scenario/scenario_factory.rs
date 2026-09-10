@@ -64,6 +64,7 @@ mod tests {
             FullTextCommandSurfaceScenarioId::ResizeScrollIme,
             FullTextCommandSurfaceScenarioId::NavigationInput,
             FullTextCommandSurfaceScenarioId::WorkspaceTabs,
+            FullTextCommandSurfaceScenarioId::ConsumerArtifact,
         ] {
             let scenario = factory.issue(id).expect("public scenario remains issuable");
             assert_eq!(scenario.id(), id);

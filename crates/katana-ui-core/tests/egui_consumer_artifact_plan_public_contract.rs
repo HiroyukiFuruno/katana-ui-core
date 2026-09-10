@@ -41,6 +41,8 @@ mod foreign_consumer {
         FullTextCommandSurfaceScenarioSession, GenericEffectClass, GenericInteractionClass,
     };
 
+    const KUC_CONSUMER_ARTIFACT_ACTION_TARGET: &str = "kuc.rich.inline-strong";
+
     pub(super) fn issue_stage_count(
         token: EguiTextCommandSurfacePresentationToken,
     ) -> Result<usize, ConsumerArtifactPlanError> {
@@ -60,8 +62,9 @@ mod foreign_consumer {
 
     pub(super) fn issue_full_plan_from_opaque_scenario_leases()
     -> Result<usize, Box<dyn std::error::Error>> {
-        let session =
-            FullTextCommandSurfaceScenarioSession::new(FullTextCommandSurfaceScenarioId::Selection);
+        let session = FullTextCommandSurfaceScenarioSession::new(
+            FullTextCommandSurfaceScenarioId::ConsumerArtifact,
+        );
         let mut leases = Vec::with_capacity(GenericInteractionClass::FULL_EDITOR_SEQUENCE.len());
         leases.push(session.retain_lease()?);
         for _ in 1..GenericInteractionClass::FULL_EDITOR_SEQUENCE.len() {
@@ -74,6 +77,7 @@ mod foreign_consumer {
             .map(|(index, (interaction, lease))| {
                 Ok(ConsumerArtifactStageBinding::from_host_projection_lease(
                     ConsumerArtifactLeafId::new(format!("foreign-stage-{index}"))?,
+                    KUC_CONSUMER_ARTIFACT_ACTION_TARGET,
                     interaction,
                     GenericEffectClass::NoHostEffect,
                     lease,
@@ -84,6 +88,44 @@ mod foreign_consumer {
             .issue(ConsumerArtifactPlanV1::new(1, bindings))
             .map(|issued| issued.remaining_stage_count())
             .map_err(Into::into)
+    }
+
+    #[cfg(target_os = "linux")]
+    pub(super) fn execute_full_plan_from_opaque_scenario_leases()
+    -> Result<(), Box<dyn std::error::Error>> {
+        let session = FullTextCommandSurfaceScenarioSession::new(
+            FullTextCommandSurfaceScenarioId::ConsumerArtifact,
+        );
+        let mut leases = Vec::with_capacity(GenericInteractionClass::FULL_EDITOR_SEQUENCE.len());
+        leases.push(session.retain_lease()?);
+        for _ in 1..GenericInteractionClass::FULL_EDITOR_SEQUENCE.len() {
+            leases.push(session.synchronize_lease()?);
+        }
+        let bindings = GenericInteractionClass::FULL_EDITOR_SEQUENCE
+            .into_iter()
+            .zip(leases)
+            .enumerate()
+            .map(|(index, (interaction, lease))| {
+                Ok(ConsumerArtifactStageBinding::from_host_projection_lease(
+                    ConsumerArtifactLeafId::new(format!("foreign-stage-{index}"))?,
+                    KUC_CONSUMER_ARTIFACT_ACTION_TARGET,
+                    interaction,
+                    GenericEffectClass::NoHostEffect,
+                    lease,
+                ))
+            })
+            .collect::<Result<Vec<_>, Box<dyn std::error::Error>>>()?;
+        let mut plan =
+            ConsumerArtifactPlanIssuer::new().issue(ConsumerArtifactPlanV1::new(1, bindings))?;
+        let output = tempfile::tempdir()?;
+        let context = egui::Context::default();
+
+        for _ in GenericInteractionClass::FULL_EDITOR_SEQUENCE {
+            plan.execute_next(&context, output.path())?;
+        }
+
+        assert_eq!(0, plan.remaining_stage_count());
+        Ok(())
     }
 }
 
@@ -112,4 +154,11 @@ fn foreign_consumer_can_issue_full_plan_from_opaque_scenario_leases() {
             .expect("opaque leases must create the full consumer plan"),
         10
     );
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn foreign_consumer_executes_every_stage_from_opaque_scenario_leases() {
+    foreign_consumer::execute_full_plan_from_opaque_scenario_leases()
+        .expect("opaque leases must execute the complete consumer plan");
 }
