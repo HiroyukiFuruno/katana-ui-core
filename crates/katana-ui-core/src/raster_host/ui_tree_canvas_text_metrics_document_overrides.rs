@@ -16,12 +16,12 @@ pub(super) fn with_document_typography(
         return metrics;
     };
     metrics.font_size = role_typography.font_size;
-    metrics.line_height = role_typography.line_height;
-    metrics.top_margin = role_typography.baseline_offset;
-    metrics.background_height = role_typography.line_height;
-    metrics.highlight_height = role_typography
-        .line_height
-        .saturating_sub(role_typography.baseline_offset);
+    metrics.line_box_height = role_typography.line_box_height;
+    metrics.line_height = role_typography.line_box_height.ceil() as usize;
+    metrics.top_margin = 0;
+    metrics.baseline_from_line_box_top = Some(role_typography.baseline_from_line_box_top);
+    metrics.background_height = metrics.line_height;
+    metrics.highlight_height = role_typography.line_box_height.ceil().max(1.0) as usize;
     metrics.underline_offset = underline_offset(role_typography.font_size);
     metrics.strikethrough_offset = strikethrough_offset(role_typography.font_size);
     metrics

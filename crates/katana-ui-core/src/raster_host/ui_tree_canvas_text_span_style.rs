@@ -175,7 +175,9 @@ mod tests {
         UiTreeTextMetrics {
             font_size: 14.0,
             line_height: 23,
+            line_box_height: 23.0,
             top_margin: 0,
+            baseline_from_line_box_top: None,
             background_height: 23,
             highlight_height: 23,
             underline_offset: 17,

@@ -58,7 +58,7 @@ impl UiTreeTextLines {
         .iter()
         .enumerate()
         {
-            let Some(line_y) = visible_line_y(index, y, context.area, context.metrics) else {
+            let Some(line_box_top) = visible_line_y(index, y, context.area, context.metrics) else {
                 continue;
             };
             let color = UiTreeTextRoleRenderer::line_color(context.node, context.palette, index);
@@ -82,9 +82,25 @@ impl UiTreeTextLines {
                 width,
                 index,
             );
-            context
-                .renderer
-                .draw_signed_styled(canvas, line, line_x, line_y, style);
+            if let Some(baseline) = context.metrics.baseline_from_line_box_top {
+                context.renderer.draw_signed_styled_in_line_box(
+                    canvas,
+                    line,
+                    line_x,
+                    line_box_top,
+                    context.metrics.line_box_height,
+                    baseline,
+                    style,
+                );
+            } else {
+                context.renderer.draw_signed_styled(
+                    canvas,
+                    line,
+                    line_x,
+                    line_box_top.round().max(0.0) as usize,
+                    style,
+                );
+            }
         }
     }
 
@@ -104,7 +120,7 @@ impl UiTreeTextLines {
         let preserve_whitespace = preserves_whitespace(context.node);
         let renderers = SpanTextRenderers::new(context.renderer, context.code_renderer);
         for (line_index, line) in lines.iter().enumerate() {
-            let Some(cursor_y) = visible_line_y(line_index, y, context.area, context.metrics)
+            let Some(line_box_top) = visible_line_y(line_index, y, context.area, context.metrics)
             else {
                 continue;
             };
@@ -139,7 +155,7 @@ impl UiTreeTextLines {
                     draw_span_background(
                         canvas,
                         background_x,
-                        cursor_y,
+                        line_box_top.round().max(0.0) as usize,
                         width,
                         span.style,
                         context.palette,
@@ -159,7 +175,7 @@ impl UiTreeTextLines {
                     );
                     decorations.push(TextDecorationLine {
                         x: cursor_x.saturating_add(decoration_x as isize),
-                        y: cursor_y
+                        y: (line_box_top.round().max(0.0) as usize)
                             .saturating_add(underline_y_offset(context.metrics, context.node)),
                         width: decoration_width,
                         color,
@@ -175,7 +191,8 @@ impl UiTreeTextLines {
                     );
                     decorations.push(TextDecorationLine {
                         x: cursor_x.saturating_add(decoration_x as isize),
-                        y: cursor_y.saturating_add(context.metrics.strikethrough_offset),
+                        y: (line_box_top.round().max(0.0) as usize)
+                            .saturating_add(context.metrics.strikethrough_offset),
                         width: decoration_width,
                         color,
                         thickness: STRIKETHROUGH_LINE_THICKNESS,
@@ -183,9 +200,23 @@ impl UiTreeTextLines {
                 }
                 cursor_x += width as isize;
             }
-            context
-                .renderer
-                .draw_rich_line_signed(canvas, &rich_line, line_x, cursor_y);
+            if let Some(baseline) = context.metrics.baseline_from_line_box_top {
+                context.renderer.draw_rich_line_signed_in_line_box(
+                    canvas,
+                    &rich_line,
+                    line_x,
+                    line_box_top,
+                    context.metrics.line_box_height,
+                    baseline,
+                );
+            } else {
+                context.renderer.draw_rich_line_signed(
+                    canvas,
+                    &rich_line,
+                    line_x,
+                    line_box_top.round().max(0.0) as usize,
+                );
+            }
             for decoration in decorations {
                 decoration.draw(canvas);
             }
@@ -231,18 +262,18 @@ fn visible_line_y(
     y: usize,
     area: UiTreeRenderArea,
     metrics: UiTreeTextMetrics,
-) -> Option<usize> {
-    let line_top = line_index.saturating_mul(metrics.line_height);
-    let line_bottom = line_top.saturating_add(metrics.line_height);
-    let scroll_y = area.scroll_y.round().max(0.0) as usize;
-    let viewport_bottom = scroll_y.saturating_add(area.height);
+) -> Option<f32> {
+    let line_top = line_index as f32 * metrics.line_box_height;
+    let line_bottom = line_top + metrics.line_box_height;
+    let scroll_y = area.scroll_y.max(0.0);
+    let viewport_bottom = scroll_y + area.height as f32;
     if line_bottom <= scroll_y {
         return None;
     }
     if line_top >= viewport_bottom {
         return None;
     }
-    Some(y.saturating_add(line_top.saturating_sub(scroll_y)))
+    Some(y as f32 + (line_top - scroll_y).max(0.0))
 }
 
 const fn underline_line_thickness() -> usize {

@@ -70,7 +70,9 @@ use metric_scaling::{
 pub(super) struct UiTreeTextMetrics {
     pub(super) font_size: f32,
     pub(super) line_height: usize,
+    pub(super) line_box_height: f32,
     pub(super) top_margin: usize,
+    pub(super) baseline_from_line_box_top: Option<f32>,
     pub(super) background_height: usize,
     pub(super) highlight_height: usize,
     pub(super) underline_offset: usize,
@@ -234,6 +236,7 @@ impl UiTreeTextMetrics {
         self.font_size *= scale;
         self.line_height =
             scaled_document_text_line_height(self.line_height, compact_line_height, font_size);
+        self.line_box_height = self.line_height as f32;
         self.top_margin = scale_usize(self.top_margin, scale);
         self.background_height = self.line_height;
         self.highlight_height = self.line_height.saturating_sub(self.top_margin);
@@ -247,6 +250,7 @@ impl UiTreeTextMetrics {
         }
         self.font_size *= scale;
         self.line_height = scale_usize(self.line_height, scale);
+        self.line_box_height = self.line_height as f32;
         self.top_margin = scale_usize(self.top_margin, scale);
         self.background_height = scale_usize(self.background_height, scale);
         self.highlight_height = self.line_height.saturating_sub(self.top_margin);
@@ -258,7 +262,9 @@ impl UiTreeTextMetrics {
         Self {
             font_size,
             line_height,
+            line_box_height: line_height as f32,
             top_margin,
+            baseline_from_line_box_top: None,
             background_height: line_height,
             highlight_height: line_height.saturating_sub(top_margin),
             underline_offset: underline_offset(font_size),
@@ -271,7 +277,9 @@ impl UiTreeTextMetrics {
         Self {
             font_size: UI_FONT_SIZE,
             line_height: UI_LINE_HEIGHT,
+            line_box_height: UI_LINE_HEIGHT as f32,
             top_margin: UI_TOP_MARGIN,
+            baseline_from_line_box_top: None,
             background_height: UI_LINE_HEIGHT,
             highlight_height: UI_HIGHLIGHT_HEIGHT,
             underline_offset: underline_offset(UI_FONT_SIZE),
@@ -533,12 +541,12 @@ mod tests {
 
     #[test]
     fn explicit_document_role_typography_keeps_font_line_height_and_baseline_independent() {
-        let body = UiTreeTextRoleTypography::new(16.5, 23, 0);
-        let heading = UiTreeTextRoleTypography::new(23.4, 34, 8);
+        let body = UiTreeTextRoleTypography::new(16.5, 23.0, 0.0);
+        let heading = UiTreeTextRoleTypography::new(23.4, 34.0, 8.0);
         let document_typography = UiTreeDocumentTypographyOverrides::new()
             .with_body(body)
             .with_heading_2(heading)
-            .with_heading_3(UiTreeTextRoleTypography::new(22.0, 30, 7));
+            .with_heading_3(UiTreeTextRoleTypography::new(22.0, 30.0, 7.0));
         let body_node: UiNode = Text::new("body").text_role("body").into();
         let heading_node: UiNode = Text::new("Long Heading").text_role("heading-2-long").into();
         let heading_3_node: UiNode = Text::new("Heading").text_role("heading-3").into();
@@ -556,13 +564,19 @@ mod tests {
 
         assert_eq!(16.5, body_metrics.font_size);
         assert_eq!(23, body_metrics.line_height);
+        assert_eq!(23.0, body_metrics.line_box_height);
         assert_eq!(0, body_metrics.top_margin);
+        assert_eq!(Some(0.0), body_metrics.baseline_from_line_box_top);
         assert_eq!(23.4, heading_metrics.font_size);
         assert_eq!(34, heading_metrics.line_height);
-        assert_eq!(8, heading_metrics.top_margin);
+        assert_eq!(34.0, heading_metrics.line_box_height);
+        assert_eq!(0, heading_metrics.top_margin);
+        assert_eq!(Some(8.0), heading_metrics.baseline_from_line_box_top);
         assert_eq!(22.0, heading_3_metrics.font_size);
         assert_eq!(30, heading_3_metrics.line_height);
-        assert_eq!(7, heading_3_metrics.top_margin);
+        assert_eq!(30.0, heading_3_metrics.line_box_height);
+        assert_eq!(0, heading_3_metrics.top_margin);
+        assert_eq!(Some(7.0), heading_3_metrics.baseline_from_line_box_top);
     }
 
     #[test]
@@ -571,7 +585,7 @@ mod tests {
         let theme = ThemeSnapshot::dark();
         let theme_typography = UiTreeDocumentTypography::from_theme(&theme);
         let invalid_override = UiTreeDocumentTypographyOverrides::new()
-            .with_body(UiTreeTextRoleTypography::new(0.0, 23, 0));
+            .with_body(UiTreeTextRoleTypography::new(0.0, 23.0, 0.0));
         let invalid_typography =
             UiTreeDocumentTypography::from_theme_with_document_typography(&theme, invalid_override);
 

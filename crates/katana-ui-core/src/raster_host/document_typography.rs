@@ -2,35 +2,42 @@
 
 /// Typography values for one document text role.
 ///
-/// `baseline_offset` is the vertical offset from the role line box origin to
-/// the raster draw origin. It lets consumers preserve their established line
-/// rhythm while changing the raster font size independently.
+/// Values are expressed in the consumer's logical line-box coordinate system.
+/// The raster host converts the target baseline into its own raster draw
+/// origin, so consumers never need to guess a font-engine-specific offset.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct UiTreeTextRoleTypography {
     /// Raster font size in logical pixels.
     pub font_size: f32,
     /// Total logical line-box height in pixels.
-    pub line_height: usize,
-    /// Vertical offset from the line-box origin before raster drawing.
-    pub baseline_offset: usize,
+    pub line_box_height: f32,
+    /// Vertical offset from the line-box origin to the text baseline.
+    pub baseline_from_line_box_top: f32,
 }
 
 impl UiTreeTextRoleTypography {
     /// Creates one role's independent raster typography values.
     #[must_use]
-    pub const fn new(font_size: f32, line_height: usize, baseline_offset: usize) -> Self {
+    pub const fn new(
+        font_size: f32,
+        line_box_height: f32,
+        baseline_from_line_box_top: f32,
+    ) -> Self {
         Self {
             font_size,
-            line_height,
-            baseline_offset,
+            line_box_height,
+            baseline_from_line_box_top,
         }
     }
 
     pub(in crate::raster_host) fn is_valid(self) -> bool {
         self.font_size.is_finite()
             && self.font_size > 0.0
-            && self.line_height > 0
-            && self.baseline_offset < self.line_height
+            && self.line_box_height.is_finite()
+            && self.line_box_height > 0.0
+            && self.baseline_from_line_box_top.is_finite()
+            && self.baseline_from_line_box_top >= 0.0
+            && self.baseline_from_line_box_top < self.line_box_height
     }
 }
 
@@ -110,8 +117,8 @@ mod tests {
 
     #[test]
     fn role_overrides_are_optional_and_keep_independent_metrics() {
-        let body = UiTreeTextRoleTypography::new(16.5, 23, 0);
-        let heading = UiTreeTextRoleTypography::new(24.75, 40, 9);
+        let body = UiTreeTextRoleTypography::new(16.5, 23.0, 0.0);
+        let heading = UiTreeTextRoleTypography::new(24.75, 40.0, 9.0);
         let typography = UiTreeDocumentTypography::new()
             .with_body(body)
             .with_heading_1(heading);
@@ -124,10 +131,10 @@ mod tests {
 
     #[test]
     fn invalid_role_values_are_rejected_by_the_raster_host_boundary() {
-        assert!(!UiTreeTextRoleTypography::new(0.0, 23, 0).is_valid());
-        assert!(!UiTreeTextRoleTypography::new(f32::NAN, 23, 0).is_valid());
-        assert!(!UiTreeTextRoleTypography::new(16.5, 0, 0).is_valid());
-        assert!(!UiTreeTextRoleTypography::new(16.5, 23, 23).is_valid());
-        assert!(UiTreeTextRoleTypography::new(16.5, 23, 0).is_valid());
+        assert!(!UiTreeTextRoleTypography::new(0.0, 23.0, 0.0).is_valid());
+        assert!(!UiTreeTextRoleTypography::new(f32::NAN, 23.0, 0.0).is_valid());
+        assert!(!UiTreeTextRoleTypography::new(16.5, 0.0, 0.0).is_valid());
+        assert!(!UiTreeTextRoleTypography::new(16.5, 23.0, 23.0).is_valid());
+        assert!(UiTreeTextRoleTypography::new(16.5, 23.5, 0.5).is_valid());
     }
 }

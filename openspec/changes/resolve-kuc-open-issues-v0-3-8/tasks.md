@@ -41,8 +41,9 @@
 - [x] 6.1 KUC-issued opaque host projection lease を consumer artifact stage binding へ直接移送する public API を追加し、presentation token、host router、renderer、`RawInput` を consumer に公開しない。
 - [x] 6.2 foreign-consumer contract で selection scenario の全 10 stage を opaque lease から発行する regression を追加し、format、AST lint、workspace check、`just check`、`git diff --check` を通す。
 - [x] 6.3 v0.3.9 の release note と OpenSpec evidence を更新する。
-- [ ] 6.4 Draft PRを作成し、review、指摘対応・reply/resolve、P0/P1=0、Ready化、required 3 OS CI を完了して merge する。
+- [/] 6.4 Draft PR #47 を作成し、review、指摘対応・reply/resolve、P0/P1=0、Ready化、required 3 OS CI を完了して merge する。
 - [ ] 6.5 merge後に tag、GitHub Release、crates.io `katana-ui-core@0.3.9` を個別に確認する。
 - [ ] 6.6 KLE consumer が exact registry v0.3.9 で opaque lease bridge を使う macOS/Linux/Windows artifact evidence を確認し、#40 を close する。
 - [ ] 6.7 KDV consumer が exact registry v0.3.9 と public document role typography で boundary、per-side border、canonical crop 95/95 を確認し、#35 と #37 を close する。
 - [ ] 6.8 OpenSpec archive と `branch-hygiene` を完了する。
+- [x] 6.9 KatanA 実ホストで測定した target line box / glyph baseline を、ラスタ描画原点と混同しない generic KUC coordinate contract として実装し、fractional line-height、draw、wrap、clip、hit を同一モデルで回帰する。
