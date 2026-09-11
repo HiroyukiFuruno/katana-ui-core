@@ -1,6 +1,8 @@
 use super::{
-    Canvas, INDENT, NODE_GAP, UiNode, UiNodeKind, UiTreeCanvasPalette, UiTreeCanvasRenderer,
-    UiTreeRenderArea, UiTreeTextMetrics, is_outside_vertical_viewport,
+    Canvas, ContainerPadding, INDENT, NODE_GAP, TEXT_HEIGHT, UiNode, UiNodeKind,
+    UiTreeCanvasPalette, UiTreeCanvasRenderer, UiTreeRenderArea, UiTreeTextMetrics, UiVisualRole,
+    child_container_x, child_render_area, dimension_px, draw_hover_surface, gap_after_child,
+    is_outside_vertical_viewport, remaining_width, should_draw_container_label,
 };
 use crate::raster_host::text::RichTextStyle;
 use crate::raster_host::ui_tree_canvas_text::UiTreeTextRenderer;
@@ -55,9 +57,73 @@ impl UiTreeCanvasRenderer {
             UiNodeKind::Accordion => {
                 self.draw_accordion_with_logical_cursor(canvas, node, x, logical_y, area, palette);
             }
+            UiNodeKind::Card | UiNodeKind::Column | UiNodeKind::List | UiNodeKind::Stack => {
+                self.draw_container_with_logical_cursor(canvas, node, x, logical_y, area, palette);
+            }
             _ => self
                 .draw_integer_node_with_logical_cursor(canvas, node, x, logical_y, area, palette),
         }
+    }
+
+    fn draw_container_with_logical_cursor(
+        &self,
+        canvas: &mut Canvas,
+        node: &UiNode,
+        x: usize,
+        logical_y: &mut f32,
+        area: UiTreeRenderArea,
+        palette: UiTreeCanvasPalette,
+    ) {
+        let hover_surface_y = logical_canvas_boundary(*logical_y);
+        let requested_height = dimension_px(&node.props().common.height);
+        let hover_surface_height = if requested_height > 0 {
+            requested_height
+        } else if node.props().visual_role != UiVisualRole::HoverSurface {
+            TEXT_HEIGHT
+        } else {
+            self.measured_scroll_node_height(node, self.text_context(palette), x, area)
+        };
+        if should_draw_container_label(node) {
+            let mut label_y = hover_surface_y;
+            super::draw_label(canvas, &self.text, node, x, &mut label_y, palette);
+            *logical_y += label_y.saturating_sub(hover_surface_y) as f32;
+        }
+        let padding = ContainerPadding::from_node(node);
+        let child_x = child_container_x(node, x).saturating_add(padding.left);
+        let child_area = child_render_area(area, node, child_x, padding);
+        *logical_y += padding.top as f32;
+        let child_clip_y = logical_canvas_boundary(*logical_y);
+        let mut draw_children = |canvas: &mut Canvas| {
+            for (index, child) in node.children().iter().enumerate() {
+                self.render_node_with_logical_cursor(
+                    canvas, child, child_x, logical_y, child_area, palette,
+                );
+                if index + 1 < node.children().len() {
+                    *logical_y += gap_after_child(node, child, &node.children()[index + 1]) as f32;
+                }
+            }
+        };
+        if requested_height > 0 {
+            canvas.with_clip(
+                x,
+                child_clip_y,
+                remaining_width(area, x),
+                requested_height,
+                &mut draw_children,
+            );
+        } else {
+            draw_children(canvas);
+        }
+        *logical_y += padding.bottom as f32;
+        draw_hover_surface(
+            canvas,
+            node,
+            x,
+            hover_surface_y,
+            area,
+            palette,
+            hover_surface_height,
+        );
     }
 
     fn draw_integer_node_with_logical_cursor(
@@ -113,14 +179,17 @@ impl UiTreeCanvasRenderer {
                 RichTextStyle::new(metrics.font_size, palette.text),
             );
         } else {
-            self.text.draw(
-                canvas,
-                &label,
-                x,
-                physical_y.saturating_add(metrics.top_margin),
-                metrics.font_size,
-                palette.text,
-            );
+            let integer_label_y = physical_y.saturating_add(metrics.top_margin);
+            canvas.with_fractional_y_origin(logical_label_y, integer_label_y, |canvas| {
+                self.text.draw(
+                    canvas,
+                    &label,
+                    x,
+                    integer_label_y,
+                    metrics.font_size,
+                    palette.text,
+                );
+            });
         }
         *logical_y += accordion_header_height(metrics);
         if node.props().interaction.open {
@@ -161,7 +230,9 @@ mod tests {
         Canvas, UiNode, UiNodeKind, UiTreeCanvasPalette, UiTreeCanvasRenderer, UiTreeRenderArea,
     };
     use crate::raster_host::{UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography};
-    use crate::render_model::UiTextProps;
+    use crate::render_model::{
+        UiCommonProps, UiDimension, UiEdgeInsets, UiTextProps, UiVisualRole,
+    };
     use crate::theme::ThemeSnapshot;
 
     #[test]
@@ -216,6 +287,139 @@ mod tests {
                 "{role} label must retain its half-pixel logical origin at scale 2"
             );
         }
+    }
+
+    #[test]
+    fn ordinary_accordion_labels_keep_fractional_origins_until_scaled_paint() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::new(theme);
+        let node = UiNode::new(UiNodeKind::Accordion, "Storybook");
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 120,
+            scroll_y: 0.0,
+        };
+
+        let mut integral_canvas = Canvas::new_scaled(240, 120, 2.0, palette.background);
+        let mut integral_y = 31.0;
+        renderer.draw_accordion_with_logical_cursor(
+            &mut integral_canvas,
+            &node,
+            0,
+            &mut integral_y,
+            area,
+            palette,
+        );
+        let integral_top = first_non_background_row(&integral_canvas, palette.background);
+
+        let mut fractional_canvas = Canvas::new_scaled(240, 120, 2.0, palette.background);
+        let mut fractional_y = 31.5;
+        renderer.draw_accordion_with_logical_cursor(
+            &mut fractional_canvas,
+            &node,
+            0,
+            &mut fractional_y,
+            area,
+            palette,
+        );
+        let fractional_top = first_non_background_row(&fractional_canvas, palette.background);
+
+        assert_eq!(integral_top + 1, fractional_top);
+    }
+
+    #[test]
+    fn nested_containers_preserve_fractional_child_extents() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::with_document_typography(
+            theme,
+            UiTreeDocumentTypography::new()
+                .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5)),
+        );
+        let column = UiNode::new(UiNodeKind::Column, "")
+            .child(UiNode::new(UiNodeKind::Column, "").child(
+                UiNode::new(UiNodeKind::Text, "first").text(UiTextProps {
+                    role: "body".to_owned(),
+                    ..UiTextProps::default()
+                }),
+            ))
+            .child(UiNode::new(UiNodeKind::Column, "").child(
+                UiNode::new(UiNodeKind::Text, "second").text(UiTextProps {
+                    role: "body".to_owned(),
+                    ..UiTextProps::default()
+                }),
+            ));
+        let mut canvas = Canvas::new(240, 120, palette.background);
+        let mut y = 0;
+        renderer.draw_container(
+            &mut canvas,
+            &column,
+            0,
+            &mut y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 240,
+                height: 120,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+
+        assert_eq!(63, y);
+    }
+
+    #[test]
+    fn logical_container_cursor_renders_fixed_and_hover_surface_children() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::new(theme);
+        let root = UiNode::new(UiNodeKind::Column, "")
+            .child(
+                UiNode::new(UiNodeKind::Card, "Card")
+                    .common(
+                        UiCommonProps::default()
+                            .height(UiDimension::px(40))
+                            .padding(UiEdgeInsets::axis(UiDimension::px(3), UiDimension::px(2))),
+                    )
+                    .child(UiNode::new(UiNodeKind::Text, "clipped first"))
+                    .child(UiNode::new(UiNodeKind::Text, "clipped second")),
+            )
+            .child(
+                UiNode::new(UiNodeKind::Stack, "")
+                    .visual_role(UiVisualRole::HoverSurface)
+                    .child(UiNode::new(UiNodeKind::Text, "hover first"))
+                    .child(UiNode::new(UiNodeKind::Text, "hover second")),
+            );
+        let mut canvas = Canvas::new(180, 120, palette.background);
+        let mut y = 0;
+
+        renderer.draw_container(
+            &mut canvas,
+            &root,
+            0,
+            &mut y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 120,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+
+        assert_eq!(
+            104, y,
+            "logical container children must advance their parent cursor"
+        );
+        assert!(
+            canvas.pixels()[64 * canvas.width()] != palette.background,
+            "an auto-height hover surface must paint after its children"
+        );
     }
 
     fn first_non_background_row(canvas: &Canvas, background: u32) -> usize {

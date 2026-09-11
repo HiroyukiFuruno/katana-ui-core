@@ -195,12 +195,15 @@ impl UiTreeTextLines {
                     baseline,
                 );
             } else {
-                context.renderer.draw_rich_line_signed(
-                    canvas,
-                    &rich_line,
-                    line_x,
-                    line_box_top.round().max(0.0) as usize,
-                );
+                let integer_line_top = line_box_top.max(0.0).floor() as usize;
+                canvas.with_fractional_y_origin(line_box_top, integer_line_top, |canvas| {
+                    context.renderer.draw_rich_line_signed(
+                        canvas,
+                        &rich_line,
+                        line_x,
+                        integer_line_top,
+                    );
+                });
             }
 
             for decoration in decorations {
@@ -275,3 +278,83 @@ const fn underline_line_thickness() -> usize {
 #[cfg(test)]
 #[path = "ui_tree_canvas_text_lines_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod legacy_fractional_origin_tests {
+    use super::{UiTreeTextLineContext, UiTreeTextLines};
+    use crate::raster_host::canvas::Canvas;
+    use crate::raster_host::text::TextRenderer;
+    use crate::raster_host::ui_tree_canvas_palette::UiTreeCanvasPalette;
+    use crate::raster_host::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
+    use crate::raster_host::ui_tree_canvas_types::UiTreeRenderArea;
+    use katana_ui_core::atom::Text;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::render_model::{UiNode, UiTextSpan, UiTextSpanStyle};
+    use katana_ui_core::theme::ThemeSnapshot;
+
+    const WIDTH: usize = 160;
+    const HEIGHT: usize = 120;
+    const TEST_BACKGROUND: u32 = 0x151515;
+    const CURRENT_HIGHLIGHT_BACKGROUND: u32 = 0x654100;
+
+    #[test]
+    fn legacy_rich_text_keeps_fractional_origin_until_scaled_draw() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let renderer = TextRenderer::load(&facade, "body");
+        let node: UiNode = Text::new("Current")
+            .text_role("body")
+            .text_spans(vec![UiTextSpan {
+                text: "Current".into(),
+                style: UiTextSpanStyle {
+                    current_highlight: true,
+                    color_rgba: [255, 0, 0, 255],
+                    ..UiTextSpanStyle::default()
+                },
+                link_target: String::new(),
+            }])
+            .into();
+        let metrics = UiTreeTextMetrics::for_node(&node);
+        assert!(metrics.baseline_from_line_box_top.is_none());
+        let palette = UiTreeCanvasPalette::from_theme(&ThemeSnapshot::dark());
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: WIDTH,
+            height: HEIGHT,
+            scroll_y: 0.0,
+        };
+
+        let draw = |y: f32| {
+            let mut canvas = Canvas::new_scaled(WIDTH, HEIGHT, 2.0, TEST_BACKGROUND);
+            UiTreeTextLines::draw_spans_at_logical_y(
+                &mut canvas,
+                UiTreeTextLineContext {
+                    renderer: &renderer,
+                    code_renderer: &renderer,
+                    node: &node,
+                    area,
+                    palette,
+                    metrics,
+                },
+                0,
+                y,
+            );
+            canvas
+        };
+
+        let integer = draw(31.0);
+        let fractional = draw(31.5);
+        let first_glyph_row = |canvas: &Canvas| {
+            (0..canvas.height())
+                .find(|row| {
+                    (0..canvas.width()).any(|column| {
+                        let pixel = canvas.pixels()[row * canvas.width() + column];
+                        pixel != TEST_BACKGROUND && pixel != CURRENT_HIGHLIGHT_BACKGROUND
+                    })
+                })
+                .expect("rich text glyphs should be visible")
+        };
+
+        assert_eq!(first_glyph_row(&integer) + 1, first_glyph_row(&fractional));
+    }
+}

@@ -6,7 +6,7 @@ use super::ui_tree_canvas_palette::UiTreeCanvasPalette;
 use super::ui_tree_canvas_scroll_measure::{
     ContainerPadding, can_render_children_incrementally, child_render_area, container_gap,
 };
-use super::ui_tree_canvas_scroll_partial::draw_partially_visible_node;
+use super::ui_tree_canvas_scroll_partial::draw_partially_visible_node as draw_partially_visible_node_at_canvas_boundary;
 use super::ui_tree_canvas_text::{UiTreeTextContext, UiTreeTextRenderer};
 use super::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 use super::ui_tree_canvas_types::UiTreeRenderArea;
@@ -57,9 +57,9 @@ fn draw_offset_scroll_area(
     palette: UiTreeCanvasPalette,
     scroll_y: f32,
 ) {
-    let source_y = scroll_y.round().max(0.0) as usize;
+    let source_y = scroll_y.max(0.0);
     let mut logical_y = 0.0_f32;
-    let mut render_y = viewport.y as f32 - source_y as f32;
+    let mut render_y = viewport.y as f32 - source_y;
     canvas.with_clip(
         viewport.x,
         viewport.y,
@@ -75,7 +75,7 @@ fn draw_offset_scroll_area(
                 text_context: renderer.text_context(palette),
             };
             for child in node.children() {
-                if logical_y < source_y.saturating_add(viewport.height) as f32 {
+                if logical_y < source_y + viewport.height as f32 {
                     draw_visible_node(
                         &mut context,
                         child,
@@ -92,7 +92,7 @@ fn draw_offset_scroll_area(
 struct ScrollDrawContext<'renderer, 'canvas> {
     renderer: &'renderer UiTreeCanvasRenderer,
     canvas: &'canvas mut Canvas,
-    source_y: usize,
+    source_y: f32,
     area: UiTreeRenderArea,
     palette: UiTreeCanvasPalette,
     text_context: UiTreeTextContext<'renderer>,
@@ -114,8 +114,7 @@ fn draw_visible_node(
         let node_top = *logical_y;
         let node_height = logical_node_height(renderer, text_context, node, x, area).max(1.0);
         let node_bottom = node_top + node_height;
-        if node_bottom <= source_y as f32 || node_top >= source_y.saturating_add(area.height) as f32
-        {
+        if node_bottom <= source_y || node_top >= source_y + area.height as f32 {
             *logical_y = node_bottom;
             *render_y += node_height;
             return;
@@ -135,11 +134,11 @@ fn draw_visible_node(
     let node_height = logical_node_height(renderer, text_context, node, x, area).max(1.0);
     let node_bottom = node_top + node_height;
     *logical_y = node_bottom;
-    if node_bottom <= source_y as f32 || node_top >= source_y.saturating_add(area.height) as f32 {
+    if node_bottom <= source_y || node_top >= source_y + area.height as f32 {
         *render_y += node_height;
         return;
     }
-    if node_top >= source_y as f32 {
+    if node_top >= source_y {
         let mut draw_y = render_y.max(0.0).floor() as usize;
         if node.kind() == katana_ui_core::render_model::UiNodeKind::Text {
             UiTreeTextRenderer::draw_node_at_logical_y(
@@ -168,11 +167,42 @@ fn draw_visible_node(
         node,
         x,
         node_height.ceil() as usize,
-        source_y.saturating_sub(node_top.floor() as usize),
+        partial_scroll_source_offset(source_y, node_top),
         area,
         palette,
     );
     *render_y += node_height;
+}
+
+fn draw_partially_visible_node(
+    renderer: &UiTreeCanvasRenderer,
+    canvas: &mut Canvas,
+    node: &UiNode,
+    x: usize,
+    node_height: usize,
+    source_offset_y: f32,
+    area: UiTreeRenderArea,
+    palette: UiTreeCanvasPalette,
+) {
+    let source_y = quantize_partial_source_offset(source_offset_y, canvas.scale_factor());
+    draw_partially_visible_node_at_canvas_boundary(
+        renderer,
+        canvas,
+        node,
+        x,
+        node_height,
+        source_y,
+        area,
+        palette,
+    );
+}
+
+fn quantize_partial_source_offset(source_offset_y: f32, scale_factor: f32) -> usize {
+    (source_offset_y.max(0.0) * scale_factor).round() as usize
+}
+
+fn partial_scroll_source_offset(source_y: f32, node_top: f32) -> f32 {
+    (source_y - node_top).max(0.0)
 }
 
 fn logical_node_height(
@@ -228,7 +258,7 @@ fn draw_visible_children(
             *logical_y += gap as f32;
             *render_y += gap as f32;
         }
-        if *logical_y >= source_y.saturating_add(area.height) as f32 {
+        if *logical_y >= source_y + area.height as f32 {
             break;
         }
         let parent_area = context.area;
@@ -242,7 +272,10 @@ fn draw_visible_children(
 
 #[cfg(test)]
 mod tests {
-    use super::{ScrollDrawContext, draw_scroll_area, draw_visible_node};
+    use super::{
+        ScrollDrawContext, draw_scroll_area, draw_visible_node, partial_scroll_source_offset,
+        quantize_partial_source_offset,
+    };
     use crate::raster_host::ui_tree_canvas_palette::UiTreeCanvasPalette;
     use crate::raster_host::{Canvas, UiTreeCanvasRenderer, UiTreeRenderArea};
     use crate::raster_host::{UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography};
@@ -275,7 +308,7 @@ mod tests {
         let mut context = ScrollDrawContext {
             renderer: &renderer,
             canvas: &mut canvas,
-            source_y: 0,
+            source_y: 0.0,
             area,
             palette,
             text_context: renderer.text_context(palette),
@@ -414,7 +447,7 @@ mod tests {
             let mut context = ScrollDrawContext {
                 renderer: &renderer,
                 canvas: &mut canvas,
-                source_y: 0,
+                source_y: 0.0,
                 area,
                 palette,
                 text_context: renderer.text_context(palette),
@@ -426,6 +459,19 @@ mod tests {
         assert_eq!(63.0, logical_y);
         assert_ne!(palette.background, canvas.pixels()[62 * canvas.width()]);
         assert_ne!(palette.background, canvas.pixels()[63 * canvas.width()]);
+    }
+
+    #[test]
+    fn partial_scroll_offset_keeps_half_pixel_node_origin_until_scaled_canvas_boundary() {
+        let node_top = 31.5;
+        let source_y = 32.0;
+
+        assert_eq!(0.5, partial_scroll_source_offset(source_y, node_top));
+        assert_eq!(
+            1,
+            quantize_partial_source_offset(partial_scroll_source_offset(source_y, node_top), 2.0),
+            "a 0.5 logical-pixel offset becomes one physical row only at scale-2 canvas output"
+        );
     }
 
     fn colored_grid(fill_color: &str) -> UiNode {
