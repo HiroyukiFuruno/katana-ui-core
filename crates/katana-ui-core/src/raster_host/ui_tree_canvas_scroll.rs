@@ -119,12 +119,40 @@ fn draw_visible_node(
             *render_y += node_height;
             return;
         }
-        draw_visible_children(context, node, x, logical_y, render_y);
         let requested_height = dimension_px(&node.props().common.height);
         if requested_height > 0 {
+            let child_logical_top = *logical_y;
+            let child_render_top = *render_y;
+            let renderer = context.renderer;
+            let source_y = context.source_y;
+            let child_area = context.area;
+            let palette = context.palette;
+            let text_context = context.text_context;
+            context.canvas.with_clip_at_logical_y(
+                x,
+                child_render_top,
+                child_area
+                    .width
+                    .saturating_sub(x.saturating_sub(child_area.x)),
+                requested_height as f32,
+                &mut |canvas| {
+                    let mut clipped = ScrollDrawContext {
+                        renderer,
+                        canvas,
+                        source_y,
+                        area: child_area,
+                        palette,
+                        text_context,
+                    };
+                    draw_visible_children(&mut clipped, node, x, logical_y, render_y);
+                },
+            );
             let requested_bottom = node_top + requested_height as f32;
             *render_y += requested_bottom - *logical_y;
             *logical_y = requested_bottom;
+            debug_assert!(*logical_y >= child_logical_top);
+        } else {
+            draw_visible_children(context, node, x, logical_y, render_y);
         }
         return;
     }
