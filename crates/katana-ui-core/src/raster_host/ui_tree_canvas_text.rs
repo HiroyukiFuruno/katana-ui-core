@@ -87,26 +87,29 @@ impl UiTreeTextRenderer {
             let content_height =
                 UiTreeTextTable::content_height(renderer, node, content_x, area, metrics);
             let advance_height = explicit_or_content_height(requested_height, content_height);
-            canvas.with_clip(
-                content_x,
-                logical_canvas_boundary(logical_y),
-                text_clip_width(node, area, content_x),
-                advance_height,
-                &mut |canvas| {
-                    UiTreeTextTable::draw(
-                        canvas,
-                        UiTreeTextTableContext {
-                            renderer,
-                            node,
-                            area,
-                            palette: context.palette,
-                            metrics,
-                        },
-                        content_x,
-                        logical_canvas_boundary(logical_y),
-                    );
-                },
-            );
+            let physical_y = logical_canvas_boundary(logical_y);
+            canvas.with_fractional_y_origin(logical_y, physical_y, |canvas| {
+                canvas.with_clip(
+                    content_x,
+                    physical_y,
+                    text_clip_width(node, area, content_x),
+                    advance_height,
+                    &mut |canvas| {
+                        UiTreeTextTable::draw(
+                            canvas,
+                            UiTreeTextTableContext {
+                                renderer,
+                                node,
+                                area,
+                                palette: context.palette,
+                                metrics,
+                            },
+                            content_x,
+                            physical_y,
+                        );
+                    },
+                );
+            });
             return advance_height;
         }
         let line_count = UiTreeTextLines::line_count(
@@ -502,6 +505,31 @@ mod tests {
 
         assert_eq!(0xffffff, canvas.pixels()[62 * canvas.width()]);
         assert_ne!(0xffffff, canvas.pixels()[63 * canvas.width()]);
+    }
+
+    #[test]
+    fn table_preserves_fractional_origin_until_scaled_paint() {
+        let context = text_context();
+        let table: UiNode = Text::new("| Header |\n| --- |\n| Value |")
+            .text_role("table")
+            .into();
+        let mut canvas = Canvas::new_scaled(320, 120, 2.0, 0xffffff);
+
+        UiTreeTextRenderer::draw_node_at_logical_y(
+            &mut canvas,
+            context,
+            &table,
+            0,
+            31.5,
+            render_area(),
+        );
+
+        assert_eq!(0xffffff, canvas.pixels()[62 * canvas.width()]);
+        assert_ne!(
+            0xffffff,
+            canvas.pixels()[63 * canvas.width()],
+            "the table header begins at the scale-2 physical boundary for logical y=31.5"
+        );
     }
 
     #[test]
