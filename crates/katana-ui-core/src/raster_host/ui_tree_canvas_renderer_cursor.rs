@@ -74,7 +74,8 @@ impl UiTreeCanvasRenderer {
         area: UiTreeRenderArea,
         palette: UiTreeCanvasPalette,
     ) {
-        let hover_surface_y = logical_canvas_boundary(*logical_y);
+        let container_origin = *logical_y;
+        let hover_surface_y = logical_canvas_boundary(container_origin);
         let requested_height = dimension_px(&node.props().common.height);
         let hover_surface_height = if requested_height > 0 {
             requested_height
@@ -85,14 +86,16 @@ impl UiTreeCanvasRenderer {
         };
         if should_draw_container_label(node) {
             let mut label_y = hover_surface_y;
-            super::draw_label(canvas, &self.text, node, x, &mut label_y, palette);
+            canvas.with_fractional_y_origin(container_origin, hover_surface_y, |canvas| {
+                super::draw_label(canvas, &self.text, node, x, &mut label_y, palette);
+            });
             *logical_y += label_y.saturating_sub(hover_surface_y) as f32;
         }
         let padding = ContainerPadding::from_node(node);
         let child_x = child_container_x(node, x).saturating_add(padding.left);
         let child_area = child_render_area(area, node, child_x, padding);
         *logical_y += padding.top as f32;
-        let child_clip_y = logical_canvas_boundary(*logical_y);
+        let child_clip_y = *logical_y;
         let mut draw_children = |canvas: &mut Canvas| {
             for (index, child) in node.children().iter().enumerate() {
                 self.render_node_with_logical_cursor(
@@ -104,26 +107,28 @@ impl UiTreeCanvasRenderer {
             }
         };
         if requested_height > 0 {
-            canvas.with_clip(
+            canvas.with_clip_at_logical_y(
                 x,
                 child_clip_y,
                 remaining_width(area, x),
-                requested_height,
+                requested_height as f32,
                 &mut draw_children,
             );
         } else {
             draw_children(canvas);
         }
         *logical_y += padding.bottom as f32;
-        draw_hover_surface(
-            canvas,
-            node,
-            x,
-            hover_surface_y,
-            area,
-            palette,
-            hover_surface_height,
-        );
+        canvas.with_fractional_y_origin(container_origin, hover_surface_y, |canvas| {
+            draw_hover_surface(
+                canvas,
+                node,
+                x,
+                hover_surface_y,
+                area,
+                palette,
+                hover_surface_height,
+            );
+        });
     }
 
     fn draw_integer_node_with_logical_cursor(
@@ -328,6 +333,109 @@ mod tests {
         let fractional_top = first_non_background_row(&fractional_canvas, palette.background);
 
         assert_eq!(integral_top + 1, fractional_top);
+    }
+
+    #[test]
+    fn container_chrome_keeps_fractional_origin_until_scaled_paint() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::new(theme);
+        let node = UiNode::new(UiNodeKind::Card, "Card")
+            .height(UiDimension::px(10))
+            .visual_role(UiVisualRole::HoverSurface);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 80,
+            scroll_y: 0.0,
+        };
+        let mut integral_canvas = Canvas::new_scaled(180, 80, 2.0, palette.background);
+        let mut integral_y = 31.0;
+        renderer.draw_container_with_logical_cursor(
+            &mut integral_canvas,
+            &node,
+            0,
+            &mut integral_y,
+            area,
+            palette,
+        );
+        let mut fractional_canvas = Canvas::new_scaled(180, 80, 2.0, palette.background);
+        let mut fractional_y = 31.5;
+        renderer.draw_container_with_logical_cursor(
+            &mut fractional_canvas,
+            &node,
+            0,
+            &mut fractional_y,
+            area,
+            palette,
+        );
+
+        let x = 100;
+        assert_ne!(
+            palette.background,
+            integral_canvas.pixels()[62 * integral_canvas.width() + x],
+            "the integral container hover surface starts on physical row 62"
+        );
+        assert_eq!(
+            palette.background,
+            fractional_canvas.pixels()[62 * fractional_canvas.width() + x],
+            "a 31.5px container origin must not paint chrome on physical row 62"
+        );
+        assert_ne!(
+            palette.background,
+            fractional_canvas.pixels()[63 * fractional_canvas.width() + x],
+            "a 31.5px container origin must paint chrome on physical row 63"
+        );
+    }
+
+    #[test]
+    fn fixed_height_container_clip_keeps_fractional_start_and_end_boundaries() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::new(theme);
+        let node = UiNode::new(UiNodeKind::Card, "")
+            .height(UiDimension::px(10))
+            .child(UiNode::new(UiNodeKind::Button, "button").height(UiDimension::px(20)));
+        let mut canvas = Canvas::new_scaled(180, 80, 2.0, palette.background);
+        let mut logical_y = 31.5;
+        renderer.draw_container_with_logical_cursor(
+            &mut canvas,
+            &node,
+            0,
+            &mut logical_y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 80,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+
+        let width = canvas.width();
+        let child_x = 32;
+        assert_ne!(
+            palette.selection,
+            canvas.pixels()[62 * width + child_x],
+            "the child must remain clipped before the physical fractional boundary"
+        );
+        assert_eq!(
+            palette.selection,
+            canvas.pixels()[63 * width + child_x],
+            "the child must start on the physical fractional boundary"
+        );
+        assert_eq!(
+            palette.selection,
+            canvas.pixels()[82 * width + child_x],
+            "the clip must retain the final physical row of a 10px region from 31.5px"
+        );
+        assert_ne!(
+            palette.selection,
+            canvas.pixels()[83 * width + child_x],
+            "the child must be clipped after the 10px fractional region"
+        );
     }
 
     #[test]

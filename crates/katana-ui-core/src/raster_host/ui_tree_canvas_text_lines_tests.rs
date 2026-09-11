@@ -22,6 +22,8 @@ const CHANNEL_MASK: u32 = 0xff;
 
 #[path = "ui_tree_canvas_text_lines_decoration_tests.rs"]
 mod decoration_tests;
+#[path = "ui_tree_canvas_text_lines_fractional_tests.rs"]
+mod fractional_tests;
 #[path = "ui_tree_canvas_text_lines_html_tests.rs"]
 mod html_tests;
 #[path = "ui_tree_canvas_text_lines_spacing_tests.rs"]

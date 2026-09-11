@@ -107,7 +107,10 @@ fn sha(bytes: &[u8]) -> String {
 
 #[test]
 fn full_root_artifact_generates_decodes_and_records_mp4() -> Result<(), FullRootArtifactError> {
-    let output = PathBuf::from("target/text-command-root-storybook-test-artifact");
+    let temporary_directory = tempfile::tempdir().map_err(FullRootArtifactError::Io)?;
+    let output = temporary_directory
+        .path()
+        .join("text-command-root-storybook-test-artifact");
     write_artifact(&output)?;
     let output = fs::canonicalize(output)?;
     let manifest_path = output.join(FULL_ROOT_MANIFEST_FILE_NAME);

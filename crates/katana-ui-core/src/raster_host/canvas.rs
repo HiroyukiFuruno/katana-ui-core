@@ -142,6 +142,28 @@ impl Canvas {
         self.clip = previous;
     }
 
+    pub(crate) fn with_clip_at_logical_y(
+        &mut self,
+        x: usize,
+        y: f32,
+        width: usize,
+        height: f32,
+        draw: &mut dyn FnMut(&mut Self),
+    ) {
+        let Some(next) = self.visible_rect_at_logical_y(x, y, width, height) else {
+            return;
+        };
+        let previous = self.clip;
+        self.clip = match previous {
+            Some(current) => current.intersect(next),
+            None => Some(next),
+        };
+        if self.clip.is_some() {
+            draw(self);
+        }
+        self.clip = previous;
+    }
+
     #[must_use]
     pub(super) fn visible_rect(
         &self,

@@ -49,13 +49,12 @@ pub(super) fn draw_plain_at_logical_y(
                 style,
             );
         } else {
-            context.renderer.draw_signed_styled(
-                canvas,
-                line,
-                line_x,
-                line_box_top.round().max(0.0) as usize,
-                style,
-            );
+            let integer_line_top = line_box_top.max(0.0).floor() as usize;
+            canvas.with_fractional_y_origin(line_box_top, integer_line_top, |canvas| {
+                context
+                    .renderer
+                    .draw_signed_styled(canvas, line, line_x, integer_line_top, style);
+            });
         }
     }
 }

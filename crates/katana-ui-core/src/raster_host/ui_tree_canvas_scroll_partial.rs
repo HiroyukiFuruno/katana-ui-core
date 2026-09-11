@@ -15,11 +15,12 @@ pub(super) fn draw_partially_visible_node(
     node: &UiNode,
     x: usize,
     node_height: usize,
-    source_y: usize,
+    source_y: f32,
     area: UiTreeRenderArea,
     palette: UiTreeCanvasPalette,
 ) {
-    if source_y >= node_height {
+    let source_y = source_y.max(0.0);
+    if source_y >= node_height as f32 {
         return;
     }
     if node.kind() == UiNodeKind::ImageSurface {
@@ -73,7 +74,7 @@ pub(super) fn draw_partially_visible_node(
     let blit_source_y = if can_render_partial_node_in_viewport(node) {
         0
     } else {
-        source_y
+        source_y.round() as usize
     };
     canvas.blit_canvas(
         &temp,
@@ -92,7 +93,7 @@ fn draw_partially_visible_hover_text_surface(
     canvas: &mut Canvas,
     node: &UiNode,
     x: usize,
-    source_y: usize,
+    source_y: f32,
     area: UiTreeRenderArea,
     palette: UiTreeCanvasPalette,
     node_height: usize,
@@ -100,7 +101,10 @@ fn draw_partially_visible_hover_text_surface(
     let Some(child) = node.children().first() else {
         return;
     };
-    let visible_height = node_height.saturating_sub(source_y).min(area.height);
+    let visible_height = (node_height as f32 - source_y)
+        .max(0.0)
+        .ceil()
+        .min(area.height as f32) as usize;
     if visible_height == 0 {
         return;
     }
@@ -123,7 +127,7 @@ fn draw_partially_visible_hover_text_surface(
             y: area.y,
             width: area.width,
             height: area.height,
-            scroll_y: source_y as f32,
+            scroll_y: source_y,
         },
         palette,
     );
@@ -134,7 +138,7 @@ fn draw_partially_visible_image_node(
     canvas: &mut Canvas,
     node: &UiNode,
     x: usize,
-    source_y: usize,
+    source_y: f32,
     area: UiTreeRenderArea,
     palette: UiTreeCanvasPalette,
 ) {
@@ -149,7 +153,7 @@ fn draw_partially_visible_image_node(
             y: area.y,
             width: area.width,
             height: area.height,
-            scroll_y: source_y as f32,
+            scroll_y: source_y,
         },
         palette,
     );
@@ -161,7 +165,7 @@ fn draw_partially_visible_media_frame_stack(
     node: &UiNode,
     x: usize,
     node_height: usize,
-    source_y: usize,
+    source_y: f32,
     area: UiTreeRenderArea,
     palette: UiTreeCanvasPalette,
 ) {
@@ -190,7 +194,7 @@ fn draw_partially_visible_media_frame_stack(
             dest_y: area.y,
             width: area.width,
             height: area.height,
-            source_y,
+            source_y: source_y.round() as usize,
         },
     );
 }
@@ -207,9 +211,9 @@ fn partial_node_temp_height(node: &UiNode, node_height: usize, viewport_height: 
     node_height.max(1)
 }
 
-fn partial_node_inner_scroll_y(node: &UiNode, source_y: usize) -> f32 {
+fn partial_node_inner_scroll_y(node: &UiNode, source_y: f32) -> f32 {
     if can_render_partial_node_in_viewport(node) {
-        return source_y as f32;
+        return source_y;
     }
     0.0
 }
@@ -262,7 +266,7 @@ mod tests {
         let mut canvas = Canvas::new(96, 48, palette.background);
         let text: UiNode = Text::new("partial text").into();
 
-        draw_partially_visible_node(&renderer, &mut canvas, &text, 8, 20, 20, area, palette);
+        draw_partially_visible_node(&renderer, &mut canvas, &text, 8, 20, 20.0, area, palette);
         assert!(
             canvas
                 .pixels()
@@ -271,13 +275,13 @@ mod tests {
         );
 
         let image = UiNode::new(UiNodeKind::ImageSurface, "");
-        draw_partially_visible_node(&renderer, &mut canvas, &image, 8, 20, 1, area, palette);
+        draw_partially_visible_node(&renderer, &mut canvas, &image, 8, 20, 1.0, area, palette);
 
         let hover = UiNode::new(UiNodeKind::Stack, "")
             .visual_role(UiVisualRole::HoverSurface)
             .width(UiDimension::Px(30))
             .child(Text::new("hover"));
-        draw_partially_visible_node(&renderer, &mut canvas, &hover, 8, 24, 4, area, palette);
+        draw_partially_visible_node(&renderer, &mut canvas, &hover, 8, 24, 4.0, area, palette);
         assert!(
             canvas
                 .pixels()
@@ -294,11 +298,11 @@ mod tests {
             &generic_hover,
             8,
             24,
-            4,
+            4.0,
             area,
             palette,
         );
-        draw_partially_visible_node(&renderer, &mut canvas, &text, 8, 24, 4, area, palette);
+        draw_partially_visible_node(&renderer, &mut canvas, &text, 8, 24, 4.0, area, palette);
 
         let empty_hover =
             UiNode::new(UiNodeKind::Stack, "").visual_role(UiVisualRole::HoverSurface);
@@ -307,7 +311,7 @@ mod tests {
             &mut canvas,
             &empty_hover,
             8,
-            0,
+            0.0,
             area,
             palette,
             0,
@@ -317,7 +321,7 @@ mod tests {
             &mut canvas,
             &hover,
             8,
-            0,
+            0.0,
             area,
             palette,
             0,
@@ -344,7 +348,7 @@ mod tests {
             &media_frame,
             8,
             30,
-            5,
+            5.0,
             area,
             palette,
         );
@@ -356,10 +360,15 @@ mod tests {
         );
 
         assert_eq!(partial_node_temp_height(&media_frame, 30, 40), 40);
-        assert_eq!(partial_node_inner_scroll_y(&media_frame, 7), 7.0);
+        assert_eq!(partial_node_inner_scroll_y(&media_frame, 7.0), 7.0);
+        assert_eq!(
+            partial_node_inner_scroll_y(&media_frame, 0.5),
+            0.5,
+            "partial rendering must preserve the logical source offset until a pixel row is indexed"
+        );
         let plain = UiNode::new(UiNodeKind::Column, "");
         assert_eq!(partial_node_temp_height(&plain, 30, 40), 30);
-        assert_eq!(partial_node_inner_scroll_y(&plain, 7), 0.0);
+        assert_eq!(partial_node_inner_scroll_y(&plain, 7.0), 0.0);
         let hover = UiNode::new(UiNodeKind::Stack, "").visual_role(UiVisualRole::HoverSurface);
         assert_eq!(partial_node_temp_height(&hover, 30, 40), 50);
         assert_eq!(hover_surface_width(&hover, 10, area), 74);
