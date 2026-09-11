@@ -51,14 +51,9 @@ impl UiTreeCanvasRenderer {
             draw_hover_background(canvas, node, x, physical_y, area, palette);
         });
         match node.kind() {
-            UiNodeKind::Text => UiTreeTextRenderer::draw_node_with_logical_cursor(
-                canvas,
-                self.text_context(palette),
-                node,
-                x,
-                logical_y,
-                area,
-            ),
+            UiNodeKind::Text => {
+                self.draw_text_with_logical_cursor(canvas, node, x, logical_y, area, palette)
+            }
             UiNodeKind::Accordion => {
                 self.draw_accordion_with_logical_cursor(canvas, node, x, logical_y, area, palette);
             }
@@ -99,6 +94,40 @@ impl UiTreeCanvasRenderer {
             self.draw_overlay_stack(canvas, node, x, &mut physical_y, area, palette);
         });
         *logical_y += physical_y.saturating_sub(physical_start) as f32;
+    }
+
+    fn draw_text_with_logical_cursor(
+        &self,
+        canvas: &mut Canvas,
+        node: &UiNode,
+        x: usize,
+        logical_y: &mut f32,
+        area: UiTreeRenderArea,
+        palette: UiTreeCanvasPalette,
+    ) {
+        let requested_height = dimension_px(&node.props().common.height);
+        let logical_start = *logical_y;
+        let mut draw = |canvas: &mut Canvas| {
+            UiTreeTextRenderer::draw_node_with_logical_cursor(
+                canvas,
+                self.text_context(palette),
+                node,
+                x,
+                logical_y,
+                area,
+            );
+        };
+        if requested_height > 0 {
+            canvas.with_clip_at_logical_y(
+                x,
+                logical_start,
+                remaining_width(area, x),
+                requested_height as f32,
+                &mut draw,
+            );
+        } else {
+            draw(canvas);
+        }
     }
 
     fn draw_container_with_logical_cursor(
@@ -150,10 +179,11 @@ impl UiTreeCanvasRenderer {
                 requested_height as f32,
                 &mut draw_children,
             );
+            *logical_y = container_origin + requested_height as f32;
         } else {
             draw_children(canvas);
+            *logical_y += padding.bottom as f32;
         }
-        *logical_y += padding.bottom as f32;
         canvas.with_fractional_y_origin(container_origin, hover_surface_y, |canvas| {
             draw_hover_surface(
                 canvas,
