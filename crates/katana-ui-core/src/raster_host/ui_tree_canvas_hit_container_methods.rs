@@ -13,22 +13,20 @@ impl UiTreeHostActionHitCollector<'_> {
         }
         let container_top = self.y;
         self.push_container_action_hits(node, x, container_top, remaining_width(self.area, x));
-        self.y = self.y.saturating_add(
-            TEXT_HEIGHT.saturating_mul(usize::from(should_draw_container_label(node))),
-        );
+        self.advance_y(TEXT_HEIGHT.saturating_mul(usize::from(should_draw_container_label(node))));
         let padding = ContainerPadding::from_node(node);
         let child_x = child_container_x(node, x).saturating_add(padding.left);
         let previous_area = self.area;
         self.area = child_render_area(previous_area, node, child_x, padding);
-        self.y = self.y.saturating_add(padding.top);
+        self.advance_y(padding.top);
         let gap = scroll_container_gap(node);
         for (index, child) in node.children().iter().enumerate() {
             self.node(child, child_x);
             if index + 1 < node.children().len() {
-                self.y = self.y.saturating_add(gap);
+                self.advance_y(gap);
             }
         }
-        self.y = self.y.saturating_add(padding.bottom);
+        self.advance_y(padding.bottom);
         self.area = previous_area;
     }
 

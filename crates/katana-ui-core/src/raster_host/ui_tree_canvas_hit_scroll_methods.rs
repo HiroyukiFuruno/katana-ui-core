@@ -9,6 +9,7 @@ use super::{
 impl UiTreeHostActionHitCollector<'_> {
     pub(super) fn scroll_area(&mut self, node: &UiNode, x: usize) {
         let viewport_top = self.y;
+        let viewport_logical_top = self.text_logical_y.max(viewport_top as f32);
         let viewport_width = (node.props().scroll_area.viewport_width as usize)
             .min(remaining_width(self.area, x))
             .max(1);
@@ -34,7 +35,8 @@ impl UiTreeHostActionHitCollector<'_> {
                 self.collect_scroll_area_document_hits(node, x, viewport_top, viewport_width)
             }
         }
-        self.y = viewport_top.saturating_add(viewport_height);
+        self.text_logical_y = viewport_logical_top + viewport_height as f32;
+        self.y = self.text_logical_y.floor().max(0.0) as usize;
     }
 
     pub(super) fn collect_scroll_area_hits(
@@ -128,6 +130,7 @@ impl UiTreeHostActionHitCollector<'_> {
             return;
         }
         let node_top = self.y;
+        let node_logical_top = self.text_logical_y.max(node_top as f32);
         let text_context = UiTreeTextContext {
             text: self.text,
             export_text: self.export_text,
@@ -139,27 +142,33 @@ impl UiTreeHostActionHitCollector<'_> {
             .height_cache
             .height(node, text_context, x, self.area)
             .max(1);
-        let node_bottom = node_top.saturating_add(node_height);
+        let node_logical_height = if node.kind() == katana_ui_core::render_model::UiNodeKind::Text {
+            self.logical_text_hit_height(node, x)
+        } else {
+            node_height as f32
+        };
+        let node_logical_bottom = node_logical_top + node_logical_height;
+        let node_bottom = node_logical_bottom.floor().max(0.0) as usize;
         self.y = node_bottom;
+        self.text_logical_y = node_logical_bottom;
         if node_bottom <= source_y || node_top >= source_y.saturating_add(self.area.height) {
             return;
         }
-        let previous_y = self.y;
         self.y = node_top;
+        self.text_logical_y = node_logical_top;
         self.node(node, x);
-        self.y = previous_y;
     }
 
     fn collect_visible_incremental_container(&mut self, node: &UiNode, x: usize, source_y: usize) {
         let padding = ScrollContainerPadding::from_node(node);
-        self.y = self.y.saturating_add(padding.top);
+        self.advance_y(padding.top);
         let child_x = child_container_x(node, x).saturating_add(padding.left);
         let previous_area = self.area;
         self.area = scroll_child_render_area(self.area, node, child_x, padding);
         let gap = scroll_container_gap(node);
         for (index, child) in node.children().iter().enumerate() {
             if index > 0 {
-                self.y = self.y.saturating_add(gap);
+                self.advance_y(gap);
             }
             if self.y >= source_y.saturating_add(previous_area.height) {
                 break;
@@ -167,7 +176,7 @@ impl UiTreeHostActionHitCollector<'_> {
             self.collect_visible_node(child, child_x, source_y);
         }
         self.area = previous_area;
-        self.y = self.y.saturating_add(padding.bottom);
+        self.advance_y(padding.bottom);
     }
 
     pub(super) fn collect_scroll_area_document_hits(

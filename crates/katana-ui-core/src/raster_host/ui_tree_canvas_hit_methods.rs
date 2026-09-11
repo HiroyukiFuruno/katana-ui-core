@@ -28,6 +28,7 @@ mod ui_tree_canvas_hit_text_methods;
 impl UiTreeHostActionHitCollector<'_> {
     pub(super) fn node(&mut self, node: &UiNode, x: usize) {
         let logical_start_y = self.text_logical_y.max(self.y as f32);
+        self.text_logical_y = logical_start_y;
         let previous_semantic_node_id = self.semantic_node_id.clone();
         if let Some(semantic_node_id) = semantic_node_id(node) {
             self.semantic_node_id = Some(semantic_node_id);
@@ -68,6 +69,11 @@ impl UiTreeHostActionHitCollector<'_> {
             self.y = self.text_logical_y.floor().max(0.0) as usize;
         }
         self.semantic_node_id = previous_semantic_node_id;
+    }
+
+    pub(super) fn advance_y(&mut self, amount: usize) {
+        self.y = self.y.saturating_add(amount);
+        self.text_logical_y += amount as f32;
     }
 
     pub(super) fn row(&mut self, node: &UiNode, x: usize) {
