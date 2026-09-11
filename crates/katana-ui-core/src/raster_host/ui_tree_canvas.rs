@@ -29,6 +29,8 @@ mod geometry;
 mod renderer_cursor;
 #[path = "ui_tree_canvas_renderer_methods.rs"]
 mod renderer_methods;
+#[path = "ui_tree_canvas_renderer_row_cursor.rs"]
+mod renderer_row_cursor;
 #[path = "ui_tree_canvas_renderer_types.rs"]
 mod renderer_types;
 pub(in crate::raster_host) use geometry::is_outside_vertical_viewport;
