@@ -1,8 +1,9 @@
 use super::{
     Canvas, ContainerPadding, INDENT, NODE_GAP, TEXT_HEIGHT, UiNode, UiNodeKind,
     UiTreeCanvasPalette, UiTreeCanvasRenderer, UiTreeRenderArea, UiTreeTextMetrics, UiVisualRole,
-    child_container_x, child_render_area, dimension_px, draw_hover_surface, gap_after_child,
-    is_outside_vertical_viewport, remaining_width, should_draw_container_label,
+    child_container_x, child_render_area, dimension_px, draw_hover_background, draw_hover_surface,
+    gap_after_child, has_absolute_child, is_outside_vertical_viewport, remaining_width,
+    should_draw_container_label,
 };
 use crate::raster_host::text::RichTextStyle;
 use crate::raster_host::ui_tree_canvas_row_layout::UiTreeRowLayout;
@@ -46,6 +47,10 @@ impl UiTreeCanvasRenderer {
         area: UiTreeRenderArea,
         palette: UiTreeCanvasPalette,
     ) {
+        let physical_y = logical_canvas_boundary(*logical_y);
+        canvas.with_fractional_y_origin(*logical_y, physical_y, |canvas| {
+            draw_hover_background(canvas, node, x, physical_y, area, palette);
+        });
         match node.kind() {
             UiNodeKind::Text => UiTreeTextRenderer::draw_node_with_logical_cursor(
                 canvas,
@@ -61,12 +66,40 @@ impl UiTreeCanvasRenderer {
             UiNodeKind::Row => {
                 self.draw_row_with_logical_cursor(canvas, node, x, logical_y, area, palette);
             }
-            UiNodeKind::Card | UiNodeKind::Column | UiNodeKind::List | UiNodeKind::Stack => {
+            UiNodeKind::Stack if has_absolute_child(node) => {
+                self.draw_overlay_stack_with_logical_cursor(
+                    canvas, node, x, logical_y, area, palette,
+                );
+            }
+            UiNodeKind::AlignCenter
+            | UiNodeKind::AlignNode
+            | UiNodeKind::Card
+            | UiNodeKind::Column
+            | UiNodeKind::List
+            | UiNodeKind::Stack => {
                 self.draw_container_with_logical_cursor(canvas, node, x, logical_y, area, palette);
             }
             _ => self
                 .draw_integer_node_with_logical_cursor(canvas, node, x, logical_y, area, palette),
         }
+    }
+
+    fn draw_overlay_stack_with_logical_cursor(
+        &self,
+        canvas: &mut Canvas,
+        node: &UiNode,
+        x: usize,
+        logical_y: &mut f32,
+        area: UiTreeRenderArea,
+        palette: UiTreeCanvasPalette,
+    ) {
+        let logical_start = *logical_y;
+        let physical_start = logical_canvas_boundary(logical_start);
+        let mut physical_y = physical_start;
+        canvas.with_fractional_y_origin(logical_start, physical_start, |canvas| {
+            self.draw_overlay_stack(canvas, node, x, &mut physical_y, area, palette);
+        });
+        *logical_y += physical_y.saturating_sub(physical_start) as f32;
     }
 
     fn draw_container_with_logical_cursor(
