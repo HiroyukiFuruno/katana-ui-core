@@ -171,7 +171,10 @@ impl UiTreeCanvasRenderer {
     }
 }
 
-fn hover_surface_child_clip_height(node: &UiNode, requested_height: usize) -> usize {
+pub(in crate::raster_host) fn hover_surface_child_clip_height(
+    node: &UiNode,
+    requested_height: usize,
+) -> usize {
     if node.props().visual_role == UiVisualRole::HoverSurface {
         return requested_height.saturating_add(TEXT_HEIGHT);
     }

@@ -174,11 +174,12 @@ impl UiTreeCanvasRenderer {
             }
         };
         if requested_height > 0 {
+            let clip_height = super::hover_surface_child_clip_height(node, requested_height);
             canvas.with_clip_at_logical_y(
                 x,
                 child_clip_y,
                 remaining_width(area, x),
-                requested_height as f32,
+                clip_height as f32,
                 &mut draw_children,
             );
             *logical_y = container_origin + requested_height as f32;
