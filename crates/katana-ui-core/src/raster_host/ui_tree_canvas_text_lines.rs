@@ -165,11 +165,13 @@ impl UiTreeTextLines {
                 }
                 cursor_x += width as isize;
             }
-            let raster_baseline = context.renderer.rich_line_raster_baseline(
-                &rich_line,
-                context.metrics.line_box_height,
-                canvas.scale_factor(),
-            );
+            let raster_baseline = context.metrics.baseline_from_line_box_top.map(|_| {
+                context.renderer.rich_line_raster_baseline(
+                    &rich_line,
+                    context.metrics.line_box_height,
+                    canvas.scale_factor(),
+                )
+            });
             for (background_x, width, span_style) in &span_backgrounds {
                 draw_span_background(
                     canvas,
@@ -179,7 +181,7 @@ impl UiTreeTextLines {
                     *span_style,
                     context.palette,
                     context.metrics,
-                    raster_baseline,
+                    raster_baseline.unwrap_or_default(),
                 );
             }
 
@@ -205,7 +207,7 @@ impl UiTreeTextLines {
                 let y = decoration_y(
                     line_box_top,
                     context.metrics.baseline_from_line_box_top,
-                    raster_baseline,
+                    raster_baseline.unwrap_or_default(),
                     decoration.legacy_offset,
                 );
                 decoration.draw(canvas, y);

@@ -149,6 +149,57 @@ fn additive_consumer_artifact_factory_replays_the_full_stage_sequence() {
 }
 
 #[test]
+fn consumer_artifact_trace_focuses_before_text_and_ime_events() {
+    let scenario = FullTextCommandSurfaceScenarioFactory::new()
+        .issue_consumer_artifact()
+        .expect("consumer artifact scenario remains issuable");
+    let stages = scenario.stages().to_vec();
+    assert_eq!(stages.len(), 10, "the public artifact trace keeps ten stages");
+
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(scenario.into_lease().expect("consumer artifact lease"))
+        .expect("consumer artifact root retains");
+    let context = egui::Context::default();
+    let render_stage = |stage: &crate::egui::text_command_surface::FullTextCommandSurfaceRawInputStage,
+                        root: &mut crate::egui::text_command_surface::EguiTextCommandSurfaceHostRoot| {
+        let mut input = egui::RawInput::default();
+        stage.apply_to(&mut input);
+        render_current_and_forward(&context, root, input)
+    };
+
+    let _ = render_stage(&stages[0], &mut root);
+    let focused = render_stage(&stages[1], &mut root);
+    assert!(
+        focused.evidence_text.record.frame.accessibility.root.focused,
+        "the pointer press focuses the editor before its Text and IME stage"
+    );
+
+    let opening = render_stage(&stages[2], &mut root);
+    assert!(opening.evidence_text.events.iter().any(|event| {
+        matches!(
+            event,
+            crate::text_surface::TextSurfaceEvent::TextArea(
+                crate::atom::TextAreaEvent::Change(value)
+            ) if value.contains("consumer artifact input")
+        )
+    }));
+
+    let ime = opening;
+    assert!(ime.evidence_text.events.iter().any(|event| {
+        matches!(
+            event,
+            crate::text_surface::TextSurfaceEvent::TextArea(
+                crate::atom::TextAreaEvent::ImeCommit(value)
+            ) if value == "入力"
+        )
+    }));
+    assert!(
+        ime.evidence_text.record.frame.layout_identity.contains("入力"),
+        "the focused TextAreaState retains the IME commit"
+    );
+}
+
+#[test]
 fn physical_selection_is_retained_by_the_next_scenario_projection() {
     let session =
         FullTextCommandSurfaceScenarioSession::new(FullTextCommandSurfaceScenarioId::Selection);

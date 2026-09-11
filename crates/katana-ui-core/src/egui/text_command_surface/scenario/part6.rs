@@ -99,11 +99,20 @@ fn stages(id: FullTextCommandSurfaceScenarioId) -> Vec<FullTextCommandSurfaceRaw
 
 fn consumer_artifact_stages() -> Vec<FullTextCommandSurfaceRawInputStage> {
     vec![
-        stage(vec![egui::Event::Text(String::from("consumer artifact input"))], 1.0),
+        stage(Vec::new(), 1.0),
         stage(
-            vec![egui::Event::Ime(egui::ImeEvent::Commit(String::from(
-                "入力",
-            )))],
+            vec![
+                egui::Event::PointerMoved(egui::pos2(260.0, 140.0)),
+                primary_pointer(egui::pos2(260.0, 140.0), true),
+            ],
+            1.0,
+        ),
+        stage(
+            vec![
+                primary_pointer(egui::pos2(260.0, 140.0), false),
+                egui::Event::Text(String::from("consumer artifact input")),
+                egui::Event::Ime(egui::ImeEvent::Commit(String::from("入力"))),
+            ],
             IME_PIXELS_PER_POINT,
         ),
         stage(
@@ -152,9 +161,8 @@ fn consumer_artifact_stages() -> Vec<FullTextCommandSurfaceRawInputStage> {
             ],
             1.0,
         ),
-        stage(vec![key_press(egui::Key::Enter)], 1.0),
         stage_with_screen(
-            Vec::new(),
+            vec![key_press(egui::Key::Enter)],
             1.0,
             egui::vec2(RESIZED_WIDTH, RESIZED_HEIGHT),
         ),
