@@ -37,7 +37,7 @@ impl UiTreeCanvasRenderer {
         *y = logical_canvas_boundary(logical_y);
     }
 
-    pub(super) fn render_node_with_logical_cursor(
+    pub(in crate::raster_host) fn render_node_with_logical_cursor(
         &self,
         canvas: &mut Canvas,
         node: &UiNode,

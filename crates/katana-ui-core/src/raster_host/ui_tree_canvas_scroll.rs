@@ -123,10 +123,8 @@ fn draw_visible_node(
         let requested_height = dimension_px(&node.props().common.height);
         if requested_height > 0 {
             let requested_bottom = node_top + requested_height as f32;
-            if requested_bottom > *logical_y {
-                *render_y += requested_bottom - *logical_y;
-                *logical_y = requested_bottom;
-            }
+            *render_y += requested_bottom - *logical_y;
+            *logical_y = requested_bottom;
         }
         return;
     }
@@ -139,7 +137,7 @@ fn draw_visible_node(
         return;
     }
     if node_top >= source_y {
-        let mut draw_y = render_y.max(0.0).floor() as usize;
+        let render_start = *render_y;
         if node.kind() == katana_ui_core::render_model::UiNodeKind::Text {
             UiTreeTextRenderer::draw_node_at_logical_y(
                 context.canvas,
@@ -151,13 +149,15 @@ fn draw_visible_node(
             );
             *render_y += logical_text_height(renderer, text_context, node, x, area);
         } else {
-            let physical_start = draw_y;
-            context
-                .canvas
-                .with_fractional_y_origin(*render_y, physical_start, |canvas| {
-                    renderer.render_node(canvas, node, x, &mut draw_y, area, palette);
-                });
-            *render_y += draw_y.saturating_sub(physical_start) as f32;
+            renderer.render_node_with_logical_cursor(
+                context.canvas,
+                node,
+                x,
+                render_y,
+                area,
+                palette,
+            );
+            *logical_y = node_top + (*render_y - render_start);
         }
         return;
     }
