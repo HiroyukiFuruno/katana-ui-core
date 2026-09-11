@@ -128,15 +128,18 @@ impl UiTreeTextRenderer {
 
         let clip_width = text_clip_width(node, area, content_x);
         let draw_metrics = draw_metrics_for_node(node, metrics);
-        UiTreeTextRoleRenderer::draw_background(
-            canvas,
-            node,
-            x,
-            logical_canvas_boundary(logical_y),
-            area,
-            context.palette,
-            metrics,
-        );
+        let background_y = logical_canvas_boundary(logical_y);
+        canvas.with_fractional_y_origin(logical_y, background_y, |canvas| {
+            UiTreeTextRoleRenderer::draw_background(
+                canvas,
+                node,
+                x,
+                background_y,
+                area,
+                context.palette,
+                metrics,
+            );
+        });
         let text_y = logical_y + metrics.top_margin as f32;
         if node.props().text.spans.is_empty() {
             canvas.with_clip(
@@ -299,7 +302,8 @@ mod tests {
     use katana_ui_core::atom::Text;
     use katana_ui_core::facade::UiCoreFacade;
     use katana_ui_core::render_model::{
-        UiCommonProps, UiDimension, UiEdgeInsets, UiNode, UiTextSpan, UiTextSpanStyle,
+        UiCommonProps, UiDimension, UiEdgeInsets, UiInteractionState, UiNode, UiNodeKind,
+        UiTextProps, UiTextSpan, UiTextSpanStyle,
     };
     use katana_ui_core::theme::ThemeSnapshot;
 
@@ -456,6 +460,34 @@ mod tests {
                 link_target: String::new(),
             }])
             .into();
+        let mut canvas = Canvas::new_scaled(320, 120, 2.0, 0xffffff);
+        let mut logical_y = 31.5;
+
+        UiTreeTextRenderer::draw_node_with_logical_cursor(
+            &mut canvas,
+            context,
+            &node,
+            0,
+            &mut logical_y,
+            render_area(),
+        );
+
+        assert_eq!(0xffffff, canvas.pixels()[62 * canvas.width()]);
+        assert_ne!(0xffffff, canvas.pixels()[63 * canvas.width()]);
+    }
+
+    #[test]
+    fn text_role_background_preserves_fractional_origin_until_scaled_paint() {
+        let context = text_context();
+        let node = UiNode::new(UiNodeKind::Text, "Quote")
+            .text(UiTextProps {
+                role: "blockquote".to_owned(),
+                ..UiTextProps::default()
+            })
+            .interaction(UiInteractionState {
+                hovered: true,
+                ..UiInteractionState::default()
+            });
         let mut canvas = Canvas::new_scaled(320, 120, 2.0, 0xffffff);
         let mut logical_y = 31.5;
 

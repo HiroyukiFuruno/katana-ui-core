@@ -152,8 +152,13 @@ fn draw_visible_node(
             );
             *render_y += logical_text_height(renderer, text_context, node, x, area);
         } else {
-            renderer.render_node(context.canvas, node, x, &mut draw_y, area, palette);
-            *render_y += draw_y.saturating_sub(render_y.max(0.0).floor() as usize) as f32;
+            let physical_start = draw_y;
+            context
+                .canvas
+                .with_fractional_y_origin(*render_y, physical_start, |canvas| {
+                    renderer.render_node(canvas, node, x, &mut draw_y, area, palette);
+                });
+            *render_y += draw_y.saturating_sub(physical_start) as f32;
         }
         return;
     }
@@ -314,6 +319,50 @@ mod tests {
         assert_ne!(palette.background, first_grid_pixel);
         assert_ne!(palette.background, second_grid_pixel);
         assert_ne!(first_grid_pixel, second_grid_pixel);
+    }
+
+    #[test]
+    fn scroll_area_preserves_fractional_text_origin_for_following_non_text_child() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::with_document_typography(
+            theme,
+            UiTreeDocumentTypography::new()
+                .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5)),
+        );
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 80,
+            scroll_y: 0.0,
+        };
+        let node = UiNode::new(UiNodeKind::ScrollArea, "")
+            .scroll_area(UiScrollAreaProps {
+                viewport_width: 180,
+                viewport_height: 80,
+                content_width: 180,
+                content_height: 80,
+                ..UiScrollAreaProps::default()
+            })
+            .child(Text::new("first").text_role("body"))
+            .child(UiNode::new(UiNodeKind::Button, "button").height(UiDimension::px(20)));
+        let mut canvas = Canvas::new_scaled(180, 80, 2.0, palette.background);
+        let mut y = 0;
+
+        draw_scroll_area(&renderer, &mut canvas, &node, 0, &mut y, area, palette);
+
+        let physical_width = canvas.width();
+        assert_ne!(
+            palette.selection,
+            canvas.pixels()[62 * physical_width],
+            "the following non-Text child must not floor 31.5px to physical row 62"
+        );
+        assert_eq!(
+            palette.selection,
+            canvas.pixels()[63 * physical_width],
+            "the following non-Text child must begin at physical row 63 at scale 2"
+        );
     }
 
     #[test]

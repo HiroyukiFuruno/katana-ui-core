@@ -91,9 +91,10 @@ impl UiTreeCanvasRenderer {
         area: UiTreeRenderArea,
         palette: UiTreeCanvasPalette,
     ) {
-        let physical_y = logical_canvas_boundary(*logical_y);
         let document_accordion = node.props().text.role == "html-accordion";
         let metrics = UiTreeTextMetrics::for_node_with_typography(node, self.typography);
+        let physical_y = logical_canvas_boundary(*logical_y);
+        let logical_label_y = accordion_label_origin(*logical_y, metrics.top_margin);
         let label = if document_accordion {
             node.props().label.clone()
         } else if node.props().interaction.open {
@@ -106,7 +107,7 @@ impl UiTreeCanvasRenderer {
                 canvas,
                 &label,
                 x as isize,
-                (physical_y.saturating_add(metrics.top_margin)) as f32,
+                logical_label_y,
                 metrics.line_box_height,
                 baseline_from_line_box_top,
                 RichTextStyle::new(metrics.font_size, palette.text),
@@ -140,6 +141,10 @@ impl UiTreeCanvasRenderer {
     }
 }
 
+fn accordion_label_origin(logical_y: f32, top_margin: usize) -> f32 {
+    logical_y + top_margin as f32
+}
+
 fn accordion_header_height(metrics: UiTreeTextMetrics) -> f32 {
     metrics
         .baseline_from_line_box_top
@@ -148,4 +153,77 @@ fn accordion_header_height(metrics: UiTreeTextMetrics) -> f32 {
 
 fn logical_canvas_boundary(value: f32) -> usize {
     value.floor().max(0.0) as usize
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        Canvas, UiNode, UiNodeKind, UiTreeCanvasPalette, UiTreeCanvasRenderer, UiTreeRenderArea,
+    };
+    use crate::raster_host::{UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography};
+    use crate::render_model::UiTextProps;
+    use crate::theme::ThemeSnapshot;
+
+    #[test]
+    fn document_accordion_labels_keep_fractional_origins_until_scaled_paint() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::with_document_typography(
+            theme,
+            UiTreeDocumentTypography::new()
+                .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5)),
+        );
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 120,
+            scroll_y: 0.0,
+        };
+
+        for role in ["html-accordion", "html-accordion-preview"] {
+            let node = UiNode::new(UiNodeKind::Accordion, "Document").text(UiTextProps {
+                role: role.to_owned(),
+                ..UiTextProps::default()
+            });
+            let mut integral_canvas = Canvas::new_scaled(240, 120, 2.0, palette.background);
+            let mut integral_y = 31.0;
+            renderer.draw_accordion_with_logical_cursor(
+                &mut integral_canvas,
+                &node,
+                0,
+                &mut integral_y,
+                area,
+                palette,
+            );
+            let integral_top = first_non_background_row(&integral_canvas, palette.background);
+
+            let mut fractional_canvas = Canvas::new_scaled(240, 120, 2.0, palette.background);
+            let mut fractional_y = 31.5;
+            renderer.draw_accordion_with_logical_cursor(
+                &mut fractional_canvas,
+                &node,
+                0,
+                &mut fractional_y,
+                area,
+                palette,
+            );
+            let fractional_top = first_non_background_row(&fractional_canvas, palette.background);
+
+            assert_eq!(
+                integral_top + 1,
+                fractional_top,
+                "{role} label must retain its half-pixel logical origin at scale 2"
+            );
+        }
+    }
+
+    fn first_non_background_row(canvas: &Canvas, background: u32) -> usize {
+        canvas
+            .pixels()
+            .iter()
+            .position(|pixel| *pixel != background)
+            .map(|index| index / canvas.width())
+            .expect("accordion label is drawn")
+    }
 }
