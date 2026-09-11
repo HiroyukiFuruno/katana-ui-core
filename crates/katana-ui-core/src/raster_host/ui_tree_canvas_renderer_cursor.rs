@@ -55,7 +55,9 @@ impl UiTreeCanvasRenderer {
                 self.draw_text_with_logical_cursor(canvas, node, x, logical_y, area, palette)
             }
             UiNodeKind::Accordion => {
-                self.draw_accordion_with_logical_cursor(canvas, node, x, logical_y, area, palette);
+                self.draw_sized_accordion_with_logical_cursor(
+                    canvas, node, x, logical_y, area, palette,
+                );
             }
             UiNodeKind::Row => {
                 self.draw_row_with_logical_cursor(canvas, node, x, logical_y, area, palette);
@@ -219,7 +221,7 @@ impl UiTreeCanvasRenderer {
         *logical_y += physical_y.saturating_sub(physical_start) as f32;
     }
 
-    fn draw_accordion_with_logical_cursor(
+    pub(super) fn draw_accordion_with_logical_cursor(
         &self,
         canvas: &mut Canvas,
         node: &UiNode,
