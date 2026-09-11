@@ -69,6 +69,7 @@ impl UiTreeHostActionHitCollector<'_> {
         &mut self,
         node: &UiNode,
         x: usize,
+        y: usize,
         height: usize,
         actions: &[UiHostActionPlan],
     ) {
@@ -98,7 +99,7 @@ impl UiTreeHostActionHitCollector<'_> {
                     action: action.clone(),
                     rect: UiTreeHitRect {
                         x: rect_x,
-                        y: self.y,
+                        y,
                         width: clipped_width,
                         height,
                     },

@@ -29,7 +29,7 @@ pub(super) fn decoration_y(
         Some(target_baseline) => {
             line_box_top + target_baseline + legacy_offset as f32 - raster_baseline
         }
-        None => line_box_top.round().max(0.0) + legacy_offset as f32,
+        None => line_box_top.max(0.0) + legacy_offset as f32,
     }
 }
 
@@ -101,6 +101,6 @@ mod tests {
     #[test]
     fn decoration_y_tracks_a_configured_text_baseline() {
         assert_eq!(21.0, decoration_y(8.5, Some(12.5), 9.0, 9));
-        assert_eq!(18.0, decoration_y(8.5, None, 9.0, 9));
+        assert_eq!(17.5, decoration_y(8.5, None, 9.0, 9));
     }
 }

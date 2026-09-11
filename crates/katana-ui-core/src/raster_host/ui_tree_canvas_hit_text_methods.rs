@@ -1,7 +1,7 @@
 use super::{
     TEXT_HEIGHT, TextRenderer, ThemeSnapshot, UiNode, UiTextSpan, UiTreeCanvasPalette,
     UiTreeHostActionHitCollector, UiTreeTextContext, UiTreeTextMetrics, UiTreeTextRenderer,
-    whitespace_width,
+    dimension_px, whitespace_width,
 };
 use crate::raster_host::ui_tree_canvas_text_line_width::{
     SpanTextRenderers, preserves_whitespace, span_line_width, span_part_width,
@@ -9,6 +9,14 @@ use crate::raster_host::ui_tree_canvas_text_line_width::{
 };
 
 impl UiTreeHostActionHitCollector<'_> {
+    pub(super) fn logical_text_hit_height(&self, node: &UiNode, x: usize) -> f32 {
+        let requested_height = dimension_px(&node.props().common.height);
+        if requested_height > 0 {
+            return requested_height as f32;
+        }
+        UiTreeTextRenderer::logical_advance_height(self.text_context(), node, x, self.area)
+    }
+
     pub(super) fn text_hit_height(&self, node: &UiNode, x: usize) -> usize {
         let height =
             UiTreeTextRenderer::measure_node_height(self.text_context(), node, x, self.area);

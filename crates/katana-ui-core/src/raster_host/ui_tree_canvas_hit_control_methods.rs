@@ -45,9 +45,11 @@ impl UiTreeHostActionHitCollector<'_> {
         } else {
             self.text_hit_height(node, text_x)
         };
+        let logical_start = self.text_logical_y.max(self.y as f32);
+        let hit_y = logical_start.floor().max(0.0) as usize;
         let full_rect = UiTreeHitRect {
             x: text_x,
-            y: self.y,
+            y: hit_y,
             width: remaining_width(self.area, text_x)
                 .saturating_sub(dimension_px(&node.props().common.margin.right))
                 .max(1),
@@ -55,7 +57,7 @@ impl UiTreeHostActionHitCollector<'_> {
         };
         let actions = self.actions_for_node(node);
         self.push_node_hit(node, full_rect);
-        self.push_text_link_action_hits(node, text_x, height, &actions);
+        self.push_text_link_action_hits(node, text_x, hit_y, height, &actions);
         self.push_action_hits(
             node,
             actions
@@ -63,7 +65,8 @@ impl UiTreeHostActionHitCollector<'_> {
                 .filter(|action| action.action_id != UI_LINK_OPEN_ACTION_ID),
             full_rect,
         );
-        self.y = self.y.saturating_add(height);
+        self.text_logical_y = logical_start + self.logical_text_hit_height(node, text_x);
+        self.y = self.text_logical_y.floor().max(0.0) as usize;
     }
 
     pub(super) fn checkbox(&mut self, node: &UiNode, x: usize) {

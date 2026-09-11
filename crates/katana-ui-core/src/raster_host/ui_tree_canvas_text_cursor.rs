@@ -18,33 +18,37 @@ impl UiTreeTextRenderer {
     ) {
         let logical_start = *logical_y;
         Self::draw_node_at_logical_y(canvas, context, node, x, logical_start, area);
-        *logical_y = logical_start + logical_advance_height(context, node, x, area);
+        *logical_y = logical_start + Self::logical_advance_height(context, node, x, area);
     }
 }
 
-fn logical_advance_height(
-    context: UiTreeTextContext<'_>,
-    node: &UiNode,
-    x: usize,
-    area: UiTreeRenderArea,
-) -> f32 {
-    let requested_height = dimension_px(&node.props().common.height);
-    if requested_height > 0 {
-        return requested_height as f32;
+impl UiTreeTextRenderer {
+    pub(crate) fn logical_advance_height(
+        context: UiTreeTextContext<'_>,
+        node: &UiNode,
+        x: usize,
+        area: UiTreeRenderArea,
+    ) -> f32 {
+        let requested_height = dimension_px(&node.props().common.height);
+        if requested_height > 0 {
+            return requested_height as f32;
+        }
+        let renderer = renderer_for_role(
+            context.text,
+            context.export_text,
+            context.code_text,
+            &node.props().font_role,
+        );
+        let metrics = UiTreeTextMetrics::for_node_with_typography(node, context.typography);
+        let content_x = text_content_x(node, x);
+        if node.props().text.role == "table" {
+            return UiTreeTextTable::content_height(renderer, node, content_x, area, metrics)
+                as f32;
+        }
+        UiTreeTextLines::line_count(renderer, context.code_text, node, content_x, area, metrics)
+            as f32
+            * metrics.line_box_height
     }
-    let renderer = renderer_for_role(
-        context.text,
-        context.export_text,
-        context.code_text,
-        &node.props().font_role,
-    );
-    let metrics = UiTreeTextMetrics::for_node_with_typography(node, context.typography);
-    let content_x = text_content_x(node, x);
-    if node.props().text.role == "table" {
-        return UiTreeTextTable::content_height(renderer, node, content_x, area, metrics) as f32;
-    }
-    UiTreeTextLines::line_count(renderer, context.code_text, node, content_x, area, metrics) as f32
-        * metrics.line_box_height
 }
 
 pub(super) fn logical_canvas_boundary(value: f32) -> usize {

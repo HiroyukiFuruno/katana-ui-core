@@ -27,6 +27,9 @@ mod ui_tree_canvas_hit_text_methods;
 
 impl UiTreeHostActionHitCollector<'_> {
     pub(super) fn node(&mut self, node: &UiNode, x: usize) {
+        if node.kind() != UiNodeKind::Text {
+            self.text_logical_y = self.y as f32;
+        }
         let previous_semantic_node_id = self.semantic_node_id.clone();
         if let Some(semantic_node_id) = semantic_node_id(node) {
             self.semantic_node_id = Some(semantic_node_id);
@@ -60,6 +63,7 @@ impl UiTreeHostActionHitCollector<'_> {
         let requested_height = dimension_px(&node.props().common.height);
         if requested_height > 0 {
             self.y = start_y.saturating_add(requested_height);
+            self.text_logical_y = self.y as f32;
         }
         self.semantic_node_id = previous_semantic_node_id;
     }
