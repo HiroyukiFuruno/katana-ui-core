@@ -145,11 +145,11 @@ impl UiTreeTextRenderer {
         });
         let text_y = logical_y + metrics.top_margin as f32;
         if node.props().text.spans.is_empty() {
-            canvas.with_clip(
+            canvas.with_clip_at_logical_y(
                 content_x,
-                logical_canvas_boundary(logical_y),
+                logical_y,
                 clip_width,
-                clip_height,
+                clip_height as f32,
                 &mut |canvas| {
                     UiTreeTextLines::draw_plain_at_logical_y(
                         canvas,
@@ -169,11 +169,11 @@ impl UiTreeTextRenderer {
             );
             return text_advance_height(requested_height, line_count, metrics);
         }
-        canvas.with_clip(
+        canvas.with_clip_at_logical_y(
             content_x,
-            logical_canvas_boundary(logical_y),
+            logical_y,
             clip_width,
-            clip_height,
+            clip_height as f32,
             &mut |canvas| {
                 UiTreeTextLines::draw_spans_at_logical_y(
                     canvas,
