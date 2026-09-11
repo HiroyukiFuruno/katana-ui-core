@@ -3,7 +3,7 @@ use super::{
     UiTreeTextRoleBaselineTypography, UiTreeTextRoleTypography,
 };
 use crate::test_assert::KucTestExpect;
-use katana_ui_core::atom::Text;
+use katana_ui_core::atom::{Input, Text};
 use katana_ui_core::molecule::Accordion;
 use katana_ui_core::render_model::{
     UiHostActionSpec, UiNode, UiNodeId, UiNodeKind, UiTextProps, UiTextSpan,
@@ -74,6 +74,45 @@ fn surface_host_action_hits_advance_fractional_text_cursor_without_rounding_each
         .kuc_expect("second linked text action hit");
 
     assert_eq!(31, second.rect.y);
+}
+
+#[test]
+fn surface_host_action_hits_keep_fractional_cursor_across_non_text_siblings() {
+    let document_typography = UiTreeDocumentTypography::new()
+        .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5));
+    let first: UiNode = Text::new("First").text_role("body").into();
+    let input: UiNode =
+        UiNode::from(Input::new("Query")).host_action(UiHostActionSpec::command("query", "Query"));
+    let accordion = UiNode::from(Accordion::new("Details").open(false));
+    let trailing: UiNode = Text::new("Trailing")
+        .text_role("body")
+        .host_action(UiHostActionSpec::command("trailing", "Trailing"))
+        .into();
+    let root = UiNode::new(UiNodeKind::Column, "")
+        .child(first)
+        .child(input)
+        .child(accordion)
+        .child(trailing);
+    let host =
+        UiTreeSurfaceHost::with_document_typography(ThemeSnapshot::dark(), document_typography);
+
+    let hits = host.document_host_action_hits(&root, test_area());
+    let query = hits
+        .iter()
+        .find(|hit| hit.action.action_id == "query")
+        .kuc_expect("input action hit");
+    let disclosure = hits
+        .iter()
+        .find(|hit| hit.action.action_id == "ui.disclosure.toggle")
+        .kuc_expect("accordion action hit");
+    let trailing = hits
+        .iter()
+        .find(|hit| hit.action.action_id == "trailing")
+        .kuc_expect("trailing action hit");
+
+    assert_eq!(31, query.rect.y);
+    assert_eq!(51, disclosure.rect.y);
+    assert_eq!(71, trailing.rect.y);
 }
 
 #[test]
