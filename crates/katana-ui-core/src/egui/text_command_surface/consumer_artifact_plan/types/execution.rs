@@ -9,7 +9,18 @@ use super::{
     ConsumerArtifactPlanError, ConsumerArtifactStageBinding, EguiTextCommandSurfaceHostRoot,
 };
 use crate::egui::text_command_surface::KucUnicodeColorGlyphEvidenceOptions;
+use crate::egui::text_command_surface::{
+    EguiTextCommandSurfaceRootEventBatchDispatchError,
+    EguiTextCommandSurfaceRootEventBatchForwardError, EguiTextCommandSurfaceRootEventTransport,
+    KucRootEventBatchDispatcher, KucRootEventBatchForwarder,
+};
+use crate::molecule::command_chrome::{
+    CommandChromeSearchEvent, CommandChromeToolbarEvent, FloatingCommandToolbarEvent,
+};
+use crate::molecule::selection::ContextMenuEvent;
+use crate::text_surface::TextSurfaceEvent;
 use std::collections::BTreeMap;
+use std::convert::Infallible;
 use std::path::Path;
 
 /// Issued stages retain one KUC root and can only run in their KUC-defined order.
@@ -67,7 +78,7 @@ impl IssuedConsumerArtifactPlan {
             if index > 0 && self.prepared_stage != Some(index) {
                 if let Some(lease) = binding.take_root_lease() {
                     self.root
-                        .synchronize_with_lease(lease)
+                        .synchronize_with_lease_preserving_state(lease)
                         .map_err(map_root_error)?;
                 } else {
                     let token = binding
@@ -86,6 +97,7 @@ impl IssuedConsumerArtifactPlan {
         self.failed_stage = Some(index);
         let result = (|| {
             let frame = render_stage(&mut self.root, context, interaction, action_target.as_str())?;
+            forward_stage_events(&frame)?;
             let receipt = write_stage_artifact(&frame, output_dir, &stage_id)?;
             let artifact = receipt.artifact().clone();
             validate_decoded_png(&artifact)?;
@@ -136,15 +148,10 @@ impl IssuedConsumerArtifactPlan {
         })();
         match result {
             Ok(evidence) => {
-                self.issued_receipts.insert(
-                    evidence.receipt.fingerprint.clone(),
-                    (
-                        evidence.receipt.leaf.clone(),
-                        evidence.receipt.stage_id.clone(),
-                        evidence.receipt.root_revision,
-                    ),
-                );
-                self.next_stage += 1;
+                let () = {
+                    self.record_issued_receipt(&evidence);
+                    self.next_stage += 1;
+                };
                 self.prepared_stage = None;
                 self.failed_stage = None;
                 Ok(evidence)
@@ -155,6 +162,91 @@ impl IssuedConsumerArtifactPlan {
             }
         }
     }
+
+    pub(super) fn record_issued_receipt(&mut self, evidence: &ConsumerArtifactEvidence) {
+        self.issued_receipts.insert(
+            evidence.receipt.fingerprint.clone(),
+            (
+                evidence.receipt.leaf.clone(),
+                evidence.receipt.stage_id.clone(),
+                evidence.receipt.root_revision,
+            ),
+        );
+    }
+}
+
+struct ArtifactStageDispatcher;
+
+impl KucRootEventBatchDispatcher for ArtifactStageDispatcher {
+    type Error = Infallible;
+
+    fn dispatch_text_events(&mut self, _: Vec<TextSurfaceEvent>) -> Result<(), Self::Error> {
+        Ok(())
+    }
+    fn dispatch_toolbar_events(
+        &mut self,
+        _: Vec<CommandChromeToolbarEvent>,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+    fn dispatch_floating_events(
+        &mut self,
+        _: Vec<FloatingCommandToolbarEvent>,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+    fn dispatch_search_events(
+        &mut self,
+        _: Vec<CommandChromeSearchEvent>,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+    fn dispatch_context_menu_events(
+        &mut self,
+        _: Vec<ContextMenuEvent>,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
+struct ArtifactStageForwarder;
+
+impl KucRootEventBatchForwarder for ArtifactStageForwarder {
+    type Error = String;
+
+    #[inline(always)]
+    fn forward_root_event_batch(
+        &mut self,
+        transport: EguiTextCommandSurfaceRootEventTransport,
+    ) -> Result<(), Self::Error> {
+        transport
+            .dispatch_once(&mut ArtifactStageDispatcher)
+            .map(|_| ())
+            .map_err(artifact_stage_dispatch_error)
+    }
+}
+
+fn artifact_stage_dispatch_error(
+    error: EguiTextCommandSurfaceRootEventBatchDispatchError<Infallible>,
+) -> String {
+    format!("artifact stage event dispatch failed: {error:?}")
+}
+
+pub(super) fn forward_stage_events(
+    frame: &crate::egui::text_command_surface::EguiTextCommandSurfaceHostRootFrame,
+) -> Result<(), ConsumerArtifactPlanError> {
+    frame
+        .forward_events_once(&mut ArtifactStageForwarder)
+        .map(|_| ())
+        .map_err(map_forwarding_error)
+}
+
+fn map_forwarding_error(
+    error: EguiTextCommandSurfaceRootEventBatchForwardError<String>,
+) -> ConsumerArtifactPlanError {
+    ConsumerArtifactPlanError::Artifact(format!(
+        "artifact stage event forwarding failed: {error:?}"
+    ))
 }
 
 pub(super) fn show_frame(
@@ -177,4 +269,37 @@ pub(super) fn show_frame(
 
 pub(super) fn interaction_error(error: impl std::fmt::Display) -> ConsumerArtifactPlanError {
     ConsumerArtifactPlanError::Artifact(format!("KUC interaction protocol failed: {error}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn artifact_stage_dispatcher_accepts_every_generic_event_class() {
+        let mut dispatcher = ArtifactStageDispatcher;
+        assert_eq!(dispatcher.dispatch_text_events(Vec::new()), Ok(()));
+        assert_eq!(dispatcher.dispatch_toolbar_events(Vec::new()), Ok(()));
+        assert_eq!(dispatcher.dispatch_floating_events(Vec::new()), Ok(()));
+        assert_eq!(dispatcher.dispatch_search_events(Vec::new()), Ok(()));
+        assert_eq!(dispatcher.dispatch_context_menu_events(Vec::new()), Ok(()));
+    }
+
+    #[test]
+    fn forwarding_error_is_mapped_to_artifact_error() {
+        assert!(matches!(
+            map_forwarding_error(EguiTextCommandSurfaceRootEventBatchForwardError::AlreadyConsumed),
+            ConsumerArtifactPlanError::Artifact(message) if message.contains("AlreadyConsumed")
+        ));
+    }
+
+    #[test]
+    fn artifact_stage_dispatch_error_reports_opaque_host_effect_rejection() {
+        assert!(
+            artifact_stage_dispatch_error(
+                EguiTextCommandSurfaceRootEventBatchDispatchError::OpaqueHostEffect
+            )
+            .contains("OpaqueHostEffect")
+        );
+    }
 }

@@ -129,6 +129,46 @@ fn additive_consumer_artifact_session_retains_forwarded_text() {
 }
 
 #[test]
+fn preissued_consumer_artifact_lease_preserves_forwarded_text() {
+    let session = FullTextCommandSurfaceScenarioSession::new_consumer_artifact();
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(session.retain_lease().expect("consumer artifact lease"))
+        .expect("consumer artifact root retains");
+    let stale_next_lease = session
+        .synchronize_lease()
+        .expect("the next lease is issued before input dispatch");
+    let scenario = FullTextCommandSurfaceScenarioFactory::new()
+        .issue(FullTextCommandSurfaceScenarioId::ResizeScrollIme)
+        .expect("focus stages issue");
+    let context = egui::Context::default();
+
+    for stage in scenario.stages().iter().take(2) {
+        let mut input = egui::RawInput::default();
+        stage.apply_to(&mut input);
+        let _ = render_current_and_forward(&context, &mut root, input);
+    }
+
+    let mut input = egui::RawInput::default();
+    input
+        .events
+        .push(egui::Event::Text(String::from("preissued lease text ⭐️")));
+    let _ = render_current_and_forward(&context, &mut root, input);
+
+    root.synchronize_with_lease_preserving_state(stale_next_lease)
+        .expect("a pre-issued lease advances without restoring its stale presentation");
+    let updated = render_current(&context, &mut root, egui::RawInput::default());
+    assert!(
+        updated
+            .evidence_text
+            .record
+            .frame
+            .layout_identity
+            .contains("preissued lease text ⭐️"),
+        "a pre-issued lease must preserve text forwarded by the prior stage"
+    );
+}
+
+#[test]
 fn additive_consumer_artifact_factory_replays_the_full_stage_sequence() {
     let scenario = FullTextCommandSurfaceScenarioFactory::new()
         .issue_consumer_artifact()

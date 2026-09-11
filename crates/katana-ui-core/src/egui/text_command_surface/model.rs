@@ -59,6 +59,10 @@ impl EguiTextCommandSurface {
         self.source_address = Some(strip);
     }
 
+    pub(crate) fn clear_source_address(&mut self) -> bool {
+        self.source_address.take().is_some()
+    }
+
     #[must_use]
     pub fn text(&self) -> &TextSurface {
         &self.text

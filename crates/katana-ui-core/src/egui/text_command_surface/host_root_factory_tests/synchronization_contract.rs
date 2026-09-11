@@ -55,6 +55,83 @@ fn synchronize_with_lease_rejects_duplicate_revision() {
 }
 
 #[test]
+fn preserve_state_lease_rejects_duplicate_revision_and_changed_identity() {
+    let style = TextCommandSurfaceStyle::standard().expect("standard style");
+    let initial = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        3,
+        b"preserve-state-target",
+        presentation(),
+        style.clone(),
+    )
+    .expect("initial token");
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain(initial)
+        .expect("retain initial root");
+    let duplicate = EguiTextCommandSurfaceHostProjectionLease::new(
+        EguiTextCommandSurfaceHostProjectionEncoder::token(
+            3,
+            b"preserve-state-target",
+            presentation(),
+            style.clone(),
+        )
+        .expect("duplicate lease token"),
+        |_context| Ok(None),
+    );
+    assert!(matches!(
+        root.synchronize_with_lease_preserving_state(duplicate),
+        Err(EguiTextCommandSurfaceRootFactoryError::DuplicateLease { revision: 3 })
+    ));
+
+    let changed_identity = EguiTextCommandSurfaceHostProjectionLease::new(
+        EguiTextCommandSurfaceHostProjectionEncoder::token(
+            4,
+            b"other-preserve-state-target",
+            presentation(),
+            style,
+        )
+        .expect("changed identity lease token"),
+        |_context| Ok(None),
+    );
+    assert!(matches!(
+        root.synchronize_with_lease_preserving_state(changed_identity),
+        Err(EguiTextCommandSurfaceRootFactoryError::IdentityChanged)
+    ));
+}
+
+#[test]
+fn preserve_state_lease_advances_a_matching_root_revision() {
+    let style = TextCommandSurfaceStyle::standard().expect("standard style");
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain(
+            EguiTextCommandSurfaceHostProjectionEncoder::token(
+                3,
+                b"preserve-state-success-target",
+                presentation(),
+                style.clone(),
+            )
+            .expect("initial token"),
+        )
+        .expect("retain initial root");
+    let next = EguiTextCommandSurfaceHostProjectionLease::new(
+        EguiTextCommandSurfaceHostProjectionEncoder::token(
+            4,
+            b"preserve-state-success-target",
+            presentation(),
+            style,
+        )
+        .expect("next lease token"),
+        |_context| Ok(None),
+    );
+
+    assert!(
+        !root
+            .synchronize_with_lease_preserving_state(next)
+            .expect("matching pre-issued lease advances")
+    );
+    assert_eq!(root.process.presentation_revision(), 4);
+}
+
+#[test]
 fn retain_rejects_empty_identity_for_process() {
     assert!(matches!(
         HostRootProcess::retain(

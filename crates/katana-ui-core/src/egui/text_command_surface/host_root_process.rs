@@ -117,6 +117,7 @@ impl HostRootProcess {
         /* WHY: A newer plain token has no tab lease, so it must not retain an
         earlier lease-owned tab strip behind the opaque root boundary. */
         changed |= self.root.clear_tab_strip();
+        changed |= self.root.clear_source_address();
         changed |= self.root.clear_status_diagnostics();
         changed |= self.root.clear_editor_viewport();
         self.style = decoded.style;
@@ -141,8 +142,70 @@ impl HostRootProcess {
         }
         let mut changed = self.synchronize(revision, decoded)?;
         self.effect_router = Some(router);
+        let (source, tabs, status, viewport) = (
+            source_address,
+            tab_strip,
+            status_diagnostics,
+            editor_viewport,
+        );
+        #[rustfmt::skip]
+        let projection_changed = self.synchronize_lease_projections(source, tabs, status, viewport)?;
+        changed |= projection_changed;
+        Ok(changed)
+    }
+
+    /// Advances a lease-owned router without replacing the retained interaction state.
+    ///
+    /// Consumer artifact plans issue their complete lease sequence before the
+    /// first frame is rendered. A later lease therefore carries the initial
+    /// projection while the installed router has already accepted an earlier
+    /// text, IME, selection, or search update. Keep that rendered state and
+    /// replace only lease-owned host wiring and optional projections.
+    pub(super) fn synchronize_router_preserving_state(
+        &mut self,
+        revision: u64,
+        decoded: DecodedRootPresentation,
+        router: Box<dyn KucRootEffectRouter>,
+        source_address: Option<SourceAddressProjectionLease>,
+        tab_strip: Option<TabStripProjectionLease>,
+        status_diagnostics: Option<StatusDiagnosticsProjectionLease>,
+        editor_viewport: Option<EditorViewportProjectionLease>,
+    ) -> Result<bool, EguiTextCommandSurfaceRootFactoryError> {
+        if decoded.identity != self.identity {
+            return Err(EguiTextCommandSurfaceRootFactoryError::IdentityChanged);
+        }
+        if revision <= self.presentation_revision {
+            return Err(EguiTextCommandSurfaceRootFactoryError::DuplicateLease { revision });
+        }
+
+        let mut changed = self.root.clear_tab_strip();
+        changed |= self.root.clear_source_address();
+        changed |= self.root.clear_status_diagnostics();
+        changed |= self.root.clear_editor_viewport();
+        self.effect_router = Some(router);
+        let projection_result = self.synchronize_lease_projections(
+            source_address,
+            tab_strip,
+            status_diagnostics,
+            editor_viewport,
+        );
+        let projection_changed = projection_result?;
+        changed |= projection_changed;
+        self.presentation_revision = revision;
+        Ok(changed)
+    }
+
+    fn synchronize_lease_projections(
+        &mut self,
+        source_address: Option<SourceAddressProjectionLease>,
+        tab_strip: Option<TabStripProjectionLease>,
+        status_diagnostics: Option<StatusDiagnosticsProjectionLease>,
+        editor_viewport: Option<EditorViewportProjectionLease>,
+    ) -> Result<bool, EguiTextCommandSurfaceRootFactoryError> {
+        let mut changed = false;
         if let Some(source_address) = source_address {
             self.root.attach_source_address(source_address);
+            changed = true;
         }
         if let Some(tab_strip) = tab_strip {
             changed |= self.root.attach_tab_strip(tab_strip)?;
