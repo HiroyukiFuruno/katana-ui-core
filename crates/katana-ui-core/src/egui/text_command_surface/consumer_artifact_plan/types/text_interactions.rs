@@ -1,4 +1,4 @@
-use super::execution::{interaction_error, show_frame};
+use super::execution::{forward_stage_events, interaction_error, show_frame};
 use super::support::raw_input;
 use super::{ConsumerArtifactPlanError, EguiTextCommandSurfaceHostRoot, GenericInteractionClass};
 
@@ -80,7 +80,10 @@ pub(super) fn complete_search_trace(
             .advance(next.interaction_locator())
             .map_err(interaction_error)?
         {
-            Some(next_continuation) => continuation = next_continuation,
+            Some(next_continuation) => {
+                forward_stage_events(&next)?;
+                continuation = next_continuation;
+            }
             None => return Ok(next),
         }
     }
