@@ -63,6 +63,8 @@ impl UiTreeHostActionHitCollector<'_> {
         if node.kind() != UiNodeKind::Text && requested_height > 0 {
             self.text_logical_y = logical_start_y + requested_height as f32;
             self.y = self.text_logical_y.floor().max(0.0) as usize;
+        } else if node.kind() == UiNodeKind::Accordion {
+            self.y = self.text_logical_y.floor().max(0.0) as usize;
         } else if node.kind() != UiNodeKind::Text {
             let advance = self.y.saturating_sub(start_y);
             self.text_logical_y = self.text_logical_y.max(logical_start_y + advance as f32);
