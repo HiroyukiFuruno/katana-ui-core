@@ -58,7 +58,10 @@ mod tests {
     use super::UiTreeLayoutRenderer;
     use crate::raster_host::ui_tree_canvas_palette::UiTreeCanvasPalette;
     use crate::raster_host::ui_tree_canvas_types::UiTreeRenderArea;
-    use crate::raster_host::{Canvas, UiTreeCanvasRenderer};
+    use crate::raster_host::{
+        Canvas, UiTreeCanvasRenderer, UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography,
+    };
+    use katana_ui_core::atom::Text;
     use katana_ui_core::render_model::{UiDimension, UiNode, UiNodeKind};
     use katana_ui_core::theme::ThemeSnapshot;
 
@@ -85,5 +88,35 @@ mod tests {
 
         assert_eq!(15, y);
         assert!(canvas.non_background_pixels(palette.background) > 0);
+    }
+
+    #[test]
+    fn row_preserves_fractional_child_extent_for_following_sibling() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::with_document_typography(
+            theme,
+            UiTreeDocumentTypography::new()
+                .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5)),
+        );
+        let root = UiNode::new(UiNodeKind::Column, "")
+            .child(UiNode::new(UiNodeKind::Row, "").child(Text::new("first").text_role("body")))
+            .child(UiNode::new(UiNodeKind::Button, "trailing").height(UiDimension::px(20)));
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 80,
+            scroll_y: 0.0,
+        };
+        let mut canvas = Canvas::new_scaled(180, 80, 2.0, palette.background);
+
+        renderer.render(&mut canvas, &root, area);
+
+        assert_eq!(
+            palette.selection,
+            canvas.pixels()[63 * canvas.width()],
+            "the sibling must begin at the row child's 31.5px logical extent"
+        );
     }
 }

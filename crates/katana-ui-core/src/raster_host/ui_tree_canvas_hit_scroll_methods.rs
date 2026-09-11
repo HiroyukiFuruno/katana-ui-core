@@ -46,7 +46,7 @@ impl UiTreeHostActionHitCollector<'_> {
         viewport_y: usize,
         viewport_width: usize,
         viewport_height: usize,
-        source_y: usize,
+        source_y: f32,
     ) {
         let content_area = UiTreeRenderArea {
             x: 0,
@@ -113,7 +113,7 @@ impl UiTreeHostActionHitCollector<'_> {
         );
     }
 
-    fn collect_visible_children(&mut self, node: &UiNode, x: usize, source_y: usize) {
+    fn collect_visible_children(&mut self, node: &UiNode, x: usize, source_y: f32) {
         for child in node.children() {
             self.collect_visible_node(child, x, source_y);
         }
@@ -123,7 +123,7 @@ impl UiTreeHostActionHitCollector<'_> {
         &mut self,
         node: &UiNode,
         x: usize,
-        source_y: usize,
+        source_y: f32,
     ) {
         if can_render_children_incrementally(node) {
             self.collect_visible_incremental_container(node, x, source_y);
@@ -151,7 +151,7 @@ impl UiTreeHostActionHitCollector<'_> {
         let node_bottom = node_logical_bottom.floor().max(0.0) as usize;
         self.y = node_bottom;
         self.text_logical_y = node_logical_bottom;
-        if node_bottom <= source_y || node_top >= source_y.saturating_add(self.area.height) {
+        if node_bottom as f32 <= source_y || node_top as f32 >= source_y + self.area.height as f32 {
             return;
         }
         self.y = node_top;
@@ -159,7 +159,7 @@ impl UiTreeHostActionHitCollector<'_> {
         self.node(node, x);
     }
 
-    fn collect_visible_incremental_container(&mut self, node: &UiNode, x: usize, source_y: usize) {
+    fn collect_visible_incremental_container(&mut self, node: &UiNode, x: usize, source_y: f32) {
         let padding = ScrollContainerPadding::from_node(node);
         self.advance_y(padding.top);
         let child_x = child_container_x(node, x).saturating_add(padding.left);
@@ -170,7 +170,7 @@ impl UiTreeHostActionHitCollector<'_> {
             if index > 0 {
                 self.advance_y(gap);
             }
-            if self.y >= source_y.saturating_add(previous_area.height) {
+            if self.y as f32 >= source_y + previous_area.height as f32 {
                 break;
             }
             self.collect_visible_node(child, child_x, source_y);

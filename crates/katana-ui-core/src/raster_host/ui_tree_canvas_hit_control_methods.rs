@@ -9,8 +9,12 @@ use katana_ui_core::render_model::UiVisualRole;
 impl UiTreeHostActionHitCollector<'_> {
     pub(super) fn accordion(&mut self, node: &UiNode, x: usize) {
         let document_accordion = node.props().text.role == "html-accordion";
-        let header_height =
-            UiTreeTextMetrics::for_node_with_typography(node, self.typography).line_height;
+        let metrics = UiTreeTextMetrics::for_node_with_typography(node, self.typography);
+        let logical_header_height = metrics
+            .baseline_from_line_box_top
+            .map_or(metrics.line_height as f32, |_| metrics.line_box_height);
+        let header_height = logical_header_height.ceil() as usize;
+        let logical_header_top = self.text_logical_y.max(self.y as f32);
         self.push_node_action_hits(
             node,
             UiTreeHitRect {
@@ -20,7 +24,8 @@ impl UiTreeHostActionHitCollector<'_> {
                 height: header_height,
             },
         );
-        self.y = self.y.saturating_add(header_height);
+        self.text_logical_y = logical_header_top + logical_header_height;
+        self.y = self.text_logical_y.floor().max(0.0) as usize;
         if !node.props().interaction.open {
             return;
         }
@@ -33,7 +38,7 @@ impl UiTreeHostActionHitCollector<'_> {
             self.node(child, child_x);
         }
         if !document_accordion {
-            self.y = self.y.saturating_add(NODE_GAP);
+            self.advance_y(NODE_GAP);
         }
     }
 
