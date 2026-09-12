@@ -187,6 +187,13 @@ impl UiTreeDocumentTypography {
         self
     }
 
+    pub(in crate::raster_host) const fn has_fractional_baseline(self) -> bool {
+        self.body_baseline.is_some()
+            || self.heading_1_baseline.is_some()
+            || self.heading_2_baseline.is_some()
+            || self.heading_3_baseline.is_some()
+    }
+
     pub(in crate::raster_host) const fn body(self) -> Option<UiTreeTextRoleTypography> {
         self.body
     }
@@ -276,16 +283,24 @@ mod tests {
         assert_eq!(None, typography.heading_2());
         assert_eq!(None, typography.heading_3());
 
+        let legacy_body = UiTreeTextRoleTypography::new(16.5, 23, 4);
+        let legacy_heading_1 = UiTreeTextRoleTypography::new(24.75, 40, 10);
         let legacy_heading_2 = UiTreeTextRoleTypography::new(22.0, 34, 5);
         let legacy_heading_3 = UiTreeTextRoleTypography::new(20.0, 30, 4);
-        let legacy_typography = typography
+        let legacy_typography = UiTreeDocumentTypography::new()
+            .with_body(legacy_body)
+            .with_heading_1(legacy_heading_1)
             .with_heading_2(legacy_heading_2)
             .with_heading_3(legacy_heading_3);
 
+        assert_eq!(Some(legacy_body), legacy_typography.body());
+        assert_eq!(Some(legacy_heading_1), legacy_typography.heading_1());
         assert_eq!(Some(legacy_heading_2), legacy_typography.heading_2());
         assert_eq!(Some(legacy_heading_3), legacy_typography.heading_3());
         assert_eq!(None, legacy_typography.heading_2_baseline());
         assert_eq!(None, legacy_typography.heading_3_baseline());
+        assert!(typography.has_fractional_baseline());
+        assert!(!legacy_typography.has_fractional_baseline());
     }
 
     #[test]

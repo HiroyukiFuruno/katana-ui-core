@@ -9,20 +9,6 @@ use crate::raster_host::text::RichTextStyle;
 use crate::raster_host::ui_tree_canvas_text::UiTreeTextRenderer;
 
 impl UiTreeCanvasRenderer {
-    pub(super) fn draw_container_child(
-        &self,
-        canvas: &mut Canvas,
-        child: &UiNode,
-        child_x: usize,
-        y: &mut usize,
-        logical_y: &mut f32,
-        area: UiTreeRenderArea,
-        palette: UiTreeCanvasPalette,
-    ) {
-        self.render_node_with_logical_cursor(canvas, child, child_x, logical_y, area, palette);
-        *y = logical_canvas_boundary(*logical_y);
-    }
-
     pub(super) fn draw_accordion(
         &self,
         canvas: &mut Canvas,
@@ -32,6 +18,14 @@ impl UiTreeCanvasRenderer {
         area: UiTreeRenderArea,
         palette: UiTreeCanvasPalette,
     ) {
+        if !self
+            .typography
+            .document_typography
+            .has_fractional_baseline()
+        {
+            self.draw_legacy_accordion(canvas, node, x, y, area, palette);
+            return;
+        }
         let mut logical_y = *y as f32;
         self.draw_accordion_with_logical_cursor(canvas, node, x, &mut logical_y, area, palette);
         *y = logical_canvas_boundary(logical_y);
@@ -132,7 +126,7 @@ impl UiTreeCanvasRenderer {
         }
     }
 
-    fn draw_container_with_logical_cursor(
+    pub(super) fn draw_container_with_logical_cursor(
         &self,
         canvas: &mut Canvas,
         node: &UiNode,
@@ -305,7 +299,8 @@ mod tests {
     };
     use crate::raster_host::{UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography};
     use crate::render_model::{
-        UiCommonProps, UiDimension, UiEdgeInsets, UiTextProps, UiVisualRole,
+        UiCommonProps, UiDimension, UiEdgeInsets, UiInteractionState, UiPosition, UiTextProps,
+        UiVisualRole,
     };
     use crate::theme::ThemeSnapshot;
 
@@ -597,6 +592,157 @@ mod tests {
             canvas.pixels()[64 * canvas.width()] != palette.background,
             "an auto-height hover surface must paint after its children"
         );
+    }
+
+    #[test]
+    fn logical_cursor_clips_fixed_text_accordion_and_row_to_declared_height() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = fractional_renderer(theme);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 120,
+            scroll_y: 0.0,
+        };
+        let fixed_nodes = [
+            UiNode::new(UiNodeKind::Text, "fixed text").height(UiDimension::px(10)),
+            UiNode::new(UiNodeKind::Accordion, "fixed accordion").height(UiDimension::px(10)),
+            UiNode::new(UiNodeKind::Row, "")
+                .height(UiDimension::px(10))
+                .child(UiNode::new(UiNodeKind::Text, "row child")),
+        ];
+
+        for node in fixed_nodes {
+            let mut canvas = Canvas::new_scaled(240, 120, 2.0, palette.background);
+            let mut logical_y = 31.5;
+            renderer.render_node_with_logical_cursor(
+                &mut canvas,
+                &node,
+                0,
+                &mut logical_y,
+                area,
+                palette,
+            );
+
+            assert_eq!(
+                41.5, logical_y,
+                "fixed nodes must advance by their declared height without leaking child layout"
+            );
+        }
+    }
+
+    #[test]
+    fn logical_cursor_dispatches_absolute_stack_and_skips_outside_integer_node() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = fractional_renderer(theme);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 20,
+            scroll_y: 0.0,
+        };
+        let overlay = UiNode::new(UiNodeKind::Stack, "")
+            .height(UiDimension::px(20))
+            .child(
+                UiNode::new(UiNodeKind::Button, "overlay")
+                    .height(UiDimension::px(20))
+                    .position(UiPosition::Absolute),
+            );
+        let mut overlay_canvas = Canvas::new_scaled(240, 120, 2.0, palette.background);
+        let mut overlay_y = 31.5;
+        renderer.render_node_with_logical_cursor(
+            &mut overlay_canvas,
+            &overlay,
+            0,
+            &mut overlay_y,
+            area,
+            palette,
+        );
+        assert_eq!(
+            51.5, overlay_y,
+            "absolute stack must consume its frame height"
+        );
+
+        let outside = UiNode::new(UiNodeKind::Button, "outside");
+        let expected_height =
+            renderer.measured_scroll_node_height(&outside, renderer.text_context(palette), 0, area)
+                as f32;
+        let mut outside_canvas = Canvas::new_scaled(240, 120, 2.0, palette.background);
+        let mut outside_y = 40.5;
+        renderer.render_node_with_logical_cursor(
+            &mut outside_canvas,
+            &outside,
+            0,
+            &mut outside_y,
+            area,
+            palette,
+        );
+        assert_eq!(40.5 + expected_height, outside_y);
+        assert!(
+            outside_canvas
+                .pixels()
+                .iter()
+                .all(|pixel| *pixel == palette.background),
+            "a node wholly outside the viewport must not paint"
+        );
+    }
+
+    #[test]
+    fn logical_cursor_renders_open_accordion_and_auto_height_hover_surface() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = fractional_renderer(theme);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 120,
+            scroll_y: 0.0,
+        };
+        let open = UiInteractionState {
+            open: true,
+            ..UiInteractionState::default()
+        };
+        let accordion = UiNode::new(UiNodeKind::Accordion, "open")
+            .interaction(open)
+            .child(UiNode::new(UiNodeKind::Text, "accordion child"));
+        let hover_surface = UiNode::new(UiNodeKind::Stack, "")
+            .visual_role(UiVisualRole::HoverSurface)
+            .child(UiNode::new(UiNodeKind::Text, "hover child"));
+        let root = UiNode::new(UiNodeKind::Column, "")
+            .child(accordion)
+            .child(hover_surface);
+        let expected_height =
+            renderer.measured_scroll_node_height(&root, renderer.text_context(palette), 0, area)
+                as f32;
+        let mut canvas = Canvas::new_scaled(240, 120, 2.0, palette.background);
+        let mut logical_y = 0.5;
+        renderer.render_node_with_logical_cursor(
+            &mut canvas,
+            &root,
+            0,
+            &mut logical_y,
+            area,
+            palette,
+        );
+
+        assert_eq!(0.5 + expected_height, logical_y);
+        assert!(
+            canvas.non_background_pixels(palette.background) > 0,
+            "open accordion children and an auto-height hover surface must paint"
+        );
+    }
+
+    fn fractional_renderer(theme: ThemeSnapshot) -> UiTreeCanvasRenderer {
+        UiTreeCanvasRenderer::with_document_typography(
+            theme,
+            UiTreeDocumentTypography::new()
+                .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5)),
+        )
     }
 
     fn first_non_background_row(canvas: &Canvas, background: u32) -> usize {

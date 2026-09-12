@@ -1,13 +1,56 @@
 use super::{
-    Canvas, ContainerPadding, TEXT_HEIGHT, UiNode, UiNodeKind, UiTreeCanvasPalette,
-    UiTreeCanvasRenderer, UiTreeRenderArea, UiTreeSettingsContext, UiVisualRole,
-    absolute_child_rect, child_container_x, child_render_area, dimension_px, draw_hover_surface,
-    draw_label, gap_after_child, has_absolute_child, is_absolute, remaining_width,
-    should_draw_container_label, stack_frame_height,
+    Canvas, ContainerPadding, INDENT, NODE_GAP, TEXT_HEIGHT, UiNode, UiNodeKind,
+    UiTreeCanvasPalette, UiTreeCanvasRenderer, UiTreeRenderArea, UiTreeSettingsContext,
+    UiVisualRole, absolute_child_rect, child_container_x, child_render_area, dimension_px,
+    draw_hover_surface, draw_label, gap_after_child, has_absolute_child, is_absolute,
+    is_outside_vertical_viewport, remaining_width, should_draw_container_label, stack_frame_height,
 };
 use crate::raster_host::ui_tree_canvas_scroll_measure::measured_node_height;
+use crate::raster_host::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 
 impl UiTreeCanvasRenderer {
+    pub(super) fn draw_legacy_accordion(
+        &self,
+        canvas: &mut Canvas,
+        node: &UiNode,
+        x: usize,
+        y: &mut usize,
+        area: UiTreeRenderArea,
+        palette: UiTreeCanvasPalette,
+    ) {
+        let document_accordion = node.props().text.role == "html-accordion";
+        let metrics = UiTreeTextMetrics::for_node_with_typography(node, self.typography);
+        let label = if document_accordion {
+            node.props().label.clone()
+        } else if node.props().interaction.open {
+            format!("v {}", node.props().label)
+        } else {
+            format!("> {}", node.props().label)
+        };
+        self.text.draw(
+            canvas,
+            &label,
+            x,
+            y.saturating_add(metrics.top_margin),
+            metrics.font_size,
+            palette.text,
+        );
+        *y = y.saturating_add(metrics.line_height);
+        if node.props().interaction.open {
+            let child_x = if document_accordion {
+                x
+            } else {
+                x.saturating_add(INDENT)
+            };
+            for child in node.children() {
+                self.render_node(canvas, child, child_x, y, area, palette);
+            }
+            if !document_accordion {
+                *y = y.saturating_add(NODE_GAP);
+            }
+        }
+    }
+
     pub(super) fn draw_container(
         &self,
         canvas: &mut Canvas,
@@ -17,6 +60,16 @@ impl UiTreeCanvasRenderer {
         area: UiTreeRenderArea,
         palette: UiTreeCanvasPalette,
     ) {
+        if self
+            .typography
+            .document_typography
+            .has_fractional_baseline()
+        {
+            let mut logical_y = *y as f32;
+            self.draw_container_with_logical_cursor(canvas, node, x, &mut logical_y, area, palette);
+            *y = logical_y.ceil().max(0.0) as usize;
+            return;
+        }
         if node.kind() == UiNodeKind::Stack && has_absolute_child(node) {
             self.draw_overlay_stack(canvas, node, x, y, area, palette);
             return;
@@ -30,7 +83,6 @@ impl UiTreeCanvasRenderer {
         let child_x = child_container_x(node, x).saturating_add(padding.left);
         let child_area = child_render_area(area, node, child_x, padding);
         *y = y.saturating_add(padding.top);
-        let mut logical_y = *y as f32;
         let requested_height = dimension_px(&node.props().common.height);
         if requested_height > 0 {
             let clip_height = hover_surface_child_clip_height(node, requested_height);
@@ -41,41 +93,26 @@ impl UiTreeCanvasRenderer {
                 clip_height,
                 &mut |canvas| {
                     for (index, child) in node.children().iter().enumerate() {
-                        self.draw_container_child(
-                            canvas,
-                            child,
-                            child_x,
-                            y,
-                            &mut logical_y,
-                            child_area,
-                            palette,
-                        );
+                        self.draw_container_child(canvas, child, child_x, y, child_area, palette);
                         if index + 1 < node.children().len() {
-                            logical_y +=
-                                gap_after_child(node, child, &node.children()[index + 1]) as f32;
-                            *y = logical_y.ceil() as usize;
+                            *y = y.saturating_add(gap_after_child(
+                                node,
+                                child,
+                                &node.children()[index + 1],
+                            ));
                         }
                     }
                 },
             );
         } else {
             for (index, child) in node.children().iter().enumerate() {
-                self.draw_container_child(
-                    canvas,
-                    child,
-                    child_x,
-                    y,
-                    &mut logical_y,
-                    child_area,
-                    palette,
-                );
+                self.draw_container_child(canvas, child, child_x, y, child_area, palette);
                 if index + 1 < node.children().len() {
-                    logical_y += gap_after_child(node, child, &node.children()[index + 1]) as f32;
-                    *y = logical_y.ceil() as usize;
+                    *y =
+                        y.saturating_add(gap_after_child(node, child, &node.children()[index + 1]));
                 }
             }
         }
-        *y = logical_y.ceil() as usize;
         *y = y.saturating_add(padding.bottom);
         draw_hover_surface(
             canvas,
@@ -86,6 +123,24 @@ impl UiTreeCanvasRenderer {
             palette,
             hover_surface_height,
         );
+    }
+
+    fn draw_container_child(
+        &self,
+        canvas: &mut Canvas,
+        child: &UiNode,
+        child_x: usize,
+        y: &mut usize,
+        area: UiTreeRenderArea,
+        palette: UiTreeCanvasPalette,
+    ) {
+        let height =
+            self.measured_scroll_node_height(child, self.text_context(palette), child_x, area);
+        if is_outside_vertical_viewport(*y, height, area) {
+            *y = y.saturating_add(height);
+            return;
+        }
+        self.render_node(canvas, child, child_x, y, area, palette);
     }
 
     fn hover_surface_height(

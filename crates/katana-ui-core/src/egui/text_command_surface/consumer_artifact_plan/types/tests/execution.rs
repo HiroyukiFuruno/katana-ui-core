@@ -620,15 +620,37 @@ fn issuer_rejects_a_caller_supplied_color_emoji_pin_that_does_not_match_loaded_b
 }
 
 #[test]
-fn artifact_unicode_options_preserve_only_build_time_or_caller_supplied_pins() {
+fn artifact_unicode_options_use_a_kuc_owned_readable_emoji_pin() {
     let default_options = KucUnicodeColorGlyphEvidenceOptions::default();
     let options = artifact_unicode_evidence_options();
-    assert_eq!(
-        options.config.emoji_candidates,
-        default_options.config.emoji_candidates
-    );
-    assert_eq!(
-        options.config.emoji_candidate_sha256,
-        default_options.config.emoji_candidate_sha256
-    );
+    if !default_options.config.emoji_candidate_sha256.is_empty() {
+        assert_eq!(
+            options.config.emoji_candidates,
+            default_options.config.emoji_candidates
+        );
+        assert_eq!(
+            options.config.emoji_candidate_sha256,
+            default_options.config.emoji_candidate_sha256
+        );
+        return;
+    }
+
+    let Some((candidate, hash)) = default_options
+        .config
+        .emoji_candidates
+        .iter()
+        .find_map(|path| {
+            std::fs::read(path).ok().map(|bytes| {
+                (
+                    path.clone(),
+                    crate::text_raster::PlatformFontSha256::digest(&bytes),
+                )
+            })
+        })
+    else {
+        assert!(options.config.emoji_candidate_sha256.is_empty());
+        return;
+    };
+    assert_eq!(options.config.emoji_candidates, vec![candidate]);
+    assert_eq!(options.config.emoji_candidate_sha256, vec![hash]);
 }

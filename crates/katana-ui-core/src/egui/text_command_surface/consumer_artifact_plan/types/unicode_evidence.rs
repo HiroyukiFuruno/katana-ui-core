@@ -3,6 +3,7 @@ use super::{ConsumerArtifactLeafId, ConsumerArtifactPlanError};
 use crate::egui::text_command_surface::{
     KucUnicodeColorGlyphEvidenceCapture, KucUnicodeColorGlyphEvidenceOptions,
 };
+use crate::text_raster::PlatformFontSha256;
 use sha2::{Digest, Sha256};
 
 const STAGE_UNICODE_EVIDENCE_DOMAIN: &[u8] = b"kuc.consumer-artifact.unicode-evidence.v1";
@@ -44,7 +45,25 @@ fn remove_catalog_face_source_path(
 }
 
 pub(super) fn artifact_unicode_evidence_options() -> KucUnicodeColorGlyphEvidenceOptions {
-    KucUnicodeColorGlyphEvidenceOptions::default()
+    let mut options = KucUnicodeColorGlyphEvidenceOptions::default();
+    pin_first_readable_emoji_candidate(&mut options.config);
+    options
+}
+
+fn pin_first_readable_emoji_candidate(config: &mut crate::text_raster::PlatformTextRasterConfig) {
+    if !config.emoji_candidate_sha256.is_empty() {
+        return;
+    }
+    let Some((path, hash)) = config.emoji_candidates.iter().find_map(|path| {
+        std::fs::read(path)
+            .ok()
+            .map(|bytes| (path.clone(), PlatformFontSha256::digest(&bytes)))
+    }) else {
+        return;
+    };
+    /* WHY: consumer artifactはhost固有のfont policyを注入しないため、KUCが読み込めた候補だけをpinする。 */
+    config.emoji_candidates = vec![path];
+    config.emoji_candidate_sha256 = vec![hash];
 }
 
 pub(super) fn bind_unicode_evidence(
@@ -75,8 +94,73 @@ pub(super) fn bind_unicode_evidence(
 
 #[cfg(test)]
 mod tests {
-    use super::{remove_catalog_face_source_path, unicode_evidence_value};
+    use super::{
+        pin_first_readable_emoji_candidate, remove_catalog_face_source_path, unicode_evidence_value,
+    };
     use crate::egui::text_command_surface::consumer_artifact_plan::ConsumerArtifactPlanError;
+    use crate::text_raster::PlatformFontSha256;
+
+    fn test_raster_config(
+        emoji_candidates: Vec<std::path::PathBuf>,
+        emoji_candidate_sha256: Vec<PlatformFontSha256>,
+    ) -> crate::text_raster::PlatformTextRasterConfig {
+        crate::text_raster::PlatformTextRasterConfig {
+            proportional_candidates: Vec::new(),
+            monospace_candidates: Vec::new(),
+            emoji_candidates,
+            emoji_candidate_sha256,
+            cache_capacity: 1,
+        }
+    }
+
+    #[test]
+    fn pin_first_readable_emoji_candidate_skips_unreadable_candidates() {
+        let path = std::env::temp_dir().join(format!(
+            "kuc-unicode-evidence-readable-{}",
+            std::process::id()
+        ));
+        std::fs::write(&path, b"test emoji font").expect("test font should be readable");
+        let missing = path.with_extension("missing");
+        let mut config = test_raster_config(vec![missing, path.clone()], Vec::new());
+
+        pin_first_readable_emoji_candidate(&mut config);
+
+        assert_eq!(config.emoji_candidates, vec![path.clone()]);
+        assert_eq!(
+            config.emoji_candidate_sha256,
+            vec![PlatformFontSha256::digest(b"test emoji font")]
+        );
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn pin_first_readable_emoji_candidate_leaves_unreadable_candidates_unpinned() {
+        let missing = std::env::temp_dir().join(format!(
+            "kuc-unicode-evidence-missing-{}",
+            std::process::id()
+        ));
+        let mut config = test_raster_config(vec![missing.clone()], Vec::new());
+
+        pin_first_readable_emoji_candidate(&mut config);
+
+        assert_eq!(config.emoji_candidates, vec![missing]);
+        assert!(config.emoji_candidate_sha256.is_empty());
+    }
+
+    #[test]
+    fn pin_first_readable_emoji_candidate_preserves_an_existing_pin() {
+        let candidate = std::env::temp_dir().join(format!(
+            "kuc-unicode-evidence-pinned-{}",
+            std::process::id()
+        ));
+        let existing_hash = PlatformFontSha256::digest(b"existing pin");
+        let mut config = test_raster_config(vec![candidate.clone()], vec![existing_hash]);
+
+        pin_first_readable_emoji_candidate(&mut config);
+
+        assert_eq!(config.emoji_candidates, vec![candidate]);
+        assert_eq!(config.emoji_candidate_sha256, vec![existing_hash]);
+    }
 
     #[test]
     fn published_unicode_evidence_removes_the_host_font_path() {
