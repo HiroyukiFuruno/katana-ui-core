@@ -590,8 +590,8 @@ mod tests {
         );
 
         assert_eq!(
-            104, y,
-            "logical container children must advance their parent cursor"
+            80, y,
+            "a fixed-height child must advance its parent by its declared height"
         );
         assert!(
             canvas.pixels()[64 * canvas.width()] != palette.background,
