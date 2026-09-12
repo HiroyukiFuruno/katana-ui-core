@@ -1,3 +1,5 @@
+#![cfg(feature = "raster-host")]
+
 use katana_ui_core::raster_host::{Canvas, UiTreeCanvasRenderer, UiTreeRenderArea};
 use katana_ui_core::render_model::{UiDimension, UiNode, UiNodeKind, UiPosition};
 use katana_ui_core::theme::ThemeSnapshot;
