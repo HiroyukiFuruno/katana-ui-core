@@ -260,7 +260,7 @@ mod tests {
             .first()
             .expect("selectable text run should be recorded");
 
-        assert_eq!(line_box_top.floor() as usize, run.y());
+        assert_eq!(line_box_top.round() as usize, run.y());
         assert_ne!(paint_origin.round() as usize, run.y());
     }
     use katana_ui_core::theme::ThemeSnapshot;

@@ -59,7 +59,7 @@ pub(super) fn record_runtime_text_run(
     canvas.record_text_run_with_glyph_widths(
         text,
         origin_x,
-        y.floor().max(0.0) as usize,
+        y.round().max(0.0) as usize,
         selection_width,
         raster
             .grapheme_bounds
