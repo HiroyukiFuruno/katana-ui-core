@@ -141,6 +141,13 @@ Overall average: **60-90% token reduction** on common development operations.
 
 # katana-ui-core repository rules
 
+## 承認済みリリースの継続
+
+- 目的と完了条件が明確なら、承認済みの commit / push / merge / release / cleanup は再確認せず実行する。進捗報告でターンを終了しない。
+- 元タスクがarchive・中断された場合は、同じ作業ツリーの実行状況と差分を確認し、競合がなければ残作業を引き継ぐ。引継ぎ待ちを新たな承認条件にしない。
+- coverage失敗は既存LCOVの未到達行を先に修正し、限定テスト後に最終release-checkを実行する。終了コード・ログ・session_idを保持し、稼働targetをcleanしない。
+- 文書・ルールだけの変更を理由に製品full gateを追加しない。ルール整理を製品リリースの代わりにしない。
+
 ## Storybook の扱い
 
 Storybook は、利用者や開発者が KUC の部品を実画面で触り、見た目、操作感、設定変更時の振る舞いへフィードバックするための画面である。
@@ -169,8 +176,8 @@ KUC 固有の都合を `kal` 側へ追記してはならない。
 v0.1.0 release readiness が未達の間、runner は未完了の 01〜24 / Storybook / 自動テスト / guard を自律的に消化し続ける。
 ローカル実装、テスト、静的検査（lint）、OpenSpec 更新、ローカル保存（commit）は、ユーザーが「続けて」と明示している作業では停止理由にしない。
 
-停止して確認するのは、外部へ影響する送信（push）、公開（release）、破壊的操作、または repository 外の実装へ踏み出す場合だけとする。
-push confirmation required / release confirmation required / destructive operation confirmation required を停止条件の合言葉として扱う。
+停止して確認するのは、未承認の外部送信（push）、公開（release）、破壊的操作、または repository 外の実装へ踏み出す場合だけとする。
+push confirmation required / release confirmation required / destructive operation confirmation required は未承認の場合だけ適用し、承認済みの工程では停止しない。
 それ以外で作業が残っている場合は、次の未完了タスクを選び、実装と自動テストへ進む。
 
 ## 進捗報告

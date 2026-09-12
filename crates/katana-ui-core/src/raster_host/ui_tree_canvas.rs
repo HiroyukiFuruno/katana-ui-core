@@ -127,8 +127,25 @@ impl UiTreeCanvasRenderer {
 
     pub fn render(&self, canvas: &mut Canvas, root: &UiNode, area: UiTreeRenderArea) {
         canvas.with_clip(area.x, area.y, area.width, area.height, &mut |canvas| {
-            let mut y = render_origin_y(root, area);
-            self.render_node(canvas, root, area.x, &mut y, area, self.palette);
+            let origin_y = render_origin_y(root, area);
+            if self
+                .typography
+                .document_typography
+                .has_fractional_baseline()
+            {
+                let mut logical_y = origin_y as f32;
+                self.render_node_with_logical_cursor(
+                    canvas,
+                    root,
+                    area.x,
+                    &mut logical_y,
+                    area,
+                    self.palette,
+                );
+            } else {
+                let mut y = origin_y;
+                self.render_node(canvas, root, area.x, &mut y, area, self.palette);
+            }
         });
     }
 
@@ -274,6 +291,9 @@ impl UiTreeCanvasRenderer {
 #[cfg(test)]
 mod direct_render_tests {
     use super::*;
+    use crate::raster_host::document_typography::{
+        UiTreeDocumentTypography, UiTreeTextRoleTypography,
+    };
     use katana_ui_core::{atom::Text, molecule::Accordion};
 
     #[test]
@@ -319,6 +339,41 @@ mod direct_render_tests {
 
         assert_eq!(default_y, legacy_y);
         assert_eq!(default_canvas.pixels(), legacy_canvas.pixels());
+    }
+
+    #[test]
+    fn legacy_document_typography_render_keeps_the_integer_renderer_path() {
+        let theme = ThemeSnapshot::dark();
+        let renderer = UiTreeCanvasRenderer::with_document_typography(
+            theme,
+            UiTreeDocumentTypography::new().with_body(UiTreeTextRoleTypography::new(16.0, 23, 0)),
+        );
+        let root: UiNode = UiNode::new(UiNodeKind::Column, "")
+            .child(Text::new("first").text_role("body"))
+            .child(Text::new("second").text_role("body"));
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 200,
+            height: 100,
+            scroll_y: 0.0,
+        };
+        let mut rendered = Canvas::new(area.width, area.height, renderer.palette.background);
+        let mut expected = Canvas::new(area.width, area.height, renderer.palette.background);
+        let mut expected_y = render_origin_y(&root, area);
+
+        renderer.render(&mut rendered, &root, area);
+        renderer.render_node(
+            &mut expected,
+            &root,
+            area.x,
+            &mut expected_y,
+            area,
+            renderer.palette,
+        );
+
+        assert_eq!(expected.pixels(), rendered.pixels());
+        assert_eq!(expected.text_runs(), rendered.text_runs());
     }
 
     #[test]

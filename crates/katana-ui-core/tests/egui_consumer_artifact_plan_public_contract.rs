@@ -88,7 +88,6 @@ mod foreign_consumer {
             .map_err(Into::into)
     }
 
-    #[cfg(target_os = "linux")]
     pub(super) fn execute_full_plan_from_opaque_scenario_leases()
     -> Result<(), Box<dyn std::error::Error>> {
         let session = FullTextCommandSurfaceScenarioSession::new_consumer_artifact();
@@ -152,7 +151,6 @@ fn foreign_consumer_can_issue_full_plan_from_opaque_scenario_leases() {
     );
 }
 
-#[cfg(target_os = "linux")]
 #[test]
 fn foreign_consumer_executes_every_stage_from_opaque_scenario_leases() {
     foreign_consumer::execute_full_plan_from_opaque_scenario_leases()
