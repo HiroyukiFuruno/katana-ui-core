@@ -216,6 +216,13 @@ fn logical_node_height(
     if node.kind() == katana_ui_core::render_model::UiNodeKind::Text {
         return logical_text_height(renderer, context, node, x, area);
     }
+    if node.kind() == katana_ui_core::render_model::UiNodeKind::Accordion
+        && !node.props().interaction.open
+        && dimension_px(&node.props().common.height) == 0
+    {
+        return UiTreeTextMetrics::for_node_with_typography(node, context.typography)
+            .line_box_height;
+    }
     renderer.measured_scroll_node_height(node, context, x, area) as f32
 }
 

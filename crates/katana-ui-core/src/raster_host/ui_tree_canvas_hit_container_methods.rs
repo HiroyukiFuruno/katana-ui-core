@@ -32,6 +32,7 @@ impl UiTreeHostActionHitCollector<'_> {
 
     pub(super) fn overlay_stack(&mut self, node: &UiNode, x: usize) {
         let frame_top = self.y;
+        let frame_logical_top = self.text_logical_y;
         let frame_width = remaining_width(self.area, x);
         let frame_height = frame_height(node).max(TEXT_HEIGHT);
         let previous_area = self.area;
@@ -45,17 +46,20 @@ impl UiTreeHostActionHitCollector<'_> {
         self.push_container_action_hits(node, x, frame_top, frame_width);
         for child in node.children().iter().filter(|child| !is_absolute(child)) {
             self.y = frame_top;
+            self.text_logical_y = frame_logical_top;
             self.node(child, x);
         }
         for child in node.children().iter().filter(|child| is_absolute(child)) {
             let rect = absolute_child_rect(x, frame_top, frame_width, frame_height, child);
             self.y = rect.y;
+            self.text_logical_y = frame_logical_top + rect.y.saturating_sub(frame_top) as f32;
             let previous_semantic_node_id = self.semantic_node_id.take();
             self.node(child, rect.x);
             self.semantic_node_id = previous_semantic_node_id;
         }
         self.area = previous_area;
         self.y = frame_top.saturating_add(frame_height);
+        self.text_logical_y = frame_logical_top + frame_height as f32;
     }
 
     fn push_container_action_hits(

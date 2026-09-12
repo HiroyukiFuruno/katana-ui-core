@@ -5,6 +5,7 @@ use super::{
     can_render_children_incrementally, child_container_x, clip_scroll_hit, remaining_width,
     scroll_child_render_area, scroll_container_gap, scroll_source_y,
 };
+use crate::raster_host::ui_tree_canvas_hit_metrics::dimension_px;
 
 impl UiTreeHostActionHitCollector<'_> {
     pub(super) fn scroll_area(&mut self, node: &UiNode, x: usize) {
@@ -160,6 +161,9 @@ impl UiTreeHostActionHitCollector<'_> {
     }
 
     fn collect_visible_incremental_container(&mut self, node: &UiNode, x: usize, source_y: f32) {
+        let container_logical_top = self.text_logical_y;
+        let requested_height = dimension_px(&node.props().common.height);
+        let requested_logical_bottom = container_logical_top + requested_height as f32;
         let padding = ScrollContainerPadding::from_node(node);
         self.advance_y(padding.top);
         let child_x = child_container_x(node, x).saturating_add(padding.left);
@@ -173,10 +177,18 @@ impl UiTreeHostActionHitCollector<'_> {
             if self.y as f32 >= source_y + previous_area.height as f32 {
                 break;
             }
+            if requested_height > 0 && self.text_logical_y >= requested_logical_bottom {
+                break;
+            }
             self.collect_visible_node(child, child_x, source_y);
         }
         self.area = previous_area;
-        self.advance_y(padding.bottom);
+        if requested_height > 0 {
+            self.text_logical_y = requested_logical_bottom;
+            self.y = requested_logical_bottom.floor().max(0.0) as usize;
+        } else {
+            self.advance_y(padding.bottom);
+        }
     }
 
     pub(super) fn collect_scroll_area_document_hits(
