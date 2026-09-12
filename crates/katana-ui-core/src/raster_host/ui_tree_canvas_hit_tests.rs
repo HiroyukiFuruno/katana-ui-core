@@ -30,6 +30,8 @@ mod ui_tree_canvas_hit_media_frame_tests;
 mod ui_tree_canvas_hit_overlay_tests;
 #[path = "ui_tree_canvas_hit_overlay_visual_tests.rs"]
 mod ui_tree_canvas_hit_overlay_visual_tests;
+#[path = "ui_tree_canvas_hit_scroll_boundary_tests.rs"]
+mod ui_tree_canvas_hit_scroll_boundary_tests;
 #[path = "ui_tree_canvas_hit_scroll_tests.rs"]
 mod ui_tree_canvas_hit_scroll_tests;
 #[path = "ui_tree_canvas_hit_settings_tree_tests.rs"]
