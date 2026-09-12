@@ -7,6 +7,7 @@ pub(crate) mod canvas;
 pub(crate) mod canvas_blit;
 pub(crate) mod canvas_clip;
 pub(crate) mod canvas_color;
+pub(crate) mod canvas_fractional_y;
 pub(crate) mod canvas_model;
 pub(crate) mod canvas_physical;
 pub(crate) mod canvas_png;
@@ -74,6 +75,8 @@ pub(crate) mod ui_tree_surface_host;
 #[cfg(test)]
 mod canvas_extensions_regression_tests;
 #[cfg(test)]
+mod canvas_fractional_y_tests;
+#[cfg(test)]
 mod canvas_regression_tests;
 #[cfg(test)]
 mod canvas_retina_regression_tests;
@@ -110,10 +113,14 @@ mod ui_tree_storybook_host_tests;
 #[cfg(test)]
 mod ui_tree_surface_host_document_typography_tests;
 #[cfg(test)]
+mod ui_tree_surface_host_fractional_hit_tests;
+#[cfg(test)]
 mod ui_tree_surface_host_tests;
 
 pub use canvas::Canvas;
-pub use document_typography::{UiTreeDocumentTypography, UiTreeTextRoleTypography};
+pub use document_typography::{
+    UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography, UiTreeTextRoleTypography,
+};
 pub use presentation::StorybookPresentation;
 pub use text::TextRenderer;
 pub use text_selection::SelectableTextRun;

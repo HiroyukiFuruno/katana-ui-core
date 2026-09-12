@@ -37,6 +37,7 @@ impl Canvas {
             pixels: vec![color; physical_size(width, scale) * physical_size(height, scale)],
             clip: None,
             text_runs: Vec::new(),
+            physical_y_offset: 0,
         }
     }
 
@@ -101,6 +102,24 @@ impl Canvas {
         }
     }
 
+    pub(crate) fn fill_rect_at_logical_y(
+        &mut self,
+        x: usize,
+        y: f32,
+        width: usize,
+        height: f32,
+        color: u32,
+    ) {
+        let Some(rect) = self.visible_rect_at_logical_y(x, y, width, height) else {
+            return;
+        };
+        for current_y in rect.y..rect.bottom() {
+            let start = current_y * self.width + rect.x;
+            let end = current_y * self.width + rect.right();
+            self.pixels[start..end].fill(color);
+        }
+    }
+
     pub(crate) fn with_clip(
         &mut self,
         x: usize,
@@ -110,6 +129,28 @@ impl Canvas {
         draw: &mut dyn FnMut(&mut Self),
     ) {
         let Some(next) = self.to_physical_clip(x, y, width, height) else {
+            return;
+        };
+        let previous = self.clip;
+        self.clip = match previous {
+            Some(current) => current.intersect(next),
+            None => Some(next),
+        };
+        if self.clip.is_some() {
+            draw(self);
+        }
+        self.clip = previous;
+    }
+
+    pub(crate) fn with_clip_at_logical_y(
+        &mut self,
+        x: usize,
+        y: f32,
+        width: usize,
+        height: f32,
+        draw: &mut dyn FnMut(&mut Self),
+    ) {
+        let Some(next) = self.visible_rect_at_logical_y(x, y, width, height) else {
             return;
         };
         let previous = self.clip;

@@ -49,6 +49,24 @@ impl EguiTextCommandSurfaceHostRoot {
         )
     }
 
+    /// Advances a pre-issued lease while keeping state changed by prior dispatched events.
+    pub(crate) fn synchronize_with_lease_preserving_state(
+        &mut self,
+        lease: EguiTextCommandSurfaceHostProjectionLease,
+    ) -> Result<bool, EguiTextCommandSurfaceRootFactoryError> {
+        let (token, router, source_address, tab_strip, status_diagnostics, editor_viewport) =
+            lease.into_parts();
+        self.process.synchronize_router_preserving_state(
+            token.revision,
+            super::host_root_token_codec::decode_token(&token)?,
+            router,
+            source_address,
+            tab_strip,
+            status_diagnostics,
+            editor_viewport,
+        )
+    }
+
     /// Shows the complete retained root once and returns only the closed facade frame.
     pub fn show(
         &mut self,

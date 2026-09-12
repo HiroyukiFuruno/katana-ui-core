@@ -1,4 +1,5 @@
 use super::*;
+use crate::egui::text_command_surface::EguiTextCommandSurfaceChild;
 
 #[test]
 fn retain_with_lease_rejects_a_versioned_duplicate_family() {
@@ -125,4 +126,64 @@ fn synchronize_with_lease_attaches_source_address_tab_strip_and_aux_lease_slots(
     .with_editor_viewport(editor_viewport);
 
     assert!(root.synchronize_with_lease(lease).is_ok());
+}
+
+#[test]
+fn synchronize_with_lease_removes_an_omitted_source_address_projection() {
+    let style = TextCommandSurfaceStyle::standard().expect("standard style");
+    let target = b"source-address-removal-target";
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain(
+            EguiTextCommandSurfaceHostProjectionEncoder::token(
+                1,
+                target,
+                presentation(),
+                style.clone(),
+            )
+            .expect("initial token"),
+        )
+        .expect("retain initial root");
+    let source_address = SourceAddressProjectionLease::new(SourceAddressStrip::new(
+        SourceAddressPresentation::new("source-address", "show source address", "accessibility"),
+    ));
+    let with_source = EguiTextCommandSurfaceHostProjectionLease::new(
+        EguiTextCommandSurfaceHostProjectionEncoder::token(
+            2,
+            target,
+            presentation(),
+            style.clone(),
+        )
+        .expect("source-address lease token"),
+        |_context| Ok(None),
+    )
+    .with_source_address(source_address);
+    root.synchronize_with_lease(with_source)
+        .expect("source-address lease synchronizes");
+
+    let context = egui::Context::default();
+    let render_children = |root: &mut EguiTextCommandSurfaceHostRoot| {
+        let mut output = None;
+        let mut platform_output = context.run_ui(RawInput::default(), |ui| {
+            output = Some(root.show_output_for_test(ui));
+        });
+        platform_output.textures_delta.clear();
+        output
+            .expect("root renders")
+            .expect("root output")
+            .artifact_order()
+            .to_vec()
+    };
+    assert!(render_children(&mut root).contains(&EguiTextCommandSurfaceChild::SourceAddress));
+
+    let without_source = EguiTextCommandSurfaceHostProjectionLease::new(
+        EguiTextCommandSurfaceHostProjectionEncoder::token(3, target, presentation(), style)
+            .expect("source-address removal lease token"),
+        |_context| Ok(None),
+    );
+    root.synchronize_with_lease(without_source)
+        .expect("lease without source-address synchronizes");
+    assert!(
+        !render_children(&mut root).contains(&EguiTextCommandSurfaceChild::SourceAddress),
+        "a lease omitting source-address must detach the previous strip"
+    );
 }

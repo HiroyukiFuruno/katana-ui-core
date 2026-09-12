@@ -1,153 +1,40 @@
 use super::stage_interactions::render_stage;
 use super::support::{
-    cleanup_stage_output, map_root_error, next_issued_plan_identity, preflight_output, sha256,
-    validate_decoded_png, write_manifest, write_stage_artifact,
+    cleanup_stage_output, map_root_error, preflight_output, sha256, validate_decoded_png,
+    write_manifest, write_stage_artifact,
 };
 use super::unicode_evidence::{bind_unicode_evidence, capture_unicode_evidence};
 use super::{
     ConsumerArtifactEvidence, ConsumerArtifactForwardingReceipt, ConsumerArtifactLeafId,
-    ConsumerArtifactPlanError, ConsumerArtifactPlanV1, ConsumerArtifactStageBinding,
-    EguiTextCommandSurfaceHostRoot, GenericEffectClass, GenericInteractionClass, SCHEMA_VERSION,
+    ConsumerArtifactPlanError, ConsumerArtifactStageBinding, EguiTextCommandSurfaceHostRoot,
 };
+use crate::egui::text_command_surface::KucUnicodeColorGlyphEvidenceOptions;
 use crate::egui::text_command_surface::{
-    EguiTextCommandSurfaceRootFactory, KucUnicodeColorGlyphEvidenceOptions,
+    EguiTextCommandSurfaceRootEventBatchDispatchError,
+    EguiTextCommandSurfaceRootEventBatchForwardError, EguiTextCommandSurfaceRootEventTransport,
+    KucRootEventBatchDispatcher, KucRootEventBatchForwarder,
 };
-use std::collections::{BTreeMap, BTreeSet};
+use crate::molecule::command_chrome::{
+    CommandChromeSearchEvent, CommandChromeToolbarEvent, FloatingCommandToolbarEvent,
+};
+use crate::molecule::selection::ContextMenuEvent;
+use crate::text_surface::TextSurfaceEvent;
+use std::collections::BTreeMap;
+use std::convert::Infallible;
 use std::path::Path;
-
-/// KUC issuer for opaque consumer artifact plans.
-#[derive(Debug, Clone)]
-pub struct ConsumerArtifactPlanIssuer {
-    pub(super) unicode_evidence_options: KucUnicodeColorGlyphEvidenceOptions,
-}
-
-impl ConsumerArtifactPlanIssuer {
-    #[must_use]
-    pub fn new() -> Self {
-        Self::with_unicode_evidence_options(
-            super::unicode_evidence::artifact_unicode_evidence_options(),
-        )
-    }
-
-    /// Supplies a release-verified color-emoji pin for artifact Unicode evidence.
-    #[must_use]
-    pub fn with_unicode_evidence_options(
-        unicode_evidence_options: KucUnicodeColorGlyphEvidenceOptions,
-    ) -> Self {
-        Self {
-            unicode_evidence_options,
-        }
-    }
-}
-
-impl Default for ConsumerArtifactPlanIssuer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ConsumerArtifactPlanIssuer {
-    pub fn issue(
-        &self,
-        mut plan: ConsumerArtifactPlanV1,
-    ) -> Result<IssuedConsumerArtifactPlan, ConsumerArtifactPlanError> {
-        if plan.schema_version != SCHEMA_VERSION {
-            return Err(ConsumerArtifactPlanError::UnsupportedSchemaVersion(
-                plan.schema_version,
-            ));
-        }
-        if plan.bindings.is_empty() {
-            return Err(ConsumerArtifactPlanError::EmptyPlan);
-        }
-        let mut leaves = BTreeSet::new();
-        for binding in &plan.bindings {
-            if binding.effect != GenericEffectClass::NoHostEffect {
-                return Err(ConsumerArtifactPlanError::UnsupportedEffectClass(
-                    binding.effect,
-                ));
-            }
-            if !leaves.insert(binding.leaf.clone()) {
-                return Err(ConsumerArtifactPlanError::DuplicateLeaf(
-                    binding.leaf.0.clone(),
-                ));
-            }
-        }
-        if plan.bindings.len() != GenericInteractionClass::FULL_EDITOR_SEQUENCE.len()
-            || plan
-                .bindings
-                .iter()
-                .zip(GenericInteractionClass::FULL_EDITOR_SEQUENCE)
-                .any(|(binding, expected)| binding.interaction != expected)
-        {
-            return Err(ConsumerArtifactPlanError::IncompleteStageSequence);
-        }
-        for (index, binding) in plan.bindings.iter().enumerate() {
-            let expected = plan
-                .initial_revision
-                .checked_add(index as u64)
-                .ok_or(ConsumerArtifactPlanError::RevisionOverflow)?;
-            let actual = binding
-                .token
-                .as_ref()
-                .ok_or(ConsumerArtifactPlanError::StageAlreadyConsumed(index))?
-                .revision();
-            if actual != expected {
-                return Err(ConsumerArtifactPlanError::StaleRevision {
-                    stage: index,
-                    expected,
-                    actual,
-                });
-            }
-        }
-        let factory = EguiTextCommandSurfaceRootFactory::new();
-        let first_token = plan.bindings[0]
-            .token
-            .as_ref()
-            .ok_or(ConsumerArtifactPlanError::StageAlreadyConsumed(0))?;
-        for (index, binding) in plan.bindings.iter().enumerate().skip(1) {
-            let token = binding
-                .token
-                .as_ref()
-                .ok_or(ConsumerArtifactPlanError::StageAlreadyConsumed(index))?;
-            if !factory
-                .has_same_root_identity(first_token, token)
-                .map_err(map_root_error)?
-            {
-                return Err(ConsumerArtifactPlanError::TokenRootMismatch);
-            }
-        }
-        let first = plan.bindings[0]
-            .token
-            .take()
-            .ok_or(ConsumerArtifactPlanError::StageAlreadyConsumed(0))?;
-        let root = factory.retain(first).map_err(map_root_error)?;
-        Ok(IssuedConsumerArtifactPlan {
-            root,
-            bindings: plan.bindings,
-            unicode_evidence_options: self.unicode_evidence_options.clone(),
-            next_stage: 0,
-            prepared_stage: None,
-            failed_stage: None,
-            root_revision: plan.initial_revision,
-            receipt_root_identity_fingerprint: None,
-            issuance_nonce: next_issued_plan_identity(),
-            issued_receipts: BTreeMap::new(),
-        })
-    }
-}
 
 /// Issued stages retain one KUC root and can only run in their KUC-defined order.
 pub struct IssuedConsumerArtifactPlan {
-    root: EguiTextCommandSurfaceHostRoot,
-    bindings: Vec<ConsumerArtifactStageBinding>,
-    unicode_evidence_options: KucUnicodeColorGlyphEvidenceOptions,
-    next_stage: usize,
-    prepared_stage: Option<usize>,
-    failed_stage: Option<usize>,
-    root_revision: u64,
-    receipt_root_identity_fingerprint: Option<String>,
-    issuance_nonce: u64,
-    issued_receipts: BTreeMap<String, (ConsumerArtifactLeafId, String, u64)>,
+    pub(super) root: EguiTextCommandSurfaceHostRoot,
+    pub(super) bindings: Vec<ConsumerArtifactStageBinding>,
+    pub(super) unicode_evidence_options: KucUnicodeColorGlyphEvidenceOptions,
+    pub(super) next_stage: usize,
+    pub(super) prepared_stage: Option<usize>,
+    pub(super) failed_stage: Option<usize>,
+    pub(super) root_revision: u64,
+    pub(super) receipt_root_identity_fingerprint: Option<String>,
+    pub(super) issuance_nonce: u64,
+    pub(super) issued_receipts: BTreeMap<String, (ConsumerArtifactLeafId, String, u64)>,
 }
 
 impl IssuedConsumerArtifactPlan {
@@ -189,11 +76,16 @@ impl IssuedConsumerArtifactPlan {
                 .get_mut(index)
                 .ok_or(ConsumerArtifactPlanError::PlanComplete)?;
             if index > 0 && self.prepared_stage != Some(index) {
-                let token = binding
-                    .token
-                    .take()
-                    .ok_or(ConsumerArtifactPlanError::StageAlreadyConsumed(index))?;
-                self.root.synchronize(token).map_err(map_root_error)?;
+                if let Some(lease) = binding.take_root_lease() {
+                    self.root
+                        .synchronize_with_lease_preserving_state(lease)
+                        .map_err(map_root_error)?;
+                } else {
+                    let token = binding
+                        .take_token()
+                        .ok_or(ConsumerArtifactPlanError::StageAlreadyConsumed(index))?;
+                    self.root.synchronize(token).map_err(map_root_error)?;
+                }
                 self.prepared_stage = Some(index);
             }
             (
@@ -205,6 +97,7 @@ impl IssuedConsumerArtifactPlan {
         self.failed_stage = Some(index);
         let result = (|| {
             let frame = render_stage(&mut self.root, context, interaction, action_target.as_str())?;
+            forward_stage_events(&frame)?;
             let receipt = write_stage_artifact(&frame, output_dir, &stage_id)?;
             let artifact = receipt.artifact().clone();
             validate_decoded_png(&artifact)?;
@@ -255,15 +148,10 @@ impl IssuedConsumerArtifactPlan {
         })();
         match result {
             Ok(evidence) => {
-                self.issued_receipts.insert(
-                    evidence.receipt.fingerprint.clone(),
-                    (
-                        evidence.receipt.leaf.clone(),
-                        evidence.receipt.stage_id.clone(),
-                        evidence.receipt.root_revision,
-                    ),
-                );
-                self.next_stage += 1;
+                let () = {
+                    self.record_issued_receipt(&evidence);
+                    self.next_stage += 1;
+                };
                 self.prepared_stage = None;
                 self.failed_stage = None;
                 Ok(evidence)
@@ -274,6 +162,91 @@ impl IssuedConsumerArtifactPlan {
             }
         }
     }
+
+    pub(super) fn record_issued_receipt(&mut self, evidence: &ConsumerArtifactEvidence) {
+        self.issued_receipts.insert(
+            evidence.receipt.fingerprint.clone(),
+            (
+                evidence.receipt.leaf.clone(),
+                evidence.receipt.stage_id.clone(),
+                evidence.receipt.root_revision,
+            ),
+        );
+    }
+}
+
+struct ArtifactStageDispatcher;
+
+impl KucRootEventBatchDispatcher for ArtifactStageDispatcher {
+    type Error = Infallible;
+
+    fn dispatch_text_events(&mut self, _: Vec<TextSurfaceEvent>) -> Result<(), Self::Error> {
+        Ok(())
+    }
+    fn dispatch_toolbar_events(
+        &mut self,
+        _: Vec<CommandChromeToolbarEvent>,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+    fn dispatch_floating_events(
+        &mut self,
+        _: Vec<FloatingCommandToolbarEvent>,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+    fn dispatch_search_events(
+        &mut self,
+        _: Vec<CommandChromeSearchEvent>,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+    fn dispatch_context_menu_events(
+        &mut self,
+        _: Vec<ContextMenuEvent>,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
+struct ArtifactStageForwarder;
+
+impl KucRootEventBatchForwarder for ArtifactStageForwarder {
+    type Error = String;
+
+    #[inline(always)]
+    fn forward_root_event_batch(
+        &mut self,
+        transport: EguiTextCommandSurfaceRootEventTransport,
+    ) -> Result<(), Self::Error> {
+        transport
+            .dispatch_once(&mut ArtifactStageDispatcher)
+            .map(|_| ())
+            .map_err(artifact_stage_dispatch_error)
+    }
+}
+
+fn artifact_stage_dispatch_error(
+    error: EguiTextCommandSurfaceRootEventBatchDispatchError<Infallible>,
+) -> String {
+    format!("artifact stage event dispatch failed: {error:?}")
+}
+
+pub(super) fn forward_stage_events(
+    frame: &crate::egui::text_command_surface::EguiTextCommandSurfaceHostRootFrame,
+) -> Result<(), ConsumerArtifactPlanError> {
+    frame
+        .forward_events_once(&mut ArtifactStageForwarder)
+        .map(|_| ())
+        .map_err(map_forwarding_error)
+}
+
+fn map_forwarding_error(
+    error: EguiTextCommandSurfaceRootEventBatchForwardError<String>,
+) -> ConsumerArtifactPlanError {
+    ConsumerArtifactPlanError::Artifact(format!(
+        "artifact stage event forwarding failed: {error:?}"
+    ))
 }
 
 pub(super) fn show_frame(
@@ -296,4 +269,37 @@ pub(super) fn show_frame(
 
 pub(super) fn interaction_error(error: impl std::fmt::Display) -> ConsumerArtifactPlanError {
     ConsumerArtifactPlanError::Artifact(format!("KUC interaction protocol failed: {error}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn artifact_stage_dispatcher_accepts_every_generic_event_class() {
+        let mut dispatcher = ArtifactStageDispatcher;
+        assert_eq!(dispatcher.dispatch_text_events(Vec::new()), Ok(()));
+        assert_eq!(dispatcher.dispatch_toolbar_events(Vec::new()), Ok(()));
+        assert_eq!(dispatcher.dispatch_floating_events(Vec::new()), Ok(()));
+        assert_eq!(dispatcher.dispatch_search_events(Vec::new()), Ok(()));
+        assert_eq!(dispatcher.dispatch_context_menu_events(Vec::new()), Ok(()));
+    }
+
+    #[test]
+    fn forwarding_error_is_mapped_to_artifact_error() {
+        assert!(matches!(
+            map_forwarding_error(EguiTextCommandSurfaceRootEventBatchForwardError::AlreadyConsumed),
+            ConsumerArtifactPlanError::Artifact(message) if message.contains("AlreadyConsumed")
+        ));
+    }
+
+    #[test]
+    fn artifact_stage_dispatch_error_reports_opaque_host_effect_rejection() {
+        assert!(
+            artifact_stage_dispatch_error(
+                EguiTextCommandSurfaceRootEventBatchDispatchError::OpaqueHostEffect
+            )
+            .contains("OpaqueHostEffect")
+        );
+    }
 }

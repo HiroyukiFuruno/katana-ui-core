@@ -1,10 +1,13 @@
 use super::{
-    Canvas, UiTreeDocumentTypography, UiTreeRenderArea, UiTreeSurfaceHost, UiTreeTextRoleTypography,
+    Canvas, UiTreeDocumentTypography, UiTreeRenderArea, UiTreeSurfaceHost,
+    UiTreeTextRoleBaselineTypography, UiTreeTextRoleTypography,
 };
 use crate::test_assert::KucTestExpect;
-use katana_ui_core::atom::Text;
+use katana_ui_core::atom::{Input, Text};
 use katana_ui_core::molecule::Accordion;
-use katana_ui_core::render_model::{UiHostActionSpec, UiNode, UiNodeId, UiNodeKind, UiTextProps};
+use katana_ui_core::render_model::{
+    UiHostActionSpec, UiNode, UiNodeId, UiNodeKind, UiTextProps, UiTextSpan,
+};
 use katana_ui_core::theme::ThemeSnapshot;
 
 const TEST_AREA_WIDTH: usize = 240;
@@ -13,8 +16,8 @@ const TEST_AREA_HEIGHT: usize = 80;
 #[test]
 fn surface_host_document_typography_shares_raster_and_node_hit_metrics() {
     let document_typography = UiTreeDocumentTypography::new()
-        .with_body(UiTreeTextRoleTypography::new(16.5, 23, 0))
-        .with_heading_1(UiTreeTextRoleTypography::new(24.75, 40, 9));
+        .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.5, 23.0, 18.5))
+        .with_heading_1_baseline(UiTreeTextRoleBaselineTypography::new(24.75, 40.0, 30.0));
     let body: UiNode = Text::new("WWWW").text_role("body").into();
     let heading: UiNode = Text::new("WWWW").text_role("heading").into();
     let root = UiNode::new(UiNodeKind::Column, "")
@@ -40,6 +43,76 @@ fn surface_host_document_typography_shares_raster_and_node_hit_metrics() {
     assert_eq!(40, heading_hit.rect.height);
     assert!(non_background_width(&canvas, 0, 23) > 0);
     assert!(non_background_width(&canvas, 23, 63) > non_background_width(&canvas, 0, 23));
+}
+
+#[test]
+fn surface_host_action_hits_advance_fractional_text_cursor_without_rounding_each_node() {
+    let document_typography = UiTreeDocumentTypography::new()
+        .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5));
+    let first: UiNode = Text::new("First")
+        .text_role("body")
+        .host_action(UiHostActionSpec::command("first", "First"))
+        .into();
+    let second: UiNode = Text::new("Second")
+        .text_role("body")
+        .text_spans(vec![UiTextSpan {
+            text: "Second".to_owned(),
+            style: Default::default(),
+            link_target: "https://example.test/second".to_owned(),
+        }])
+        .into();
+    let root = UiNode::new(UiNodeKind::Column, "")
+        .child(first)
+        .child(second);
+    let host =
+        UiTreeSurfaceHost::with_document_typography(ThemeSnapshot::dark(), document_typography);
+
+    let hits = host.document_host_action_hits(&root, test_area());
+    let second = hits
+        .iter()
+        .find(|hit| hit.action.action_id == "ui.link.open")
+        .kuc_expect("second linked text action hit");
+
+    assert_eq!(31, second.rect.y);
+}
+
+#[test]
+fn surface_host_action_hits_keep_fractional_cursor_across_non_text_siblings() {
+    let document_typography = UiTreeDocumentTypography::new()
+        .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5));
+    let first: UiNode = Text::new("First").text_role("body").into();
+    let input: UiNode =
+        UiNode::from(Input::new("Query")).host_action(UiHostActionSpec::command("query", "Query"));
+    let accordion = UiNode::from(Accordion::new("Details").open(false));
+    let trailing: UiNode = Text::new("Trailing")
+        .text_role("body")
+        .host_action(UiHostActionSpec::command("trailing", "Trailing"))
+        .into();
+    let root = UiNode::new(UiNodeKind::Column, "")
+        .child(first)
+        .child(input)
+        .child(accordion)
+        .child(trailing);
+    let host =
+        UiTreeSurfaceHost::with_document_typography(ThemeSnapshot::dark(), document_typography);
+
+    let hits = host.document_host_action_hits(&root, test_area());
+    let query = hits
+        .iter()
+        .find(|hit| hit.action.action_id == "query")
+        .kuc_expect("input action hit");
+    let disclosure = hits
+        .iter()
+        .find(|hit| hit.action.action_id == "ui.disclosure.toggle")
+        .kuc_expect("accordion action hit");
+    let trailing = hits
+        .iter()
+        .find(|hit| hit.action.action_id == "trailing")
+        .kuc_expect("trailing action hit");
+
+    assert_eq!(31, query.rect.y);
+    assert_eq!(51, disclosure.rect.y);
+    assert_eq!(71, trailing.rect.y);
 }
 
 #[test]

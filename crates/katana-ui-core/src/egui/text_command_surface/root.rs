@@ -121,6 +121,12 @@ impl EguiTextCommandSurfaceRoot {
         self.source_address_submission_port = port;
     }
 
+    pub(crate) fn clear_source_address(&mut self) -> bool {
+        let cleared = self.surface.clear_source_address();
+        self.source_address_submission_port = None;
+        cleared
+    }
+
     /// Mounts the generic KUC status child into this retained root.
     pub(crate) fn attach_status_bar(&mut self, status_bar: crate::molecule::StatusBar) {
         self.status_bar = Some(status_bar);

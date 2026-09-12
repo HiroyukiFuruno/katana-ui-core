@@ -23,6 +23,7 @@ unicode-segmentation.workspace = true
 
 [dev-dependencies]
 katana-markdown-model = "0.2.2"
+tempfile.workspace = true
 
 [[bin]]
 name = "katana-ui-core-storybook"

@@ -13,6 +13,7 @@ pub struct Canvas {
     pub(super) pixels: Vec<u32>,
     pub(super) clip: Option<CanvasClip>,
     pub(super) text_runs: Vec<SelectableTextRun>,
+    pub(super) physical_y_offset: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

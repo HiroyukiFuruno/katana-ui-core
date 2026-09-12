@@ -29,10 +29,8 @@ pub(super) fn duplicate_panel_label(parent: &UiNode, child: &UiNode) -> bool {
     child.kind() == UiNodeKind::Text && child.props().label == parent.props().label
 }
 
-pub(super) fn scroll_source_y(node: &UiNode, area: UiTreeRenderArea) -> usize {
-    (node.props().scroll_area.offset_y as f32 + area.scroll_y.max(0.0))
-        .round()
-        .max(0.0) as usize
+pub(super) fn scroll_source_y(node: &UiNode, area: UiTreeRenderArea) -> f32 {
+    (node.props().scroll_area.offset_y as f32 + area.scroll_y.max(0.0)).max(0.0)
 }
 
 pub(super) fn clip_scroll_hit(
@@ -41,7 +39,7 @@ pub(super) fn clip_scroll_hit(
     viewport_y: usize,
     viewport_width: usize,
     viewport_height: usize,
-    source_y: usize,
+    source_y: f32,
 ) -> Option<UiTreeHostActionHit> {
     let visible_left = hit.rect.x;
     let visible_right = hit
@@ -49,20 +47,17 @@ pub(super) fn clip_scroll_hit(
         .x
         .saturating_add(hit.rect.width)
         .min(viewport_width);
-    let visible_top = hit.rect.y.max(source_y);
-    let visible_bottom = hit
-        .rect
-        .y
-        .saturating_add(hit.rect.height)
-        .min(source_y.saturating_add(viewport_height));
+    let visible_top = (hit.rect.y as f32).max(source_y);
+    let visible_bottom =
+        (hit.rect.y.saturating_add(hit.rect.height) as f32).min(source_y + viewport_height as f32);
     if visible_right <= visible_left || visible_bottom <= visible_top {
         return None;
     }
     hit.rect = UiTreeHitRect {
         x: viewport_x.saturating_add(visible_left),
-        y: viewport_y.saturating_add(visible_top.saturating_sub(source_y)),
+        y: viewport_y.saturating_add((visible_top - source_y).round().max(0.0) as usize),
         width: visible_right.saturating_sub(visible_left),
-        height: visible_bottom.saturating_sub(visible_top),
+        height: (visible_bottom - visible_top).round().max(1.0) as usize,
     };
     Some(hit)
 }
@@ -137,7 +132,7 @@ mod tests {
             height: 40,
             scroll_y: 3.5,
         };
-        assert_eq!(4, scroll_source_y(&node, area));
+        assert_eq!(3.5, scroll_source_y(&node, area));
 
         let hit = UiTreeHostActionHit {
             action: UiHostActionPlan::new(
@@ -152,7 +147,7 @@ mod tests {
             },
             cursor: UiCursor::Pointer,
         };
-        let clipped = clip_scroll_hit(hit.clone(), 10, 20, 16, 10, 8).kuc_unwrap();
+        let clipped = clip_scroll_hit(hit.clone(), 10, 20, 16, 10, 8.0).kuc_unwrap();
         assert_eq!(
             (12, 20, 14, 10),
             (
@@ -162,7 +157,7 @@ mod tests {
                 clipped.rect.height
             )
         );
-        assert!(clip_scroll_hit(hit, 0, 0, 1, 1, 100).is_none());
+        assert!(clip_scroll_hit(hit, 0, 0, 1, 1, 100.0).is_none());
 
         let requested = UiNode::new(UiNodeKind::Column, "")
             .width(katana_ui_core::render_model::UiDimension::px(30));

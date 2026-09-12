@@ -27,6 +27,8 @@ mod ui_tree_canvas_hit_text_methods;
 
 impl UiTreeHostActionHitCollector<'_> {
     pub(super) fn node(&mut self, node: &UiNode, x: usize) {
+        let logical_start_y = self.text_logical_y.max(self.y as f32);
+        self.text_logical_y = logical_start_y;
         let previous_semantic_node_id = self.semantic_node_id.clone();
         if let Some(semantic_node_id) = semantic_node_id(node) {
             self.semantic_node_id = Some(semantic_node_id);
@@ -58,20 +60,36 @@ impl UiTreeHostActionHitCollector<'_> {
             _ => self.container(node, x),
         }
         let requested_height = dimension_px(&node.props().common.height);
-        if requested_height > 0 {
-            self.y = start_y.saturating_add(requested_height);
+        if node.kind() != UiNodeKind::Text && requested_height > 0 {
+            self.text_logical_y = logical_start_y + requested_height as f32;
+            self.y = self.text_logical_y.floor().max(0.0) as usize;
+        } else if node.kind() == UiNodeKind::Accordion {
+            self.y = self.text_logical_y.floor().max(0.0) as usize;
+        } else if node.kind() != UiNodeKind::Text {
+            let advance = self.y.saturating_sub(start_y);
+            self.text_logical_y = self.text_logical_y.max(logical_start_y + advance as f32);
+            self.y = self.text_logical_y.floor().max(0.0) as usize;
         }
         self.semantic_node_id = previous_semantic_node_id;
+    }
+
+    pub(super) fn advance_y(&mut self, amount: usize) {
+        self.y = self.y.saturating_add(amount);
+        self.text_logical_y += amount as f32;
     }
 
     pub(super) fn row(&mut self, node: &UiNode, x: usize) {
         let row_x = UiTreeRowLayout::row_x(node, x);
         let row_top = self.y;
+        let row_logical_top = self.text_logical_y;
         let mut row_bottom = self.y;
+        let mut row_logical_bottom = self.text_logical_y;
         for child_layout in UiTreeRowLayout::children(node, x, self.area) {
             self.y = row_top;
+            self.text_logical_y = row_logical_top;
             self.node(child_layout.child, child_layout.x);
             row_bottom = row_bottom.max(self.y);
+            row_logical_bottom = row_logical_bottom.max(self.text_logical_y);
         }
         if row_bottom > row_top {
             self.push_node_action_hits(
@@ -85,5 +103,6 @@ impl UiTreeHostActionHitCollector<'_> {
             );
         }
         self.y = row_bottom;
+        self.text_logical_y = row_logical_bottom;
     }
 }

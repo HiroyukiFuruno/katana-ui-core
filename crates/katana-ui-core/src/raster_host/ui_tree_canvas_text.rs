@@ -5,6 +5,8 @@ use super::ui_tree_canvas_text_role::UiTreeTextRoleRenderer;
 use super::ui_tree_canvas_types::UiTreeRenderArea;
 use katana_ui_core::render_model::{UiDimension, UiNode};
 
+#[path = "ui_tree_canvas_text_cursor.rs"]
+mod text_cursor;
 #[path = "ui_tree_canvas_text_lines.rs"]
 mod text_lines;
 #[path = "ui_tree_canvas_text_table.rs"]
@@ -12,6 +14,7 @@ mod text_table;
 #[path = "ui_tree_canvas_text_types.rs"]
 mod text_types;
 
+use text_cursor::logical_canvas_boundary;
 use text_lines::{UiTreeTextLineContext, UiTreeTextLines};
 use text_table::{UiTreeTextTable, UiTreeTextTableContext};
 pub(super) use text_types::{UiTreeTextContext, UiTreeTextRenderer};
@@ -57,6 +60,20 @@ impl UiTreeTextRenderer {
         y: &mut usize,
         area: UiTreeRenderArea,
     ) {
+        let logical_y = *y as f32;
+        let advance_height =
+            Self::draw_node_at_logical_y(canvas, context, node, x, logical_y, area);
+        *y = y.saturating_add(advance_height);
+    }
+
+    pub(in crate::raster_host) fn draw_node_at_logical_y(
+        canvas: &mut Canvas,
+        context: UiTreeTextContext<'_>,
+        node: &UiNode,
+        x: usize,
+        logical_y: f32,
+        area: UiTreeRenderArea,
+    ) -> usize {
         let renderer = renderer_for_role(
             context.text,
             context.export_text,
@@ -70,28 +87,30 @@ impl UiTreeTextRenderer {
             let content_height =
                 UiTreeTextTable::content_height(renderer, node, content_x, area, metrics);
             let advance_height = explicit_or_content_height(requested_height, content_height);
-            canvas.with_clip(
-                content_x,
-                *y,
-                text_clip_width(node, area, content_x),
-                advance_height,
-                &mut |canvas| {
-                    UiTreeTextTable::draw(
-                        canvas,
-                        UiTreeTextTableContext {
-                            renderer,
-                            node,
-                            area,
-                            palette: context.palette,
-                            metrics,
-                        },
-                        content_x,
-                        *y,
-                    );
-                },
-            );
-            *y = y.saturating_add(advance_height);
-            return;
+            let physical_y = logical_canvas_boundary(logical_y);
+            canvas.with_fractional_y_origin(logical_y, physical_y, |canvas| {
+                canvas.with_clip(
+                    content_x,
+                    physical_y,
+                    text_clip_width(node, area, content_x),
+                    advance_height,
+                    &mut |canvas| {
+                        UiTreeTextTable::draw(
+                            canvas,
+                            UiTreeTextTableContext {
+                                renderer,
+                                node,
+                                area,
+                                palette: context.palette,
+                                metrics,
+                            },
+                            content_x,
+                            physical_y,
+                        );
+                    },
+                );
+            });
+            return advance_height;
         }
         let line_count = UiTreeTextLines::line_count(
             renderer,
@@ -106,25 +125,57 @@ impl UiTreeTextRenderer {
         } else {
             metrics.background_height = metrics
                 .background_height
-                .max(line_count.saturating_mul(metrics.line_height));
+                .max(text_line_box_height(line_count, metrics));
         }
         let clip_height = text_clip_height(requested_height, line_count, metrics);
 
         let clip_width = text_clip_width(node, area, content_x);
         let draw_metrics = draw_metrics_for_node(node, metrics);
-        UiTreeTextRoleRenderer::draw_background(
-            canvas,
-            node,
-            x,
-            *y,
-            area,
-            context.palette,
-            metrics,
-        );
-        let text_y = y.saturating_add(metrics.top_margin);
+        let background_y = logical_canvas_boundary(logical_y);
+        canvas.with_fractional_y_origin(logical_y, background_y, |canvas| {
+            UiTreeTextRoleRenderer::draw_background(
+                canvas,
+                node,
+                x,
+                background_y,
+                area,
+                context.palette,
+                metrics,
+            );
+        });
+        let text_y = logical_y + metrics.top_margin as f32;
         if node.props().text.spans.is_empty() {
-            canvas.with_clip(content_x, *y, clip_width, clip_height, &mut |canvas| {
-                UiTreeTextLines::draw_plain(
+            canvas.with_clip_at_logical_y(
+                content_x,
+                logical_y,
+                clip_width,
+                clip_height as f32,
+                &mut |canvas| {
+                    UiTreeTextLines::draw_plain_at_logical_y(
+                        canvas,
+                        UiTreeTextLineContext {
+                            renderer,
+                            code_renderer: context.code_text,
+                            node,
+                            area,
+                            palette: context.palette,
+                            metrics: draw_metrics,
+                        },
+                        content_x,
+                        content_x,
+                        text_y,
+                    );
+                },
+            );
+            return text_advance_height(requested_height, line_count, metrics);
+        }
+        canvas.with_clip_at_logical_y(
+            content_x,
+            logical_y,
+            clip_width,
+            clip_height as f32,
+            &mut |canvas| {
+                UiTreeTextLines::draw_spans_at_logical_y(
                     canvas,
                     UiTreeTextLineContext {
                         renderer,
@@ -135,29 +186,11 @@ impl UiTreeTextRenderer {
                         metrics: draw_metrics,
                     },
                     content_x,
-                    content_x,
                     text_y,
                 );
-            });
-            *y = y.saturating_add(text_advance_height(requested_height, line_count, metrics));
-            return;
-        }
-        canvas.with_clip(content_x, *y, clip_width, clip_height, &mut |canvas| {
-            UiTreeTextLines::draw_spans(
-                canvas,
-                UiTreeTextLineContext {
-                    renderer,
-                    code_renderer: context.code_text,
-                    node,
-                    area,
-                    palette: context.palette,
-                    metrics: draw_metrics,
-                },
-                content_x,
-                text_y,
-            );
-        });
-        *y = y.saturating_add(text_advance_height(requested_height, line_count, metrics));
+            },
+        );
+        text_advance_height(requested_height, line_count, metrics)
     }
 }
 
@@ -203,7 +236,13 @@ fn text_advance_height(
     if requested_height > 0 {
         return requested_height;
     }
-    line_count.saturating_mul(metrics.line_height)
+    text_line_box_height(line_count, metrics)
+}
+
+fn text_line_box_height(line_count: usize, metrics: UiTreeTextMetrics) -> usize {
+    (line_count as f32 * metrics.line_box_height)
+        .ceil()
+        .max(1.0) as usize
 }
 
 fn explicit_or_content_height(requested_height: usize, content_height: usize) -> usize {
@@ -223,9 +262,7 @@ fn text_clip_height(
     metrics: UiTreeTextMetrics,
 ) -> usize {
     let line_height = metrics.top_margin.saturating_add(
-        line_count
-            .saturating_mul(metrics.line_height)
-            .saturating_add(text_clip_guard(metrics)),
+        text_line_box_height(line_count, metrics).saturating_add(text_clip_guard(metrics)),
     );
     if requested_height > 0 {
         return requested_height.max(line_height);
@@ -267,7 +304,10 @@ mod tests {
     use crate::test_assert::KucTestExpect;
     use katana_ui_core::atom::Text;
     use katana_ui_core::facade::UiCoreFacade;
-    use katana_ui_core::render_model::{UiCommonProps, UiDimension, UiEdgeInsets, UiNode};
+    use katana_ui_core::render_model::{
+        UiCommonProps, UiDimension, UiEdgeInsets, UiInteractionState, UiNode, UiNodeKind,
+        UiTextProps, UiTextSpan, UiTextSpanStyle,
+    };
     use katana_ui_core::theme::ThemeSnapshot;
 
     #[test]
@@ -275,7 +315,9 @@ mod tests {
         let metrics = UiTreeTextMetrics {
             font_size: 24.79,
             line_height: 36,
+            line_box_height: 36.0,
             top_margin: 0,
+            baseline_from_line_box_top: None,
             background_height: 34,
             highlight_height: 34,
             underline_offset: 30,
@@ -291,7 +333,9 @@ mod tests {
         let metrics = UiTreeTextMetrics {
             font_size: 19.83,
             line_height: 34,
+            line_box_height: 34.0,
             top_margin: 29,
+            baseline_from_line_box_top: None,
             background_height: 34,
             highlight_height: 5,
             underline_offset: 24,
@@ -368,6 +412,156 @@ mod tests {
             min_x >= 96,
             "text ink must start after the 40px left margin: min_x={min_x}"
         );
+    }
+
+    #[test]
+    fn adjacent_fractional_text_nodes_keep_their_combined_logical_extent() {
+        let mut context = text_context();
+        context.typography = UiTreeDocumentTypography::from_theme_with_document_typography(
+            &ThemeSnapshot::light(),
+            crate::raster_host::UiTreeDocumentTypography::new().with_body_baseline(
+                crate::raster_host::UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5),
+            ),
+        );
+        let first: UiNode = Text::new("first").text_role("body").into();
+        let second: UiNode = Text::new("second").text_role("body").into();
+        let area = render_area();
+        let mut canvas = Canvas::new(320, 120, 0xffffff);
+        let mut logical_y = 0.0;
+
+        UiTreeTextRenderer::draw_node_with_logical_cursor(
+            &mut canvas,
+            context,
+            &first,
+            0,
+            &mut logical_y,
+            area,
+        );
+        UiTreeTextRenderer::draw_node_with_logical_cursor(
+            &mut canvas,
+            context,
+            &second,
+            0,
+            &mut logical_y,
+            area,
+        );
+
+        assert_eq!(63.0, logical_y);
+    }
+
+    #[test]
+    fn logical_text_cursor_preserves_fractional_origin_until_scaled_paint() {
+        let context = text_context();
+        let node: UiNode = Text::new("Current")
+            .text_role("body")
+            .text_spans(vec![UiTextSpan {
+                text: "Current".into(),
+                style: UiTextSpanStyle {
+                    current_highlight: true,
+                    ..UiTextSpanStyle::default()
+                },
+                link_target: String::new(),
+            }])
+            .into();
+        let mut canvas = Canvas::new_scaled(320, 120, 2.0, 0xffffff);
+        let mut logical_y = 31.5;
+
+        UiTreeTextRenderer::draw_node_with_logical_cursor(
+            &mut canvas,
+            context,
+            &node,
+            0,
+            &mut logical_y,
+            render_area(),
+        );
+
+        assert_eq!(0xffffff, canvas.pixels()[62 * canvas.width()]);
+        assert_ne!(0xffffff, canvas.pixels()[63 * canvas.width()]);
+    }
+
+    #[test]
+    fn text_role_background_preserves_fractional_origin_until_scaled_paint() {
+        let context = text_context();
+        let node = UiNode::new(UiNodeKind::Text, "Quote")
+            .text(UiTextProps {
+                role: "blockquote".to_owned(),
+                ..UiTextProps::default()
+            })
+            .interaction(UiInteractionState {
+                hovered: true,
+                ..UiInteractionState::default()
+            });
+        let mut canvas = Canvas::new_scaled(320, 120, 2.0, 0xffffff);
+        let mut logical_y = 31.5;
+
+        UiTreeTextRenderer::draw_node_with_logical_cursor(
+            &mut canvas,
+            context,
+            &node,
+            0,
+            &mut logical_y,
+            render_area(),
+        );
+
+        assert_eq!(0xffffff, canvas.pixels()[62 * canvas.width()]);
+        assert_ne!(0xffffff, canvas.pixels()[63 * canvas.width()]);
+    }
+
+    #[test]
+    fn table_preserves_fractional_origin_until_scaled_paint() {
+        let context = text_context();
+        let table: UiNode = Text::new("| Header |\n| --- |\n| Value |")
+            .text_role("table")
+            .into();
+        let mut canvas = Canvas::new_scaled(320, 120, 2.0, 0xffffff);
+
+        UiTreeTextRenderer::draw_node_at_logical_y(
+            &mut canvas,
+            context,
+            &table,
+            0,
+            31.5,
+            render_area(),
+        );
+
+        assert_eq!(0xffffff, canvas.pixels()[62 * canvas.width()]);
+        assert_ne!(
+            0xffffff,
+            canvas.pixels()[63 * canvas.width()],
+            "the table header begins at the scale-2 physical boundary for logical y=31.5"
+        );
+    }
+
+    #[test]
+    fn logical_text_cursor_uses_explicit_height_and_table_content_height() {
+        let context = text_context();
+        let area = render_area();
+        let mut canvas = Canvas::new(320, 220, 0xffffff);
+        let explicit = table_node_with_height(80);
+        let table: UiNode = Text::new("Header\nTable after list")
+            .text_role("table")
+            .into();
+        let mut logical_y = 0.0;
+
+        UiTreeTextRenderer::draw_node_with_logical_cursor(
+            &mut canvas,
+            context,
+            &explicit,
+            56,
+            &mut logical_y,
+            area,
+        );
+        assert_eq!(80.0, logical_y);
+
+        UiTreeTextRenderer::draw_node_with_logical_cursor(
+            &mut canvas,
+            context,
+            &table,
+            56,
+            &mut logical_y,
+            area,
+        );
+        assert_eq!(212.0, logical_y);
     }
 
     #[test]

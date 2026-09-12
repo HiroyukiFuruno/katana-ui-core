@@ -1,4 +1,6 @@
 use super::super::execution::interaction_error;
+#[cfg(target_os = "linux")]
+use super::super::execution::{forward_stage_events, show_frame};
 use super::super::support::{map_root_error, sha256};
 use super::super::text_interactions::{ensure_record_changed, ensure_scroll_changed};
 use super::super::unicode_evidence::{
@@ -69,6 +71,9 @@ fn issued_plan_executes_stages_and_collects_expected_artifact_evidence() {
         "leaf-a",
         7,
     );
+    assert_eq!(plan.issued_receipts.len(), 1);
+    plan.record_issued_receipt(&first);
+    assert_eq!(plan.issued_receipts.len(), 1);
     let manifest: serde_json::Value = serde_json::from_slice(
         &std::fs::read(output_dir.join("consumer-stage-0000.consumer-artifact.json"))
             .expect("manifest should read"),
@@ -90,11 +95,31 @@ fn issued_plan_executes_stages_and_collects_expected_artifact_evidence() {
         "leaf-b",
         8,
     );
+    assert_eq!(plan.issued_receipts.len(), 2);
     assert_eq!(plan.remaining_stage_count(), 8);
     assert_eq!(
         plan.consume_forwarding_receipt_once(second.into_forwarding_receipt()),
         Ok(())
     );
+}
+
+#[test]
+#[cfg(target_os = "linux")]
+fn artifact_stage_forwarder_dispatches_a_closed_root_frame() {
+    let mut plan = ConsumerArtifactPlanIssuer::new()
+        .issue(ConsumerArtifactPlanV1::new(
+            1,
+            complete_bindings(1, b"forwarder-target"),
+        ))
+        .expect("plan should issue");
+    let frame = show_frame(
+        &mut plan.root,
+        &egui::Context::default(),
+        egui::RawInput::default(),
+    )
+    .expect("root frame");
+    forward_stage_events(&frame)
+        .expect("closed root frame forwards through the artifact dispatcher");
 }
 
 #[test]
@@ -223,6 +248,39 @@ fn issuer_rejects_invalid_schema_empty_duplicate_and_overflow_plans() {
 }
 
 #[test]
+fn issued_plan_records_a_successful_receipt_without_a_platform_raster() {
+    let mut plan = ConsumerArtifactPlanIssuer::new()
+        .issue(ConsumerArtifactPlanV1::new(
+            1,
+            complete_bindings(1, b"receipt-target"),
+        ))
+        .expect("plan");
+    let leaf = ConsumerArtifactLeafId::new("receipt-leaf").expect("leaf");
+    let evidence = ConsumerArtifactEvidence {
+        stage_id: String::from("consumer-stage-0000"),
+        leaf: leaf.clone(),
+        root_revision: 1,
+        png_sha256: String::from("png"),
+        pixel_hash: String::from("pixels"),
+        root_record_hash: String::from("record"),
+        accesskit_snapshot_hash: String::from("accesskit"),
+        unicode_evidence_hash: String::from("unicode"),
+        unicode_evidence_json: Vec::new(),
+        receipt: ConsumerArtifactForwardingReceipt {
+            leaf,
+            stage_id: String::from("consumer-stage-0000"),
+            root_revision: 1,
+            root_identity_fingerprint: String::from("root"),
+            consumed: false,
+            fingerprint: String::from("receipt"),
+        },
+    };
+
+    plan.record_issued_receipt(&evidence);
+    assert_eq!(plan.issued_receipts.len(), 1);
+}
+
+#[test]
 fn issuer_requires_the_complete_ordered_full_editor_sequence() {
     let issuer = ConsumerArtifactPlanIssuer::new();
     let complete = complete_bindings(1, b"complete-sequence-target");
@@ -276,6 +334,12 @@ fn issuer_fails_closed_for_opaque_forwarding_without_a_transport_forwarder() {
 fn issuer_default_and_defensive_effect_display_remain_explicit() {
     assert!(matches!(
         ConsumerArtifactPlanIssuer::default().issue(ConsumerArtifactPlanV1::new(1, Vec::new())),
+        Err(ConsumerArtifactPlanError::EmptyPlan)
+    ));
+    assert!(matches!(
+        ConsumerArtifactPlanIssuer::new()
+            .clone()
+            .issue(ConsumerArtifactPlanV1::new(1, Vec::new())),
         Err(ConsumerArtifactPlanError::EmptyPlan)
     ));
     assert_eq!(

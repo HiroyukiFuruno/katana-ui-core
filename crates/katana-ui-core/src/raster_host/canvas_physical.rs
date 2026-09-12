@@ -37,7 +37,8 @@ impl Canvas {
     }
 
     pub(super) fn to_physical_y(&self, y: usize) -> usize {
-        self.logical_to_physical_position(y).min(self.height())
+        self.translate_physical_y(self.logical_to_physical_position(y))
+            .min(self.height())
     }
 
     pub(super) fn logical_scale(&self, value: usize) -> usize {
@@ -73,7 +74,7 @@ impl Canvas {
             return None;
         }
         let left = self.logical_to_physical_position(x).min(self.width());
-        let top = self.logical_to_physical_position(y).min(self.height());
+        let top = self.to_physical_y(y);
         if left >= self.width() || top >= self.height() {
             return None;
         }
@@ -81,10 +82,7 @@ impl Canvas {
             .logical_to_physical_position(x.saturating_add(width))
             .min(self.width())
             .max(left + 1);
-        let bottom = self
-            .logical_to_physical_position(y.saturating_add(height))
-            .min(self.height())
-            .max(top + 1);
+        let bottom = self.to_physical_y(y.saturating_add(height)).max(top + 1);
         Some((left, top, right, bottom))
     }
 }

@@ -25,8 +25,15 @@ use katana_ui_core::theme::ThemeSnapshot;
 
 #[path = "ui_tree_canvas_geometry.rs"]
 mod geometry;
+#[path = "ui_tree_canvas_renderer_accordion_cursor.rs"]
+mod renderer_accordion_cursor;
+#[path = "ui_tree_canvas_renderer_cursor.rs"]
+mod renderer_cursor;
 #[path = "ui_tree_canvas_renderer_methods.rs"]
 mod renderer_methods;
+pub(in crate::raster_host) use renderer_methods::hover_surface_child_clip_height;
+#[path = "ui_tree_canvas_renderer_row_cursor.rs"]
+mod renderer_row_cursor;
 #[path = "ui_tree_canvas_renderer_types.rs"]
 mod renderer_types;
 pub(in crate::raster_host) use geometry::is_outside_vertical_viewport;

@@ -55,6 +55,191 @@ fn text_change_forwarding_updates_the_next_session_projection() {
 }
 
 #[test]
+fn additive_consumer_artifact_session_issues_and_renders_its_projection() {
+    let session = FullTextCommandSurfaceScenarioSession::new_consumer_artifact();
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(session.retain_lease().expect("consumer artifact lease"))
+        .expect("consumer artifact root retains");
+    let output = render_and_forward(
+        &egui::Context::default(),
+        &mut root,
+        session
+            .synchronize_lease()
+            .expect("consumer artifact lease synchronizes"),
+        egui::RawInput::default(),
+    );
+
+    assert!(!output.evidence_text.record.frame.layout_identity.is_empty());
+}
+
+#[test]
+fn additive_consumer_artifact_session_retains_forwarded_text() {
+    let session = FullTextCommandSurfaceScenarioSession::new_consumer_artifact();
+    let scenario = FullTextCommandSurfaceScenarioFactory::new()
+        .issue(FullTextCommandSurfaceScenarioId::ResizeScrollIme)
+        .expect("focus stages issue");
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(session.retain_lease().expect("consumer artifact lease"))
+        .expect("consumer artifact root retains");
+    let context = egui::Context::default();
+
+    for stage in scenario.stages().iter().take(2) {
+        let mut input = egui::RawInput::default();
+        stage.apply_to(&mut input);
+        let _ = render_and_forward(
+            &context,
+            &mut root,
+            session
+                .synchronize_lease()
+                .expect("consumer artifact lease synchronizes"),
+            input,
+        );
+    }
+
+    let mut input = egui::RawInput::default();
+    input
+        .events
+        .push(egui::Event::Text(String::from("consumer artifact state ⭐️")));
+    let _ = render_and_forward(
+        &context,
+        &mut root,
+        session
+            .synchronize_lease()
+            .expect("consumer artifact text lease synchronizes"),
+        input,
+    );
+
+    let updated = render_and_forward(
+        &context,
+        &mut root,
+        session
+            .synchronize_lease()
+            .expect("updated consumer artifact lease synchronizes"),
+        egui::RawInput::default(),
+    );
+    assert!(
+        updated
+            .evidence_text
+            .record
+            .frame
+            .layout_identity
+            .contains("consumer artifact state ⭐️"),
+        "a forwarded consumer-artifact text change must be retained by the next projection"
+    );
+}
+
+#[test]
+fn preissued_consumer_artifact_lease_preserves_forwarded_text() {
+    let session = FullTextCommandSurfaceScenarioSession::new_consumer_artifact();
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(session.retain_lease().expect("consumer artifact lease"))
+        .expect("consumer artifact root retains");
+    let stale_next_lease = session
+        .synchronize_lease()
+        .expect("the next lease is issued before input dispatch");
+    let scenario = FullTextCommandSurfaceScenarioFactory::new()
+        .issue(FullTextCommandSurfaceScenarioId::ResizeScrollIme)
+        .expect("focus stages issue");
+    let context = egui::Context::default();
+
+    for stage in scenario.stages().iter().take(2) {
+        let mut input = egui::RawInput::default();
+        stage.apply_to(&mut input);
+        let _ = render_current_and_forward(&context, &mut root, input);
+    }
+
+    let mut input = egui::RawInput::default();
+    input
+        .events
+        .push(egui::Event::Text(String::from("preissued lease text ⭐️")));
+    let _ = render_current_and_forward(&context, &mut root, input);
+
+    root.synchronize_with_lease_preserving_state(stale_next_lease)
+        .expect("a pre-issued lease advances without restoring its stale presentation");
+    let updated = render_current(&context, &mut root, egui::RawInput::default());
+    assert!(
+        updated
+            .evidence_text
+            .record
+            .frame
+            .layout_identity
+            .contains("preissued lease text ⭐️"),
+        "a pre-issued lease must preserve text forwarded by the prior stage"
+    );
+}
+
+#[test]
+fn additive_consumer_artifact_factory_replays_the_full_stage_sequence() {
+    let scenario = FullTextCommandSurfaceScenarioFactory::new()
+        .issue_consumer_artifact()
+        .expect("consumer artifact scenario remains issuable");
+    let stages = scenario.stages().to_vec();
+    assert_eq!(stages.len(), 10);
+
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(scenario.into_lease().expect("consumer artifact lease"))
+        .expect("consumer artifact root retains");
+    let context = egui::Context::default();
+    for stage in stages {
+        let mut input = egui::RawInput::default();
+        stage.apply_to(&mut input);
+        let output = render_current_and_forward(&context, &mut root, input);
+        assert!(!output.evidence_text.record.frame.layout_identity.is_empty());
+    }
+}
+
+#[test]
+fn consumer_artifact_trace_focuses_before_text_and_ime_events() {
+    let scenario = FullTextCommandSurfaceScenarioFactory::new()
+        .issue_consumer_artifact()
+        .expect("consumer artifact scenario remains issuable");
+    let stages = scenario.stages().to_vec();
+    assert_eq!(stages.len(), 10, "the public artifact trace keeps ten stages");
+
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(scenario.into_lease().expect("consumer artifact lease"))
+        .expect("consumer artifact root retains");
+    let context = egui::Context::default();
+    let render_stage = |stage: &crate::egui::text_command_surface::FullTextCommandSurfaceRawInputStage,
+                        root: &mut crate::egui::text_command_surface::EguiTextCommandSurfaceHostRoot| {
+        let mut input = egui::RawInput::default();
+        stage.apply_to(&mut input);
+        render_current_and_forward(&context, root, input)
+    };
+
+    let _ = render_stage(&stages[0], &mut root);
+    let focused = render_stage(&stages[1], &mut root);
+    assert!(
+        focused.evidence_text.record.frame.accessibility.root.focused,
+        "the pointer press focuses the editor before its Text and IME stage"
+    );
+
+    let opening = render_stage(&stages[2], &mut root);
+    assert!(opening.evidence_text.events.iter().any(|event| {
+        matches!(
+            event,
+            crate::text_surface::TextSurfaceEvent::TextArea(
+                crate::atom::TextAreaEvent::Change(value)
+            ) if value.contains("consumer artifact input")
+        )
+    }));
+
+    let ime = opening;
+    assert!(ime.evidence_text.events.iter().any(|event| {
+        matches!(
+            event,
+            crate::text_surface::TextSurfaceEvent::TextArea(
+                crate::atom::TextAreaEvent::ImeCommit(value)
+            ) if value == "入力"
+        )
+    }));
+    assert!(
+        ime.evidence_text.record.frame.layout_identity.contains("入力"),
+        "the focused TextAreaState retains the IME commit"
+    );
+}
+
+#[test]
 fn physical_selection_is_retained_by_the_next_scenario_projection() {
     let session =
         FullTextCommandSurfaceScenarioSession::new(FullTextCommandSurfaceScenarioId::Selection);
