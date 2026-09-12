@@ -291,6 +291,30 @@ mod tests {
         UiNodeKind, UiRect, UiScrollAreaProps, UiTextProps,
     };
     use crate::theme::ThemeSnapshot;
+
+    #[test]
+    fn closed_document_accordion_uses_fractional_line_box_height_before_visibility() {
+        let typography = UiTreeDocumentTypography::new()
+            .with_body_baseline(UiTreeTextRoleBaselineTypography::new(16.0, 31.5, 18.5));
+        let renderer =
+            UiTreeCanvasRenderer::with_document_typography(ThemeSnapshot::dark(), typography);
+        let node = UiNode::from(crate::molecule::Accordion::new("closed")).text(UiTextProps {
+            role: "body".to_owned(),
+            ..UiTextProps::default()
+        });
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 120,
+            height: 40,
+            scroll_y: 0.0,
+        };
+        let palette = UiTreeCanvasPalette::from_theme(&ThemeSnapshot::dark());
+        assert_eq!(
+            31.5,
+            super::logical_node_height(&renderer, renderer.text_context(palette), &node, 0, area)
+        );
+    }
     use katana_ui_core::atom::Text;
     use katana_ui_core::render_model::{UiTextSpan, UiTextSpanStyle};
 
