@@ -10,6 +10,7 @@ const FALLBACK_ALERT_CAUTION: u32 = 0xd1242f;
 const FALLBACK_DANGER_ACCENT: u32 = 0xe05252;
 const FALLBACK_PENDING_BACKGROUND: u32 = 0x1d2630;
 const FALLBACK_HOVER_BACKGROUND: u32 = 0x243041;
+const FALLBACK_TEXT_HIGHLIGHT_BACKGROUND: u32 = 0x4a4620;
 const FALLBACK_DOCUMENT_RULE_BORDER_LIGHT: u32 = 0xd0d7de;
 const FALLBACK_DOCUMENT_RULE_BORDER_DARK: u32 = 0x30363d;
 const RED_SHIFT: u32 = 16;
@@ -31,6 +32,7 @@ pub(super) struct UiTreeCanvasPalette {
     pub link: u32,
     pub code_background: u32,
     pub inline_code_background: u32,
+    pub text_highlight_background: u32,
     pub table_background: u32,
     pub table_header_background: u32,
     pub table_even_row_background: u32,
@@ -61,6 +63,11 @@ impl UiTreeCanvasPalette {
             link: color(theme, "link", FALLBACK_LINK),
             code_background: visual.code_background,
             inline_code_background: color(theme, "inline-code-background", visual.code_background),
+            text_highlight_background: color(
+                theme,
+                "text-highlight-background",
+                FALLBACK_TEXT_HIGHLIGHT_BACKGROUND,
+            ),
             table_background: color(theme, "table-row-background", visual.background),
             table_header_background: color(theme, "table-header-background", visual.surface),
             table_even_row_background: color(theme, "table-even-row-background", visual.surface),

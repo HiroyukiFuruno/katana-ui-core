@@ -1,5 +1,7 @@
 use super::support::json_bytes;
-use super::{ConsumerArtifactLeafId, ConsumerArtifactPlanError};
+use super::{
+    ConsumerArtifactLeafId, ConsumerArtifactPlanError, ConsumerArtifactPlanExecutionError,
+};
 use crate::egui::text_command_surface::{
     KucUnicodeColorGlyphEvidenceCapture, KucUnicodeColorGlyphEvidenceOptions,
 };
@@ -8,14 +10,14 @@ use sha2::{Digest, Sha256};
 
 const STAGE_UNICODE_EVIDENCE_DOMAIN: &[u8] = b"kuc.consumer-artifact.unicode-evidence.v1";
 
-pub(super) fn capture_unicode_evidence(
+pub(super) fn capture_unicode_evidence_typed(
     options: KucUnicodeColorGlyphEvidenceOptions,
-) -> Result<Vec<u8>, ConsumerArtifactPlanError> {
+) -> Result<Vec<u8>, ConsumerArtifactPlanExecutionError> {
     let unicode = KucUnicodeColorGlyphEvidenceCapture::capture(options)
-        .map_err(|error| ConsumerArtifactPlanError::UnicodeEvidence(error.to_string()))?;
+        .map_err(ConsumerArtifactPlanExecutionError::UnicodeEvidence)?;
     let mut published = unicode_evidence_value(unicode)?;
     remove_catalog_face_source_path(&mut published)?;
-    json_bytes(&published)
+    Ok(json_bytes(&published)?)
 }
 
 fn unicode_evidence_value<T: serde::Serialize>(
@@ -95,9 +97,15 @@ pub(super) fn bind_unicode_evidence(
 #[cfg(test)]
 mod tests {
     use super::{
-        pin_first_readable_emoji_candidate, remove_catalog_face_source_path, unicode_evidence_value,
+        capture_unicode_evidence_typed, pin_first_readable_emoji_candidate,
+        remove_catalog_face_source_path, unicode_evidence_value,
     };
-    use crate::egui::text_command_surface::consumer_artifact_plan::ConsumerArtifactPlanError;
+    use crate::egui::text_command_surface::consumer_artifact_plan::{
+        ConsumerArtifactPlanError, ConsumerArtifactPlanExecutionError,
+    };
+    use crate::egui::text_command_surface::{
+        KucUnicodeColorGlyphEvidenceError, KucUnicodeColorGlyphEvidenceOptions,
+    };
     use crate::text_raster::PlatformFontSha256;
 
     fn test_raster_config(
@@ -160,6 +168,54 @@ mod tests {
 
         assert_eq!(config.emoji_candidates, vec![candidate]);
         assert_eq!(config.emoji_candidate_sha256, vec![existing_hash]);
+    }
+
+    #[test]
+    fn unavailable_unicode_evidence_preserves_a_public_typed_error() {
+        let mut options = KucUnicodeColorGlyphEvidenceOptions::default();
+        options.config.proportional_candidates.clear();
+        options.config.monospace_candidates.clear();
+        options.config.emoji_candidates = vec![std::path::PathBuf::from(
+            "/kuc-test-font-catalog/missing-color-emoji.ttf",
+        )];
+        options.config.emoji_candidate_sha256.clear();
+
+        let error =
+            capture_unicode_evidence_typed(options).expect_err("missing emoji must fail closed");
+
+        assert!(matches!(
+            error,
+            ConsumerArtifactPlanExecutionError::UnicodeEvidence(
+                KucUnicodeColorGlyphEvidenceError::ColorEmojiUnavailable { .. }
+            )
+        ));
+    }
+
+    #[test]
+    fn typed_execution_error_displays_and_maps_both_error_kinds() {
+        let unicode = ConsumerArtifactPlanExecutionError::UnicodeEvidence(
+            KucUnicodeColorGlyphEvidenceError::InvalidCaret,
+        );
+        assert_eq!(
+            unicode.to_string(),
+            "consumer artifact unicode evidence failed: InvalidCaret"
+        );
+        assert!(matches!(
+            unicode.into_legacy(),
+            ConsumerArtifactPlanError::UnicodeEvidence(message)
+                if message == "InvalidCaret"
+        ));
+
+        let plan =
+            ConsumerArtifactPlanExecutionError::Plan(ConsumerArtifactPlanError::MissingFrame);
+        assert_eq!(
+            plan.to_string(),
+            "consumer artifact stage did not produce a frame"
+        );
+        assert!(matches!(
+            plan.into_legacy(),
+            ConsumerArtifactPlanError::MissingFrame
+        ));
     }
 
     #[test]

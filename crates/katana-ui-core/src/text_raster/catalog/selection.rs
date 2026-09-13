@@ -35,8 +35,36 @@ pub(super) fn first_candidate_font_system(
 
 fn face_matches_selected_candidate(face: &FaceInfo, selected: &PlatformRegularFontFace) -> bool {
     catalog_cache::file_path_from_source(&face.source) == Some(selected.source_file_path.as_path())
-        && face
-            .families
-            .iter()
-            .any(|(family, _)| family == &selected.family)
+        && face.index == selected.index
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn selected_candidate_alias_requires_the_same_source_face_index() {
+        let font_system = FontSystem::new();
+        let face = font_system
+            .db()
+            .faces()
+            .find(|face| catalog_cache::file_path_from_source(&face.source).is_some())
+            .expect("file-backed system font");
+        let selected = PlatformRegularFontFace {
+            family: face.families[0].0.clone(),
+            source_file_path: catalog_cache::file_path_from_source(&face.source)
+                .expect("source path")
+                .to_path_buf(),
+            index: face.index,
+            weight: face.weight.0,
+            style: face.style,
+            stretch: face.stretch,
+            selection_family: "__candidate__".to_owned(),
+        };
+        let mut other_index = face.clone();
+        other_index.index = other_index.index.saturating_add(1);
+
+        assert!(face_matches_selected_candidate(face, &selected));
+        assert!(!face_matches_selected_candidate(&other_index, &selected));
+    }
 }

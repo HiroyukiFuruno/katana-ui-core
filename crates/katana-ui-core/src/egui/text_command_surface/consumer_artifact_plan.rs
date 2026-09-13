@@ -4,7 +4,7 @@ mod types;
 
 pub use types::{
     ConsumerArtifactEvidence, ConsumerArtifactForwardingReceipt, ConsumerArtifactLeafId,
-    ConsumerArtifactPlanError, ConsumerArtifactPlanIssuer, ConsumerArtifactPlanV1,
-    ConsumerArtifactStageBinding, GenericEffectClass, GenericInteractionClass,
-    IssuedConsumerArtifactPlan,
+    ConsumerArtifactPlanError, ConsumerArtifactPlanExecutionError, ConsumerArtifactPlanIssuer,
+    ConsumerArtifactPlanV1, ConsumerArtifactStageBinding, GenericEffectClass,
+    GenericInteractionClass, IssuedConsumerArtifactPlan,
 };

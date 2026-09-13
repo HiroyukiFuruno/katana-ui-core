@@ -14,6 +14,7 @@ use super::ui_tree_canvas_scroll_height_cache::MeasuredNodeHeightCache;
 use super::ui_tree_canvas_scroll_measure::{
     ContainerPadding as ScrollContainerPadding, can_render_children_incrementally,
     child_render_area as scroll_child_render_area, container_gap as scroll_container_gap,
+    measured_node_height,
 };
 use super::ui_tree_canvas_text::{UiTreeTextContext, UiTreeTextRenderer};
 use super::ui_tree_canvas_text_metrics::{UiTreeDocumentTypography, UiTreeTextMetrics};
@@ -26,7 +27,7 @@ use super::ui_tree_canvas_types::{
 mod geometry;
 use geometry::{
     ContainerPadding, ScrollHitClip, child_render_area, clip_scroll_hit, duplicate_panel_label,
-    node_cursor, scroll_source_y, whitespace_width,
+    node_cursor, scroll_source_y,
 };
 #[cfg(test)]
 use katana_ui_core::facade::UiCoreFacade;

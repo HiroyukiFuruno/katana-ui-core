@@ -7,6 +7,7 @@ impl RichTextStyle {
             color,
             bold: false,
             italic: false,
+            monospace: false,
             emoji: false,
             raster_vertical_scale: 1.0,
         }
@@ -20,6 +21,16 @@ impl RichTextStyle {
     pub(crate) const fn italic(mut self, value: bool) -> Self {
         self.italic = value;
         self
+    }
+
+    pub(crate) const fn monospace(mut self, value: bool) -> Self {
+        self.monospace = value;
+        self
+    }
+
+    #[cfg(test)]
+    pub(crate) const fn uses_monospace(self) -> bool {
+        self.monospace
     }
 
     pub(crate) const fn emoji(mut self, value: bool) -> Self {

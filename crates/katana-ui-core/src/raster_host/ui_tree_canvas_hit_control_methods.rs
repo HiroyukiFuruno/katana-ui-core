@@ -52,17 +52,19 @@ impl UiTreeHostActionHitCollector<'_> {
         };
         let logical_start = self.text_logical_y.max(self.y as f32);
         let hit_y = logical_start.floor().max(0.0) as usize;
+        let full_hit_height =
+            ((logical_start + height as f32).ceil().max(0.0) as usize).saturating_sub(hit_y);
         let full_rect = UiTreeHitRect {
             x: text_x,
             y: hit_y,
             width: remaining_width(self.area, text_x)
                 .saturating_sub(dimension_px(&node.props().common.margin.right))
                 .max(1),
-            height,
+            height: full_hit_height,
         };
         let actions = self.actions_for_node(node);
         self.push_node_hit(node, full_rect);
-        self.push_text_link_action_hits(node, text_x, hit_y, height, &actions);
+        self.push_text_link_action_hits(node, text_x, logical_start, height, &actions);
         self.push_action_hits(
             node,
             actions
@@ -129,13 +131,16 @@ impl UiTreeHostActionHitCollector<'_> {
 
     pub(super) fn button(&mut self, node: &UiNode, x: usize) {
         let (width, height) = button_dimensions(node);
+        let logical_top = self.text_logical_y.max(self.y as f32);
+        let hit_top = logical_top.floor().max(0.0) as usize;
+        let hit_bottom = (logical_top + height as f32).ceil().max(0.0) as usize;
         self.push_node_action_hits(
             node,
             UiTreeHitRect {
                 x,
-                y: self.y,
+                y: hit_top,
                 width,
-                height,
+                height: hit_bottom.saturating_sub(hit_top),
             },
         );
         self.y = self.y.saturating_add(TEXT_HEIGHT + NODE_GAP);
@@ -170,3 +175,7 @@ impl UiTreeHostActionHitCollector<'_> {
         self.y = self.y.saturating_add(TEXT_HEIGHT);
     }
 }
+
+#[cfg(test)]
+#[path = "ui_tree_canvas_hit_control_fractional_tests.rs"]
+mod control_fractional_tests;

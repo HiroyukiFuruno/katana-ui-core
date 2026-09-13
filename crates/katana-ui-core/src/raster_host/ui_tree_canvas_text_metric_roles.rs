@@ -105,6 +105,20 @@ pub(super) fn is_heading_3_role(role: &str) -> bool {
     role == "heading-3" || role.starts_with("heading-3-html-") || is_export_heading_3_role(role)
 }
 
+/// 下位見出しは明示的な document typography を与えた場合だけ選択する。
+/// 未設定 role の既存 UI metrics を維持するため、既定の見出し分類には加えない。
+pub(super) fn is_heading_4_role(role: &str) -> bool {
+    role == "heading-4"
+}
+
+pub(super) fn is_heading_5_role(role: &str) -> bool {
+    role == "heading-5"
+}
+
+pub(super) fn is_heading_6_role(role: &str) -> bool {
+    role == "heading-6"
+}
+
 pub(super) fn is_export_heading_1_role(role: &str) -> bool {
     role == "heading-export"
 }

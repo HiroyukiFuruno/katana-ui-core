@@ -1,10 +1,15 @@
 use super::*;
+use crate::text_raster::catalog::{PlatformRegularFontFace, PlatformRegularFontFaces};
 use crate::text_raster::{
     PlatformColorEmojiAvailability, PlatformColorEmojiUnavailableReason,
     PlatformFontCatalogFingerprint, PlatformFontProfile,
 };
+use cosmic_text::{Stretch, Style as FontStyle, Weight};
+use std::path::PathBuf;
 
 const TEST_FONT_SIZE_PX: f32 = 16.0;
+const TEST_FACE_INDEX: u32 = 3;
+const TEST_FACE_WEIGHT: u16 = 300;
 
 fn font() -> FontToken {
     FontToken {
@@ -13,6 +18,22 @@ fn font() -> FontToken {
         size: TEST_FONT_SIZE_PX,
         weight: REGULAR_WEIGHT,
     }
+}
+
+fn selected_non_regular_faces() -> ResolvedTextFaces {
+    let face = PlatformRegularFontFace {
+        family: "Candidate".to_owned(),
+        source_file_path: PathBuf::from("candidate.ttc"),
+        index: TEST_FACE_INDEX,
+        weight: TEST_FACE_WEIGHT,
+        style: FontStyle::Oblique,
+        stretch: Stretch::Condensed,
+        selection_family: "__candidate__".to_owned(),
+    };
+    ResolvedTextFaces::from_candidate_faces(PlatformRegularFontFaces {
+        proportional: Some(face.clone()),
+        monospace: Some(face),
+    })
 }
 
 #[test]
@@ -118,18 +139,20 @@ fn regular_candidate_faces_do_not_replace_emoji_or_generic_fallback_contracts() 
     let mut emoji_span = UiTextSpan::plain("⭐");
     emoji_span.style.emoji = true;
 
+    let emoji_attrs = attrs_for_span(
+        &font(),
+        &emoji_span,
+        [u8::MAX; RGBA_CHANNEL_COUNT],
+        &resolved_emoji_face,
+        &text_faces,
+    )
+    .expect("emoji face remains first-class");
     assert_eq!(
-        attrs_for_span(
-            &font(),
-            &emoji_span,
-            [u8::MAX; RGBA_CHANNEL_COUNT],
-            &resolved_emoji_face,
-            &text_faces,
-        )
-        .expect("emoji face remains first-class")
-        .family,
+        emoji_attrs.family,
         cosmic_text::Family::Name("KatanA emoji")
     );
+    assert_eq!(emoji_attrs.weight, Weight(REGULAR_WEIGHT));
+    assert_eq!(emoji_attrs.style, FontStyle::Normal);
     let generic_faces = ResolvedTextFaces::default();
     let mut proportional_font = font();
     proportional_font.family = FontFamily::Proportional;
@@ -145,4 +168,38 @@ fn regular_candidate_faces_do_not_replace_emoji_or_generic_fallback_contracts() 
         .family,
         cosmic_text::Family::SansSerif
     );
+}
+
+#[test]
+fn selected_candidate_face_keeps_its_attrs_for_all_latin_style_requests() {
+    let face = PlatformColorEmojiFaceRecord {
+        platform_profile: PlatformFontProfile::Unsupported,
+        family_identity: String::new(),
+        source_file_path: None,
+        raw_file_sha256: None,
+        catalog_fingerprint: PlatformFontCatalogFingerprint::from_bytes([0; 32]),
+        availability: PlatformColorEmojiAvailability::Unavailable(
+            PlatformColorEmojiUnavailableReason::NoCandidates,
+        ),
+    };
+    let faces = selected_non_regular_faces();
+    for (bold, italic, token_weight, monospace) in [
+        (false, false, 300, false),
+        (true, false, 700, false),
+        (false, true, 650, false),
+        (false, false, 900, true),
+    ] {
+        let mut token = font();
+        token.weight = token_weight;
+        let mut span = UiTextSpan::plain("Latin");
+        span.style.bold = bold;
+        span.style.italic = italic;
+        span.style.monospace = monospace;
+        let attrs = attrs_for_span(&token, &span, [u8::MAX; RGBA_CHANNEL_COUNT], &face, &faces)
+            .expect("candidate attrs");
+        assert_eq!(attrs.family, cosmic_text::Family::Name("__candidate__"));
+        assert_eq!(attrs.weight, Weight(300));
+        assert_eq!(attrs.style, FontStyle::Oblique);
+        assert_eq!(attrs.stretch, Stretch::Condensed);
+    }
 }

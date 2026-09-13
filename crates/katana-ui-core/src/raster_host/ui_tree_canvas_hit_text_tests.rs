@@ -2,6 +2,12 @@ use super::*;
 
 #[path = "ui_tree_canvas_hit_text_alignment_tests.rs"]
 mod alignment_tests;
+#[path = "ui_tree_canvas_hit_fractional_bounds_tests.rs"]
+mod fractional_bounds_tests;
+#[path = "ui_tree_canvas_hit_wrapped_link_scroll_tests.rs"]
+mod wrapped_link_scroll_tests;
+#[path = "ui_tree_canvas_hit_wrapped_link_tests.rs"]
+mod wrapped_link_tests;
 
 #[test]
 fn collects_button_action_rect_from_render_layout() {

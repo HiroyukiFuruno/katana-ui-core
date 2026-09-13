@@ -19,6 +19,7 @@ pub(crate) struct RichTextStyle {
     pub(super) color: u32,
     pub(super) bold: bool,
     pub(super) italic: bool,
+    pub(super) monospace: bool,
     pub(super) emoji: bool,
     pub(super) raster_vertical_scale: f32,
 }

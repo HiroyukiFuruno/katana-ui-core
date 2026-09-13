@@ -3,7 +3,6 @@ use super::super::super::ui_tree_canvas_palette::UiTreeCanvasPalette;
 use super::super::super::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 use katana_ui_core::render_model::{UiTextSpan, UiTextSpanStyle};
 
-const HIGHLIGHT_BACKGROUND: u32 = 0x4a4620;
 const CURRENT_HIGHLIGHT_BACKGROUND: u32 = 0x654100;
 const INLINE_CODE_LEFT_PADDING: usize = 4;
 const INLINE_CODE_EXTRA_WIDTH: usize = 8;
@@ -17,6 +16,10 @@ const RGBA_CHANNEL_COUNT: usize = 4;
 const TRANSPARENT_ALPHA: u8 = 0;
 const RED_SHIFT: u32 = 16;
 const GREEN_SHIFT: u32 = 8;
+
+#[cfg(test)]
+#[path = "ui_tree_canvas_text_highlight_theme_tests.rs"]
+mod highlight_theme_tests;
 
 pub(super) fn draw_span_background(
     canvas: &mut Canvas,
@@ -44,7 +47,7 @@ pub(super) fn draw_span_background(
             y,
             width,
             metrics.highlight_box_height(),
-            HIGHLIGHT_BACKGROUND,
+            palette.text_highlight_background,
         );
         return;
     }
@@ -186,7 +189,10 @@ mod tests {
             metrics,
             0.0,
         );
-        assert_eq!(Some(super::HIGHLIGHT_BACKGROUND), pixel_at(&canvas, 40, 8));
+        assert_eq!(
+            Some(palette.text_highlight_background),
+            pixel_at(&canvas, 40, 8)
+        );
     }
 
     #[test]
@@ -210,7 +216,10 @@ mod tests {
         );
 
         assert_eq!(Some(palette.background), pixel_at(&canvas, 20, 62));
-        assert_eq!(Some(super::HIGHLIGHT_BACKGROUND), pixel_at(&canvas, 20, 63));
+        assert_eq!(
+            Some(palette.text_highlight_background),
+            pixel_at(&canvas, 20, 63)
+        );
     }
 
     #[test]
@@ -250,7 +259,10 @@ mod tests {
             0.0,
         );
 
-        assert_eq!(Some(super::HIGHLIGHT_BACKGROUND), pixel_at(&canvas, 20, 62));
+        assert_eq!(
+            Some(palette.text_highlight_background),
+            pixel_at(&canvas, 20, 62)
+        );
         assert_eq!(
             Some(super::CURRENT_HIGHLIGHT_BACKGROUND),
             pixel_at(&canvas, 20, 63)

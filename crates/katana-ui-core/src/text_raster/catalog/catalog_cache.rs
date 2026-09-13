@@ -113,6 +113,10 @@ fn face_from_loaded_file(
         Some(super::PlatformRegularFontFace {
             family: family.clone(),
             source_file_path: path.to_path_buf(),
+            index: face.index,
+            weight: face.weight.0,
+            style: face.style,
+            stretch: face.stretch,
             selection_family: String::new(),
         })
     })

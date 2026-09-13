@@ -13,6 +13,10 @@ pub struct PlatformFontCatalogStats {
 pub(crate) struct PlatformRegularFontFace {
     pub(crate) family: String,
     pub(crate) source_file_path: PathBuf,
+    pub(crate) index: u32,
+    pub(crate) weight: u16,
+    pub(crate) style: cosmic_text::Style,
+    pub(crate) stretch: cosmic_text::Stretch,
     pub(crate) selection_family: String,
 }
 

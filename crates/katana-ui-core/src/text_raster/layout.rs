@@ -1,5 +1,4 @@
 use crate::render_model::UiTextSpan;
-use crate::text_raster::catalog::PlatformRegularFontFaces;
 use crate::text_raster::catalog_types::PlatformColorEmojiFaceRecord;
 use crate::text_raster::model::{
     PlatformTextGraphemeBounds, PlatformTextLineMetrics, PlatformTextMetrics,
@@ -31,38 +30,9 @@ const OPAQUE_COLOR_CHANNEL: u8 = u8::MAX;
 
 pub(crate) struct TextLayoutRasterizer;
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub(crate) struct ResolvedTextFaces {
-    proportional: Option<String>,
-    monospace: Option<String>,
-}
-
-impl ResolvedTextFaces {
-    pub(crate) fn from_first_candidates(
-        proportional: Option<String>,
-        monospace: Option<String>,
-    ) -> Self {
-        Self {
-            proportional,
-            monospace,
-        }
-    }
-
-    pub(crate) fn from_candidate_faces(candidates: PlatformRegularFontFaces) -> Self {
-        Self::from_first_candidates(
-            candidates.proportional.map(|face| face.selection_family),
-            candidates.monospace.map(|face| face.selection_family),
-        )
-    }
-
-    pub(crate) fn proportional(&self) -> Option<&str> {
-        self.proportional.as_deref()
-    }
-
-    pub(crate) fn monospace(&self) -> Option<&str> {
-        self.monospace.as_deref()
-    }
-}
+#[path = "layout/resolved_faces.rs"]
+mod resolved_faces;
+pub(crate) use resolved_faces::{ResolvedTextFace, ResolvedTextFaces};
 
 pub(crate) struct LayoutRaster {
     pub(crate) width: usize,
