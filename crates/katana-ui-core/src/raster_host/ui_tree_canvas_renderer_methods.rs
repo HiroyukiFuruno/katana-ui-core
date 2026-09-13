@@ -60,6 +60,10 @@ impl UiTreeCanvasRenderer {
         area: UiTreeRenderArea,
         palette: UiTreeCanvasPalette,
     ) {
+        if node.kind() == UiNodeKind::Stack && has_absolute_child(node) {
+            self.draw_overlay_stack(canvas, node, x, y, area, palette);
+            return;
+        }
         if self
             .typography
             .document_typography
@@ -68,10 +72,6 @@ impl UiTreeCanvasRenderer {
             let mut logical_y = *y as f32;
             self.draw_container_with_logical_cursor(canvas, node, x, &mut logical_y, area, palette);
             *y = logical_y.ceil().max(0.0) as usize;
-            return;
-        }
-        if node.kind() == UiNodeKind::Stack && has_absolute_child(node) {
-            self.draw_overlay_stack(canvas, node, x, y, area, palette);
             return;
         }
         let hover_surface_y = *y;
@@ -225,6 +225,10 @@ impl UiTreeCanvasRenderer {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "ui_tree_canvas_scrolled_overlay_tests.rs"]
+mod scrolled_overlay_tests;
 
 pub(in crate::raster_host) fn hover_surface_child_clip_height(
     node: &UiNode,

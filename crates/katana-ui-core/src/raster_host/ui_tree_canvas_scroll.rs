@@ -10,7 +10,7 @@ use super::ui_tree_canvas_scroll_partial::draw_partially_visible_node;
 use super::ui_tree_canvas_text::{UiTreeTextContext, UiTreeTextRenderer};
 use super::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 use super::ui_tree_canvas_types::UiTreeRenderArea;
-use katana_ui_core::render_model::{UiNode, UiScrollAreaProps};
+use katana_ui_core::render_model::{UiNode, UiNodeKind, UiScrollAreaProps, UiVisualRole};
 
 pub(super) fn draw_scroll_area(
     renderer: &UiTreeCanvasRenderer,
@@ -166,6 +166,10 @@ fn draw_visible_node(
     }
     if node_top >= source_y {
         let render_start = *render_y;
+        let render_area = UiTreeRenderArea {
+            scroll_y: 0.0,
+            ..area
+        };
         if node.kind() == katana_ui_core::render_model::UiNodeKind::Text {
             UiTreeTextRenderer::draw_node_at_logical_y(
                 context.canvas,
@@ -173,7 +177,7 @@ fn draw_visible_node(
                 node,
                 x,
                 *render_y,
-                area,
+                render_area,
             );
             *render_y += logical_text_height(renderer, text_context, node, x, area);
         } else {
@@ -182,7 +186,7 @@ fn draw_visible_node(
                 node,
                 x,
                 render_y,
-                area,
+                render_area,
                 palette,
             );
             *logical_y = node_top + (*render_y - render_start);
@@ -213,6 +217,9 @@ fn logical_node_height(
     x: usize,
     area: UiTreeRenderArea,
 ) -> f32 {
+    if let Some(text_child) = auto_hover_text_child(node) {
+        return logical_text_height(renderer, context, text_child, x, area);
+    }
     if node.kind() == katana_ui_core::render_model::UiNodeKind::Text {
         return logical_text_height(renderer, context, node, x, area);
     }
@@ -224,6 +231,18 @@ fn logical_node_height(
             .line_box_height;
     }
     renderer.measured_scroll_node_height(node, context, x, area) as f32
+}
+
+pub(in crate::raster_host) fn auto_hover_text_child(node: &UiNode) -> Option<&UiNode> {
+    if node.kind() != UiNodeKind::Stack
+        || node.props().visual_role != UiVisualRole::HoverSurface
+        || dimension_px(&node.props().common.height) > 0
+        || node.children().len() != 1
+    {
+        return None;
+    }
+    let child = node.children().first()?;
+    (child.kind() == UiNodeKind::Text).then_some(child)
 }
 
 fn logical_text_height(
@@ -245,6 +264,13 @@ fn logical_text_height(
     let line_count = (measured / metrics.line_box_height).round().max(1.0);
     line_count * metrics.line_box_height
 }
+
+#[cfg(test)]
+#[path = "ui_tree_canvas_scroll_hover_surface_fractional_tests.rs"]
+mod hover_surface_fractional_tests;
+#[cfg(test)]
+#[path = "ui_tree_canvas_scroll_hover_surface_tests.rs"]
+mod hover_surface_tests;
 
 fn draw_visible_children(
     context: &mut ScrollDrawContext<'_, '_>,

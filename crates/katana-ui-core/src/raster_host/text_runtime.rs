@@ -143,7 +143,7 @@ pub(super) fn ui_span(text: &str, style: RichTextStyle) -> UiTextSpan {
         style: UiTextSpanStyle {
             bold: style.bold,
             italic: style.italic,
-            monospace: false,
+            monospace: style.monospace,
             underline: false,
             strikethrough: false,
             highlight: false,
@@ -207,6 +207,14 @@ mod tests {
         assert_eq!(FontFamily::Proportional, font.family);
         assert_eq!(FALLBACK_FONT_SIZE, font.size);
         assert_eq!(REGULAR_WEIGHT, font.weight);
+    }
+
+    #[test]
+    fn ui_span_preserves_the_requested_monospace_face() {
+        let span = ui_span("code", RichTextStyle::new(14.0, 0).monospace(true));
+
+        assert!(span.style.monospace);
+        assert!(!span.style.inline_code);
     }
 
     #[test]

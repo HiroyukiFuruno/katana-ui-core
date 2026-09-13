@@ -8,7 +8,7 @@ use katana_ui_core::render_model::{UiDimension, UiNode};
 #[path = "ui_tree_canvas_text_cursor.rs"]
 mod text_cursor;
 #[path = "ui_tree_canvas_text_lines.rs"]
-mod text_lines;
+pub(in crate::raster_host) mod text_lines;
 #[path = "ui_tree_canvas_text_table.rs"]
 mod text_table;
 #[path = "ui_tree_canvas_text_types.rs"]

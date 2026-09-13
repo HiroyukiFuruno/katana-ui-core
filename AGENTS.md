@@ -147,6 +147,7 @@ Overall average: **60-90% token reduction** on common development operations.
 - 元タスクがarchive・中断された場合は、同じ作業ツリーの実行状況と差分を確認し、競合がなければ残作業を引き継ぐ。引継ぎ待ちを新たな承認条件にしない。
 - coverage失敗は既存LCOVの未到達行を先に修正し、限定テスト後に最終release-checkを実行する。終了コード・ログ・session_idを保持し、稼働targetをcleanしない。
 - 文書・ルールだけの変更を理由に製品full gateを追加しない。ルール整理を製品リリースの代わりにしない。
+- 公開後のconsumer受入がDoDに含まれる場合、GitHub Release/crates.io公開だけで完了にしない。受入未達をIssueへ記録するだけで停止せず、修正・検証を継続する。
 
 ## Storybook の扱い
 

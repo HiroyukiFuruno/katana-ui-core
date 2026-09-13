@@ -15,7 +15,7 @@ mod rich_span;
 #[path = "ui_tree_canvas_text_span_style.rs"]
 mod span_style;
 #[path = "ui_tree_canvas_text_wrap.rs"]
-mod text_wrap;
+pub(in crate::raster_host) mod text_wrap;
 #[path = "ui_tree_canvas_text_wrap_state.rs"]
 mod wrap_state;
 
@@ -252,7 +252,7 @@ fn canvas_x(x: isize) -> Option<usize> {
     usize::try_from(x).ok()
 }
 
-fn visible_line_y(
+pub(in crate::raster_host) fn visible_line_y(
     line_index: usize,
     y: f32,
     area: UiTreeRenderArea,

@@ -97,101 +97,23 @@ pub struct UiTreeDocumentTypography {
     heading_2_baseline: Option<UiTreeTextRoleBaselineTypography>,
     heading_3: Option<UiTreeTextRoleTypography>,
     heading_3_baseline: Option<UiTreeTextRoleBaselineTypography>,
+    heading_4: Option<UiTreeTextRoleTypography>,
+    heading_4_baseline: Option<UiTreeTextRoleBaselineTypography>,
+    heading_5: Option<UiTreeTextRoleTypography>,
+    heading_5_baseline: Option<UiTreeTextRoleBaselineTypography>,
+    heading_6: Option<UiTreeTextRoleTypography>,
+    heading_6_baseline: Option<UiTreeTextRoleBaselineTypography>,
 }
 
 impl UiTreeDocumentTypography {
-    /// Creates an override set that preserves all theme-derived metrics.
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            body: None,
-            body_baseline: None,
-            heading_1: None,
-            heading_1_baseline: None,
-            heading_2: None,
-            heading_2_baseline: None,
-            heading_3: None,
-            heading_3_baseline: None,
-        }
-    }
-
-    /// Overrides document body text metrics.
-    #[must_use]
-    pub const fn with_body(mut self, typography: UiTreeTextRoleTypography) -> Self {
-        self.body = Some(typography);
-        self.body_baseline = None;
-        self
-    }
-
-    #[must_use]
-    pub const fn with_body_baseline(
-        mut self,
-        typography: UiTreeTextRoleBaselineTypography,
-    ) -> Self {
-        self.body_baseline = Some(typography);
-        self.body = None;
-        self
-    }
-
-    /// Overrides first-level document heading metrics.
-    #[must_use]
-    pub const fn with_heading_1(mut self, typography: UiTreeTextRoleTypography) -> Self {
-        self.heading_1 = Some(typography);
-        self.heading_1_baseline = None;
-        self
-    }
-
-    #[must_use]
-    pub const fn with_heading_1_baseline(
-        mut self,
-        typography: UiTreeTextRoleBaselineTypography,
-    ) -> Self {
-        self.heading_1_baseline = Some(typography);
-        self.heading_1 = None;
-        self
-    }
-
-    /// Overrides second-level document heading metrics.
-    #[must_use]
-    pub const fn with_heading_2(mut self, typography: UiTreeTextRoleTypography) -> Self {
-        self.heading_2 = Some(typography);
-        self.heading_2_baseline = None;
-        self
-    }
-
-    #[must_use]
-    pub const fn with_heading_2_baseline(
-        mut self,
-        typography: UiTreeTextRoleBaselineTypography,
-    ) -> Self {
-        self.heading_2_baseline = Some(typography);
-        self.heading_2 = None;
-        self
-    }
-
-    /// Overrides third-level document heading metrics.
-    #[must_use]
-    pub const fn with_heading_3(mut self, typography: UiTreeTextRoleTypography) -> Self {
-        self.heading_3 = Some(typography);
-        self.heading_3_baseline = None;
-        self
-    }
-
-    #[must_use]
-    pub const fn with_heading_3_baseline(
-        mut self,
-        typography: UiTreeTextRoleBaselineTypography,
-    ) -> Self {
-        self.heading_3_baseline = Some(typography);
-        self.heading_3 = None;
-        self
-    }
-
     pub(in crate::raster_host) const fn has_fractional_baseline(self) -> bool {
         self.body_baseline.is_some()
             || self.heading_1_baseline.is_some()
             || self.heading_2_baseline.is_some()
             || self.heading_3_baseline.is_some()
+            || self.heading_4_baseline.is_some()
+            || self.heading_5_baseline.is_some()
+            || self.heading_6_baseline.is_some()
     }
 
     pub(in crate::raster_host) const fn body(self) -> Option<UiTreeTextRoleTypography> {
@@ -233,82 +155,40 @@ impl UiTreeDocumentTypography {
     ) -> Option<UiTreeTextRoleBaselineTypography> {
         self.heading_3_baseline
     }
+
+    pub(in crate::raster_host) const fn heading_4(self) -> Option<UiTreeTextRoleTypography> {
+        self.heading_4
+    }
+
+    pub(in crate::raster_host) const fn heading_4_baseline(
+        self,
+    ) -> Option<UiTreeTextRoleBaselineTypography> {
+        self.heading_4_baseline
+    }
+
+    pub(in crate::raster_host) const fn heading_5(self) -> Option<UiTreeTextRoleTypography> {
+        self.heading_5
+    }
+
+    pub(in crate::raster_host) const fn heading_5_baseline(
+        self,
+    ) -> Option<UiTreeTextRoleBaselineTypography> {
+        self.heading_5_baseline
+    }
+
+    pub(in crate::raster_host) const fn heading_6(self) -> Option<UiTreeTextRoleTypography> {
+        self.heading_6
+    }
+
+    pub(in crate::raster_host) const fn heading_6_baseline(
+        self,
+    ) -> Option<UiTreeTextRoleBaselineTypography> {
+        self.heading_6_baseline
+    }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{
-        UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography, UiTreeTextRoleTypography,
-    };
+#[path = "types_tests.rs"]
+mod tests;
 
-    #[test]
-    fn role_overrides_are_optional_and_keep_independent_metrics() {
-        let body = UiTreeTextRoleTypography::new(16.5, 23, 0);
-        let heading = UiTreeTextRoleTypography::new(24.75, 40, 9);
-        let typography = UiTreeDocumentTypography::new()
-            .with_body(body)
-            .with_heading_1(heading);
-
-        assert_eq!(Some(body), typography.body());
-        assert_eq!(Some(heading), typography.heading_1());
-        assert_eq!(None, typography.heading_2());
-        assert_eq!(None, typography.heading_3());
-    }
-
-    #[test]
-    fn additive_baseline_api_preserves_role_selection_and_legacy_conversion() {
-        let legacy = UiTreeTextRoleTypography::new(16.5, 23, 4);
-        let baseline = legacy.with_baseline_from_line_box_top(23.5, 18.5);
-        assert_eq!(
-            baseline,
-            UiTreeTextRoleBaselineTypography::new(16.5, 23.5, 18.5)
-        );
-
-        let body = UiTreeTextRoleBaselineTypography::new(16.5, 23.5, 18.5);
-        let heading_1 = UiTreeTextRoleBaselineTypography::new(24.75, 40.0, 30.0);
-        let heading_2 = UiTreeTextRoleBaselineTypography::new(22.0, 34.0, 25.0);
-        let heading_3 = UiTreeTextRoleBaselineTypography::new(20.0, 30.0, 22.0);
-        let typography = UiTreeDocumentTypography::new()
-            .with_body_baseline(body)
-            .with_heading_1_baseline(heading_1)
-            .with_heading_2_baseline(heading_2)
-            .with_heading_3_baseline(heading_3);
-
-        assert_eq!(Some(body), typography.body_baseline());
-        assert_eq!(Some(heading_1), typography.heading_1_baseline());
-        assert_eq!(Some(heading_2), typography.heading_2_baseline());
-        assert_eq!(Some(heading_3), typography.heading_3_baseline());
-        assert_eq!(None, typography.body());
-        assert_eq!(None, typography.heading_1());
-        assert_eq!(None, typography.heading_2());
-        assert_eq!(None, typography.heading_3());
-
-        let legacy_body = UiTreeTextRoleTypography::new(16.5, 23, 4);
-        let legacy_heading_1 = UiTreeTextRoleTypography::new(24.75, 40, 10);
-        let legacy_heading_2 = UiTreeTextRoleTypography::new(22.0, 34, 5);
-        let legacy_heading_3 = UiTreeTextRoleTypography::new(20.0, 30, 4);
-        let legacy_typography = UiTreeDocumentTypography::new()
-            .with_body(legacy_body)
-            .with_heading_1(legacy_heading_1)
-            .with_heading_2(legacy_heading_2)
-            .with_heading_3(legacy_heading_3);
-
-        assert_eq!(Some(legacy_body), legacy_typography.body());
-        assert_eq!(Some(legacy_heading_1), legacy_typography.heading_1());
-        assert_eq!(Some(legacy_heading_2), legacy_typography.heading_2());
-        assert_eq!(Some(legacy_heading_3), legacy_typography.heading_3());
-        assert_eq!(None, legacy_typography.heading_2_baseline());
-        assert_eq!(None, legacy_typography.heading_3_baseline());
-        assert!(typography.has_fractional_baseline());
-        assert!(!legacy_typography.has_fractional_baseline());
-    }
-
-    #[test]
-    fn invalid_role_values_are_rejected_by_the_raster_host_boundary() {
-        assert!(!UiTreeTextRoleTypography::new(0.0, 23, 0).is_valid());
-        assert!(!UiTreeTextRoleTypography::new(f32::NAN, 23, 0).is_valid());
-        assert!(!UiTreeTextRoleTypography::new(16.5, 0, 0).is_valid());
-        assert!(!UiTreeTextRoleTypography::new(16.5, 23, 23).is_valid());
-        assert!(UiTreeTextRoleBaselineTypography::new(16.5, 23.5, 0.5).is_valid());
-    }
-}
+mod builders;

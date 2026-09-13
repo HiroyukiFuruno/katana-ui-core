@@ -586,6 +586,93 @@ mod tests {
     }
 
     #[test]
+    fn explicit_higher_heading_typography_preserves_unconfigured_role_metrics() {
+        let document_typography = UiTreeDocumentTypographyOverrides::new()
+            .with_heading_4_baseline(UiTreeTextRoleBaselineTypography::new(17.507, 26.5, 15.5))
+            .with_heading_5_baseline(UiTreeTextRoleBaselineTypography::new(16.338, 24.5, 14.5))
+            .with_heading_6_baseline(UiTreeTextRoleBaselineTypography::new(15.169, 23.0, 13.5));
+        let theme = ThemeSnapshot::dark();
+        let configured = UiTreeDocumentTypography::from_theme_with_document_typography(
+            &theme,
+            document_typography,
+        );
+
+        for (role, font_size, line_box_height, baseline) in [
+            ("heading-4", 17.507, 26.5, 15.5),
+            ("heading-5", 16.338, 24.5, 14.5),
+            ("heading-6", 15.169, 23.0, 13.5),
+        ] {
+            let node: UiNode = Text::new(role).text_role(role).into();
+            let metrics = UiTreeTextMetrics::for_node_with_typography(&node, configured);
+
+            assert_eq!(font_size, metrics.font_size, "{role} font size");
+            assert_eq!(line_box_height, metrics.line_box_height, "{role} line box");
+            assert_eq!(
+                line_box_height.ceil() as usize,
+                metrics.line_height,
+                "{role} height"
+            );
+            assert_eq!(
+                Some(baseline),
+                metrics.baseline_from_line_box_top,
+                "{role} baseline"
+            );
+        }
+
+        let theme_typography = UiTreeDocumentTypography::from_theme(&theme);
+        for role in ["heading-3", "heading-7"] {
+            let node: UiNode = Text::new(role).text_role(role).into();
+            assert_eq!(
+                UiTreeTextMetrics::for_node_with_typography(&node, theme_typography),
+                UiTreeTextMetrics::for_node_with_typography(&node, configured),
+                "{role} must retain its existing metrics"
+            );
+        }
+
+        let no_heading_4 = UiTreeDocumentTypography::from_theme_with_document_typography(
+            &theme,
+            UiTreeDocumentTypographyOverrides::new()
+                .with_heading_5_baseline(UiTreeTextRoleBaselineTypography::new(16.338, 24.5, 14.5)),
+        );
+        let heading_4: UiNode = Text::new("H4").text_role("heading-4").into();
+        assert_eq!(
+            UiTreeTextMetrics::for_node_with_typography(&heading_4, theme_typography),
+            UiTreeTextMetrics::for_node_with_typography(&heading_4, no_heading_4),
+            "heading-4 without an explicit override must retain its prior metrics"
+        );
+    }
+
+    #[test]
+    fn legacy_higher_heading_typography_resolves_each_exact_role() {
+        let document_typography = UiTreeDocumentTypographyOverrides::new()
+            .with_heading_4(UiTreeTextRoleTypography::new(17.0, 27, 1))
+            .with_heading_5(UiTreeTextRoleTypography::new(16.0, 25, 2))
+            .with_heading_6(UiTreeTextRoleTypography::new(15.0, 23, 3));
+        let typography = UiTreeDocumentTypography::from_theme_with_document_typography(
+            &ThemeSnapshot::dark(),
+            document_typography,
+        );
+
+        for (role, font_size, line_height, top_margin) in [
+            ("heading-4", 17.0, 27, 1),
+            ("heading-5", 16.0, 25, 2),
+            ("heading-6", 15.0, 23, 3),
+        ] {
+            let node: UiNode = Text::new(role).text_role(role).into();
+            let metrics = UiTreeTextMetrics::for_node_with_typography(&node, typography);
+
+            assert_eq!(font_size, metrics.font_size, "{role} font size");
+            assert_eq!(line_height, metrics.line_height, "{role} line height");
+            assert_eq!(
+                line_height as f32, metrics.line_box_height,
+                "{role} line box"
+            );
+            assert_eq!(top_margin, metrics.top_margin, "{role} top margin");
+            assert_eq!(None, metrics.baseline_from_line_box_top, "{role} baseline");
+        }
+    }
+
+    #[test]
     fn invalid_document_role_typography_keeps_theme_derived_metrics() {
         let node: UiNode = Text::new("body").text_role("body").into();
         let theme = ThemeSnapshot::dark();

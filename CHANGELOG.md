@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added an optional `text-highlight-background` theme token for document marks while preserving the existing default color (Issue #52).
+
+- Added independent, opt-in typography overrides for `heading-4`, `heading-5`, and `heading-6`, preserving existing and unconfigured role metrics (Issue #52).
+- Added `IssuedConsumerArtifactPlan::execute_next_with_evidence_error` and `ConsumerArtifactPlanExecutionError` so consumers can distinguish Unicode evidence failures by type while existing `execute_next` callers retain their error contract (Issue #57).
+
+### Fixed
+
+- Preserved the selected candidate font face across weight/style/stretch differences instead of silently using a system fallback (Issue #52).
+- Kept wrapped link action regions on their displayed lines, including scrolled document and viewport coordinates (Issue #52).
+- Included the fractional bottom edge in document text and button node/action hit regions without changing the logical layout cursor (Issue #52).
+- Aligned fixed-height document rows and their hit regions using the same fractional vertical center offset (Issue #52).
+- Preserved inline-code and monospace font selection from span measurement through rich-line rendering (Issue #52).
+- Preserved fractional document row positions when the public hover helper wraps visible or scrolled text (Issue #52).
+- Matched fractional scroll visibility between hover rendering and action hits, and retained later children in partially visible hover surfaces (Issue #52).
+- Kept absolute media controls visible during partial scrolling and applied ScrollArea offsets once (Issue #52).
+
 ## [0.3.6] - 2026-09-05
 
 ### Added

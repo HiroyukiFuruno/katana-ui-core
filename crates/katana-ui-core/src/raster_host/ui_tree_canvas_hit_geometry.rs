@@ -9,18 +9,6 @@ pub(super) enum ScrollHitClip {
     Document,
 }
 
-pub(crate) const PRESERVED_WHITESPACE_WIDTH_FACTOR: f32 = 0.58;
-pub(crate) const COLLAPSED_WHITESPACE_WIDTH_FACTOR: f32 = 0.30;
-
-pub(super) fn whitespace_width(font_size: f32, preserve_whitespace: bool) -> usize {
-    let factor = if preserve_whitespace {
-        PRESERVED_WHITESPACE_WIDTH_FACTOR
-    } else {
-        COLLAPSED_WHITESPACE_WIDTH_FACTOR
-    };
-    (font_size * factor).ceil() as usize
-}
-
 pub(super) fn node_cursor(node: &UiNode) -> UiCursor {
     node.props().common.cursor
 }
@@ -113,9 +101,7 @@ mod tests {
     use katana_ui_core::render_model::{UiCursor, UiHostActionPlan, UiHostActionSpec, UiNodeId};
 
     #[test]
-    fn hit_geometry_covers_whitespace_duplicate_scroll_clip_and_requested_width() {
-        assert!(whitespace_width(14.0, true) > whitespace_width(14.0, false));
-
+    fn hit_geometry_covers_duplicate_scroll_clip_and_requested_width() {
         let parent = UiNode::new(UiNodeKind::Panel, "same");
         let child = UiNode::new(UiNodeKind::Text, "same");
         assert!(duplicate_panel_label(&parent, &child));

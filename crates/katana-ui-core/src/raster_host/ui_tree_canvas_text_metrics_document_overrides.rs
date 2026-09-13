@@ -2,6 +2,7 @@ use super::{
     UiTreeTextMetrics,
     metric_roles::{
         is_document_body_role, is_heading_1_role, is_heading_2_role, is_heading_3_role,
+        is_heading_4_role, is_heading_5_role, is_heading_6_role,
     },
     metric_scaling::{strikethrough_offset, underline_offset},
 };
@@ -56,6 +57,9 @@ fn active_document_role_typography(
     role: &str,
     document_typography: UiTreeDocumentTypography,
 ) -> Option<ActiveRoleTypography> {
+    if let Some(typography) = active_higher_heading_typography(role, document_typography) {
+        return typography;
+    }
     if is_heading_1_role(role) {
         document_typography
             .heading_1_baseline()
@@ -95,6 +99,46 @@ fn active_document_role_typography(
         ActiveRoleTypography::Legacy(typography) => typography.is_valid(),
         ActiveRoleTypography::Baseline(typography) => typography.is_valid(),
     })
+}
+
+fn active_higher_heading_typography(
+    role: &str,
+    document_typography: UiTreeDocumentTypography,
+) -> Option<Option<ActiveRoleTypography>> {
+    let typography = if is_heading_4_role(role) {
+        document_typography
+            .heading_4_baseline()
+            .map(ActiveRoleTypography::Baseline)
+            .or_else(|| {
+                document_typography
+                    .heading_4()
+                    .map(ActiveRoleTypography::Legacy)
+            })
+    } else if is_heading_5_role(role) {
+        document_typography
+            .heading_5_baseline()
+            .map(ActiveRoleTypography::Baseline)
+            .or_else(|| {
+                document_typography
+                    .heading_5()
+                    .map(ActiveRoleTypography::Legacy)
+            })
+    } else if is_heading_6_role(role) {
+        document_typography
+            .heading_6_baseline()
+            .map(ActiveRoleTypography::Baseline)
+            .or_else(|| {
+                document_typography
+                    .heading_6()
+                    .map(ActiveRoleTypography::Legacy)
+            })
+    } else {
+        return None;
+    };
+    Some(typography.filter(|typography| match typography {
+        ActiveRoleTypography::Legacy(typography) => typography.is_valid(),
+        ActiveRoleTypography::Baseline(typography) => typography.is_valid(),
+    }))
 }
 
 enum ActiveRoleTypography {

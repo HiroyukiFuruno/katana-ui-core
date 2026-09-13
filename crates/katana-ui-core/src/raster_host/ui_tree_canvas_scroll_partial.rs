@@ -108,6 +108,16 @@ fn draw_partially_visible_hover_text_surface(
     if visible_height == 0 {
         return;
     }
+    draw_partially_visible_node(
+        renderer,
+        canvas,
+        child,
+        x,
+        node_height,
+        source_y,
+        area,
+        palette,
+    );
     canvas.blend_rect(
         x,
         area.y,
@@ -115,21 +125,6 @@ fn draw_partially_visible_hover_text_surface(
         visible_height,
         palette.hover_background,
         HOVER_SURFACE_ALPHA,
-    );
-    let mut draw_y = area.y;
-    renderer.render_node(
-        canvas,
-        child,
-        x,
-        &mut draw_y,
-        UiTreeRenderArea {
-            x: area.x,
-            y: area.y,
-            width: area.width,
-            height: area.height,
-            scroll_y: source_y,
-        },
-        palette,
     );
 }
 
@@ -224,7 +219,9 @@ fn can_render_partial_node_in_viewport(node: &UiNode) -> bool {
 }
 
 fn can_render_partial_hover_text_surface(node: &UiNode) -> bool {
-    node.props().visual_role == UiVisualRole::HoverSurface
+    node.kind() == UiNodeKind::Stack
+        && node.props().visual_role == UiVisualRole::HoverSurface
+        && node.children().len() == 1
         && node
             .children()
             .first()

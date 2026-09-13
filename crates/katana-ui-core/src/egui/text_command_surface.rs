@@ -32,9 +32,9 @@ pub use artifact::EguiTextCommandSurfaceArtifactError;
 #[cfg(feature = "storybook-artifacts")]
 pub use consumer_artifact_plan::{
     ConsumerArtifactEvidence, ConsumerArtifactForwardingReceipt, ConsumerArtifactLeafId,
-    ConsumerArtifactPlanError, ConsumerArtifactPlanIssuer, ConsumerArtifactPlanV1,
-    ConsumerArtifactStageBinding, GenericEffectClass, GenericInteractionClass,
-    IssuedConsumerArtifactPlan,
+    ConsumerArtifactPlanError, ConsumerArtifactPlanExecutionError, ConsumerArtifactPlanIssuer,
+    ConsumerArtifactPlanV1, ConsumerArtifactStageBinding, GenericEffectClass,
+    GenericInteractionClass, IssuedConsumerArtifactPlan,
 };
 pub use editor_viewport_projection_lease::{
     EditorViewportProjectionError, EditorViewportProjectionLease,

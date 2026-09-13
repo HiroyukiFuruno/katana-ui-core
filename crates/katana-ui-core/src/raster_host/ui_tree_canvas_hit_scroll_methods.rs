@@ -6,6 +6,7 @@ use super::{
     scroll_child_render_area, scroll_container_gap, scroll_source_y,
 };
 use crate::raster_host::ui_tree_canvas_hit_metrics::dimension_px;
+use crate::raster_host::ui_tree_canvas_scroll::auto_hover_text_child;
 
 impl UiTreeHostActionHitCollector<'_> {
     pub(super) fn scroll_area(&mut self, node: &UiNode, x: usize) {
@@ -49,11 +50,17 @@ impl UiTreeHostActionHitCollector<'_> {
         viewport_height: usize,
         source_y: f32,
     ) {
+        let content_height = node
+            .props()
+            .scroll_area
+            .content_height
+            .max(node.props().scroll_area.viewport_height)
+            .max(viewport_height as u32) as usize;
         let content_area = UiTreeRenderArea {
             x: 0,
             y: 0,
             width: viewport_width,
-            height: viewport_height,
+            height: content_height,
             scroll_y: 0.0,
         };
         let mut content_collector = UiTreeHostActionHitCollector {
@@ -145,6 +152,8 @@ impl UiTreeHostActionHitCollector<'_> {
             .max(1);
         let node_logical_height = if node.kind() == katana_ui_core::render_model::UiNodeKind::Text {
             self.logical_text_hit_height(node, x)
+        } else if let Some(text_child) = auto_hover_text_child(node) {
+            self.logical_text_hit_height(text_child, x)
         } else {
             node_height as f32
         };
@@ -152,7 +161,8 @@ impl UiTreeHostActionHitCollector<'_> {
         let node_bottom = node_logical_bottom.floor().max(0.0) as usize;
         self.y = node_bottom;
         self.text_logical_y = node_logical_bottom;
-        if node_bottom as f32 <= source_y || node_top as f32 >= source_y + self.area.height as f32 {
+        if node_logical_bottom <= source_y || node_logical_top >= source_y + self.area.height as f32
+        {
             return;
         }
         self.y = node_top;

@@ -4,7 +4,7 @@ use crate::text_raster::model::{PlatformTextRasterError, RGBA_ALPHA_INDEX, RGBA_
 use crate::theme::{FontFamily, FontToken};
 use cosmic_text::{Attrs, Color, Family, Style as FontStyle, Weight};
 
-use super::{BOLD_WEIGHT, REGULAR_WEIGHT, ResolvedTextFaces};
+use super::{BOLD_WEIGHT, REGULAR_WEIGHT, ResolvedTextFace, ResolvedTextFaces};
 
 pub(super) fn normalized_runs(spans: &[UiTextSpan]) -> Vec<UiTextSpan> {
     spans.to_vec()
@@ -18,6 +18,7 @@ pub(super) fn attrs_for_span<'a>(
     text_faces: &'a ResolvedTextFaces,
 ) -> Result<Attrs<'a>, PlatformTextRasterError> {
     let style = &span.style;
+    let selected_face = text_faces.selected_face(font.family, style, &span.text);
     Ok(Attrs::new()
         .family(family_for(
             font.family,
@@ -26,16 +27,27 @@ pub(super) fn attrs_for_span<'a>(
             emoji_face,
             text_faces,
         )?)
-        .weight(Weight(if style.bold {
-            BOLD_WEIGHT
-        } else {
-            font.weight.max(REGULAR_WEIGHT)
-        }))
-        .style(if style.italic {
-            FontStyle::Italic
-        } else {
-            FontStyle::Normal
-        })
+        .weight(Weight(selected_face.map_or_else(
+            || {
+                if style.bold {
+                    BOLD_WEIGHT
+                } else {
+                    font.weight.max(REGULAR_WEIGHT)
+                }
+            },
+            ResolvedTextFace::weight,
+        )))
+        .style(selected_face.map_or_else(
+            || {
+                if style.italic {
+                    FontStyle::Italic
+                } else {
+                    FontStyle::Normal
+                }
+            },
+            ResolvedTextFace::style,
+        ))
+        .stretch(selected_face.map_or(cosmic_text::Stretch::Normal, ResolvedTextFace::stretch))
         .color(color_for(style, fallback_color_rgba)))
 }
 
@@ -57,13 +69,13 @@ fn family_for<'a>(
     Ok(
         if text.is_ascii() && (style.monospace || family == FontFamily::Monospace) {
             text_faces
-                .monospace()
-                .map(Family::Name)
+                .selected_face(family, style, text)
+                .map(|face| Family::Name(face.family()))
                 .unwrap_or(Family::Monospace)
         } else {
             text_faces
-                .proportional()
-                .map(Family::Name)
+                .selected_face(family, style, text)
+                .map(|face| Family::Name(face.family()))
                 .unwrap_or(Family::SansSerif)
         },
     )
@@ -75,6 +87,9 @@ fn color_for(style: &UiTextSpanStyle, fallback: [u8; RGBA_CHANNEL_COUNT]) -> Col
     Color::rgba(red, green, blue, alpha)
 }
 
+#[cfg(test)]
+#[path = "attributes_candidate_tests.rs"]
+mod candidate_tests;
 #[cfg(test)]
 #[path = "attributes_tests.rs"]
 mod tests;

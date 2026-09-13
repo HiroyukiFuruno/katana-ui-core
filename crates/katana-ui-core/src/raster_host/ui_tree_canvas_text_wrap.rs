@@ -22,7 +22,7 @@ thread_local! {
         RefCell::new(HashMap::new());
 }
 
-pub(super) struct UiTreeTextWrap;
+pub(in crate::raster_host) struct UiTreeTextWrap;
 
 impl UiTreeTextWrap {
     pub(super) fn plain_lines(
@@ -56,7 +56,7 @@ impl UiTreeTextWrap {
         lines
     }
 
-    pub(super) fn span_lines(
+    pub(in crate::raster_host) fn span_lines(
         renderers: SpanTextRenderers<'_>,
         node: &UiNode,
         x: usize,
@@ -305,6 +305,59 @@ mod tests {
         UiTextSpanStyle, UiTextWrapMode,
     };
     use katana_ui_core::theme::{FontFamily, FontToken, ThemeSnapshot};
+
+    #[test]
+    fn paragraph_wrap_uses_the_same_font_size_as_its_drawn_width() {
+        let text = "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM";
+        let mut theme = ThemeSnapshot::light();
+        theme.fonts.push(FontToken {
+            name: "document-body".to_string(),
+            family: FontFamily::Proportional,
+            size: 14.0,
+            weight: 400,
+        });
+        let facade = UiCoreFacade::new(theme.clone());
+        let renderer = TextRenderer::load(&facade, "document-body");
+        let span = UiTextSpan::plain(text);
+        let node = UiNode::new(UiNodeKind::Text, text).text(UiTextProps {
+            role: "paragraph".to_string(),
+            spans: vec![span.clone()],
+            wrap: UiTextWrapMode::Wrap,
+            ..UiTextProps::default()
+        });
+        let metrics = UiTreeTextMetrics::for_node_with_typography(
+            &node,
+            UiTreeDocumentTypography::from_theme(&theme),
+        );
+        let renderers = SpanTextRenderers::new(&renderer, &renderer);
+        let drawn_width = span_width(renderers, &span, metrics, false);
+        assert!(drawn_width > super::MIN_TEXT_WIDTH);
+        let lines = UiTreeTextWrap::span_lines(
+            renderers,
+            &node,
+            0,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: drawn_width + 1,
+                height: 120,
+                scroll_y: 0.0,
+            },
+            metrics,
+        );
+        assert_eq!(
+            1,
+            lines.len(),
+            "a fitting paragraph must not inflate its wrap font"
+        );
+        assert_eq!(
+            text,
+            lines[0]
+                .iter()
+                .map(|part| part.text.as_str())
+                .collect::<String>()
+        );
+    }
 
     #[test]
     fn plain_line_helpers_preserve_empty_and_multiline_content() {

@@ -364,6 +364,7 @@ mod tests {
             link: 0x4da3ff,
             code_background: BACKGROUND,
             inline_code_background: BACKGROUND,
+            text_highlight_background: BACKGROUND,
             table_background: BACKGROUND,
             table_header_background: BACKGROUND,
             table_even_row_background: BACKGROUND,

@@ -16,4 +16,15 @@ A public consumer artifact issuer SHALL resolve its platform color-emoji pin wit
 - **THEN** the consumer does not supply a font path, hash, or fallback renderer
 - **AND** KUC either captures evidence with its resolved pin or fails closed with `ConsumerArtifactPlanError::UnicodeEvidence(String)`, which contains the failure description.
 
-The current public artifact error does not retain the underlying platform-unavailable type. Preserving that type remains tracked in [Issue #57](https://github.com/HiroyukiFuruno/katana-ui-core/issues/57) and the active change.
+#### Scenario: Consumer distinguishes the Unicode evidence failure
+
+- **WHEN** a consumer executes a default-issued stage with `execute_next_with_evidence_error`
+- **THEN** a Unicode capture failure retains `KucUnicodeColorGlyphEvidenceError` in `ConsumerArtifactPlanExecutionError::UnicodeEvidence`
+- **AND** the consumer can distinguish `ColorEmojiUnavailable` without parsing a message or injecting a font policy
+- **AND** other plan failures retain `ConsumerArtifactPlanError` in `ConsumerArtifactPlanExecutionError::Plan`.
+
+#### Scenario: Existing consumer keeps the legacy error contract
+
+- **WHEN** an existing consumer calls `execute_next`
+- **THEN** its return type and the variants of `ConsumerArtifactPlanError` remain unchanged
+- **AND** Unicode capture failures remain `ConsumerArtifactPlanError::UnicodeEvidence(String)`.

@@ -3,10 +3,11 @@ use super::support::{
     cleanup_stage_output, map_root_error, preflight_output, sha256, validate_decoded_png,
     write_manifest, write_stage_artifact,
 };
-use super::unicode_evidence::{bind_unicode_evidence, capture_unicode_evidence};
+use super::unicode_evidence::{bind_unicode_evidence, capture_unicode_evidence_typed};
 use super::{
     ConsumerArtifactEvidence, ConsumerArtifactForwardingReceipt, ConsumerArtifactLeafId,
-    ConsumerArtifactPlanError, ConsumerArtifactStageBinding, EguiTextCommandSurfaceHostRoot,
+    ConsumerArtifactPlanError, ConsumerArtifactPlanExecutionError, ConsumerArtifactStageBinding,
+    EguiTextCommandSurfaceHostRoot,
 };
 use crate::egui::text_command_surface::KucUnicodeColorGlyphEvidenceOptions;
 use crate::egui::text_command_surface::{
@@ -64,8 +65,18 @@ impl IssuedConsumerArtifactPlan {
         context: &egui::Context,
         output_dir: &Path,
     ) -> Result<ConsumerArtifactEvidence, ConsumerArtifactPlanError> {
+        self.execute_next_with_evidence_error(context, output_dir)
+            .map_err(ConsumerArtifactPlanExecutionError::into_legacy)
+    }
+
+    /// 次のstageを実行し、Unicode証跡の失敗原因を文字列へ変換せずに返す。
+    pub fn execute_next_with_evidence_error(
+        &mut self,
+        context: &egui::Context,
+        output_dir: &Path,
+    ) -> Result<ConsumerArtifactEvidence, ConsumerArtifactPlanExecutionError> {
         if let Some(stage) = self.failed_stage {
-            return Err(ConsumerArtifactPlanError::StageExecutionFailed(stage));
+            return Err(ConsumerArtifactPlanError::StageExecutionFailed(stage).into());
         }
         let index = self.next_stage;
         let stage_id = format!("consumer-stage-{index:04}");
@@ -114,7 +125,8 @@ impl IssuedConsumerArtifactPlan {
                 )
                 .as_bytes(),
             );
-            let unicode_json = capture_unicode_evidence(self.unicode_evidence_options.clone())?;
+            let unicode_json =
+                capture_unicode_evidence_typed(self.unicode_evidence_options.clone())?;
             let unicode_hash = bind_unicode_evidence(
                 &unicode_json,
                 &stage_id,

@@ -143,6 +143,23 @@ fn consumer_plan_rejects_invalid_leaf_identifier() {
 }
 
 #[test]
+fn foreign_consumer_can_match_typed_execution_error_through_public_facade() {
+    use katana_ui_core::egui::text_command_surface::{
+        ConsumerArtifactPlanExecutionError, KucUnicodeColorGlyphEvidenceError,
+    };
+
+    let error = ConsumerArtifactPlanExecutionError::UnicodeEvidence(
+        KucUnicodeColorGlyphEvidenceError::InvalidCaret,
+    );
+    assert!(matches!(
+        error,
+        ConsumerArtifactPlanExecutionError::UnicodeEvidence(
+            KucUnicodeColorGlyphEvidenceError::InvalidCaret
+        )
+    ));
+}
+
+#[test]
 fn foreign_consumer_can_issue_full_plan_from_opaque_scenario_leases() {
     assert_eq!(
         foreign_consumer::issue_full_plan_from_opaque_scenario_leases()

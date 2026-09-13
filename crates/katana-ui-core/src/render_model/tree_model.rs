@@ -1,4 +1,4 @@
-use super::{UiNode, UiNodeId, UiNodeKind, UiVisualRole};
+use super::{UiDimension, UiNode, UiNodeId, UiNodeKind, UiVisualRole};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -66,6 +66,9 @@ fn hover_surface_node(mut node: UiNode, hovered_node_id: &UiNodeId) -> UiNode {
     if node_matches_hover_surface(&node, hovered_node_id) {
         let mut surface = UiNode::new(UiNodeKind::Stack, "");
         surface.props.common = node.props.common.clone();
+        if node.kind() == UiNodeKind::Text {
+            surface.props.common.height = UiDimension::Auto;
+        }
         surface.props.visual_role = UiVisualRole::HoverSurface;
         surface.children.push(node);
         return surface;
@@ -108,6 +111,10 @@ fn scroll_area_offset_y_node(mut node: UiNode, offset_y: u32) -> UiNode {
     node
 }
 
+#[cfg(all(test, feature = "raster-host"))]
+#[path = "tree_model_hover_surface_tests.rs"]
+mod hover_surface_tests;
+
 #[cfg(test)]
 mod tests {
     use super::UiTree;
@@ -149,7 +156,7 @@ mod tests {
     }
 
     #[test]
-    fn with_hover_surface_for_node_id_wraps_matching_node_with_same_geometry() {
+    fn with_hover_surface_for_node_id_keeps_text_clip_height_on_the_child() {
         let target = UiNode::new(UiNodeKind::Text, "target")
             .stable_node_id("target-node")
             .width(UiDimension::px(240))
@@ -161,8 +168,12 @@ mod tests {
 
         assert_eq!(UiVisualRole::HoverSurface, wrapper.props().visual_role);
         assert_eq!(UiDimension::Px(240), wrapper.props().common.width);
-        assert_eq!(UiDimension::Px(32), wrapper.props().common.height);
+        assert_eq!(UiDimension::Auto, wrapper.props().common.height);
         assert_eq!("target-node", wrapper.children()[0].id().as_str());
+        assert_eq!(
+            UiDimension::Px(32),
+            wrapper.children()[0].props().common.height
+        );
     }
 
     #[test]

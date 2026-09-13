@@ -65,10 +65,20 @@ pub(in crate::raster_host) fn span_visible_part_bounds(
         return (0, full_width);
     }
 
-    let leading_width =
-        inline_whitespace_prefix_width(span.text.as_str(), metrics, preserve_whitespace);
-    let trailing_width =
-        inline_whitespace_suffix_width(span.text.as_str(), metrics, preserve_whitespace);
+    let leading_width = inline_whitespace_prefix_width(
+        renderers,
+        span,
+        span.text.as_str(),
+        metrics,
+        preserve_whitespace,
+    );
+    let trailing_width = inline_whitespace_suffix_width(
+        renderers,
+        span,
+        span.text.as_str(),
+        metrics,
+        preserve_whitespace,
+    );
     let visible_width = full_width
         .saturating_sub(leading_width)
         .saturating_sub(trailing_width)
@@ -83,6 +93,9 @@ fn span_text_part_width(
     metrics: UiTreeTextMetrics,
     preserve_whitespace: bool,
 ) -> usize {
+    if span.style.inline_code || span.style.monospace {
+        return measured_text_width(renderers, span, text, metrics);
+    }
     let mut width = 0usize;
     let mut segment = String::new();
     for character in text.chars() {
@@ -122,6 +135,7 @@ pub(in crate::raster_host) fn span_rich_text_style(
     RichTextStyle::new(metrics.font_size, color)
         .bold(span.style.bold)
         .italic(span.style.italic)
+        .monospace(span.style.inline_code || span.style.monospace)
         .emoji(span.style.emoji)
         .raster_vertical_scale(metrics.raster_vertical_scale)
 }
@@ -143,24 +157,58 @@ pub(in crate::raster_host) fn preserves_whitespace(node: &UiNode) -> bool {
 }
 
 fn inline_whitespace_prefix_width(
+    renderers: SpanTextRenderers<'_>,
+    span: &UiTextSpan,
     text: &str,
     metrics: UiTreeTextMetrics,
     preserve_whitespace: bool,
 ) -> usize {
-    text.chars()
+    let whitespace = text
+        .chars()
         .take_while(|character| is_inline_whitespace(*character))
-        .map(|_| whitespace_width(metrics, preserve_whitespace))
-        .sum()
+        .collect::<String>();
+    if span.style.inline_code || span.style.monospace {
+        return measured_text_width(renderers, span, text, metrics).saturating_sub(
+            measured_text_width(renderers, span, &text[whitespace.len()..], metrics),
+        );
+    }
+    inline_whitespace_width(&whitespace, metrics, preserve_whitespace)
 }
 
 fn inline_whitespace_suffix_width(
+    renderers: SpanTextRenderers<'_>,
+    span: &UiTextSpan,
+    text: &str,
+    metrics: UiTreeTextMetrics,
+    preserve_whitespace: bool,
+) -> usize {
+    let whitespace = text
+        .chars()
+        .rev()
+        .take_while(|character| is_inline_whitespace(*character))
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect::<String>();
+    if span.style.inline_code || span.style.monospace {
+        return measured_text_width(renderers, span, text, metrics).saturating_sub(
+            measured_text_width(
+                renderers,
+                span,
+                &text[..text.len().saturating_sub(whitespace.len())],
+                metrics,
+            ),
+        );
+    }
+    inline_whitespace_width(&whitespace, metrics, preserve_whitespace)
+}
+
+fn inline_whitespace_width(
     text: &str,
     metrics: UiTreeTextMetrics,
     preserve_whitespace: bool,
 ) -> usize {
     text.chars()
-        .rev()
-        .take_while(|character| is_inline_whitespace(*character))
         .map(|_| whitespace_width(metrics, preserve_whitespace))
         .sum()
 }
@@ -168,3 +216,39 @@ fn inline_whitespace_suffix_width(
 fn is_inline_whitespace(character: char) -> bool {
     character.is_whitespace() && character != '\n'
 }
+
+#[cfg(test)]
+mod tests {
+    use super::span_rich_text_style;
+    use crate::raster_host::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
+    use katana_ui_core::render_model::{UiNode, UiNodeKind, UiTextSpan, UiTextSpanStyle};
+
+    #[test]
+    fn inline_code_and_monospace_spans_retain_their_raster_face_request() {
+        let metrics = UiTreeTextMetrics::for_node(&UiNode::new(UiNodeKind::Text, "span"));
+        let inline_code = UiTextSpan {
+            text: "code".to_owned(),
+            style: UiTextSpanStyle {
+                inline_code: true,
+                ..UiTextSpanStyle::default()
+            },
+            link_target: String::new(),
+        };
+        let monospace = UiTextSpan {
+            text: "mono".to_owned(),
+            style: UiTextSpanStyle {
+                monospace: true,
+                ..UiTextSpanStyle::default()
+            },
+            link_target: String::new(),
+        };
+
+        assert!(span_rich_text_style(&inline_code, metrics, 0).uses_monospace());
+        assert!(span_rich_text_style(&monospace, metrics, 0).uses_monospace());
+        assert!(!span_rich_text_style(&UiTextSpan::plain("plain"), metrics, 0).uses_monospace());
+    }
+}
+
+#[cfg(test)]
+#[path = "ui_tree_canvas_inline_code_contract_tests.rs"]
+mod inline_code_contract_tests;

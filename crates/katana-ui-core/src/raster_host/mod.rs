@@ -115,6 +115,12 @@ mod ui_tree_surface_host_document_typography_tests;
 #[cfg(test)]
 mod ui_tree_surface_host_fractional_hit_tests;
 #[cfg(test)]
+mod ui_tree_surface_host_higher_heading_typography_tests;
+#[cfg(test)]
+mod ui_tree_surface_host_row_alignment_scroll_tests;
+#[cfg(test)]
+mod ui_tree_surface_host_row_alignment_tests;
+#[cfg(test)]
 mod ui_tree_surface_host_tests;
 
 pub use canvas::Canvas;

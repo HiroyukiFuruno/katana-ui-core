@@ -4,14 +4,16 @@ use super::super::execution::{forward_stage_events, show_frame};
 use super::super::support::{map_root_error, sha256};
 use super::super::text_interactions::{ensure_record_changed, ensure_scroll_changed};
 use super::super::unicode_evidence::{
-    artifact_unicode_evidence_options, bind_unicode_evidence, capture_unicode_evidence,
+    artifact_unicode_evidence_options, bind_unicode_evidence, capture_unicode_evidence_typed,
 };
 use super::super::*;
 use super::{binding, binding_from_encoder_with_interaction, complete_bindings, temp_dir, token};
 #[cfg(target_os = "linux")]
 use super::{binding_from_encoder, complete_semantic_bindings};
 use crate::egui::text_command_surface::EguiTextCommandSurfaceRootFactoryError;
-use crate::egui::text_command_surface::KucUnicodeColorGlyphEvidenceOptions;
+use crate::egui::text_command_surface::{
+    KucUnicodeColorGlyphEvidenceError, KucUnicodeColorGlyphEvidenceOptions,
+};
 
 #[cfg(target_os = "linux")]
 const SHA256_HEX_LENGTH: usize = 64;
@@ -478,7 +480,8 @@ fn unicode_evidence_fails_closed_without_a_pinned_face() {
     let mut options = KucUnicodeColorGlyphEvidenceOptions::default();
     options.config.emoji_candidate_sha256.clear();
     assert!(matches!(
-        capture_unicode_evidence(options),
+        capture_unicode_evidence_typed(options)
+            .map_err(ConsumerArtifactPlanExecutionError::into_legacy),
         Err(ConsumerArtifactPlanError::UnicodeEvidence(_))
     ));
 }
@@ -548,6 +551,48 @@ fn execute_next_requires_a_trusted_platform_color_emoji_pin() {
         ));
         assert_eq!(plan.remaining_stage_count(), 10);
     }
+}
+
+#[test]
+fn execute_next_with_evidence_error_preserves_unavailable_emoji_cause() {
+    let mut options = KucUnicodeColorGlyphEvidenceOptions::default();
+    options.config.emoji_candidates = vec![std::path::PathBuf::from(
+        "/kuc-test-font-catalog/missing-color-emoji.ttf",
+    )];
+    options.config.emoji_candidate_sha256.clear();
+    let mut plan = ConsumerArtifactPlanIssuer::with_unicode_evidence_options(options.clone())
+        .issue(ConsumerArtifactPlanV1::new(
+            1,
+            complete_bindings(1, b"typed-unavailable-emoji"),
+        ))
+        .expect("plan should issue");
+
+    let typed = plan.execute_next_with_evidence_error(
+        &egui::Context::default(),
+        temp_dir("typed-unavailable-emoji").as_path(),
+    );
+    assert!(matches!(
+        typed,
+        Err(ConsumerArtifactPlanExecutionError::UnicodeEvidence(
+            KucUnicodeColorGlyphEvidenceError::ColorEmojiUnavailable { .. }
+        ))
+    ));
+    assert_eq!(plan.remaining_stage_count(), 10);
+
+    let mut legacy_plan = ConsumerArtifactPlanIssuer::with_unicode_evidence_options(options)
+        .issue(ConsumerArtifactPlanV1::new(
+            1,
+            complete_bindings(1, b"legacy-unavailable-emoji"),
+        ))
+        .expect("plan should issue");
+    let legacy = legacy_plan.execute_next(
+        &egui::Context::default(),
+        temp_dir("legacy-unavailable-emoji").as_path(),
+    );
+    assert!(matches!(
+        legacy,
+        Err(ConsumerArtifactPlanError::UnicodeEvidence(_))
+    ));
 }
 
 #[test]
