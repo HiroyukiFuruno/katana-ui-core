@@ -1,4 +1,10 @@
-## ADDED Requirements
+# raster-document-typography Specification
+
+## Purpose
+
+Document typography overrides preserve the legacy integer-coordinate contract while allowing hosts to explicitly opt into fractional baseline layout.
+
+## Requirements
 
 ### Requirement: Legacy typography preserves integer rendering
 
