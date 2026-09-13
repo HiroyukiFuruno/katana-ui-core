@@ -9,6 +9,7 @@
 - [x] 2.1 v0.3.10へ更新し、format、check、release-check、diff checkを通す。
 - [x] 2.2 Draft PR、review、thread disposition、Ready、CI、mergeを完了する。
 - [ ] 2.3 GitHub Release、crates.io、KDV/KLE registry-only再検証、branch hygieneを完了する。
+- [ ] 2.4 Unicode evidence unavailableの原因型をpublic consumer artifact errorに保持し、consumer側の判別を回帰検証する（[Issue #57](https://github.com/HiroyukiFuruno/katana-ui-core/issues/57)）。
 
 ## 最新指示と実行台帳
 
@@ -34,3 +35,4 @@
 - KLE成功証跡はsession `25471` の直接回収による `exit_code: 0`。成功artifactは `target/acceptance/kle-storybook-consumer-artifact/run-3455-1789261055299844000`。非採用background runのログは成功証跡として使用しない。
 - リリースブランチ `release/v0.3.10` はmerge時にlocal/remoteとも削除済み。既存worktreeは保全し、stashは0。対象外のremote branchは保持した。
 - 2.3はGitHub Release/crates.io公開・KLE受入・release branch整理を完了したが、KDV受入が未達のため未完了として保持する。本changeはarchiveしない。
+- PR #56レビューで、v0.3.10のpublic artifact errorは `UnicodeEvidence(String)` へ原因を変換することを確認した。main specは公開済み挙動を記録し、deltaのtyped platform-unavailable要求は未達として2.4とIssue #57で保持する。

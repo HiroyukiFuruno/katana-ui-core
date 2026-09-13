@@ -14,4 +14,6 @@ A public consumer artifact issuer SHALL resolve its platform color-emoji pin wit
 
 - **WHEN** a consumer creates `ConsumerArtifactPlanIssuer::new()` and executes a stage
 - **THEN** the consumer does not supply a font path, hash, or fallback renderer
-- **AND** KUC either captures evidence with its resolved pin or fails closed with a typed platform-unavailable error.
+- **AND** KUC either captures evidence with its resolved pin or fails closed with `ConsumerArtifactPlanError::UnicodeEvidence(String)`, which contains the failure description.
+
+The current public artifact error does not retain the underlying platform-unavailable type. Preserving that type remains tracked in [Issue #57](https://github.com/HiroyukiFuruno/katana-ui-core/issues/57) and the active change.
