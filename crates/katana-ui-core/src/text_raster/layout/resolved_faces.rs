@@ -54,11 +54,15 @@ impl ResolvedTextFaces {
         if style.emoji {
             return None;
         }
-        if text.is_ascii() && (style.monospace || family == crate::theme::FontFamily::Monospace) {
+        if style.monospace || (text.is_ascii() && family == crate::theme::FontFamily::Monospace) {
             self.monospace.as_ref()
         } else {
             self.proportional.as_ref()
         }
+    }
+
+    pub(crate) fn proportional_face(&self) -> Option<&ResolvedTextFace> {
+        self.proportional.as_ref()
     }
 }
 

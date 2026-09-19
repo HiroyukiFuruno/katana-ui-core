@@ -68,6 +68,7 @@ fn hover_surface_node(mut node: UiNode, hovered_node_id: &UiNodeId) -> UiNode {
         surface.props.common = node.props.common.clone();
         if node.kind() == UiNodeKind::Text {
             surface.props.common.height = UiDimension::Auto;
+            surface.props.common.padding = Default::default();
         }
         surface.props.visual_role = UiVisualRole::HoverSurface;
         surface.children.push(node);

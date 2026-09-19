@@ -4,7 +4,8 @@ use crate::raster_host::{
     UiTreeTextRoleBaselineTypography,
 };
 use crate::render_model::{
-    UiDimension, UiHostActionSpec, UiNode, UiNodeId, UiNodeKind, UiScrollAreaProps, UiTree,
+    UiDimension, UiEdgeInsets, UiHostActionSpec, UiNode, UiNodeId, UiNodeKind, UiScrollAreaProps,
+    UiTree,
 };
 use crate::test_assert::KucTestExpect;
 use crate::theme::ThemeSnapshot;
@@ -52,6 +53,36 @@ fn hover_surface_keeps_explicit_scrolled_text_and_following_hits_in_place() {
     let hovered = explicit_scroll_tree(true);
 
     assert_hover_keeps_document_hits(&host, &normal, &hovered);
+}
+
+#[test]
+fn hover_surface_keeps_padded_explicit_text_advance_and_following_pixels_in_place() {
+    for (top, bottom) in [(3, 0), (0, 5), (3, 5)] {
+        assert_padded_explicit_hover_surface(
+            &UiTreeSurfaceHost::new(ThemeSnapshot::dark()),
+            top,
+            bottom,
+        );
+        assert_padded_explicit_hover_surface(&fractional_host(), top, bottom);
+    }
+}
+
+fn assert_padded_explicit_hover_surface(host: &UiTreeSurfaceHost, top: u16, bottom: u16) {
+    let normal = padded_explicit_tree(false, top, bottom);
+    let hovered = padded_explicit_tree(true, top, bottom);
+
+    assert_hover_keeps_document_hits(host, &normal, &hovered);
+    assert_following_pixels_are_unchanged(host, &normal, &hovered);
+    let wrapper = &hovered.root().children()[0];
+    assert_eq!(UiEdgeInsets::default(), wrapper.props().common.padding);
+    assert_eq!(
+        UiEdgeInsets {
+            top: UiDimension::px(top),
+            bottom: UiDimension::px(bottom),
+            ..UiEdgeInsets::default()
+        },
+        wrapper.children()[0].props().common.padding
+    );
 }
 
 fn assert_hover_keeps_document_hits(host: &UiTreeSurfaceHost, normal: &UiTree, hovered: &UiTree) {
@@ -131,6 +162,25 @@ fn legacy_tree(hovered: bool) -> UiTree {
     hover_tree(
         UiNode::new(UiNodeKind::Column, "")
             .child(target_text("body"))
+            .child(following_text()),
+        hovered,
+    )
+}
+
+fn padded_explicit_tree(hovered: bool, top: u16, bottom: u16) -> UiTree {
+    hover_tree(
+        UiNode::new(UiNodeKind::Column, "")
+            .child(
+                target_text("body").common(
+                    crate::render_model::UiCommonProps::default()
+                        .height(UiDimension::px(TEXT_CLIP_HEIGHT))
+                        .padding(UiEdgeInsets {
+                            top: UiDimension::px(top),
+                            bottom: UiDimension::px(bottom),
+                            ..UiEdgeInsets::default()
+                        }),
+                ),
+            )
             .child(following_text()),
         hovered,
     )

@@ -120,6 +120,25 @@ impl Canvas {
         }
     }
 
+    pub(crate) fn blend_rect_at_logical_y(
+        &mut self,
+        x: usize,
+        y: f32,
+        width: usize,
+        height: f32,
+        color: u32,
+        alpha: u8,
+    ) {
+        let Some(rect) = self.visible_rect_at_logical_y(x, y, width, height) else {
+            return;
+        };
+        for current_y in rect.y..rect.bottom() {
+            for current_x in rect.x..rect.right() {
+                self.blend_physical(current_x, current_y, color, alpha);
+            }
+        }
+    }
+
     pub(crate) fn with_clip(
         &mut self,
         x: usize,

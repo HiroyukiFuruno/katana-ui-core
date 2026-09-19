@@ -21,8 +21,10 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
+  actions: read
   contents: write
   id-token: write
+  pull-requests: read
 
 env:
   CARGO_BUILD_JOBS: 1
@@ -66,18 +68,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Install headless display
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes ffmpeg fonts-noto-cjk fonts-noto-color-emoji fonts-noto-mono xauth xvfb
-          mono_font=/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf
-          emoji_font=/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf
-          expected_hash=93cdc4ee9aa40e2afceecc63da0ca05ec7aab4bec991ece51a6b52389f48a477
-          actual_hash="$(sha256sum "${emoji_font}" | cut -d ' ' -f 1)"
-          test "${actual_hash}" = "${expected_hash}"
-          echo "KUC_PINNED_LINUX_EMOJI_SHA256=${expected_hash}" >> "${GITHUB_ENV}"
-          expected_mono_hash=6b692c4b6d15ccf59f1c1fe8d11cb8a92f51960f3e9f1f523781755a3af7e29f
-          actual_mono_hash="$(sha256sum "${mono_font}" | cut -d ' ' -f 1)"
-          test "${actual_mono_hash}" = "${expected_mono_hash}"
+        run: bash scripts/ci/install-headless-display.sh
 
       - name: Resolve version
         id: version
@@ -87,11 +78,82 @@ jobs:
             "${{ inputs.version }}" \
             "${{ github.event.pull_request.head.ref }}"
 
+      - name: Lightweight release preflight
+        run: just fmt-check ast-lint
+
+      - name: Prepare release gate manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GATE_MANIFEST: ${{ runner.temp }}/kuc-release-gate-manifest.json
+        run: |
+          unresolved=0
+          if [[ -n "${PR_NUMBER}" ]]; then
+            query='query($owner:String!,$repo:String!,$number:Int!,$endCursor:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$endCursor){nodes{isResolved}pageInfo{hasNextPage,endCursor}}}}}'
+            unresolved="$(gh api graphql --paginate --slurp -f query="${query}" -F owner="${GITHUB_REPOSITORY%%/*}" -F repo="${GITHUB_REPOSITORY##*/}" -F number="${PR_NUMBER}" -F endCursor=null --jq '[.[].data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')"
+          fi
+          python3 scripts/release/verify-release-gate.py \
+            --write-manifest "${GATE_MANIFEST}" \
+            --sha "${GITHUB_SHA}" \
+            --unresolved-review-threads "${unresolved}" \
+            --preflight-status passed
+
+      - name: Verify release gate start conditions
+        id: release_gate_start
+        env:
+          GATE_MANIFEST: ${{ runner.temp }}/kuc-release-gate-manifest.json
+          GATE_STATE: ${{ runner.temp }}/kuc-release-gate-state.json
+        run: python3 scripts/release/verify-release-gate.py --manifest "${GATE_MANIFEST}" --expected-sha "${GITHUB_SHA}" --phase start --state-output "${GATE_STATE}"
+
+      - name: Find verified reusable release check
+        id: reusable_evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVIDENCE_ROOT: ${{ runner.temp }}/kuc-release-check-evidence
+        run: |
+          mkdir -p "${EVIDENCE_ROOT}"
+          echo "reuse=false" >> "${GITHUB_OUTPUT}"
+          while read -r run_id; do
+            candidate_dir="${EVIDENCE_ROOT}/${run_id}"
+            mkdir -p "${candidate_dir}"
+            if ! gh run download "${run_id}" --repo "${GITHUB_REPOSITORY}" --name kuc-release-check-evidence --dir "${candidate_dir}"; then
+              continue
+            fi
+            if ! gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" > "${candidate_dir}/source-run.json"; then
+              continue
+            fi
+            if python3 scripts/release/verify-reusable-release-evidence.py \
+              --candidate "${candidate_dir}/release-evidence.json" \
+              --source-run "${candidate_dir}/source-run.json" \
+              --repository "${GITHUB_REPOSITORY}"; then
+              echo "reuse=true" >> "${GITHUB_OUTPUT}"
+              exit 0
+            fi
+          done < <(gh run list --repo "${GITHUB_REPOSITORY}" --workflow release-preflight.yml --status success --limit 50 --json databaseId --jq '.[].databaseId')
+          echo "release evidence reuse unavailable; running the required release check."
+
       - name: Release check
+        id: release_check
+        if: steps.reusable_evidence.outputs.reuse != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           KUC_COVERAGE_EPHEMERAL_CLEANUP: "1"
         run: just VERSION="${{ steps.version.outputs.version }}" release-check
+
+      - name: Record release gate result
+        if: always()
+        env:
+          GATE_MANIFEST: ${{ runner.temp }}/kuc-release-gate-manifest.json
+          GATE_STATE: ${{ runner.temp }}/kuc-release-gate-state.json
+          GATE_RESULT: ${{ (steps.release_check.outcome == 'success' || steps.reusable_evidence.outputs.reuse == 'true') && 'passed' || 'failed' }}
+        run: |
+          python3 scripts/release/verify-release-gate.py \
+            --manifest "${GATE_MANIFEST}" \
+            --expected-sha "${GITHUB_SHA}" \
+            --phase complete \
+            --state-input "${GATE_STATE}" \
+            --state-output "${GATE_STATE}" \
+            --result "${GATE_RESULT}"
 
       - name: Create release tag
         env:

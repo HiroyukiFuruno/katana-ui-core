@@ -54,7 +54,12 @@ pub(super) fn draw_partially_visible_node(
         return;
     }
     let temp_height = partial_node_temp_height(node, node_height, area.height);
-    let mut temp = Canvas::new(area.width, temp_height, palette.background);
+    let mut temp = Canvas::new_scaled(
+        area.width,
+        temp_height,
+        canvas.scale_factor(),
+        palette.background,
+    );
     let mut temp_y = 0;
     let local_x = x.saturating_sub(area.x);
     renderer.render_node(
@@ -74,15 +79,15 @@ pub(super) fn draw_partially_visible_node(
     let blit_source_y = if can_render_partial_node_in_viewport(node) {
         0
     } else {
-        source_y.round() as usize
+        physical_scroll_offset(source_y, canvas.scale_factor())
     };
     canvas.blit_canvas(
         &temp,
         CanvasBlitRequest {
-            dest_x: area.x,
-            dest_y: area.y,
-            width: area.width,
-            height: area.height,
+            dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
+            dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
+            width: physical_scroll_offset(area.width as f32, canvas.scale_factor()),
+            height: physical_scroll_offset(area.height as f32, canvas.scale_factor()),
             source_y: blit_source_y,
         },
     );
@@ -103,9 +108,8 @@ fn draw_partially_visible_hover_text_surface(
     };
     let visible_height = (node_height as f32 - source_y)
         .max(0.0)
-        .ceil()
-        .min(area.height as f32) as usize;
-    if visible_height == 0 {
+        .min(area.height as f32);
+    if visible_height <= 0.0 {
         return;
     }
     draw_partially_visible_node(
@@ -118,9 +122,9 @@ fn draw_partially_visible_hover_text_surface(
         area,
         palette,
     );
-    canvas.blend_rect(
+    canvas.blend_rect_at_logical_y(
         x,
-        area.y,
+        area.y as f32,
         hover_surface_width(node, x, area),
         visible_height,
         palette.hover_background,
@@ -165,7 +169,12 @@ fn draw_partially_visible_media_frame_stack(
     palette: UiTreeCanvasPalette,
 ) {
     let temp_height = node_height.max(1);
-    let mut temp = Canvas::new(area.width, temp_height, palette.background);
+    let mut temp = Canvas::new_scaled(
+        area.width,
+        temp_height,
+        canvas.scale_factor(),
+        palette.background,
+    );
     let local_x = x.saturating_sub(area.x);
     let mut draw_y = 0;
     renderer.render_node(
@@ -185,13 +194,17 @@ fn draw_partially_visible_media_frame_stack(
     canvas.blit_canvas(
         &temp,
         CanvasBlitRequest {
-            dest_x: area.x,
-            dest_y: area.y,
-            width: area.width,
-            height: area.height,
-            source_y: source_y.round() as usize,
+            dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
+            dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
+            width: physical_scroll_offset(area.width as f32, canvas.scale_factor()),
+            height: physical_scroll_offset(area.height as f32, canvas.scale_factor()),
+            source_y: physical_scroll_offset(source_y, canvas.scale_factor()),
         },
     );
+}
+
+fn physical_scroll_offset(logical_offset: f32, scale_factor: f32) -> usize {
+    (f64::from(logical_offset.max(0.0)) * f64::from(scale_factor)).round() as usize
 }
 
 fn partial_node_temp_height(node: &UiNode, node_height: usize, viewport_height: usize) -> usize {
@@ -371,5 +384,63 @@ mod tests {
         assert_eq!(hover_surface_width(&hover, 10, area), 74);
         let fixed = hover.width(UiDimension::Px(32));
         assert_eq!(hover_surface_width(&fixed, 10, area), 32);
+    }
+
+    #[test]
+    fn scale_two_fractional_partial_media_frame_matches_the_full_physical_crop() {
+        let (renderer, palette, area) = render_context();
+        let overlay = UiNode::new(UiNodeKind::Button, "overlay")
+            .position(UiPosition::Absolute)
+            .width(UiDimension::Px(10))
+            .height(UiDimension::Px(10));
+        let media_frame = UiNode::new(UiNodeKind::Stack, "")
+            .visual_role(UiVisualRole::MediaFrame)
+            .child(Text::new("body"))
+            .child(overlay);
+        let source_y = 0.75;
+        let mut full = Canvas::new_scaled(area.width, 30, 2.0, palette.background);
+        let mut full_y = 0;
+        renderer.render_node(
+            &mut full,
+            &media_frame,
+            4,
+            &mut full_y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: area.width,
+                height: 30,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+        let mut partial = Canvas::new_scaled(96, 48, 2.0, palette.background);
+        draw_partially_visible_node(
+            &renderer,
+            &mut partial,
+            &media_frame,
+            8,
+            30,
+            source_y,
+            area,
+            palette,
+        );
+
+        let physical_source_y = physical_scroll_offset(source_y, 2.0);
+        assert_eq!(
+            2, physical_source_y,
+            "0.75 logical px reaches row 2 at scale 2"
+        );
+        let physical_dest_x = physical_scroll_offset(area.x as f32, 2.0);
+        let physical_dest_y = physical_scroll_offset(area.y as f32, 2.0);
+        for y in 0..full.height().saturating_sub(physical_source_y) {
+            for x in 0..full.width() {
+                assert_eq!(
+                    full.pixels()[(physical_source_y + y) * full.width() + x],
+                    partial.pixels()[(physical_dest_y + y) * partial.width() + physical_dest_x + x],
+                    "partial media frame differs from the full physical crop at x={x}, y={y}"
+                );
+            }
+        }
     }
 }

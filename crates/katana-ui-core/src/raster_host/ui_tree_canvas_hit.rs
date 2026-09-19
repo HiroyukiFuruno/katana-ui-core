@@ -52,8 +52,11 @@ pub(super) struct UiTreeHostActionHitCollector<'a> {
     code_text: &'a TextRenderer,
     typography: UiTreeDocumentTypography,
     scroll_clip: ScrollHitClip,
+    viewport_bottom: Option<f32>,
     semantic_node_id: Option<UiNodeId>,
     height_cache: MeasuredNodeHeightCache,
+    #[cfg(test)]
+    visited_node_count: usize,
 }
 
 impl UiTreeHostActionHitCollector<'_> {
@@ -90,6 +93,28 @@ impl UiTreeHostActionHitCollector<'_> {
             typography,
             ScrollHitClip::Viewport,
         )
+    }
+
+    #[cfg(test)]
+    pub(super) fn collect_with_visit_count(
+        root: &UiNode,
+        area: UiTreeRenderArea,
+    ) -> (Vec<UiTreeHostActionHit>, usize) {
+        let facade = UiCoreFacade::default();
+        let text = TextRenderer::load(&facade, facade.default_font_role());
+        let export_text = TextRenderer::load(&facade, facade.default_font_role());
+        let code_text = TextRenderer::load(&facade, "code");
+        let mut collector = Self::collector(
+            root,
+            area,
+            &text,
+            &export_text,
+            &code_text,
+            UiTreeDocumentTypography::default(),
+            ScrollHitClip::Viewport,
+        );
+        collector.node(root, 0);
+        (collector.hits, collector.visited_node_count)
     }
 
     pub(super) fn collect_viewport_with_renderers<'a>(
@@ -289,8 +314,11 @@ impl UiTreeHostActionHitCollector<'_> {
             code_text,
             typography,
             scroll_clip,
+            viewport_bottom: None,
             semantic_node_id: None,
             height_cache: MeasuredNodeHeightCache::default(),
+            #[cfg(test)]
+            visited_node_count: 0,
         }
     }
 }

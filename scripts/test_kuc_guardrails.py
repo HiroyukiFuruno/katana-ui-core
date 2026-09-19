@@ -1737,6 +1737,64 @@ class KucGuardrailsTest(unittest.TestCase):
 
             self.assertEqual([], failures)
 
+    def test_rejects_missing_p2_disposition_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            failures = KucGuardrails(root).p2_disposition_failures()
+
+            self.assertEqual(2, len(failures))
+            self.assertIn("template is missing", failures[0])
+            self.assertIn("ledger is missing", failures[1])
+
+    def test_rejects_incomplete_p2_disposition_ledger(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "docs/reviews/p2-disposition-template.md",
+                "# P2 disposition comment template\n"
+                "## Classification\nfix migrate no-action\n"
+                "Reproduction Impact Acceptance criteria Owner repository Dependency "
+                "Original review thread Evidence\n",
+            )
+            write_text(
+                root / "docs/issue-work-batch.md",
+                "## P2 disposition ledger\n"
+                "| issue | disposition | reproduction | impact | acceptance | owner repository | "
+                "dependency | original review thread | evidence |\n"
+                "|---|---|---|---|---|---|---|---|---|\n"
+                "| #1 | pending | - | - | - | - | - | https://github.com/a/b/pull/1 | - |\n"
+                "P1は必須。\n",
+            )
+
+            failures = KucGuardrails(root).p2_disposition_failures()
+
+            self.assertTrue(any("invalid P2 disposition" in failure for failure in failures))
+            self.assertTrue(any("missing reproduction" in failure for failure in failures))
+
+    def test_accepts_complete_p2_disposition_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write_text(
+                root / "docs/reviews/p2-disposition-template.md",
+                "# P2 disposition comment template\n"
+                "## Classification\nfix migrate no-action\n"
+                "Reproduction Impact Acceptance criteria Owner repository Dependency "
+                "Original review thread Evidence\n",
+            )
+            write_text(
+                root / "docs/issue-work-batch.md",
+                "## P2 disposition ledger\n"
+                "| issue | disposition | reproduction | impact | acceptance | owner repository | "
+                "dependency | original review thread | evidence |\n"
+                "|---|---|---|---|---|---|---|---|---|\n"
+                "| #1 | migrate | steps | impact | tests | repo | none | "
+                "https://github.com/a/b/pull/1#discussion_r1 | proof |\n"
+                "P1は必須。\n",
+            )
+
+            self.assertEqual([], KucGuardrails(root).p2_disposition_failures())
+
     def test_rejects_katana_specific_svg_boundary_in_core(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -3955,6 +4013,29 @@ class KucGuardrailsTest(unittest.TestCase):
                     source,
                 )
                 self.assertNotIn("secrets.CARGO_REGISTRY_TOKEN", source)
+
+    def test_linux_workflows_share_bounded_headless_display_install(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        installer = root / "scripts/ci/install-headless-display.sh"
+        installer_source = installer.read_text(encoding="utf-8")
+
+        self.assertIn("readonly max_attempts=3", installer_source)
+        self.assertIn("readonly apt_timeout_seconds=300", installer_source)
+        self.assertIn('timeout "${apt_timeout_seconds}" sudo apt-get update', installer_source)
+        self.assertIn("tail -n 200", installer_source)
+        self.assertIn("failed after ${max_attempts} attempts", installer_source)
+
+        for workflow_name in (
+            "test-and-build.yml",
+            "release-preflight.yml",
+            "release.yml",
+        ):
+            with self.subTest(workflow=workflow_name):
+                source = (root / ".github/workflows" / workflow_name).read_text(
+                    encoding="utf-8"
+                )
+                self.assertIn("bash scripts/ci/install-headless-display.sh", source)
+                self.assertNotIn("sudo apt-get update", source)
 
     def test_release_publish_retry_uses_the_immutable_tag_publish_script(self) -> None:
         root = Path(__file__).resolve().parents[1]

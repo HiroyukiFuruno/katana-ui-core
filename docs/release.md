@@ -7,6 +7,12 @@
 取り込み（merge）後は自動実行基盤（GitHub Actions）がタグ（tag）、GitHubリリース（GitHub Release）、crates.io公開を実行する。
 単一の公開crate、private Storybook、consumer contractを同じrelease gateで検証する。
 
+## CI evidence reuse
+
+release-preflight が成功した場合だけ、GitHub Actions artifact に小さな release-check 証跡を残す。Release workflow は GitHub API から取得した元 run が同じ repository の成功済み `pull_request` release-preflight であることを確認し、source SHA と content digest を別々に扱う。digest は evidence 専用 path を除く全 tracked file を対象にするため、source、test、fixture、lockfile、script、workflow、toolchain の変更で再利用は無効になる。OS/arch/rustc/font identity、issuer、期限も一致が必要である。
+
+再利用できない場合は失敗ではなく、従来どおり `release-check` を実行する。欠損、改ざん、dirty tree、不明 issuer、run/sha/environment 不一致、期限切れはすべて fail-closed で skip しない。verified reuse のときだけ `reason`、元 run、digest を workflow log に出力して重い重複実行を省略する。required check や review / version / publication 境界は再利用しない。
+
 ## 必須検査
 
 GitHub のブランチ保護（branch protection）では、KUC repo 内で次を必須検査（required check）にする。
