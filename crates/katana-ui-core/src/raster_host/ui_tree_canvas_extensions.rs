@@ -1,7 +1,7 @@
 use super::canvas::Canvas;
 use super::text::TextRenderer;
 use super::ui_tree_canvas_rgba::{packed_rgb, rgba_alpha, rgba_sample};
-use super::ui_tree_canvas_types::{CanvasBlitRequest, RgbaBlitRequest};
+use super::ui_tree_canvas_types::{CanvasBlitRequest, PhysicalCanvasBlitRequest, RgbaBlitRequest};
 use katana_ui_core::facade::UiCoreFacade;
 use std::cell::RefCell;
 
@@ -29,6 +29,32 @@ impl Canvas {
         with_text_renderer(role, |renderer| renderer.measure_width(text, TEXT_SIZE))
     }
     pub fn blit_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
+        let dest_x = self.to_physical_x(request.dest_x);
+        let dest_y = self.to_physical_y(request.dest_y);
+        let width = self
+            .to_physical_x(request.dest_x.saturating_add(request.width))
+            .saturating_sub(dest_x);
+        let height = self
+            .to_physical_y(request.dest_y.saturating_add(request.height))
+            .saturating_sub(dest_y);
+        self.blit_canvas_physical(
+            source,
+            PhysicalCanvasBlitRequest {
+                dest_x,
+                dest_y,
+                width,
+                height,
+                source_y: source.to_physical_y(request.source_y),
+                source_logical_y: request.source_y as f32,
+            },
+        );
+    }
+
+    pub(super) fn blit_canvas_physical(
+        &mut self,
+        source: &Canvas,
+        request: PhysicalCanvasBlitRequest,
+    ) {
         for y in 0..request.height {
             let source_y = request.source_y.saturating_add(y);
             if source_y >= source.height() {
@@ -41,7 +67,7 @@ impl Canvas {
     fn blit_canvas_row(
         &mut self,
         source: &Canvas,
-        request: CanvasBlitRequest,
+        request: PhysicalCanvasBlitRequest,
         dest_y_offset: usize,
         source_y: usize,
     ) {
@@ -60,7 +86,7 @@ impl Canvas {
             self.set_physical(dest_x, dest_y, color);
         }
     }
-    fn blit_canvas_text_runs(&mut self, source: &Canvas, request: CanvasBlitRequest) {
+    fn blit_canvas_text_runs(&mut self, source: &Canvas, request: PhysicalCanvasBlitRequest) {
         let source_bottom = request.source_y.saturating_add(request.height);
         let destination_scale = self.scale_factor();
         let destination_x = logical_blit_coordinate(request.dest_x, destination_scale);

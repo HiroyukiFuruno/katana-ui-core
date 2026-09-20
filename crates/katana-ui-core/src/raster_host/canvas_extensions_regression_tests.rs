@@ -18,7 +18,6 @@ fn clipped_canvas_blit_uses_physical_coordinates_at_fractional_scale() {
                 width: 3,
                 height: 3,
                 source_y: 0,
-                source_logical_y: 0.0,
             },
         );
     });
@@ -147,7 +146,6 @@ fn canvas_blit_preserves_selectable_text_runs() {
             width: 200,
             height: 120,
             source_y: 20,
-            source_logical_y: 20.0,
         },
     );
 
@@ -175,7 +173,6 @@ fn canvas_blit_preserves_selectable_text_run_phase_at_fractional_scale() {
             width: source.width(),
             height: 2,
             source_y: 2,
-            source_logical_y: 1.0,
         },
     );
 
@@ -202,7 +199,6 @@ fn canvas_blit_rounds_fractional_source_offset_for_selectable_text_runs() {
             width: source.width(),
             height: source.height().saturating_sub(2),
             source_y: 2,
-            source_logical_y: 0.75,
         },
     );
 
@@ -232,7 +228,6 @@ fn canvas_text_and_blit_cover_roles_clipping_and_source_bounds() {
                 width: 8,
                 height: 8,
                 source_y: 2,
-                source_logical_y: 2.0,
             },
         );
     });

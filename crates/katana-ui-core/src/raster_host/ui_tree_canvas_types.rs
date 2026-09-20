@@ -45,6 +45,15 @@ pub struct CanvasBlitRequest {
     pub width: usize,
     pub height: usize,
     pub source_y: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct PhysicalCanvasBlitRequest {
+    pub dest_x: usize,
+    pub dest_y: usize,
+    pub width: usize,
+    pub height: usize,
+    pub source_y: usize,
     pub source_logical_y: f32,
 }
 

@@ -1,11 +1,11 @@
 use super::canvas::Canvas;
-use super::ui_tree_canvas_types::CanvasBlitRequest;
+use super::ui_tree_canvas_types::PhysicalCanvasBlitRequest;
 
 impl Canvas {
-    pub(crate) fn copy_unclipped_canvas_row(
+    pub(super) fn copy_unclipped_canvas_row(
         &mut self,
         source: &Self,
-        request: CanvasBlitRequest,
+        request: PhysicalCanvasBlitRequest,
         dest_y_offset: usize,
         source_y: usize,
     ) -> bool {

@@ -3,7 +3,7 @@ use super::ui_tree_canvas::UiTreeCanvasRenderer;
 use super::ui_tree_canvas_hit_metrics::remaining_width;
 use super::ui_tree_canvas_palette::UiTreeCanvasPalette;
 use super::ui_tree_canvas_scroll_measure::can_render_partial_media_frame_stack;
-use super::ui_tree_canvas_types::{CanvasBlitRequest, UiTreeRenderArea};
+use super::ui_tree_canvas_types::{PhysicalCanvasBlitRequest, UiTreeRenderArea};
 use katana_ui_core::render_model::{UiDimension, UiNode, UiNodeKind, UiVisualRole};
 
 const HOVER_SURFACE_PARTIAL_CLIP_GUARD: usize = 20;
@@ -83,9 +83,9 @@ pub(super) fn draw_partially_visible_node(
     } else {
         temp.fractional_to_physical_y(source_y)
     };
-    canvas.blit_canvas(
+    canvas.blit_canvas_physical(
         &temp,
-        CanvasBlitRequest {
+        PhysicalCanvasBlitRequest {
             dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
             dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
             width: physical_scroll_extent(area.x as f32, area.width as f32, canvas.scale_factor()),
@@ -204,9 +204,9 @@ fn draw_partially_visible_media_frame_stack(
         },
         palette,
     );
-    canvas.blit_canvas(
+    canvas.blit_canvas_physical(
         &temp,
-        CanvasBlitRequest {
+        PhysicalCanvasBlitRequest {
             dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
             dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
             width: physical_scroll_extent(area.x as f32, area.width as f32, canvas.scale_factor()),
