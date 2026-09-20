@@ -74,7 +74,8 @@ impl Canvas {
                 continue;
             }
             let target_x = destination_x.saturating_add(rect.x);
-            let target_y = destination_y.saturating_add(rect.y.saturating_sub(source_y));
+            let target_y =
+                destination_y.saturating_add((rect.y as f32 - source_y).round().max(0.0) as usize);
             self.record_text_run(run.text(), target_x, target_y, rect.width, rect.height);
         }
     }

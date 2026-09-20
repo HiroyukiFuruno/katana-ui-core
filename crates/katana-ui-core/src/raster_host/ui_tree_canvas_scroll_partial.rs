@@ -96,9 +96,9 @@ pub(super) fn draw_partially_visible_node(
             ),
             source_y: blit_source_y,
             source_logical_y: if can_render_partial_node_in_viewport(node) {
-                0
+                0.0
             } else {
-                source_y.max(0.0).floor() as usize
+                source_y
             },
         },
     );
@@ -216,7 +216,7 @@ fn draw_partially_visible_media_frame_stack(
                 canvas.scale_factor(),
             ),
             source_y: temp.fractional_to_physical_y(source_y),
-            source_logical_y: source_y.max(0.0).floor() as usize,
+            source_logical_y: source_y,
         },
     );
 }

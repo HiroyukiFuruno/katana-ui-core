@@ -18,7 +18,7 @@ fn clipped_canvas_blit_uses_physical_coordinates_at_fractional_scale() {
                 width: 3,
                 height: 3,
                 source_y: 0,
-                source_logical_y: 0,
+                source_logical_y: 0.0,
             },
         );
     });
@@ -147,7 +147,7 @@ fn canvas_blit_preserves_selectable_text_runs() {
             width: 200,
             height: 120,
             source_y: 20,
-            source_logical_y: 20,
+            source_logical_y: 20.0,
         },
     );
 
@@ -175,7 +175,7 @@ fn canvas_blit_preserves_selectable_text_run_phase_at_fractional_scale() {
             width: source.width(),
             height: 2,
             source_y: 2,
-            source_logical_y: 1,
+            source_logical_y: 1.0,
         },
     );
 
@@ -185,6 +185,30 @@ fn canvas_blit_preserves_selectable_text_run_phase_at_fractional_scale() {
         run.y(),
         "phase-aware physical source offset must retain the original logical selection offset"
     );
+}
+
+#[test]
+fn canvas_blit_rounds_fractional_source_offset_for_selectable_text_runs() {
+    let mut source = Canvas::new_scaled(8, 6, 2.0, BACKGROUND);
+    source.record_text_run("first", 0, 2, 4, 1);
+    source.record_text_run("second", 0, 4, 4, 1);
+    let mut target = Canvas::new(8, 6, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: source.width(),
+            height: source.height().saturating_sub(2),
+            source_y: 2,
+            source_logical_y: 0.75,
+        },
+    );
+
+    assert_eq!(2, target.text_runs().len());
+    assert_eq!(1, target.text_runs()[0].y());
+    assert_eq!(3, target.text_runs()[1].y());
 }
 
 #[test]
@@ -208,7 +232,7 @@ fn canvas_text_and_blit_cover_roles_clipping_and_source_bounds() {
                 width: 8,
                 height: 8,
                 source_y: 2,
-                source_logical_y: 2,
+                source_logical_y: 2.0,
             },
         );
     });

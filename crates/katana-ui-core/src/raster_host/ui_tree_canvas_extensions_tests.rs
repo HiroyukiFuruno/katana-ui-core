@@ -115,7 +115,7 @@ fn canvas_blit_preserves_selectable_text_runs() {
             width: 200,
             height: 120,
             source_y: 20,
-            source_logical_y: 20,
+            source_logical_y: 20.0,
         },
     );
 
@@ -150,7 +150,7 @@ fn canvas_text_and_blit_cover_roles_clipping_and_source_bounds() {
                 width: 8,
                 height: 8,
                 source_y: 2,
-                source_logical_y: 2,
+                source_logical_y: 2.0,
             },
         );
     });

@@ -38,14 +38,14 @@ impl RgbaSourceRect {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CanvasBlitRequest {
     pub dest_x: usize,
     pub dest_y: usize,
     pub width: usize,
     pub height: usize,
     pub source_y: usize,
-    pub source_logical_y: usize,
+    pub source_logical_y: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
