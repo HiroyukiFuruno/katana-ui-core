@@ -1,3 +1,4 @@
+use super::renderer_methods::hover_surface_child_clip_height;
 use super::{
     Canvas, ContainerPadding, TEXT_HEIGHT, UiNode, UiTreeCanvasPalette, UiTreeCanvasRenderer,
     UiTreeRenderArea, UiVisualRole, child_container_x, child_render_area, dimension_px,
@@ -110,7 +111,8 @@ impl UiTreeCanvasRenderer {
             }
         };
         if cursor.requested_height > 0 {
-            let container_bottom = cursor.origin + cursor.requested_height as f32;
+            let container_bottom = cursor.origin
+                + hover_surface_child_clip_height(node, cursor.requested_height) as f32;
             let clip_height = (container_bottom - child_clip_y).max(0.0);
             canvas.with_clip_at_logical_y(
                 x,

@@ -130,6 +130,13 @@ impl UiTreeHostActionHitCollector<'_> {
 
     fn collect_visible_children(&mut self, node: &UiNode, x: usize, source_y: f32) {
         for child in node.children() {
+            if self.y as f32
+                >= self
+                    .viewport_bottom
+                    .unwrap_or(source_y + self.area.height as f32)
+            {
+                break;
+            }
             self.collect_visible_node(child, x, source_y);
         }
     }
