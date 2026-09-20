@@ -81,7 +81,7 @@ pub(super) fn draw_partially_visible_node(
     let blit_source_y = if can_render_partial_node_in_viewport(node) {
         0
     } else {
-        physical_scroll_offset(source_y, canvas.scale_factor())
+        temp.fractional_to_physical_y(source_y)
     };
     canvas.blit_canvas(
         &temp,
@@ -210,7 +210,7 @@ fn draw_partially_visible_media_frame_stack(
                 area.height as f32,
                 canvas.scale_factor(),
             ),
-            source_y: physical_scroll_offset(source_y, canvas.scale_factor()),
+            source_y: temp.fractional_to_physical_y(source_y),
         },
     );
 }
@@ -368,6 +368,7 @@ mod tests {
 
         assert_eq!(2, canvas.width());
         assert_eq!(2, canvas.height());
+        assert_eq!(2, canvas.fractional_to_physical_y(1.0));
     }
 
     #[test]
