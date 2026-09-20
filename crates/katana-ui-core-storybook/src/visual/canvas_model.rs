@@ -7,12 +7,15 @@ pub struct Canvas {
     pub(super) height: usize,
     pub(super) logical_width: usize,
     pub(super) logical_height: usize,
+    pub(super) logical_phase_x: usize,
+    pub(super) logical_phase_y: f64,
     pub(super) scale_factor: f32,
     pub(super) raster_scale_factor: f32,
     pub(super) image_surface_extent_mode: CanvasImageSurfaceExtentMode,
     pub(super) pixels: Vec<u32>,
     pub(super) clip: Option<CanvasClip>,
     pub(super) text_runs: Vec<SelectableTextRun>,
+    pub(super) physical_y_offset: usize,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

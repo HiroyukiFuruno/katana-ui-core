@@ -152,6 +152,8 @@ fn canvas_from_pixels(width: usize, height: usize, pixels: Vec<u32>) -> Canvas {
         height,
         logical_width: width,
         logical_height: height,
+        logical_phase_x: 0,
+        logical_phase_y: 0.0,
         scale_factor: 1.0,
         raster_scale_factor: 1.0,
         image_surface_extent_mode:
@@ -159,6 +161,7 @@ fn canvas_from_pixels(width: usize, height: usize, pixels: Vec<u32>) -> Canvas {
         pixels,
         clip: None,
         text_runs: Vec::new(),
+        physical_y_offset: 0,
     }
 }
 

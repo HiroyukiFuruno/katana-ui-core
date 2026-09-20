@@ -142,7 +142,7 @@ fn draw_visible_node(
         node,
         x,
         node_height,
-        source_y.saturating_sub(node_top),
+        source_y.saturating_sub(node_top) as f32,
         area,
         palette,
     );

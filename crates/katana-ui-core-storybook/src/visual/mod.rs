@@ -4,6 +4,8 @@ mod canvas;
 mod canvas_blit;
 mod canvas_clip;
 mod canvas_color;
+mod canvas_factory;
+mod canvas_fractional_y;
 mod canvas_model;
 mod canvas_physical;
 mod canvas_png;
