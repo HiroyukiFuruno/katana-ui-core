@@ -1,3 +1,4 @@
+use super::ui_tree_canvas_types::PhysicalCanvasBlitRequest;
 use super::{Canvas, CanvasBlitRequest, RgbaBlitRequest, RgbaSourceRect, UiTreeRenderArea};
 
 const BACKGROUND: u32 = 0x000000;
@@ -10,14 +11,15 @@ fn clipped_canvas_blit_uses_physical_coordinates_at_fractional_scale() {
     let mut target = Canvas::new_scaled(4, 4, 1.5, BACKGROUND);
 
     target.with_clip(1, 1, 2, 2, &mut |canvas| {
-        canvas.blit_canvas(
+        canvas.blit_canvas_physical(
             &source,
-            CanvasBlitRequest {
+            PhysicalCanvasBlitRequest {
                 dest_x: 2,
                 dest_y: 2,
                 width: 3,
                 height: 3,
                 source_y: 0,
+                source_logical_y: 0.0,
             },
         );
     });
@@ -189,7 +191,7 @@ fn canvas_blit_rounds_fractional_source_offset_for_selectable_text_runs() {
     let mut source = Canvas::new_scaled(8, 6, 2.0, BACKGROUND);
     source.record_text_run("first", 0, 2, 4, 1);
     source.record_text_run("second", 0, 4, 4, 1);
-    let mut target = Canvas::new(8, 6, BACKGROUND);
+    let mut target = Canvas::new(8, 10, BACKGROUND);
 
     target.blit_canvas(
         &source,

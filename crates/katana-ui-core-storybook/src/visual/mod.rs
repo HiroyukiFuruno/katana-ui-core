@@ -346,6 +346,7 @@ mod text_test_support;
 mod text_tests;
 mod types;
 mod ui_tree_canvas;
+mod ui_tree_canvas_blit;
 mod ui_tree_canvas_checkbox;
 mod ui_tree_canvas_choice_control;
 #[cfg(test)]

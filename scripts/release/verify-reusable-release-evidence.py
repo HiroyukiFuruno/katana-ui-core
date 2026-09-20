@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 from datetime import datetime, timedelta, timezone
@@ -14,11 +15,21 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 TRUSTED_ISSUER = "github-actions"
 TRUSTED_WORKFLOW = ".github/workflows/release-preflight.yml"
 TRUSTED_BRANCH = "master"
 EXCLUDED_PREFIXES = ("ci/release-evidence/",)
+NATIVE_PACKAGES = (
+    "ffmpeg",
+    "fonts-noto-cjk",
+    "fonts-noto-color-emoji",
+    "fonts-noto-mono",
+    "xauth",
+    "xvfb",
+)
+EMOJI_FONT = Path("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf")
+MONO_FONT = Path("/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf")
 
 
 def utc_now() -> datetime:
@@ -73,13 +84,66 @@ def content_digest_at_revision(repo: Path, revision: str) -> str:
     return digest.hexdigest()
 
 
+def required_command(*args: str) -> str:
+    try:
+        value = command(*args, cwd=Path.cwd())
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise ValueError(f"release evidence environment identity is unavailable: {' '.join(args)}") from error
+    if not value:
+        raise ValueError(f"release evidence environment identity is empty: {' '.join(args)}")
+    return value
+
+
+def required_environment(name: str) -> str:
+    value = os.environ.get(name, "")
+    if not value:
+        raise ValueError(f"release evidence environment identity is missing {name}")
+    return value
+
+
+def required_file_digest(path: Path) -> str:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError as error:
+        raise ValueError(f"release evidence environment identity cannot read {path}") from error
+
+
+def os_release_identity() -> str:
+    try:
+        values = dict(
+            line.split("=", 1)
+            for line in Path("/etc/os-release").read_text(encoding="utf-8").splitlines()
+            if "=" in line
+        )
+        return f"{values['ID']}:{values['VERSION_ID']}"
+    except (OSError, KeyError) as error:
+        raise ValueError("release evidence environment identity cannot read /etc/os-release") from error
+
+
+def package_identity(package: str) -> str:
+    value = required_command("dpkg-query", "-W", "-f=${db:Status-Abbrev} ${Version}", package)
+    status, *version = value.split(maxsplit=1)
+    if status != "ii" or len(version) != 1:
+        raise ValueError(f"release evidence environment identity package is not installed: {package}")
+    return f"{package}={version[0]}"
+
+
 def environment_identity() -> dict[str, str]:
+    xvfb_path = shutil.which("Xvfb")
+    if xvfb_path is None:
+        raise ValueError("release evidence environment identity is missing Xvfb")
     return {
         "os": command("uname", "-s", cwd=Path.cwd()),
         "arch": command("uname", "-m", cwd=Path.cwd()),
         "rustc": command("rustc", "-Vv", cwd=Path.cwd()),
-        "emoji_font_sha256": os.environ.get("KUC_PINNED_LINUX_EMOJI_SHA256", ""),
-        "mono_font_sha256": os.environ.get("KUC_PINNED_LINUX_MONO_SHA256", ""),
+        "runner_image_os": required_environment("ImageOS"),
+        "runner_image_version": required_environment("ImageVersion"),
+        "os_release": os_release_identity(),
+        "xvfb_path": xvfb_path,
+        "ffmpeg_version": required_command("ffmpeg", "-version").splitlines()[0],
+        "native_packages": ";".join(package_identity(package) for package in NATIVE_PACKAGES),
+        "emoji_font_sha256": required_file_digest(EMOJI_FONT),
+        "mono_font_sha256": required_file_digest(MONO_FONT),
     }
 
 

@@ -18,11 +18,23 @@ SPEC.loader.exec_module(MODULE)
 
 
 NOW = datetime(2026, 9, 20, tzinfo=timezone.utc)
-ENVIRONMENT = {"os": "Linux", "arch": "x86_64", "rustc": "rustc 1", "emoji_font_sha256": "emoji", "mono_font_sha256": "mono"}
+ENVIRONMENT = {
+    "os": "Linux",
+    "arch": "x86_64",
+    "rustc": "rustc 1",
+    "runner_image_os": "ubuntu22",
+    "runner_image_version": "20260920.1",
+    "os_release": "ubuntu:22.04",
+    "xvfb_path": "/usr/bin/Xvfb",
+    "ffmpeg_version": "ffmpeg version 7.1",
+    "native_packages": "ffmpeg=7.1;fonts-noto-cjk=1;fonts-noto-color-emoji=1;fonts-noto-mono=1;xauth=1;xvfb=1",
+    "emoji_font_sha256": "emoji",
+    "mono_font_sha256": "mono",
+}
 
 
 def candidate(**overrides: object) -> dict[str, object]:
-    value: dict[str, object] = {"schema_version": 1, "issuer": "github-actions", "workflow": ".github/workflows/release-preflight.yml", "repository": "owner/repo", "run_id": "123", "source_sha": "a" * 40, "content_digest": "digest", "environment": ENVIRONMENT, "result": "passed", "expires_at": (NOW + timedelta(hours=1)).isoformat()}
+    value: dict[str, object] = {"schema_version": 2, "issuer": "github-actions", "workflow": ".github/workflows/release-preflight.yml", "repository": "owner/repo", "run_id": "123", "source_sha": "a" * 40, "content_digest": "digest", "environment": ENVIRONMENT, "result": "passed", "expires_at": (NOW + timedelta(hours=1)).isoformat()}
     value.update(overrides)
     return value
 
@@ -51,6 +63,23 @@ class ReusableEvidenceTest(unittest.TestCase):
         self.assertTrue(
             MODULE.reuse_failures(candidate(), source_run(), "digest", "untrusted-source-digest", ENVIRONMENT, "owner/repo", NOW)
         )
+
+    def test_rejects_runner_or_native_environment_drift(self) -> None:
+        for key in ("runner_image_version", "os_release", "xvfb_path", "ffmpeg_version", "native_packages"):
+            changed_environment = dict(ENVIRONMENT)
+            changed_environment[key] = "changed"
+            self.assertTrue(
+                MODULE.reuse_failures(
+                    candidate(environment=changed_environment),
+                    source_run(),
+                    "digest",
+                    "digest",
+                    ENVIRONMENT,
+                    "owner/repo",
+                    NOW,
+                ),
+                key,
+            )
 
     def test_content_digest_rejects_dirty_or_untracked_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

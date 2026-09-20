@@ -31,6 +31,7 @@ pub(crate) mod text_selection;
 pub(crate) mod text_selection_overlay;
 pub(crate) mod text_selection_types;
 pub(crate) mod ui_tree_canvas;
+pub(crate) mod ui_tree_canvas_blit;
 pub(crate) mod ui_tree_canvas_checkbox;
 pub(crate) mod ui_tree_canvas_choice_control;
 pub(crate) mod ui_tree_canvas_context_menu;
