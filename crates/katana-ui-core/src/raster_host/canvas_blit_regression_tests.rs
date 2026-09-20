@@ -85,6 +85,34 @@ fn public_canvas_blit_preserves_mixed_scale_physical_source_offset() {
 }
 
 #[test]
+fn public_canvas_blit_advances_from_fractional_scale_crop_origin() {
+    let mut source = Canvas::new_scaled(2, 3, 1.25, BACKGROUND);
+    for (y, color) in [0x112233, 0x445566, 0x778899, 0xaabbcc]
+        .into_iter()
+        .enumerate()
+    {
+        for x in 0..source.width() {
+            source.set_physical(x, y, color);
+        }
+    }
+    let mut target = Canvas::new(2, 2, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: 2,
+            height: 2,
+            source_y: 1,
+        },
+    );
+
+    assert_eq!(0x445566, target.pixels()[0]);
+    assert_eq!(0xaabbcc, target.pixels()[target.width()]);
+}
+
+#[test]
 fn canvas_blit_preserves_selectable_text_run_phase_at_fractional_scale() {
     let mut source = Canvas::new_scaled_with_logical_phase(8, 4, 1.25, 0, 1.0, BACKGROUND);
     source.record_text_run("phase", 0, 2, 4, 1);

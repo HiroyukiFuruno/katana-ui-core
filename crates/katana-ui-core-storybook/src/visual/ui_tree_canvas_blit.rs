@@ -32,11 +32,13 @@ impl Canvas {
 
     fn blit_scaled_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
         let source_logical_y = source.logical_y_at_physical_position(request.source_y) as f32;
+        let source_crop_logical_y = source_logical_y as usize;
+        let source_crop_top = source.to_physical_y(source_crop_logical_y);
         for logical_y in 0..request.height {
             let source_y = request.source_y.saturating_add(
                 source
-                    .to_physical_y(logical_y)
-                    .saturating_sub(source.to_physical_y(0)),
+                    .to_physical_y(source_crop_logical_y.saturating_add(logical_y))
+                    .saturating_sub(source_crop_top),
             );
             if source_y >= source.height() {
                 break;
