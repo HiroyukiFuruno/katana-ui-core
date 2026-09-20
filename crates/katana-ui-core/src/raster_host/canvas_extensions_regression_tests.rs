@@ -16,6 +16,8 @@ fn clipped_canvas_blit_uses_physical_coordinates_at_fractional_scale() {
             PhysicalCanvasBlitRequest {
                 dest_x: 2,
                 dest_y: 2,
+                dest_logical_x: 1,
+                dest_logical_y: 1,
                 width: 3,
                 height: 3,
                 source_y: 0,

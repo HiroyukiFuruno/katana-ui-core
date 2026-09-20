@@ -16,6 +16,8 @@ impl Canvas {
             PhysicalCanvasBlitRequest {
                 dest_x,
                 dest_y,
+                dest_logical_x: request.dest_x,
+                dest_logical_y: request.dest_y,
                 width,
                 height,
                 source_y: request.source_y,
@@ -64,9 +66,6 @@ impl Canvas {
 
     fn blit_canvas_text_runs(&mut self, source: &Canvas, request: PhysicalCanvasBlitRequest) {
         let source_bottom = request.source_y.saturating_add(request.height);
-        let destination_scale = self.scale_factor();
-        let destination_x = logical_blit_coordinate(request.dest_x, destination_scale);
-        let destination_y = logical_blit_coordinate(request.dest_y, destination_scale);
         let source_y = request.source_logical_y;
         for run in source.text_runs() {
             let rect = run.rect();
@@ -75,16 +74,13 @@ impl Canvas {
             if physical_rect_bottom <= request.source_y || physical_rect_top >= source_bottom {
                 continue;
             }
-            let target_x = destination_x.saturating_add(rect.x);
-            let target_y =
-                destination_y.saturating_add((rect.y as f32 - source_y).round().max(0.0) as usize);
+            let target_x = request.dest_logical_x.saturating_add(rect.x);
+            let target_y = request
+                .dest_logical_y
+                .saturating_add((rect.y as f32 - source_y).round().max(0.0) as usize);
             self.record_text_run(run.text(), target_x, target_y, rect.width, rect.height);
         }
     }
-}
-
-fn logical_blit_coordinate(physical_coordinate: usize, scale_factor: f32) -> usize {
-    (physical_coordinate as f64 / f64::from(scale_factor)).round() as usize
 }
 
 fn logical_source_y(physical_coordinate: usize, scale_factor: f32) -> f32 {

@@ -51,6 +51,13 @@ pub struct CanvasBlitRequest {
 pub(super) struct PhysicalCanvasBlitRequest {
     pub dest_x: usize,
     pub dest_y: usize,
+    /// The destination expressed in the target canvas's logical coordinate system.
+    ///
+    /// A physical offset cannot be divided by the scale factor when the canvas has
+    /// a non-zero phase: adjacent logical edges can round to different physical
+    /// spans. Keep the logical origin for selection metadata rebasing.
+    pub dest_logical_x: usize,
+    pub dest_logical_y: usize,
     pub width: usize,
     pub height: usize,
     pub source_y: usize,

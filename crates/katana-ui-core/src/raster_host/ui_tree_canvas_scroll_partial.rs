@@ -58,8 +58,8 @@ pub(super) fn draw_partially_visible_node(
         area.width,
         temp_height,
         canvas.scale_factor(),
-        area.x,
-        area.y as f64 - f64::from(source_y),
+        canvas.logical_phase_x().saturating_add(area.x),
+        canvas.logical_phase_y() + area.y as f64 - f64::from(source_y),
         palette.background,
     );
     let mut temp_y = 0;
@@ -86,14 +86,16 @@ pub(super) fn draw_partially_visible_node(
     canvas.blit_canvas_physical(
         &temp,
         PhysicalCanvasBlitRequest {
-            dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
-            dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
-            width: physical_scroll_extent(area.x as f32, area.width as f32, canvas.scale_factor()),
-            height: physical_scroll_extent(
-                area.y as f32,
-                area.height as f32,
-                canvas.scale_factor(),
-            ),
+            dest_x: canvas.to_physical_x(area.x),
+            dest_y: canvas.to_physical_y(area.y),
+            dest_logical_x: area.x,
+            dest_logical_y: area.y,
+            width: canvas
+                .unclipped_physical_x(area.x.saturating_add(area.width))
+                .saturating_sub(canvas.unclipped_physical_x(area.x)),
+            height: canvas
+                .unclipped_physical_y(area.y.saturating_add(area.height))
+                .saturating_sub(canvas.unclipped_physical_y(area.y)),
             source_y: blit_source_y,
             source_logical_y: if can_render_partial_node_in_viewport(node) {
                 0.0
@@ -184,8 +186,8 @@ fn draw_partially_visible_media_frame_stack(
         area.width,
         temp_height,
         canvas.scale_factor(),
-        area.x,
-        area.y as f64 - f64::from(source_y),
+        canvas.logical_phase_x().saturating_add(area.x),
+        canvas.logical_phase_y() + area.y as f64 - f64::from(source_y),
         palette.background,
     );
     let local_x = x.saturating_sub(area.x);
@@ -207,24 +209,28 @@ fn draw_partially_visible_media_frame_stack(
     canvas.blit_canvas_physical(
         &temp,
         PhysicalCanvasBlitRequest {
-            dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
-            dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
-            width: physical_scroll_extent(area.x as f32, area.width as f32, canvas.scale_factor()),
-            height: physical_scroll_extent(
-                area.y as f32,
-                area.height as f32,
-                canvas.scale_factor(),
-            ),
+            dest_x: canvas.to_physical_x(area.x),
+            dest_y: canvas.to_physical_y(area.y),
+            dest_logical_x: area.x,
+            dest_logical_y: area.y,
+            width: canvas
+                .unclipped_physical_x(area.x.saturating_add(area.width))
+                .saturating_sub(canvas.unclipped_physical_x(area.x)),
+            height: canvas
+                .unclipped_physical_y(area.y.saturating_add(area.height))
+                .saturating_sub(canvas.unclipped_physical_y(area.y)),
             source_y: temp.fractional_to_physical_y(source_y),
             source_logical_y: source_y,
         },
     );
 }
 
+#[cfg(test)]
 fn physical_scroll_offset(logical_offset: f32, scale_factor: f32) -> usize {
     (f64::from(logical_offset.max(0.0)) * f64::from(scale_factor)).round() as usize
 }
 
+#[cfg(test)]
 fn physical_scroll_extent(logical_start: f32, logical_length: f32, scale_factor: f32) -> usize {
     physical_scroll_offset(logical_start + logical_length, scale_factor)
         .saturating_sub(physical_scroll_offset(logical_start, scale_factor))
@@ -531,5 +537,87 @@ mod tests {
                 Some((run.right(), run.y() + run.height() / 2)),
             )
         );
+    }
+
+    #[test]
+    fn nested_fractional_partial_node_matches_full_crop_and_rebases_text_runs() {
+        let (renderer, palette, area) = render_context();
+        let node = UiNode::new(UiNodeKind::Column, "")
+            .child(Text::new("nested selectable text"))
+            .child(Text::new("second line"));
+        let source_y = 0.75;
+        let mut parent =
+            Canvas::new_scaled_with_logical_phase(96, 48, 1.25, 2, 1.0, palette.background);
+        let mut full = Canvas::new_scaled_with_logical_phase(
+            area.width,
+            24,
+            1.25,
+            parent.logical_phase_x().saturating_add(area.x),
+            parent.logical_phase_y() + area.y as f64 - f64::from(source_y),
+            palette.background,
+        );
+        let mut full_y = 0;
+        renderer.render_node(
+            &mut full,
+            &node,
+            4,
+            &mut full_y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: area.width,
+                height: 24,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+
+        draw_partially_visible_node(
+            &renderer,
+            &mut parent,
+            &node,
+            8,
+            24,
+            source_y,
+            area,
+            palette,
+        );
+
+        let source_physical_y = full.fractional_to_physical_y(source_y);
+        let dest_x = parent.to_physical_x(area.x);
+        let dest_y = parent.to_physical_y(area.y);
+        let copy_width = full.width().min(parent.width().saturating_sub(dest_x));
+        let copy_height = full
+            .height()
+            .saturating_sub(source_physical_y)
+            .min(parent.height().saturating_sub(dest_y));
+        for y in 0..copy_height {
+            for x in 0..copy_width {
+                assert_eq!(
+                    full.pixels()[(source_physical_y + y) * full.width() + x],
+                    parent.pixels()[(dest_y + y) * parent.width() + dest_x + x],
+                    "nested partial differs from full crop at x={x}, y={y}"
+                );
+            }
+        }
+
+        let source_run = full
+            .text_runs()
+            .iter()
+            .find(|run| run.text() == "nested selectable text")
+            .expect("full render must expose a selectable run");
+        let target_run = parent
+            .text_runs()
+            .iter()
+            .find(|run| run.text() == "nested selectable text")
+            .expect("partial render must retain the selectable run");
+        assert_eq!(area.x + source_run.x(), target_run.x());
+        assert_eq!(
+            area.y + (source_run.y() as f32 - source_y).round().max(0.0) as usize,
+            target_run.y(),
+            "selection metadata must use the logical destination, not physical scale division"
+        );
+        assert_eq!(source_run.width(), target_run.width());
+        assert_eq!(source_run.height(), target_run.height());
     }
 }
