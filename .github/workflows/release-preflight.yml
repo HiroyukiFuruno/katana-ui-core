@@ -118,18 +118,18 @@ jobs:
             --result "${GATE_RESULT}"
 
       - name: Record reusable release-check evidence
-        if: steps.release_check.outcome == 'success'
+        if: steps.release_check.outcome == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
         env:
           EVIDENCE: ${{ runner.temp }}/kuc-release-check-evidence/release-evidence.json
         run: |
           python3 scripts/release/verify-reusable-release-evidence.py \
             --write "${EVIDENCE}" \
             --repository "${GITHUB_REPOSITORY}" \
-            --source-sha "${GITHUB_SHA}" \
+            --source-sha "${{ github.event.pull_request.head.sha || github.sha }}" \
             --run-id "${GITHUB_RUN_ID}"
 
       - name: Upload reusable release-check evidence
-        if: steps.release_check.outcome == 'success'
+        if: steps.release_check.outcome == 'success' && github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/master'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: kuc-release-check-evidence

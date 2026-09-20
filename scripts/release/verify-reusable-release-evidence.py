@@ -17,6 +17,7 @@ from typing import Any
 SCHEMA_VERSION = 1
 TRUSTED_ISSUER = "github-actions"
 TRUSTED_WORKFLOW = ".github/workflows/release-preflight.yml"
+TRUSTED_BRANCH = "master"
 EXCLUDED_PREFIXES = ("ci/release-evidence/",)
 
 
@@ -122,8 +123,8 @@ def reuse_failures(candidate: object, source_run: object, digest: str, source_di
         return failures + ["release evidence source run is missing"]
     if str(source_run.get("id")) != str(candidate.get("run_id")):
         failures.append("release evidence run id does not match GitHub source run")
-    if source_run.get("event") != "pull_request" or source_run.get("status") != "completed" or source_run.get("conclusion") != "success":
-        failures.append("release evidence source run is not a successful pull_request workflow")
+    if source_run.get("event") != "workflow_dispatch" or source_run.get("head_branch") != TRUSTED_BRANCH or source_run.get("status") != "completed" or source_run.get("conclusion") != "success":
+        failures.append("release evidence source run is not a successful protected workflow dispatch")
     if source_run.get("repository", {}).get("full_name") != repository:
         failures.append("release evidence source run repository is untrusted")
     if source_run.get("head_sha") != candidate.get("source_sha"):

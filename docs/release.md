@@ -9,7 +9,7 @@
 
 ## CI evidence reuse
 
-release-preflight が成功した場合だけ、GitHub Actions artifact に小さな release-check 証跡を残す。Release workflow は GitHub API から取得した元 run が同じ repository の成功済み `pull_request` release-preflight であることを確認し、source SHA と content digest を別々に扱う。digest は evidence 専用 path を除く全 tracked file を対象にするため、source、test、fixture、lockfile、script、workflow、toolchain の変更で再利用は無効になる。OS/arch/rustc/font identity、issuer、期限も一致が必要である。
+保護済み `master` から手動実行した release-preflight だけが、GitHub Actions artifact に小さな release-check 証跡を残す。PR実行のartifactは再利用しない。Release workflow は GitHub API から取得した元 run が同じrepositoryの成功済み `workflow_dispatch` / `master` であることを確認し、source SHA と content digest を別々に扱う。digestは現在のrelease treeとGitHub REST由来source SHAのGit tree双方から再計算する。evidence専用 path を除く全 tracked fileが対象のため、source、test、fixture、lockfile、script、workflow、toolchainの変更で再利用は無効になる。OS/arch/rustc/font identity、issuer、期限も一致が必要である。
 
 再利用できない場合は失敗ではなく、従来どおり `release-check` を実行する。欠損、改ざん、dirty tree、不明 issuer、run/sha/environment 不一致、期限切れはすべて fail-closed で skip しない。verified reuse のときだけ `reason`、元 run、digest を workflow log に出力して重い重複実行を省略する。required check や review / version / publication 境界は再利用しない。
 

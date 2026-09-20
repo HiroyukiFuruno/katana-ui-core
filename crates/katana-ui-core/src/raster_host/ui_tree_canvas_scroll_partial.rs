@@ -86,8 +86,8 @@ pub(super) fn draw_partially_visible_node(
         CanvasBlitRequest {
             dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
             dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
-            width: physical_scroll_offset(area.width as f32, canvas.scale_factor()),
-            height: physical_scroll_offset(area.height as f32, canvas.scale_factor()),
+            width: physical_scroll_extent(area.x as f32, area.width as f32, canvas.scale_factor()),
+            height: physical_scroll_extent(area.y as f32, area.height as f32, canvas.scale_factor()),
             source_y: blit_source_y,
         },
     );
@@ -196,8 +196,8 @@ fn draw_partially_visible_media_frame_stack(
         CanvasBlitRequest {
             dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
             dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
-            width: physical_scroll_offset(area.width as f32, canvas.scale_factor()),
-            height: physical_scroll_offset(area.height as f32, canvas.scale_factor()),
+            width: physical_scroll_extent(area.x as f32, area.width as f32, canvas.scale_factor()),
+            height: physical_scroll_extent(area.y as f32, area.height as f32, canvas.scale_factor()),
             source_y: physical_scroll_offset(source_y, canvas.scale_factor()),
         },
     );
@@ -205,6 +205,11 @@ fn draw_partially_visible_media_frame_stack(
 
 fn physical_scroll_offset(logical_offset: f32, scale_factor: f32) -> usize {
     (f64::from(logical_offset.max(0.0)) * f64::from(scale_factor)).round() as usize
+}
+
+fn physical_scroll_extent(logical_start: f32, logical_length: f32, scale_factor: f32) -> usize {
+    physical_scroll_offset(logical_start + logical_length, scale_factor)
+        .saturating_sub(physical_scroll_offset(logical_start, scale_factor))
 }
 
 fn partial_node_temp_height(node: &UiNode, node_height: usize, viewport_height: usize) -> usize {
@@ -336,6 +341,13 @@ mod tests {
             palette,
             0,
         );
+    }
+
+    #[test]
+    fn physical_scroll_extent_uses_scaled_endpoint_difference() {
+        assert_eq!(2, physical_scroll_extent(1.0, 1.0, 1.25));
+        assert_eq!(1, physical_scroll_extent(1.0, 1.0, 1.5));
+        assert_eq!(1, physical_scroll_extent(0.0, 1.0, 1.25));
     }
 
     #[test]
