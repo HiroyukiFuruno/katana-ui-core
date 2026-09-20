@@ -11,20 +11,18 @@ impl Canvas {
     }
 
     pub(super) fn logical_to_physical_y(&self, logical: usize) -> usize {
-        ((self.logical_phase_y.saturating_add(logical) as f64 * f64::from(self.scale_factor()))
-            .round() as usize)
-            .saturating_sub(
-                (self.logical_phase_y as f64 * f64::from(self.scale_factor())).round() as usize,
-            )
+        self.physical_y_at_logical_position(logical as f64)
     }
 
     pub(super) fn fractional_to_physical_y(&self, logical: f32) -> usize {
-        (((self.logical_phase_y as f64 + f64::from(logical.max(0.0)))
-            * f64::from(self.scale_factor()))
-        .round() as usize)
-            .saturating_sub(
-                (self.logical_phase_y as f64 * f64::from(self.scale_factor())).round() as usize,
-            )
+        self.physical_y_at_logical_position(f64::from(logical.max(0.0)))
+    }
+
+    fn physical_y_at_logical_position(&self, logical: f64) -> usize {
+        let scale = f64::from(self.scale_factor());
+        (((self.logical_phase_y + logical) * scale).round()
+            - (self.logical_phase_y * scale).round())
+        .max(0.0) as usize
     }
 
     fn logical_to_physical_position(&self, logical: usize) -> usize {

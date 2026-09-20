@@ -59,7 +59,7 @@ pub(super) fn draw_partially_visible_node(
         temp_height,
         canvas.scale_factor(),
         area.x,
-        area.y,
+        area.y as f64 - f64::from(source_y),
         palette.background,
     );
     let mut temp_y = 0;
@@ -185,7 +185,7 @@ fn draw_partially_visible_media_frame_stack(
         temp_height,
         canvas.scale_factor(),
         area.x,
-        area.y,
+        area.y as f64 - f64::from(source_y),
         palette.background,
     );
     let local_x = x.saturating_sub(area.x);
@@ -370,7 +370,7 @@ mod tests {
 
     #[test]
     fn partial_canvas_preserves_destination_phase_at_fractional_scale() {
-        let canvas = Canvas::new_scaled_with_logical_phase(1, 1, 1.25, 1, 1, 0);
+        let canvas = Canvas::new_scaled_with_logical_phase(1, 1, 1.25, 1, 1.0, 0);
 
         assert_eq!(2, canvas.width());
         assert_eq!(2, canvas.height());
@@ -379,13 +379,21 @@ mod tests {
 
     #[test]
     fn partial_canvas_applies_phase_to_fractional_logical_rectangles() {
-        let canvas = Canvas::new_scaled_with_logical_phase(1, 2, 1.25, 1, 1, 0);
+        let canvas = Canvas::new_scaled_with_logical_phase(1, 2, 1.25, 1, 1.0, 0);
         let clip = canvas
             .visible_rect_at_logical_y(0, 1.0, 1, 1.0)
             .expect("the phased local span must remain visible");
 
         assert_eq!(2, clip.y);
         assert_eq!(1, clip.height);
+    }
+
+    #[test]
+    fn partial_canvas_uses_node_origin_phase_after_scrolling() {
+        let canvas = Canvas::new_scaled_with_logical_phase(1, 2, 1.25, 1, 0.0, 0);
+
+        assert_eq!(1, canvas.fractional_to_physical_y(1.0));
+        assert_eq!(3, canvas.fractional_to_physical_y(2.0));
     }
 
     #[test]

@@ -26,7 +26,7 @@ impl Canvas {
             scale,
             raster_scale,
             0,
-            0,
+            0.0,
             color,
         )
     }
@@ -37,7 +37,7 @@ impl Canvas {
         height: usize,
         scale: f32,
         phase_x: usize,
-        phase_y: usize,
+        phase_y: f64,
         color: u32,
     ) -> Self {
         Self::new_scaled_with_logical_phase_and_raster_scale(
@@ -51,15 +51,14 @@ impl Canvas {
         scale: f32,
         raster_scale: f32,
         phase_x: usize,
-        phase_y: usize,
+        phase_y: f64,
         color: u32,
     ) -> Self {
         let scale = normalized_scale(scale);
         let raster_scale = normalized_scale(raster_scale);
         let physical_width = physical_size(phase_x.saturating_add(width), scale)
             .saturating_sub(physical_size(phase_x, scale));
-        let physical_height = physical_size(phase_y.saturating_add(height), scale)
-            .saturating_sub(physical_size(phase_y, scale));
+        let physical_height = physical_height_at_logical_phase(phase_y, height, scale);
         Self {
             width: physical_width,
             height: physical_height,
@@ -76,4 +75,9 @@ impl Canvas {
             physical_y_offset: 0,
         }
     }
+}
+
+fn physical_height_at_logical_phase(phase: f64, height: usize, scale: f32) -> usize {
+    let scale = f64::from(scale);
+    (((phase + height as f64) * scale).round() - (phase * scale).round()).max(0.0) as usize
 }

@@ -163,7 +163,7 @@ fn canvas_blit_preserves_selectable_text_runs() {
 
 #[test]
 fn canvas_blit_preserves_selectable_text_run_phase_at_fractional_scale() {
-    let mut source = Canvas::new_scaled_with_logical_phase(8, 4, 1.25, 0, 1, BACKGROUND);
+    let mut source = Canvas::new_scaled_with_logical_phase(8, 4, 1.25, 0, 1.0, BACKGROUND);
     source.record_text_run("phase", 0, 2, 4, 1);
     let mut target = Canvas::new(8, 4, BACKGROUND);
 
