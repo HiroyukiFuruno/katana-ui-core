@@ -31,9 +31,13 @@ impl Canvas {
     }
 
     fn blit_scaled_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
-        let source_logical_y = logical_source_y(request.source_y, source.scale_factor()) as usize;
+        let source_logical_y = logical_source_y(request.source_y, source.scale_factor());
         for logical_y in 0..request.height {
-            let source_y = source.to_physical_y(source_logical_y.saturating_add(logical_y));
+            let source_y = request.source_y.saturating_add(
+                source
+                    .to_physical_y(logical_y)
+                    .saturating_sub(source.to_physical_y(0)),
+            );
             if source_y >= source.height() {
                 break;
             }
@@ -61,12 +65,12 @@ impl Canvas {
         &mut self,
         source: &Canvas,
         request: CanvasBlitRequest,
-        source_logical_y: usize,
+        source_logical_y: f32,
     ) {
-        let source_bottom = source_logical_y.saturating_add(request.height);
+        let source_bottom = source_logical_y + request.height as f32;
         for run in source.text_runs() {
             let rect = run.rect();
-            if rect.bottom() <= source_logical_y || rect.y >= source_bottom {
+            if rect.bottom() as f32 <= source_logical_y || rect.y as f32 >= source_bottom {
                 continue;
             }
             self.record_text_run(
@@ -74,7 +78,7 @@ impl Canvas {
                 request.dest_x.saturating_add(rect.x),
                 request
                     .dest_y
-                    .saturating_add(rect.y.saturating_sub(source_logical_y)),
+                    .saturating_add((rect.y as f32 - source_logical_y).max(0.0).round() as usize),
                 rect.width,
                 rect.height,
             );
@@ -139,5 +143,5 @@ impl Canvas {
 }
 
 fn logical_source_y(physical_coordinate: usize, scale_factor: f32) -> f32 {
-    (physical_coordinate as f32 / scale_factor).floor()
+    physical_coordinate as f32 / scale_factor
 }
