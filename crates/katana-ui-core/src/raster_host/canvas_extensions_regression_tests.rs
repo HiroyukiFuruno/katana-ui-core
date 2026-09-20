@@ -164,6 +164,33 @@ fn canvas_blit_preserves_selectable_text_runs() {
 }
 
 #[test]
+fn public_canvas_blit_resamples_logical_pixels_across_scales() {
+    let mut source = Canvas::new(2, 2, BACKGROUND);
+    source.set(0, 0, 0x112233);
+    source.set(1, 0, 0x445566);
+    source.set(0, 1, 0x778899);
+    source.set(1, 1, 0xaabbcc);
+    let mut target = Canvas::new_scaled(2, 2, 2.0, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: 2,
+            height: 2,
+            source_y: 0,
+        },
+    );
+
+    assert_eq!(0x112233, target.pixels()[0]);
+    assert_eq!(0x112233, target.pixels()[1]);
+    assert_eq!(0x445566, target.pixels()[2]);
+    assert_eq!(0x778899, target.pixels()[2 * target.width()]);
+    assert_eq!(0xaabbcc, target.pixels()[3 * target.width() + 3]);
+}
+
+#[test]
 fn canvas_blit_preserves_selectable_text_run_phase_at_fractional_scale() {
     let mut source = Canvas::new_scaled_with_logical_phase(8, 4, 1.25, 0, 1.0, BACKGROUND);
     source.record_text_run("phase", 0, 2, 4, 1);

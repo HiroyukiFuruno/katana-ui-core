@@ -3,6 +3,10 @@ use super::ui_tree_canvas_types::{CanvasBlitRequest, PhysicalCanvasBlitRequest};
 
 impl Canvas {
     pub fn blit_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
+        if source.scale_factor() != self.scale_factor() {
+            self.blit_scaled_canvas(source, request);
+            return;
+        }
         let dest_x = self.to_physical_x(request.dest_x);
         let dest_y = self.to_physical_y(request.dest_y);
         let width = self
@@ -24,6 +28,57 @@ impl Canvas {
                 source_logical_y: logical_source_y(request.source_y, source.scale_factor()),
             },
         );
+    }
+
+    fn blit_scaled_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
+        let source_logical_y = logical_source_y(request.source_y, source.scale_factor()) as usize;
+        for logical_y in 0..request.height {
+            let source_y = source.to_physical_y(source_logical_y.saturating_add(logical_y));
+            if source_y >= source.height() {
+                break;
+            }
+            let dest_top = self.to_physical_y(request.dest_y.saturating_add(logical_y));
+            let dest_bottom = self.to_physical_y(request.dest_y.saturating_add(logical_y + 1));
+            for logical_x in 0..request.width {
+                let source_x = source.to_physical_x(logical_x);
+                if source_x >= source.width() {
+                    break;
+                }
+                let color = source.pixels()[source_y * source.width() + source_x];
+                let dest_left = self.to_physical_x(request.dest_x.saturating_add(logical_x));
+                let dest_right = self.to_physical_x(request.dest_x.saturating_add(logical_x + 1));
+                for dest_y in dest_top..dest_bottom {
+                    for dest_x in dest_left..dest_right {
+                        self.set_physical(dest_x, dest_y, color);
+                    }
+                }
+            }
+        }
+        self.blit_scaled_canvas_text_runs(source, request, source_logical_y);
+    }
+
+    fn blit_scaled_canvas_text_runs(
+        &mut self,
+        source: &Canvas,
+        request: CanvasBlitRequest,
+        source_logical_y: usize,
+    ) {
+        let source_bottom = source_logical_y.saturating_add(request.height);
+        for run in source.text_runs() {
+            let rect = run.rect();
+            if rect.bottom() <= source_logical_y || rect.y >= source_bottom {
+                continue;
+            }
+            self.record_text_run(
+                run.text(),
+                request.dest_x.saturating_add(rect.x),
+                request
+                    .dest_y
+                    .saturating_add(rect.y.saturating_sub(source_logical_y)),
+                rect.width,
+                rect.height,
+            );
+        }
     }
 
     pub(super) fn blit_canvas_physical(
