@@ -155,6 +155,33 @@ fn canvas_text_and_blit_cover_roles_clipping_and_source_bounds() {
     assert!(target.non_background_pixels(BACKGROUND) > 0);
 }
 
+#[test]
+fn clipped_scaled_canvas_blit_keeps_physical_source_columns() {
+    let mut source = Canvas::new_scaled(3, 1, 2.0, BACKGROUND);
+    for x in 0..source.width() {
+        source.set_physical(x, 0, 0x110000 + x as u32);
+    }
+    let mut target = Canvas::new_scaled(3, 1, 2.0, BACKGROUND);
+
+    target.with_clip(1, 0, 1, 1, &mut |canvas| {
+        canvas.blit_canvas(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 0,
+                dest_y: 0,
+                width: 3,
+                height: 1,
+                source_y: 0,
+            },
+        );
+    });
+
+    assert_eq!(0x110002, target.pixels()[2]);
+    assert_eq!(0x110003, target.pixels()[3]);
+    assert_eq!(BACKGROUND, target.pixels()[1]);
+    assert_eq!(BACKGROUND, target.pixels()[4]);
+}
+
 fn vertical_row_rgba(width: u32, height: u32) -> Vec<u8> {
     const ROW_RED_STEP: u32 = 20;
     let mut rgba = Vec::new();

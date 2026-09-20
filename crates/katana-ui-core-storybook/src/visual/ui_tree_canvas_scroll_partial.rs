@@ -403,4 +403,57 @@ mod tests {
         let fixed = hover.width(UiDimension::Px(32));
         assert_eq!(hover_surface_width(&fixed, 10, area), 32);
     }
+
+    #[test]
+    fn fractional_scale_partial_text_matches_the_full_physical_crop_at_nonzero_phase() {
+        let (renderer, palette, area) = render_context();
+        let text: UiNode = Text::new("phase-aware partial text").into();
+        let source_y = 0.75;
+        let mut full = Canvas::new_scaled_with_logical_phase(
+            area.width,
+            area.height,
+            1.25,
+            area.x,
+            area.y as f64 - f64::from(source_y),
+            palette.background,
+        );
+        let mut full_y = 0;
+        renderer.render_node(
+            &mut full,
+            &text,
+            4,
+            &mut full_y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: area.width,
+                height: area.height,
+                scroll_y: source_y,
+            },
+            palette,
+        );
+        let mut partial = Canvas::new_scaled(96, 48, 1.25, palette.background);
+        draw_partially_visible_node(
+            &renderer,
+            &mut partial,
+            &text,
+            8,
+            30,
+            source_y,
+            area,
+            palette,
+        );
+
+        let physical_dest_x = physical_scroll_offset(area.x as f32, 1.25);
+        let physical_dest_y = physical_scroll_offset(area.y as f32, 1.25);
+        for y in 0..full.height() {
+            for x in 0..full.width() {
+                assert_eq!(
+                    full.pixels()[y * full.width() + x],
+                    partial.pixels()[(physical_dest_y + y) * partial.width() + physical_dest_x + x],
+                    "partial text differs from the full physical crop at x={x}, y={y}"
+                );
+            }
+        }
+    }
 }
