@@ -39,11 +39,6 @@ pub(super) fn draw_raster(
     }
 }
 
-pub(super) fn physical_draw_origin(origin_y: f32, scale_factor: f32) -> isize {
-    (f64::from(origin_y) * f64::from(TextRenderer::normalized_scale_factor(scale_factor))).round()
-        as isize
-}
-
 pub(super) fn record_runtime_text_run(
     canvas: &mut Canvas,
     text: &str,
