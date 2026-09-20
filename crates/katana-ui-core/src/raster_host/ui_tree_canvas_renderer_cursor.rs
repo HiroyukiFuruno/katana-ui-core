@@ -625,6 +625,10 @@ mod tests {
             UiNode::new(UiNodeKind::Row, "")
                 .height(UiDimension::px(10))
                 .child(UiNode::new(UiNodeKind::Text, "row child")),
+            UiNode::new(UiNodeKind::Stack, "")
+                .visual_role(UiVisualRole::HoverSurface)
+                .height(UiDimension::px(10))
+                .child(UiNode::new(UiNodeKind::Text, "hover child")),
         ];
 
         for node in fixed_nodes {
@@ -644,6 +648,52 @@ mod tests {
                 "fixed nodes must advance by their declared height without leaking child layout"
             );
         }
+    }
+
+    #[test]
+    fn fixed_hover_surface_clip_margin_does_not_shift_following_button_bounds() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = fractional_renderer(theme);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 120,
+            scroll_y: 0.0,
+        };
+        let root = UiNode::new(UiNodeKind::Column, "")
+            .child(
+                UiNode::new(UiNodeKind::Stack, "")
+                    .visual_role(UiVisualRole::HoverSurface)
+                    .height(UiDimension::px(10))
+                    .child(UiNode::new(UiNodeKind::Text, "hover child")),
+            )
+            .child(UiNode::new(UiNodeKind::Button, "following").height(UiDimension::px(10)));
+        let mut canvas = Canvas::new_scaled(240, 120, 2.0, palette.background);
+        let mut logical_y = 0.5;
+
+        renderer.render_node_with_logical_cursor(
+            &mut canvas,
+            &root,
+            0,
+            &mut logical_y,
+            area,
+            palette,
+        );
+
+        let width = canvas.width();
+        assert_ne!(
+            palette.selection,
+            canvas.pixels()[20 * width],
+            "the following button must not start before the declared hover height"
+        );
+        assert_eq!(
+            palette.selection,
+            canvas.pixels()[21 * width],
+            "the following button must begin at the fixed hover surface boundary"
+        );
+        assert_eq!(20.5, logical_y);
     }
 
     #[test]
