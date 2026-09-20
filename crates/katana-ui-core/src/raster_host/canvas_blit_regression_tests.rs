@@ -159,3 +159,26 @@ fn canvas_blit_rounds_fractional_source_offset_for_selectable_text_runs() {
     assert_eq!(1, target.text_runs()[0].y());
     assert_eq!(3, target.text_runs()[1].y());
 }
+
+#[test]
+fn scaled_canvas_blit_omits_text_runs_outside_the_source_crop() {
+    let mut source = Canvas::new_scaled(8, 4, 1.25, BACKGROUND);
+    source.record_text_run("before", 0, 0, 4, 1);
+    source.record_text_run("visible", 0, 2, 4, 1);
+    let mut target = Canvas::new(8, 2, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: 8,
+            height: 2,
+            source_y: 2,
+        },
+    );
+
+    assert_eq!(1, target.text_runs().len());
+    assert_eq!("visible", target.text_runs()[0].text());
+    assert_eq!(1, target.text_runs()[0].y());
+}

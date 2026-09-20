@@ -1,0 +1,69 @@
+use super::{Canvas, CanvasBlitRequest};
+
+const BACKGROUND: u32 = 0x000000;
+
+#[test]
+fn public_canvas_blit_preserves_same_and_mixed_scale_pixel_contracts() {
+    let mut same_scale_source = Canvas::new_scaled(2, 2, 2.0, BACKGROUND);
+    same_scale_source.set_physical(0, 0, 0x112233);
+    same_scale_source.set_physical(1, 0, 0x445566);
+    let mut same_scale_target = Canvas::new_scaled(2, 2, 2.0, BACKGROUND);
+    same_scale_target.blit_canvas(
+        &same_scale_source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: 2,
+            height: 2,
+            source_y: 0,
+        },
+    );
+    assert_eq!(0x112233, same_scale_target.pixels()[0]);
+    assert_eq!(0x445566, same_scale_target.pixels()[1]);
+
+    let mut mixed_scale_source = Canvas::new(2, 2, BACKGROUND);
+    mixed_scale_source.set(0, 0, 0x223344);
+    mixed_scale_source.set(1, 0, 0x556677);
+    mixed_scale_source.set(0, 1, 0x8899aa);
+    let mut mixed_scale_target = Canvas::new_scaled(2, 2, 2.0, BACKGROUND);
+    mixed_scale_target.blit_canvas(
+        &mixed_scale_source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: 2,
+            height: 2,
+            source_y: 0,
+        },
+    );
+    assert_eq!(0x223344, mixed_scale_target.pixels()[0]);
+    assert_eq!(0x223344, mixed_scale_target.pixels()[1]);
+    assert_eq!(0x556677, mixed_scale_target.pixels()[2]);
+    assert_eq!(
+        0x8899aa,
+        mixed_scale_target.pixels()[2 * mixed_scale_target.width()]
+    );
+}
+
+#[test]
+fn scaled_canvas_blit_keeps_fractional_text_phase_and_skips_clipped_runs() {
+    let mut source = Canvas::new_scaled_with_logical_phase(8, 4, 1.25, 0, 1.0, BACKGROUND);
+    source.record_text_run("before", 0, 0, 4, 1);
+    source.record_text_run("phase", 0, 2, 4, 1);
+    let mut target = Canvas::new(8, 2, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: 8,
+            height: 2,
+            source_y: 2,
+        },
+    );
+
+    assert_eq!(1, target.text_runs().len());
+    assert_eq!("phase", target.text_runs()[0].text());
+    assert_eq!(1, target.text_runs()[0].y());
+}
