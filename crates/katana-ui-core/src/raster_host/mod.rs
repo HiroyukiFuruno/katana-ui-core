@@ -75,6 +75,8 @@ pub(crate) mod ui_tree_storybook_host;
 pub(crate) mod ui_tree_surface_host;
 
 #[cfg(test)]
+mod canvas_blit_regression_tests;
+#[cfg(test)]
 mod canvas_edge_contract_tests;
 #[cfg(test)]
 mod canvas_extensions_regression_tests;

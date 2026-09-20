@@ -143,5 +143,5 @@ impl Canvas {
 }
 
 fn logical_source_y(physical_coordinate: usize, scale_factor: f32) -> f32 {
-    physical_coordinate as f32 / scale_factor
+    (physical_coordinate as f32 / scale_factor).floor()
 }
