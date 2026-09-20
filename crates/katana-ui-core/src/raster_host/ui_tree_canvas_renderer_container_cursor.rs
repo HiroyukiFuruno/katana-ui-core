@@ -121,7 +121,7 @@ impl UiTreeCanvasRenderer {
                 clip_height,
                 &mut draw_children,
             );
-            // 描画だけに必要な text 下端余白は、宣言済みコンテナのレイアウト高さへ含めない。
+            /* WHY: 描画だけに必要な text 下端余白は、宣言済みコンテナのレイアウト高さへ含めない。 */
             *logical_y = cursor.origin + cursor.requested_height as f32;
         } else {
             draw_children(canvas);
