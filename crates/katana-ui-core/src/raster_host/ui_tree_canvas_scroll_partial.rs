@@ -87,7 +87,11 @@ pub(super) fn draw_partially_visible_node(
             dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
             dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
             width: physical_scroll_extent(area.x as f32, area.width as f32, canvas.scale_factor()),
-            height: physical_scroll_extent(area.y as f32, area.height as f32, canvas.scale_factor()),
+            height: physical_scroll_extent(
+                area.y as f32,
+                area.height as f32,
+                canvas.scale_factor(),
+            ),
             source_y: blit_source_y,
         },
     );
@@ -197,7 +201,11 @@ fn draw_partially_visible_media_frame_stack(
             dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
             dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
             width: physical_scroll_extent(area.x as f32, area.width as f32, canvas.scale_factor()),
-            height: physical_scroll_extent(area.y as f32, area.height as f32, canvas.scale_factor()),
+            height: physical_scroll_extent(
+                area.y as f32,
+                area.height as f32,
+                canvas.scale_factor(),
+            ),
             source_y: physical_scroll_offset(source_y, canvas.scale_factor()),
         },
     );
