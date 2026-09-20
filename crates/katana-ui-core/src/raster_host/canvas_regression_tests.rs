@@ -118,6 +118,15 @@ fn logical_blend_paints_full_logical_pixel_on_high_dpi_canvas() {
 }
 
 #[test]
+fn logical_blend_rect_ignores_a_region_outside_the_canvas() {
+    let mut canvas = Canvas::new_scaled(4, 4, 2.0, BACKGROUND);
+
+    canvas.blend_rect_at_logical_y(0, 4.0, 2, 1.0, BLEND, 128);
+
+    assert!(canvas.pixels().iter().all(|pixel| *pixel == BACKGROUND));
+}
+
+#[test]
 fn point_and_rect_drawing_ignore_coordinates_outside_the_canvas() {
     let mut canvas = Canvas::new(2, 2, BACKGROUND);
 

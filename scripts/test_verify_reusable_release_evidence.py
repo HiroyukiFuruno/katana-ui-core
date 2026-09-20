@@ -28,7 +28,7 @@ def candidate(**overrides: object) -> dict[str, object]:
 
 
 def source_run(**overrides: object) -> dict[str, object]:
-    value: dict[str, object] = {"id": 123, "event": "pull_request", "status": "completed", "conclusion": "success", "repository": {"full_name": "owner/repo"}, "head_sha": "a" * 40, "path": ".github/workflows/release-preflight.yml@refs/pull/1/merge"}
+    value: dict[str, object] = {"id": 123, "event": "pull_request", "status": "completed", "conclusion": "success", "repository": {"full_name": "owner/repo"}, "head_sha": "a" * 40, "path": ".github/workflows/release-preflight.yml"}
     value.update(overrides)
     return value
 
@@ -44,7 +44,7 @@ class ReusableEvidenceTest(unittest.TestCase):
             self.assertTrue(MODULE.reuse_failures(evidence, run, "digest", ENVIRONMENT, "owner/repo", NOW))
 
     def test_rejects_mismatched_run_sha_repository_and_workflow(self) -> None:
-        for run in (source_run(id=456), source_run(head_sha="b" * 40), source_run(repository={"full_name": "attacker/repo"}), source_run(path=".github/workflows/other.yml@refs/heads/main")):
+        for run in (source_run(id=456), source_run(head_sha="b" * 40), source_run(repository={"full_name": "attacker/repo"}), source_run(path=".github/workflows/other.yml"), source_run(path=".github/workflows/release-preflight.yml@refs/heads/main")):
             self.assertTrue(MODULE.reuse_failures(candidate(), run, "digest", ENVIRONMENT, "owner/repo", NOW))
 
     def test_content_digest_rejects_dirty_or_untracked_inputs(self) -> None:

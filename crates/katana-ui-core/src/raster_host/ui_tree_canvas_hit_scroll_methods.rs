@@ -82,6 +82,10 @@ impl UiTreeHostActionHitCollector<'_> {
             visited_node_count: 0,
         };
         content_collector.collect_visible_children(node, 0, source_y);
+        #[cfg(test)]
+        {
+            self.visited_node_count += content_collector.visited_node_count;
+        }
         self.hits
             .extend(content_collector.hits.into_iter().filter_map(|hit| {
                 clip_scroll_hit(

@@ -472,6 +472,40 @@ mod tests {
     }
 
     #[test]
+    fn auto_height_labeled_container_renders_label_without_fixed_clip() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::new(theme);
+        let node = UiNode::new(UiNodeKind::Card, "Auto-height label");
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 80,
+            scroll_y: 0.0,
+        };
+        let mut canvas = Canvas::new(180, 80, palette.background);
+        let mut logical_y = 0.0;
+
+        renderer.draw_container_with_logical_cursor(
+            &mut canvas,
+            &node,
+            0,
+            &mut logical_y,
+            area,
+            palette,
+        );
+
+        assert!(logical_y > 0.0);
+        assert!(
+            canvas
+                .pixels()
+                .iter()
+                .any(|pixel| *pixel != palette.background)
+        );
+    }
+
+    #[test]
     fn nested_containers_preserve_fractional_child_extents() {
         let theme = ThemeSnapshot::dark();
         let palette = UiTreeCanvasPalette::from_theme(&theme);

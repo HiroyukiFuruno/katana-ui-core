@@ -25,11 +25,9 @@ impl Canvas {
             renderer.draw(self, text, x, y, TEXT_SIZE, color);
         });
     }
-
     pub fn text_width_with_role(&self, role: &str, text: &str) -> usize {
         with_text_renderer(role, |renderer| renderer.measure_width(text, TEXT_SIZE))
     }
-
     pub fn blit_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
         for y in 0..request.height {
             let source_y = request.source_y.saturating_add(y);
@@ -40,7 +38,6 @@ impl Canvas {
         }
         self.blit_canvas_text_runs(source, request);
     }
-
     fn blit_canvas_row(
         &mut self,
         source: &Canvas,
@@ -63,22 +60,25 @@ impl Canvas {
             self.set(dest_x, dest_y, color);
         }
     }
-
     fn blit_canvas_text_runs(&mut self, source: &Canvas, request: CanvasBlitRequest) {
         let source_bottom = request.source_y.saturating_add(request.height);
+        let destination_scale = self.scale_factor();
+        let source_scale = source.scale_factor();
+        let destination_x = logical_blit_coordinate(request.dest_x, destination_scale);
+        let destination_y = logical_blit_coordinate(request.dest_y, destination_scale);
+        let source_y = logical_blit_coordinate(request.source_y, source_scale);
         for run in source.text_runs() {
             let rect = run.rect();
-            if rect.bottom() <= request.source_y || rect.y >= source_bottom {
+            let physical_rect_top = physical_blit_coordinate(rect.y, source_scale);
+            let physical_rect_bottom = physical_blit_coordinate(rect.bottom(), source_scale);
+            if physical_rect_bottom <= request.source_y || physical_rect_top >= source_bottom {
                 continue;
             }
-            let target_x = request.dest_x.saturating_add(rect.x);
-            let target_y = request
-                .dest_y
-                .saturating_add(rect.y.saturating_sub(request.source_y));
+            let target_x = destination_x.saturating_add(rect.x);
+            let target_y = destination_y.saturating_add(rect.y.saturating_sub(source_y));
             self.record_text_run(run.text(), target_x, target_y, rect.width, rect.height);
         }
     }
-
     pub fn blit_rgba(&mut self, source: RgbaBlitRequest<'_>) {
         if source.width == 0 || source.area.width == 0 || source.area.height == 0 {
             return;
@@ -250,6 +250,13 @@ impl Canvas {
         }
         self.blend(x, y, color, alpha);
     }
+}
+
+fn logical_blit_coordinate(physical_coordinate: usize, scale_factor: f32) -> usize {
+    (physical_coordinate as f64 / f64::from(scale_factor)).round() as usize
+}
+fn physical_blit_coordinate(logical_coordinate: usize, scale_factor: f32) -> usize {
+    (logical_coordinate as f64 * f64::from(scale_factor)).round() as usize
 }
 
 #[derive(Clone, Copy, Default)]

@@ -64,6 +64,49 @@ fn candidate_chain_keeps_copied_candidates_ordered_and_wraps_with_finite_geometr
 }
 
 #[test]
+fn candidate_chain_skips_missing_leading_candidate_before_shaping()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (source, _) = installed_font_candidate()?;
+    let candidate = copy_font_candidate(&source)?;
+    let missing = missing_font_path();
+    let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+        let config = candidate_chain_config_for_faces(
+            vec![missing.clone(), candidate.clone()],
+            vec![candidate.clone()],
+        );
+        let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
+        let mut rasterizer = PlatformTextRasterizer::with_catalog_and_face_selection(
+            catalog,
+            config,
+            PlatformTextFaceSelection::CandidateChain,
+        )?;
+        let raster = rasterizer.rasterize(&PlatformTextRasterRequest::from_text(
+            SOURCE_IDENTITY_TEXT,
+            font(FontFamily::Proportional),
+            TEXT_COLOR,
+        ))?;
+
+        assert!(raster.width > 0 && raster.height > 0);
+        let family = rasterizer
+            .text_faces
+            .proportional()
+            .expect("candidate chain must resolve a valid fallback")
+            .to_owned();
+        assert_eq!(
+            first_shaped_font_source(
+                &rasterizer,
+                PlatformTextFaceSelection::CandidateChain,
+                &family,
+            )?,
+            candidate
+        );
+        Ok(())
+    })();
+    let _ = fs::remove_file(candidate);
+    result
+}
+
+#[test]
 fn unresolved_candidate_selection_keeps_generic_fallback_faces()
 -> Result<(), Box<dyn std::error::Error>> {
     let missing = missing_font_path();

@@ -109,8 +109,10 @@ def reuse_failures(candidate: object, source_run: object, digest: str, environme
         failures.append("release evidence source run repository is untrusted")
     if source_run.get("head_sha") != candidate.get("source_sha"):
         failures.append("release evidence source SHA does not match GitHub source run")
+    # Actions Runs REST はrefなしのrepository内workflow pathを返す。source SHAは
+    # 上で独立検証済みなので、ここでは信頼済みworkflow pathとの完全一致だけを許可する。
     path = source_run.get("path")
-    if not isinstance(path, str) or not path.startswith(f"{TRUSTED_WORKFLOW}@"):
+    if path != TRUSTED_WORKFLOW:
         failures.append("release evidence source workflow is untrusted")
     return failures
 

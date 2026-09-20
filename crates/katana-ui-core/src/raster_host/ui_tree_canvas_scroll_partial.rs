@@ -443,4 +443,28 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn scale_two_partial_text_keeps_selection_runs_in_logical_coordinates() {
+        let (renderer, palette, area) = render_context();
+        let mut canvas = Canvas::new_scaled(96, 48, 2.0, palette.background);
+        let text: UiNode = Text::new("selectable partial text").into();
+
+        draw_partially_visible_node(&renderer, &mut canvas, &text, 8, 24, 0.0, area, palette);
+
+        let run = canvas
+            .text_runs()
+            .iter()
+            .find(|run| run.text() == "selectable partial text")
+            .expect("partial text must remain selectable after the physical pixel blit");
+        assert_eq!(8, run.x());
+        assert_eq!(3, run.y());
+        assert_eq!(
+            Some("selectable partial text".to_string()),
+            canvas.copy_text_in_selection(
+                Some((run.x(), run.y() + run.height() / 2)),
+                Some((run.right(), run.y() + run.height() / 2)),
+            )
+        );
+    }
 }
