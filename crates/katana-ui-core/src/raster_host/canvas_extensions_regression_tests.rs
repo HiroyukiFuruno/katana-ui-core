@@ -18,6 +18,7 @@ fn clipped_canvas_blit_uses_physical_coordinates_at_fractional_scale() {
                 width: 3,
                 height: 3,
                 source_y: 0,
+                source_logical_y: 0,
             },
         );
     });
@@ -146,6 +147,7 @@ fn canvas_blit_preserves_selectable_text_runs() {
             width: 200,
             height: 120,
             source_y: 20,
+            source_logical_y: 20,
         },
     );
 
@@ -156,6 +158,32 @@ fn canvas_blit_preserves_selectable_text_runs() {
             Some((run.x(), run.y() + run.height() / 2)),
             Some((run.right(), run.y() + run.height() / 2)),
         )
+    );
+}
+
+#[test]
+fn canvas_blit_preserves_selectable_text_run_phase_at_fractional_scale() {
+    let mut source = Canvas::new_scaled_with_logical_phase(8, 4, 1.25, 0, 1, BACKGROUND);
+    source.record_text_run("phase", 0, 2, 4, 1);
+    let mut target = Canvas::new(8, 4, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: source.width(),
+            height: 2,
+            source_y: 2,
+            source_logical_y: 1,
+        },
+    );
+
+    let run = &target.text_runs()[0];
+    assert_eq!(
+        1,
+        run.y(),
+        "phase-aware physical source offset must retain the original logical selection offset"
     );
 }
 
@@ -180,6 +208,7 @@ fn canvas_text_and_blit_cover_roles_clipping_and_source_bounds() {
                 width: 8,
                 height: 8,
                 source_y: 2,
+                source_logical_y: 2,
             },
         );
     });

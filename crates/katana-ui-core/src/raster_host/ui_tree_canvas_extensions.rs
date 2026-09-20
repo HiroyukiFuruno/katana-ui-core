@@ -63,14 +63,13 @@ impl Canvas {
     fn blit_canvas_text_runs(&mut self, source: &Canvas, request: CanvasBlitRequest) {
         let source_bottom = request.source_y.saturating_add(request.height);
         let destination_scale = self.scale_factor();
-        let source_scale = source.scale_factor();
         let destination_x = logical_blit_coordinate(request.dest_x, destination_scale);
         let destination_y = logical_blit_coordinate(request.dest_y, destination_scale);
-        let source_y = logical_blit_coordinate(request.source_y, source_scale);
+        let source_y = request.source_logical_y;
         for run in source.text_runs() {
             let rect = run.rect();
-            let physical_rect_top = physical_blit_coordinate(rect.y, source_scale);
-            let physical_rect_bottom = physical_blit_coordinate(rect.bottom(), source_scale);
+            let physical_rect_top = source.to_physical_y(rect.y);
+            let physical_rect_bottom = source.to_physical_y(rect.bottom());
             if physical_rect_bottom <= request.source_y || physical_rect_top >= source_bottom {
                 continue;
             }
@@ -254,9 +253,6 @@ impl Canvas {
 
 fn logical_blit_coordinate(physical_coordinate: usize, scale_factor: f32) -> usize {
     (physical_coordinate as f64 / f64::from(scale_factor)).round() as usize
-}
-fn physical_blit_coordinate(logical_coordinate: usize, scale_factor: f32) -> usize {
-    (logical_coordinate as f64 * f64::from(scale_factor)).round() as usize
 }
 
 #[derive(Clone, Copy, Default)]

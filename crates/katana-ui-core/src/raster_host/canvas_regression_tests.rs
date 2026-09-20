@@ -21,6 +21,7 @@ fn canvas_edge_contracts_cover_empty_clip_blit_selection_and_viewport() {
         width: 2,
         height: 1,
         source_y: 0,
+        source_logical_y: 0,
     };
     assert!(target.copy_unclipped_canvas_row(&source, request, 0, 0));
     let zero_width = CanvasBlitRequest {
