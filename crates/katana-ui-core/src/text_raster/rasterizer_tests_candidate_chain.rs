@@ -1,5 +1,27 @@
 use super::*;
 
+fn build_candidate_chain_rasterizer(
+    catalog: Arc<PlatformFontCatalog>,
+    config: PlatformTextRasterConfig,
+) -> Result<PlatformTextRasterizer, Box<dyn std::error::Error>> {
+    Ok(PlatformTextRasterizer::with_catalog_and_face_selection(
+        catalog,
+        config,
+        PlatformTextFaceSelection::CandidateChain,
+    )?)
+}
+
+fn shaped_candidate_source(
+    rasterizer: &PlatformTextRasterizer,
+    family: &str,
+) -> io::Result<PathBuf> {
+    first_shaped_font_source(
+        rasterizer,
+        PlatformTextFaceSelection::CandidateChain,
+        family,
+    )
+}
+
 #[test]
 fn candidate_chain_keeps_copied_candidates_ordered_and_wraps_with_finite_geometry()
 -> Result<(), Box<dyn std::error::Error>> {
@@ -23,11 +45,8 @@ fn candidate_chain_keeps_copied_candidates_ordered_and_wraps_with_finite_geometr
         let faces = catalog.regular_font_faces();
         assert_eq!(2, faces.proportional.len());
         assert_eq!(2, faces.monospace.len());
-        let mut rasterizer = PlatformTextRasterizer::with_catalog_and_face_selection(
-            catalog,
-            config,
-            PlatformTextFaceSelection::CandidateChain,
-        )?;
+        let mut rasterizer = build_candidate_chain_rasterizer(catalog, config)
+            .expect("candidate chain catalog policy must match");
         let selected_family = rasterizer
             .text_faces
             .proportional()
@@ -38,11 +57,8 @@ fn candidate_chain_keeps_copied_candidates_ordered_and_wraps_with_finite_geometr
             vec![proportional_primary.clone(), proportional_fallback.clone()]
         );
         assert_eq!(
-            first_shaped_font_source(
-                &rasterizer,
-                PlatformTextFaceSelection::CandidateChain,
-                &selected_family,
-            )?,
+            shaped_candidate_source(&rasterizer, &selected_family)
+                .expect("candidate chain family must shape"),
             proportional_primary
         );
 
@@ -75,11 +91,8 @@ fn candidate_chain_skips_missing_leading_candidate_before_shaping()
             vec![candidate.clone()],
         );
         let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
-        let mut rasterizer = PlatformTextRasterizer::with_catalog_and_face_selection(
-            catalog,
-            config,
-            PlatformTextFaceSelection::CandidateChain,
-        )?;
+        let mut rasterizer = build_candidate_chain_rasterizer(catalog, config)
+            .expect("candidate chain fallback must resolve");
         let raster = rasterizer.rasterize(&PlatformTextRasterRequest::from_text(
             SOURCE_IDENTITY_TEXT,
             font(FontFamily::Proportional),
@@ -93,11 +106,8 @@ fn candidate_chain_skips_missing_leading_candidate_before_shaping()
             .expect("candidate chain must resolve a valid fallback")
             .to_owned();
         assert_eq!(
-            first_shaped_font_source(
-                &rasterizer,
-                PlatformTextFaceSelection::CandidateChain,
-                &family,
-            )?,
+            shaped_candidate_source(&rasterizer, &family)
+                .expect("candidate chain fallback family must shape"),
             candidate
         );
         Ok(())
@@ -120,13 +130,31 @@ fn unresolved_candidate_selection_keeps_generic_fallback_faces()
     for face_selection in [
         PlatformTextFaceSelection::FirstCandidate,
         PlatformTextFaceSelection::CandidateChain,
+        PlatformTextFaceSelection::System,
     ] {
         let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
-        let mut rasterizer = PlatformTextRasterizer::with_catalog_and_face_selection(
-            catalog,
-            config.clone(),
-            face_selection,
-        )?;
+        let mut rasterizer = match face_selection {
+            PlatformTextFaceSelection::CandidateChain => {
+                build_candidate_chain_rasterizer(catalog, config.clone())
+                    .expect("candidate chain catalog policy must match")
+            }
+            PlatformTextFaceSelection::FirstCandidate => {
+                PlatformTextRasterizer::with_catalog_and_face_selection(
+                    catalog,
+                    config.clone(),
+                    face_selection,
+                )
+                .expect("first candidate catalog policy must match")
+            }
+            PlatformTextFaceSelection::System => {
+                PlatformTextRasterizer::with_catalog_and_face_selection(
+                    catalog,
+                    config.clone(),
+                    face_selection,
+                )
+                .expect("system catalog policy must match")
+            }
+        };
         assert_eq!(rasterizer.text_faces, ResolvedTextFaces::default());
         let raster = rasterizer.rasterize(&PlatformTextRasterRequest::from_text(
             "System fallback",
@@ -135,5 +163,22 @@ fn unresolved_candidate_selection_keeps_generic_fallback_faces()
         ))?;
         assert!(raster.width > 0 && raster.height > 0);
     }
+    Ok(())
+}
+
+#[test]
+fn candidate_chain_helpers_cover_constructor_errors() -> Result<(), Box<dyn std::error::Error>> {
+    let (source, _) = installed_font_candidate()?;
+    let candidate = copy_font_candidate(&source)?;
+    let config = candidate_chain_config_for_faces(vec![candidate.clone()], vec![candidate.clone()]);
+    let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
+
+    let mut mismatched_config = config.clone();
+    mismatched_config
+        .proportional_candidates
+        .push(missing_font_path());
+    assert!(build_candidate_chain_rasterizer(catalog.clone(), mismatched_config).is_err());
+
+    let _ = fs::remove_file(candidate);
     Ok(())
 }
