@@ -10,6 +10,7 @@ use std::path::PathBuf;
 const TEST_FONT_SIZE_PX: f32 = 16.0;
 const TEST_FACE_INDEX: u32 = 3;
 const TEST_FACE_WEIGHT: u16 = 300;
+const TEST_MONOSPACE_FACE_WEIGHT: u16 = 650;
 
 fn font() -> FontToken {
     FontToken {
@@ -54,7 +55,7 @@ fn selected_distinct_regular_and_monospace_faces() -> ResolvedTextFaces {
         family: "Monospace".to_owned(),
         source_file_path: PathBuf::from("monospace.ttc"),
         index: TEST_FACE_INDEX,
-        weight: 650,
+        weight: TEST_MONOSPACE_FACE_WEIGHT,
         style: FontStyle::Italic,
         stretch: Stretch::Expanded,
         selection_family: "__monospace__".to_owned(),
