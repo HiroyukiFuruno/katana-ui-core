@@ -102,7 +102,21 @@ class ReusableEvidenceTest(unittest.TestCase):
             subprocess.run(("git", "-c", "user.email=test@example.invalid", "-c", "user.name=test", "commit", "--quiet", "-m", "first"), cwd=root, check=True)
             first = subprocess.check_output(("git", "rev-parse", "HEAD"), cwd=root, text=True).strip()
             (root / "Cargo.lock").write_text("second\n", encoding="utf-8")
-            subprocess.run(("git", "commit", "-am", "second", "--quiet"), cwd=root, check=True)
+            subprocess.run(
+                (
+                    "git",
+                    "-c",
+                    "user.email=test@example.invalid",
+                    "-c",
+                    "user.name=test",
+                    "commit",
+                    "-am",
+                    "second",
+                    "--quiet",
+                ),
+                cwd=root,
+                check=True,
+            )
             self.assertNotEqual(MODULE.content_digest_at_revision(root, first), MODULE.content_digest_at_revision(root, "HEAD"))
 
 
