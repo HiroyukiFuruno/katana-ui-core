@@ -215,7 +215,7 @@ fn draw_partially_visible_media_frame_stack(
                 area.height as f32,
                 canvas.scale_factor(),
             ),
-            source_y: physical_scroll_offset(source_y, canvas.scale_factor()),
+            source_y: temp.fractional_to_physical_y(source_y),
             source_logical_y: source_y,
         },
     );
@@ -456,7 +456,14 @@ mod tests {
             .child(Text::new("body"))
             .child(overlay);
         let source_y = 0.75;
-        let mut full = Canvas::new_scaled(area.width, 30, 2.0, palette.background);
+        let mut full = Canvas::new_scaled_with_logical_phase(
+            area.width,
+            30,
+            2.0,
+            area.x,
+            area.y as f64 - f64::from(source_y),
+            palette.background,
+        );
         let mut full_y = 0;
         renderer.render_node(
             &mut full,
@@ -484,10 +491,10 @@ mod tests {
             palette,
         );
 
-        let physical_source_y = physical_scroll_offset(source_y, 2.0);
+        let physical_source_y = full.fractional_to_physical_y(source_y);
         assert_eq!(
-            2, physical_source_y,
-            "0.75 logical px reaches row 2 at scale 2"
+            1, physical_source_y,
+            "the node-origin phase determines the physical source offset"
         );
         let physical_dest_x = physical_scroll_offset(area.x as f32, 2.0);
         let physical_dest_y = physical_scroll_offset(area.y as f32, 2.0);
