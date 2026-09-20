@@ -1,3 +1,4 @@
+use super::super::UiTreeSurfaceHost;
 use super::*;
 
 #[test]
@@ -71,7 +72,7 @@ fn automatic_scroll_container_stops_hits_at_the_viewport_without_content_height(
 }
 
 #[test]
-fn viewport_scroll_hit_collection_does_not_visit_the_offscreen_content_tail() {
+fn interaction_target_at_does_not_visit_the_offscreen_content_tail() {
     let mut column = UiNode::new(UiNodeKind::Column, "");
     for index in 0..1_000 {
         column = column.child(
@@ -92,21 +93,28 @@ fn viewport_scroll_hit_collection_does_not_visit_the_offscreen_content_tail() {
         })
         .child(column);
 
-    let (hits, visited_node_count) = UiTreeHostActionHitCollector::collect_with_visit_count(
-        &root,
-        UiTreeRenderArea {
-            x: 0,
-            y: 0,
-            width: 120,
-            height: 40,
-            scroll_y: 0.0,
-        },
+    let target = UiTreeSurfaceHost::new(ThemeSnapshot::dark())
+        .interaction_target_at(
+            &root,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 120,
+                height: 40,
+                scroll_y: 0.0,
+            },
+            60.0,
+            20.0,
+        )
+        .expect("visible button interaction target");
+    assert_eq!(
+        "button-0",
+        target.action.expect("visible button action").action_id
     );
-
-    assert_eq!(vec!["button-0"], action_ids(&hits));
+    let visited_node_count = UiTreeHostActionHitCollector::viewport_interaction_visit_count();
     assert!(
         (2..10).contains(&visited_node_count),
-        "viewport collection must stop before building the 1,000-child tail; visited={visited_node_count}"
+        "interaction collection must stop before building the 1,000-child tail; visited={visited_node_count}"
     );
 }
 

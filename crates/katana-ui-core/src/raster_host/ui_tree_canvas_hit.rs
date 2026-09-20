@@ -36,6 +36,13 @@ use katana_ui_core::render_model::{
     UI_LINK_OPEN_ACTION_ID, UiCursor, UiHostActionPlan, UiNode, UiNodeId, UiNodeKind, UiTextSpan,
 };
 use katana_ui_core::theme::ThemeSnapshot;
+#[cfg(test)]
+use std::cell::Cell;
+
+#[cfg(test)]
+thread_local! {
+    static VIEWPORT_INTERACTION_VISIT_COUNT: Cell<usize> = const { Cell::new(0) };
+}
 
 #[path = "ui_tree_canvas_hit_methods.rs"]
 mod methods;
@@ -153,13 +160,20 @@ impl UiTreeHostActionHitCollector<'_> {
             export_text,
             code_text,
             typography,
-            ScrollHitClip::Document,
+            ScrollHitClip::Viewport,
         );
         collector.node(root, 0);
+        #[cfg(test)]
+        VIEWPORT_INTERACTION_VISIT_COUNT.with(|count| count.set(collector.visited_node_count));
         (
             clip_action_hits_to_viewport(collector.hits, area),
             clip_node_hits_to_viewport(collector.node_hits, area),
         )
+    }
+
+    #[cfg(test)]
+    pub(super) fn viewport_interaction_visit_count() -> usize {
+        VIEWPORT_INTERACTION_VISIT_COUNT.with(Cell::get)
     }
 
     pub(super) fn collect_node_hits_with_renderers<'a>(
