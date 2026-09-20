@@ -2,6 +2,14 @@ use super::canvas_clip::CanvasClip;
 use super::canvas_model::Canvas;
 
 impl Canvas {
+    pub(super) fn logical_phase_x(&self) -> usize {
+        self.logical_phase_x
+    }
+
+    pub(super) fn logical_phase_y(&self) -> f64 {
+        self.logical_phase_y
+    }
+
     pub(super) fn logical_to_physical_x(&self, logical: usize) -> usize {
         ((self.logical_phase_x.saturating_add(logical) as f64 * f64::from(self.scale_factor()))
             .round() as usize)

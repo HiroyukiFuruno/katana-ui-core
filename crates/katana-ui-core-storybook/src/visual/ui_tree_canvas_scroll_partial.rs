@@ -58,8 +58,8 @@ pub(super) fn draw_partially_visible_node(
         area.width,
         temp_height,
         canvas.scale_factor(),
-        area.x,
-        area.y as f64 - f64::from(source_y),
+        canvas.logical_phase_x().saturating_add(area.x),
+        canvas.logical_phase_y() + area.y as f64 - f64::from(source_y),
         palette.background,
     );
     let mut temp_y = 0;
@@ -86,14 +86,14 @@ pub(super) fn draw_partially_visible_node(
     canvas.blit_canvas_physical(
         &temp,
         PhysicalCanvasBlitRequest {
-            dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
-            dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
-            width: physical_scroll_extent(area.x as f32, area.width as f32, canvas.scale_factor()),
-            height: physical_scroll_extent(
-                area.y as f32,
-                area.height as f32,
-                canvas.scale_factor(),
-            ),
+            dest_x: canvas.to_physical_x(area.x),
+            dest_y: canvas.to_physical_y(area.y),
+            width: canvas
+                .to_physical_x(area.x.saturating_add(area.width))
+                .saturating_sub(canvas.to_physical_x(area.x)),
+            height: canvas
+                .to_physical_y(area.y.saturating_add(area.height))
+                .saturating_sub(canvas.to_physical_y(area.y)),
             source_y: blit_source_y,
             source_logical_y: if can_render_partial_node_in_viewport(node) {
                 0.0
@@ -184,8 +184,8 @@ fn draw_partially_visible_media_frame_stack(
         area.width,
         temp_height,
         canvas.scale_factor(),
-        area.x,
-        area.y as f64 - f64::from(source_y),
+        canvas.logical_phase_x().saturating_add(area.x),
+        canvas.logical_phase_y() + area.y as f64 - f64::from(source_y),
         palette.background,
     );
     let local_x = x.saturating_sub(area.x);
@@ -207,27 +207,18 @@ fn draw_partially_visible_media_frame_stack(
     canvas.blit_canvas_physical(
         &temp,
         PhysicalCanvasBlitRequest {
-            dest_x: physical_scroll_offset(area.x as f32, canvas.scale_factor()),
-            dest_y: physical_scroll_offset(area.y as f32, canvas.scale_factor()),
-            width: physical_scroll_extent(area.x as f32, area.width as f32, canvas.scale_factor()),
-            height: physical_scroll_extent(
-                area.y as f32,
-                area.height as f32,
-                canvas.scale_factor(),
-            ),
+            dest_x: canvas.to_physical_x(area.x),
+            dest_y: canvas.to_physical_y(area.y),
+            width: canvas
+                .to_physical_x(area.x.saturating_add(area.width))
+                .saturating_sub(canvas.to_physical_x(area.x)),
+            height: canvas
+                .to_physical_y(area.y.saturating_add(area.height))
+                .saturating_sub(canvas.to_physical_y(area.y)),
             source_y: temp.fractional_to_physical_y(source_y),
             source_logical_y: source_y,
         },
     );
-}
-
-fn physical_scroll_offset(logical_offset: f32, scale_factor: f32) -> usize {
-    (f64::from(logical_offset.max(0.0)) * f64::from(scale_factor)).round() as usize
-}
-
-fn physical_scroll_extent(logical_start: f32, logical_length: f32, scale_factor: f32) -> usize {
-    physical_scroll_offset(logical_start + logical_length, scale_factor)
-        .saturating_sub(physical_scroll_offset(logical_start, scale_factor))
 }
 
 fn partial_node_temp_height(node: &UiNode, node_height: usize, viewport_height: usize) -> usize {
@@ -275,7 +266,7 @@ fn hover_surface_width(node: &UiNode, x: usize, area: UiTreeRenderArea) -> usize
 mod tests {
     use super::*;
     use katana_ui_core::atom::Text;
-    use katana_ui_core::render_model::UiPosition;
+    use katana_ui_core::render_model::{UiPosition, UiScrollAreaProps};
     use katana_ui_core::theme::ThemeSnapshot;
 
     fn render_context() -> (UiTreeCanvasRenderer, UiTreeCanvasPalette, UiTreeRenderArea) {
@@ -444,8 +435,8 @@ mod tests {
             palette,
         );
 
-        let physical_dest_x = physical_scroll_offset(area.x as f32, 1.25);
-        let physical_dest_y = physical_scroll_offset(area.y as f32, 1.25);
+        let physical_dest_x = partial.to_physical_x(area.x);
+        let physical_dest_y = partial.to_physical_y(area.y);
         for y in 0..full.height() {
             for x in 0..full.width() {
                 assert_eq!(
@@ -455,5 +446,100 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn nested_scroll_partial_matches_full_crop_with_destination_logical_phase() {
+        let (renderer, palette, area) = render_context();
+        let source_y = 0.75;
+        let inner = UiNode::new(UiNodeKind::ScrollArea, "")
+            .scroll_area(UiScrollAreaProps {
+                viewport_width: area.width as u32,
+                viewport_height: area.height as u32,
+                offset_y: 1,
+                ..UiScrollAreaProps::default()
+            })
+            .child(Text::new("nested phase-aware scroll content"));
+        let outer = UiNode::new(UiNodeKind::ScrollArea, "")
+            .scroll_area(UiScrollAreaProps {
+                viewport_width: area.width as u32,
+                viewport_height: area.height as u32,
+                ..UiScrollAreaProps::default()
+            })
+            .child(inner);
+        let target_phase_x = 3_usize;
+        let target_phase_y = 2.5;
+        let mut source = Canvas::new_scaled_with_logical_phase(
+            area.width,
+            30,
+            1.25,
+            target_phase_x.saturating_add(area.x),
+            target_phase_y + area.y as f64 - f64::from(source_y),
+            palette.background,
+        );
+        let mut source_y_cursor = 0;
+        renderer.render_node(
+            &mut source,
+            &outer,
+            4,
+            &mut source_y_cursor,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: area.width,
+                height: 30,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+        let mut expected = Canvas::new_scaled_with_logical_phase(
+            96,
+            48,
+            1.25,
+            target_phase_x,
+            target_phase_y,
+            palette.background,
+        );
+        let expected_dest_x = expected.to_physical_x(area.x);
+        let expected_dest_y = expected.to_physical_y(area.y);
+        expected.blit_canvas_physical(
+            &source,
+            PhysicalCanvasBlitRequest {
+                dest_x: expected_dest_x,
+                dest_y: expected_dest_y,
+                width: expected
+                    .to_physical_x(area.x.saturating_add(area.width))
+                    .saturating_sub(expected_dest_x),
+                height: expected
+                    .to_physical_y(area.y.saturating_add(area.height))
+                    .saturating_sub(expected_dest_y),
+                source_y: source.fractional_to_physical_y(source_y),
+                source_logical_y: source_y,
+            },
+        );
+        let mut partial = Canvas::new_scaled_with_logical_phase(
+            96,
+            48,
+            1.25,
+            target_phase_x,
+            target_phase_y,
+            palette.background,
+        );
+        draw_partially_visible_node(
+            &renderer,
+            &mut partial,
+            &outer,
+            8,
+            30,
+            source_y,
+            area,
+            palette,
+        );
+
+        assert_eq!(
+            expected.pixels(),
+            partial.pixels(),
+            "nested partial scroll must use the destination canvas logical phase"
+        );
     }
 }
