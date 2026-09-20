@@ -72,6 +72,19 @@ impl Canvas {
         self.translate_physical_y(self.logical_to_physical_y(y))
     }
 
+    pub(super) fn physical_text_origin_x(&self, x: isize) -> isize {
+        self.phase_aware_physical_position(x as f64, self.logical_phase_x as f64)
+    }
+
+    pub(super) fn physical_text_origin_y(&self, y: f32) -> isize {
+        self.phase_aware_physical_position(f64::from(y), self.logical_phase_y)
+    }
+
+    fn phase_aware_physical_position(&self, position: f64, phase: f64) -> isize {
+        let scale = f64::from(self.scale_factor());
+        (((phase + position) * scale).round() - (phase * scale).round()) as isize
+    }
+
     pub(super) fn logical_scale(&self, value: usize) -> usize {
         self.logical_to_physical_position(value)
     }
