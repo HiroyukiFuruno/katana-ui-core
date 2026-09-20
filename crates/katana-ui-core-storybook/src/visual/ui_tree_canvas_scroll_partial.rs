@@ -553,16 +553,30 @@ mod tests {
             partial.text_runs(),
             "nested partial scroll must preserve the full crop's selectable text bounds"
         );
-        let expected_run = expected
+        let expected_runs: Vec<_> = expected
             .text_runs()
             .iter()
             .find(|run| run.text() == "nested phase-aware scroll content")
-            .expect("full crop must expose the nested text as a selectable run");
-        let partial_run = partial
+            .into_iter()
+            .collect();
+        let partial_runs: Vec<_> = partial
             .text_runs()
             .iter()
             .find(|run| run.text() == "nested phase-aware scroll content")
-            .expect("partial crop must expose the nested text as a selectable run");
+            .into_iter()
+            .collect();
+        assert_eq!(
+            1,
+            expected_runs.len(),
+            "full crop must expose the nested text"
+        );
+        assert_eq!(
+            1,
+            partial_runs.len(),
+            "partial crop must expose the nested text"
+        );
+        let expected_run = expected_runs[0];
+        let partial_run = partial_runs[0];
         assert_eq!(
             (
                 expected_run.x(),
