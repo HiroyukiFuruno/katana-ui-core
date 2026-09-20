@@ -123,6 +123,10 @@ jobs:
             if ! gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}" > "${candidate_dir}/source-run.json"; then
               continue
             fi
+            source_sha="$(jq -r '.head_sha // empty' "${candidate_dir}/source-run.json")"
+            if [[ -z "${source_sha}" ]] || ! git fetch --no-tags origin "${source_sha}"; then
+              continue
+            fi
             if python3 scripts/release/verify-reusable-release-evidence.py \
               --candidate "${candidate_dir}/release-evidence.json" \
               --source-run "${candidate_dir}/source-run.json" \

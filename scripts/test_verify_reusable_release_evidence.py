@@ -35,17 +35,22 @@ def source_run(**overrides: object) -> dict[str, object]:
 
 class ReusableEvidenceTest(unittest.TestCase):
     def test_accepts_identical_trusted_ci_evidence(self) -> None:
-        self.assertEqual([], MODULE.reuse_failures(candidate(), source_run(), "digest", ENVIRONMENT, "owner/repo", NOW))
+        self.assertEqual([], MODULE.reuse_failures(candidate(), source_run(), "digest", "digest", ENVIRONMENT, "owner/repo", NOW))
 
     def test_rejects_untrusted_or_incomplete_source(self) -> None:
         cases = (candidate(issuer="local"), candidate(workflow="other.yml"), candidate(content_digest="other"), candidate(environment={}), candidate(expires_at=NOW.isoformat()), candidate())
         runs = (source_run(), source_run(), source_run(), source_run(), source_run(), source_run(conclusion="failure"))
         for evidence, run in zip(cases, runs, strict=True):
-            self.assertTrue(MODULE.reuse_failures(evidence, run, "digest", ENVIRONMENT, "owner/repo", NOW))
+            self.assertTrue(MODULE.reuse_failures(evidence, run, "digest", "digest", ENVIRONMENT, "owner/repo", NOW))
 
     def test_rejects_mismatched_run_sha_repository_and_workflow(self) -> None:
         for run in (source_run(id=456), source_run(head_sha="b" * 40), source_run(repository={"full_name": "attacker/repo"}), source_run(path=".github/workflows/other.yml"), source_run(path=".github/workflows/release-preflight.yml@refs/heads/main")):
-            self.assertTrue(MODULE.reuse_failures(candidate(), run, "digest", ENVIRONMENT, "owner/repo", NOW))
+            self.assertTrue(MODULE.reuse_failures(candidate(), run, "digest", "digest", ENVIRONMENT, "owner/repo", NOW))
+
+    def test_rejects_self_reported_digest_that_is_not_the_source_tree_digest(self) -> None:
+        self.assertTrue(
+            MODULE.reuse_failures(candidate(), source_run(), "digest", "untrusted-source-digest", ENVIRONMENT, "owner/repo", NOW)
+        )
 
     def test_content_digest_rejects_dirty_or_untracked_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -58,6 +63,18 @@ class ReusableEvidenceTest(unittest.TestCase):
             (root / "untracked-test-fixture").write_text("dirty\n", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "dirty tree"):
                 MODULE.content_digest(root)
+
+    def test_content_digest_at_revision_reads_the_requested_immutable_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            subprocess.run(("git", "init", "--quiet"), cwd=root, check=True)
+            (root / "Cargo.lock").write_text("first\n", encoding="utf-8")
+            subprocess.run(("git", "add", "Cargo.lock"), cwd=root, check=True)
+            subprocess.run(("git", "-c", "user.email=test@example.invalid", "-c", "user.name=test", "commit", "--quiet", "-m", "first"), cwd=root, check=True)
+            first = subprocess.check_output(("git", "rev-parse", "HEAD"), cwd=root, text=True).strip()
+            (root / "Cargo.lock").write_text("second\n", encoding="utf-8")
+            subprocess.run(("git", "commit", "-am", "second", "--quiet"), cwd=root, check=True)
+            self.assertNotEqual(MODULE.content_digest_at_revision(root, first), MODULE.content_digest_at_revision(root, "HEAD"))
 
 
 if __name__ == "__main__":

@@ -53,6 +53,25 @@ def content_digest(repo: Path) -> str:
     return digest.hexdigest()
 
 
+def content_digest_at_revision(repo: Path, revision: str) -> str:
+    """Hash an immutable Git tree without running its checked-in scripts."""
+    files = subprocess.check_output(
+        ("git", "ls-tree", "-r", "-z", "--name-only", revision), cwd=repo
+    ).split(b"\0")
+    digest = hashlib.sha256()
+    for raw_relative in sorted(item for item in files if item):
+        relative = raw_relative.decode("utf-8")
+        if relative.startswith(EXCLUDED_PREFIXES):
+            continue
+        digest.update(raw_relative)
+        digest.update(b"\0")
+        digest.update(
+            subprocess.check_output(("git", "show", f"{revision}:{relative}"), cwd=repo)
+        )
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
 def environment_identity() -> dict[str, str]:
     return {
         "os": command("uname", "-s", cwd=Path.cwd()),
@@ -89,7 +108,7 @@ def parse_time(value: object) -> datetime | None:
         return None
 
 
-def reuse_failures(candidate: object, source_run: object, digest: str, environment: dict[str, str], repository: str, now: datetime) -> list[str]:
+def reuse_failures(candidate: object, source_run: object, digest: str, source_digest: str, environment: dict[str, str], repository: str, now: datetime) -> list[str]:
     if not isinstance(candidate, dict):
         return ["release evidence root must be an object"]
     failures: list[str] = []
@@ -109,6 +128,8 @@ def reuse_failures(candidate: object, source_run: object, digest: str, environme
         failures.append("release evidence source run repository is untrusted")
     if source_run.get("head_sha") != candidate.get("source_sha"):
         failures.append("release evidence source SHA does not match GitHub source run")
+    if candidate.get("content_digest") != source_digest:
+        failures.append("release evidence content digest does not match the GitHub source tree")
     # Actions Runs REST はrefなしのrepository内workflow pathを返す。source SHAは
     # 上で独立検証済みなので、ここでは信頼済みworkflow pathとの完全一致だけを許可する。
     path = source_run.get("path")
@@ -141,7 +162,18 @@ def main() -> int:
             raise ValueError("--candidate and --source-run are required to verify reuse")
         candidate = json.loads(args.candidate.read_text(encoding="utf-8"))
         source_run = json.loads(args.source_run.read_text(encoding="utf-8"))
-        failures = reuse_failures(candidate, source_run, content_digest(args.repo.resolve()), environment_identity(), args.repository, utc_now())
+        source_sha = source_run.get("head_sha")
+        if not isinstance(source_sha, str) or not source_sha:
+            raise ValueError("release evidence source run is missing a head SHA")
+        failures = reuse_failures(
+            candidate,
+            source_run,
+            content_digest(args.repo.resolve()),
+            content_digest_at_revision(args.repo.resolve(), source_sha),
+            environment_identity(),
+            args.repository,
+            utc_now(),
+        )
         if failures:
             print("release evidence reuse rejected: " + "; ".join(failures), file=sys.stderr)
             return 1
