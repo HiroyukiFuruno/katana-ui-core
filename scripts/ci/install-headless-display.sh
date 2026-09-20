@@ -24,10 +24,11 @@ install_packages() {
       && timeout "${apt_timeout_seconds}" sudo env DEBIAN_FRONTEND=noninteractive \
         apt-get install --yes --no-install-recommends "${packages[@]}" >>"${log_file}" 2>&1; then
       return 0
+    else
+      local exit_code=$?
+      echo "KUC headless-display install attempt ${attempt} failed (exit=${exit_code})."
     fi
 
-    local exit_code=$?
-    echo "KUC headless-display install attempt ${attempt} failed (exit=${exit_code})."
     tail -n 200 "${log_file}" || true
     attempt=$((attempt + 1))
   done

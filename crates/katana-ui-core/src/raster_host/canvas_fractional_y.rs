@@ -1,10 +1,6 @@
 use super::canvas_clip::CanvasClip;
 use super::canvas_model::Canvas;
 
-fn physical_fractional_position(logical: f32, scale_factor: f32) -> usize {
-    (f64::from(logical.max(0.0)) * f64::from(scale_factor)).round() as usize
-}
-
 impl Canvas {
     /// 小数の論理原点を、既存の整数描画 API に渡す直前まで保持する。
     pub(crate) fn with_fractional_y_origin<T>(
@@ -13,7 +9,7 @@ impl Canvas {
         integer_origin: usize,
         draw: impl FnOnce(&mut Self) -> T,
     ) -> T {
-        let physical_origin = physical_fractional_position(logical_origin, self.scale_factor());
+        let physical_origin = self.fractional_to_physical_y(logical_origin);
         let integer_physical_origin = self.logical_to_physical_y(integer_origin);
         let previous_offset = self.physical_y_offset;
         self.physical_y_offset =
@@ -39,13 +35,10 @@ impl Canvas {
         }
         let left = self.to_physical_x(x);
         let top = self
-            .translate_physical_y(physical_fractional_position(y, self.scale_factor()))
+            .translate_physical_y(self.fractional_to_physical_y(y))
             .min(self.height());
         let bottom = self
-            .translate_physical_y(physical_fractional_position(
-                y + height,
-                self.scale_factor(),
-            ))
+            .translate_physical_y(self.fractional_to_physical_y(y + height))
             .min(self.height());
         if left >= self.width() || top >= self.height() {
             return None;

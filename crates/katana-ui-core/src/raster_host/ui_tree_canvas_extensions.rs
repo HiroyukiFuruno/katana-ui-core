@@ -182,10 +182,10 @@ impl Canvas {
         &self,
         area: super::ui_tree_canvas_types::UiTreeRenderArea,
     ) -> PhysicalImageTarget {
-        let unclipped_left = self.logical_scale(area.x);
-        let unclipped_top = self.logical_scale(area.y);
-        let unclipped_right = self.logical_scale(area.x.saturating_add(area.width));
-        let unclipped_bottom = self.logical_scale(area.y.saturating_add(area.height));
+        let unclipped_left = self.to_physical_x(area.x);
+        let unclipped_top = self.to_physical_y(area.y);
+        let unclipped_right = self.to_physical_x(area.x.saturating_add(area.width));
+        let unclipped_bottom = self.to_physical_y(area.y.saturating_add(area.height));
         if unclipped_left >= self.width
             || unclipped_top >= self.height
             || unclipped_right <= unclipped_left

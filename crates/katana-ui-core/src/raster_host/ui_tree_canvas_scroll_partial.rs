@@ -371,6 +371,17 @@ mod tests {
     }
 
     #[test]
+    fn partial_canvas_applies_phase_to_fractional_logical_rectangles() {
+        let canvas = Canvas::new_scaled_with_logical_phase(1, 2, 1.25, 1, 1, 0);
+        let clip = canvas
+            .visible_rect_at_logical_y(0, 1.0, 1, 1.0)
+            .expect("the phased local span must remain visible");
+
+        assert_eq!(2, clip.y);
+        assert_eq!(1, clip.height);
+    }
+
+    #[test]
     fn partial_renderer_covers_absolute_media_frame_and_helpers() {
         let (renderer, palette, area) = render_context();
         let mut canvas = Canvas::new(96, 48, palette.background);
