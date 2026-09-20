@@ -145,6 +145,14 @@ jobs:
           KUC_COVERAGE_EPHEMERAL_CLEANUP: "1"
         run: just VERSION="${{ steps.version.outputs.version }}" release-check
 
+      - name: Public release boundary
+        if: steps.release_check.outcome == 'success' || steps.reusable_evidence.outputs.reuse == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          just VERSION="${{ steps.version.outputs.version }}" release-target-check
+          bash scripts/release/assert-crate-not-published.sh "${{ steps.version.outputs.version }}"
+
       - name: Record release gate result
         if: always()
         env:

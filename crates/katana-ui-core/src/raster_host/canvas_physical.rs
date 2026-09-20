@@ -59,9 +59,17 @@ impl Canvas {
         self.logical_to_physical_x(x).min(self.width())
     }
 
+    pub(super) fn unclipped_physical_x(&self, x: usize) -> usize {
+        self.logical_to_physical_x(x)
+    }
+
     pub(super) fn to_physical_y(&self, y: usize) -> usize {
         self.translate_physical_y(self.logical_to_physical_y(y))
             .min(self.height())
+    }
+
+    pub(super) fn unclipped_physical_y(&self, y: usize) -> usize {
+        self.translate_physical_y(self.logical_to_physical_y(y))
     }
 
     pub(super) fn logical_scale(&self, value: usize) -> usize {
