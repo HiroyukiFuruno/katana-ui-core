@@ -25,13 +25,13 @@ impl Canvas {
                 width,
                 height,
                 source_y: request.source_y,
-                source_logical_y: logical_source_y(request.source_y, source.scale_factor()),
+                source_logical_y: source.logical_y_at_physical_position(request.source_y) as f32,
             },
         );
     }
 
     fn blit_scaled_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
-        let source_logical_y = logical_source_y(request.source_y, source.scale_factor());
+        let source_logical_y = source.logical_y_at_physical_position(request.source_y) as f32;
         for logical_y in 0..request.height {
             let source_y = request.source_y.saturating_add(
                 source
@@ -140,8 +140,4 @@ impl Canvas {
             self.record_text_run(run.text(), target_x, target_y, rect.width, rect.height);
         }
     }
-}
-
-fn logical_source_y(physical_coordinate: usize, scale_factor: f32) -> f32 {
-    (physical_coordinate as f32 / scale_factor).floor()
 }

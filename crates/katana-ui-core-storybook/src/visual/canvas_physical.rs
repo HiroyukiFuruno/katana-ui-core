@@ -22,6 +22,20 @@ impl Canvas {
         self.physical_y_at_logical_position(logical as f64)
     }
 
+    pub(super) fn logical_y_at_physical_position(&self, physical: usize) -> usize {
+        let mut lower = 0;
+        let mut upper = self.logical_height;
+        while lower < upper {
+            let middle = lower + (upper - lower) / 2;
+            if self.logical_to_physical_y(middle.saturating_add(1)) <= physical {
+                lower = middle.saturating_add(1);
+            } else {
+                upper = middle;
+            }
+        }
+        lower
+    }
+
     pub(super) fn fractional_to_physical_y(&self, logical: f32) -> usize {
         self.physical_y_at_logical_position(f64::from(logical.max(0.0)))
     }
