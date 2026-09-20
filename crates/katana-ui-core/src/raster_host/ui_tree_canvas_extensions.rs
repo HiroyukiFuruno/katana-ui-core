@@ -57,7 +57,7 @@ impl Canvas {
         for x in 0..copy_width {
             let dest_x = request.dest_x.saturating_add(x);
             let color = source.pixels()[source_y * source.width() + x];
-            self.set(dest_x, dest_y, color);
+            self.set_physical(dest_x, dest_y, color);
         }
     }
     fn blit_canvas_text_runs(&mut self, source: &Canvas, request: CanvasBlitRequest) {

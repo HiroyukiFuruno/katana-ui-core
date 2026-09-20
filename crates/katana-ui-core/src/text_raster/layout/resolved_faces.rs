@@ -60,7 +60,7 @@ impl ResolvedTextFaces {
         if style.emoji {
             return None;
         }
-        if style.monospace || (text.is_ascii() && family == crate::theme::FontFamily::Monospace) {
+        if text.is_ascii() && (style.monospace || family == crate::theme::FontFamily::Monospace) {
             self.monospace.as_ref()
         } else {
             self.proportional.as_ref()

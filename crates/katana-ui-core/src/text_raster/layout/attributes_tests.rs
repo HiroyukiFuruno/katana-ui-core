@@ -40,6 +40,31 @@ fn selected_non_regular_faces() -> ResolvedTextFaces {
     })
 }
 
+fn selected_distinct_regular_and_monospace_faces() -> ResolvedTextFaces {
+    let proportional = PlatformRegularFontFace {
+        family: "Candidate".to_owned(),
+        source_file_path: PathBuf::from("candidate.ttc"),
+        index: TEST_FACE_INDEX,
+        weight: TEST_FACE_WEIGHT,
+        style: FontStyle::Oblique,
+        stretch: Stretch::Condensed,
+        selection_family: "__candidate__".to_owned(),
+    };
+    let monospace = PlatformRegularFontFace {
+        family: "Monospace".to_owned(),
+        source_file_path: PathBuf::from("monospace.ttc"),
+        index: TEST_FACE_INDEX,
+        weight: 650,
+        style: FontStyle::Italic,
+        stretch: Stretch::Expanded,
+        selection_family: "__monospace__".to_owned(),
+    };
+    ResolvedTextFaces::from_candidate_faces(PlatformRegularFontFaces {
+        proportional: vec![proportional],
+        monospace: vec![monospace],
+    })
+}
+
 #[test]
 fn emoji_attributes_fail_closed_without_a_resolved_family() {
     let face = PlatformColorEmojiFaceRecord {
@@ -212,7 +237,7 @@ fn selected_candidate_face_keeps_its_attrs_for_all_latin_style_requests() {
 }
 
 #[test]
-fn selected_monospace_candidate_keeps_its_face_attrs_for_non_ascii_spans() {
+fn non_ascii_monospace_span_uses_proportional_fallback_face_attrs() {
     let face = PlatformColorEmojiFaceRecord {
         platform_profile: PlatformFontProfile::Unsupported,
         family_identity: String::new(),
@@ -223,7 +248,7 @@ fn selected_monospace_candidate_keeps_its_face_attrs_for_non_ascii_spans() {
             PlatformColorEmojiUnavailableReason::NoCandidates,
         ),
     };
-    let faces = selected_non_regular_faces();
+    let faces = selected_distinct_regular_and_monospace_faces();
 
     for text in ["ASCII", "日本語", "a日本"] {
         let mut span = UiTextSpan::plain(text);
@@ -239,8 +264,14 @@ fn selected_monospace_candidate_keeps_its_face_attrs_for_non_ascii_spans() {
                 cosmic_text::Family::Name("__candidate__")
             },
         );
-        assert_eq!(attrs.weight, Weight(TEST_FACE_WEIGHT));
-        assert_eq!(attrs.style, FontStyle::Oblique);
-        assert_eq!(attrs.stretch, Stretch::Condensed);
+        if text.is_ascii() {
+            assert_eq!(attrs.weight, Weight(650));
+            assert_eq!(attrs.style, FontStyle::Italic);
+            assert_eq!(attrs.stretch, Stretch::Expanded);
+        } else {
+            assert_eq!(attrs.weight, Weight(TEST_FACE_WEIGHT));
+            assert_eq!(attrs.style, FontStyle::Oblique);
+            assert_eq!(attrs.stretch, Stretch::Condensed);
+        }
     }
 }

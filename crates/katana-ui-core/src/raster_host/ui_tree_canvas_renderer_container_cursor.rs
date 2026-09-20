@@ -63,9 +63,11 @@ impl UiTreeCanvasRenderer {
         cursor: ContainerCursor,
     ) {
         let mut label_y = cursor.hover_surface_y;
+        let text_run_start = canvas.text_runs().len();
         let mut draw_label = |canvas: &mut Canvas| {
             canvas.with_fractional_y_origin(cursor.origin, cursor.hover_surface_y, |canvas| {
                 super::draw_label(canvas, &self.text, node, x, &mut label_y, palette);
+                canvas.discard_text_runs_outside_current_clip_since(text_run_start);
             });
         };
         if cursor.requested_height > 0 {

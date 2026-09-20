@@ -469,6 +469,16 @@ mod tests {
                 .all(|pixel| *pixel == palette.background),
             "a fixed container's label, padding, and child must all remain below its fractional bottom clip"
         );
+        assert_eq!(
+            0,
+            canvas.text_runs().len(),
+            "a label extending beyond the 10px fixed container must not leave selectable bounds"
+        );
+        assert_eq!(
+            None,
+            canvas.copy_text_in_selection(Some((0, 63)), Some((100, physical_bottom))),
+            "the clipped label must not be copied from an invisible selection range"
+        );
     }
 
     #[test]

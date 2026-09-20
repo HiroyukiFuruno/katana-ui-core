@@ -73,6 +73,32 @@ impl Canvas {
                 glyph_widths,
             ));
     }
+
+    pub(crate) fn discard_text_runs_outside_current_clip_since(&mut self, start: usize) {
+        let Some(clip) = self.clip else {
+            return;
+        };
+        let start = start.min(self.text_runs.len());
+        let pending = self.text_runs.split_off(start);
+        let retained = pending
+            .into_iter()
+            .filter(|run| self.text_run_fits_clip(run, clip))
+            .collect::<Vec<_>>();
+        self.text_runs.extend(retained);
+    }
+
+    fn text_run_fits_clip(
+        &self,
+        run: &super::text_selection::SelectableTextRun,
+        clip: super::canvas_clip::CanvasClip,
+    ) -> bool {
+        let rect = run.rect();
+        let left = self.logical_to_physical_position(rect.x);
+        let right = self.logical_to_physical_position(rect.right());
+        let top = self.translate_physical_y(self.logical_to_physical_position(rect.y));
+        let bottom = self.translate_physical_y(self.logical_to_physical_position(rect.bottom()));
+        left >= clip.x && right <= clip.right() && top >= clip.y && bottom <= clip.bottom()
+    }
 }
 
 #[cfg(test)]

@@ -3,6 +3,38 @@ use super::{Canvas, CanvasBlitRequest, RgbaBlitRequest, RgbaSourceRect, UiTreeRe
 const BACKGROUND: u32 = 0x000000;
 
 #[test]
+fn clipped_canvas_blit_uses_physical_coordinates_at_fractional_scale() {
+    let source_pixel = 0x27a4de;
+    let mut source = Canvas::new_scaled(4, 4, 1.5, BACKGROUND);
+    source.set_physical(0, 0, source_pixel);
+    let mut target = Canvas::new_scaled(4, 4, 1.5, BACKGROUND);
+
+    target.with_clip(1, 1, 2, 2, &mut |canvas| {
+        canvas.blit_canvas(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 2,
+                dest_y: 2,
+                width: 3,
+                height: 3,
+                source_y: 0,
+            },
+        );
+    });
+
+    assert_eq!(
+        source_pixel,
+        target.pixels()[2 * target.width() + 2],
+        "a clipped blit request is already in physical coordinates"
+    );
+    assert_eq!(
+        BACKGROUND,
+        target.pixels()[3 * target.width() + 3],
+        "the fallback must not apply the 1.5x scale a second time"
+    );
+}
+
+#[test]
 fn rgba_blit_uses_interpolated_samples_when_scaling_image_surface() {
     let mut canvas = Canvas::new(3, 1, BACKGROUND);
     let rgba = vec![255, 0, 0, 255, 0, 0, 255, 255];
