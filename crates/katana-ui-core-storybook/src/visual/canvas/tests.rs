@@ -19,6 +19,8 @@ fn canvas_edge_contracts_cover_empty_clip_blit_selection_and_viewport() {
     let request = PhysicalCanvasBlitRequest {
         dest_x: 0,
         dest_y: 3,
+        dest_logical_x: 0,
+        dest_logical_y: 3,
         width: 2,
         height: 1,
         source_y: 0,

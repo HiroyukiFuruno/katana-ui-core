@@ -88,6 +88,8 @@ pub(super) fn draw_partially_visible_node(
         PhysicalCanvasBlitRequest {
             dest_x: canvas.to_physical_x(area.x),
             dest_y: canvas.to_physical_y(area.y),
+            dest_logical_x: area.x,
+            dest_logical_y: area.y,
             width: canvas
                 .to_physical_x(area.x.saturating_add(area.width))
                 .saturating_sub(canvas.to_physical_x(area.x)),
@@ -209,6 +211,8 @@ fn draw_partially_visible_media_frame_stack(
         PhysicalCanvasBlitRequest {
             dest_x: canvas.to_physical_x(area.x),
             dest_y: canvas.to_physical_y(area.y),
+            dest_logical_x: area.x,
+            dest_logical_y: area.y,
             width: canvas
                 .to_physical_x(area.x.saturating_add(area.width))
                 .saturating_sub(canvas.to_physical_x(area.x)),
@@ -507,6 +511,8 @@ mod tests {
             PhysicalCanvasBlitRequest {
                 dest_x: expected_dest_x,
                 dest_y: expected_dest_y,
+                dest_logical_x: area.x,
+                dest_logical_y: area.y,
                 width: expected
                     .to_physical_x(area.x.saturating_add(area.width))
                     .saturating_sub(expected_dest_x),
@@ -540,6 +546,48 @@ mod tests {
             expected.pixels(),
             partial.pixels(),
             "nested partial scroll must use the destination canvas logical phase"
+        );
+
+        assert_eq!(
+            expected.text_runs(),
+            partial.text_runs(),
+            "nested partial scroll must preserve the full crop's selectable text bounds"
+        );
+        let expected_run = expected
+            .text_runs()
+            .iter()
+            .find(|run| run.text() == "nested phase-aware scroll content")
+            .expect("full crop must expose the nested text as a selectable run");
+        let partial_run = partial
+            .text_runs()
+            .iter()
+            .find(|run| run.text() == "nested phase-aware scroll content")
+            .expect("partial crop must expose the nested text as a selectable run");
+        assert_eq!(
+            (
+                expected_run.x(),
+                expected_run.y(),
+                expected_run.width(),
+                expected_run.height()
+            ),
+            (
+                partial_run.x(),
+                partial_run.y(),
+                partial_run.width(),
+                partial_run.height()
+            ),
+            "nested partial scroll must retain the logical text-run hit bounds"
+        );
+        assert_eq!(
+            expected.copy_text_in_selection(
+                Some((expected_run.x(), expected_run.y())),
+                Some((expected_run.right(), expected_run.bottom())),
+            ),
+            partial.copy_text_in_selection(
+                Some((partial_run.x(), partial_run.y())),
+                Some((partial_run.right(), partial_run.bottom())),
+            ),
+            "nested partial scroll must retain text selection hit metadata"
         );
     }
 }
