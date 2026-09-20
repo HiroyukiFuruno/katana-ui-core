@@ -35,8 +35,8 @@ fn selected_non_regular_faces() -> ResolvedTextFaces {
         ..proportional.clone()
     };
     ResolvedTextFaces::from_candidate_faces(PlatformRegularFontFaces {
-        proportional: Some(proportional),
-        monospace: Some(monospace),
+        proportional: vec![proportional],
+        monospace: vec![monospace],
     })
 }
 

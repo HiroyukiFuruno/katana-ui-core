@@ -18,6 +18,11 @@ pub enum PlatformTextFaceSelection {
     #[default]
     System,
     FirstCandidate,
+    /// Resolve the configured candidates in their declared order.
+    ///
+    /// This keeps the system catalog available for glyph fallback while making
+    /// the primary face independent of the operating system catalog order.
+    CandidateChain,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

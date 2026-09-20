@@ -7,6 +7,7 @@ KUC 自身が所有する API、実装、回帰試験、品質ゲートだけで
 ## Active
 
 - [ ] #49 CI の apt 導入を timeout / retry / 共通実装で保護する。
+- [/] #52 Windows の候補フォント順をKUCで決定的に適用し、有限なwrap/layout/hit契約を維持する。公開 `CandidateChain` API と候補順・有限wrapの回帰を追加済み。Windows registry-only consumerでの実測確認待ち。
 - [/] #50 全量ゲートの開始条件と SHA 別の状態を自動化する。入力manifest、review thread 0、軽量preflight、開始/完了状態のローカル検証とworkflow接続を追加済み。GitHub上の実workflow通過確認待ち。
 - [/] #51 fractional container の描画・hit 境界を現行契約と回帰で再監査し、未充足だけを修正した。batch gate 待ち。
 - [ ] #53 P2 の修正・後続 Issue 移管・対応不要を機械的に追跡する。

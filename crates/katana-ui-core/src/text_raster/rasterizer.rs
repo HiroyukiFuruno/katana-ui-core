@@ -77,6 +77,9 @@ impl PlatformTextRasterizer {
             PlatformTextFaceSelection::FirstCandidate => {
                 ResolvedTextFaces::from_candidate_faces(regular_font_faces)
             }
+            PlatformTextFaceSelection::CandidateChain => {
+                ResolvedTextFaces::from_candidate_faces(regular_font_faces)
+            }
         };
         Self {
             catalog,

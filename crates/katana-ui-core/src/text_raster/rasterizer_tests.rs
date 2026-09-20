@@ -96,6 +96,19 @@ fn first_candidate_config_for_faces(
     }
 }
 
+fn candidate_chain_config_for_faces(
+    proportional_candidates: Vec<PathBuf>,
+    monospace_candidates: Vec<PathBuf>,
+) -> PlatformTextRasterConfig {
+    PlatformTextRasterConfig {
+        proportional_candidates,
+        monospace_candidates,
+        emoji_candidates: Vec::new(),
+        emoji_candidate_sha256: Vec::new(),
+        cache_capacity: 4,
+    }
+}
+
 fn copy_font_candidate(source: &Path) -> io::Result<PathBuf> {
     let serial = NEXT_TEST_PATH.fetch_add(1, Ordering::Relaxed);
     let extension = source
@@ -120,43 +133,57 @@ fn source_path(source: &Source) -> Option<&Path> {
 
 fn first_shaped_font_source(
     rasterizer: &PlatformTextRasterizer,
+    face_selection: PlatformTextFaceSelection,
     family: &str,
 ) -> io::Result<PathBuf> {
     rasterizer
         .catalog()
-        .with_font_system_for_face_selection(
-            PlatformTextFaceSelection::FirstCandidate,
-            |font_system| {
-                let font_id = {
-                    let mut buffer = Buffer::new(font_system, Metrics::new(18.0, 18.0));
-                    let mut buffer = buffer.borrow_with(font_system);
-                    buffer.set_size(Some(1024.0), Some(1024.0));
-                    buffer.set_rich_text(
-                        [(
-                            "Candidate source",
-                            Attrs::new().family(Family::Name(family)),
-                        )],
-                        &Attrs::new(),
-                        Shaping::Advanced,
-                        None,
-                    );
-                    buffer
-                        .layout_runs()
-                        .flat_map(|run| run.glyphs.iter())
-                        .map(|glyph| glyph.font_id)
-                        .next()
-                        .ok_or_else(|| io::Error::other("candidate text did not shape"))?
-                };
-                let face = font_system
-                    .db()
-                    .face(font_id)
-                    .ok_or_else(|| io::Error::other("shaped glyph face is unavailable"))?;
-                source_path(&face.source)
-                    .map(Path::to_path_buf)
-                    .ok_or_else(|| io::Error::other("shaped glyph is not file-backed"))
-            },
-        )
+        .with_font_system_for_face_selection(face_selection, |font_system| {
+            let font_id = {
+                let mut buffer = Buffer::new(font_system, Metrics::new(18.0, 18.0));
+                let mut buffer = buffer.borrow_with(font_system);
+                buffer.set_size(Some(1024.0), Some(1024.0));
+                buffer.set_rich_text(
+                    [(
+                        "Candidate source",
+                        Attrs::new().family(Family::Name(family)),
+                    )],
+                    &Attrs::new(),
+                    Shaping::Advanced,
+                    None,
+                );
+                buffer
+                    .layout_runs()
+                    .flat_map(|run| run.glyphs.iter())
+                    .map(|glyph| glyph.font_id)
+                    .next()
+                    .ok_or_else(|| io::Error::other("candidate text did not shape"))?
+            };
+            let face = font_system
+                .db()
+                .face(font_id)
+                .ok_or_else(|| io::Error::other("shaped glyph face is unavailable"))?;
+            source_path(&face.source)
+                .map(Path::to_path_buf)
+                .ok_or_else(|| io::Error::other("shaped glyph is not file-backed"))
+        })
         .map_err(|error| io::Error::other(format!("{error:?}")))?
+}
+
+fn candidate_chain_alias_sources(
+    rasterizer: &PlatformTextRasterizer,
+    family: &str,
+) -> io::Result<Vec<PathBuf>> {
+    rasterizer
+        .catalog()
+        .with_font_system_for_face_selection(PlatformTextFaceSelection::CandidateChain, |fs| {
+            fs.db()
+                .faces()
+                .filter(|face| face.families.iter().any(|(name, _)| name == family))
+                .filter_map(|face| source_path(&face.source).map(Path::to_path_buf))
+                .collect::<Vec<_>>()
+        })
+        .map_err(|error| io::Error::other(format!("{error:?}")))
 }
 
 #[test]
@@ -175,14 +202,14 @@ fn first_candidate_selection_reaches_regular_and_monospace_rasterization()
     assert_eq!(
         resolved_faces
             .proportional
-            .as_ref()
+            .first()
             .map(|face| face.family.as_str()),
         Some(family.as_str())
     );
     assert_eq!(
         resolved_faces
             .monospace
-            .as_ref()
+            .first()
             .map(|face| face.family.as_str()),
         Some(family.as_str())
     );
@@ -236,7 +263,11 @@ fn first_candidate_selection_preserves_the_candidate_source_through_shaping()
             .to_owned();
         assert_ne!(selected_family, family);
         assert_eq!(
-            first_shaped_font_source(&rasterizer, &selected_family)?,
+            first_shaped_font_source(
+                &rasterizer,
+                PlatformTextFaceSelection::FirstCandidate,
+                &selected_family,
+            )?,
             proportional_candidate
         );
 
@@ -252,7 +283,11 @@ fn first_candidate_selection_preserves_the_candidate_source_through_shaping()
             .expect("first candidate monospace alias")
             .to_owned();
         assert_eq!(
-            first_shaped_font_source(&rasterizer, &monospace_family)?,
+            first_shaped_font_source(
+                &rasterizer,
+                PlatformTextFaceSelection::FirstCandidate,
+                &monospace_family,
+            )?,
             monospace_candidate
         );
         Ok(())
@@ -263,7 +298,70 @@ fn first_candidate_selection_preserves_the_candidate_source_through_shaping()
 }
 
 #[test]
-fn unresolved_first_candidate_selection_keeps_generic_fallback_faces()
+fn candidate_chain_keeps_copied_candidates_ordered_and_wraps_with_finite_geometry()
+-> Result<(), Box<dyn std::error::Error>> {
+    let (source, _) = installed_font_candidate()?;
+    let proportional_primary = copy_font_candidate(&source)?;
+    let proportional_fallback = copy_font_candidate(&source)?;
+    let monospace_primary = copy_font_candidate(&source)?;
+    let monospace_fallback = copy_font_candidate(&source)?;
+    let copied_paths = [
+        proportional_primary.clone(),
+        proportional_fallback.clone(),
+        monospace_primary.clone(),
+        monospace_fallback.clone(),
+    ];
+    let result = (|| -> Result<(), Box<dyn std::error::Error>> {
+        let config = candidate_chain_config_for_faces(
+            vec![proportional_primary.clone(), proportional_fallback.clone()],
+            vec![monospace_primary.clone(), monospace_fallback],
+        );
+        let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
+        let faces = catalog.regular_font_faces();
+        assert_eq!(2, faces.proportional.len());
+        assert_eq!(2, faces.monospace.len());
+        let mut rasterizer = PlatformTextRasterizer::with_catalog_and_face_selection(
+            catalog,
+            config,
+            PlatformTextFaceSelection::CandidateChain,
+        )?;
+        let selected_family = rasterizer
+            .text_faces
+            .proportional()
+            .expect("candidate chain proportional alias")
+            .to_owned();
+        assert_eq!(
+            candidate_chain_alias_sources(&rasterizer, &selected_family)?,
+            vec![proportional_primary.clone(), proportional_fallback.clone()]
+        );
+        assert_eq!(
+            first_shaped_font_source(
+                &rasterizer,
+                PlatformTextFaceSelection::CandidateChain,
+                &selected_family,
+            )?,
+            proportional_primary
+        );
+
+        let mut request = PlatformTextRasterRequest::from_text(
+            "Candidate chain must retain a finite wrapped layout.",
+            font(FontFamily::Proportional),
+            TEXT_COLOR,
+        );
+        request.max_width_px = Some(36.0);
+        let raster = rasterizer.rasterize(&request)?;
+        assert!(raster.width > 0 && raster.height > 0);
+        assert!(raster.height as f32 > request.normalized_line_height());
+        Ok(())
+    })();
+    for path in copied_paths {
+        let _ = fs::remove_file(path);
+    }
+    result
+}
+
+#[test]
+fn unresolved_candidate_selection_keeps_generic_fallback_faces()
 -> Result<(), Box<dyn std::error::Error>> {
     let missing = missing_font_path();
     let config = PlatformTextRasterConfig {
@@ -273,20 +371,23 @@ fn unresolved_first_candidate_selection_keeps_generic_fallback_faces()
         emoji_candidate_sha256: Vec::new(),
         cache_capacity: 4,
     };
-    let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
-    let mut rasterizer = PlatformTextRasterizer::with_catalog_and_face_selection(
-        catalog,
-        config,
+    for face_selection in [
         PlatformTextFaceSelection::FirstCandidate,
-    )?;
-
-    assert_eq!(rasterizer.text_faces, ResolvedTextFaces::default());
-    let raster = rasterizer.rasterize(&PlatformTextRasterRequest::from_text(
-        "System fallback",
-        font(FontFamily::Proportional),
-        TEXT_COLOR,
-    ))?;
-
-    assert!(raster.width > 0 && raster.height > 0);
+        PlatformTextFaceSelection::CandidateChain,
+    ] {
+        let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
+        let mut rasterizer = PlatformTextRasterizer::with_catalog_and_face_selection(
+            catalog,
+            config.clone(),
+            face_selection,
+        )?;
+        assert_eq!(rasterizer.text_faces, ResolvedTextFaces::default());
+        let raster = rasterizer.rasterize(&PlatformTextRasterRequest::from_text(
+            "System fallback",
+            font(FontFamily::Proportional),
+            TEXT_COLOR,
+        ))?;
+        assert!(raster.width > 0 && raster.height > 0);
+    }
     Ok(())
 }

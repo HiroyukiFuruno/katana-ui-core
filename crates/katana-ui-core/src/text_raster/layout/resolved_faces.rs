@@ -30,8 +30,14 @@ impl ResolvedTextFaces {
         Self {
             proportional: candidates
                 .proportional
+                .into_iter()
+                .next()
                 .map(ResolvedTextFace::from_candidate),
-            monospace: candidates.monospace.map(ResolvedTextFace::from_candidate),
+            monospace: candidates
+                .monospace
+                .into_iter()
+                .next()
+                .map(ResolvedTextFace::from_candidate),
         }
     }
 
