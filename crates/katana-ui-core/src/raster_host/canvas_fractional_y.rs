@@ -14,7 +14,7 @@ impl Canvas {
         draw: impl FnOnce(&mut Self) -> T,
     ) -> T {
         let physical_origin = physical_fractional_position(logical_origin, self.scale_factor());
-        let integer_physical_origin = self.logical_to_physical_position(integer_origin);
+        let integer_physical_origin = self.logical_to_physical_y(integer_origin);
         let previous_offset = self.physical_y_offset;
         self.physical_y_offset =
             previous_offset.saturating_add(physical_origin.saturating_sub(integer_physical_origin));

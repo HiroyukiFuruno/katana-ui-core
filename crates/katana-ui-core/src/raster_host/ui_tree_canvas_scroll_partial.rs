@@ -54,10 +54,12 @@ pub(super) fn draw_partially_visible_node(
         return;
     }
     let temp_height = partial_node_temp_height(node, node_height, area.height);
-    let mut temp = Canvas::new_scaled(
+    let mut temp = Canvas::new_scaled_with_logical_phase(
         area.width,
         temp_height,
         canvas.scale_factor(),
+        area.x,
+        area.y,
         palette.background,
     );
     let mut temp_y = 0;
@@ -173,10 +175,12 @@ fn draw_partially_visible_media_frame_stack(
     palette: UiTreeCanvasPalette,
 ) {
     let temp_height = node_height.max(1);
-    let mut temp = Canvas::new_scaled(
+    let mut temp = Canvas::new_scaled_with_logical_phase(
         area.width,
         temp_height,
         canvas.scale_factor(),
+        area.x,
+        area.y,
         palette.background,
     );
     let local_x = x.saturating_sub(area.x);
@@ -356,6 +360,14 @@ mod tests {
         assert_eq!(2, physical_scroll_extent(1.0, 1.0, 1.25));
         assert_eq!(1, physical_scroll_extent(1.0, 1.0, 1.5));
         assert_eq!(1, physical_scroll_extent(0.0, 1.0, 1.25));
+    }
+
+    #[test]
+    fn partial_canvas_preserves_destination_phase_at_fractional_scale() {
+        let canvas = Canvas::new_scaled_with_logical_phase(1, 1, 1.25, 1, 1, 0);
+
+        assert_eq!(2, canvas.width());
+        assert_eq!(2, canvas.height());
     }
 
     #[test]

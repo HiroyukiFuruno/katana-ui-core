@@ -2,45 +2,9 @@ use super::canvas_clip::CanvasClip;
 use super::canvas_color::blend_color;
 pub use super::canvas_model::Canvas;
 use super::canvas_model::CanvasImageSurfaceExtentMode;
-use super::canvas_scale::{normalized_scale, physical_size};
 const RECT_BORDER_WIDTH: usize = 1;
 
 impl Canvas {
-    #[must_use]
-    pub fn new(width: usize, height: usize, color: u32) -> Self {
-        Self::new_scaled(width, height, 1.0, color)
-    }
-
-    #[must_use]
-    pub fn new_scaled(width: usize, height: usize, scale: f32, color: u32) -> Self {
-        Self::new_scaled_with_raster_scale(width, height, scale, scale, color)
-    }
-
-    #[must_use]
-    pub fn new_scaled_with_raster_scale(
-        width: usize,
-        height: usize,
-        scale: f32,
-        raster_scale: f32,
-        color: u32,
-    ) -> Self {
-        let scale = normalized_scale(scale);
-        let raster_scale = normalized_scale(raster_scale);
-        Self {
-            width: physical_size(width, scale),
-            height: physical_size(height, scale),
-            logical_width: width,
-            logical_height: height,
-            scale_factor: scale,
-            raster_scale_factor: raster_scale,
-            image_surface_extent_mode: CanvasImageSurfaceExtentMode::LogicalDisplay,
-            pixels: vec![color; physical_size(width, scale) * physical_size(height, scale)],
-            clip: None,
-            text_runs: Vec::new(),
-            physical_y_offset: 0,
-        }
-    }
-
     #[must_use]
     pub fn with_reference_capture_image_surface_extents(mut self) -> Self {
         self.image_surface_extent_mode = CanvasImageSurfaceExtentMode::RasterPresentation;

@@ -93,10 +93,10 @@ impl Canvas {
         clip: super::canvas_clip::CanvasClip,
     ) -> bool {
         let rect = run.rect();
-        let left = self.logical_to_physical_position(rect.x);
-        let right = self.logical_to_physical_position(rect.right());
-        let top = self.translate_physical_y(self.logical_to_physical_position(rect.y));
-        let bottom = self.translate_physical_y(self.logical_to_physical_position(rect.bottom()));
+        let left = self.logical_to_physical_x(rect.x);
+        let right = self.logical_to_physical_x(rect.right());
+        let top = self.translate_physical_y(self.logical_to_physical_y(rect.y));
+        let bottom = self.translate_physical_y(self.logical_to_physical_y(rect.bottom()));
         left >= clip.x && right <= clip.right() && top >= clip.y && bottom <= clip.bottom()
     }
 }
