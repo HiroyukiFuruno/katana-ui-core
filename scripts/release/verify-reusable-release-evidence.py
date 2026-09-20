@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 TRUSTED_ISSUER = "github-actions"
 TRUSTED_WORKFLOW = ".github/workflows/release-preflight.yml"
 TRUSTED_BRANCH = "master"
@@ -30,6 +30,7 @@ NATIVE_PACKAGES = (
 )
 EMOJI_FONT = Path("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf")
 MONO_FONT = Path("/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf")
+COVERAGE_RUNTIME_ID_PATTERN = "runtime-v1:sha256:"
 
 
 def utc_now() -> datetime:
@@ -128,6 +129,36 @@ def package_identity(package: str) -> str:
     return f"{package}={version[0]}"
 
 
+def coverage_image_runtime_identity() -> str:
+    """Return the content identity of the exact coverage image used by release-check.
+
+    The image tag is only an input locator.  The helper hashes Docker's runtime
+    content (layers and config), so a rebuilt tag cannot silently reuse evidence
+    produced with a different coverage runtime.
+    """
+    image = required_environment("KUC_COVERAGE_IMAGE")
+    helper = Path(__file__).parents[1] / "coverage" / "image-runtime-id.py"
+    try:
+        inspect = subprocess.run(
+            ("docker", "image", "inspect", image),
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        identity = subprocess.run(
+            (sys.executable, str(helper)),
+            check=True,
+            input=inspect.stdout,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError) as error:
+        raise ValueError("release evidence coverage image runtime identity is unavailable") from error
+    if not identity.startswith(COVERAGE_RUNTIME_ID_PATTERN) or len(identity) != 82:
+        raise ValueError("release evidence coverage image runtime identity is invalid")
+    return identity
+
+
 def environment_identity() -> dict[str, str]:
     xvfb_path = shutil.which("Xvfb")
     if xvfb_path is None:
@@ -144,6 +175,7 @@ def environment_identity() -> dict[str, str]:
         "native_packages": ";".join(package_identity(package) for package in NATIVE_PACKAGES),
         "emoji_font_sha256": required_file_digest(EMOJI_FONT),
         "mono_font_sha256": required_file_digest(MONO_FONT),
+        "coverage_image_runtime_id": coverage_image_runtime_identity(),
     }
 
 

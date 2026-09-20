@@ -30,11 +30,12 @@ ENVIRONMENT = {
     "native_packages": "ffmpeg=7.1;fonts-noto-cjk=1;fonts-noto-color-emoji=1;fonts-noto-mono=1;xauth=1;xvfb=1",
     "emoji_font_sha256": "emoji",
     "mono_font_sha256": "mono",
+    "coverage_image_runtime_id": "runtime-v1:sha256:" + "a" * 64,
 }
 
 
 def candidate(**overrides: object) -> dict[str, object]:
-    value: dict[str, object] = {"schema_version": 2, "issuer": "github-actions", "workflow": ".github/workflows/release-preflight.yml", "repository": "owner/repo", "run_id": "123", "source_sha": "a" * 40, "content_digest": "digest", "environment": ENVIRONMENT, "result": "passed", "expires_at": (NOW + timedelta(hours=1)).isoformat()}
+    value: dict[str, object] = {"schema_version": 3, "issuer": "github-actions", "workflow": ".github/workflows/release-preflight.yml", "repository": "owner/repo", "run_id": "123", "source_sha": "a" * 40, "content_digest": "digest", "environment": ENVIRONMENT, "result": "passed", "expires_at": (NOW + timedelta(hours=1)).isoformat()}
     value.update(overrides)
     return value
 
@@ -64,8 +65,15 @@ class ReusableEvidenceTest(unittest.TestCase):
             MODULE.reuse_failures(candidate(), source_run(), "digest", "untrusted-source-digest", ENVIRONMENT, "owner/repo", NOW)
         )
 
-    def test_rejects_runner_or_native_environment_drift(self) -> None:
-        for key in ("runner_image_version", "os_release", "xvfb_path", "ffmpeg_version", "native_packages"):
+    def test_rejects_runner_native_or_coverage_container_environment_drift(self) -> None:
+        for key in (
+            "runner_image_version",
+            "os_release",
+            "xvfb_path",
+            "ffmpeg_version",
+            "native_packages",
+            "coverage_image_runtime_id",
+        ):
             changed_environment = dict(ENVIRONMENT)
             changed_environment[key] = "changed"
             self.assertTrue(
@@ -80,6 +88,21 @@ class ReusableEvidenceTest(unittest.TestCase):
                 ),
                 key,
             )
+
+    def test_rejects_missing_coverage_container_runtime_identity(self) -> None:
+        incomplete_environment = dict(ENVIRONMENT)
+        del incomplete_environment["coverage_image_runtime_id"]
+        self.assertTrue(
+            MODULE.reuse_failures(
+                candidate(environment=incomplete_environment),
+                source_run(),
+                "digest",
+                "digest",
+                ENVIRONMENT,
+                "owner/repo",
+                NOW,
+            )
+        )
 
     def test_content_digest_rejects_dirty_or_untracked_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

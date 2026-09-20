@@ -106,11 +106,17 @@ jobs:
           GATE_STATE: ${{ runner.temp }}/kuc-release-gate-state.json
         run: python3 scripts/release/verify-release-gate.py --manifest "${GATE_MANIFEST}" --expected-sha "${GITHUB_SHA}" --phase start --state-output "${GATE_STATE}"
 
+      - name: Build coverage runtime for reusable evidence verification
+        # Reuse is allowed only if this release SHA builds the same runtime that
+        # produced the candidate evidence; inspect after this build is fail-closed.
+        run: docker build --tag katana-ui-core-coverage:rust-1.97.1 --file scripts/coverage/Dockerfile scripts/coverage
+
       - name: Find verified reusable release check
         id: reusable_evidence
         env:
           GH_TOKEN: ${{ github.token }}
           EVIDENCE_ROOT: ${{ runner.temp }}/kuc-release-check-evidence
+          KUC_COVERAGE_IMAGE: katana-ui-core-coverage:rust-1.97.1
         run: |
           mkdir -p "${EVIDENCE_ROOT}"
           echo "reuse=false" >> "${GITHUB_OUTPUT}"
