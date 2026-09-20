@@ -4014,6 +4014,15 @@ class KucGuardrailsTest(unittest.TestCase):
                 )
                 self.assertNotIn("secrets.CARGO_REGISTRY_TOKEN", source)
 
+    def test_release_workflow_checks_out_the_gate_sha(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        source = (root / ".github/workflows/release.yml").read_text(encoding="utf-8")
+
+        self.assertIn("ref: ${{ github.sha }}", source)
+        self.assertNotIn("github.event.pull_request.base.ref || github.ref", source)
+        self.assertIn('--sha "${GITHUB_SHA}"', source)
+        self.assertIn('--expected-sha "${GITHUB_SHA}"', source)
+
     def test_linux_workflows_share_bounded_headless_display_install(self) -> None:
         root = Path(__file__).resolve().parents[1]
         installer = root / "scripts/ci/install-headless-display.sh"
