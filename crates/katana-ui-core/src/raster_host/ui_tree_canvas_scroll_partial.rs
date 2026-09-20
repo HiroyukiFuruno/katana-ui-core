@@ -215,7 +215,7 @@ fn draw_partially_visible_media_frame_stack(
                 area.height as f32,
                 canvas.scale_factor(),
             ),
-            source_y: temp.fractional_to_physical_y(source_y),
+            source_y: physical_scroll_offset(source_y, canvas.scale_factor()),
             source_logical_y: source_y,
         },
     );
