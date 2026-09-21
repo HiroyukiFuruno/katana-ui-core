@@ -156,3 +156,43 @@ fn logical_blend_ignores_invalid_or_off_canvas_rectangles() {
     assert_eq!(&[BACKGROUND; 4], canvas.pixels());
     assert!(fractional.pixels().iter().all(|pixel| *pixel == BACKGROUND));
 }
+
+#[test]
+fn canvas_blit_resamples_equal_scale_from_an_unaligned_physical_source_row() {
+    let mut source = Canvas::new_scaled(1, 2, 1.25, BACKGROUND);
+    source.set_physical(0, 1, 0x112233);
+    let mut target = Canvas::new_scaled(1, 2, 1.25, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: 1,
+            height: 1,
+            source_y: 1,
+        },
+    );
+
+    assert_eq!(0x112233, target.pixels()[0]);
+}
+
+#[test]
+fn canvas_blit_omits_text_runs_before_a_direct_physical_source_crop() {
+    let mut source = Canvas::new_scaled(4, 2, 2.0, BACKGROUND);
+    source.record_text_run("before", 0, 0, 2, 1);
+    let mut target = Canvas::new_scaled(4, 2, 2.0, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: 4,
+            height: 2,
+            source_y: 2,
+        },
+    );
+
+    assert!(target.text_runs().is_empty());
+}

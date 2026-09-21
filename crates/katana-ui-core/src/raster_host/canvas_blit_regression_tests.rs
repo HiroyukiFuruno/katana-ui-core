@@ -232,3 +232,67 @@ fn scaled_canvas_blit_omits_text_runs_outside_the_source_crop() {
     assert_eq!("visible", target.text_runs()[0].text());
     assert_eq!(1, target.text_runs()[0].y());
 }
+
+#[test]
+fn canvas_blit_resamples_equal_scale_from_an_unaligned_physical_source_row() {
+    let mut source = Canvas::new_scaled(1, 2, 1.25, BACKGROUND);
+    source.set_physical(0, 1, 0x112233);
+    let mut target = Canvas::new_scaled(1, 2, 1.25, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: 1,
+            height: 1,
+            source_y: 1,
+        },
+    );
+
+    assert_eq!(0x112233, target.pixels()[0]);
+}
+
+#[test]
+fn canvas_blit_applies_partial_clip_when_row_copy_is_not_fully_visible() {
+    let mut source = Canvas::new(3, 1, BACKGROUND);
+    source.set(0, 0, 0x112233);
+    source.set(1, 0, 0x445566);
+    source.set(2, 0, 0x778899);
+    let mut target = Canvas::new(3, 1, BACKGROUND);
+
+    target.with_clip(1, 0, 1, 1, &mut |canvas| {
+        canvas.blit_canvas(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 0,
+                dest_y: 0,
+                width: 3,
+                height: 1,
+                source_y: 0,
+            },
+        );
+    });
+
+    assert_eq!(&[BACKGROUND, 0x445566, BACKGROUND], target.pixels());
+}
+
+#[test]
+fn canvas_blit_omits_text_runs_before_a_direct_physical_source_crop() {
+    let mut source = Canvas::new_scaled(4, 2, 2.0, BACKGROUND);
+    source.record_text_run("before", 0, 0, 2, 1);
+    let mut target = Canvas::new_scaled(4, 2, 2.0, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: 4,
+            height: 2,
+            source_y: 2,
+        },
+    );
+
+    assert!(target.text_runs().is_empty());
+}
