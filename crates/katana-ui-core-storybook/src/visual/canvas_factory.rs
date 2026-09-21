@@ -66,6 +66,7 @@ impl Canvas {
             logical_height: height,
             logical_phase_x: phase_x,
             logical_phase_y: phase_y,
+            fractional_y_origin: 0.0,
             scale_factor: scale,
             raster_scale_factor: raster_scale,
             image_surface_extent_mode: CanvasImageSurfaceExtentMode::LogicalDisplay,

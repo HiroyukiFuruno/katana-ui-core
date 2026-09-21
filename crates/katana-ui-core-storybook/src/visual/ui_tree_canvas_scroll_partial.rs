@@ -59,7 +59,7 @@ pub(super) fn draw_partially_visible_node(
         temp_height,
         canvas.scale_factor(),
         canvas.logical_phase_x().saturating_add(area.x),
-        canvas.logical_phase_y() + area.y as f64 - f64::from(source_y),
+        partial_canvas_phase(canvas, area, source_y),
         palette.background,
     );
     let mut temp_y = 0;
@@ -187,7 +187,7 @@ fn draw_partially_visible_media_frame_stack(
         temp_height,
         canvas.scale_factor(),
         canvas.logical_phase_x().saturating_add(area.x),
-        canvas.logical_phase_y() + area.y as f64 - f64::from(source_y),
+        partial_canvas_phase(canvas, area, source_y),
         palette.background,
     );
     let local_x = x.saturating_sub(area.x);
@@ -235,6 +235,10 @@ fn partial_node_temp_height(node: &UiNode, node_height: usize, viewport_height: 
             .max(1);
     }
     node_height.max(1)
+}
+
+fn partial_canvas_phase(canvas: &Canvas, area: UiTreeRenderArea, source_y: f32) -> f64 {
+    canvas.effective_logical_phase_y() + area.y as f64 - f64::from(source_y)
 }
 
 fn partial_node_inner_scroll_y(node: &UiNode, source_y: f32) -> f32 {

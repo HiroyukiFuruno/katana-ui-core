@@ -9,6 +9,7 @@ pub struct Canvas {
     pub(super) logical_height: usize,
     pub(super) logical_phase_x: usize,
     pub(super) logical_phase_y: f64,
+    pub(super) fractional_y_origin: f64,
     pub(super) scale_factor: f32,
     pub(super) raster_scale_factor: f32,
     pub(super) image_surface_extent_mode: CanvasImageSurfaceExtentMode,

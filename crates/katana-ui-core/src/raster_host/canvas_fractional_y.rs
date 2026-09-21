@@ -12,10 +12,13 @@ impl Canvas {
         let physical_origin = self.fractional_to_physical_y(logical_origin);
         let integer_physical_origin = self.logical_to_physical_y(integer_origin);
         let previous_offset = self.physical_y_offset;
+        let previous_fractional_y_origin = self.fractional_y_origin;
+        self.fractional_y_origin = f64::from(logical_origin);
         self.physical_y_offset =
             previous_offset.saturating_add(physical_origin.saturating_sub(integer_physical_origin));
         let result = draw(self);
         self.physical_y_offset = previous_offset;
+        self.fractional_y_origin = previous_fractional_y_origin;
         result
     }
 

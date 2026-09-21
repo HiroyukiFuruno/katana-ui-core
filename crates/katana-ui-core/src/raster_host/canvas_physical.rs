@@ -10,6 +10,10 @@ impl Canvas {
         self.logical_phase_y
     }
 
+    pub(super) fn effective_logical_phase_y(&self) -> f64 {
+        self.logical_phase_y + self.fractional_y_origin
+    }
+
     pub(super) fn logical_to_physical_x(&self, logical: usize) -> usize {
         ((self.logical_phase_x.saturating_add(logical) as f64 * f64::from(self.scale_factor()))
             .round() as usize)

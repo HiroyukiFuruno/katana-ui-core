@@ -59,7 +59,7 @@ pub(super) fn draw_partially_visible_node(
         temp_height,
         canvas.scale_factor(),
         canvas.logical_phase_x().saturating_add(area.x),
-        canvas.logical_phase_y() + area.y as f64 - f64::from(source_y),
+        partial_canvas_phase(canvas, area, source_y),
         palette.background,
     );
     let mut temp_y = 0;
@@ -187,7 +187,7 @@ fn draw_partially_visible_media_frame_stack(
         temp_height,
         canvas.scale_factor(),
         canvas.logical_phase_x().saturating_add(area.x),
-        canvas.logical_phase_y() + area.y as f64 - f64::from(source_y),
+        partial_canvas_phase(canvas, area, source_y),
         palette.background,
     );
     let local_x = x.saturating_sub(area.x);
@@ -248,6 +248,10 @@ fn partial_node_temp_height(node: &UiNode, node_height: usize, viewport_height: 
     node_height.max(1)
 }
 
+fn partial_canvas_phase(canvas: &Canvas, area: UiTreeRenderArea, source_y: f32) -> f64 {
+    canvas.effective_logical_phase_y() + area.y as f64 - f64::from(source_y)
+}
+
 fn partial_node_inner_scroll_y(node: &UiNode, source_y: f32) -> f32 {
     if can_render_partial_node_in_viewport(node) {
         return source_y;
@@ -297,6 +301,19 @@ mod tests {
                 scroll_y: 0.0,
             },
         )
+    }
+
+    #[test]
+    fn fractional_cursor_origin_is_included_in_partial_canvas_phase() {
+        let (_, palette, area) = render_context();
+        let mut canvas =
+            Canvas::new_scaled_with_logical_phase(96, 48, 1.25, 0, 1.0, palette.background);
+
+        assert_eq!(3.0, partial_canvas_phase(&canvas, area, 1.0));
+        canvas.with_fractional_y_origin(0.5, 0, |canvas| {
+            assert_eq!(3.5, partial_canvas_phase(canvas, area, 1.0));
+        });
+        assert_eq!(3.0, partial_canvas_phase(&canvas, area, 1.0));
     }
 
     #[test]
