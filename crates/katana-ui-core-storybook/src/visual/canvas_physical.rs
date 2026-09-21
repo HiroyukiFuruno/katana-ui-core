@@ -6,10 +6,6 @@ impl Canvas {
         self.logical_phase_x
     }
 
-    pub(super) fn logical_phase_y(&self) -> f64 {
-        self.logical_phase_y
-    }
-
     pub(super) fn effective_logical_phase_y(&self) -> f64 {
         self.logical_phase_y + self.fractional_y_origin
     }

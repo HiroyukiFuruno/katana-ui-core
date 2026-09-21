@@ -570,7 +570,7 @@ mod tests {
             24,
             1.25,
             parent.logical_phase_x().saturating_add(area.x),
-            parent.logical_phase_y() + area.y as f64 - f64::from(source_y),
+            parent.effective_logical_phase_y() + area.y as f64 - f64::from(source_y),
             palette.background,
         );
         let mut full_y = 0;
