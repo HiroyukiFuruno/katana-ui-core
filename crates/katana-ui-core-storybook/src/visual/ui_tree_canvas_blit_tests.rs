@@ -67,3 +67,30 @@ fn scaled_canvas_blit_keeps_fractional_text_phase_and_skips_clipped_runs() {
     assert_eq!("phase", target.text_runs()[0].text());
     assert_eq!(1, target.text_runs()[0].y());
 }
+
+#[test]
+fn scaled_canvas_blit_stops_when_source_or_destination_is_exhausted() {
+    let source = Canvas::new(1, 1, BACKGROUND);
+    let mut target = Canvas::new_scaled(1, 1, 2.0, BACKGROUND);
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest { dest_x: 0, dest_y: 0, width: 2, height: 2, source_y: 1 },
+    );
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest { dest_x: 0, dest_y: 0, width: 2, height: 1, source_y: 0 },
+    );
+    assert_eq!(BACKGROUND, target.pixels()[0]);
+}
+
+#[test]
+fn logical_blend_ignores_invalid_or_off_canvas_rectangles() {
+    let mut canvas = Canvas::new(2, 2, BACKGROUND);
+    canvas.blend_rect_at_logical_y(0, f32::NAN, 1, 1.0, 0xffffff, 255);
+    canvas.blend_rect_at_logical_y(3, 0.0, 1, 1.0, 0xffffff, 255);
+    canvas.blend_rect_at_logical_y(0, 2.0, 1, 1.0, 0xffffff, 255);
+    let mut fractional = Canvas::new_scaled_with_logical_phase(2, 2, 1.25, 0, 0.0, BACKGROUND);
+    fractional.blend_rect_at_logical_y(0, 0.1, 1, 0.1, 0xffffff, 255);
+    assert_eq!(&[BACKGROUND; 4], canvas.pixels());
+    assert_eq!(&[BACKGROUND; 4], fractional.pixels());
+}

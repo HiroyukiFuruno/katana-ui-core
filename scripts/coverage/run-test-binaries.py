@@ -159,6 +159,7 @@ def run_binary(task: tuple[str, Path, Path], run_root: Path, index: int, test_th
     env["KUC_STORYBOOK_MOUSE_TRACE"] = str(out_dir / "storybook-mouse-trace.jsonl")
     started = time.monotonic()
     try:
+        print(f"run-test-binaries: start package={package} executable={exe}", file=sys.stderr, flush=True)
         with stdout.open("wb") as so, stderr.open("wb") as se:
             proc = subprocess.run(
                 [str(exe), "--include-ignored", f"--test-threads={test_threads}"],
@@ -308,7 +309,7 @@ def self_test() -> int:
         if normal.returncode != 0 or not normal.stdout:
             print("self-test failed: normal", file=sys.stderr)
             return 1
-        m = json.loads(normal.stdout)
+        m = json.loads(normal.stdout.splitlines()[-1])
         if m.get("total") != len(ALLOWED_PACKAGES):
             print("self-test failed: manifest", file=sys.stderr)
             return 1
