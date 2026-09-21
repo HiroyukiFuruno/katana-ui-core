@@ -113,6 +113,31 @@ fn public_canvas_blit_advances_from_fractional_scale_crop_origin() {
 }
 
 #[test]
+fn public_canvas_blit_resamples_equal_scale_when_logical_phase_differs() {
+    let mut source = Canvas::new_scaled_with_logical_phase(1, 3, 1.25, 0, 1.0, BACKGROUND);
+    for (y, color) in [0x112233, 0x112233, 0x445566, 0x778899]
+        .into_iter()
+        .enumerate()
+    {
+        source.set_physical(0, y, color);
+    }
+    let mut target = Canvas::new_scaled_with_logical_phase(1, 3, 1.25, 0, 0.0, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: 1,
+            height: 3,
+            source_y: 0,
+        },
+    );
+
+    assert_eq!(&[0x112233, 0x445566, 0x445566, 0x778899], target.pixels());
+}
+
+#[test]
 fn canvas_blit_preserves_selectable_text_run_phase_at_fractional_scale() {
     let mut source = Canvas::new_scaled_with_logical_phase(8, 4, 1.25, 0, 1.0, BACKGROUND);
     source.record_text_run("phase", 0, 2, 4, 1);

@@ -3,7 +3,10 @@ use super::ui_tree_canvas_types::{CanvasBlitRequest, PhysicalCanvasBlitRequest};
 
 impl Canvas {
     pub fn blit_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
-        if source.scale_factor() != self.scale_factor() {
+        if source.scale_factor() != self.scale_factor()
+            || source.logical_phase_x() != self.logical_phase_x()
+            || source.logical_phase_y() != self.logical_phase_y()
+        {
             self.blit_scaled_canvas(source, request);
             return;
         }
