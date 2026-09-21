@@ -43,12 +43,20 @@ impl Canvas {
         }
         let dest_left = self.to_physical_x(request.dest_x);
         let dest_top = self.to_physical_y(request.dest_y);
-        (0..=request.width).all(|offset| {
+        let drawable_width = request
+            .width
+            .min(source.logical_width())
+            .min(self.logical_width().saturating_sub(request.dest_x));
+        let drawable_height = request
+            .height
+            .min(source.logical_height())
+            .min(self.logical_height().saturating_sub(request.dest_y));
+        (0..=drawable_width).all(|offset| {
             source.to_physical_x(offset)
                 == self
                     .to_physical_x(request.dest_x.saturating_add(offset))
                     .saturating_sub(dest_left)
-        }) && (0..=request.height).all(|offset| {
+        }) && (0..=drawable_height).all(|offset| {
             source
                 .to_physical_y(source_logical_y.saturating_add(offset))
                 .saturating_sub(request.source_y)
