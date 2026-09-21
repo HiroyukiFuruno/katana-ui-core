@@ -4,8 +4,7 @@ use super::ui_tree_canvas_types::{CanvasBlitRequest, PhysicalCanvasBlitRequest};
 impl Canvas {
     pub fn blit_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
         if source.scale_factor() != self.scale_factor()
-            || source.logical_phase_x() != self.logical_phase_x()
-            || source.logical_phase_y() != self.logical_phase_y()
+            || !self.has_aligned_logical_blit_boundaries(source, request)
         {
             self.blit_scaled_canvas(source, request);
             return;
@@ -31,6 +30,32 @@ impl Canvas {
                 source_logical_y: source.logical_y_at_physical_position(request.source_y) as f32,
             },
         );
+    }
+
+    fn has_aligned_logical_blit_boundaries(
+        &self,
+        source: &Canvas,
+        request: CanvasBlitRequest,
+    ) -> bool {
+        let source_logical_y = source.logical_y_at_physical_position(request.source_y);
+        if source.to_physical_y(source_logical_y) != request.source_y {
+            return false;
+        }
+        let dest_left = self.to_physical_x(request.dest_x);
+        let dest_top = self.to_physical_y(request.dest_y);
+        (0..=request.width).all(|offset| {
+            source.to_physical_x(offset)
+                == self
+                    .to_physical_x(request.dest_x.saturating_add(offset))
+                    .saturating_sub(dest_left)
+        }) && (0..=request.height).all(|offset| {
+            source
+                .to_physical_y(source_logical_y.saturating_add(offset))
+                .saturating_sub(request.source_y)
+                == self
+                    .to_physical_y(request.dest_y.saturating_add(offset))
+                    .saturating_sub(dest_top)
+        })
     }
 
     fn blit_scaled_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {

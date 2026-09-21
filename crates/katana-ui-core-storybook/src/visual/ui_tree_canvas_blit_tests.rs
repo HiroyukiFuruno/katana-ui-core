@@ -94,6 +94,31 @@ fn canvas_blit_resamples_equal_scale_when_logical_phase_differs() {
 }
 
 #[test]
+fn canvas_blit_resamples_equal_phase_when_destination_offset_differs() {
+    let mut source = Canvas::new_scaled(1, 2, 1.25, BACKGROUND);
+    for (y, color) in [0x112233, 0x445566, 0x445566].into_iter().enumerate() {
+        source.set_physical(0, y, color);
+    }
+    let mut target = Canvas::new_scaled(1, 3, 1.25, BACKGROUND);
+
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 1,
+            width: 1,
+            height: 1,
+            source_y: 0,
+        },
+    );
+
+    assert_eq!(
+        &[BACKGROUND, 0x112233, 0x112233, BACKGROUND],
+        target.pixels()
+    );
+}
+
+#[test]
 fn scaled_canvas_blit_stops_when_source_or_destination_is_exhausted() {
     let source = Canvas::new(1, 1, BACKGROUND);
     let mut target = Canvas::new_scaled(1, 1, 2.0, BACKGROUND);
