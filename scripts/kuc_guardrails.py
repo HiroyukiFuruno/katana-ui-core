@@ -57,6 +57,7 @@ class KucGuardrails:
         failures.extend(self.visual_fallback_policy_failures())
         failures.extend(self.storybook_reflection_audit_policy_failures())
         failures.extend(self.repo_local_guardrail_policy_failures())
+        failures.extend(self.p2_disposition_failures())
         failures.extend(self.generic_rust_ui_boundary_failures())
         failures.extend(self.generic_grid_boundary_failures())
         failures.extend(self.adapter_svg_render_plan_failures())
@@ -326,6 +327,93 @@ class KucGuardrails:
             for token in forbidden_tokens
             if token in combined
         )
+        return failures
+
+    def p2_disposition_failures(self) -> list[str]:
+        """Require a reusable P2 disposition template and a complete ledger."""
+        template_path = self.root / "docs/reviews/p2-disposition-template.md"
+        ledger_path = self.root / "docs/issue-work-batch.md"
+        failures: list[str] = []
+        if not template_path.exists():
+            failures.append(
+                "docs/reviews/p2-disposition-template.md: P2 disposition template is missing"
+            )
+        else:
+            template = self.read(template_path)
+            required_template_tokens = (
+                "# P2 disposition comment template",
+                "## Classification",
+                "fix",
+                "migrate",
+                "no-action",
+                "Reproduction",
+                "Impact",
+                "Acceptance criteria",
+                "Owner repository",
+                "Dependency",
+                "Original review thread",
+                "Evidence",
+            )
+            failures.extend(
+                f"{self.relative(template_path)}: template missing `{token}`"
+                for token in required_template_tokens
+                if token not in template
+            )
+
+        if not ledger_path.exists():
+            return [*failures, "docs/issue-work-batch.md: P2 disposition ledger is missing"]
+
+        ledger = self.read(ledger_path)
+        marker = "## P2 disposition ledger"
+        if marker not in ledger:
+            return [*failures, f"{self.relative(ledger_path)}: missing `{marker}`"]
+        section = ledger.split(marker, 1)[1]
+        header = (
+            "| issue | disposition | reproduction | impact | acceptance | "
+            "owner repository | dependency | original review thread | evidence |"
+        )
+        if header not in section:
+            failures.append(f"{self.relative(ledger_path)}: P2 ledger header is invalid")
+
+        rows = [
+            line.strip()
+            for line in section.splitlines()
+            if line.strip().startswith("|") and line.count("|") >= 10
+        ]
+        data_rows = [line for line in rows if not line.startswith("|---") and line != header]
+        if not data_rows:
+            failures.append(f"{self.relative(ledger_path)}: P2 disposition ledger has no entries")
+        allowed_dispositions = {"fix", "migrate", "no-action"}
+        for row in data_rows:
+            cells = [cell.strip() for cell in row.strip("|").split("|")]
+            if len(cells) != 9:
+                failures.append(f"{self.relative(ledger_path)}: P2 ledger row must have 9 fields")
+                continue
+            issue, disposition, reproduction, impact, acceptance, owner, dependency, thread, evidence = cells
+            if not re.fullmatch(r"#\d+", issue):
+                failures.append(f"{self.relative(ledger_path)}: invalid P2 issue `{issue}`")
+            if disposition not in allowed_dispositions:
+                failures.append(
+                    f"{self.relative(ledger_path)}: invalid P2 disposition `{disposition}`"
+                )
+            for label, value in (
+                ("reproduction", reproduction),
+                ("impact", impact),
+                ("acceptance", acceptance),
+                ("owner repository", owner),
+                ("dependency", dependency),
+                ("evidence", evidence),
+            ):
+                if not value or value == "-":
+                    failures.append(f"{self.relative(ledger_path)}: {issue} missing {label}")
+            if "https://github.com/" not in thread or "discussion_r" not in thread:
+                failures.append(
+                    f"{self.relative(ledger_path)}: {issue} must link an original review thread"
+                )
+        if "P1" not in section or "必須" not in section:
+            failures.append(
+                f"{self.relative(ledger_path)}: P1 mandatory disposition policy is missing"
+            )
         return failures
 
     def generic_rust_ui_boundary_failures(self) -> list[str]:

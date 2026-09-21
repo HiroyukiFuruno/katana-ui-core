@@ -9,7 +9,7 @@
 - [x] 2.1 v0.3.10へ更新し、format、check、release-check、diff checkを通す。
 - [x] 2.2 Draft PR、review、thread disposition、Ready、CI、mergeを完了する。
 - [ ] 2.3 GitHub Release、crates.io、KDV/KLE registry-only再検証、branch hygieneを完了する。
-- [ ] 2.4 Unicode evidence unavailableの原因型をpublic consumer artifact errorに保持し、consumer側の判別を回帰検証する（[Issue #57](https://github.com/HiroyukiFuruno/katana-ui-core/issues/57)）。
+- [x] 2.4 Unicode evidence unavailableの原因型をpublic consumer artifact errorに保持し、consumer側の判別を回帰検証する（[Issue #57](https://github.com/HiroyukiFuruno/katana-ui-core/issues/57)）。
 
 ## 最新指示と実行台帳
 
@@ -100,3 +100,19 @@
 - gate14開始時の3,317ファイルは終了後のSHA-256照合で変更0件。coverage profileは `48198854f1ebfeb6008470ea330106e6a3fa597dac74bd23eec09bce16299d62`、strict-stateはpassed。生ログとLCOVは `tmp/v0311-release/release-check-14.log` / `gate14-coverage.lcov` に保持する。
 - 同じ候補の隔離consumerは全target Clippy終了0、core library 1,907 passed / 0 failed / 1 ignored、Storybook 645 passed / 0 failed / 21 ignored。canonical sample / diagramsは両方95以上、export・hoverを含めて成功した。画像ロードの既定8秒制限と品質閾値は維持し、46ファイルのhandoff hashを固定した。
 - ここまでのconsumer結果は診断用path patchであり、公開registryの受入証跡とは区別する。2.3/2.4はv0.3.11の正式公開・registry-only受入が揃うまで未完了とする。
+
+## v0.3.11 正式公開とregistry受入
+
+- 2026-09-13T20:01:09Zに[GitHub Release v0.3.11](https://github.com/HiroyukiFuruno/katana-ui-core/releases/tag/v0.3.11)を公開した。[Release run 34775455520](https://github.com/HiroyukiFuruno/katana-ui-core/actions/runs/34775455520)は全step success、watcher終了0。strict LCOV passed、package/publish検証、crates.io公開を完了した。
+- Releaseの実checkout・tag・配布crate VCSは `742ebd6cb877667422c1723cb56b298c294272cf` で一致。sparse indexとarchiveのSHA-256は `45eacea577b7a36cbdc7aecbcabbe56ebce11239ae9e6d36f4f244fdabbf6557` で一致し、yanked=false、配布量1,253,942bytes、全dependency表にpath/git依存なし。証跡は `tmp/v0311-release/registry-0.3.11-proof.json`。
+- 公開registryだけで解決する外部consumerの6契約テストは6 passed / 0 failed / 0 ignored、52.84秒、終了0。default issuerで全10stageのtyped実行を完了し、正常系にplatform policy/font hash注入は不要。負例は実際の `ColorEmojiUnavailable` 原因型と残stage数10のfail-closedを検証した。metadataのregistry sourceとlock checksumも照合した。
+- [Issue #57](https://github.com/HiroyukiFuruno/katana-ui-core/issues/57#issuecomment-5655774833)はこの公開版受入で完了した。2.4を完了とし、2.3のKDV/KLE再受入は結果回収まで未完了として維持する。
+- レビューP2は既存の[Issue #53](https://github.com/HiroyukiFuruno/katana-ui-core/issues/53)方針に従い、個別の再現・受入条件と元threadへのreply/resolveを付けて後続Issueへ移管した。[#59](https://github.com/HiroyukiFuruno/katana-ui-core/issues/59)非ASCII等幅fallback、[#60](https://github.com/HiroyukiFuruno/katana-ui-core/issues/60)画面外末尾hit収集の性能回帰、[#61](https://github.com/HiroyukiFuruno/katana-ui-core/issues/61)highlight alpha、[#62](https://github.com/HiroyukiFuruno/katana-ui-core/issues/62)明示height+paddingのhover advanceは未修正であり、今回の受入成功で修正済みとは扱わない。
+
+- Release APIのevent `headSha` はPR候補 `ec0a4b04555ddd1baa45cb5dc919fa10394bae1b`。workflowはPRのbase refをcheckoutしており、Release実ログのCheckout stepも上記merge SHAを記録している。イベント元HEADと実行対象SHAを区別して検証した。
+
+- KLEも公開registryの `=0.3.11` と同checksumへ更新し、`just kuc-contract-check` が終了0。5 passed / 39 filtered、179.05秒（全体約267秒）、default issuer/no platform policy/font hash注入で10stageのartifactを生成した。証跡は `tmp/v0311-release/kle-registry-artifact-proof/` にlog・registry照合・全stage JSONを保持する。KDV受入は継続中。
+- 訂正: 以前のKDV診断probeの95点は、`sample.md` の参照PNG SHA-256 `7183c95d24e7…` と `sample_diagrams.md` の `31fc692ccbe6…` を使用していた。KDVが追跡するKatanA参照はそれぞれ `88745146437b…` と `890c69378bda…` であり、同一fixture名でも参照成果物が異なる。このprobeをregistry-only受入証跡には用いない。
+- 公開registryの `katana-ui-core =0.3.11` を使い、追跡中のKatanA参照でKDV `just storybook-score-check` を再実行した結果は終了101、`sample.md` 52/95、`sample_diagrams.md` 89/95だった。閾値95、参照成果物、fixtureは変更しない。2.3は未完了のままとし、KatanA担当へ生成元commit・成果物SHA・寸法・fixture hashを備えた権威ある候補artifactを要求した。
+- 追補: KatanA担当がKDV `29c591a4475c32164b994412bab388bd25e54221`、KUC `0.3.11`、registry-only解決、V8 152.2.0単一の独立snapshot artifactを生成した。sample crop SHA-256は `7183c95d24e7910dfb088f837cb8b37c8faa98c4f01ad51441c1287009ee91dc`、diagrams cropは `31fc692ccbe6a803242768ae3a5fd8df7346f8ec0307fb353dd09ea54d99ecda` で、以前のcandidate hashesと一致する。provenanceはKatanA側 `target/typography-host.tyoRkw/output-kdv-0.5.6-kuc-0.3.11-29c591a/provenance.json`。この正規候補とKDV追跡参照の差異をKDV owner-layerで切り分け、閾値・参照・fixtureを変えずに95点受入を再検証する。
+- immutable candidate manifestの追跡台帳: KatanA base `af55949c4ee7ddad414ed93fa360a67e9464acf4`、KDV `1b0ad91875a5a7062972614f6272fc118c56bc3b`、KDV crate `3ea7eb4dd58409b9ac37345036186c38043e3d2cf3db7e711eba9261cd58659d`、KRR `0.4.20`、KUC `0.3.11`、V8 `152.2.0`単一、path/git/patch overrideなし。fixture SHA-256はsample `489360a81d60af20d67f8ea47e251732a194983431ea1ab261627490cc9009e1`、diagrams `88f5cfae620fa721cd0a53765402833dc6e705dfc27c6cd1808143530e043dd3`。crop geometryは `2374x4450+88+268` から `1280x2400`、sample crop `7183c95d24e7910dfb088f837cb8b37c8faa98c4f01ad51441c1287009ee91dc`、diagrams crop `c6b6326f76374ea2712ca634b877ece7162acf7ea949ec1c1c4ee23b0fc31577`。生成manifest（3,794 bytes）のSHA-256 `e791667728522e851981ec7f33fe75fc8abf1bf93985841b8d6e2668ec02ac4c` を固定し、ignored outputに依存せず候補の入力・出力・geometryを復元可能にする。

@@ -1,7 +1,9 @@
 use super::canvas::Canvas;
 use super::text::TextRenderer;
 use super::ui_tree_canvas_rgba::{packed_rgb, rgba_alpha, rgba_sample};
-use super::ui_tree_canvas_types::{CanvasBlitRequest, RgbaBlitRequest};
+#[cfg(test)]
+use super::ui_tree_canvas_types::CanvasBlitRequest;
+use super::ui_tree_canvas_types::RgbaBlitRequest;
 use katana_ui_core::facade::UiCoreFacade;
 use std::cell::RefCell;
 
@@ -25,60 +27,9 @@ impl Canvas {
             renderer.draw(self, text, x, y, TEXT_SIZE, color);
         });
     }
-
     pub fn text_width_with_role(&self, role: &str, text: &str) -> usize {
         with_text_renderer(role, |renderer| renderer.measure_width(text, TEXT_SIZE))
     }
-
-    pub fn blit_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
-        for y in 0..request.height {
-            let source_y = request.source_y.saturating_add(y);
-            if source_y >= source.height() {
-                break;
-            }
-            self.blit_canvas_row(source, request, y, source_y);
-        }
-        self.blit_canvas_text_runs(source, request);
-    }
-
-    fn blit_canvas_row(
-        &mut self,
-        source: &Canvas,
-        request: CanvasBlitRequest,
-        dest_y_offset: usize,
-        source_y: usize,
-    ) {
-        if self.copy_unclipped_canvas_row(source, request, dest_y_offset, source_y) {
-            return;
-        }
-        let dest_y = request.dest_y.saturating_add(dest_y_offset);
-        let copy_width = request
-            .width
-            .min(source.width())
-            .min(self.width().saturating_sub(request.dest_x))
-            .saturating_mul(usize::from(dest_y < self.height()));
-        for x in 0..copy_width {
-            let dest_x = request.dest_x.saturating_add(x);
-            let color = source.pixels()[source_y * source.width() + x];
-            self.set(dest_x, dest_y, color);
-        }
-    }
-
-    fn blit_canvas_text_runs(&mut self, source: &Canvas, request: CanvasBlitRequest) {
-        let source_bottom = request.source_y.saturating_add(request.height);
-        for run in source.text_runs() {
-            let rect = run.rect();
-            if rect.bottom() <= request.source_y || rect.y >= source_bottom {
-                continue;
-            }
-            let target_x = request.dest_x.saturating_add(rect.x);
-            let target_y = request
-                .dest_y
-                .saturating_add(rect.y.saturating_sub(request.source_y));
-            self.record_text_run(run.text(), target_x, target_y, rect.width, rect.height);
-        }
-    }
-
     pub fn blit_rgba(&mut self, source: RgbaBlitRequest<'_>) {
         if source.width == 0 || source.area.width == 0 || source.area.height == 0 {
             return;
@@ -182,10 +133,10 @@ impl Canvas {
         &self,
         area: super::ui_tree_canvas_types::UiTreeRenderArea,
     ) -> PhysicalImageTarget {
-        let unclipped_left = self.logical_scale(area.x);
-        let unclipped_top = self.logical_scale(area.y);
-        let unclipped_right = self.logical_scale(area.x.saturating_add(area.width));
-        let unclipped_bottom = self.logical_scale(area.y.saturating_add(area.height));
+        let unclipped_left = self.unclipped_physical_x(area.x);
+        let unclipped_top = self.unclipped_physical_y(area.y);
+        let unclipped_right = self.unclipped_physical_x(area.x.saturating_add(area.width));
+        let unclipped_bottom = self.unclipped_physical_y(area.y.saturating_add(area.height));
         if unclipped_left >= self.width
             || unclipped_top >= self.height
             || unclipped_right <= unclipped_left

@@ -42,12 +42,13 @@ pub(super) fn draw_span_background(
         return;
     }
     if style.highlight {
-        canvas.fill_rect_at_logical_y(
+        canvas.blend_rect_at_logical_y(
             x,
             y,
             width,
             metrics.highlight_box_height(),
             palette.text_highlight_background,
+            palette.text_highlight_alpha,
         );
         return;
     }

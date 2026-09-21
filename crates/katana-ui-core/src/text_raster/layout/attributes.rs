@@ -74,7 +74,7 @@ fn family_for<'a>(
                 .unwrap_or(Family::Monospace)
         } else {
             text_faces
-                .selected_face(family, style, text)
+                .proportional_face()
                 .map(|face| Family::Name(face.family()))
                 .unwrap_or(Family::SansSerif)
         },

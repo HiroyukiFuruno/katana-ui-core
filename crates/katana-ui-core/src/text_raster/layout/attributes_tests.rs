@@ -10,6 +10,7 @@ use std::path::PathBuf;
 const TEST_FONT_SIZE_PX: f32 = 16.0;
 const TEST_FACE_INDEX: u32 = 3;
 const TEST_FACE_WEIGHT: u16 = 300;
+const TEST_MONOSPACE_FACE_WEIGHT: u16 = 650;
 
 fn font() -> FontToken {
     FontToken {
@@ -21,7 +22,7 @@ fn font() -> FontToken {
 }
 
 fn selected_non_regular_faces() -> ResolvedTextFaces {
-    let face = PlatformRegularFontFace {
+    let proportional = PlatformRegularFontFace {
         family: "Candidate".to_owned(),
         source_file_path: PathBuf::from("candidate.ttc"),
         index: TEST_FACE_INDEX,
@@ -30,9 +31,38 @@ fn selected_non_regular_faces() -> ResolvedTextFaces {
         stretch: Stretch::Condensed,
         selection_family: "__candidate__".to_owned(),
     };
+    let monospace = PlatformRegularFontFace {
+        selection_family: "__monospace__".to_owned(),
+        ..proportional.clone()
+    };
     ResolvedTextFaces::from_candidate_faces(PlatformRegularFontFaces {
-        proportional: Some(face.clone()),
-        monospace: Some(face),
+        proportional: vec![proportional],
+        monospace: vec![monospace],
+    })
+}
+
+fn selected_distinct_regular_and_monospace_faces() -> ResolvedTextFaces {
+    let proportional = PlatformRegularFontFace {
+        family: "Candidate".to_owned(),
+        source_file_path: PathBuf::from("candidate.ttc"),
+        index: TEST_FACE_INDEX,
+        weight: TEST_FACE_WEIGHT,
+        style: FontStyle::Oblique,
+        stretch: Stretch::Condensed,
+        selection_family: "__candidate__".to_owned(),
+    };
+    let monospace = PlatformRegularFontFace {
+        family: "Monospace".to_owned(),
+        source_file_path: PathBuf::from("monospace.ttc"),
+        index: TEST_FACE_INDEX,
+        weight: TEST_MONOSPACE_FACE_WEIGHT,
+        style: FontStyle::Italic,
+        stretch: Stretch::Expanded,
+        selection_family: "__monospace__".to_owned(),
+    };
+    ResolvedTextFaces::from_candidate_faces(PlatformRegularFontFaces {
+        proportional: vec![proportional],
+        monospace: vec![monospace],
     })
 }
 
@@ -108,18 +138,21 @@ fn first_candidate_faces_replace_generic_regular_and_monospace_families() {
         .family,
         cosmic_text::Family::Name("KatanA monospace")
     );
-    assert_eq!(
-        attrs_for_span(
-            &font(),
-            &UiTextSpan::plain("日本語"),
-            [u8::MAX; RGBA_CHANNEL_COUNT],
-            &face,
-            &text_faces,
-        )
-        .expect("non-ASCII fallback family")
-        .family,
-        cosmic_text::Family::Name("KatanA proportional")
-    );
+    for text in ["日本語", "a日本"] {
+        assert_eq!(
+            attrs_for_span(
+                &font(),
+                &UiTextSpan::plain(text),
+                [u8::MAX; RGBA_CHANNEL_COUNT],
+                &face,
+                &text_faces,
+            )
+            .expect("non-ASCII generic fallback family")
+            .family,
+            cosmic_text::Family::Name("KatanA proportional"),
+            "a generic monospace token must allow non-ASCII glyph fallback: {text}"
+        );
+    }
 }
 
 #[test]
@@ -197,9 +230,49 @@ fn selected_candidate_face_keeps_its_attrs_for_all_latin_style_requests() {
         span.style.monospace = monospace;
         let attrs = attrs_for_span(&token, &span, [u8::MAX; RGBA_CHANNEL_COUNT], &face, &faces)
             .expect("candidate attrs");
-        assert_eq!(attrs.family, cosmic_text::Family::Name("__candidate__"));
+        assert_eq!(attrs.family, cosmic_text::Family::Name("__monospace__"));
         assert_eq!(attrs.weight, Weight(300));
         assert_eq!(attrs.style, FontStyle::Oblique);
         assert_eq!(attrs.stretch, Stretch::Condensed);
+    }
+}
+
+#[test]
+fn non_ascii_monospace_span_uses_proportional_fallback_face_attrs() {
+    let face = PlatformColorEmojiFaceRecord {
+        platform_profile: PlatformFontProfile::Unsupported,
+        family_identity: String::new(),
+        source_file_path: None,
+        raw_file_sha256: None,
+        catalog_fingerprint: PlatformFontCatalogFingerprint::from_bytes([0; 32]),
+        availability: PlatformColorEmojiAvailability::Unavailable(
+            PlatformColorEmojiUnavailableReason::NoCandidates,
+        ),
+    };
+    let faces = selected_distinct_regular_and_monospace_faces();
+
+    for text in ["ASCII", "日本語", "a日本"] {
+        let mut span = UiTextSpan::plain(text);
+        span.style.monospace = true;
+        let attrs = attrs_for_span(&font(), &span, [u8::MAX; RGBA_CHANNEL_COUNT], &face, &faces)
+            .expect("monospace candidate attrs");
+
+        assert_eq!(
+            attrs.family,
+            if text.is_ascii() {
+                cosmic_text::Family::Name("__monospace__")
+            } else {
+                cosmic_text::Family::Name("__candidate__")
+            },
+        );
+        if text.is_ascii() {
+            assert_eq!(attrs.weight, Weight(650));
+            assert_eq!(attrs.style, FontStyle::Italic);
+            assert_eq!(attrs.stretch, Stretch::Expanded);
+        } else {
+            assert_eq!(attrs.weight, Weight(TEST_FACE_WEIGHT));
+            assert_eq!(attrs.style, FontStyle::Oblique);
+            assert_eq!(attrs.stretch, Stretch::Condensed);
+        }
     }
 }

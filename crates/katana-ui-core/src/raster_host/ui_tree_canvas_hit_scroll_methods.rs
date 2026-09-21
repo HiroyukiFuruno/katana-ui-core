@@ -75,10 +75,17 @@ impl UiTreeHostActionHitCollector<'_> {
             code_text: self.code_text,
             typography: self.typography,
             scroll_clip: self.scroll_clip,
+            viewport_bottom: Some(source_y + viewport_height as f32),
             semantic_node_id: self.semantic_node_id.clone(),
             height_cache: MeasuredNodeHeightCache::default(),
+            #[cfg(test)]
+            visited_node_count: 0,
         };
         content_collector.collect_visible_children(node, 0, source_y);
+        #[cfg(test)]
+        {
+            self.visited_node_count += content_collector.visited_node_count;
+        }
         self.hits
             .extend(content_collector.hits.into_iter().filter_map(|hit| {
                 clip_scroll_hit(
@@ -123,6 +130,13 @@ impl UiTreeHostActionHitCollector<'_> {
 
     fn collect_visible_children(&mut self, node: &UiNode, x: usize, source_y: f32) {
         for child in node.children() {
+            if self.y as f32
+                >= self
+                    .viewport_bottom
+                    .unwrap_or(source_y + self.area.height as f32)
+            {
+                break;
+            }
             self.collect_visible_node(child, x, source_y);
         }
     }
@@ -133,6 +147,10 @@ impl UiTreeHostActionHitCollector<'_> {
         x: usize,
         source_y: f32,
     ) {
+        #[cfg(test)]
+        {
+            self.visited_node_count += 1;
+        }
         if can_render_children_incrementally(node) {
             self.collect_visible_incremental_container(node, x, source_y);
             return;
@@ -184,7 +202,10 @@ impl UiTreeHostActionHitCollector<'_> {
             if index > 0 {
                 self.advance_y(gap);
             }
-            if self.y as f32 >= source_y + previous_area.height as f32 {
+            let visible_bottom = self
+                .viewport_bottom
+                .unwrap_or(source_y + previous_area.height as f32);
+            if self.y as f32 >= visible_bottom {
                 break;
             }
             if requested_height > 0 && self.text_logical_y >= requested_logical_bottom {
@@ -233,8 +254,11 @@ impl UiTreeHostActionHitCollector<'_> {
             code_text: self.code_text,
             typography: self.typography,
             scroll_clip: self.scroll_clip,
+            viewport_bottom: None,
             semantic_node_id: self.semantic_node_id.clone(),
             height_cache: MeasuredNodeHeightCache::default(),
+            #[cfg(test)]
+            visited_node_count: 0,
         };
         for child in node.children() {
             content_collector.node(child, 0);

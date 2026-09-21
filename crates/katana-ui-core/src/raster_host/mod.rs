@@ -7,6 +7,7 @@ pub(crate) mod canvas;
 pub(crate) mod canvas_blit;
 pub(crate) mod canvas_clip;
 pub(crate) mod canvas_color;
+pub(crate) mod canvas_factory;
 pub(crate) mod canvas_fractional_y;
 pub(crate) mod canvas_model;
 pub(crate) mod canvas_physical;
@@ -30,6 +31,7 @@ pub(crate) mod text_selection;
 pub(crate) mod text_selection_overlay;
 pub(crate) mod text_selection_types;
 pub(crate) mod ui_tree_canvas;
+pub(crate) mod ui_tree_canvas_blit;
 pub(crate) mod ui_tree_canvas_checkbox;
 pub(crate) mod ui_tree_canvas_choice_control;
 pub(crate) mod ui_tree_canvas_context_menu;
@@ -72,6 +74,10 @@ pub(crate) mod ui_tree_interaction_surface;
 pub(crate) mod ui_tree_storybook_host;
 pub(crate) mod ui_tree_surface_host;
 
+#[cfg(test)]
+mod canvas_blit_regression_tests;
+#[cfg(test)]
+mod canvas_edge_contract_tests;
 #[cfg(test)]
 mod canvas_extensions_regression_tests;
 #[cfg(test)]

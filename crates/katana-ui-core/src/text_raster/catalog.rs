@@ -37,6 +37,7 @@ impl PlatformFontCatalog {
             policy,
             font_system: Mutex::new(font_system),
             first_candidate_font_system: Mutex::new(None),
+            candidate_chain_font_system: Mutex::new(None),
             emoji_face,
             regular_font_faces,
             stats: PlatformFontCatalogStats {
@@ -87,20 +88,26 @@ impl PlatformFontCatalog {
         face_selection: PlatformTextFaceSelection,
         operation: impl FnOnce(&mut FontSystem) -> T,
     ) -> Result<T, PlatformFontCatalogError> {
-        if face_selection == PlatformTextFaceSelection::System || self.regular_font_faces.is_empty()
-        {
-            return self.with_font_system(operation);
+        match face_selection {
+            PlatformTextFaceSelection::System => self.with_font_system(operation),
+            PlatformTextFaceSelection::FirstCandidate if !self.regular_font_faces.is_empty() => {
+                self.with_selected_font_system(&self.first_candidate_font_system, false, operation)
+            }
+            PlatformTextFaceSelection::CandidateChain if !self.regular_font_faces.is_empty() => {
+                self.with_selected_font_system(&self.candidate_chain_font_system, true, operation)
+            }
+            _ => self.with_font_system(operation),
         }
-        self.with_first_candidate_font_system(operation)
     }
 
-    fn with_first_candidate_font_system<T>(
+    fn with_selected_font_system<T>(
         &self,
+        cache: &Mutex<Option<FontSystem>>,
+        include_candidate_chain: bool,
         operation: impl FnOnce(&mut FontSystem) -> T,
     ) -> Result<T, PlatformFontCatalogError> {
         {
-            let mut selected_font_system = self
-                .first_candidate_font_system
+            let mut selected_font_system = cache
                 .lock()
                 .map_err(|_| PlatformFontCatalogError::FontSystemLockPoisoned)?;
             if let Some(font_system) = selected_font_system.as_mut() {
@@ -109,10 +116,13 @@ impl PlatformFontCatalog {
         }
 
         let (locale, database) = self.clone_font_database()?;
-        let selected_font_system =
-            selection::first_candidate_font_system(locale, database, &self.regular_font_faces);
-        let mut cached_font_system = self
-            .first_candidate_font_system
+        let selected_font_system = selection::selected_candidate_font_system(
+            locale,
+            database,
+            &self.regular_font_faces,
+            include_candidate_chain,
+        );
+        let mut cached_font_system = cache
             .lock()
             .map_err(|_| PlatformFontCatalogError::FontSystemLockPoisoned)?;
         let font_system = cached_font_system.get_or_insert(selected_font_system);

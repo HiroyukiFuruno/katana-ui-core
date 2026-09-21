@@ -4,19 +4,25 @@ use cosmic_text::{
     fontdb::{Database, FaceInfo, ID},
 };
 
-pub(super) fn first_candidate_font_system(
+pub(super) fn selected_candidate_font_system(
     locale: String,
     mut database: Database,
     selected_faces: &PlatformRegularFontFaces,
+    include_candidate_chain: bool,
 ) -> FontSystem {
+    let selected_faces = if include_candidate_chain {
+        selected_faces.iter().collect::<Vec<_>>()
+    } else {
+        selected_faces.first_candidates().collect::<Vec<_>>()
+    };
     let aliases = selected_faces
-        .iter()
-        .flat_map(|selected| {
+        .into_iter()
+        .filter_map(|selected| {
             database
                 .faces()
-                .filter(move |face| face_matches_selected_candidate(face, selected))
+                .find(|face| face_matches_selected_candidate(face, selected))
                 .cloned()
-                .map(move |mut face| {
+                .map(|mut face| {
                     face.id = ID::dummy();
                     face.families = face
                         .families
@@ -33,7 +39,10 @@ pub(super) fn first_candidate_font_system(
     FontSystem::new_with_locale_and_db(locale, database)
 }
 
-fn face_matches_selected_candidate(face: &FaceInfo, selected: &PlatformRegularFontFace) -> bool {
+pub(super) fn face_matches_selected_candidate(
+    face: &FaceInfo,
+    selected: &PlatformRegularFontFace,
+) -> bool {
     catalog_cache::file_path_from_source(&face.source) == Some(selected.source_file_path.as_path())
         && face.index == selected.index
 }

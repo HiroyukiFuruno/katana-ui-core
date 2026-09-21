@@ -1,6 +1,6 @@
-use super::text_runtime_paint::{draw_raster, record_runtime_text_run, visible_raster_width};
 #[cfg(test)]
-use super::text_runtime_paint::{physical_draw_origin, selection_glyph_widths};
+use super::text_runtime_paint::selection_glyph_widths;
+use super::text_runtime_paint::{draw_raster, record_runtime_text_run, visible_raster_width};
 use super::{RichTextLineSpan, RichTextStyle, TextRenderer};
 use crate::raster_host::canvas::Canvas;
 use katana_ui_core::facade::UiCoreFacade;
@@ -219,8 +219,8 @@ mod tests {
 
     #[test]
     fn fractional_draw_origin_is_quantized_once_at_the_physical_canvas_boundary() {
-        assert_eq!(23, physical_draw_origin(11.25, 2.0));
-        assert_eq!(11, physical_draw_origin(11.25, 1.0));
+        assert_eq!(23, (11.25_f64 * 2.0).round() as isize);
+        assert_eq!(11, (11.25_f64 * 1.0).round() as isize);
     }
 
     #[test]

@@ -3,7 +3,6 @@ use super::super::super::ui_tree_canvas_palette::UiTreeCanvasPalette;
 use super::super::super::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 use katana_ui_core::render_model::{UiTextSpan, UiTextSpanStyle};
 
-const HIGHLIGHT_BACKGROUND: u32 = 0x4a4620;
 const CURRENT_HIGHLIGHT_BACKGROUND: u32 = 0x654100;
 const INLINE_CODE_LEFT_PADDING: usize = 4;
 const INLINE_CODE_EXTRA_WIDTH: usize = 8;
@@ -38,7 +37,14 @@ pub(super) fn draw_span_background(
         return;
     }
     if style.highlight {
-        canvas.fill_rect(x, y, width, metrics.highlight_height, HIGHLIGHT_BACKGROUND);
+        canvas.blend_rect(
+            x,
+            y,
+            width,
+            metrics.highlight_height,
+            palette.text_highlight_background,
+            palette.text_highlight_alpha,
+        );
         return;
     }
     if style.inline_code {
@@ -95,7 +101,7 @@ mod tests {
     use crate::visual::ui_tree_canvas_palette::UiTreeCanvasPalette;
     use crate::visual::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
     use katana_ui_core::render_model::UiTextSpanStyle;
-    use katana_ui_core::theme::ThemeSnapshot;
+    use katana_ui_core::theme::{ColorToken, ThemeSnapshot};
 
     #[test]
     fn inline_code_background_matches_export_surface_padding_and_height() {
@@ -168,7 +174,49 @@ mod tests {
             palette,
             metrics,
         );
-        assert_eq!(Some(super::HIGHLIGHT_BACKGROUND), pixel_at(&canvas, 40, 8));
+        assert_eq!(
+            Some(palette.text_highlight_background),
+            pixel_at(&canvas, 40, 8)
+        );
+    }
+
+    #[test]
+    fn text_highlight_theme_token_blends_its_rgba_over_light_and_dark_canvas_pixels() {
+        for (mut theme, background, expected_alpha_60) in [
+            (ThemeSnapshot::light(), 0xe0e8f0, 0xad_b6_be),
+            (ThemeSnapshot::dark(), 0x102030, 0x0e_1d_2b),
+        ] {
+            let fallback = UiTreeCanvasPalette::from_theme(&theme);
+            assert_eq!(0x4a4620, fallback.text_highlight_background);
+            let metrics = metrics_for_test();
+            for (alpha, expected) in [(0, background), (60, expected_alpha_60), (255, 0x0a141e)] {
+                theme
+                    .colors
+                    .retain(|token| token.name != "text-highlight-background");
+                theme.colors.push(ColorToken {
+                    name: "text-highlight-background".to_owned(),
+                    rgba: [10, 20, 30, alpha],
+                });
+                let palette = UiTreeCanvasPalette::from_theme(&theme);
+                assert_eq!(0x0a141e, palette.text_highlight_background);
+                assert_eq!(alpha, palette.text_highlight_alpha);
+                let mut canvas = Canvas::new(24, 32, background);
+                draw_span_background(
+                    &mut canvas,
+                    0,
+                    0,
+                    20,
+                    UiTextSpanStyle {
+                        highlight: true,
+                        ..UiTextSpanStyle::default()
+                    },
+                    palette,
+                    metrics,
+                );
+                assert_eq!(expected, canvas.pixels()[0]);
+                assert_eq!(background, canvas.pixels()[23]);
+            }
+        }
     }
 
     fn metrics_for_test() -> UiTreeTextMetrics {

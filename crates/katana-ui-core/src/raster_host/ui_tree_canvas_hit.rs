@@ -36,6 +36,13 @@ use katana_ui_core::render_model::{
     UI_LINK_OPEN_ACTION_ID, UiCursor, UiHostActionPlan, UiNode, UiNodeId, UiNodeKind, UiTextSpan,
 };
 use katana_ui_core::theme::ThemeSnapshot;
+#[cfg(test)]
+use std::cell::Cell;
+
+#[cfg(test)]
+thread_local! {
+    static VIEWPORT_INTERACTION_VISIT_COUNT: Cell<usize> = const { Cell::new(0) };
+}
 
 #[path = "ui_tree_canvas_hit_methods.rs"]
 mod methods;
@@ -52,8 +59,11 @@ pub(super) struct UiTreeHostActionHitCollector<'a> {
     code_text: &'a TextRenderer,
     typography: UiTreeDocumentTypography,
     scroll_clip: ScrollHitClip,
+    viewport_bottom: Option<f32>,
     semantic_node_id: Option<UiNodeId>,
     height_cache: MeasuredNodeHeightCache,
+    #[cfg(test)]
+    visited_node_count: usize,
 }
 
 impl UiTreeHostActionHitCollector<'_> {
@@ -92,6 +102,28 @@ impl UiTreeHostActionHitCollector<'_> {
         )
     }
 
+    #[cfg(test)]
+    pub(super) fn collect_with_visit_count(
+        root: &UiNode,
+        area: UiTreeRenderArea,
+    ) -> (Vec<UiTreeHostActionHit>, usize) {
+        let facade = UiCoreFacade::default();
+        let text = TextRenderer::load(&facade, facade.default_font_role());
+        let export_text = TextRenderer::load(&facade, facade.default_font_role());
+        let code_text = TextRenderer::load(&facade, "code");
+        let mut collector = Self::collector(
+            root,
+            area,
+            &text,
+            &export_text,
+            &code_text,
+            UiTreeDocumentTypography::default(),
+            ScrollHitClip::Viewport,
+        );
+        collector.node(root, 0);
+        (collector.hits, collector.visited_node_count)
+    }
+
     pub(super) fn collect_viewport_with_renderers<'a>(
         root: &UiNode,
         area: UiTreeRenderArea,
@@ -128,13 +160,20 @@ impl UiTreeHostActionHitCollector<'_> {
             export_text,
             code_text,
             typography,
-            ScrollHitClip::Document,
+            ScrollHitClip::Viewport,
         );
         collector.node(root, 0);
+        #[cfg(test)]
+        VIEWPORT_INTERACTION_VISIT_COUNT.with(|count| count.set(collector.visited_node_count));
         (
             clip_action_hits_to_viewport(collector.hits, area),
             clip_node_hits_to_viewport(collector.node_hits, area),
         )
+    }
+
+    #[cfg(test)]
+    pub(super) fn viewport_interaction_visit_count() -> usize {
+        VIEWPORT_INTERACTION_VISIT_COUNT.with(Cell::get)
     }
 
     pub(super) fn collect_node_hits_with_renderers<'a>(
@@ -289,8 +328,11 @@ impl UiTreeHostActionHitCollector<'_> {
             code_text,
             typography,
             scroll_clip,
+            viewport_bottom: None,
             semantic_node_id: None,
             height_cache: MeasuredNodeHeightCache::default(),
+            #[cfg(test)]
+            visited_node_count: 0,
         }
     }
 }

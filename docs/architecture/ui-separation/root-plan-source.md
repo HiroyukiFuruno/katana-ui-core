@@ -258,6 +258,14 @@ KUC active tree は external runtime / renderer の選定、比較、品質 gate
 - P4-0-002: KUC release gate は external runtime / renderer の成否を参照しない。
 - P4-0-003: KUC が保証するのは external runtime / renderer が消費できる中立 public API までとする。
 
+## 14.1. Issue ownership boundary
+
+KUC Issue の完了判定は、KUC 自身が所有する public API、後方互換性、KUC 内の自動回帰、package / release quality gate に限定する。下流 repository の採用状況、個別画面の品質スコア、下流 release は KUC Issue を open のままにする条件にしてはならない。
+
+- 正: KUC の API・実装・KUC 内 contract test・公開品質ゲートを満たしたら KUC Issue を Close し、下流の採用や表示差異はその repository の Issue で追跡する。
+- 誤: KDV / KLE / KatanA の registry-only 受入、canonical score、release を KUC Issue の DoD や Close 条件に含める。
+- 下流から発見された問題でも、KUC の中立 API 契約に還元できる部分だけを KUC Issue とする。consumer 固有の補償、fixture、renderer、採用作業は owner repository へ handoff する。
+
 ## 15. KUC done criteria
 
 - `katana-ui-core` core が external runtime / renderer なしで compile できる。

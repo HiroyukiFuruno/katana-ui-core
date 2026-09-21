@@ -2,44 +2,9 @@ use super::canvas_clip::CanvasClip;
 use super::canvas_color::blend_color;
 pub use super::canvas_model::Canvas;
 use super::canvas_model::CanvasImageSurfaceExtentMode;
-use super::canvas_scale::{normalized_scale, physical_size};
 const RECT_BORDER_WIDTH: usize = 1;
 
 impl Canvas {
-    #[must_use]
-    pub fn new(width: usize, height: usize, color: u32) -> Self {
-        Self::new_scaled(width, height, 1.0, color)
-    }
-
-    #[must_use]
-    pub fn new_scaled(width: usize, height: usize, scale: f32, color: u32) -> Self {
-        Self::new_scaled_with_raster_scale(width, height, scale, scale, color)
-    }
-
-    #[must_use]
-    pub fn new_scaled_with_raster_scale(
-        width: usize,
-        height: usize,
-        scale: f32,
-        raster_scale: f32,
-        color: u32,
-    ) -> Self {
-        let scale = normalized_scale(scale);
-        let raster_scale = normalized_scale(raster_scale);
-        Self {
-            width: physical_size(width, scale),
-            height: physical_size(height, scale),
-            logical_width: width,
-            logical_height: height,
-            scale_factor: scale,
-            raster_scale_factor: raster_scale,
-            image_surface_extent_mode: CanvasImageSurfaceExtentMode::LogicalDisplay,
-            pixels: vec![color; physical_size(width, scale) * physical_size(height, scale)],
-            clip: None,
-            text_runs: Vec::new(),
-        }
-    }
-
     #[must_use]
     pub fn with_reference_capture_image_surface_extents(mut self) -> Self {
         self.image_surface_extent_mode = CanvasImageSurfaceExtentMode::RasterPresentation;
@@ -98,6 +63,25 @@ impl Canvas {
             let start = current_y * self.width + rect.x;
             let end = current_y * self.width + rect.right();
             self.pixels[start..end].fill(color);
+        }
+    }
+
+    pub(crate) fn blend_rect_at_logical_y(
+        &mut self,
+        x: usize,
+        y: f32,
+        width: usize,
+        height: f32,
+        color: u32,
+        alpha: u8,
+    ) {
+        let Some(rect) = self.visible_rect_at_logical_y(x, y, width, height) else {
+            return;
+        };
+        for current_y in rect.y..rect.bottom() {
+            for current_x in rect.x..rect.right() {
+                self.blend_physical(current_x, current_y, color, alpha);
+            }
         }
     }
 

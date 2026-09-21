@@ -1,6 +1,6 @@
 use super::Canvas;
 use crate::visual::canvas_clip::CanvasClip;
-use crate::visual::ui_tree_canvas_types::CanvasBlitRequest;
+use crate::visual::ui_tree_canvas_types::PhysicalCanvasBlitRequest;
 
 const BACKGROUND: u32 = 0x000000;
 const FILL: u32 = 0xffffff;
@@ -16,15 +16,18 @@ fn canvas_edge_contracts_cover_empty_clip_blit_selection_and_viewport() {
 
     let source = Canvas::new(2, 2, FILL);
     let mut target = Canvas::new(2, 2, BACKGROUND);
-    let request = CanvasBlitRequest {
+    let request = PhysicalCanvasBlitRequest {
         dest_x: 0,
         dest_y: 3,
+        dest_logical_x: 0,
+        dest_logical_y: 3,
         width: 2,
         height: 1,
         source_y: 0,
+        source_logical_y: 0.0,
     };
     assert!(target.copy_unclipped_canvas_row(&source, request, 0, 0));
-    let zero_width = CanvasBlitRequest {
+    let zero_width = PhysicalCanvasBlitRequest {
         dest_y: 0,
         width: 0,
         ..request

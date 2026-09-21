@@ -124,7 +124,7 @@ fn regular_candidates_resolve_the_first_loaded_family() -> io::Result<()> {
         catalog
             .regular_font_faces()
             .proportional
-            .as_ref()
+            .first()
             .map(|face| face.family.as_str()),
         Some(expected_family.as_str())
     );
@@ -162,7 +162,7 @@ fn regular_candidates_skip_existing_selection_family_names() -> io::Result<()> {
     assert_eq!(
         faces
             .proportional
-            .as_ref()
+            .first()
             .map(|face| face.selection_family.as_str()),
         Some("__kuc_first_candidate_proportional_1__")
     );

@@ -1,5 +1,5 @@
-use super::{Canvas, CanvasBlitRequest, RgbaBlitRequest};
-use crate::visual::ui_tree_canvas_types::{RgbaSourceRect, UiTreeRenderArea};
+use super::{Canvas, RgbaBlitRequest};
+use crate::visual::ui_tree_canvas_types::{CanvasBlitRequest, RgbaSourceRect, UiTreeRenderArea};
 
 const BACKGROUND: u32 = 0x000000;
 

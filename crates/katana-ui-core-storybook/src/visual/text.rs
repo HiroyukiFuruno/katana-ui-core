@@ -407,12 +407,11 @@ fn draw_raster(
     raster: &PlatformTextRaster,
     origin_x: isize,
     origin_y: usize,
-    scale_factor: f32,
+    _scale_factor: f32,
     raster_vertical_scale: f32,
 ) {
-    let scale = normalized_scale_factor(scale_factor);
-    let origin_x = (origin_x as f64 * f64::from(scale)).round() as isize;
-    let origin_y = (origin_y as f64 * f64::from(scale)).round() as isize;
+    let origin_x = canvas.physical_text_origin_x(origin_x);
+    let origin_y = canvas.physical_text_origin_y(origin_y as f32);
     for (index, pixel) in raster.rgba_pixels.iter().enumerate() {
         let [red, green, blue, alpha] = *pixel;
         if alpha == 0 {

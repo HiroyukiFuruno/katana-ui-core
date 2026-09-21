@@ -1,6 +1,42 @@
+use super::ui_tree_canvas_types::PhysicalCanvasBlitRequest;
 use super::{Canvas, CanvasBlitRequest, RgbaBlitRequest, RgbaSourceRect, UiTreeRenderArea};
 
 const BACKGROUND: u32 = 0x000000;
+
+#[test]
+fn clipped_canvas_blit_uses_physical_coordinates_at_fractional_scale() {
+    let source_pixel = 0x27a4de;
+    let mut source = Canvas::new_scaled(4, 4, 1.5, BACKGROUND);
+    source.set_physical(0, 0, source_pixel);
+    let mut target = Canvas::new_scaled(4, 4, 1.5, BACKGROUND);
+
+    target.with_clip(1, 1, 2, 2, &mut |canvas| {
+        canvas.blit_canvas_physical(
+            &source,
+            PhysicalCanvasBlitRequest {
+                dest_x: 2,
+                dest_y: 2,
+                dest_logical_x: 1,
+                dest_logical_y: 1,
+                width: 3,
+                height: 3,
+                source_y: 0,
+                source_logical_y: 0.0,
+            },
+        );
+    });
+
+    assert_eq!(
+        source_pixel,
+        target.pixels()[2 * target.width() + 2],
+        "a clipped blit request is already in physical coordinates"
+    );
+    assert_eq!(
+        BACKGROUND,
+        target.pixels()[3 * target.width() + 3],
+        "the fallback must not apply the 1.5x scale a second time"
+    );
+}
 
 #[test]
 fn rgba_blit_uses_interpolated_samples_when_scaling_image_surface() {
@@ -97,33 +133,6 @@ fn retina_rgba_blit_bottom_clip_preserves_unclipped_source_scale() {
         0x3c0000,
         canvas.pixels()[3 * canvas.width()],
         "bottom-clipped retina blit must keep the original target scale and draw the top visible slice"
-    );
-}
-
-#[test]
-fn canvas_blit_preserves_selectable_text_runs() {
-    let mut source = Canvas::new(240, 160, BACKGROUND);
-    source.record_text_run("Viewer text", 16, 48, 120, 20);
-    let mut target = Canvas::new(320, 240, BACKGROUND);
-
-    target.blit_canvas(
-        &source,
-        CanvasBlitRequest {
-            dest_x: 40,
-            dest_y: 24,
-            width: 200,
-            height: 120,
-            source_y: 20,
-        },
-    );
-
-    let run = &target.text_runs()[0];
-    assert_eq!(
-        Some("Viewer text".to_string()),
-        target.copy_text_in_selection(
-            Some((run.x(), run.y() + run.height() / 2)),
-            Some((run.right(), run.y() + run.height() / 2)),
-        )
     );
 }
 

@@ -3,7 +3,7 @@ use super::ui_tree_canvas::UiTreeCanvasRenderer;
 use super::ui_tree_canvas_hit_metrics::remaining_width;
 use super::ui_tree_canvas_palette::UiTreeCanvasPalette;
 use super::ui_tree_canvas_scroll_measure::can_render_partial_media_frame_stack;
-use super::ui_tree_canvas_types::{CanvasBlitRequest, UiTreeRenderArea};
+use super::ui_tree_canvas_types::{PhysicalCanvasBlitRequest, UiTreeRenderArea};
 use katana_ui_core::render_model::{UiDimension, UiNode, UiNodeKind, UiVisualRole};
 
 const HOVER_SURFACE_PARTIAL_CLIP_GUARD: usize = 20;
@@ -15,11 +15,12 @@ pub(super) fn draw_partially_visible_node(
     node: &UiNode,
     x: usize,
     node_height: usize,
-    source_y: usize,
+    source_y: f32,
     area: UiTreeRenderArea,
     palette: UiTreeCanvasPalette,
 ) {
-    if source_y >= node_height {
+    let source_y = source_y.max(0.0);
+    if source_y >= node_height as f32 {
         return;
     }
     if node.kind() == UiNodeKind::ImageSurface {
@@ -53,7 +54,14 @@ pub(super) fn draw_partially_visible_node(
         return;
     }
     let temp_height = partial_node_temp_height(node, node_height, area.height);
-    let mut temp = Canvas::new(area.width, temp_height, palette.background);
+    let mut temp = Canvas::new_scaled_with_logical_phase(
+        area.width,
+        temp_height,
+        canvas.scale_factor(),
+        canvas.logical_phase_x().saturating_add(area.x),
+        partial_canvas_phase(canvas, area, source_y),
+        palette.background,
+    );
     let mut temp_y = 0;
     let local_x = x.saturating_sub(area.x);
     renderer.render_node(
@@ -73,16 +81,27 @@ pub(super) fn draw_partially_visible_node(
     let blit_source_y = if can_render_partial_node_in_viewport(node) {
         0
     } else {
-        source_y
+        temp.fractional_to_physical_y(source_y)
     };
-    canvas.blit_canvas(
+    canvas.blit_canvas_physical(
         &temp,
-        CanvasBlitRequest {
-            dest_x: area.x,
-            dest_y: area.y,
-            width: area.width,
-            height: area.height,
+        PhysicalCanvasBlitRequest {
+            dest_x: canvas.to_physical_x(area.x),
+            dest_y: canvas.to_physical_y(area.y),
+            dest_logical_x: area.x,
+            dest_logical_y: area.y,
+            width: canvas
+                .to_physical_x(area.x.saturating_add(area.width))
+                .saturating_sub(canvas.to_physical_x(area.x)),
+            height: canvas
+                .to_physical_y(area.y.saturating_add(area.height))
+                .saturating_sub(canvas.to_physical_y(area.y)),
             source_y: blit_source_y,
+            source_logical_y: if can_render_partial_node_in_viewport(node) {
+                0.0
+            } else {
+                source_y
+            },
         },
     );
 }
@@ -92,7 +111,7 @@ fn draw_partially_visible_hover_text_surface(
     canvas: &mut Canvas,
     node: &UiNode,
     x: usize,
-    source_y: usize,
+    source_y: f32,
     area: UiTreeRenderArea,
     palette: UiTreeCanvasPalette,
     node_height: usize,
@@ -100,32 +119,29 @@ fn draw_partially_visible_hover_text_surface(
     let Some(child) = node.children().first() else {
         return;
     };
-    let visible_height = node_height.saturating_sub(source_y).min(area.height);
-    if visible_height == 0 {
+    let visible_height = (node_height as f32 - source_y)
+        .max(0.0)
+        .min(area.height as f32);
+    if visible_height <= 0.0 {
         return;
     }
-    canvas.blend_rect(
+    draw_partially_visible_node(
+        renderer,
+        canvas,
+        child,
         x,
-        area.y,
+        node_height,
+        source_y,
+        area,
+        palette,
+    );
+    canvas.blend_rect_at_logical_y(
+        x,
+        area.y as f32,
         hover_surface_width(node, x, area),
         visible_height,
         palette.hover_background,
         HOVER_SURFACE_ALPHA,
-    );
-    let mut draw_y = area.y;
-    renderer.render_node(
-        canvas,
-        child,
-        x,
-        &mut draw_y,
-        UiTreeRenderArea {
-            x: area.x,
-            y: area.y,
-            width: area.width,
-            height: area.height,
-            scroll_y: source_y as f32,
-        },
-        palette,
     );
 }
 
@@ -134,7 +150,7 @@ fn draw_partially_visible_image_node(
     canvas: &mut Canvas,
     node: &UiNode,
     x: usize,
-    source_y: usize,
+    source_y: f32,
     area: UiTreeRenderArea,
     palette: UiTreeCanvasPalette,
 ) {
@@ -149,7 +165,7 @@ fn draw_partially_visible_image_node(
             y: area.y,
             width: area.width,
             height: area.height,
-            scroll_y: source_y as f32,
+            scroll_y: source_y,
         },
         palette,
     );
@@ -161,12 +177,19 @@ fn draw_partially_visible_media_frame_stack(
     node: &UiNode,
     x: usize,
     node_height: usize,
-    source_y: usize,
+    source_y: f32,
     area: UiTreeRenderArea,
     palette: UiTreeCanvasPalette,
 ) {
     let temp_height = node_height.max(1);
-    let mut temp = Canvas::new(area.width, temp_height, palette.background);
+    let mut temp = Canvas::new_scaled_with_logical_phase(
+        area.width,
+        temp_height,
+        canvas.scale_factor(),
+        canvas.logical_phase_x().saturating_add(area.x),
+        partial_canvas_phase(canvas, area, source_y),
+        palette.background,
+    );
     let local_x = x.saturating_sub(area.x);
     let mut draw_y = 0;
     renderer.render_node(
@@ -183,14 +206,21 @@ fn draw_partially_visible_media_frame_stack(
         },
         palette,
     );
-    canvas.blit_canvas(
+    canvas.blit_canvas_physical(
         &temp,
-        CanvasBlitRequest {
-            dest_x: area.x,
-            dest_y: area.y,
-            width: area.width,
-            height: area.height,
-            source_y,
+        PhysicalCanvasBlitRequest {
+            dest_x: canvas.to_physical_x(area.x),
+            dest_y: canvas.to_physical_y(area.y),
+            dest_logical_x: area.x,
+            dest_logical_y: area.y,
+            width: canvas
+                .to_physical_x(area.x.saturating_add(area.width))
+                .saturating_sub(canvas.to_physical_x(area.x)),
+            height: canvas
+                .to_physical_y(area.y.saturating_add(area.height))
+                .saturating_sub(canvas.to_physical_y(area.y)),
+            source_y: temp.fractional_to_physical_y(source_y),
+            source_logical_y: source_y,
         },
     );
 }
@@ -207,9 +237,13 @@ fn partial_node_temp_height(node: &UiNode, node_height: usize, viewport_height: 
     node_height.max(1)
 }
 
-fn partial_node_inner_scroll_y(node: &UiNode, source_y: usize) -> f32 {
+fn partial_canvas_phase(canvas: &Canvas, area: UiTreeRenderArea, source_y: f32) -> f64 {
+    canvas.effective_logical_phase_y() + area.y as f64 - f64::from(source_y)
+}
+
+fn partial_node_inner_scroll_y(node: &UiNode, source_y: f32) -> f32 {
     if can_render_partial_node_in_viewport(node) {
-        return source_y as f32;
+        return source_y;
     }
     0.0
 }
@@ -220,7 +254,9 @@ fn can_render_partial_node_in_viewport(node: &UiNode) -> bool {
 }
 
 fn can_render_partial_hover_text_surface(node: &UiNode) -> bool {
-    node.props().visual_role == UiVisualRole::HoverSurface
+    node.kind() == UiNodeKind::Stack
+        && node.props().visual_role == UiVisualRole::HoverSurface
+        && node.children().len() == 1
         && node
             .children()
             .first()
@@ -238,7 +274,7 @@ fn hover_surface_width(node: &UiNode, x: usize, area: UiTreeRenderArea) -> usize
 mod tests {
     use super::*;
     use katana_ui_core::atom::Text;
-    use katana_ui_core::render_model::UiPosition;
+    use katana_ui_core::render_model::{UiPosition, UiScrollAreaProps};
     use katana_ui_core::theme::ThemeSnapshot;
 
     fn render_context() -> (UiTreeCanvasRenderer, UiTreeCanvasPalette, UiTreeRenderArea) {
@@ -262,7 +298,7 @@ mod tests {
         let mut canvas = Canvas::new(96, 48, palette.background);
         let text: UiNode = Text::new("partial text").into();
 
-        draw_partially_visible_node(&renderer, &mut canvas, &text, 8, 20, 20, area, palette);
+        draw_partially_visible_node(&renderer, &mut canvas, &text, 8, 20, 20.0, area, palette);
         assert!(
             canvas
                 .pixels()
@@ -271,13 +307,13 @@ mod tests {
         );
 
         let image = UiNode::new(UiNodeKind::ImageSurface, "");
-        draw_partially_visible_node(&renderer, &mut canvas, &image, 8, 20, 1, area, palette);
+        draw_partially_visible_node(&renderer, &mut canvas, &image, 8, 20, 1.0, area, palette);
 
         let hover = UiNode::new(UiNodeKind::Stack, "")
             .visual_role(UiVisualRole::HoverSurface)
             .width(UiDimension::Px(30))
             .child(Text::new("hover"));
-        draw_partially_visible_node(&renderer, &mut canvas, &hover, 8, 24, 4, area, palette);
+        draw_partially_visible_node(&renderer, &mut canvas, &hover, 8, 24, 4.0, area, palette);
         assert!(
             canvas
                 .pixels()
@@ -294,11 +330,11 @@ mod tests {
             &generic_hover,
             8,
             24,
-            4,
+            4.0,
             area,
             palette,
         );
-        draw_partially_visible_node(&renderer, &mut canvas, &text, 8, 24, 4, area, palette);
+        draw_partially_visible_node(&renderer, &mut canvas, &text, 8, 24, 4.0, area, palette);
 
         let empty_hover =
             UiNode::new(UiNodeKind::Stack, "").visual_role(UiVisualRole::HoverSurface);
@@ -307,7 +343,7 @@ mod tests {
             &mut canvas,
             &empty_hover,
             8,
-            0,
+            0.0,
             area,
             palette,
             0,
@@ -317,7 +353,7 @@ mod tests {
             &mut canvas,
             &hover,
             8,
-            0,
+            0.0,
             area,
             palette,
             0,
@@ -344,7 +380,7 @@ mod tests {
             &media_frame,
             8,
             30,
-            5,
+            5.0,
             area,
             palette,
         );
@@ -356,14 +392,220 @@ mod tests {
         );
 
         assert_eq!(partial_node_temp_height(&media_frame, 30, 40), 40);
-        assert_eq!(partial_node_inner_scroll_y(&media_frame, 7), 7.0);
+        assert_eq!(partial_node_inner_scroll_y(&media_frame, 7.0), 7.0);
         let plain = UiNode::new(UiNodeKind::Column, "");
         assert_eq!(partial_node_temp_height(&plain, 30, 40), 30);
-        assert_eq!(partial_node_inner_scroll_y(&plain, 7), 0.0);
+        assert_eq!(partial_node_inner_scroll_y(&plain, 7.0), 0.0);
         let hover = UiNode::new(UiNodeKind::Stack, "").visual_role(UiVisualRole::HoverSurface);
         assert_eq!(partial_node_temp_height(&hover, 30, 40), 50);
         assert_eq!(hover_surface_width(&hover, 10, area), 74);
         let fixed = hover.width(UiDimension::Px(32));
         assert_eq!(hover_surface_width(&fixed, 10, area), 32);
+    }
+
+    #[test]
+    fn fractional_scale_partial_text_matches_the_full_physical_crop_at_nonzero_phase() {
+        let (renderer, palette, area) = render_context();
+        let text: UiNode = Text::new("phase-aware partial text").into();
+        let source_y = 0.75;
+        let mut full = Canvas::new_scaled_with_logical_phase(
+            area.width,
+            area.height,
+            1.25,
+            area.x,
+            area.y as f64 - f64::from(source_y),
+            palette.background,
+        );
+        let mut full_y = 0;
+        renderer.render_node(
+            &mut full,
+            &text,
+            4,
+            &mut full_y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: area.width,
+                height: area.height,
+                scroll_y: source_y,
+            },
+            palette,
+        );
+        let mut partial = Canvas::new_scaled(96, 48, 1.25, palette.background);
+        draw_partially_visible_node(
+            &renderer,
+            &mut partial,
+            &text,
+            8,
+            30,
+            source_y,
+            area,
+            palette,
+        );
+
+        let physical_dest_x = partial.to_physical_x(area.x);
+        let physical_dest_y = partial.to_physical_y(area.y);
+        for y in 0..full.height() {
+            for x in 0..full.width() {
+                assert_eq!(
+                    full.pixels()[y * full.width() + x],
+                    partial.pixels()[(physical_dest_y + y) * partial.width() + physical_dest_x + x],
+                    "partial text differs from the full physical crop at x={x}, y={y}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn nested_scroll_partial_matches_full_crop_with_destination_logical_phase() {
+        let (renderer, palette, area) = render_context();
+        let source_y = 0.75;
+        let inner = UiNode::new(UiNodeKind::ScrollArea, "")
+            .scroll_area(UiScrollAreaProps {
+                viewport_width: area.width as u32,
+                viewport_height: area.height as u32,
+                offset_y: 1,
+                ..UiScrollAreaProps::default()
+            })
+            .child(Text::new("nested phase-aware scroll content"));
+        let outer = UiNode::new(UiNodeKind::ScrollArea, "")
+            .scroll_area(UiScrollAreaProps {
+                viewport_width: area.width as u32,
+                viewport_height: area.height as u32,
+                ..UiScrollAreaProps::default()
+            })
+            .child(inner);
+        let target_phase_x = 3_usize;
+        let target_phase_y = 2.5;
+        let mut source = Canvas::new_scaled_with_logical_phase(
+            area.width,
+            30,
+            1.25,
+            target_phase_x.saturating_add(area.x),
+            target_phase_y + area.y as f64 - f64::from(source_y),
+            palette.background,
+        );
+        let mut source_y_cursor = 0;
+        renderer.render_node(
+            &mut source,
+            &outer,
+            4,
+            &mut source_y_cursor,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: area.width,
+                height: 30,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+        let mut expected = Canvas::new_scaled_with_logical_phase(
+            96,
+            48,
+            1.25,
+            target_phase_x,
+            target_phase_y,
+            palette.background,
+        );
+        let expected_dest_x = expected.to_physical_x(area.x);
+        let expected_dest_y = expected.to_physical_y(area.y);
+        expected.blit_canvas_physical(
+            &source,
+            PhysicalCanvasBlitRequest {
+                dest_x: expected_dest_x,
+                dest_y: expected_dest_y,
+                dest_logical_x: area.x,
+                dest_logical_y: area.y,
+                width: expected
+                    .to_physical_x(area.x.saturating_add(area.width))
+                    .saturating_sub(expected_dest_x),
+                height: expected
+                    .to_physical_y(area.y.saturating_add(area.height))
+                    .saturating_sub(expected_dest_y),
+                source_y: source.fractional_to_physical_y(source_y),
+                source_logical_y: source_y,
+            },
+        );
+        let mut partial = Canvas::new_scaled_with_logical_phase(
+            96,
+            48,
+            1.25,
+            target_phase_x,
+            target_phase_y,
+            palette.background,
+        );
+        draw_partially_visible_node(
+            &renderer,
+            &mut partial,
+            &outer,
+            8,
+            30,
+            source_y,
+            area,
+            palette,
+        );
+
+        assert_eq!(
+            expected.pixels(),
+            partial.pixels(),
+            "nested partial scroll must use the destination canvas logical phase"
+        );
+
+        assert_eq!(
+            expected.text_runs(),
+            partial.text_runs(),
+            "nested partial scroll must preserve the full crop's selectable text bounds"
+        );
+        let expected_runs: Vec<_> = expected
+            .text_runs()
+            .iter()
+            .find(|run| run.text() == "nested phase-aware scroll content")
+            .into_iter()
+            .collect();
+        let partial_runs: Vec<_> = partial
+            .text_runs()
+            .iter()
+            .find(|run| run.text() == "nested phase-aware scroll content")
+            .into_iter()
+            .collect();
+        assert_eq!(
+            1,
+            expected_runs.len(),
+            "full crop must expose the nested text"
+        );
+        assert_eq!(
+            1,
+            partial_runs.len(),
+            "partial crop must expose the nested text"
+        );
+        let expected_run = expected_runs[0];
+        let partial_run = partial_runs[0];
+        assert_eq!(
+            (
+                expected_run.x(),
+                expected_run.y(),
+                expected_run.width(),
+                expected_run.height()
+            ),
+            (
+                partial_run.x(),
+                partial_run.y(),
+                partial_run.width(),
+                partial_run.height()
+            ),
+            "nested partial scroll must retain the logical text-run hit bounds"
+        );
+        assert_eq!(
+            expected.copy_text_in_selection(
+                Some((expected_run.x(), expected_run.y())),
+                Some((expected_run.right(), expected_run.bottom())),
+            ),
+            partial.copy_text_in_selection(
+                Some((partial_run.x(), partial_run.y())),
+                Some((partial_run.right(), partial_run.bottom())),
+            ),
+            "nested partial scroll must retain text selection hit metadata"
+        );
     }
 }

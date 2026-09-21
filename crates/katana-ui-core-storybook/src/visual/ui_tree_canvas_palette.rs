@@ -10,11 +10,13 @@ const FALLBACK_ALERT_CAUTION: u32 = 0xd1242f;
 const FALLBACK_DANGER_ACCENT: u32 = 0xe05252;
 const FALLBACK_PENDING_BACKGROUND: u32 = 0x1d2630;
 const FALLBACK_HOVER_BACKGROUND: u32 = 0x243041;
+const FALLBACK_TEXT_HIGHLIGHT_BACKGROUND: u32 = 0x4a4620;
 const FALLBACK_DOCUMENT_RULE_BORDER_LIGHT: u32 = 0xd0d7de;
 const FALLBACK_DOCUMENT_RULE_BORDER_DARK: u32 = 0x30363d;
 const RED_SHIFT: u32 = 16;
 const GREEN_SHIFT: u32 = 8;
 const CHANNEL_MASK: u32 = 0xff;
+const ALPHA_CHANNEL_INDEX: usize = 3;
 const LIGHT_LUMA_THRESHOLD: u32 = 127;
 const LUMA_RED_WEIGHT: u32 = 299;
 const LUMA_GREEN_WEIGHT: u32 = 587;
@@ -31,6 +33,8 @@ pub(super) struct UiTreeCanvasPalette {
     pub link: u32,
     pub code_background: u32,
     pub inline_code_background: u32,
+    pub text_highlight_background: u32,
+    pub text_highlight_alpha: u8,
     pub table_background: u32,
     pub table_header_background: u32,
     pub table_even_row_background: u32,
@@ -52,6 +56,11 @@ pub(super) struct UiTreeCanvasPalette {
 impl UiTreeCanvasPalette {
     pub(super) fn from_theme(theme: &ThemeSnapshot) -> Self {
         let visual = VisualPalette::from_theme(theme);
+        let (text_highlight_background, text_highlight_alpha) = color_with_alpha(
+            theme,
+            "text-highlight-background",
+            FALLBACK_TEXT_HIGHLIGHT_BACKGROUND,
+        );
         Self {
             visual,
             background: visual.background,
@@ -61,6 +70,8 @@ impl UiTreeCanvasPalette {
             link: color(theme, "link", FALLBACK_LINK),
             code_background: visual.code_background,
             inline_code_background: color(theme, "inline-code-background", visual.code_background),
+            text_highlight_background,
+            text_highlight_alpha,
             table_background: color(theme, "table-row-background", visual.background),
             table_header_background: color(theme, "table-header-background", visual.surface),
             table_even_row_background: color(theme, "table-even-row-background", visual.surface),
@@ -94,6 +105,12 @@ impl UiTreeCanvasPalette {
 
 fn color(theme: &ThemeSnapshot, name: &str, fallback: u32) -> u32 {
     theme.color(name).map_or(fallback, rgb)
+}
+
+fn color_with_alpha(theme: &ThemeSnapshot, name: &str, fallback: u32) -> (u32, u8) {
+    theme.color(name).map_or((fallback, u8::MAX), |rgba| {
+        (rgb(rgba), rgba[ALPHA_CHANNEL_INDEX])
+    })
 }
 
 fn document_rule_border_fallback(background: u32) -> u32 {

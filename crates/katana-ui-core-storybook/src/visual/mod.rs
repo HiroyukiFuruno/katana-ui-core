@@ -4,6 +4,8 @@ mod canvas;
 mod canvas_blit;
 mod canvas_clip;
 mod canvas_color;
+mod canvas_factory;
+mod canvas_fractional_y;
 mod canvas_model;
 mod canvas_physical;
 mod canvas_png;
@@ -344,6 +346,9 @@ mod text_test_support;
 mod text_tests;
 mod types;
 mod ui_tree_canvas;
+mod ui_tree_canvas_blit;
+#[cfg(test)]
+mod ui_tree_canvas_blit_tests;
 mod ui_tree_canvas_checkbox;
 mod ui_tree_canvas_choice_control;
 #[cfg(test)]

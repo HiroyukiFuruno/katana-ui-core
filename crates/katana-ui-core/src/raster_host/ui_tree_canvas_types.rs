@@ -38,13 +38,30 @@ impl RgbaSourceRect {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CanvasBlitRequest {
     pub dest_x: usize,
     pub dest_y: usize,
     pub width: usize,
     pub height: usize,
     pub source_y: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(super) struct PhysicalCanvasBlitRequest {
+    pub dest_x: usize,
+    pub dest_y: usize,
+    /// The destination expressed in the target canvas's logical coordinate system.
+    ///
+    /// A physical offset cannot be divided by the scale factor when the canvas has
+    /// a non-zero phase: adjacent logical edges can round to different physical
+    /// spans. Keep the logical origin for selection metadata rebasing.
+    pub dest_logical_x: usize,
+    pub dest_logical_y: usize,
+    pub width: usize,
+    pub height: usize,
+    pub source_y: usize,
+    pub source_logical_y: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

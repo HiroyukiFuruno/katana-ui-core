@@ -81,45 +81,45 @@ pub(super) fn load_regular_candidates(
         })
         .sum();
     let mut regular_font_faces = super::PlatformRegularFontFaces {
-        proportional: first_face_from_loaded_candidates(
-            font_system,
-            &policy.proportional_candidates,
-        ),
-        monospace: first_face_from_loaded_candidates(font_system, &policy.monospace_candidates),
+        proportional: faces_from_loaded_candidates(font_system, &policy.proportional_candidates),
+        monospace: faces_from_loaded_candidates(font_system, &policy.monospace_candidates),
     };
     assign_selection_families(font_system, &mut regular_font_faces);
     (load_attempts, regular_font_faces)
 }
 
-fn first_face_from_loaded_candidates(
+fn faces_from_loaded_candidates(
     font_system: &FontSystem,
     candidates: &[PathBuf],
-) -> Option<super::PlatformRegularFontFace> {
+) -> Vec<super::PlatformRegularFontFace> {
     candidates
         .iter()
-        .find_map(|candidate| face_from_loaded_file(font_system, candidate))
+        .filter_map(|candidate| face_from_loaded_file(font_system, candidate))
+        .collect()
 }
 
 fn face_from_loaded_file(
     font_system: &FontSystem,
     source_file_path: &Path,
 ) -> Option<super::PlatformRegularFontFace> {
-    font_system.db().faces().find_map(|face| {
-        let path = file_path_from_source(&face.source)?;
-        if path != source_file_path {
-            return None;
-        }
-        let (family, _) = face.families.first()?;
-        Some(super::PlatformRegularFontFace {
-            family: family.clone(),
-            source_file_path: path.to_path_buf(),
-            index: face.index,
-            weight: face.weight.0,
-            style: face.style,
-            stretch: face.stretch,
-            selection_family: String::new(),
-        })
-    })
+    let mut candidate_database = cosmic_text::fontdb::Database::new();
+    candidate_database.load_font_file(source_file_path).ok()?;
+    let candidate_face = candidate_database.faces().next()?;
+    let (family, _) = candidate_face.families.first()?;
+    let selected = super::PlatformRegularFontFace {
+        family: family.clone(),
+        source_file_path: source_file_path.to_path_buf(),
+        index: candidate_face.index,
+        weight: candidate_face.weight.0,
+        style: candidate_face.style,
+        stretch: candidate_face.stretch,
+        selection_family: String::new(),
+    };
+    font_system
+        .db()
+        .faces()
+        .any(|face| super::selection::face_matches_selected_candidate(face, &selected))
+        .then_some(selected)
 }
 
 fn assign_selection_families(
@@ -127,11 +127,17 @@ fn assign_selection_families(
     faces: &mut super::PlatformRegularFontFaces,
 ) {
     let mut assigned = std::collections::HashSet::new();
-    if let Some(face) = &mut faces.proportional {
-        face.selection_family = next_selection_family(font_system, "proportional", &mut assigned);
+    if !faces.proportional.is_empty() {
+        let family = next_selection_family(font_system, "proportional", &mut assigned);
+        for candidate in &mut faces.proportional {
+            candidate.selection_family = family.clone();
+        }
     }
-    if let Some(face) = &mut faces.monospace {
-        face.selection_family = next_selection_family(font_system, "monospace", &mut assigned);
+    if !faces.monospace.is_empty() {
+        let family = next_selection_family(font_system, "monospace", &mut assigned);
+        for candidate in &mut faces.monospace {
+            candidate.selection_family = family.clone();
+        }
     }
 }
 

@@ -1,9 +1,7 @@
 use super::{
-    Canvas, ContainerPadding, INDENT, NODE_GAP, TEXT_HEIGHT, UiNode, UiNodeKind,
-    UiTreeCanvasPalette, UiTreeCanvasRenderer, UiTreeRenderArea, UiTreeTextMetrics, UiVisualRole,
-    child_container_x, child_render_area, dimension_px, draw_hover_background, draw_hover_surface,
-    gap_after_child, has_absolute_child, is_outside_vertical_viewport, remaining_width,
-    should_draw_container_label,
+    Canvas, INDENT, NODE_GAP, UiNode, UiNodeKind, UiTreeCanvasPalette, UiTreeCanvasRenderer,
+    UiTreeRenderArea, UiTreeTextMetrics, dimension_px, draw_hover_background, has_absolute_child,
+    is_outside_vertical_viewport, remaining_width,
 };
 use crate::raster_host::text::RichTextStyle;
 use crate::raster_host::ui_tree_canvas_text::UiTreeTextRenderer;
@@ -124,74 +122,6 @@ impl UiTreeCanvasRenderer {
         } else {
             draw(canvas);
         }
-    }
-
-    pub(super) fn draw_container_with_logical_cursor(
-        &self,
-        canvas: &mut Canvas,
-        node: &UiNode,
-        x: usize,
-        logical_y: &mut f32,
-        area: UiTreeRenderArea,
-        palette: UiTreeCanvasPalette,
-    ) {
-        let container_origin = *logical_y;
-        let hover_surface_y = logical_canvas_boundary(container_origin);
-        let requested_height = dimension_px(&node.props().common.height);
-        let hover_surface_height = if requested_height > 0 {
-            requested_height
-        } else if node.props().visual_role != UiVisualRole::HoverSurface {
-            TEXT_HEIGHT
-        } else {
-            self.measured_scroll_node_height(node, self.text_context(palette), x, area)
-        };
-        if should_draw_container_label(node) {
-            let mut label_y = hover_surface_y;
-            canvas.with_fractional_y_origin(container_origin, hover_surface_y, |canvas| {
-                super::draw_label(canvas, &self.text, node, x, &mut label_y, palette);
-            });
-            *logical_y += label_y.saturating_sub(hover_surface_y) as f32;
-        }
-        let padding = ContainerPadding::from_node(node);
-        let child_x = child_container_x(node, x).saturating_add(padding.left);
-        let child_area = child_render_area(area, node, child_x, padding);
-        *logical_y += padding.top as f32;
-        let child_clip_y = *logical_y;
-        let mut draw_children = |canvas: &mut Canvas| {
-            for (index, child) in node.children().iter().enumerate() {
-                self.render_node_with_logical_cursor(
-                    canvas, child, child_x, logical_y, child_area, palette,
-                );
-                if index + 1 < node.children().len() {
-                    *logical_y += gap_after_child(node, child, &node.children()[index + 1]) as f32;
-                }
-            }
-        };
-        if requested_height > 0 {
-            let clip_height = super::hover_surface_child_clip_height(node, requested_height);
-            canvas.with_clip_at_logical_y(
-                x,
-                child_clip_y,
-                remaining_width(area, x),
-                clip_height as f32,
-                &mut draw_children,
-            );
-            *logical_y = container_origin + requested_height as f32;
-        } else {
-            draw_children(canvas);
-            *logical_y += padding.bottom as f32;
-        }
-        canvas.with_fractional_y_origin(container_origin, hover_surface_y, |canvas| {
-            draw_hover_surface(
-                canvas,
-                node,
-                x,
-                hover_surface_y,
-                area,
-                palette,
-                hover_surface_height,
-            );
-        });
     }
 
     fn draw_integer_node_with_logical_cursor(
@@ -503,6 +433,89 @@ mod tests {
     }
 
     #[test]
+    fn fixed_labeled_padded_container_clips_label_and_children_at_its_fractional_bottom() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::new(theme);
+        let node = UiNode::new(UiNodeKind::Card, "Card label")
+            .common(
+                UiCommonProps::default()
+                    .height(UiDimension::px(10))
+                    .padding(UiEdgeInsets::axis(UiDimension::px(3), UiDimension::px(2))),
+            )
+            .child(UiNode::new(UiNodeKind::Button, "child").height(UiDimension::px(20)));
+        let mut canvas = Canvas::new_scaled(180, 80, 2.0, palette.background);
+        let mut logical_y = 31.5;
+        renderer.draw_container_with_logical_cursor(
+            &mut canvas,
+            &node,
+            0,
+            &mut logical_y,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 180,
+                height: 80,
+                scroll_y: 0.0,
+            },
+            palette,
+        );
+
+        assert_eq!(41.5, logical_y);
+        let physical_bottom = 83;
+        assert!(
+            canvas.pixels()[physical_bottom * canvas.width()..]
+                .iter()
+                .all(|pixel| *pixel == palette.background),
+            "a fixed container's label, padding, and child must all remain below its fractional bottom clip"
+        );
+        assert_eq!(
+            0,
+            canvas.text_runs().len(),
+            "a label extending beyond the 10px fixed container must not leave selectable bounds"
+        );
+        assert_eq!(
+            None,
+            canvas.copy_text_in_selection(Some((0, 63)), Some((100, physical_bottom))),
+            "the clipped label must not be copied from an invisible selection range"
+        );
+    }
+
+    #[test]
+    fn auto_height_labeled_container_renders_label_without_fixed_clip() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = UiTreeCanvasRenderer::new(theme);
+        let node = UiNode::new(UiNodeKind::Card, "Auto-height label");
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 80,
+            scroll_y: 0.0,
+        };
+        let mut canvas = Canvas::new(180, 80, palette.background);
+        let mut logical_y = 0.0;
+
+        renderer.draw_container_with_logical_cursor(
+            &mut canvas,
+            &node,
+            0,
+            &mut logical_y,
+            area,
+            palette,
+        );
+
+        assert!(logical_y > 0.0);
+        assert!(
+            canvas
+                .pixels()
+                .iter()
+                .any(|pixel| *pixel != palette.background)
+        );
+    }
+
+    #[test]
     fn nested_containers_preserve_fractional_child_extents() {
         let theme = ThemeSnapshot::dark();
         let palette = UiTreeCanvasPalette::from_theme(&theme);
@@ -612,6 +625,10 @@ mod tests {
             UiNode::new(UiNodeKind::Row, "")
                 .height(UiDimension::px(10))
                 .child(UiNode::new(UiNodeKind::Text, "row child")),
+            UiNode::new(UiNodeKind::Stack, "")
+                .visual_role(UiVisualRole::HoverSurface)
+                .height(UiDimension::px(10))
+                .child(UiNode::new(UiNodeKind::Text, "hover child")),
         ];
 
         for node in fixed_nodes {
@@ -631,6 +648,52 @@ mod tests {
                 "fixed nodes must advance by their declared height without leaking child layout"
             );
         }
+    }
+
+    #[test]
+    fn fixed_hover_surface_clip_margin_does_not_shift_following_button_bounds() {
+        let theme = ThemeSnapshot::dark();
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let renderer = fractional_renderer(theme);
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 120,
+            scroll_y: 0.0,
+        };
+        let root = UiNode::new(UiNodeKind::Column, "")
+            .child(
+                UiNode::new(UiNodeKind::Stack, "")
+                    .visual_role(UiVisualRole::HoverSurface)
+                    .height(UiDimension::px(10))
+                    .child(UiNode::new(UiNodeKind::Text, "hover child")),
+            )
+            .child(UiNode::new(UiNodeKind::Button, "following").height(UiDimension::px(10)));
+        let mut canvas = Canvas::new_scaled(240, 120, 2.0, palette.background);
+        let mut logical_y = 0.5;
+
+        renderer.render_node_with_logical_cursor(
+            &mut canvas,
+            &root,
+            0,
+            &mut logical_y,
+            area,
+            palette,
+        );
+
+        let width = canvas.width();
+        assert_ne!(
+            palette.selection,
+            canvas.pixels()[20 * width],
+            "the following button must not start before the declared hover height"
+        );
+        assert_eq!(
+            palette.selection,
+            canvas.pixels()[21 * width],
+            "the following button must begin at the fixed hover surface boundary"
+        );
+        assert_eq!(20.5, logical_y);
     }
 
     #[test]
