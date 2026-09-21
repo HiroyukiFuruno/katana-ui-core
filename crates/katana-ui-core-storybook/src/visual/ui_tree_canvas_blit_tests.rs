@@ -160,7 +160,7 @@ fn logical_blend_ignores_invalid_or_off_canvas_rectangles() {
 #[test]
 fn canvas_blit_resamples_equal_scale_from_an_unaligned_physical_source_row() {
     let mut source = Canvas::new_scaled(1, 2, 1.25, BACKGROUND);
-    source.set_physical(0, 1, 0x112233);
+    source.set_physical(0, 2, 0x112233);
     let mut target = Canvas::new_scaled(1, 2, 1.25, BACKGROUND);
 
     target.blit_canvas(
@@ -170,7 +170,7 @@ fn canvas_blit_resamples_equal_scale_from_an_unaligned_physical_source_row() {
             dest_y: 0,
             width: 1,
             height: 1,
-            source_y: 1,
+            source_y: 2,
         },
     );
 
@@ -189,7 +189,7 @@ fn canvas_blit_omits_text_runs_before_a_direct_physical_source_crop() {
             dest_x: 0,
             dest_y: 0,
             width: 4,
-            height: 2,
+            height: 1,
             source_y: 2,
         },
     );
