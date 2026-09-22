@@ -165,3 +165,57 @@ fn nested_viewport_scroll_hit_collection_reports_the_inner_visited_nodes() {
         "nested viewport traversal must propagate its counted nodes without visiting the tail; visited={visited_node_count}"
     );
 }
+
+#[test]
+fn outer_scroll_does_not_shift_a_visible_nested_scroll_area() {
+    let inner = UiNode::new(UiNodeKind::ScrollArea, "")
+        .scroll_area(UiScrollAreaProps {
+            viewport_width: 120,
+            viewport_height: 20,
+            content_height: 40,
+            ..UiScrollAreaProps::default()
+        })
+        .child(
+            UiNode::new(UiNodeKind::Column, "")
+                .child(
+                    UiNode::from(Button::new("first"))
+                        .height(UiDimension::px(20))
+                        .host_action(UiHostActionSpec::command("first", "first")),
+                )
+                .child(
+                    UiNode::from(Button::new("second"))
+                        .height(UiDimension::px(20))
+                        .host_action(UiHostActionSpec::command("second", "second")),
+                ),
+        );
+    let root = UiNode::new(UiNodeKind::ScrollArea, "")
+        .scroll_area(UiScrollAreaProps {
+            viewport_width: 120,
+            viewport_height: 20,
+            offset_y: 20,
+            content_height: 40,
+            ..UiScrollAreaProps::default()
+        })
+        .child(
+            UiNode::new(UiNodeKind::Column, "")
+                .child(UiNode::new(UiNodeKind::Text, "spacer").height(UiDimension::px(20)))
+                .child(inner),
+        );
+
+    let target = UiTreeSurfaceHost::new(ThemeSnapshot::dark())
+        .interaction_target_at(
+            &root,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 120,
+                height: 20,
+                scroll_y: 0.0,
+            },
+            60.0,
+            10.0,
+        )
+        .expect("visible nested button interaction target");
+
+    assert_eq!("first", target.action.expect("nested action").action_id);
+}
