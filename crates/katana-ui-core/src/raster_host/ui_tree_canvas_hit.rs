@@ -160,7 +160,7 @@ impl UiTreeHostActionHitCollector<'_> {
             export_text,
             code_text,
             typography,
-            ScrollHitClip::Viewport,
+            ScrollHitClip::Document,
         );
         collector.node(root, 0);
         #[cfg(test)]
