@@ -91,7 +91,7 @@ jobs:
           unresolved=0
           if [[ -n "${PR_NUMBER}" ]]; then
             query='query($owner:String!,$repo:String!,$number:Int!,$endCursor:String){repository(owner:$owner,name:$repo){pullRequest(number:$number){reviewThreads(first:100,after:$endCursor){nodes{isResolved}pageInfo{hasNextPage,endCursor}}}}}'
-            unresolved="$(gh api graphql --paginate --slurp -f query="${query}" -F owner="${GITHUB_REPOSITORY%%/*}" -F repo="${GITHUB_REPOSITORY##*/}" -F number="${PR_NUMBER}" -F endCursor=null --jq '[.[].data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')"
+            unresolved="$(gh api graphql -f query="${query}" -F owner="${GITHUB_REPOSITORY%%/*}" -F repo="${GITHUB_REPOSITORY##*/}" -F number="${PR_NUMBER}" -F endCursor=null --jq '[.data.repository.pullRequest.reviewThreads.nodes[] | select(.isResolved == false)] | length')"
           fi
           python3 scripts/release/verify-release-gate.py \
             --write-manifest "${GATE_MANIFEST}" \
