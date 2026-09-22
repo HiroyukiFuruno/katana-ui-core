@@ -61,7 +61,7 @@ impl UiTreeHostActionHitCollector<'_> {
             y: 0,
             width: viewport_width,
             height: content_height,
-            scroll_y: 0.0,
+            scroll_y: source_y,
         };
         let mut content_collector = UiTreeHostActionHitCollector {
             area: content_area,
