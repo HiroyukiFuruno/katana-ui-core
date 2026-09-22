@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Corrected canvas blit boundaries and release evidence identity checks (Issue #62).
+
 ### Added
 
 - Added an optional `text-highlight-background` theme token for document marks while preserving the existing default color (Issue #52).
