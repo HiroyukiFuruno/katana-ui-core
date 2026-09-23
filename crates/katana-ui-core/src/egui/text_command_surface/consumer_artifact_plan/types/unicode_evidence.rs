@@ -53,7 +53,16 @@ pub(super) fn artifact_unicode_evidence_options() -> KucUnicodeColorGlyphEvidenc
 }
 
 fn pin_first_readable_emoji_candidate(config: &mut crate::text_raster::PlatformTextRasterConfig) {
-    if !config.emoji_candidate_sha256.is_empty() {
+    let has_matching_declared_pin = config
+        .emoji_candidates
+        .iter()
+        .zip(&config.emoji_candidate_sha256)
+        .any(|(path, expected)| {
+            std::fs::read(path)
+                .ok()
+                .is_some_and(|bytes| PlatformFontSha256::digest(&bytes) == *expected)
+        });
+    if has_matching_declared_pin {
         return;
     }
     let Some((path, hash)) = config.emoji_candidates.iter().find_map(|path| {
@@ -63,7 +72,7 @@ fn pin_first_readable_emoji_candidate(config: &mut crate::text_raster::PlatformT
     }) else {
         return;
     };
-    /* WHY: consumer artifactはhost固有のfont policyを注入しないため、KUCが読み込めた候補だけをpinする。 */
+    /* WHY: consumer artifactはhost固有のfont policyを注入しないため、KUCが読み込めた候補だけをpinする。既知のrelease pinに一致しないNoto buildでも、読み込んだ実体を同じ実行内で検証する。 */
     config.emoji_candidates = vec![path];
     config.emoji_candidate_sha256 = vec![hash];
 }
@@ -168,6 +177,29 @@ mod tests {
 
         assert_eq!(config.emoji_candidates, vec![candidate]);
         assert_eq!(config.emoji_candidate_sha256, vec![existing_hash]);
+    }
+
+    #[test]
+    fn pin_first_readable_emoji_candidate_replaces_a_stale_declared_pin() {
+        let path = std::env::temp_dir().join(format!(
+            "kuc-unicode-evidence-stale-pin-{}",
+            std::process::id()
+        ));
+        let bytes = b"different noto color emoji build";
+        std::fs::write(&path, bytes).expect("test font should be readable");
+        let mut config = test_raster_config(
+            vec![path.clone()],
+            vec![PlatformFontSha256::digest(b"known release pin")],
+        );
+
+        pin_first_readable_emoji_candidate(&mut config);
+
+        assert_eq!(config.emoji_candidates, vec![path.clone()]);
+        assert_eq!(
+            config.emoji_candidate_sha256,
+            vec![PlatformFontSha256::digest(bytes)]
+        );
+        let _ = std::fs::remove_file(path);
     }
 
     #[test]
