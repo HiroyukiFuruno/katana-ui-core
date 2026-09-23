@@ -23,15 +23,7 @@ impl UiTreeHostActionHitCollector<'_> {
             )
             .max(1);
         let previous_area = self.area;
-        let source_area = UiTreeRenderArea {
-            scroll_y: if self.uses_area_scroll_for_scroll_source {
-                previous_area.scroll_y
-            } else {
-                0.0
-            },
-            ..previous_area
-        };
-        let source_y = scroll_source_y(node, source_area);
+        let source_y = scroll_source_y(node, previous_area);
         match self.scroll_clip {
             ScrollHitClip::Viewport => self.collect_scroll_area_hits(
                 node,
@@ -69,7 +61,7 @@ impl UiTreeHostActionHitCollector<'_> {
             y: 0,
             width: viewport_width,
             height: content_height,
-            scroll_y: source_y,
+            scroll_y: 0.0,
         };
         let mut content_collector = UiTreeHostActionHitCollector {
             area: content_area,
@@ -83,7 +75,6 @@ impl UiTreeHostActionHitCollector<'_> {
             code_text: self.code_text,
             typography: self.typography,
             scroll_clip: self.scroll_clip,
-            uses_area_scroll_for_scroll_source: false,
             viewport_bottom: Some(source_y + viewport_height as f32),
             semantic_node_id: self.semantic_node_id.clone(),
             height_cache: MeasuredNodeHeightCache::default(),
@@ -263,7 +254,6 @@ impl UiTreeHostActionHitCollector<'_> {
             code_text: self.code_text,
             typography: self.typography,
             scroll_clip: self.scroll_clip,
-            uses_area_scroll_for_scroll_source: false,
             viewport_bottom: None,
             semantic_node_id: self.semantic_node_id.clone(),
             height_cache: MeasuredNodeHeightCache::default(),
