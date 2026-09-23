@@ -668,7 +668,17 @@ fn issuer_rejects_a_caller_supplied_color_emoji_pin_that_does_not_match_loaded_b
 fn artifact_unicode_options_use_a_kuc_owned_readable_emoji_pin() {
     let default_options = KucUnicodeColorGlyphEvidenceOptions::default();
     let options = artifact_unicode_evidence_options();
-    if !default_options.config.emoji_candidate_sha256.is_empty() {
+    let has_matching_declared_pin = default_options
+        .config
+        .emoji_candidates
+        .iter()
+        .zip(&default_options.config.emoji_candidate_sha256)
+        .any(|(path, expected)| {
+            std::fs::read(path).ok().is_some_and(|bytes| {
+                crate::text_raster::PlatformFontSha256::digest(&bytes) == *expected
+            })
+        });
+    if has_matching_declared_pin {
         assert_eq!(
             options.config.emoji_candidates,
             default_options.config.emoji_candidates

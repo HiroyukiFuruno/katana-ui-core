@@ -18,7 +18,6 @@ if [[ "${actual_linux_emoji_sha256}" != "${pinned_linux_emoji_sha256}" ]]; then
   echo "coverage image emoji font hash does not match the pinned release input" >&2
   exit 1
 fi
-export KUC_PINNED_LINUX_EMOJI_SHA256="${pinned_linux_emoji_sha256}"
 
 mkdir -p "${workspace}"
 tar \

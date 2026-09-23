@@ -46,4 +46,3 @@ readonly expected_mono_hash=6b692c4b6d15ccf59f1c1fe8d11cb8a92f51960f3e9f1f523781
 
 test "$(sha256sum "${emoji_font}" | cut -d ' ' -f 1)" = "${expected_emoji_hash}"
 test "$(sha256sum "${mono_font}" | cut -d ' ' -f 1)" = "${expected_mono_hash}"
-echo "KUC_PINNED_LINUX_EMOJI_SHA256=${expected_emoji_hash}" >> "${GITHUB_ENV}"

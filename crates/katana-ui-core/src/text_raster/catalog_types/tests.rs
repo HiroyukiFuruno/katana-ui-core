@@ -157,23 +157,24 @@ fn catalog_fingerprint_is_stable_for_equal_ordered_policy() {
 }
 
 #[test]
-fn linux_default_emoji_candidate_requires_explicit_hash() {
+fn linux_release_emoji_candidates_are_pinned_and_resolve_the_matching_profile() {
     let policy = PlatformFontCatalogPolicy::for_profile(PlatformFontProfile::Linux);
-    assert!(
-        policy.emoji_candidates[0]
-            .expected_raw_file_sha256
-            .is_none()
-    );
-    let candidate = &policy.emoji_candidates[0];
+    assert_eq!(policy.emoji_candidates.len(), 2);
+    let candidate = &policy.emoji_candidates[1];
     let mut loader = FakeLoader {
-        result: Ok(observation(candidate, "Noto Color Emoji")),
+        result: Ok(
+            crate::text_raster::catalog_types::PlatformEmojiFontObservation {
+                actual_family: "Noto Color Emoji".to_owned(),
+                source_file_path: candidate.source_file_path.clone(),
+                raw_file_sha256: candidate
+                    .expected_raw_file_sha256
+                    .expect("Linux release candidate is pinned"),
+            },
+        ),
     };
     let record = PlatformColorEmojiFaceResolver::resolve(&policy, &mut loader);
 
-    assert!(matches!(
-        record.availability,
-        PlatformColorEmojiAvailability::Error(PlatformColorEmojiError::MissingExpectedHash { .. })
-    ));
+    assert!(record.is_available());
 }
 
 #[test]
