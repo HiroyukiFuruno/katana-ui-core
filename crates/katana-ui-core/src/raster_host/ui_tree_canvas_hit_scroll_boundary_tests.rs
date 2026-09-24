@@ -119,6 +119,46 @@ fn interaction_target_at_does_not_visit_the_offscreen_content_tail() {
 }
 
 #[test]
+fn interaction_target_at_keeps_a_deep_scrolled_action_after_viewport_clipping() {
+    let mut column = UiNode::new(UiNodeKind::Column, "");
+    for index in 0..1_000 {
+        column = column.child(
+            UiNode::from(Button::new(format!("button-{index}")))
+                .height(UiDimension::px(40))
+                .host_action(UiHostActionSpec::command(
+                    format!("button-{index}"),
+                    "button",
+                )),
+        );
+    }
+    let root = UiNode::new(UiNodeKind::ScrollArea, "")
+        .scroll_area(UiScrollAreaProps {
+            viewport_width: 120,
+            viewport_height: 40,
+            content_height: 40_000,
+            ..UiScrollAreaProps::default()
+        })
+        .child(column);
+
+    let area = UiTreeRenderArea {
+        x: 0,
+        y: 0,
+        width: 120,
+        height: 40,
+        scroll_y: 5_901.5,
+    };
+    let host = UiTreeSurfaceHost::new(ThemeSnapshot::dark());
+    let target = host
+        .interaction_target_at(&root, area, 60.0, 10.0)
+        .expect("deep visible button interaction target");
+
+    assert_eq!(
+        "button-147",
+        target.action.expect("deep visible button action").action_id
+    );
+}
+
+#[test]
 fn nested_viewport_scroll_hit_collection_reports_the_inner_visited_nodes() {
     let mut column = UiNode::new(UiNodeKind::Column, "");
     for index in 0..1_000 {
@@ -164,4 +204,58 @@ fn nested_viewport_scroll_hit_collection_reports_the_inner_visited_nodes() {
         (3..10).contains(&visited_node_count),
         "nested viewport traversal must propagate its counted nodes without visiting the tail; visited={visited_node_count}"
     );
+}
+
+#[test]
+fn outer_scroll_does_not_shift_a_visible_nested_scroll_area() {
+    let inner = UiNode::new(UiNodeKind::ScrollArea, "")
+        .scroll_area(UiScrollAreaProps {
+            viewport_width: 120,
+            viewport_height: 20,
+            content_height: 40,
+            ..UiScrollAreaProps::default()
+        })
+        .child(
+            UiNode::new(UiNodeKind::Column, "")
+                .child(
+                    UiNode::from(Button::new("first"))
+                        .height(UiDimension::px(20))
+                        .host_action(UiHostActionSpec::command("first", "first")),
+                )
+                .child(
+                    UiNode::from(Button::new("second"))
+                        .height(UiDimension::px(20))
+                        .host_action(UiHostActionSpec::command("second", "second")),
+                ),
+        );
+    let root = UiNode::new(UiNodeKind::ScrollArea, "")
+        .scroll_area(UiScrollAreaProps {
+            viewport_width: 120,
+            viewport_height: 20,
+            offset_y: 20,
+            content_height: 40,
+            ..UiScrollAreaProps::default()
+        })
+        .child(
+            UiNode::new(UiNodeKind::Column, "")
+                .child(UiNode::new(UiNodeKind::Text, "spacer").height(UiDimension::px(20)))
+                .child(inner),
+        );
+
+    let target = UiTreeSurfaceHost::new(ThemeSnapshot::dark())
+        .interaction_target_at(
+            &root,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 120,
+                height: 20,
+                scroll_y: 0.0,
+            },
+            60.0,
+            10.0,
+        )
+        .expect("visible nested button interaction target");
+
+    assert_eq!("first", target.action.expect("nested action").action_id);
 }

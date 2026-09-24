@@ -165,10 +165,7 @@ impl UiTreeHostActionHitCollector<'_> {
         collector.node(root, 0);
         #[cfg(test)]
         VIEWPORT_INTERACTION_VISIT_COUNT.with(|count| count.set(collector.visited_node_count));
-        (
-            clip_action_hits_to_viewport(collector.hits, area),
-            clip_node_hits_to_viewport(collector.node_hits, area),
-        )
+        (collector.hits, collector.node_hits)
     }
 
     #[cfg(test)]
