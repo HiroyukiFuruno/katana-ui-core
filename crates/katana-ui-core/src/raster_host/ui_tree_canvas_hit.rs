@@ -162,7 +162,7 @@ impl UiTreeHostActionHitCollector<'_> {
             typography,
             ScrollHitClip::Viewport,
         );
-        collector.node(root, 0);
+        collector.node(root, area.x);
         #[cfg(test)]
         VIEWPORT_INTERACTION_VISIT_COUNT.with(|count| count.set(collector.visited_node_count));
         (collector.hits, collector.node_hits)
