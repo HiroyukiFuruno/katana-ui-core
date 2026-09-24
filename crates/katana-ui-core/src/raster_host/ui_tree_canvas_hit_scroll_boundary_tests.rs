@@ -72,6 +72,26 @@ fn automatic_scroll_container_stops_hits_at_the_viewport_without_content_height(
 }
 
 #[test]
+fn viewport_interaction_hits_preserve_a_nonzero_horizontal_origin() {
+    let root = UiNode::from(Button::new("embedded"))
+        .height(UiDimension::px(20))
+        .host_action(UiHostActionSpec::command("embedded", "embedded"));
+    let area = UiTreeRenderArea {
+        x: 10,
+        y: 0,
+        width: 120,
+        height: 20,
+        scroll_y: 0.0,
+    };
+    let host = UiTreeSurfaceHost::new(ThemeSnapshot::dark());
+    let (actions, nodes) = host.viewport_interaction_hits(&root, area);
+    assert_eq!(10, actions[0].rect.x);
+    assert_eq!(10, nodes[0].rect.x);
+    assert!(actions[0].rect.contains_point(15.0, 10.0));
+    assert!(nodes[0].rect.contains_point(15.0, 10.0));
+}
+
+#[test]
 fn interaction_target_at_does_not_visit_the_offscreen_content_tail() {
     let mut column = UiNode::new(UiNodeKind::Column, "");
     for index in 0..1_000 {
