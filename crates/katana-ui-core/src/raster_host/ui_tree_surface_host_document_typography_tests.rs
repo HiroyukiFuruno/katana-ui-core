@@ -4,9 +4,10 @@ use super::{
 };
 use crate::test_assert::KucTestExpect;
 use katana_ui_core::atom::{Input, Text};
+use katana_ui_core::layout::{ScrollArea, ScrollAxis};
 use katana_ui_core::molecule::Accordion;
 use katana_ui_core::render_model::{
-    UiHostActionSpec, UiNode, UiNodeId, UiNodeKind, UiTextProps, UiTextSpan,
+    UiDimension, UiHostActionSpec, UiNode, UiNodeId, UiNodeKind, UiTextProps, UiTextSpan,
 };
 use katana_ui_core::theme::ThemeSnapshot;
 
@@ -43,6 +44,53 @@ fn surface_host_document_typography_shares_raster_and_node_hit_metrics() {
     assert_eq!(40, heading_hit.rect.height);
     assert!(non_background_width(&canvas, 0, 23) > 0);
     assert!(non_background_width(&canvas, 23, 63) > non_background_width(&canvas, 0, 23));
+}
+
+#[test]
+fn document_scroll_keeps_explicit_text_height_for_semantic_hit() {
+    let document_typography = UiTreeDocumentTypography::new()
+        .with_body_baseline(UiTreeTextRoleBaselineTypography::new(14.0, 21.0, 12.5));
+    let description: UiNode = Text::new("Windows native body").text_role("body").into();
+    let description_common = description
+        .props()
+        .common
+        .clone()
+        .semantic_node_id("sample-description");
+    let description = description
+        .common(description_common)
+        .width(UiDimension::Px(1187))
+        .height(UiDimension::Px(42))
+        .stable_node_id(UiNodeId::new("sample-description-rendered"));
+    let content = UiNode::new(UiNodeKind::Column, "").child(description);
+    let root: UiNode = ScrollArea::new()
+        .axis(ScrollAxis::Vertical)
+        .viewport(1187, 2225)
+        .content_extent(1187, 2225)
+        .child(content)
+        .into();
+    let host =
+        UiTreeSurfaceHost::with_document_typography(ThemeSnapshot::dark(), document_typography);
+
+    let hit = host
+        .document_node_hits(
+            &root,
+            UiTreeRenderArea {
+                x: 0,
+                y: 0,
+                width: 1187,
+                height: 2225,
+                scroll_y: 0.0,
+            },
+        )
+        .into_iter()
+        .find(|hit| {
+            hit.semantic_node_id
+                .as_ref()
+                .is_some_and(|id| id.as_str() == "sample-description")
+        })
+        .kuc_expect("semantic description node hit");
+
+    assert_eq!(42, hit.rect.height);
 }
 
 #[test]
