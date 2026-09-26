@@ -167,6 +167,8 @@ def environment_identity() -> dict[str, str]:
         "os": command("uname", "-s", cwd=Path.cwd()),
         "arch": command("uname", "-m", cwd=Path.cwd()),
         "rustc": command("rustc", "-Vv", cwd=Path.cwd()),
+        "just": command("just", "--version", cwd=Path.cwd()),
+        "cargo_llvm_cov": command("cargo", "llvm-cov", "--version", cwd=Path.cwd()),
         "runner_image_os": required_environment("ImageOS"),
         "runner_image_version": required_environment("ImageVersion"),
         "os_release": os_release_identity(),

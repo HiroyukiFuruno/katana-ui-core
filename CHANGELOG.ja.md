@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+## [0.3.17] - 2026-09-26
+
+### 修正
+
+- source または destination canvas 境界で clip される要求でも、direct physical blit 経路を維持するようにした（Issue #62）。
+- 再利用する release evidence の identity check に `just` と `cargo-llvm-cov` の version を追加した。
+
 ## [0.3.16] - 2026-09-26
 
 ### 変更

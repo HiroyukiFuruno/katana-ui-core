@@ -43,12 +43,20 @@ impl Canvas {
         }
         let dest_left = self.to_physical_x(request.dest_x);
         let dest_top = self.to_physical_y(request.dest_y);
-        (0..=request.width).all(|offset| {
+        let drawable_width = request
+            .width
+            .min(source.logical_width())
+            .min(self.logical_width().saturating_sub(request.dest_x));
+        let drawable_height = request
+            .height
+            .min(source.logical_height().saturating_sub(source_logical_y))
+            .min(self.logical_height().saturating_sub(request.dest_y));
+        (0..=drawable_width).all(|offset| {
             source.to_physical_x(offset)
                 == self
                     .to_physical_x(request.dest_x.saturating_add(offset))
                     .saturating_sub(dest_left)
-        }) && (0..=request.height).all(|offset| {
+        }) && (0..=drawable_height).all(|offset| {
             source
                 .to_physical_y(source_logical_y.saturating_add(offset))
                 .saturating_sub(request.source_y)
@@ -169,5 +177,48 @@ impl Canvas {
                 .saturating_add((rect.y as f32 - source_y).round().max(0.0) as usize);
             self.record_text_run(run.text(), target_x, target_y, rect.width, rect.height);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Canvas, CanvasBlitRequest};
+
+    #[test]
+    fn aligned_blit_ignores_destination_clipped_extent() {
+        let source = Canvas::new_scaled(2, 1, 1.25, 0x000000);
+        let target = Canvas::new_scaled(1, 1, 1.25, 0x000000);
+
+        assert!(target.has_aligned_logical_blit_boundaries(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 0,
+                dest_y: 0,
+                width: 2,
+                height: 1,
+                source_y: 0,
+            },
+        ));
+    }
+
+    #[test]
+    fn aligned_blit_keeps_the_final_physical_row_after_a_source_crop() {
+        let mut source = Canvas::new_scaled(1, 2, 1.25, 0x000000);
+        source.set_physical(0, 1, 0x112233);
+        source.set_physical(0, 2, 0x445566);
+        let mut target = Canvas::new_scaled_with_logical_phase(1, 2, 1.25, 0, 1.0, 0x000000);
+
+        target.blit_canvas(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 0,
+                dest_y: 0,
+                width: 1,
+                height: 2,
+                source_y: 1,
+            },
+        );
+
+        assert_eq!(&[0x112233, 0x445566, 0x000000], target.pixels());
     }
 }

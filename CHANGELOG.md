@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.17] - 2026-09-26
+
+### Fixed
+
+- Kept the direct physical blit path for requests clipped by a source or destination canvas boundary (Issue #62).
+- Added `just` and `cargo-llvm-cov` versions to reusable release-evidence identity checks.
+
 ## [0.3.16] - 2026-09-26
 
 ### Changed
