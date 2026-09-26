@@ -49,7 +49,7 @@ impl Canvas {
             .min(self.logical_width().saturating_sub(request.dest_x));
         let drawable_height = request
             .height
-            .min(source.logical_height())
+            .min(source.logical_height().saturating_sub(source_logical_y))
             .min(self.logical_height().saturating_sub(request.dest_y));
         (0..=drawable_width).all(|offset| {
             source.to_physical_x(offset)
@@ -199,5 +199,26 @@ mod tests {
                 source_y: 0,
             },
         ));
+    }
+
+    #[test]
+    fn aligned_blit_keeps_the_final_physical_row_after_a_source_crop() {
+        let mut source = Canvas::new_scaled(1, 2, 1.25, 0x000000);
+        source.set_physical(0, 1, 0x112233);
+        source.set_physical(0, 2, 0x445566);
+        let mut target = Canvas::new_scaled_with_logical_phase(1, 2, 1.25, 0, 1.0, 0x000000);
+
+        target.blit_canvas(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 0,
+                dest_y: 0,
+                width: 1,
+                height: 2,
+                source_y: 1,
+            },
+        );
+
+        assert_eq!(&[0x112233, 0x445566, 0x000000], target.pixels());
     }
 }
