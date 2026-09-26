@@ -22,16 +22,21 @@
 ### 修正
 
 - viewport clipping 前の文書座標 interaction hit 収集を復旧し、深くスクロールした accordion action が到達可能な状態を維持した（Issue #52）。
+- `area.x` が非ゼロの場合の horizontal viewport origin 処理を修正した（Issue #52）。
 
 ## [0.3.13] - 2026-09-23
 
-- v0.3.12 corrective release 後の release branch を公開した。
+### 修正
+
+- platform text rendering の決定性を維持するため、Linux emoji catalog と runtime font input を pin した。
 
 ## [0.3.12] - 2026-09-22
 
 ### 修正
 
 - canvas blit boundary と release evidence identity check を修正した（Issue #62）。
+- public consumer 向けに `PlatformTextFaceSelection::CandidateChain` と決定的な font selection を追加した。
+- viewport hit-collection cutoff と highlight alpha-compositing の挙動を復旧した。
 
 ## [0.3.11] - 2026-09-13
 
@@ -54,7 +59,10 @@
 
 ## [0.3.10] - 2026-09-13
 
-- v0.3.10 patch release を公開した。
+### 修正
+
+- legacy document-typography coordinate の回帰を修正した。
+- KUC の Unicode evidence pin resolver を接続し、consumer artifact が host policy injection なしで実行できるようにした。
 
 ## [0.3.9] - 2026-09-12
 
@@ -66,7 +74,9 @@
 
 ## [0.3.7] - 2026-09-05
 
-- v0.3.7 patch release を公開した。
+### 追加
+
+- role-specific document typography と、renderer、Storybook-host、surface-host、measurement、hit-geometry の統合を追加した。
 
 ## [0.3.6] - 2026-09-05
 
