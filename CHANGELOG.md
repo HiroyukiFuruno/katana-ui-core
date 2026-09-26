@@ -22,16 +22,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Restored document-coordinate interaction-hit collection before viewport clipping so deeply scrolled accordion actions remain reachable (Issue #52).
+- Corrected horizontal viewport-origin handling when `area.x` is nonzero (Issue #52).
 
 ## [0.3.13] - 2026-09-23
 
-- Published the release branch after the v0.3.12 corrective release.
+### Fixed
+
+- Pinned the Linux emoji catalog and runtime font inputs so platform text rendering remains deterministic.
 
 ## [0.3.12] - 2026-09-22
 
 ### Fixed
 
 - Corrected canvas blit boundaries and release evidence identity checks (Issue #62).
+- Added `PlatformTextFaceSelection::CandidateChain` and deterministic font selection for public consumers.
+- Restored viewport hit-collection cutoff and highlight alpha-compositing behavior.
 
 ## [0.3.11] - 2026-09-13
 
@@ -55,7 +60,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.10] - 2026-09-13
 
-- Published the v0.3.10 patch release.
+### Fixed
+
+- Corrected the legacy document-typography coordinate regression.
+- Connected KUC's Unicode evidence pin resolver so consumer artifacts execute without host policy injection.
 
 ## [0.3.9] - 2026-09-12
 
@@ -67,7 +75,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.7] - 2026-09-05
 
-- Published the v0.3.7 patch release.
+### Added
+
+- Added role-specific document typography with renderer, Storybook-host, surface-host, measurement, and hit-geometry integration.
 
 ## [0.3.6] - 2026-09-05
 
