@@ -9,10 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.16] - 2026-09-26
+
+### Changed
+
+- Updated the Storybook development dependency to `katana-markdown-model` 0.2.3 and refreshed compatible lockfile resolutions.
+
+## [0.3.15] - 2026-09-24
+
+- Corrective release; release evidence is recorded in `docs/release/v0.3.15.md`.
+
 ### Fixed
 
 - Restored document-coordinate interaction-hit collection before viewport clipping so deeply scrolled accordion actions remain reachable (Issue #52).
+
+## [0.3.13] - 2026-09-23
+
+- Published the release branch after the v0.3.12 corrective release.
+
+## [0.3.12] - 2026-09-22
+
+### Fixed
+
 - Corrected canvas blit boundaries and release evidence identity checks (Issue #62).
+
+## [0.3.11] - 2026-09-13
 
 ### Added
 
@@ -31,6 +52,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Preserved fractional document row positions when the public hover helper wraps visible or scrolled text (Issue #52).
 - Matched fractional scroll visibility between hover rendering and action hits, and retained later children in partially visible hover surfaces (Issue #52).
 - Kept absolute media controls visible during partial scrolling and applied ScrollArea offsets once (Issue #52).
+
+## [0.3.10] - 2026-09-13
+
+- Published the v0.3.10 patch release.
+
+## [0.3.9] - 2026-09-12
+
+- Published the corrective consumer-boundary release; public API and verification details are recorded in `docs/release/v0.3.9.md`.
+
+## [0.3.8] - 2026-09-09
+
+- Published the unified consumer-contract release; public scope and verification details are recorded in `docs/release/v0.3.8.md`.
+
+## [0.3.7] - 2026-09-05
+
+- Published the v0.3.7 patch release.
 
 ## [0.3.6] - 2026-09-05
 

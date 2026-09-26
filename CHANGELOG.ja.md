@@ -9,6 +9,65 @@
 
 ## [Unreleased]
 
+## [0.3.16] - 2026-09-26
+
+### 変更
+
+- Storybook の development dependency を `katana-markdown-model` 0.2.3 へ更新し、互換性のある lockfile 解決を更新した。
+
+## [0.3.15] - 2026-09-24
+
+- corrective release。release evidence は `docs/release/v0.3.15.md` に記録した。
+
+### 修正
+
+- viewport clipping 前の文書座標 interaction hit 収集を復旧し、深くスクロールした accordion action が到達可能な状態を維持した（Issue #52）。
+
+## [0.3.13] - 2026-09-23
+
+- v0.3.12 corrective release 後の release branch を公開した。
+
+## [0.3.12] - 2026-09-22
+
+### 修正
+
+- canvas blit boundary と release evidence identity check を修正した（Issue #62）。
+
+## [0.3.11] - 2026-09-13
+
+### 追加
+
+- document mark 向けに、既存の default color を維持する opt-in の `text-highlight-background` theme token を追加した（Issue #52）。
+- `heading-4`、`heading-5`、`heading-6` 向けに、既存および未設定の role metrics を維持する独立した opt-in typography override を追加した（Issue #52）。
+- Unicode evidence failure を consumer が型別に扱える `IssuedConsumerArtifactPlan::execute_next_with_evidence_error` と `ConsumerArtifactPlanExecutionError` を追加し、既存の `execute_next` caller の error contract を維持した（Issue #57）。
+
+### 修正
+
+- candidate font face を weight/style/stretch 差異を越えて維持し、system fallback へ暗黙に切り替えないようにした（Issue #52）。
+- wrap された link action region を表示行に維持し、scrolled document/viewport coordinate を含めて整合させた（Issue #52）。
+- document text と button node/action hit region の fractional bottom edge を含め、logical layout cursor を変更しないようにした（Issue #52）。
+- fixed-height document row と hit region を同一の fractional vertical center offset で配置した（Issue #52）。
+- span measurement から rich-line rendering まで inline-code と monospace font 選択を維持した（Issue #52）。
+- public hover helper が visible/scrolled text を wrap しても fractional document row position を維持した（Issue #52）。
+- hover rendering と action hit の fractional scroll visibility を一致させ、partial visible hover surface の後続 child を維持した（Issue #52）。
+- partial scrolling 中も absolute media control を表示し、ScrollArea offset を一度だけ適用した（Issue #52）。
+
+## [0.3.10] - 2026-09-13
+
+- v0.3.10 patch release を公開した。
+
+## [0.3.9] - 2026-09-12
+
+- corrective consumer-boundary release を公開した。public API と verification の詳細は `docs/release/v0.3.9.md` に記録した。
+
+## [0.3.8] - 2026-09-09
+
+- unified consumer-contract release を公開した。公開範囲と検証詳細は `docs/release/v0.3.8.md` に記録した。
+
+## [0.3.7] - 2026-09-05
+
+- v0.3.7 patch release を公開した。
+
 ## [0.3.6] - 2026-09-05
 
 ### 追加
