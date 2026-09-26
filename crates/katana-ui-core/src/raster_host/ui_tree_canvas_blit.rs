@@ -179,3 +179,25 @@ impl Canvas {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Canvas, CanvasBlitRequest};
+
+    #[test]
+    fn aligned_blit_ignores_destination_clipped_extent() {
+        let source = Canvas::new_scaled(2, 1, 1.25, 0x000000);
+        let target = Canvas::new_scaled(1, 1, 1.25, 0x000000);
+
+        assert!(target.has_aligned_logical_blit_boundaries(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 0,
+                dest_y: 0,
+                width: 2,
+                height: 1,
+                source_y: 0,
+            },
+        ));
+    }
+}
