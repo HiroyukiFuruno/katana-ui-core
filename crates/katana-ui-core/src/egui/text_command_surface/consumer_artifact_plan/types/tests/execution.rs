@@ -315,6 +315,37 @@ fn issuer_requires_the_complete_ordered_full_editor_sequence() {
 }
 
 #[test]
+fn issuer_v2_accepts_more_than_ten_generic_stages_without_relaxing_v1() {
+    let bindings = (0..11)
+        .map(|index| {
+            ConsumerArtifactStageBinding::new(
+                ConsumerArtifactLeafId::new(format!("variable-stage-{index}")).expect("leaf"),
+                GenericInteractionClass::ImeCommit,
+                GenericEffectClass::NoHostEffect,
+                token(40 + index),
+            )
+        })
+        .collect();
+    let plan = ConsumerArtifactPlanIssuer::new()
+        .issue_v2(ConsumerArtifactPlanV2::new(40, bindings))
+        .expect("variable plan");
+
+    assert_eq!(plan.remaining_stage_count(), 11);
+}
+
+#[test]
+fn issuer_v2_rejects_an_unsupported_schema_before_emitting_media() {
+    assert!(matches!(
+        ConsumerArtifactPlanIssuer::new().issue_v2(ConsumerArtifactPlanV2::with_schema_version(
+            1,
+            1,
+            vec![binding("variable-stage", 1)],
+        )),
+        Err(ConsumerArtifactPlanError::UnsupportedSchemaVersion(1))
+    ));
+}
+
+#[test]
 fn issuer_fails_closed_for_opaque_forwarding_without_a_transport_forwarder() {
     let opaque_binding = ConsumerArtifactStageBinding::new(
         ConsumerArtifactLeafId::new("opaque-forwarding").expect("leaf"),

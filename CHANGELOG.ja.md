@@ -9,6 +9,12 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-30
+
+### 追加
+
+- 固定 full-editor plan の v1 を維持したまま、任意数の検証済み generic consumer-artifact stage を扱う `ConsumerArtifactPlanV2` と `ConsumerArtifactPlanIssuer::issue_v2` を追加した（Issue #79）。
+
 ## [0.3.17] - 2026-09-26
 
 ### 修正

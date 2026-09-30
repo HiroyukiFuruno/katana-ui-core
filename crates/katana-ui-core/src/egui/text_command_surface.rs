@@ -33,8 +33,8 @@ pub use artifact::EguiTextCommandSurfaceArtifactError;
 pub use consumer_artifact_plan::{
     ConsumerArtifactEvidence, ConsumerArtifactForwardingReceipt, ConsumerArtifactLeafId,
     ConsumerArtifactPlanError, ConsumerArtifactPlanExecutionError, ConsumerArtifactPlanIssuer,
-    ConsumerArtifactPlanV1, ConsumerArtifactStageBinding, GenericEffectClass,
-    GenericInteractionClass, IssuedConsumerArtifactPlan,
+    ConsumerArtifactPlanV1, ConsumerArtifactPlanV2, ConsumerArtifactStageBinding,
+    GenericEffectClass, GenericInteractionClass, IssuedConsumerArtifactPlan,
 };
 pub use editor_viewport_projection_lease::{
     EditorViewportProjectionError, EditorViewportProjectionLease,

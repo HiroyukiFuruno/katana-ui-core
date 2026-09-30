@@ -36,7 +36,7 @@ fn host_projected_token(revision: u64) -> EguiTextCommandSurfacePresentationToke
 mod foreign_consumer {
     use katana_ui_core::egui::text_command_surface::{
         ConsumerArtifactLeafId, ConsumerArtifactPlanError, ConsumerArtifactPlanIssuer,
-        ConsumerArtifactPlanV1, ConsumerArtifactStageBinding,
+        ConsumerArtifactPlanV1, ConsumerArtifactPlanV2, ConsumerArtifactStageBinding,
         EguiTextCommandSurfacePresentationToken, FullTextCommandSurfaceScenarioSession,
         GenericEffectClass, GenericInteractionClass,
     };
@@ -84,6 +84,32 @@ mod foreign_consumer {
             .collect::<Result<Vec<_>, Box<dyn std::error::Error>>>()?;
         ConsumerArtifactPlanIssuer::new()
             .issue(ConsumerArtifactPlanV1::new(1, bindings))
+            .map(|issued| issued.remaining_stage_count())
+            .map_err(Into::into)
+    }
+
+    pub(super) fn issue_variable_plan_from_opaque_scenario_leases()
+    -> Result<usize, Box<dyn std::error::Error>> {
+        let session = FullTextCommandSurfaceScenarioSession::new_consumer_artifact();
+        let mut bindings = Vec::with_capacity(11);
+        bindings.push(ConsumerArtifactStageBinding::from_host_projection_lease(
+            ConsumerArtifactLeafId::new("variable-stage-0")?,
+            KUC_CONSUMER_ARTIFACT_ACTION_TARGET,
+            GenericInteractionClass::TextInput,
+            GenericEffectClass::NoHostEffect,
+            session.retain_lease()?,
+        ));
+        for index in 1..11 {
+            bindings.push(ConsumerArtifactStageBinding::from_host_projection_lease(
+                ConsumerArtifactLeafId::new(format!("variable-stage-{index}"))?,
+                KUC_CONSUMER_ARTIFACT_ACTION_TARGET,
+                GenericInteractionClass::ImeCommit,
+                GenericEffectClass::NoHostEffect,
+                session.synchronize_lease()?,
+            ));
+        }
+        ConsumerArtifactPlanIssuer::new()
+            .issue_v2(ConsumerArtifactPlanV2::new(1, bindings))
             .map(|issued| issued.remaining_stage_count())
             .map_err(Into::into)
     }
@@ -165,6 +191,15 @@ fn foreign_consumer_can_issue_full_plan_from_opaque_scenario_leases() {
         foreign_consumer::issue_full_plan_from_opaque_scenario_leases()
             .expect("opaque leases must create the full consumer plan"),
         10
+    );
+}
+
+#[test]
+fn foreign_consumer_can_issue_more_than_ten_generic_stages() {
+    assert_eq!(
+        foreign_consumer::issue_variable_plan_from_opaque_scenario_leases()
+            .expect("opaque leases must create the variable consumer plan"),
+        11
     );
 }
 
