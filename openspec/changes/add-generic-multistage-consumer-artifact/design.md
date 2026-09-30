@@ -6,7 +6,7 @@ Issue #79 は v1 の固定 `FULL_EDITOR_SEQUENCE` が KLE の source leaf 数を
 
 **Goals:** 一つの KUC root 上で任意個の unique opaque leaf を順序どおり発行し、各 stage を unique ID、media、AccessKit、Unicode evidence、one-shot receipt に結合する。v1 callers は不変にする。
 
-**Non-Goals:** KLE/KatanA type、content、path、host payload、RawInput、renderer callback を public API へ追加しない。OS 実機の IME proof は CI と公開後の KLE acceptance で確認する。
+**Non-Goals:** consumer 固有 type、content、path、host payload、RawInput、renderer callback を public API へ追加しない。完了・release 判定に外部 repository の採用や受入を含めない。
 
 ## Decisions
 

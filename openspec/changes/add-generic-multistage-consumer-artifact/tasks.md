@@ -12,4 +12,8 @@
 ## 3. Release
 
 - [ ] 3.1 v0.4.0 Draft PR、review、thread resolution、Ready、required CI、merge を行う。
-- [ ] 3.2 GitHub Release/crates.io publish と KLE registry-only acceptance を確認する。
+- [ ] 3.2 GitHub Release/crates.io publish を確認する。
+
+## User Review Phase
+
+- [/] KUC の完了・release 条件に KLE を含む外部 repository の受入を混在させない。KUC 自身の要件、public API、contract、検証だけで判定する。

@@ -12,6 +12,8 @@
 
 ## 承認済みリリースの継続
 
+- KUC は独立 repository として完結させる。外部 consumer の要望は KUC の generic 要件へ翻訳して実装してよいが、KUC の完了・release 条件へ外部 repository の採用、受入、Issue 状態を加えてはならない。KUC 自身の要件、public API、contract、自動検証、公開だけで判定する。
+
 - 目的と完了条件が明確なら、承認済みの commit / push / merge / release / cleanup は再確認せず実行する。進捗報告でターンを終了しない。
 - 元タスクがarchive・中断された場合は、同じ作業ツリーの実行状況と差分を確認し、競合がなければ残作業を引き継ぐ。引継ぎ待ちを新たな承認条件にしない。
 - coverage失敗は既存LCOVの未到達行を先に修正し、限定テスト後に最終release-checkを実行する。終了コード・ログ・session_idを保持し、稼働targetをcleanしない。

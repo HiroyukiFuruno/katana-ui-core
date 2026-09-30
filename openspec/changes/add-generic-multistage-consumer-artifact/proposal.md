@@ -1,6 +1,6 @@
 ## Why
 
-公開済み `katana-ui-core` v0.3.17 の consumer artifact plan は固定 10 stage の full-editor sequence を一度だけ要求するため、10 を超える source-derived leaf を持つ consumer が KUC-issued stage、media、receipt を一対一で取得できない。KLE v0.1.0 は registry 公開版のこの generic contract を必要としており、現在 fail-closed である。
+公開済み `katana-ui-core` v0.3.17 の consumer artifact plan は固定 10 stage の full-editor sequence を一度だけ要求するため、10 を超える source-derived leaf を持つ consumer が KUC-issued stage、media、receipt を一対一で取得できない。KUC の generic public contract 自体を満たす可変長 API が必要である。
 
 ## What Changes
 
@@ -21,4 +21,4 @@
 ## Impact
 
 - `crates/katana-ui-core` の `egui` public API、consumer artifact issuer、artifact evidence tests。
-- v0.4.0 release、KLE の registry-only downstream acceptance。
+- v0.4.0 release。
