@@ -12,7 +12,8 @@ use super::{binding, binding_from_encoder_with_interaction, complete_bindings, t
 use super::{binding_from_encoder, complete_semantic_bindings};
 use crate::egui::text_command_surface::EguiTextCommandSurfaceRootFactoryError;
 use crate::egui::text_command_surface::{
-    KucUnicodeColorGlyphEvidenceError, KucUnicodeColorGlyphEvidenceOptions,
+    EguiTextCommandSurfaceHostProjectionEncoder, KucUnicodeColorGlyphEvidenceError,
+    KucUnicodeColorGlyphEvidenceOptions, TextCommandSurfaceStyle,
 };
 
 #[cfg(target_os = "linux")]
@@ -311,6 +312,43 @@ fn issuer_requires_the_complete_ordered_full_editor_sequence() {
     assert!(matches!(
         issuer.issue(ConsumerArtifactPlanV1::new(1, repeated)),
         Err(ConsumerArtifactPlanError::IncompleteStageSequence)
+    ));
+}
+
+#[test]
+fn issuer_v2_accepts_more_than_ten_generic_stages_without_relaxing_v1() {
+    let bindings = (0..11)
+        .map(|index| {
+            ConsumerArtifactStageBinding::new(
+                ConsumerArtifactLeafId::new(format!("variable-stage-{index}")).expect("leaf"),
+                GenericInteractionClass::ImeCommit,
+                GenericEffectClass::NoHostEffect,
+                EguiTextCommandSurfaceHostProjectionEncoder::token(
+                    40 + index,
+                    b"variable-plan-target",
+                    super::presentation(),
+                    TextCommandSurfaceStyle::standard().expect("standard style"),
+                )
+                .expect("token"),
+            )
+        })
+        .collect();
+    let plan = ConsumerArtifactPlanIssuer::new()
+        .issue_v2(ConsumerArtifactPlanV2::new(40, bindings))
+        .expect("variable plan");
+
+    assert_eq!(plan.remaining_stage_count(), 11);
+}
+
+#[test]
+fn issuer_v2_rejects_an_unsupported_schema_before_emitting_media() {
+    assert!(matches!(
+        ConsumerArtifactPlanIssuer::new().issue_v2(ConsumerArtifactPlanV2::with_schema_version(
+            1,
+            1,
+            vec![binding("variable-stage", 1)],
+        )),
+        Err(ConsumerArtifactPlanError::UnsupportedSchemaVersion(1))
     ));
 }
 

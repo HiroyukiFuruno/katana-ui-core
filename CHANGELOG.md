@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-30
+
+### Added
+
+- Added `ConsumerArtifactPlanV2` and `ConsumerArtifactPlanIssuer::issue_v2` for arbitrary validated generic consumer-artifact stages while retaining the fixed v1 full-editor plan (Issue #79).
+
 ## [0.3.17] - 2026-09-26
 
 ### Fixed

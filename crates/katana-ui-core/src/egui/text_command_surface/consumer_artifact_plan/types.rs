@@ -4,6 +4,7 @@ use super::super::EguiTextCommandSurfaceHostRoot;
 use std::path::PathBuf;
 
 pub(super) const SCHEMA_VERSION: u16 = 1;
+pub(super) const MULTI_STAGE_SCHEMA_VERSION: u16 = 2;
 pub(super) const MAX_LEAF_IDENTIFIER_LENGTH: usize = 256;
 
 /// KUC-owned generic interaction categories accepted by artifact plans.
@@ -109,6 +110,7 @@ impl ConsumerArtifactPlanV1 {
         }
     }
 }
+
 /// Stage evidence that excludes host targets and token bytes while publishing Unicode observations.
 pub struct ConsumerArtifactEvidence {
     stage_id: String,
@@ -259,6 +261,7 @@ impl std::error::Error for ConsumerArtifactPlanError {}
 mod execution;
 mod execution_error;
 mod issuer;
+mod multi_stage_plan;
 mod receipt;
 mod stage_binding;
 mod stage_interactions;
@@ -271,4 +274,5 @@ mod unicode_evidence;
 pub use execution::IssuedConsumerArtifactPlan;
 pub use execution_error::ConsumerArtifactPlanExecutionError;
 pub use issuer::ConsumerArtifactPlanIssuer;
+pub use multi_stage_plan::ConsumerArtifactPlanV2;
 pub use receipt::ConsumerArtifactForwardingReceipt;
