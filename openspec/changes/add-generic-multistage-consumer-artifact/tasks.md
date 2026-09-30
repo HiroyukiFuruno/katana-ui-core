@@ -7,7 +7,7 @@
 
 - [x] 2.1 11 stage の v2 issuance と unique evidence/receipt を回帰検証する。
 - [x] 2.2 v1 compatibility と v2 invalid binding rejection を検証する。
-- [ ] 2.3 format、focused tests、release gate を実行する。
+- [x] 2.3 format、focused tests、release gate を実行する。
 
 ## 3. Release
 
