@@ -12,7 +12,8 @@ use super::{binding, binding_from_encoder_with_interaction, complete_bindings, t
 use super::{binding_from_encoder, complete_semantic_bindings};
 use crate::egui::text_command_surface::EguiTextCommandSurfaceRootFactoryError;
 use crate::egui::text_command_surface::{
-    KucUnicodeColorGlyphEvidenceError, KucUnicodeColorGlyphEvidenceOptions,
+    EguiTextCommandSurfaceHostProjectionEncoder, KucUnicodeColorGlyphEvidenceError,
+    KucUnicodeColorGlyphEvidenceOptions, TextCommandSurfaceStyle,
 };
 
 #[cfg(target_os = "linux")]
@@ -322,7 +323,13 @@ fn issuer_v2_accepts_more_than_ten_generic_stages_without_relaxing_v1() {
                 ConsumerArtifactLeafId::new(format!("variable-stage-{index}")).expect("leaf"),
                 GenericInteractionClass::ImeCommit,
                 GenericEffectClass::NoHostEffect,
-                token(40 + index),
+                EguiTextCommandSurfaceHostProjectionEncoder::token(
+                    40 + index,
+                    b"variable-plan-target",
+                    super::presentation(),
+                    TextCommandSurfaceStyle::standard().expect("standard style"),
+                )
+                .expect("token"),
             )
         })
         .collect();
