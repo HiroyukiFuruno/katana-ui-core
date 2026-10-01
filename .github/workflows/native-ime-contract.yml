@@ -1,0 +1,104 @@
+name: Native IME compile contract
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '**.rs'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/native-ime-contract.yml'
+      - 'docs/native-ime-evidence.md'
+  pull_request:
+    branches: [master]
+    paths:
+      - '**.rs'
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+      - '.github/workflows/native-ime-contract.yml'
+      - 'docs/native-ime-evidence.md'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CARGO_BUILD_JOBS: 2
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+
+jobs:
+  compile-contract:
+    name: Compile contract (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install Linux GUI headers
+        if: matrix.os == 'ubuntu-latest'
+        run: bash scripts/ci/install-headless-display.sh
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Cache Rust build outputs
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: native-ime-contract-${{ matrix.os }}
+
+      - name: Run core registry verifier contract
+        id: verifier
+        run: cargo test -p katana-ui-core --no-default-features --features native-ime-evidence --test native_ime_evidence_contract --test native_ime_verify_cli_contract --locked
+
+      - name: Run native Unicode session contract
+        id: session
+        run: cargo test -p katana-ui-core --features egui,native-ime-evidence --test native_unicode_session_contract --locked
+
+      - name: Reject invalid native runs
+        run: cargo test -p katana-ui-core-native-ime-evidence --test runner_rejection --locked
+
+      - name: Compile native producer
+        id: producer
+        run: cargo check -p katana-ui-core-native-ime-evidence --locked
+
+      - name: Lint native producer
+        id: lint
+        run: cargo clippy -p katana-ui-core -p katana-ui-core-native-ime-evidence --all-targets --all-features --locked -- -D warnings
+
+      - name: Write compile report
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          {
+            echo "native IME compile contract"
+            echo "os=${{ matrix.os }}"
+            echo "sha=${{ github.sha }}"
+            echo "job_status=${{ job.status }}"
+            echo "verifier_outcome=${{ steps.verifier.outcome }}"
+            echo "session_outcome=${{ steps.session.outcome }}"
+            echo "producer_outcome=${{ steps.producer.outcome }}"
+            echo "lint_outcome=${{ steps.lint.outcome }}"
+            echo "native runtime evidence: unavailable (compile contract only)"
+            echo "core verifier: no-default-features + native-ime-evidence"
+            cargo --version
+            rustc --version
+          } > artifacts/native-ime-compile-report.txt
+
+      - name: Upload compile report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-ime-compile-report-${{ matrix.os }}
+          path: artifacts/native-ime-compile-report.txt
+          if-no-files-found: error

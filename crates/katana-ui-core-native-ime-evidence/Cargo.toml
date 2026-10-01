@@ -1,0 +1,22 @@
+[package]
+name = "katana-ui-core-native-ime-evidence"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+egui = { workspace = true }
+egui-winit = { version = "0.36.2", features = ["accesskit"] }
+katana-ui-core = { workspace = true, features = ["egui", "native-ime-evidence"] }
+serde.workspace = true
+serde_json.workspace = true
+softbuffer = "0.4.8"
+winit = "0.30.13"
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_UI_Input_KeyboardAndMouse"] }

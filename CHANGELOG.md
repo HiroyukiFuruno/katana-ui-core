@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-02
+
+### Added
+
+- Added an opt-in native IME evidence verifier API and registry-installable `kuc-native-ime-verify` CLI, with independent run bindings and trusted artifact digests.
+- Added a generic OS-event producer, root rendering observations, and three-platform compile/contract CI for Issue #81. Windows/Linux IME behavior remains a documented hypothesis; native IME artifacts have not been acquired.
+
 ## [0.4.0] - 2026-09-30
 
 ### Added

@@ -2,6 +2,8 @@ mod capture;
 mod constants;
 mod crop_observation;
 mod model;
+#[cfg(feature = "native-ime-evidence")]
+mod native_session;
 mod runner;
 mod surface;
 mod types;
@@ -18,5 +20,7 @@ pub use model::{
     KucUnicodeColorGlyphEvidenceInput, KucUnicodeColorGlyphEvidenceOptions,
     KucUnicodeColorGlyphEvidenceProfile,
 };
+#[cfg(feature = "native-ime-evidence")]
+pub use native_session::{KucNativeUnicodeEvidenceFrame, KucNativeUnicodeEvidenceSession};
 pub use types::KucUnicodeColorGlyphEvidenceError;
 pub use validation::KucUnicodeColorGlyphEvidenceBuilder;

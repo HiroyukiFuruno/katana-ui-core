@@ -13,6 +13,8 @@ pub mod facade;
 pub mod interaction;
 pub mod layout;
 pub mod molecule;
+#[cfg(feature = "native-ime-evidence")]
+pub mod native_ime_evidence;
 pub mod panel;
 #[cfg(feature = "raster-host")]
 pub mod raster_host;

@@ -212,3 +212,38 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/release/cleanup-release-branches.py --version "${{ steps.version.outputs.version }}"
+
+  native-tools:
+    name: Native tools (${{ matrix.os }})
+    needs: release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+      - name: Install Linux GUI headers
+        if: matrix.os == 'ubuntu-latest'
+        run: bash scripts/ci/install-headless-display.sh
+      - uses: dtolnay/rust-toolchain@3c5f7ea28cd621ae0bf5283f0e981fb97b8a7af9 # master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: native-release-${{ matrix.os }}
+      - name: Build native producer and verifier
+        run: cargo build --release -p katana-ui-core -p katana-ui-core-native-ime-evidence --features katana-ui-core/native-ime-evidence --locked
+      - name: Package tools with source and binary identities
+        id: package
+        shell: bash
+        run: python3 scripts/release/package-native-ime-tools.py --output artifacts --sha "${{ github.sha }}"
+      - name: Attach tools to GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.package.outputs.tag }}
+          ARCHIVE: ${{ steps.package.outputs.archive }}
+        run: gh release upload "${TAG}" "${ARCHIVE}" --clobber
