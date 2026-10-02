@@ -209,6 +209,7 @@ jobs:
           ARCHIVE_ROOT: ${{ runner.temp }}/native-ime-tools
         run: |
           if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release edit "${TAG}" --draft=true --verify-tag
             gh release upload "${TAG}" "${ARCHIVE_ROOT}"/*.zip --clobber
           else
             gh release create "${TAG}" --verify-tag --draft --generate-notes
