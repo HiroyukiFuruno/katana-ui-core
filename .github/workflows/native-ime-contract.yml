@@ -6,6 +6,7 @@ on:
     paths:
       - '**.rs'
       - 'Cargo.toml'
+      - '**/Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/native-ime-contract.yml'
       - 'docs/native-ime-evidence.md'
@@ -14,6 +15,7 @@ on:
     paths:
       - '**.rs'
       - 'Cargo.toml'
+      - '**/Cargo.toml'
       - 'Cargo.lock'
       - '.github/workflows/native-ime-contract.yml'
       - 'docs/native-ime-evidence.md'
