@@ -105,3 +105,9 @@ Windows/Linuxは仮説に基づく公開をユーザーが明示指示。native�
 - [ ] P2: hit queryをmeasurement/target boundsへ結合し、対象scalarの実rangeを検証する。
 - [ ] P1: 三OS archiveの成功・revision/version/digest検証を公開の前提にし、全asset添付後にGitHub Releaseを公開する。
 - [ ] Rust1.99 strict Clippyに対応し、修正HEADのfull release-check・cloud review・CIを再検証する。
+
+## 再レビュー対応（85117ea）
+
+- [ ] P1: native sessionの初回IME前にretained text面へfocusを要求し、クリックなしpreedit/commitの契約を追加する。
+- [ ] P2: ⭐️/☆それぞれのcrop寸法を対応する実hit target boundsへ結合し、不一致を拒否する。
+- [ ] 旧snapshotのgate31834はunit4624成功後に中断。追加修正後にfullgateとcloud/CIを再実行する。

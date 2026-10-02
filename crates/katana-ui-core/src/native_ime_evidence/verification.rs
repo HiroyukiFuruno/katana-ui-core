@@ -178,6 +178,7 @@ impl NativeImeEvidenceArtifact {
     }
     fn verify_observations(&self) -> Result<(), NativeImeVerificationError> {
         let f = &self.frame_observations;
+        let crop = &self.rgba_crop;
         if f.measurement_width == 0
             || f.measurement_height == 0
             || f.caret.width == 0
@@ -218,6 +219,12 @@ impl NativeImeEvidenceArtifact {
                 || hit.query_y < hit.target_bounds.y
                 || hit.query_x >= target_right.unwrap_or(0)
                 || hit.query_y >= target_bottom.unwrap_or(0)
+                || (hit.target == "⭐️"
+                    && (hit.target_bounds.width != crop.width
+                        || hit.target_bounds.height != crop.height))
+                || (hit.target == "☆"
+                    && (hit.target_bounds.width != crop.control_width
+                        || hit.target_bounds.height != crop.control_height))
         }) || !f.hit_tests.iter().any(|hit| hit.target == "⭐️")
             || !f.hit_tests.iter().any(|hit| hit.target == "☆")
         {

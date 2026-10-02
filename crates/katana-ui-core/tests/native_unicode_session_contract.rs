@@ -38,6 +38,32 @@ fn focused_session() -> KucNativeUnicodeEvidenceSession {
 }
 
 #[test]
+fn native_session_accepts_ime_without_a_pointer_click() {
+    let mut session =
+        KucNativeUnicodeEvidenceSession::new(KucUnicodeColorGlyphEvidenceOptions::default())
+            .expect("platform emoji font must be installed for the root contract");
+    session.run_frame(input(Vec::new())).expect("initial frame");
+    session
+        .run_frame(input(vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "にほんご".into(),
+            active_range_chars: None,
+        })]))
+        .expect("preedit frame");
+    session
+        .run_frame(input(vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: String::new(),
+            active_range_chars: None,
+        })]))
+        .expect("composition clear frame");
+    let committed = session
+        .run_frame(input(vec![egui::Event::Ime(egui::ImeEvent::Commit(
+            "日本語".into(),
+        ))]))
+        .expect("commit frame");
+    assert!(committed.observations.is_some());
+}
+
+#[test]
 fn missing_font_rejects_session_instead_of_fabricating_evidence() {
     let mut options = KucUnicodeColorGlyphEvidenceOptions::default();
     options.config.emoji_candidates.clear();
@@ -89,7 +115,10 @@ fn root_contract_collects_real_pixels_and_accesskit_without_claiming_native_orig
 
 #[test]
 fn synthetic_root_observations_round_trip_through_the_registry_verifier() {
-    let mut session = focused_session();
+    let mut session =
+        KucNativeUnicodeEvidenceSession::new(KucUnicodeColorGlyphEvidenceOptions::default())
+            .expect("platform emoji font must be installed for the root contract");
+    session.run_frame(input(Vec::new())).expect("initial frame");
     session
         .run_frame(input(vec![egui::Event::Ime(egui::ImeEvent::Preedit {
             text: "にほんご".into(),

@@ -50,28 +50,28 @@ fn artifact() -> NativeImeEvidenceArtifact {
             HitTestObservation {
                 target: "⭐️".to_owned(),
                 target_bounds: Bounds {
-                    x: 10,
+                    x: 0,
                     y: 0,
-                    width: 10,
-                    height: 24,
+                    width: 2,
+                    height: 2,
                 },
                 range_start: 9,
                 range_end: 15,
-                query_x: 10,
-                query_y: 10,
+                query_x: 0,
+                query_y: 0,
             },
             HitTestObservation {
                 target: "☆".to_owned(),
                 target_bounds: Bounds {
-                    x: 20,
+                    x: 0,
                     y: 0,
-                    width: 10,
-                    height: 24,
+                    width: 2,
+                    height: 2,
                 },
                 range_start: 16,
                 range_end: 19,
-                query_x: 20,
-                query_y: 10,
+                query_x: 1,
+                query_y: 1,
             },
         ],
         accesskit: AccessKitObservation {
@@ -143,6 +143,7 @@ fn expectations(artifact: &NativeImeEvidenceArtifact) -> NativeImeVerificationEx
 }
 
 fn reseal(mut evidence: NativeImeEvidenceArtifact) -> NativeImeEvidenceArtifact {
+    evidence.rgba_crop = evidence.rgba_crop.seal().unwrap();
     let (measurement_sha256, caret_sha256, hit_test_sha256, accesskit_sha256) =
         evidence.frame_observations.observation_hashes().unwrap();
     evidence.observations.measurement_sha256 = measurement_sha256;
@@ -202,6 +203,40 @@ fn requires_hit_queries_and_target_bounds_inside_measurement() {
             Err(NativeImeVerificationError::InvalidObservation("hit tests"))
         );
     }
+}
+
+#[test]
+fn requires_each_target_bounds_size_to_match_its_crop() {
+    let mut main_crop = artifact();
+    main_crop.rgba_crop.width = 1;
+    main_crop.rgba_crop.height = 4;
+    let main_crop = reseal(main_crop);
+    assert_eq!(
+        main_crop.verify(&expectations(&main_crop)),
+        Err(NativeImeVerificationError::InvalidObservation("hit tests"))
+    );
+
+    let mut control_crop = artifact();
+    control_crop.rgba_crop.control_width = 4;
+    control_crop.rgba_crop.control_height = 1;
+    let control_crop = reseal(control_crop);
+    assert_eq!(
+        control_crop.verify(&expectations(&control_crop)),
+        Err(NativeImeVerificationError::InvalidObservation("hit tests"))
+    );
+}
+
+#[test]
+fn repeated_target_with_different_bounds_cannot_bypass_crop_contract() {
+    let mut evidence = artifact();
+    let mut repeated = evidence.frame_observations.hit_tests[0].clone();
+    repeated.target_bounds.width = 3;
+    evidence.frame_observations.hit_tests.push(repeated);
+    let evidence = reseal(evidence);
+    assert_eq!(
+        evidence.verify(&expectations(&evidence)),
+        Err(NativeImeVerificationError::InvalidObservation("hit tests"))
+    );
 }
 
 #[test]

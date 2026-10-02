@@ -6,7 +6,10 @@ use crate::native_ime_evidence::{
     NativeFrameObservations, NativeObservationHashes, RgbaCropObservation,
 };
 use crate::text_raster::{PlatformFontSha256, PlatformTextRasterResources};
-use crate::text_surface::TextSurfaceEvent;
+use crate::text_surface::{
+    TextSurfaceEvent, TextSurfaceFocusRequest, TextSurfaceFocusRequestToken,
+    TextSurfacePresentation,
+};
 
 /// Retained KUC root used by the OS event-loop producer.
 ///
@@ -54,9 +57,16 @@ impl KucNativeUnicodeEvidenceSession {
             })?;
         options.config.emoji_candidates = vec![path];
         options.config.emoji_candidate_sha256 = vec![hash];
+        let mut evidence_surface = surface::evidence_surface();
+        let mut presentation = TextSurfacePresentation::from_props(evidence_surface.props());
+        presentation.focus_request = Some(TextSurfaceFocusRequest::new(
+            TextSurfaceFocusRequestToken::new("kuc-native-ime-evidence-initial-focus"),
+            true,
+        ));
+        evidence_surface.synchronize_presentation(presentation);
         let root = EguiTextCommandSurfaceRoot::with_text_raster_resources(
             options.root_identity,
-            EguiTextCommandSurface::new(surface::evidence_surface()),
+            EguiTextCommandSurface::new(evidence_surface),
             PlatformTextRasterResources::new(options.config),
         );
         let face = root.evidence_catalog().emoji_face();
