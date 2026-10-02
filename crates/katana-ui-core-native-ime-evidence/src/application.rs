@@ -40,6 +40,7 @@ impl NativeApplication {
         options: RunnerOptions,
         input_method: String,
         session: KucNativeUnicodeEvidenceSession,
+        started: Instant,
         proxy: EventLoopProxy<egui_winit::accesskit_winit::Event>,
     ) -> Self {
         let platform = std::env::consts::OS.to_owned();
@@ -62,7 +63,7 @@ impl NativeApplication {
             last_frame: None,
             artifact_written: false,
             session_error: None,
-            started: Instant::now(),
+            started,
             timeout: options.timeout,
             timed_out: false,
             window_error: None,
@@ -209,7 +210,13 @@ impl ApplicationHandler<egui_winit::accesskit_winit::Event> for NativeApplicatio
             }
             WindowEvent::Ime(Ime::Commit(text)) => {
                 if !text.is_empty() {
-                    match crate::platform::PlatformInputMethod::current() {
+                    let remaining = self.timeout.saturating_sub(self.started.elapsed());
+                    if remaining.is_zero() {
+                        self.timed_out = true;
+                        event_loop.exit();
+                        return;
+                    }
+                    match crate::platform::PlatformInputMethod::current_with_timeout(remaining) {
                         Ok(current) if current == self.transcript.input_method => {}
                         Ok(_) => {
                             self.session_error =

@@ -104,6 +104,28 @@ fn root_contract_collects_real_pixels_and_accesskit_without_claiming_native_orig
     assert!(crops.has_colored_pixels);
     assert_ne!(crops.rgba_sha256, crops.control_rgba_sha256);
     assert_eq!(
+        observations.measurement_width, committed.width,
+        "measurement width must use the retained root viewport"
+    );
+    assert_eq!(
+        observations.measurement_height, committed.height,
+        "measurement height must use the retained root viewport"
+    );
+    assert!(
+        observations
+            .caret
+            .x
+            .saturating_add(observations.caret.width)
+            <= observations.measurement_width
+    );
+    assert!(
+        observations
+            .caret
+            .y
+            .saturating_add(observations.caret.height)
+            <= observations.measurement_height
+    );
+    assert_eq!(
         committed.rgba_pixels.len(),
         committed.width as usize * committed.height as usize * 4
     );

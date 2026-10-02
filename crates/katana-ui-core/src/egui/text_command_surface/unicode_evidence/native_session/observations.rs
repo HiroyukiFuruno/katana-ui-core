@@ -83,8 +83,10 @@ pub(super) fn extract(
         committed_text: commit.to_owned(),
         committed_range_start,
         committed_range_end,
-        measurement_width: checked_u32(raster.width, "measurement width overflow")?,
-        measurement_height: checked_u32(raster.height, "measurement height overflow")?,
+        /* WHY: glyph画像は末尾の合法な1px caretを含まないため、
+         * compositeとhit-testが使うretained frameの実座標系を採用する。 */
+        measurement_width: output.evidence_text.record.frame.viewport_bounds.width,
+        measurement_height: output.evidence_text.record.frame.viewport_bounds.height,
         caret: bounds(output.evidence_text.record.frame.selection.caret),
         hit_tests,
         accesskit: AccessKitObservation {

@@ -3,6 +3,8 @@
 use std::io;
 #[cfg(target_os = "linux")]
 use std::process::Command as StdCommand;
+#[cfg(any(target_os = "linux", all(target_os = "macos", test)))]
+mod process;
 
 #[cfg(target_os = "macos")]
 const CF_STRING_BUFFER_BYTES: usize = 512;
@@ -19,6 +21,7 @@ impl ProcessService {
 }
 
 pub struct PlatformInputMethod;
+const DEFAULT_LOOKUP_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(2);
 
 impl PlatformInputMethod {
     pub fn current() -> io::Result<String> {
@@ -32,7 +35,29 @@ impl PlatformInputMethod {
         }
         #[cfg(target_os = "linux")]
         {
-            linux()
+            linux(DEFAULT_LOOKUP_TIMEOUT)
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+        {
+            Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "native IME lookup is unsupported on this OS",
+            ))
+        }
+    }
+
+    pub fn current_with_timeout(timeout: std::time::Duration) -> io::Result<String> {
+        if timeout == DEFAULT_LOOKUP_TIMEOUT {
+            return Self::current();
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = timeout;
+            Self::current()
+        }
+        #[cfg(target_os = "linux")]
+        {
+            linux(timeout)
         }
         #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
         {
@@ -118,9 +143,26 @@ fn windows() -> io::Result<String> {
 }
 
 #[cfg(target_os = "linux")]
-fn linux() -> io::Result<String> {
-    for (program, args) in [("ibus", vec!["engine"]), ("fcitx5-remote", vec!["-n"])] {
-        let Ok(output) = ProcessService::create_command(program).args(args).output() else {
+fn linux(timeout: std::time::Duration) -> io::Result<String> {
+    let deadline = std::time::Instant::now()
+        .checked_add(timeout)
+        .ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::InvalidInput,
+                "input method lookup timeout overflows the monotonic clock",
+            )
+        })?;
+    for (program, args) in [("ibus", ["engine"]), ("fcitx5-remote", ["-n"])] {
+        let remaining = deadline.saturating_duration_since(std::time::Instant::now());
+        if remaining.is_zero() {
+            return Err(io::Error::new(
+                io::ErrorKind::TimedOut,
+                "input method lookup timed out",
+            ));
+        }
+        let mut command = ProcessService::create_command(program);
+        command.args(args);
+        let Ok(output) = process::output_with_timeout(command, remaining) else {
             continue;
         };
         if output.status.success() {

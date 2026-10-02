@@ -96,4 +96,6 @@ v0.4.1 の GitHub Release には macOS / Windows / Linux の `kuc-native-ime-too
 
 commit は最終描画textの UTF-8 byte range と照合する。hit-test は対象 scalar の text range、measurement 内の target bounds、query 座標を同時に検証する。
 
+measurement は retained frame の描画surface寸法を使う。文字画像の寸法では末尾caretの領域を含められないため、caretとhit-testを実surfaceの座標で検証する。Linuxのinput-method照会は起動時とcommit時の両方でrunの残り時間に制限し、ibusとfcitxの待機も同じ期限を共有する。
+
 公開workflowは三OSの配布ZIPが全て生成された後、同一revision/versionとbinary SHA-256を照合する。全assetをdraft Releaseへ添付してから公開し、crates.io publishへ進む。

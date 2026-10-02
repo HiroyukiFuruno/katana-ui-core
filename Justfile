@@ -49,7 +49,7 @@ check-types:
 # Verify native evidence contracts; synthetic input here does not attest OS origin.
 native-ime-contract:
     python3 scripts/test_package_native_ime_tools.py
-    {{CARGO}} test -p katana-ui-core-native-ime-evidence --test runner_rejection --locked
+    {{CARGO}} test -p katana-ui-core-native-ime-evidence --locked
     {{CARGO}} test -p katana-ui-core --no-default-features --features native-ime-evidence --test native_ime_evidence_contract --test native_ime_verify_cli_contract --locked
     {{CARGO}} test -p katana-ui-core --features egui,native-ime-evidence --test native_unicode_session_contract --locked
     {{CARGO}} check -p katana-ui-core-native-ime-evidence --locked

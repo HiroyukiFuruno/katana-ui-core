@@ -122,3 +122,9 @@ Windows/Linuxは仮説に基づく公開をユーザーが明示指示。native�
 - [ ] AccessKit boundsのchecked終端overflowを拒否する（raster measurementとの直接包含は別座標系のため要求しない）。
 - [ ] Linux ibus/fcitx照会のchild/pipe待機をremaining timeoutへ制限し、startupも同一monotonic timeoutへ算入する。
 - [ ] 修正後full release-check、最新cloud/CI、公開、registry/local cleanupを完了する。
+
+## 最新統合修正
+
+- [/] AccessKit overflowを拒否する回帰22件、Linux照会の実process timeout/終了status/output回帰6件とLinux cross-target strict Clippy成功。
+- [/] Windows hosted契約で末尾caretがglyph画像幅192を越える事例を確認。measurementを実viewportへ結合し、viewport寸法一致とcaret包含の回帰を追加（root契約6件成功）。
+- [ ] 最新差分のfull release-check / cloud review / 三OS CI / 公開 / registry / cleanupを完了する。旧HEADのfull gate成功は最新HEADへ流用しない。

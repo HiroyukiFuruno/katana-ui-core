@@ -64,8 +64,8 @@ jobs:
         id: session
         run: cargo test -p katana-ui-core --features egui,native-ime-evidence --test native_unicode_session_contract --locked
 
-      - name: Reject invalid native runs
-        run: cargo test -p katana-ui-core-native-ime-evidence --test runner_rejection --locked
+      - name: Verify bounded lookup and reject invalid native runs
+        run: cargo test -p katana-ui-core-native-ime-evidence --locked
 
       - name: Compile native producer
         id: producer
