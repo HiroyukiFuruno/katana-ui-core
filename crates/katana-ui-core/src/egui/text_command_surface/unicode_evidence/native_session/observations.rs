@@ -61,16 +61,14 @@ pub(super) fn extract(
         output.evidence_text.record.frame.caret,
         "committed range end overflow",
     )?;
-    let committed_range_start = checked_u32(
-        output
-            .evidence_text
-            .record
-            .frame
-            .caret
-            .checked_sub(commit.len())
-            .ok_or_else(|| trace("committed range underflow"))?,
-        "committed range start overflow",
-    )?;
+    /* WHY: endがu32に収まることを検証済みで、checked_sub後のstartはend以下となる。 */
+    let committed_range_start = output
+        .evidence_text
+        .record
+        .frame
+        .caret
+        .checked_sub(commit.len())
+        .ok_or_else(|| trace("committed range underflow"))? as u32;
     if raster
         .text
         .get(committed_range_start as usize..committed_range_end as usize)
@@ -310,6 +308,33 @@ mod tests {
             extract(&session.root, &root_output, &update, "x", 1),
             Err(super::super::KucUnicodeColorGlyphEvidenceError::RootTrace(message))
                 if message == "committed range does not match commit"
+        ));
+    }
+
+    #[test]
+    fn extract_rejects_a_missing_control_scalar_after_rendering() {
+        let (session, mut root_output) = rendered_root_output();
+        root_output.evidence_text.raster.text =
+            root_output.evidence_text.raster.text.replace('☆', "");
+        let update = accesskit_update(&root_output.evidence_text.raster.text);
+
+        assert!(matches!(
+            extract(&session.root, &root_output, &update, "", 1),
+            Err(super::super::KucUnicodeColorGlyphEvidenceError::RootTrace(message))
+                if message == "native star/control scalar range missing"
+        ));
+    }
+
+    #[test]
+    fn extract_rejects_a_committed_range_end_that_does_not_fit_u32() {
+        let (session, mut root_output) = rendered_root_output();
+        root_output.evidence_text.record.frame.caret = usize::MAX;
+        let update = accesskit_update(&root_output.evidence_text.raster.text);
+
+        assert!(matches!(
+            extract(&session.root, &root_output, &update, "", 1),
+            Err(super::super::KucUnicodeColorGlyphEvidenceError::RootTrace(message))
+                if message == "committed range end overflow"
         ));
     }
 }
