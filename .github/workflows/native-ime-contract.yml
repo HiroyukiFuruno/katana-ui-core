@@ -1,6 +1,7 @@
 name: Native IME compile contract
 
 on:
+  workflow_call:
   push:
     branches: [master]
     paths:
@@ -21,7 +22,7 @@ on:
       - 'docs/native-ime-evidence.md'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: native-ime-contract-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -42,6 +43,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
 
       - name: Install Linux GUI headers
         if: matrix.os == 'ubuntu-latest'

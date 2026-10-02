@@ -32,8 +32,17 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  native-contract:
+    if: >
+      github.event_name == 'workflow_dispatch' || (
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        startsWith(github.event.pull_request.head.ref, 'release/v')
+      )
+    uses: ./.github/workflows/native-ime-contract.yml
+
   release:
-    needs: native-tools
+    needs: [native-contract, native-tools]
     if: >
       github.event_name == 'workflow_dispatch' || (
         github.event.pull_request.merged == true &&
@@ -238,6 +247,7 @@ jobs:
 
   native-tools:
     name: Native tools (${{ matrix.os }})
+    needs: native-contract
     if: >
       github.event_name == 'workflow_dispatch' || (
         github.event.pull_request.merged == true &&
