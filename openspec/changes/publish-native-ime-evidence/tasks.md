@@ -128,3 +128,9 @@ Windows/Linuxは仮説に基づく公開をユーザーが明示指示。native�
 - [/] AccessKit overflowを拒否する回帰22件、Linux照会の実process timeout/終了status/output回帰6件とLinux cross-target strict Clippy成功。
 - [/] Windows hosted契約で末尾caretがglyph画像幅192を越える事例を確認。measurementを実viewportへ結合し、viewport寸法一致とcaret包含の回帰を追加（root契約6件成功）。
 - [ ] 最新差分のfull release-check / cloud review / 三OS CI / 公開 / registry / cleanupを完了する。旧HEADのfull gate成功は最新HEADへ流用しない。
+
+## 公開条件とレビュー採否の整合
+
+- [/] v0.4.1の仮説実装公開は2026-10-02の明示指示に従いspecへ固定。三OS実測の完了条件は維持し、Issue #81はOpenのまま。
+- [/] hash元データの独立再計算とcrop原点同梱のP2は、固定revision producer/外部runner attestationを信頼する既存境界を拡張するため今回は不採用。各threadへ根拠を返信しresolve。
+- [ ] 最新HEADのCI/full品質証跡、公開、registry検証、local cleanupを完了する。

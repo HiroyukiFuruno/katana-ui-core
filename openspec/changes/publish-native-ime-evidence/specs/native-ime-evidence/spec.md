@@ -33,8 +33,14 @@ KUC SHALL expose its verifier through the published registry package. Verificati
 - **WHEN** the expected native producer or runner provenance cannot be established
 - **THEN** verification rejects the artifact instead of accepting its self-declared origin
 
-### Requirement: Release publishes verified evidence for all three operating systems
-Release/CI MUST collect and retain verified native evidence for macOS, Windows and Linux at the same revision and publish it as release artifacts. Compilation, synthetic contracts, screenshots and previous run artifacts MUST NOT substitute for these runs. ConsumerArtifactPlanV2 and V1 compatibility MUST be maintained.
+### Requirement: Native evidence acceptance retains all three operating systems
+Completing native evidence acceptance MUST collect and retain verified native evidence for macOS, Windows and Linux at the same revision and publish it as release artifacts. Compilation, synthetic contracts, screenshots and previous run artifacts MUST NOT substitute for these runs. ConsumerArtifactPlanV2 and V1 compatibility MUST be maintained.
+
+The user's 2026-10-02 instruction explicitly authorizes publishing the v0.4.1 hypothesis implementation without available Windows/Linux native environments. This version's tool publication MUST require the existing full quality gates, review, three-OS compile contracts, and revision/version/binary-digest verification of all three tool archives. It MUST declare `native_ime_measured: false`, MUST NOT claim native evidence acceptance, and MUST retain the unfulfilled real-run conditions in Issue #81. This authorization does not waive native evidence verification or permit synthetic data to become native evidence.
+
+#### Scenario: Authorized v0.4.1 hypothesis implementation is published
+- **WHEN** the explicitly authorized v0.4.1 implementation passes its full quality, review and three-OS tool distribution gates while native runs remain unavailable
+- **THEN** tool and registry publication can proceed with unmeasured status, while native evidence acceptance remains incomplete and Issue #81 stays open
 
 #### Scenario: One OS evidence is missing
 - **WHEN** any required OS native run is missing or verification fails
