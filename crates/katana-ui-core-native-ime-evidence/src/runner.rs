@@ -1,6 +1,4 @@
-use crate::{
-    NativeTranscript, RunnerError, RunnerOptions, application::NativeApplication, platform,
-};
+use crate::{NativeTranscript, RunnerError, RunnerOptions, application::NativeApplication};
 use katana_ui_core::egui::text_command_surface::{
     KucNativeUnicodeEvidenceSession, KucUnicodeColorGlyphEvidenceOptions,
 };
@@ -42,21 +40,13 @@ impl NativeRunner {
             ));
         }
         let started = std::time::Instant::now();
-        let input_method = platform::PlatformInputMethod::current_with_timeout(options.timeout)
-            .map_err(RunnerError::InputMethod)?;
         let session =
             KucNativeUnicodeEvidenceSession::new(KucUnicodeColorGlyphEvidenceOptions::default())
                 .map_err(|e| RunnerError::Core(e.to_string()))?;
         let event_loop = EventLoop::<egui_winit::accesskit_winit::Event>::with_user_event()
             .build()
             .map_err(RunnerError::EventLoop)?;
-        let mut app = NativeApplication::new(
-            options,
-            input_method,
-            session,
-            started,
-            event_loop.create_proxy(),
-        );
+        let mut app = NativeApplication::new(options, session, started, event_loop.create_proxy());
         event_loop
             .run_app(&mut app)
             .map_err(RunnerError::EventLoop)?;

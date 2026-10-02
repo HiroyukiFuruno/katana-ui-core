@@ -134,3 +134,10 @@ Windows/Linuxは仮説に基づく公開をユーザーが明示指示。native�
 - [/] v0.4.1の仮説実装公開は2026-10-02の明示指示に従いspecへ固定。三OS実測の完了条件は維持し、Issue #81はOpenのまま。
 - [/] hash元データの独立再計算とcrop原点同梱のP2は、固定revision producer/外部runner attestationを信頼する既存境界を拡張するため今回は不採用。各threadへ根拠を返信しresolve。
 - [ ] 最新HEADのCI/full品質証跡、公開、registry検証、local cleanupを完了する。
+
+## 最新レビュー対応と採否基準
+
+- [/] P0/P1は必須修正。P2以降は要件・互換性・実害で採否を判断し、不採用の根拠も各threadへ記録する。
+- [x] 起動時の入力方式固定を廃止し、最初の非空native preeditで固定する。以後のpreedit/commitは残り期限内の照会で同一性を確認し、失敗をeguiへ転送しない。binding回帰3件、producer9件、Linux union strict Clippy、AST成功。
+- [x] public core full release-check exit0: 4631 tests、clean strict line/function coverage 100%、package/publish dry-run成功。
+- [ ] 最新producer差分のnative contract、Draft review、exact HEAD CI、公開、registry検証、local cleanupを完了する。

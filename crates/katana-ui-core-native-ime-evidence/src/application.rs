@@ -1,4 +1,5 @@
 mod artifact;
+mod input_method_binding;
 use crate::{NativeTranscript, RunnerOptions, renderer::RootRenderer};
 use egui_winit::State;
 use katana_ui_core::egui::text_command_surface::{
@@ -33,12 +34,12 @@ pub(super) struct NativeApplication {
     pub(super) window_error: Option<winit::error::OsError>,
     window_id: Option<WindowId>,
     proxy: EventLoopProxy<egui_winit::accesskit_winit::Event>,
+    input_method_binding: input_method_binding::InputMethodBinding,
 }
 
 impl NativeApplication {
     pub(super) fn new(
         options: RunnerOptions,
-        input_method: String,
         session: KucNativeUnicodeEvidenceSession,
         started: Instant,
         proxy: EventLoopProxy<egui_winit::accesskit_winit::Event>,
@@ -54,7 +55,6 @@ impl NativeApplication {
                 producer_id: options.producer_id.clone(),
                 runner_id: options.runner_id.clone(),
                 platform,
-                input_method,
                 ..Default::default()
             },
             window: None,
@@ -69,6 +69,7 @@ impl NativeApplication {
             window_error: None,
             window_id: None,
             proxy,
+            input_method_binding: input_method_binding::InputMethodBinding::default(),
         }
     }
 
@@ -102,6 +103,57 @@ impl NativeApplication {
                 }
             }
             self.last_frame = Some(frame);
+        }
+        true
+    }
+
+    fn prepare_native_ime_event(&mut self, event: &WindowEvent) -> bool {
+        if let WindowEvent::Ime(Ime::Preedit(text, _)) = event
+            && !text.is_empty()
+        {
+            let remaining = self.timeout.saturating_sub(self.started.elapsed());
+            if remaining.is_zero() {
+                self.timed_out = true;
+                return false;
+            }
+            let current =
+                match crate::platform::PlatformInputMethod::current_with_timeout(remaining) {
+                    Ok(current) => current,
+                    Err(error) => {
+                        self.session_error = Some(error.to_string());
+                        return false;
+                    }
+                };
+            if let Err(error) = self.input_method_binding.observe_preedit(current.clone()) {
+                self.session_error = Some(error.into());
+                return false;
+            }
+            self.transcript.input_method = current;
+        }
+        if let WindowEvent::Ime(Ime::Commit(text)) = event
+            && !text.is_empty()
+        {
+            if !self.input_method_binding.is_pinned() {
+                self.session_error = Some("native commit arrived before input method pin".into());
+                return false;
+            }
+            let remaining = self.timeout.saturating_sub(self.started.elapsed());
+            if remaining.is_zero() {
+                self.timed_out = true;
+                return false;
+            }
+            let current =
+                match crate::platform::PlatformInputMethod::current_with_timeout(remaining) {
+                    Ok(current) => current,
+                    Err(error) => {
+                        self.session_error = Some(error.to_string());
+                        return false;
+                    }
+                };
+            if let Err(error) = self.input_method_binding.verify_commit(&current) {
+                self.session_error = Some(error.into());
+                return false;
+            }
         }
         true
     }
@@ -164,13 +216,17 @@ impl ApplicationHandler<egui_winit::accesskit_winit::Event> for NativeApplicatio
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
-        let Some(window) = self.window.as_ref() else {
-            return;
-        };
         if self.window_id != Some(id) {
             return;
         }
         let is_redraw = matches!(&event, WindowEvent::RedrawRequested);
+        if !self.prepare_native_ime_event(&event) {
+            event_loop.exit();
+            return;
+        }
+        let Some(window) = self.window.as_ref() else {
+            return;
+        };
         {
             if let Some(state) = &mut self.egui_state {
                 state.set_allow_ime(true);
@@ -184,9 +240,8 @@ impl ApplicationHandler<egui_winit::accesskit_winit::Event> for NativeApplicatio
                 }
                 if self.transcript.egui_frames == 1 {
                     eprintln!(
-                        "native-ready pid={} inputmethod={} width={} height={}",
+                        "native-ready pid={} inputmethod=unbound width={} height={}",
                         std::process::id(),
-                        self.transcript.input_method,
                         WINDOW_WIDTH as u32,
                         WINDOW_HEIGHT as u32
                     );
@@ -210,26 +265,6 @@ impl ApplicationHandler<egui_winit::accesskit_winit::Event> for NativeApplicatio
             }
             WindowEvent::Ime(Ime::Commit(text)) => {
                 if !text.is_empty() {
-                    let remaining = self.timeout.saturating_sub(self.started.elapsed());
-                    if remaining.is_zero() {
-                        self.timed_out = true;
-                        event_loop.exit();
-                        return;
-                    }
-                    match crate::platform::PlatformInputMethod::current_with_timeout(remaining) {
-                        Ok(current) if current == self.transcript.input_method => {}
-                        Ok(_) => {
-                            self.session_error =
-                                Some("input method changed during native run".into());
-                            event_loop.exit();
-                            return;
-                        }
-                        Err(error) => {
-                            self.session_error = Some(error.to_string());
-                            event_loop.exit();
-                            return;
-                        }
-                    }
                     self.transcript.commit.push_str(&text);
                     self.transcript.commit_sequence = self
                         .transcript
