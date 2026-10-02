@@ -20,7 +20,7 @@ impl RootRenderer {
         let mut buffer = surface.buffer_mut().map_err(|e| e.to_string())?;
         for (pixel, rgba) in buffer
             .iter_mut()
-            .zip(frame.rgba_pixels.chunks_exact(RGBA_CHANNELS))
+            .zip(frame.rgba_pixels.as_chunks::<RGBA_CHANNELS>().0)
         {
             *pixel = u32::from(rgba[0]) << RED_SHIFT
                 | u32::from(rgba[1]) << GREEN_SHIFT

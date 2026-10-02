@@ -98,3 +98,10 @@ Windows/Linuxは仮説に基づく公開をユーザーが明示指示。native�
 - session `66633` は全体4,619件、clean coverage全テスト成功・関数coverage100%。crop範囲外のエラー伝播1行（observations.rs:137）が未到達でexit 1。実LCOVをtmpへ保存し、範囲外crop拒否の回帰を追加して再検証する。
 - 範囲外texture offsetによる `composite crop pixel missing` 拒否テスト成功。production codeは変更なし。最終gate session `61217`、ログ `tmp/v0.4.1-final-release-check.log`、100%基準を維持して再実行。
 - session `61217` はexit 0。全体4,620 test、clean full coverageのline/function 100%、package検証、publish dry-run、公開scope検証、未公開版確認が成功。依存関係は最新互換版、V1/V2 contractと厳格lintを維持。
+
+## PR #82 review対応
+
+- [ ] P1: 実描画textのcommit byte rangeとIME commitを結合し、消失/不一致/UTF-8境界を拒否する。
+- [ ] P2: hit queryをmeasurement/target boundsへ結合し、対象scalarの実rangeを検証する。
+- [ ] P1: 三OS archiveの成功・revision/version/digest検証を公開の前提にし、全asset添付後にGitHub Releaseを公開する。
+- [ ] Rust1.99 strict Clippyに対応し、修正HEADのfull release-check・cloud review・CIを再検証する。

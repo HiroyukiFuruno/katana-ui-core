@@ -24,9 +24,14 @@ pub(super) fn extract(
 ) -> Result<Observation, KucUnicodeColorGlyphEvidenceError> {
     let raster = &output.evidence_text.raster;
     let texture = output.evidence_text.record.texture_bounds;
-    let (star, star_hit) = crop_for_target(output, raster, texture, "star", STAR_TEXT)?;
-    let (control, control_hit) =
-        crop_for_target(output, raster, texture, "control_star", CONTROL_STAR_TEXT)?;
+    let (star, star_hit) = crop_for_target(output, raster, texture, STAR_TEXT, STAR_TEXT)?;
+    let (control, control_hit) = crop_for_target(
+        output,
+        raster,
+        texture,
+        CONTROL_STAR_TEXT,
+        CONTROL_STAR_TEXT,
+    )?;
     let hit_tests = vec![star_hit, control_hit];
     let rgba_crop = RgbaCropObservation {
         width: star.bounds.width,
@@ -52,9 +57,32 @@ pub(super) fn extract(
     };
     let node_bounds = require(node.bounds(), "native AccessKit bounds missing")?;
     let value = require(node.value(), "native AccessKit text missing")?;
+    let committed_range_end = checked_u32(
+        output.evidence_text.record.frame.caret,
+        "committed range end overflow",
+    )?;
+    let committed_range_start = checked_u32(
+        output
+            .evidence_text
+            .record
+            .frame
+            .caret
+            .checked_sub(commit.len())
+            .ok_or_else(|| trace("committed range underflow"))?,
+        "committed range start overflow",
+    )?;
+    if raster
+        .text
+        .get(committed_range_start as usize..committed_range_end as usize)
+        != Some(commit)
+    {
+        return Err(trace("committed range does not match commit"));
+    }
     let frame_observations = NativeFrameObservations {
         final_text: raster.text.clone(),
         committed_text: commit.to_owned(),
+        committed_range_start,
+        committed_range_end,
         measurement_width: checked_u32(raster.width, "measurement width overflow")?,
         measurement_height: checked_u32(raster.height, "measurement height overflow")?,
         caret: bounds(output.evidence_text.record.frame.selection.caret),
@@ -117,8 +145,15 @@ fn crop_for_target(
     )?;
     let local = crop_observation::bounds_for_range(raster, range)?;
     let hit = crop_observation::hit_test_observation(target, raster, local)?;
+    let target_bounds = Bounds {
+        x: local.x,
+        y: local.y,
+        width: local.width,
+        height: local.height,
+    };
     let hit_test = HitTestObservation {
         target: hit.target,
+        target_bounds: target_bounds.clone(),
         range_start: checked_u32(hit.byte_start, "hit-test start overflow")?,
         range_end: checked_u32(hit.byte_end, "hit-test end overflow")?,
         query_x: hit.query_x,
@@ -188,6 +223,55 @@ impl KucRootEventBatchForwarder for EvidenceSink {
 mod tests {
     use super::*;
 
+    const SURFACE_SIZE: egui::Vec2 = egui::vec2(640.0, 240.0);
+    const ACCESSKIT_WIDTH: f64 = 100.0;
+    const ACCESSKIT_HEIGHT: f64 = 24.0;
+
+    fn input() -> egui::RawInput {
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, SURFACE_SIZE)),
+            ..Default::default()
+        }
+    }
+
+    fn rendered_root_output() -> (
+        super::super::KucNativeUnicodeEvidenceSession,
+        crate::egui::text_command_surface::EguiTextCommandSurfaceRootOutput,
+    ) {
+        let mut session = super::super::KucNativeUnicodeEvidenceSession::new(
+            super::super::KucUnicodeColorGlyphEvidenceOptions::default(),
+        )
+        .expect("platform emoji font must be installed for the root contract");
+        let mut rendered = None;
+        let mut output = session.context.run_ui(input(), |ui| {
+            rendered = Some(session.root.show(ui, &super::super::surface::trace_style()));
+        });
+        output.textures_delta.clear();
+        (
+            session,
+            rendered
+                .expect("root closure must run")
+                .expect("root frame must render"),
+        )
+    }
+
+    fn accesskit_update(value: &str) -> egui::accesskit::TreeUpdate {
+        let mut node = egui::accesskit::Node::new(egui::accesskit::Role::MultilineTextInput);
+        node.set_bounds(egui::accesskit::Rect {
+            x0: 0.0,
+            y0: 0.0,
+            x1: ACCESSKIT_WIDTH,
+            y1: ACCESSKIT_HEIGHT,
+        });
+        node.set_value(value);
+        egui::accesskit::TreeUpdate {
+            nodes: vec![(1.into(), node)],
+            tree: None,
+            tree_id: egui::accesskit::TreeId::ROOT,
+            focus: 1.into(),
+        }
+    }
+
     #[test]
     fn checked_u32_rejects_values_outside_the_evidence_contract() {
         assert_eq!(
@@ -198,6 +282,32 @@ mod tests {
             checked_u32(u64::MAX, "width overflow"),
             Err(KucUnicodeColorGlyphEvidenceError::RootTrace(message))
                 if message == "width overflow"
+        ));
+    }
+
+    #[test]
+    fn committed_range_rejects_underflow_mismatch_and_utf8_split() {
+        let (session, mut root_output) = rendered_root_output();
+        let update = accesskit_update(&root_output.evidence_text.raster.text);
+        root_output.evidence_text.record.frame.caret = 0;
+        assert!(matches!(
+            extract(&session.root, &root_output, &update, "日本語", 1),
+            Err(super::super::KucUnicodeColorGlyphEvidenceError::RootTrace(message))
+                if message == "committed range underflow"
+        ));
+
+        root_output.evidence_text.record.frame.caret = 3;
+        assert!(matches!(
+            extract(&session.root, &root_output, &update, "x", 1),
+            Err(super::super::KucUnicodeColorGlyphEvidenceError::RootTrace(message))
+                if message == "committed range does not match commit"
+        ));
+
+        root_output.evidence_text.record.frame.caret = 1;
+        assert!(matches!(
+            extract(&session.root, &root_output, &update, "x", 1),
+            Err(super::super::KucUnicodeColorGlyphEvidenceError::RootTrace(message))
+                if message == "committed range does not match commit"
         ));
     }
 }

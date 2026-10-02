@@ -28,6 +28,8 @@ fn valid_artifact() -> NativeImeEvidenceArtifact {
     let frame = NativeFrameObservations {
         final_text: "日本語⭐️ ☆".to_owned(),
         committed_text: "日本語".to_owned(),
+        committed_range_start: 0,
+        committed_range_end: 9,
         measurement_width: 100,
         measurement_height: 24,
         caret: Bounds {
@@ -39,17 +41,29 @@ fn valid_artifact() -> NativeImeEvidenceArtifact {
         hit_tests: vec![
             HitTestObservation {
                 target: "⭐️".to_owned(),
+                target_bounds: Bounds {
+                    x: 10,
+                    y: 0,
+                    width: 10,
+                    height: 24,
+                },
                 range_start: 9,
                 range_end: 15,
-                query_x: 1,
-                query_y: 1,
+                query_x: 10,
+                query_y: 10,
             },
             HitTestObservation {
                 target: "☆".to_owned(),
+                target_bounds: Bounds {
+                    x: 20,
+                    y: 0,
+                    width: 10,
+                    height: 24,
+                },
                 range_start: 16,
                 range_end: 19,
-                query_x: 2,
-                query_y: 1,
+                query_x: 20,
+                query_y: 10,
             },
         ],
         accesskit: AccessKitObservation {

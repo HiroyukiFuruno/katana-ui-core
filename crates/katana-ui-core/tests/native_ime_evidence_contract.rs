@@ -36,6 +36,8 @@ fn artifact() -> NativeImeEvidenceArtifact {
     let frame_observations = NativeFrameObservations {
         final_text: "日本語⭐️ ☆".to_owned(),
         committed_text: "日本語".to_owned(),
+        committed_range_start: 0,
+        committed_range_end: 9,
         measurement_width: 100,
         measurement_height: 24,
         caret: Bounds {
@@ -47,6 +49,12 @@ fn artifact() -> NativeImeEvidenceArtifact {
         hit_tests: vec![
             HitTestObservation {
                 target: "⭐️".to_owned(),
+                target_bounds: Bounds {
+                    x: 10,
+                    y: 0,
+                    width: 10,
+                    height: 24,
+                },
                 range_start: 9,
                 range_end: 15,
                 query_x: 10,
@@ -54,6 +62,12 @@ fn artifact() -> NativeImeEvidenceArtifact {
             },
             HitTestObservation {
                 target: "☆".to_owned(),
+                target_bounds: Bounds {
+                    x: 20,
+                    y: 0,
+                    width: 10,
+                    height: 24,
+                },
                 range_start: 16,
                 range_end: 19,
                 query_x: 20,
@@ -128,10 +142,66 @@ fn expectations(artifact: &NativeImeEvidenceArtifact) -> NativeImeVerificationEx
     }
 }
 
+fn reseal(mut evidence: NativeImeEvidenceArtifact) -> NativeImeEvidenceArtifact {
+    let (measurement_sha256, caret_sha256, hit_test_sha256, accesskit_sha256) =
+        evidence.frame_observations.observation_hashes().unwrap();
+    evidence.observations.measurement_sha256 = measurement_sha256;
+    evidence.observations.caret_sha256 = caret_sha256;
+    evidence.observations.hit_test_sha256 = hit_test_sha256;
+    evidence.observations.accesskit_sha256 = accesskit_sha256;
+    evidence.seal().unwrap()
+}
+
 #[test]
 fn verifies_one_fresh_native_run() {
     let evidence = artifact();
     assert_eq!(evidence.verify(&expectations(&evidence)), Ok(()));
+}
+
+#[test]
+fn requires_commit_range_to_cover_the_committed_text() {
+    let cases: Vec<EvidenceMutation> = vec![
+        Box::new(|e| {
+            e.frame_observations.committed_range_start = 9;
+            e.frame_observations.committed_range_end = 15;
+        }),
+        Box::new(|e| {
+            e.frame_observations.committed_range_start = 1;
+            e.frame_observations.committed_range_end = 9;
+        }),
+        Box::new(|e| e.frame_observations.committed_range_end = 8),
+    ];
+    for mutate in cases {
+        let mut evidence = artifact();
+        mutate(&mut evidence);
+        let evidence = reseal(evidence);
+        assert_eq!(
+            evidence.verify(&expectations(&evidence)),
+            Err(NativeImeVerificationError::InvalidTranscript)
+        );
+    }
+}
+
+#[test]
+fn requires_hit_queries_and_target_bounds_inside_measurement() {
+    let cases: Vec<EvidenceMutation> = vec![
+        Box::new(|e| e.frame_observations.hit_tests[0].query_x = 100),
+        Box::new(|e| e.frame_observations.hit_tests[0].target_bounds.x = 95),
+        Box::new(|e| {
+            e.frame_observations.hit_tests[0].target_bounds.x = u32::MAX;
+            e.frame_observations.hit_tests[0].target_bounds.width = 1;
+        }),
+        Box::new(|e| e.frame_observations.hit_tests[0].target = "unknown".to_owned()),
+    ];
+    for mutate in cases {
+        let mut evidence = artifact();
+        mutate(&mut evidence);
+        let evidence = reseal(evidence);
+        assert_eq!(
+            evidence.verify(&expectations(&evidence)),
+            Err(NativeImeVerificationError::InvalidObservation("hit tests"))
+        );
+    }
 }
 
 #[test]

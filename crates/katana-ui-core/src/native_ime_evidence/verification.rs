@@ -122,6 +122,12 @@ impl NativeImeEvidenceArtifact {
             || !contains_japanese(&self.ime.commit)
             || self.ime.preedit_sequence >= self.ime.commit_sequence
             || self.ime.commit != self.frame_observations.committed_text
+            || self.frame_observations.committed_range_start
+                >= self.frame_observations.committed_range_end
+            || self.frame_observations.final_text.get(
+                self.frame_observations.committed_range_start as usize
+                    ..self.frame_observations.committed_range_end as usize,
+            ) != Some(self.ime.commit.as_str())
         {
             return Err(NativeImeVerificationError::InvalidTranscript);
         }
@@ -192,18 +198,28 @@ impl NativeImeEvidenceArtifact {
         }
         let text_len = f.final_text.len() as u32;
         if f.hit_tests.iter().any(|hit| {
+            let target_right = hit.target_bounds.x.checked_add(hit.target_bounds.width);
+            let target_bottom = hit.target_bounds.y.checked_add(hit.target_bounds.height);
             hit.range_start >= hit.range_end
                 || hit.range_end > text_len
                 || !f.final_text.is_char_boundary(hit.range_start as usize)
                 || !f.final_text.is_char_boundary(hit.range_end as usize)
-                || (hit.target.contains("⭐️")
-                    && !f.final_text[hit.range_start as usize..hit.range_end as usize]
-                        .contains("⭐️"))
-                || (hit.target.contains('☆')
-                    && !f.final_text[hit.range_start as usize..hit.range_end as usize]
-                        .contains('☆'))
-        }) || !f.hit_tests.iter().any(|hit| hit.target.contains("⭐️"))
-            || !f.hit_tests.iter().any(|hit| hit.target.contains('☆'))
+                || !matches!(hit.target.as_str(), "⭐️" | "☆")
+                || f.final_text[hit.range_start as usize..hit.range_end as usize] != hit.target
+                || hit.target_bounds.width == 0
+                || hit.target_bounds.height == 0
+                || target_right.is_none()
+                || target_bottom.is_none()
+                || target_right.unwrap_or(u32::MAX) > f.measurement_width
+                || target_bottom.unwrap_or(u32::MAX) > f.measurement_height
+                || hit.query_x >= f.measurement_width
+                || hit.query_y >= f.measurement_height
+                || hit.query_x < hit.target_bounds.x
+                || hit.query_y < hit.target_bounds.y
+                || hit.query_x >= target_right.unwrap_or(0)
+                || hit.query_y >= target_bottom.unwrap_or(0)
+        }) || !f.hit_tests.iter().any(|hit| hit.target == "⭐️")
+            || !f.hit_tests.iter().any(|hit| hit.target == "☆")
         {
             return Err(NativeImeVerificationError::InvalidObservation("hit tests"));
         }

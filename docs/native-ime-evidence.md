@@ -93,3 +93,7 @@ artifact.verify(&expected)?;
 ## 配布バイナリ
 
 v0.4.1 の GitHub Release には macOS / Windows / Linux の `kuc-native-ime-tools-*.zip` を添付する。producer、verifier、source revision / binary SHA-256 を含むmanifestを収録する。manifestの `native_ime_measured: false` は配布ビルドが実IMEの証跡でないことを示す。実行元は公開したbinary digestとrevisionを固定し、新しいchallengeを発行して実行する。
+
+commit は最終描画textの UTF-8 byte range と照合する。hit-test は対象 scalar の text range、measurement 内の target bounds、query 座標を同時に検証する。
+
+公開workflowは三OSの配布ZIPが全て生成された後、同一revision/versionとbinary SHA-256を照合する。全assetをdraft Releaseへ添付してから公開し、crates.io publishへ進む。

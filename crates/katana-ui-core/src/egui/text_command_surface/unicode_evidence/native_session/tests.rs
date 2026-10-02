@@ -181,9 +181,9 @@ fn observation_rejects_forwarding_the_same_root_events_twice() {
         focus: 1.into(),
     };
 
-    observations::extract(&session.root, &root_output, &update, "日本語", 1)
+    observations::extract(&session.root, &root_output, &update, "", 1)
         .expect("the first forwarding receipt must be accepted");
-    let second = observations::extract(&session.root, &root_output, &update, "日本語", 1);
+    let second = observations::extract(&session.root, &root_output, &update, "", 1);
     assert!(matches!(
         second,
         Err(KucUnicodeColorGlyphEvidenceError::RootTrace(message))

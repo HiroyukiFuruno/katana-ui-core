@@ -33,6 +33,7 @@ env:
 
 jobs:
   release:
+    needs: native-tools
     if: >
       github.event_name == 'workflow_dispatch' || (
         github.event.pull_request.merged == true &&
@@ -174,6 +175,19 @@ jobs:
             --state-output "${GATE_STATE}" \
             --result "${GATE_RESULT}"
 
+      - name: Download native tool archives
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: native-ime-tools-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/native-ime-tools
+
+      - name: Verify native tool archives
+        env:
+          ARCHIVE_ROOT: ${{ runner.temp }}/native-ime-tools
+          RELEASE_VERSION: ${{ steps.version.outputs.version }}
+        run: python3 scripts/release/verify-native-ime-archives.py --directory "${ARCHIVE_ROOT}" --version "${RELEASE_VERSION}" --revision "${GITHUB_SHA}"
+
       - name: Create release tag
         env:
           TAG: ${{ steps.version.outputs.version }}
@@ -192,12 +206,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.version.outputs.version }}
+          ARCHIVE_ROOT: ${{ runner.temp }}/native-ime-tools
         run: |
           if gh release view "${TAG}" >/dev/null 2>&1; then
-            gh release edit "${TAG}" --latest --verify-tag
+            gh release upload "${TAG}" "${ARCHIVE_ROOT}"/*.zip --clobber
           else
-            gh release create "${TAG}" --verify-tag --latest --generate-notes
+            gh release create "${TAG}" --verify-tag --draft --generate-notes
+            gh release upload "${TAG}" "${ARCHIVE_ROOT}"/*.zip --clobber
           fi
+          gh release edit "${TAG}" --draft=false --latest --verify-tag
       - name: Authenticate with crates.io
         if: github.event_name == 'pull_request' || inputs.publish_crates == true
         id: crates_io_auth
@@ -215,7 +232,12 @@ jobs:
 
   native-tools:
     name: Native tools (${{ matrix.os }})
-    needs: release
+    if: >
+      github.event_name == 'workflow_dispatch' || (
+        github.event.pull_request.merged == true &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        startsWith(github.event.pull_request.head.ref, 'release/v')
+      )
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -240,10 +262,9 @@ jobs:
         id: package
         shell: bash
         run: python3 scripts/release/package-native-ime-tools.py --output artifacts --sha "${{ github.sha }}"
-      - name: Attach tools to GitHub Release
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.package.outputs.tag }}
-          ARCHIVE: ${{ steps.package.outputs.archive }}
-        run: gh release upload "${TAG}" "${ARCHIVE}" --clobber
+      - name: Store verified-build candidate archives
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: native-ime-tools-${{ matrix.os }}
+          path: artifacts/*.zip
+          if-no-files-found: error

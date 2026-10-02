@@ -74,6 +74,7 @@ pub struct Bounds {
 #[serde(deny_unknown_fields)]
 pub struct HitTestObservation {
     pub target: String,
+    pub target_bounds: Bounds,
     pub range_start: u32,
     pub range_end: u32,
     pub query_x: u32,
@@ -92,6 +93,8 @@ pub struct AccessKitObservation {
 pub struct NativeFrameObservations {
     pub final_text: String,
     pub committed_text: String,
+    pub committed_range_start: u32,
+    pub committed_range_end: u32,
     pub measurement_width: u32,
     pub measurement_height: u32,
     pub caret: Bounds,

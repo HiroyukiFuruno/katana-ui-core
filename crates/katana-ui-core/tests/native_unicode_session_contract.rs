@@ -3,6 +3,10 @@
 use katana_ui_core::egui::text_command_surface::{
     KucNativeUnicodeEvidenceSession, KucUnicodeColorGlyphEvidenceOptions,
 };
+use katana_ui_core::native_ime_evidence::{
+    NativeImeEvidenceArtifact, NativeImeTranscript, NativeImeVerificationExpectations,
+    NativeRunBinding, SCHEMA_VERSION,
+};
 
 fn input(events: Vec<egui::Event>) -> egui::RawInput {
     egui::RawInput {
@@ -81,6 +85,74 @@ fn root_contract_collects_real_pixels_and_accesskit_without_claiming_native_orig
         observations.observation_hashes().expect("hashes").0,
         hashes.measurement_sha256
     );
+}
+
+#[test]
+fn synthetic_root_observations_round_trip_through_the_registry_verifier() {
+    let mut session = focused_session();
+    session
+        .run_frame(input(vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "にほんご".into(),
+            active_range_chars: None,
+        })]))
+        .expect("preedit frame");
+    session
+        .run_frame(input(vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: String::new(),
+            active_range_chars: None,
+        })]))
+        .expect("composition clear frame");
+    let frame = session
+        .run_frame(input(vec![egui::Event::Ime(egui::ImeEvent::Commit(
+            "日本語".into(),
+        ))]))
+        .expect("commit frame");
+    let (frame_observations, rgba_crop, observations) = frame
+        .observations
+        .expect("accepted commit must have observations");
+    let mut artifact = NativeImeEvidenceArtifact {
+        schema_version: SCHEMA_VERSION.to_owned(),
+        revision: "synthetic-contract-revision".into(),
+        platform: "macos".into(),
+        run: NativeRunBinding {
+            run_id: "synthetic-run".into(),
+            challenge: "synthetic-challenge".into(),
+            producer_id: "synthetic-producer".into(),
+            runner_id: "synthetic-runner".into(),
+            input_method: "contract-fixture".into(),
+            origin: "os-native".into(),
+        },
+        ime: NativeImeTranscript {
+            preedit: "にほんご".into(),
+            commit: "日本語".into(),
+            preedit_sequence: 1,
+            commit_sequence: 2,
+        },
+        scalar_sequence: vec![0x2b50, 0xfe0f],
+        rgba_crop,
+        observations,
+        frame_observations,
+        artifact_sha256: String::new(),
+    };
+    artifact = artifact.seal().expect("synthetic artifact seals");
+    let expected = NativeImeVerificationExpectations {
+        revision: artifact.revision.clone(),
+        platform: artifact.platform.clone(),
+        run_id: artifact.run.run_id.clone(),
+        challenge: artifact.run.challenge.clone(),
+        producer_id: artifact.run.producer_id.clone(),
+        runner_id: artifact.run.runner_id.clone(),
+        attested_artifact_sha256: artifact.artifact_sha256.clone(),
+    };
+    artifact
+        .verify(&expected)
+        .expect("synthetic root artifact verifies");
+    let encoded = serde_json::to_vec(&artifact).expect("artifact serializes");
+    let decoded: NativeImeEvidenceArtifact =
+        serde_json::from_slice(&encoded).expect("artifact deserializes");
+    decoded
+        .verify(&expected)
+        .expect("decoded synthetic artifact verifies");
 }
 
 #[test]
