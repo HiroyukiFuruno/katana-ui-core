@@ -194,6 +194,11 @@ jobs:
         run: |
           git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}" || true
           if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+            existing_tag_sha="$(git rev-parse "refs/tags/${TAG}^{commit}")"
+            if [[ "${existing_tag_sha}" != "${GITHUB_SHA}" ]]; then
+              echo "Tag ${TAG} points to ${existing_tag_sha}, expected ${GITHUB_SHA}." >&2
+              exit 1
+            fi
             echo "Tag ${TAG} already exists."
             exit 0
           fi
