@@ -15,6 +15,7 @@ impl NativeApplication {
         if self.artifact_written {
             return Ok(());
         }
+        self.ensure_before_deadline()?;
         let artifact = NativeImeEvidenceArtifact {
             schema_version: katana_ui_core::native_ime_evidence::SCHEMA_VERSION.into(),
             revision: self.transcript.revision.clone(),
@@ -55,6 +56,7 @@ impl NativeApplication {
             .verify(&expected)
             .map_err(|error| error.to_string())?;
         let bytes = serde_json::to_vec_pretty(&artifact).map_err(|e| e.to_string())?;
+        self.ensure_before_deadline()?;
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -62,6 +64,7 @@ impl NativeApplication {
             .map_err(|e| e.to_string())?;
         file.write_all(&bytes).map_err(|e| e.to_string())?;
         file.sync_all().map_err(|e| e.to_string())?;
+        self.ensure_before_deadline()?;
         let confirmation = serde_json::json!({"run_id": artifact.run.run_id, "artifact_sha256": artifact.artifact_sha256});
         println!(
             "{}",

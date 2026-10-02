@@ -50,6 +50,9 @@ impl NativeRunner {
         event_loop
             .run_app(&mut app)
             .map_err(RunnerError::EventLoop)?;
+        if app.ensure_before_deadline().is_err() {
+            return Err(RunnerError::Timeout);
+        }
         let transcript = app.transcript;
         if let Some(error) = app.window_error {
             return Err(RunnerError::Window(error));
