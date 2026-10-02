@@ -11,7 +11,7 @@ workspace_packages="$(
     | python3 -c 'import json, sys; data = json.load(sys.stdin); print("\n".join(sorted(p["name"] for p in data["packages"])))'
 )"
 
-expected_workspace=$'katana-ui-core\nkatana-ui-core-storybook\nkuc-consumer-app'
+expected_workspace=$'katana-ui-core\nkatana-ui-core-native-ime-evidence\nkatana-ui-core-storybook\nkuc-consumer-app'
 if [[ "$workspace_packages" != "$expected_workspace" ]]; then
   echo "workspace release scope failed"
   echo "$workspace_packages"
@@ -29,4 +29,4 @@ if [[ "$publishable_packages" != "$expected_publishable" ]]; then
   exit 1
 fi
 
-echo "workspace release scope verified: one public crate and two private consumers."
+echo "workspace release scope verified: one public crate, two private consumers, and one private native producer."

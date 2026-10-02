@@ -8,6 +8,15 @@ readonly packages=(
   fonts-noto-mono
   xauth
   xvfb
+  libwayland-dev
+  libx11-dev
+  libx11-xcb-dev
+  libxcursor-dev
+  libxi-dev
+  libxinerama-dev
+  libxkbcommon-dev
+  libxrandr-dev
+  pkg-config
 )
 readonly max_attempts=3
 readonly apt_timeout_seconds=300

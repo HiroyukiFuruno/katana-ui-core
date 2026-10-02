@@ -134,3 +134,6 @@ pub use unicode_evidence::{
     KucUnicodeColorGlyphEvidenceProfile, STAR_TEXT, UNICODE_EVIDENCE_SCHEMA,
     UNICODE_EVIDENCE_SCHEMA_VERSION, ZWJ_TEXT,
 };
+
+#[cfg(feature = "native-ime-evidence")]
+pub use unicode_evidence::{KucNativeUnicodeEvidenceFrame, KucNativeUnicodeEvidenceSession};

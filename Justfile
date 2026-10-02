@@ -35,14 +35,25 @@ help:
 # Apply Rust formatting
 fmt:
     {{CARGO}} fmt {{KUC_FORMAT_PACKAGES}}
+    {{CARGO}} fmt -p katana-ui-core-native-ime-evidence
 
 # Check Rust formatting
 fmt-check:
     {{CARGO}} fmt {{KUC_FORMAT_PACKAGES}} -- --check
+    {{CARGO}} fmt -p katana-ui-core-native-ime-evidence -- --check
 
 # Check workspace type safety
 check-types:
     {{CARGO}} check --workspace --locked
+
+# Verify native evidence contracts; synthetic input here does not attest OS origin.
+native-ime-contract:
+    python3 scripts/test_package_native_ime_tools.py
+    {{CARGO}} test -p katana-ui-core-native-ime-evidence --locked
+    {{CARGO}} test -p katana-ui-core --no-default-features --features native-ime-evidence --test native_ime_evidence_contract --test native_ime_verify_cli_contract --locked
+    {{CARGO}} test -p katana-ui-core --features egui,native-ime-evidence --test native_unicode_session_contract --locked
+    {{CARGO}} check -p katana-ui-core-native-ime-evidence --locked
+    {{CARGO}} clippy -p katana-ui-core -p katana-ui-core-native-ime-evidence --all-targets --all-features --locked -- -D warnings
 
 # Run strict Clippy checks
 lint:
@@ -50,6 +61,7 @@ lint:
     {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --tests --no-default-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
     {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --all-targets --all-features --locked -- -D warnings
     {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core-storybook -p kuc-consumer-app --all-targets --all-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
+    {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core -p katana-ui-core-native-ime-evidence --all-targets --all-features --locked -- -D warnings
 
 # Install shared KatanA AST lint CLI from crates.io
 ast-lint-install:
@@ -200,7 +212,7 @@ _coverage-container-run reuse:
     bash scripts/coverage/run-container.sh "{{COVERAGE_IMAGE}}" "{{REPO_ROOT}}" "{{COVERAGE_BUILD_JOBS}}" "{{COVERAGE_TEST_THREADS}}" "{{reuse}}"
 
 # Run the local quality gate
-check: fmt-check ast-lint check-types lint unit-test kuc-guardrails overlay-lifecycle-lint menu-button-contract
+check: fmt-check ast-lint check-types lint unit-test native-ime-contract kuc-guardrails overlay-lifecycle-lint menu-button-contract
     @echo "checks passed"
 
 # Sweep old build artifacts locally (older than 7 days)

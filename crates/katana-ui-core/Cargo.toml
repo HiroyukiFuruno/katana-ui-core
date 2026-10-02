@@ -13,6 +13,7 @@ all-features = true
 
 [features]
 default = []
+native-ime-evidence = ["dep:sha2"]
 text-raster = ["dep:cosmic-text", "dep:sha2", "dep:windows-sys"]
 svg-raster = ["dep:resvg", "dep:tiny-skia"]
 raster-host = ["text-raster", "svg-raster", "dep:image"]
@@ -39,3 +40,8 @@ unicode-segmentation.workspace = true
 windows-sys = { workspace = true, optional = true }
 
 [dev-dependencies]
+
+[[bin]]
+name = "kuc-native-ime-verify"
+path = "src/bin/kuc-native-ime-verify/main.rs"
+required-features = ["native-ime-evidence"]
