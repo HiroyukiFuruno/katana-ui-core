@@ -240,6 +240,27 @@ fn repeated_target_with_different_bounds_cannot_bypass_crop_contract() {
 }
 
 #[test]
+fn requires_caret_to_fit_inside_the_measured_frame() {
+    let cases: Vec<EvidenceMutation> = vec![
+        Box::new(|e| e.frame_observations.caret.x = 100),
+        Box::new(|e| e.frame_observations.caret.y = 24),
+        Box::new(|e| e.frame_observations.caret.x = u32::MAX),
+        Box::new(|e| e.frame_observations.caret.y = u32::MAX),
+    ];
+    for mutate in cases {
+        let mut evidence = artifact();
+        mutate(&mut evidence);
+        let evidence = reseal(evidence);
+        assert_eq!(
+            evidence.verify(&expectations(&evidence)),
+            Err(NativeImeVerificationError::InvalidObservation(
+                "frame observations"
+            ))
+        );
+    }
+}
+
+#[test]
 fn rejects_self_attested_or_synthetic_origin() {
     let mut evidence = artifact();
     evidence.run.origin = "synthetic".to_owned();

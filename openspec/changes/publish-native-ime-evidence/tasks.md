@@ -111,3 +111,8 @@ Windows/Linuxは仮説に基づく公開をユーザーが明示指示。native�
 - [ ] P1: native sessionの初回IME前にretained text面へfocusを要求し、クリックなしpreedit/commitの契約を追加する。
 - [ ] P2: ⭐️/☆それぞれのcrop寸法を対応する実hit target boundsへ結合し、不一致を拒否する。
 - [ ] 旧snapshotのgate31834はunit4624成功後に中断。追加修正後にfullgateとcloud/CIを再実行する。
+
+## 最終レビュー P2
+
+- [ ] caret右端・下端をchecked additionで計算し、measurement外/overflowを拒否する。x/y範囲外とoverflowのresealed回帰を追加。
+- [ ] 最終修正HEADのfull release-check / cloud / CI / public release / registry検証を完了する。
