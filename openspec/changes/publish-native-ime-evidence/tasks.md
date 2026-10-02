@@ -116,3 +116,9 @@ Windows/Linuxは仮説に基づく公開をユーザーが明示指示。native�
 
 - [ ] caret右端・下端をchecked additionで計算し、measurement外/overflowを拒否する。x/y範囲外とoverflowのresealed回帰を追加。
 - [ ] 最終修正HEADのfull release-check / cloud / CI / public release / registry検証を完了する。
+
+## 追加 P2 対応
+
+- [ ] AccessKit boundsのchecked終端overflowを拒否する（raster measurementとの直接包含は別座標系のため要求しない）。
+- [ ] Linux ibus/fcitx照会のchild/pipe待機をremaining timeoutへ制限し、startupも同一monotonic timeoutへ算入する。
+- [ ] 修正後full release-check、最新cloud/CI、公開、registry/local cleanupを完了する。

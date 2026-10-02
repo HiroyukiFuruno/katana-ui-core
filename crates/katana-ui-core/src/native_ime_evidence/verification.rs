@@ -181,6 +181,8 @@ impl NativeImeEvidenceArtifact {
         let crop = &self.rgba_crop;
         let caret_right = f.caret.x.checked_add(f.caret.width);
         let caret_bottom = f.caret.y.checked_add(f.caret.height);
+        let accesskit_right = f.accesskit.bounds.x.checked_add(f.accesskit.bounds.width);
+        let accesskit_bottom = f.accesskit.bounds.y.checked_add(f.accesskit.bounds.height);
         if f.measurement_width == 0
             || f.measurement_height == 0
             || f.caret.width == 0
@@ -189,6 +191,8 @@ impl NativeImeEvidenceArtifact {
             || caret_bottom.is_none()
             || caret_right.unwrap_or(u32::MAX) > f.measurement_width
             || caret_bottom.unwrap_or(u32::MAX) > f.measurement_height
+            || accesskit_right.is_none()
+            || accesskit_bottom.is_none()
             || f.hit_tests.is_empty()
             || f.accesskit.role != "MultilineTextInput"
             || f.accesskit.value != f.final_text

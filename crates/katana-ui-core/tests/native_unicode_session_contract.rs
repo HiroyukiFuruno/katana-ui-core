@@ -173,15 +173,37 @@ fn synthetic_root_observations_round_trip_through_the_registry_verifier() {
         runner_id: artifact.run.runner_id.clone(),
         attested_artifact_sha256: artifact.artifact_sha256.clone(),
     };
-    artifact
-        .verify(&expected)
-        .expect("synthetic root artifact verifies");
+    if let Err(error) = artifact.verify(&expected) {
+        panic!(
+            "synthetic root artifact verification failed: {error:?}; measurement={}x{}, caret={:?}, accesskit_bounds={:?}, accesskit_role={:?}, accesskit_value_len={}, root_id={:?}, frame_id={:?}, hit_tests={:?}",
+            artifact.frame_observations.measurement_width,
+            artifact.frame_observations.measurement_height,
+            artifact.frame_observations.caret,
+            artifact.frame_observations.accesskit.bounds,
+            artifact.frame_observations.accesskit.role,
+            artifact.frame_observations.accesskit.value.len(),
+            artifact.frame_observations.root_id,
+            artifact.frame_observations.frame_id,
+            artifact.frame_observations.hit_tests,
+        );
+    }
     let encoded = serde_json::to_vec(&artifact).expect("artifact serializes");
     let decoded: NativeImeEvidenceArtifact =
         serde_json::from_slice(&encoded).expect("artifact deserializes");
-    decoded
-        .verify(&expected)
-        .expect("decoded synthetic artifact verifies");
+    if let Err(error) = decoded.verify(&expected) {
+        panic!(
+            "decoded synthetic root artifact verification failed: {error:?}; measurement={}x{}, caret={:?}, accesskit_bounds={:?}, accesskit_role={:?}, accesskit_value_len={}, root_id={:?}, frame_id={:?}, hit_tests={:?}",
+            decoded.frame_observations.measurement_width,
+            decoded.frame_observations.measurement_height,
+            decoded.frame_observations.caret,
+            decoded.frame_observations.accesskit.bounds,
+            decoded.frame_observations.accesskit.role,
+            decoded.frame_observations.accesskit.value.len(),
+            decoded.frame_observations.root_id,
+            decoded.frame_observations.frame_id,
+            decoded.frame_observations.hit_tests,
+        );
+    }
 }
 
 #[test]

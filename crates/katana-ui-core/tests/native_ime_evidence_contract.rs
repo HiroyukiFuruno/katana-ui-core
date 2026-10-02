@@ -261,6 +261,25 @@ fn requires_caret_to_fit_inside_the_measured_frame() {
 }
 
 #[test]
+fn rejects_accesskit_bounds_that_overflow_coordinates() {
+    let cases: Vec<EvidenceMutation> = vec![
+        Box::new(|e| e.frame_observations.accesskit.bounds.x = u32::MAX),
+        Box::new(|e| e.frame_observations.accesskit.bounds.y = u32::MAX),
+    ];
+    for mutate in cases {
+        let mut evidence = artifact();
+        mutate(&mut evidence);
+        let evidence = reseal(evidence);
+        assert_eq!(
+            evidence.verify(&expectations(&evidence)),
+            Err(NativeImeVerificationError::InvalidObservation(
+                "frame observations"
+            ))
+        );
+    }
+}
+
+#[test]
 fn rejects_self_attested_or_synthetic_origin() {
     let mut evidence = artifact();
     evidence.run.origin = "synthetic".to_owned();
