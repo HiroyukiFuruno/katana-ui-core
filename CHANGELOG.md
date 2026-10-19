@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-19
+
+### Fixed
+
+- Allow per-Card child indentation via `UiCommonProps::child_indent`, retaining the legacy 16px default across raster drawing, measurement, and hit testing (#83).
+
 ## [0.4.1] - 2026-10-02
 
 ### Added

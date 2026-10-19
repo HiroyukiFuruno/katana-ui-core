@@ -139,7 +139,12 @@ pub(super) fn child_container_x(node: &UiNode, x: usize) -> usize {
     if is_layout_container(node) {
         return x;
     }
-    x.saturating_add(INDENT)
+    let indent = if node.kind() == UiNodeKind::Card {
+        node.props().common.child_indent.map_or(INDENT, usize::from)
+    } else {
+        INDENT
+    };
+    x.saturating_add(indent)
 }
 
 pub(super) fn is_layout_container(node: &UiNode) -> bool {
@@ -222,6 +227,28 @@ mod tests {
         assert_eq!(0, column_gap(&text));
         assert_eq!(20, child_container_x(&column, 20));
         assert_eq!(20 + INDENT, child_container_x(&text, 20));
+        let text_override = text
+            .clone()
+            .common(UiCommonProps::default().child_indent(0));
+        assert_eq!(20 + INDENT, child_container_x(&text_override, 20));
+        let card_default = UiNode::new(UiNodeKind::Card, "Card");
+        let card_unindented = card_default
+            .clone()
+            .common(UiCommonProps::default().child_indent(0));
+        let card_custom = card_default
+            .clone()
+            .common(UiCommonProps::default().child_indent(24));
+        assert_eq!(20 + INDENT, child_container_x(&card_default, 20));
+        assert_eq!(20, child_container_x(&card_unindented, 20));
+        assert_eq!(44, child_container_x(&card_custom, 20));
+        assert_eq!(
+            140,
+            remaining_width(area(), child_container_x(&card_unindented, 20))
+        );
+        assert_eq!(
+            116,
+            remaining_width(area(), child_container_x(&card_custom, 20))
+        );
         for kind in [
             UiNodeKind::AlignCenter,
             UiNodeKind::AlignNode,

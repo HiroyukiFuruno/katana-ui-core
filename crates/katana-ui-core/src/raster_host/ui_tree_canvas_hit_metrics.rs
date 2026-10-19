@@ -108,7 +108,12 @@ pub(super) fn child_container_x(node: &UiNode, x: usize) -> usize {
     if is_layout_container(node) {
         return x;
     }
-    x.saturating_add(INDENT)
+    let indent = if node.kind() == UiNodeKind::Card {
+        node.props().common.child_indent.map_or(INDENT, usize::from)
+    } else {
+        INDENT
+    };
+    x.saturating_add(indent)
 }
 
 pub(super) fn row_indent(node: &UiNode) -> usize {
@@ -254,6 +259,7 @@ fn text_slot_width(text: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use katana_ui_core::render_model::UiCommonProps;
 
     #[test]
     fn default_and_nested_metrics_cover_unrequested_control_dimensions() {
@@ -281,6 +287,31 @@ mod tests {
         assert_eq!(26, child_container_x(&text, 10));
         let row = UiNode::new(UiNodeKind::Row, "");
         assert_eq!(10, child_container_x(&row, 10));
+        let card_default = UiNode::new(UiNodeKind::Card, "Card");
+        let card_unindented = card_default
+            .clone()
+            .common(UiCommonProps::default().child_indent(0));
+        let card_custom = card_default
+            .clone()
+            .common(UiCommonProps::default().child_indent(24));
+        assert_eq!(10 + INDENT, child_container_x(&card_default, 10));
+        assert_eq!(10, child_container_x(&card_unindented, 10));
+        assert_eq!(34, child_container_x(&card_custom, 10));
+        let area = UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 40,
+            scroll_y: 0.0,
+        };
+        assert_eq!(
+            90,
+            remaining_width(area, child_container_x(&card_unindented, 10))
+        );
+        assert_eq!(
+            66,
+            remaining_width(area, child_container_x(&card_custom, 10))
+        );
     }
 
     #[test]

@@ -21,6 +21,10 @@ pub struct UiCommonProps {
     pub hover_border: UiBorder,
     pub padding: UiEdgeInsets,
     pub margin: UiEdgeInsets,
+    /// Card の子要素の追加インデント（px）。None は従来の16px、Some(0) は無効。
+    /// padding はこの値とは別に加算されます。他の node kind には適用しません。
+    #[serde(default)]
+    pub child_indent: Option<u16>,
     pub display: UiDisplay,
     pub layout_axis: UiLayoutAxis,
     pub gap: UiDimension,
@@ -72,6 +76,13 @@ impl UiCommonProps {
     #[must_use]
     pub fn padding(mut self, value: UiEdgeInsets) -> Self {
         self.padding = value;
+        self
+    }
+
+    /// Card の子要素の追加インデントをピクセル単位で指定します。
+    #[must_use]
+    pub fn child_indent(mut self, value: u16) -> Self {
+        self.child_indent = Some(value);
         self
     }
 
@@ -196,6 +207,7 @@ impl Default for UiCommonProps {
             hover_border: UiBorder::default(),
             padding: UiEdgeInsets::default(),
             margin: UiEdgeInsets::default(),
+            child_indent: None,
             display: UiDisplay::Block,
             layout_axis: UiLayoutAxis::Unspecified,
             gap: UiDimension::Px(0),
