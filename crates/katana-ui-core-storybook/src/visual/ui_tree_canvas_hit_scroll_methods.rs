@@ -55,6 +55,7 @@ impl UiTreeHostActionHitCollector<'_> {
         };
         let mut content_collector = UiTreeHostActionHitCollector {
             area: content_area,
+            viewport_left_boundary: content_area.x,
             actions: self.actions.clone(),
             hits: Vec::new(),
             node_hits: Vec::new(),
@@ -191,6 +192,7 @@ impl UiTreeHostActionHitCollector<'_> {
         };
         let mut content_collector = UiTreeHostActionHitCollector {
             area: content_area,
+            viewport_left_boundary: content_area.x,
             actions: self.actions.clone(),
             hits: Vec::new(),
             node_hits: Vec::new(),

@@ -40,7 +40,7 @@ impl UiTreeHostActionHitCollector<'_> {
     }
 
     pub(super) fn push_node_hit(&mut self, node: &UiNode, rect: UiTreeHitRect) {
-        let rect = outset_node_hit(node, rect);
+        let rect = outset_node_hit(node, rect, self.hit_left_boundary());
         let semantic_node_id = semantic_node_id(node).or_else(|| self.semantic_node_id.clone());
         self.node_hits.push(UiTreeNodeHit {
             node_id: node.id().clone(),
@@ -57,13 +57,21 @@ impl UiTreeHostActionHitCollector<'_> {
         rect: UiTreeHitRect,
     ) {
         let cursor = node_cursor(node);
-        let rect = outset_node_hit(node, rect);
+        let rect = outset_node_hit(node, rect, self.hit_left_boundary());
         for action in actions {
             self.hits.push(UiTreeHostActionHit {
                 action,
                 rect,
                 cursor,
             });
+        }
+    }
+
+    fn hit_left_boundary(&self) -> usize {
+        if self.scroll_clip == super::ScrollHitClip::Viewport {
+            self.viewport_left_boundary
+        } else {
+            0
         }
     }
 
@@ -112,8 +120,9 @@ impl UiTreeHostActionHitCollector<'_> {
     }
 }
 
-fn outset_node_hit(node: &UiNode, rect: UiTreeHitRect) -> UiTreeHitRect {
-    let outset = usize::from(node.props().common.hit_outset_left).min(rect.x);
+fn outset_node_hit(node: &UiNode, rect: UiTreeHitRect, left_boundary: usize) -> UiTreeHitRect {
+    let outset =
+        usize::from(node.props().common.hit_outset_left).min(rect.x.saturating_sub(left_boundary));
     UiTreeHitRect {
         x: rect.x - outset,
         width: rect.width.saturating_add(outset),
