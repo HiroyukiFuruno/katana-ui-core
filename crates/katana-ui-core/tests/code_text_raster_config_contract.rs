@@ -117,28 +117,60 @@ fn mixed_plain_and_code_runs_use_the_configured_code_face() {
     let default = UiTreeCanvasRenderer::new(ThemeSnapshot::dark());
     let configured = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
         .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+    let body = UiTextSpan {
+        text: "A ".into(),
+        style: UiTextSpanStyle {
+            color_rgba: [255, 0, 0, 255],
+            ..UiTextSpanStyle::default()
+        },
+        link_target: String::new(),
+    };
     let code = UiTextSpan {
         text: "WWWiii".into(),
         style: UiTextSpanStyle {
             monospace: true,
+            color_rgba: [0, 255, 0, 255],
             ..UiTextSpanStyle::default()
         },
         link_target: String::new(),
     };
     let mixed = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
-        spans: vec![UiTextSpan::plain("A "), code, UiTextSpan::plain(" end")],
+        spans: vec![body.clone(), code.clone()],
         ..UiTextProps::default()
     });
-    let before = pixels(&default, &mixed);
-    let after = pixels(&configured, &mixed);
-    assert!(before != after);
-    for row in 0..140 {
-        assert_eq!(
-            &before[row * 180..row * 180 + 8],
-            &after[row * 180..row * 180 + 8]
-        );
-    }
+    let configured_pixels = pixels(&configured, &mixed);
+    let body_only = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        spans: vec![body],
+        ..UiTextProps::default()
+    });
+    let code_only = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        spans: vec![code.clone()],
+        ..UiTextProps::default()
+    });
+
+    let mixed_body_pixels = red_pixels(&configured_pixels);
+    let body_only_pixels = red_pixels(&pixels(&default, &body_only));
+    let mixed_code_pixels = green_pixels(&configured_pixels);
+    let code_only_pixels = green_pixels(&pixels(&configured, &code_only));
+    assert!(!mixed_body_pixels.is_empty());
+    assert!(!mixed_code_pixels.is_empty());
+    assert_eq!(mixed_body_pixels, body_only_pixels);
+    assert_eq!(mixed_code_pixels, code_only_pixels);
     assert!(mixed.props().text.spans[1].style.monospace);
+}
+
+fn green_pixels(pixels: &[u32]) -> Vec<(usize, usize, u32)> {
+    let points = pixels
+        .iter()
+        .enumerate()
+        .filter(|(_, pixel)| **pixel & 0xff00 != 0 && **pixel & 0xff00ff == 0)
+        .map(|(index, pixel)| (index % 180, index / 180, *pixel))
+        .collect::<Vec<_>>();
+    let left = points.iter().map(|(x, _, _)| *x).min().unwrap_or(0);
+    points
+        .into_iter()
+        .map(|(x, y, color)| (x - left, y, color))
+        .collect()
 }
 
 #[test]
