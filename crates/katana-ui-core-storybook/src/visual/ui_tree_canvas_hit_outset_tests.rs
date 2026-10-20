@@ -5,7 +5,7 @@ use crate::test_assert::KucTestExpect;
 fn host_action_hits_clip_left_outset_to_the_viewport() {
     let root = UiNode::from(Button::new("embedded"))
         .height(UiDimension::px(20))
-        .common(UiCommonProps::default().hit_outset_left(16))
+        .hit_outset_left(16)
         .host_action(UiHostActionSpec::command("embedded", "embedded"));
     let area = UiTreeRenderArea {
         x: 20,

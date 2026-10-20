@@ -25,10 +25,6 @@ pub struct UiCommonProps {
     /// padding はこの値とは別に加算されます。他の node kind には適用しません。
     #[serde(default)]
     pub child_indent: Option<u16>,
-    /// 描画・折返し・スクロール測定を変えず、この node の hit 領域を左へ拡張する px。
-    /// viewport と scroll clip は拡張後に適用し、子孫やインラインリンクの領域には継承しません。
-    #[serde(default)]
-    pub hit_outset_left: u16,
     pub display: UiDisplay,
     pub layout_axis: UiLayoutAxis,
     pub gap: UiDimension,
@@ -87,13 +83,6 @@ impl UiCommonProps {
     #[must_use]
     pub fn child_indent(mut self, value: u16) -> Self {
         self.child_indent = Some(value);
-        self
-    }
-
-    /// 同一 node の hit 領域を左へ拡張し、描画原点から独立させます。
-    #[must_use]
-    pub fn hit_outset_left(mut self, value: u16) -> Self {
-        self.hit_outset_left = value;
         self
     }
 
@@ -219,7 +208,6 @@ impl Default for UiCommonProps {
             padding: UiEdgeInsets::default(),
             margin: UiEdgeInsets::default(),
             child_indent: None,
-            hit_outset_left: 0,
             display: UiDisplay::Block,
             layout_axis: UiLayoutAxis::Unspecified,
             gap: UiDimension::Px(0),

@@ -5,6 +5,10 @@ use serde::{Deserialize, Serialize};
 pub struct UiNode {
     id: UiNodeId,
     kind: UiNodeKind,
+    /// 描画・折返し・スクロール測定を変えず、この node の hit 領域を左へ拡張する px。
+    /// viewport と scroll clip は拡張後に適用し、子孫やインラインリンクの領域には継承しません。
+    #[serde(default)]
+    pub(crate) hit_outset_left: u16,
     pub(super) props: UiProps,
     pub(super) children: Vec<UiNode>,
 }
@@ -23,6 +27,7 @@ impl UiNode {
         Self {
             id: UiNodeId::next_for(kind),
             kind,
+            hit_outset_left: 0,
             props: UiProps::new(label, state_id),
             children: Vec::new(),
         }
@@ -63,5 +68,10 @@ impl UiNode {
     #[must_use]
     pub fn props(&self) -> &UiProps {
         &self.props
+    }
+
+    #[must_use]
+    pub fn hit_outset_left_px(&self) -> u16 {
+        self.hit_outset_left
     }
 }

@@ -121,8 +121,7 @@ impl UiTreeHostActionHitCollector<'_> {
 }
 
 fn outset_node_hit(node: &UiNode, rect: UiTreeHitRect, left_boundary: usize) -> UiTreeHitRect {
-    let outset =
-        usize::from(node.props().common.hit_outset_left).min(rect.x.saturating_sub(left_boundary));
+    let outset = usize::from(node.hit_outset_left_px()).min(rect.x.saturating_sub(left_boundary));
     UiTreeHitRect {
         x: rect.x - outset,
         width: rect.width.saturating_add(outset),

@@ -1,20 +1,20 @@
-use katana_ui_core::render_model::UiCommonProps;
+use katana_ui_core::render_model::{UiCommonProps, UiNode, UiNodeKind};
 
 #[test]
 fn hit_outset_round_trips_and_legacy_json_defaults_to_zero()
 -> Result<(), Box<dyn std::error::Error>> {
     for outset in [0, 16, u16::MAX] {
-        let props = UiCommonProps::default().hit_outset_left(outset);
-        let restored: UiCommonProps = serde_json::from_str(&serde_json::to_string(&props)?)?;
-        assert_eq!(outset, restored.hit_outset_left);
+        let node = UiNode::new(UiNodeKind::Text, "body").hit_outset_left(outset);
+        let restored: UiNode = serde_json::from_str(&serde_json::to_string(&node)?)?;
+        assert_eq!(outset, restored.hit_outset_left_px());
     }
-    let mut legacy = serde_json::to_value(UiCommonProps::default())?;
+    let mut legacy = serde_json::to_value(UiNode::new(UiNodeKind::Text, "body"))?;
     legacy
         .as_object_mut()
         .ok_or("object")?
         .remove("hit_outset_left");
-    let restored: UiCommonProps = serde_json::from_value(legacy)?;
-    assert_eq!(0, restored.hit_outset_left);
+    let restored: UiNode = serde_json::from_value(legacy)?;
+    assert_eq!(0, restored.hit_outset_left_px());
     Ok(())
 }
 
@@ -31,7 +31,7 @@ mod raster {
             .child(
                 UiNode::new(UiNodeKind::Text, "body text ".repeat(100))
                     .stable_node_id("body")
-                    .common(UiCommonProps::default().hit_outset_left(outset))
+                    .hit_outset_left(outset)
                     .host_action(UiHostActionSpec::command("body.open", "open")),
             )
             .child(UiNode::new(UiNodeKind::Text, "tail").stable_node_id("tail"))

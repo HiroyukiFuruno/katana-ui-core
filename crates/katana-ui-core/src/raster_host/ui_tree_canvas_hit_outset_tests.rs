@@ -5,7 +5,7 @@ use super::*;
 fn viewport_interaction_hit_outset_clips_to_viewport_and_preserves_document_origin() {
     let root = UiNode::from(Button::new("embedded"))
         .height(UiDimension::px(20))
-        .common(UiCommonProps::default().hit_outset_left(16))
+        .hit_outset_left(16)
         .host_action(UiHostActionSpec::command("embedded", "embedded"));
     let area = UiTreeRenderArea {
         x: 20,
@@ -32,7 +32,7 @@ fn viewport_interaction_hit_outset_uses_root_left_boundary_inside_nested_card() 
         UiNode::new(UiNodeKind::Column, "").child(
             UiNode::from(Button::new("embedded"))
                 .height(UiDimension::px(20))
-                .common(UiCommonProps::default().hit_outset_left(16))
+                .hit_outset_left(16)
                 .host_action(UiHostActionSpec::command("embedded", "embedded")),
         ),
     );
