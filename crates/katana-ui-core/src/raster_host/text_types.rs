@@ -5,6 +5,7 @@ use std::cell::RefCell;
 pub struct TextRenderer {
     pub(super) rasterizer: RefCell<PlatformTextRasterizer>,
     pub(super) font: FontToken,
+    pub(super) independent_raster_config: bool,
 }
 
 #[derive(Debug, Clone)]

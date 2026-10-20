@@ -262,6 +262,7 @@ mod tests {
         };
         let facade = UiCoreFacade::new(ThemeSnapshot::dark());
         let renderer = TextRenderer {
+            independent_raster_config: false,
             rasterizer: RefCell::new(PlatformTextRasterizer::new(config)),
             font: resolve_font(&facade, "body"),
         };

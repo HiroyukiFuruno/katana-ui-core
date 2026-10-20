@@ -41,7 +41,25 @@ impl TextRenderer {
                 face_selection,
             )),
             font,
+            independent_raster_config: false,
         }
+    }
+
+    pub(super) fn with_raster_config(
+        mut self,
+        config: PlatformTextRasterConfig,
+        face_selection: PlatformTextFaceSelection,
+    ) -> Self {
+        self.independent_raster_config = true;
+        self.rasterizer = std::cell::RefCell::new(PlatformTextRasterizer::new_with_face_selection(
+            config,
+            face_selection,
+        ));
+        self
+    }
+
+    pub(super) fn has_independent_raster_config(&self) -> bool {
+        self.independent_raster_config
     }
 
     pub fn draw(&self, canvas: &mut Canvas, text: &str, x: usize, y: usize, size: f32, color: u32) {

@@ -27,6 +27,8 @@ use katana_ui_core::theme::ThemeSnapshot;
 mod geometry;
 #[path = "ui_tree_canvas_renderer_accordion_cursor.rs"]
 mod renderer_accordion_cursor;
+#[path = "ui_tree_canvas_renderer_config.rs"]
+mod renderer_config;
 #[path = "ui_tree_canvas_renderer_container_cursor.rs"]
 mod renderer_container_cursor;
 #[path = "ui_tree_canvas_renderer_cursor.rs"]

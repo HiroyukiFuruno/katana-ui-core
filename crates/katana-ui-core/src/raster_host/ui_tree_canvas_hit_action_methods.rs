@@ -45,6 +45,7 @@ impl UiTreeHostActionHitCollector<'_> {
     }
 
     pub(super) fn push_node_hit(&mut self, node: &UiNode, rect: UiTreeHitRect) {
+        let rect = outset_node_hit(node, rect);
         let semantic_node_id = semantic_node_id(node).or_else(|| self.semantic_node_id.clone());
         self.node_hits.push(UiTreeNodeHit {
             node_id: node.id().clone(),
@@ -61,6 +62,7 @@ impl UiTreeHostActionHitCollector<'_> {
         rect: UiTreeHitRect,
     ) {
         let cursor = node_cursor(node);
+        let rect = outset_node_hit(node, rect);
         for action in actions {
             self.hits.push(UiTreeHostActionHit {
                 action,
@@ -237,6 +239,15 @@ fn whitespace_prefix_has_line_break(value: &str) -> bool {
         .chars()
         .take_while(|character| character.is_whitespace())
         .any(|character| matches!(character, '\n' | '\r'))
+}
+
+fn outset_node_hit(node: &UiNode, rect: UiTreeHitRect) -> UiTreeHitRect {
+    let outset = usize::from(node.props().common.hit_outset_left).min(rect.x);
+    UiTreeHitRect {
+        x: rect.x - outset,
+        width: rect.width.saturating_add(outset),
+        ..rect
+    }
 }
 
 #[cfg(test)]

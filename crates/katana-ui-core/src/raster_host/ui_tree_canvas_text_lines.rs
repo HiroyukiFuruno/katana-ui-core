@@ -10,6 +10,8 @@ use katana_ui_core::render_model::{UiNode, UiTextSpan};
 mod line_decoration;
 #[path = "ui_tree_canvas_text_lines_plain.rs"]
 mod plain;
+#[path = "ui_tree_canvas_text_lines_raster_runs.rs"]
+mod raster_runs;
 #[path = "ui_tree_canvas_text_lines_rich_span.rs"]
 mod rich_span;
 #[path = "ui_tree_canvas_text_span_style.rs"]
@@ -26,6 +28,7 @@ use crate::raster_host::ui_tree_canvas_text_line_width::{
 pub(super) use line_decoration::underline_y_offset;
 use line_decoration::{TextDecorationLine, decoration_y, underline_part_bounds};
 use plain::draw_plain_at_logical_y as draw_plain_lines_at_logical_y;
+use raster_runs::RasterRun;
 use rich_span::rich_line_span;
 use span_style::{draw_span_background, should_strikethrough, should_underline, span_color};
 use text_wrap::UiTreeTextWrap;
@@ -165,7 +168,9 @@ impl UiTreeTextLines {
                 }
                 cursor_x += width as isize;
             }
+            let runs = RasterRun::for_line(context, render_line, &rich_line, line_x);
             let raster_baseline = context.metrics.baseline_from_line_box_top.map(|_| {
+                /* WHY: code が先頭でも本文と装飾の基準線を face の選択で動かさない。 */
                 context.renderer.rich_line_raster_baseline(
                     &rich_line,
                     context.metrics.line_box_height,
@@ -185,25 +190,8 @@ impl UiTreeTextLines {
                 );
             }
 
-            if let Some(baseline) = context.metrics.baseline_from_line_box_top {
-                context.renderer.draw_rich_line_signed_in_line_box(
-                    canvas,
-                    &rich_line,
-                    line_x,
-                    line_box_top,
-                    context.metrics.line_box_height,
-                    baseline,
-                );
-            } else {
-                let integer_line_top = line_box_top.max(0.0).floor() as usize;
-                canvas.with_fractional_y_origin(line_box_top, integer_line_top, |canvas| {
-                    context.renderer.draw_rich_line_signed(
-                        canvas,
-                        &rich_line,
-                        line_x,
-                        integer_line_top,
-                    );
-                });
+            for run in runs {
+                run.draw(canvas, context.metrics, line_box_top);
             }
 
             for decoration in decorations {
