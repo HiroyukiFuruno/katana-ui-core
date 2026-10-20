@@ -130,10 +130,19 @@ pub(in crate::raster_host) fn copy_payload_for_selection(
     runs: &[SelectableTextRun],
     selection: TextSelection,
 ) -> String {
-    runs.iter()
-        .filter_map(|run| selected_text_for_run(run, selection))
-        .collect::<Vec<_>>()
-        .join("\n")
+    let mut payload = String::new();
+    let mut previous_line_y = None;
+    for run in runs {
+        let Some(selected_text) = selected_text_for_run(run, selection) else {
+            continue;
+        };
+        if !payload.is_empty() && previous_line_y != Some(run.y()) {
+            payload.push('\n');
+        }
+        payload.push_str(&selected_text);
+        previous_line_y = Some(run.y());
+    }
+    payload
 }
 
 #[must_use]

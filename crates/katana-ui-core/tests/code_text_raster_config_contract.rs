@@ -159,6 +159,37 @@ fn mixed_plain_and_code_runs_use_the_configured_code_face() {
     assert!(mixed.props().text.spans[1].style.monospace);
 }
 
+#[test]
+fn mixed_inline_code_selection_copies_a_single_logical_line() {
+    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
+        .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+    let code = UiTextSpan {
+        text: "code".into(),
+        style: UiTextSpanStyle {
+            monospace: true,
+            ..UiTextSpanStyle::default()
+        },
+        link_target: String::new(),
+    };
+    let node = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        spans: vec![UiTextSpan::plain("A "), code, UiTextSpan::plain(" B")],
+        ..UiTextProps::default()
+    });
+    let mut canvas = Canvas::new(180, 140, 0);
+    renderer.render(&mut canvas, &node, area());
+
+    let runs = canvas.text_runs();
+    assert_eq!(3, runs.len());
+    assert!(runs.iter().all(|run| run.y() == runs[0].y()));
+    let start = (runs[0].x(), runs[0].y() + runs[0].height() / 2);
+    let last = &runs[2];
+    let end = (last.right(), last.y() + last.height() / 2);
+    assert_eq!(
+        Some("A code B".to_owned()),
+        canvas.copy_text_in_selection(Some(start), Some(end))
+    );
+}
+
 fn green_pixels(pixels: &[u32]) -> Vec<(usize, usize, u32)> {
     let points = pixels
         .iter()
