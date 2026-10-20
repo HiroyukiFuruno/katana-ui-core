@@ -3,6 +3,10 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 static NEXT_TEXT_SELECTION_LINE: AtomicU64 = AtomicU64::new(0);
 
+pub(in crate::raster_host) fn next_text_selection_line_id() -> u64 {
+    NEXT_TEXT_SELECTION_LINE.fetch_add(1, Ordering::Relaxed)
+}
+
 impl Canvas {
     #[must_use]
     pub fn text_runs(&self) -> &[super::text_selection::SelectableTextRun] {
@@ -103,8 +107,7 @@ impl Canvas {
         operation: impl FnOnce(&mut Self) -> T,
     ) -> T {
         let previous = self.active_text_selection_line;
-        self.active_text_selection_line =
-            Some(NEXT_TEXT_SELECTION_LINE.fetch_add(1, Ordering::Relaxed));
+        self.active_text_selection_line = Some(next_text_selection_line_id());
         let result = operation(self);
         self.active_text_selection_line = previous;
         result

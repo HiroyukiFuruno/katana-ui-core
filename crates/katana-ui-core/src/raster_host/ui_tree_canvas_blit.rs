@@ -1,5 +1,6 @@
 use super::canvas::Canvas;
 use super::ui_tree_canvas_types::{CanvasBlitRequest, PhysicalCanvasBlitRequest};
+use std::collections::HashMap;
 
 impl Canvas {
     pub fn blit_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
@@ -106,6 +107,7 @@ impl Canvas {
         source_logical_y: f32,
     ) {
         let source_bottom = source_logical_y + request.height as f32;
+        let mut target_logical_lines = HashMap::new();
         for run in source.text_runs() {
             let rect = run.rect();
             if rect.bottom() as f32 <= source_logical_y || rect.y as f32 >= source_bottom {
@@ -119,7 +121,7 @@ impl Canvas {
                     .saturating_add((rect.y as f32 - source_logical_y).max(0.0).round() as usize),
                 rect.width,
                 rect.height,
-                run.logical_line(),
+                Self::target_logical_line_id(run.logical_line(), &mut target_logical_lines),
             );
         }
     }
@@ -165,6 +167,7 @@ impl Canvas {
     fn blit_canvas_text_runs(&mut self, source: &Canvas, request: PhysicalCanvasBlitRequest) {
         let source_bottom = request.source_y.saturating_add(request.height);
         let source_y = request.source_logical_y;
+        let mut target_logical_lines = HashMap::new();
         for run in source.text_runs() {
             let rect = run.rect();
             let physical_rect_top = source.to_physical_y(rect.y);
@@ -182,9 +185,20 @@ impl Canvas {
                 target_y,
                 rect.width,
                 rect.height,
-                run.logical_line(),
+                Self::target_logical_line_id(run.logical_line(), &mut target_logical_lines),
             );
         }
+    }
+
+    fn target_logical_line_id(
+        source_logical_line: Option<u64>,
+        target_logical_lines: &mut HashMap<u64, u64>,
+    ) -> Option<u64> {
+        source_logical_line.map(|source_logical_line| {
+            *target_logical_lines
+                .entry(source_logical_line)
+                .or_insert_with(super::canvas_text_selection::next_text_selection_line_id)
+        })
     }
 }
 
@@ -228,5 +242,32 @@ mod tests {
         );
 
         assert_eq!(&[0x112233, 0x445566, 0x000000], target.pixels());
+    }
+
+    #[test]
+    fn separate_blits_do_not_share_text_selection_lines() {
+        let mut source = Canvas::new(80, 20, 0x000000);
+        source.with_text_selection_line(|canvas| {
+            canvas.record_text_run("A ", 0, 0, 16, 16);
+            canvas.record_text_run("code", 16, 0, 32, 16);
+        });
+        let mut target = Canvas::new(80, 48, 0x000000);
+        for dest_y in [0, 20] {
+            target.blit_canvas(
+                &source,
+                CanvasBlitRequest {
+                    dest_x: 0,
+                    dest_y,
+                    width: 80,
+                    height: 20,
+                    source_y: 0,
+                },
+            );
+        }
+
+        assert_eq!(
+            Some("A code\nA code".to_string()),
+            target.copy_text_in_selection(Some((0, 0)), Some((48, 36)))
+        );
     }
 }
