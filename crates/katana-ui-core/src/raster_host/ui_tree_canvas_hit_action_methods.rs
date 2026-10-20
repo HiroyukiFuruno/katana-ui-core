@@ -74,7 +74,7 @@ impl UiTreeHostActionHitCollector<'_> {
 
     fn hit_left_boundary(&self) -> usize {
         if self.scroll_clip == super::ScrollHitClip::Viewport {
-            self.area.x
+            self.viewport_left_boundary
         } else {
             0
         }
