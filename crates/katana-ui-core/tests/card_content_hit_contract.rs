@@ -20,9 +20,10 @@ fn hit_outset_round_trips_and_legacy_json_defaults_to_zero()
 
 #[cfg(feature = "raster-host")]
 mod raster {
-    use super::*;
     use katana_ui_core::raster_host::{Canvas, UiTreeCanvasRenderer, UiTreeRenderArea};
-    use katana_ui_core::render_model::{UiHostActionSpec, UiNode, UiNodeKind, UiScrollAreaProps};
+    use katana_ui_core::render_model::{
+        UiCommonProps, UiHostActionSpec, UiNode, UiNodeKind, UiScrollAreaProps,
+    };
     use katana_ui_core::theme::ThemeSnapshot;
 
     fn card(outset: u16) -> UiNode {
