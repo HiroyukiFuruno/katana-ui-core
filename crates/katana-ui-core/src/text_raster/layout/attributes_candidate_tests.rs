@@ -13,7 +13,7 @@ const REGULAR_WEIGHT: u16 = 400;
 const FINGERPRINT_BYTES: usize = 32;
 const LAYOUT_WIDTH_PX: f32 = 1024.0;
 const LAYOUT_HEIGHT_PX: f32 = 128.0;
-const LATIN_GLYPH_COUNT: usize = 5;
+const LATIN_TEXT: &str = "Latin";
 
 fn font() -> FontToken {
     FontToken {
@@ -56,19 +56,31 @@ fn candidate() -> Option<(std::path::PathBuf, u32)> {
 }
 fn shaped(fs: &mut FontSystem, attrs: Attrs<'_>) -> Vec<cosmic_text::fontdb::FaceInfo> {
     let mut b = Buffer::new(fs, Metrics::new(TEST_FONT_SIZE_PX, TEST_FONT_SIZE_PX));
-    let font_ids = {
+    let (font_ids, covered_bytes) = {
         let mut b = b.borrow_with(fs);
         b.set_size(Some(LAYOUT_WIDTH_PX), Some(LAYOUT_HEIGHT_PX));
-        b.set_rich_text([("Latin", attrs)], &Attrs::new(), Shaping::Advanced, None);
-        b.layout_runs()
-            .flat_map(|r| r.glyphs.iter())
-            .map(|glyph| glyph.font_id)
-            .collect::<Vec<_>>()
+        b.set_rich_text(
+            [(LATIN_TEXT, attrs)],
+            &Attrs::new(),
+            Shaping::Advanced,
+            None,
+        );
+        let mut font_ids = Vec::new();
+        let mut covered_bytes = vec![false; LATIN_TEXT.len()];
+        for run in b.layout_runs() {
+            for glyph in run.glyphs {
+                font_ids.push(glyph.font_id);
+                for byte in &mut covered_bytes[glyph.start..glyph.end] {
+                    *byte = true;
+                }
+            }
+        }
+        (font_ids, covered_bytes)
     };
-    assert_eq!(
-        LATIN_GLYPH_COUNT,
-        font_ids.len(),
-        "Latin must shape every glyph"
+    assert!(!font_ids.is_empty(), "Latin must produce shaped glyphs");
+    assert!(
+        covered_bytes.into_iter().all(|covered| covered),
+        "Latin must shape every character"
     );
     font_ids
         .into_iter()
