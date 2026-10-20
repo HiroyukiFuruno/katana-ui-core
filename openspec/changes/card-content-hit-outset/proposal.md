@@ -4,7 +4,7 @@ Card 本文の描画インデントを保ったまま、同じ stable node の v
 
 ## What Changes
 
-- UiCommonProps に hit_outset_left と builder を追加する。
+- UiNode に hit_outset_left builder を追加する。
 - node hit と node action hit を viewport / scroll clip より前に拡張する。
 - 描画・折返し・layout / scroll measurement は既存設定を使い、hit 拡張では変えない。
 

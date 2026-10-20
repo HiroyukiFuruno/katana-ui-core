@@ -177,4 +177,19 @@ mod tests {
         canvas.record_text_run_with_glyph_widths("text", 0, 0, 1, 0, &[1]);
         assert!(canvas.text_runs().is_empty());
     }
+
+    #[test]
+    fn logical_line_ids_do_not_change_canvas_or_text_run_equality() {
+        let mut first = Canvas::new(8, 8, 0);
+        first.with_text_selection_line(|canvas| {
+            canvas.record_text_run("text", 0, 0, 4, 1);
+        });
+        let mut second = Canvas::new(8, 8, 0);
+        second.with_text_selection_line(|canvas| {
+            canvas.record_text_run("text", 0, 0, 4, 1);
+        });
+
+        assert_eq!(first.text_runs(), second.text_runs());
+        assert_eq!(first, second);
+    }
 }

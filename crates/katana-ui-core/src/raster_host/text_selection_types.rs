@@ -1,13 +1,21 @@
 use super::layout_metrics::LayoutRect;
 use katana_ui_core::text_selection::UiTextSelectionModel;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct SelectableTextRun {
     pub(in crate::raster_host) text: String,
     pub(in crate::raster_host) rect: LayoutRect,
     pub(in crate::raster_host) model: UiTextSelectionModel,
     pub(in crate::raster_host) logical_line: Option<u64>,
 }
+
+impl PartialEq for SelectableTextRun {
+    fn eq(&self, other: &Self) -> bool {
+        self.text == other.text && self.rect == other.rect && self.model == other.model
+    }
+}
+
+impl Eq for SelectableTextRun {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(in crate::raster_host) struct TextSelection {
