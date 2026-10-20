@@ -1,4 +1,4 @@
-use katana_ui_core::render_model::{UiCommonProps, UiNode, UiNodeKind};
+use katana_ui_core::render_model::{UiNode, UiNodeKind};
 
 #[test]
 fn hit_outset_round_trips_and_legacy_json_defaults_to_zero()
