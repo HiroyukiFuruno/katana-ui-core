@@ -6,6 +6,7 @@ pub struct SelectableTextRun {
     pub(in crate::raster_host) text: String,
     pub(in crate::raster_host) rect: LayoutRect,
     pub(in crate::raster_host) model: UiTextSelectionModel,
+    pub(in crate::raster_host) logical_line: Option<u64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

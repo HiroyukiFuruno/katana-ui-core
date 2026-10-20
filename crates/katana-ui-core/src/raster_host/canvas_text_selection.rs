@@ -1,4 +1,7 @@
 use super::canvas_model::Canvas;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_TEXT_SELECTION_LINE: AtomicU64 = AtomicU64::new(0);
 
 impl Canvas {
     #[must_use]
@@ -45,10 +48,18 @@ impl Canvas {
         if text.is_empty() || width == 0 || height == 0 {
             return;
         }
-        self.text_runs
-            .push(super::text_selection::SelectableTextRun::new(
-                text, x, y, width, height,
-            ));
+        let run = match self.active_text_selection_line {
+            Some(logical_line) => super::text_selection::SelectableTextRun::new_in_logical_line(
+                text,
+                x,
+                y,
+                width,
+                height,
+                Some(logical_line),
+            ),
+            None => super::text_selection::SelectableTextRun::new(text, x, y, width, height),
+        };
+        self.text_runs.push(run);
     }
 
     pub(crate) fn record_text_run_with_glyph_widths(
@@ -63,15 +74,64 @@ impl Canvas {
         if text.is_empty() || width == 0 || height == 0 {
             return;
         }
-        self.text_runs
-            .push(super::text_selection::SelectableTextRun::with_glyph_widths(
+        let run = match self.active_text_selection_line {
+            Some(logical_line) => {
+                super::text_selection::SelectableTextRun::with_glyph_widths_in_logical_line(
+                    text,
+                    x,
+                    y,
+                    width,
+                    height,
+                    glyph_widths,
+                    Some(logical_line),
+                )
+            }
+            None => super::text_selection::SelectableTextRun::with_glyph_widths(
                 text,
                 x,
                 y,
                 width,
                 height,
                 glyph_widths,
-            ));
+            ),
+        };
+        self.text_runs.push(run);
+    }
+
+    pub(in crate::raster_host) fn with_text_selection_line<T>(
+        &mut self,
+        operation: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let previous = self.active_text_selection_line;
+        self.active_text_selection_line =
+            Some(NEXT_TEXT_SELECTION_LINE.fetch_add(1, Ordering::Relaxed));
+        let result = operation(self);
+        self.active_text_selection_line = previous;
+        result
+    }
+
+    pub(in crate::raster_host) fn record_text_run_in_logical_line(
+        &mut self,
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        logical_line: Option<u64>,
+    ) {
+        if text.is_empty() || width == 0 || height == 0 {
+            return;
+        }
+        self.text_runs.push(
+            super::text_selection::SelectableTextRun::new_in_logical_line(
+                text,
+                x,
+                y,
+                width,
+                height,
+                logical_line,
+            ),
+        );
     }
 
     pub(crate) fn discard_text_runs_outside_current_clip_since(&mut self, start: usize) {

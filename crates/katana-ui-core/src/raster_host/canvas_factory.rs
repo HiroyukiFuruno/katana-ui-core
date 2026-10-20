@@ -73,6 +73,7 @@ impl Canvas {
             pixels: vec![color; physical_width * physical_height],
             clip: None,
             text_runs: Vec::new(),
+            active_text_selection_line: None,
             physical_y_offset: 0,
         }
     }

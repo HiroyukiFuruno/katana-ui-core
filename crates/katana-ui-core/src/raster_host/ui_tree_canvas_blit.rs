@@ -111,7 +111,7 @@ impl Canvas {
             if rect.bottom() as f32 <= source_logical_y || rect.y as f32 >= source_bottom {
                 continue;
             }
-            self.record_text_run(
+            self.record_text_run_in_logical_line(
                 run.text(),
                 request.dest_x.saturating_add(rect.x),
                 request
@@ -119,6 +119,7 @@ impl Canvas {
                     .saturating_add((rect.y as f32 - source_logical_y).max(0.0).round() as usize),
                 rect.width,
                 rect.height,
+                run.logical_line(),
             );
         }
     }
@@ -175,7 +176,14 @@ impl Canvas {
             let target_y = request
                 .dest_logical_y
                 .saturating_add((rect.y as f32 - source_y).round().max(0.0) as usize);
-            self.record_text_run(run.text(), target_x, target_y, rect.width, rect.height);
+            self.record_text_run_in_logical_line(
+                run.text(),
+                target_x,
+                target_y,
+                rect.width,
+                rect.height,
+                run.logical_line(),
+            );
         }
     }
 }

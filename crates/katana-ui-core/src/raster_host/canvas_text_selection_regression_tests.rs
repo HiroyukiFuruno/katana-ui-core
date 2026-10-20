@@ -20,6 +20,18 @@ fn canvas_exposes_copy_payload_for_selected_text_runs() {
 }
 
 #[test]
+fn canvas_copy_separates_independent_siblings_sharing_a_y_coordinate() {
+    let mut canvas = Canvas::new(320, 200, BACKGROUND);
+    canvas.record_text_run("left sibling", 24, 32, 80, 20);
+    canvas.record_text_run("right sibling", 120, 32, 88, 20);
+
+    assert_eq!(
+        Some("left sibling\nright sibling".to_string()),
+        canvas.copy_text_in_selection(Some((20, 32)), Some((220, 52)))
+    );
+}
+
+#[test]
 fn canvas_exposes_selection_highlight_for_selected_text_runs() {
     let mut canvas = Canvas::new(320, 200, BACKGROUND);
     canvas.record_text_run("Heading", 24, 32, 80, 20);

@@ -11,6 +11,18 @@ pub(in crate::raster_host) use super::text_selection_types::TextSelection;
 impl SelectableTextRun {
     #[must_use]
     pub(super) fn new(text: &str, x: usize, y: usize, width: usize, height: usize) -> Self {
+        Self::new_in_logical_line(text, x, y, width, height, None)
+    }
+
+    #[must_use]
+    pub(super) fn new_in_logical_line(
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        logical_line: Option<u64>,
+    ) -> Self {
         let grapheme_count = text.graphemes(true).count().max(1);
         let glyph_width = (width.max(1) / grapheme_count).max(1) as u32;
         let model = UiTextSelectionModel::from_monospace_text(
@@ -24,6 +36,7 @@ impl SelectableTextRun {
             text: text.to_string(),
             rect: LayoutRect::new(x, y, width, height),
             model,
+            logical_line,
         }
     }
 
@@ -35,6 +48,19 @@ impl SelectableTextRun {
         width: usize,
         height: usize,
         glyph_widths: &[usize],
+    ) -> Self {
+        Self::with_glyph_widths_in_logical_line(text, x, y, width, height, glyph_widths, None)
+    }
+
+    #[must_use]
+    pub(super) fn with_glyph_widths_in_logical_line(
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        glyph_widths: &[usize],
+        logical_line: Option<u64>,
     ) -> Self {
         let mut glyphs = Vec::new();
         let mut byte_offset = 0usize;
@@ -60,6 +86,7 @@ impl SelectableTextRun {
             text: text.to_string(),
             rect: LayoutRect::new(x, y, width, height),
             model,
+            logical_line,
         }
     }
 
@@ -107,6 +134,11 @@ impl SelectableTextRun {
     pub(in crate::raster_host) fn model(&self) -> &UiTextSelectionModel {
         &self.model
     }
+
+    #[must_use]
+    pub(in crate::raster_host) const fn logical_line(&self) -> Option<u64> {
+        self.logical_line
+    }
 }
 
 impl TextSelection {
@@ -131,18 +163,23 @@ pub(in crate::raster_host) fn copy_payload_for_selection(
     selection: TextSelection,
 ) -> String {
     let mut payload = String::new();
-    let mut previous_line_y = None;
+    let mut previous_logical_line = None;
     for run in runs {
         let Some(selected_text) = selected_text_for_run(run, selection) else {
             continue;
         };
-        if !payload.is_empty() && previous_line_y != Some(run.y()) {
+        if !payload.is_empty() && !same_logical_text_line(previous_logical_line, run.logical_line())
+        {
             payload.push('\n');
         }
         payload.push_str(&selected_text);
-        previous_line_y = Some(run.y());
+        previous_logical_line = run.logical_line();
     }
     payload
+}
+
+fn same_logical_text_line(previous: Option<u64>, current: Option<u64>) -> bool {
+    previous.is_some() && previous == current
 }
 
 #[must_use]

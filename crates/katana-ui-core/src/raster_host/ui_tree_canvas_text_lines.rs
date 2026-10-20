@@ -190,9 +190,11 @@ impl UiTreeTextLines {
                 );
             }
 
-            for run in runs {
-                run.draw(canvas, context.metrics, line_box_top);
-            }
+            canvas.with_text_selection_line(|canvas| {
+                for run in runs {
+                    run.draw(canvas, context.metrics, line_box_top);
+                }
+            });
 
             for decoration in decorations {
                 let y = decoration_y(

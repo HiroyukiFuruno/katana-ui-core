@@ -86,6 +86,16 @@ fn inline_code_link_uses_the_code_measurement_for_its_glyph_and_hit() {
         expected_mask, actual_mask,
         "the inline-code glyph pattern must use the same face as the code renderer: {link_hit:?}"
     );
+    let first_run = canvas.text_runs().first().expect("prefix raster run");
+    let last_run = canvas.text_runs().last().expect("suffix raster run");
+    assert_eq!(
+        Some(format!("prefix {CODE_LINK_TEXT} suffix")),
+        canvas.copy_text_in_selection(
+            Some((first_run.x(), first_run.y())),
+            Some((last_run.right(), last_run.bottom())),
+        ),
+        "raster runs split for the code face must retain their shared logical text line"
+    );
 }
 
 fn inline_code_link_node() -> UiNode {

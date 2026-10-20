@@ -31,12 +31,13 @@ impl Canvas {
             if rect.bottom() <= offset_y || rect.y >= offset_y.saturating_add(height) {
                 continue;
             }
-            viewport.record_text_run(
+            viewport.record_text_run_in_logical_line(
                 run.text(),
                 rect.x,
                 rect.y.saturating_sub(offset_y),
                 rect.width,
                 rect.height,
+                run.logical_line(),
             );
         }
         viewport
