@@ -72,6 +72,22 @@ impl UiTreeHostActionHitCollector<'_> {
         }
     }
 
+    pub(super) fn push_tree_row_action_hits(
+        &mut self,
+        node: &UiNode,
+        actions: impl IntoIterator<Item = UiHostActionPlan>,
+        rect: UiTreeHitRect,
+    ) {
+        let rect = outset_node_hit(node, rect, self.hit_left_boundary());
+        for action in actions {
+            self.hits.push(UiTreeHostActionHit {
+                action,
+                rect,
+                cursor: node.props().tree.row_cursor,
+            });
+        }
+    }
+
     fn hit_left_boundary(&self) -> usize {
         if self.scroll_clip == super::ScrollHitClip::Viewport {
             self.viewport_left_boundary

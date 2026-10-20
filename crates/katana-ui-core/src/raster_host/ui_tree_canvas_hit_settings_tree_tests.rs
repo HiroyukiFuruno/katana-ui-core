@@ -145,3 +145,33 @@ fn collects_tree_view_row_action_rect_from_rendered_row() {
         file_hit.rect
     );
 }
+
+#[test]
+fn tree_view_row_action_hit_outset_keeps_the_row_cursor() {
+    let tree: UiNode = TreeView::new("Files")
+        .item(TreeNode::new("katana/sample.md", "sample.md", 0).file())
+        .into();
+    let root = UiNode::new(UiNodeKind::Card, "").child(tree.hit_outset_left(16));
+    let hits = UiTreeHostActionHitCollector::collect(
+        &root,
+        UiTreeRenderArea {
+            x: 0,
+            y: 0,
+            width: 240,
+            height: 120,
+            scroll_y: 0.0,
+        },
+    );
+    let hit = hits
+        .iter()
+        .find(|hit| {
+            hit.action
+                .tree_row_action_target()
+                .is_some_and(|target| target.node_id == "katana/sample.md")
+        })
+        .kuc_expect("tree row host action missing");
+
+    assert_eq!(UiCursor::Pointer, hit.cursor);
+    assert_eq!(0, hit.rect.x);
+    assert_eq!(256, hit.rect.width);
+}
