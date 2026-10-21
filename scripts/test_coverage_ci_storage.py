@@ -8,6 +8,7 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "scripts/coverage/prepare-ci-storage.sh"
+RELEASE_PREFLIGHT = REPO / ".github/workflows/release-preflight.yml"
 
 
 class CoverageCiStorageTests(unittest.TestCase):
@@ -57,6 +58,16 @@ class CoverageCiStorageTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("current GitHub workspace", result.stderr)
+
+    def test_release_preflight_keeps_failed_coverage_logs(self) -> None:
+        source = RELEASE_PREFLIGHT.read_text(encoding="utf-8")
+        self.assertIn('COVERAGE_TEST_THREADS: "2"', source)
+        self.assertIn("- name: Upload failed coverage test logs", source)
+        self.assertIn("if: steps.release_check.outcome == 'failure'", source)
+        self.assertIn(
+            "path: /tmp/kuc-target/llvm-cov-target/kuc-test-run-*/logs",
+            source,
+        )
 
 
 if __name__ == "__main__":

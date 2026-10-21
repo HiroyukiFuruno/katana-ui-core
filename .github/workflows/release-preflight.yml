@@ -100,9 +100,19 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/v')
         env:
           KUC_COVERAGE_EPHEMERAL_CLEANUP: "1"
-          # 同時 test thread を抑え、GitHub-hosted runner でも全workspace coverage を完走させる。
-          COVERAGE_TEST_THREADS: "4"
+          # 全workspace coverage の実行器を二つの単一thread childに制限し、hosted runner の
+          # native UI test が同時に確保する資源を抑える。検査対象とcoverage基準は変えない。
+          COVERAGE_TEST_THREADS: "2"
         run: just VERSION="${{ steps.version.outputs.version }}" release-check
+
+      - name: Upload failed coverage test logs
+        if: steps.release_check.outcome == 'failure' && (github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/v'))
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: kuc-coverage-test-logs-${{ github.run_id }}
+          path: /tmp/kuc-target/llvm-cov-target/kuc-test-run-*/logs
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Record release gate result
         if: always() && (github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/v'))
