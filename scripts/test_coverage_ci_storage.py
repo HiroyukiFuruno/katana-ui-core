@@ -62,10 +62,14 @@ class CoverageCiStorageTests(unittest.TestCase):
     def test_release_preflight_keeps_failed_coverage_logs(self) -> None:
         source = RELEASE_PREFLIGHT.read_text(encoding="utf-8")
         self.assertIn('COVERAGE_TEST_THREADS: "2"', source)
-        self.assertIn("- name: Upload failed coverage test logs", source)
-        self.assertIn("if: steps.release_check.outcome == 'failure'", source)
         self.assertIn(
-            "path: /tmp/kuc-target/llvm-cov-target/kuc-test-run-*/logs",
+            "KUC_COVERAGE_LOG_DIR: ${{ runner.temp }}/kuc-coverage-test-logs",
+            source,
+        )
+        self.assertIn("- name: Upload failed coverage test logs", source)
+        self.assertIn("if: failure() && steps.release_check.outcome == 'failure'", source)
+        self.assertIn(
+            "path: ${{ runner.temp }}/kuc-coverage-test-logs",
             source,
         )
 

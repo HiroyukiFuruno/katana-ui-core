@@ -113,6 +113,35 @@ fn code_override_invalidates_existing_scroll_measurements() {
 }
 
 #[test]
+fn code_override_recomputes_plain_text_wrapping_and_measurement() {
+    let plain_code = UiNode::new(
+        UiNodeKind::Text,
+        "Wide WWW and narrow iii code text ".repeat(12),
+    )
+    .font_role("code")
+    .text(UiTextProps {
+        role: "code".into(),
+        wrap: UiTextWrapMode::Wrap,
+        ..UiTextProps::default()
+    });
+    let previous = UiTreeCanvasRenderer::new(ThemeSnapshot::dark());
+    let previous_pixels = pixels(&previous, &plain_code);
+    let configured =
+        previous.with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+    let fresh = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
+        .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+
+    let configured_pixels = pixels(&configured, &plain_code);
+    let configured_hits = configured.document_node_hit_rects(&plain_code, area());
+    assert_ne!(previous_pixels, configured_pixels);
+    assert_eq!(pixels(&fresh, &plain_code), configured_pixels);
+    assert_eq!(
+        fresh.document_node_hit_rects(&plain_code, area()),
+        configured_hits
+    );
+}
+
+#[test]
 fn mixed_plain_and_code_runs_use_the_configured_code_face() {
     let default = UiTreeCanvasRenderer::new(ThemeSnapshot::dark());
     let configured = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())

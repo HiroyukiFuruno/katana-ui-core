@@ -11,6 +11,7 @@ if [[ ! "${KUC_COVERAGE_IMAGE_ID:-}" =~ ^runtime-v1:sha256:[0-9a-f]{64}$ ]]; the
 fi
 
 workspace=/tmp/kuc-workspace
+coverage_log_dir="${KUC_COVERAGE_LOG_DIR:-}"
 readonly linux_emoji_font=/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf
 readonly pinned_linux_emoji_sha256=e5899ed38b8ed83e08bd3ac5de09791e9d19d288333a796de1d35ad17396f1ec
 actual_linux_emoji_sha256="$(sha256sum "${linux_emoji_font}" | cut -d ' ' -f 1)"
@@ -18,6 +19,23 @@ if [[ "${actual_linux_emoji_sha256}" != "${pinned_linux_emoji_sha256}" ]]; then
   echo "coverage image emoji font hash does not match the pinned release input" >&2
   exit 1
 fi
+
+copy_failed_coverage_logs() {
+  local exit_status="$?"
+  local run_dir
+  if [[ "${exit_status}" -eq 0 || -z "${coverage_log_dir}" ]]; then
+    return "${exit_status}"
+  fi
+  mkdir -p "${coverage_log_dir}"
+  shopt -s nullglob
+  for run_dir in /tmp/kuc-target/llvm-cov-target/kuc-test-run-*; do
+    if [[ -d "${run_dir}/logs" ]]; then
+      cp -a "${run_dir}/logs" "${coverage_log_dir}/$(basename "${run_dir}")"
+    fi
+  done
+  return "${exit_status}"
+}
+trap copy_failed_coverage_logs EXIT
 
 mkdir -p "${workspace}"
 tar \

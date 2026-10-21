@@ -25,6 +25,15 @@ thread_local! {
 pub(in crate::raster_host) struct UiTreeTextWrap;
 
 impl UiTreeTextWrap {
+    pub(in crate::raster_host) fn clear_plain_line_cache() {
+        PLAIN_LINE_CACHE.with(|cache| cache.borrow_mut().clear());
+    }
+
+    #[cfg(test)]
+    pub(in crate::raster_host) fn cached_plain_line_count_for_test() -> usize {
+        PLAIN_LINE_CACHE.with(|cache| cache.borrow().len())
+    }
+
     pub(super) fn plain_lines(
         renderer: &TextRenderer,
         node: &UiNode,
