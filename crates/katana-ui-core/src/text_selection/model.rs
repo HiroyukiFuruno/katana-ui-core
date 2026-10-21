@@ -230,49 +230,61 @@ impl UiTextSelectionModel {
 fn visual_caret_positions(line: &UiTextLineBox) -> Vec<(i32, usize)> {
     let mut glyphs = line.glyphs.iter().collect::<Vec<_>>();
     glyphs.sort_by_key(|glyph| glyph.grapheme_index);
-    let mut positions = Vec::with_capacity(glyphs.len().saturating_add(1));
-    for index in 0..=glyphs.len() {
-        let Some((x, caret)) = logical_boundary_position(&glyphs, index) else {
-            continue;
+    let mut positions = Vec::with_capacity(glyphs.len().saturating_mul(2));
+    for (index, glyph) in glyphs.iter().enumerate() {
+        let (before_x, after_x) = if glyph_is_rtl_in_visual_order(&glyphs, index) {
+            (glyph.caret_x_after(), glyph.caret_x_before())
+        } else {
+            (glyph.caret_x_before(), glyph.caret_x_after())
         };
-        positions.push((x, caret));
+        positions.push((before_x, glyph.grapheme_index));
+        positions.push((after_x, glyph.grapheme_index.saturating_add(1)));
     }
     positions.sort_by_key(|(x, _)| *x);
     positions
 }
 
-fn logical_boundary_position(
-    glyphs: &[&UiTextGlyphBox],
-    boundary_index: usize,
-) -> Option<(i32, usize)> {
-    let first = *glyphs.first()?;
-    let last = *glyphs.last()?;
-    if boundary_index == 0 {
-        let x = if glyphs
-            .get(1)
-            .is_some_and(|next| next.bounds.x < first.bounds.x)
-        {
-            first.caret_x_after()
-        } else {
-            first.caret_x_before()
-        };
-        return Some((x, first.grapheme_index));
+fn glyph_is_rtl_in_visual_order(glyphs: &[&UiTextGlyphBox], index: usize) -> bool {
+    let glyph = glyphs[index];
+    index
+        .checked_sub(1)
+        .and_then(|previous| glyphs.get(previous))
+        .is_some_and(|previous| glyph.bounds.x < previous.bounds.x)
+        || glyphs
+            .get(index.saturating_add(1))
+            .is_some_and(|next| next.bounds.x < glyph.bounds.x)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bidi_run_boundaries_keep_both_visual_caret_candidates() {
+        let text = "a\u{05d0}\u{05d1}b";
+        let model = UiTextSelectionModel::new(
+            text,
+            vec![UiTextLineBox::new(
+                0..text.len(),
+                vec![
+                    UiTextGlyphBox::new(0, 0..1, UiRect::new(0, 0, 10, 10), 10),
+                    UiTextGlyphBox::new(1, 1..3, UiRect::new(20, 0, 10, 10), 10),
+                    UiTextGlyphBox::new(2, 3..5, UiRect::new(10, 0, 10, 10), 10),
+                    UiTextGlyphBox::new(3, 5..6, UiRect::new(30, 0, 10, 10), 10),
+                ],
+            )],
+        );
+
+        assert_eq!(3, model.point_to_caret(11, 5));
+        assert_eq!(2, model.point_to_caret(19, 5));
+        assert_eq!(2, model.point_to_caret(21, 5));
+        assert_eq!(1, model.point_to_caret(29, 5));
+
+        let selection = model.drag_range((11, 5), (19, 5));
+        assert_eq!(UiTextSelectionRange::new(3, 2), selection);
+        assert_eq!(
+            vec![UiRect::new(10, 0, 10, 10)],
+            model.highlight_rects(selection)
+        );
     }
-    if boundary_index == glyphs.len() {
-        let previous = glyphs.get(boundary_index.saturating_sub(2));
-        let x = if previous.is_some_and(|previous| last.bounds.x < previous.bounds.x) {
-            last.caret_x_before()
-        } else {
-            last.caret_x_after()
-        };
-        return Some((x, last.grapheme_index.saturating_add(1)));
-    }
-    let previous = glyphs[boundary_index - 1];
-    let current = glyphs[boundary_index];
-    let x = if current.bounds.x < previous.bounds.x {
-        current.caret_x_after()
-    } else {
-        current.caret_x_before()
-    };
-    Some((x, current.grapheme_index))
 }
