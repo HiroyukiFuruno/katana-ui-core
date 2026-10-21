@@ -30,16 +30,25 @@ pub(super) fn bidi_context_for_fragment(
         .rev()
         .map(|control| control.closing_character())
         .collect();
-    if prefix.is_empty()
-        && suffix.is_empty()
-        && levels
-            .get(fragment_range.start)
-            .is_some_and(unicode_bidi::Level::is_rtl)
+    let resolved_rtl = levels
+        .get(fragment_range.start)
+        .is_some_and(unicode_bidi::Level::is_rtl);
+    if !fragment_has_strong_direction(&text[fragment_range.clone()])
+        && (resolved_rtl || !prefix.is_empty() || !suffix.is_empty())
     {
-        prefix.push('\u{2067}');
-        suffix.push('\u{2069}');
+        prefix.push(if resolved_rtl { '\u{2067}' } else { '\u{2066}' });
+        suffix.insert(0, '\u{2069}');
     }
     (!prefix.is_empty() || !suffix.is_empty()).then_some(RichTextBidiContext { prefix, suffix })
+}
+
+fn fragment_has_strong_direction(text: &str) -> bool {
+    text.chars().any(|character| {
+        matches!(
+            unicode_bidi::bidi_class(character),
+            unicode_bidi::BidiClass::L | unicode_bidi::BidiClass::R | unicode_bidi::BidiClass::AL
+        )
+    })
 }
 
 fn apply_bidi_controls(
@@ -161,6 +170,20 @@ mod tests {
             .expect("an implicit RTL fragment must retain its resolved direction");
         assert_eq!("\u{2067}", context.prefix);
         assert_eq!("\u{2069}", context.suffix);
+    }
+
+    #[test]
+    fn explicit_embedding_preserves_resolved_level_for_neutral_fragment() {
+        let text = "\u{202b}abc(def\u{202c}";
+        let bidi = BidiInfo::new(text, None);
+        let start = "\u{202b}abc".len();
+        let fragment_range = start..start + "(".len();
+
+        assert!(!bidi.levels[fragment_range.start].is_rtl());
+        let context = bidi_context_for_fragment(text, &bidi.levels, &fragment_range)
+            .expect("explicit embedding must preserve the resolved neutral level");
+        assert_eq!("\u{202b}\u{2066}", context.prefix);
+        assert_eq!("\u{2069}\u{202c}", context.suffix);
     }
 
     #[test]

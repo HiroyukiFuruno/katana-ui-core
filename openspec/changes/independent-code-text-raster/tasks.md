@@ -7,7 +7,7 @@
 - [x] PR #90 P2: 視覚順へ再配置した bidi fragment の glyph、背景、underline/strikethrough、link hit に同一の座標を使い、RTL overrideを含む code link の回帰で固定する。
 - [x] PR #90 P2 follow-up: span 境界をまたぐ明示 bidi embedding / override / isolate を raster request のみに保持し、source selection/copy/link payload へ制御文字を露出しない回帰を追加する。
 - [x] PR #90 P2 follow-up: bidi visual fragment に分割された link の内部空白を hit と decoration から除外せず、元 source span の両端だけを trim する回帰を追加する。
-- [/] PR #90 P2 follow-up: RTL raster の grapheme bounds を単調な論理幅へ畳まず、視覚 x 座標と幅を選択 model へ保持する。部分選択の highlight geometry と、全選択時の論理順 copy payload を回帰で固定し、Draft review と完全 release-check を再実行する。
+- [/] PR #90 P2 follow-up: RTL raster の grapheme bounds を単調な論理幅へ畳まず、視覚 x 座標と幅を選択 model へ保持する。部分選択の highlight geometry と、全選択時の論理順 copy payload を回帰で固定する。明示 embedding 内で強い方向文字を持たない fragment には resolved level の isolate も重ね、Draft review と完全 release-check を再実行する。
 - [x] Verify focused tests, format and strict Clippy: public code config 5 tests + Card 8 tests passed; just fmt-check and raster-host lib/integration strict Clippy passed.
 - [ ] Parent release workflow: review, version, full release checks, Draft PR, review/fixes, Ready, CI, merge and public release.
 
