@@ -49,16 +49,7 @@ impl<'a> RasterRun<'a> {
         };
         let mut runs = Vec::with_capacity(positioned_spans.len());
         for positioned in positioned_spans {
-            let Some(rich_span) = rich.get(positioned.line_span_index) else {
-                assign_source_positions(
-                    &mut source_runs,
-                    renderers,
-                    context.metrics,
-                    preserves_whitespace(context.node),
-                    x,
-                );
-                return source_runs;
-            };
+            let rich_span = &rich[positioned.line_span_index];
             runs.push(Self {
                 renderer: renderers.for_span(&positioned.span),
                 spans: vec![rich_span.with_text(positioned.span.text.clone())],

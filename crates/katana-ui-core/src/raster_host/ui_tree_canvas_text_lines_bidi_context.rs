@@ -117,4 +117,23 @@ mod tests {
             assert_eq!(closing.to_string(), context.suffix);
         }
     }
+
+    #[test]
+    fn fsi_resolves_to_rtl_isolate_and_pdi_does_not_leak_to_following_fragment() {
+        let text = "\u{2068}אבג\u{2069}CODE";
+        let bidi = BidiInfo::new(text, None);
+        let hebrew_start = '\u{2068}'.len_utf8();
+        let hebrew_end = hebrew_start + "אבג".len();
+        let code_start = hebrew_end + '\u{2069}'.len_utf8();
+
+        let hebrew_context =
+            bidi_context_for_fragment(text, &bidi.levels, &(hebrew_start..hebrew_end))
+                .expect("FSI must retain the resolved RTL isolate while rendering its fragment");
+        assert_eq!("\u{2067}", hebrew_context.prefix);
+        assert_eq!("\u{2069}", hebrew_context.suffix);
+        assert!(
+            bidi_context_for_fragment(text, &bidi.levels, &(code_start..text.len())).is_none(),
+            "PDI must close the isolate before the next fragment",
+        );
+    }
 }

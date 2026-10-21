@@ -93,3 +93,39 @@ impl TextRenderer {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::text_raster::{PlatformTextFaceSelection, PlatformTextRasterConfig};
+    use katana_ui_core::theme::ThemeSnapshot;
+    use std::path::PathBuf;
+
+    fn renderer_without_color_emoji() -> TextRenderer {
+        let config = PlatformTextRasterConfig {
+            emoji_candidates: vec![PathBuf::from("/kuc-test-font-catalog/missing-emoji.ttf")],
+            emoji_candidate_sha256: Vec::new(),
+            ..PlatformTextRasterConfig::default()
+        };
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        TextRenderer::load_with_text_raster_config(
+            &facade,
+            "body",
+            config,
+            PlatformTextFaceSelection::System,
+        )
+    }
+
+    #[test]
+    fn bidi_measurement_falls_back_when_color_emoji_rasterization_is_unavailable() {
+        let renderer = renderer_without_color_emoji();
+        let style = RichTextStyle::new(14.0, 0xffffff).emoji(true);
+        let context = RichTextBidiContext::default();
+
+        assert_eq!(
+            renderer.measure_width_rich("🔥", style),
+            renderer.measure_width_rich_with_bidi_context("🔥", style, &context),
+        );
+    }
+}

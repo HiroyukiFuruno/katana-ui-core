@@ -266,6 +266,20 @@ mod tests {
     use std::cell::RefCell;
     use std::path::PathBuf;
 
+    fn renderer_without_color_emoji() -> TextRenderer {
+        let config = PlatformTextRasterConfig {
+            emoji_candidates: vec![PathBuf::from("/kuc-test-font-catalog/missing-emoji.ttf")],
+            emoji_candidate_sha256: Vec::new(),
+            ..PlatformTextRasterConfig::default()
+        };
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        TextRenderer {
+            independent_raster_config: false,
+            rasterizer: RefCell::new(PlatformTextRasterizer::new(config)),
+            font: resolve_font(&facade, "body"),
+        }
+    }
+
     #[test]
     fn scale_and_font_resolution_cover_invalid_and_empty_theme_fallbacks() {
         assert_eq!(1.0, TextRenderer::normalized_scale_factor(f32::NAN));
@@ -327,17 +341,7 @@ mod tests {
 
     #[test]
     fn measure_request_uses_the_stable_font_size_when_color_emoji_is_unavailable() {
-        let config = PlatformTextRasterConfig {
-            emoji_candidates: vec![PathBuf::from("/kuc-test-font-catalog/missing-emoji.ttf")],
-            emoji_candidate_sha256: Vec::new(),
-            ..PlatformTextRasterConfig::default()
-        };
-        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
-        let renderer = TextRenderer {
-            independent_raster_config: false,
-            rasterizer: RefCell::new(PlatformTextRasterizer::new(config)),
-            font: resolve_font(&facade, "body"),
-        };
+        let renderer = renderer_without_color_emoji();
 
         let width = renderer.measure_request(
             vec![ui_span(
@@ -349,5 +353,41 @@ mod tests {
         );
 
         assert_eq!(14, width);
+    }
+
+    #[test]
+    fn rich_draw_skips_an_unavailable_color_emoji_raster() {
+        let renderer = renderer_without_color_emoji();
+        let style = RichTextStyle::new(14.0, 0xffffff).emoji(true);
+        let spans = [renderer.rich_line_span("🔥", style)];
+        let mut canvas = Canvas::new(80, 40, 0);
+
+        renderer.draw_rich_request(
+            &mut canvas,
+            &spans,
+            None,
+            RichTextDrawRequest {
+                x: 0,
+                paint_origin_y: 0.0,
+                text_run_origin_y: 0.0,
+                scale_factor: 1.0,
+                raster_vertical_scale: 1.0,
+                font: renderer.font_with_size(style.size),
+                line_height_px: default_line_height(style.size),
+            },
+        );
+
+        assert!(canvas.pixels().iter().all(|pixel| *pixel == 0));
+        assert!(canvas.text_runs().is_empty());
+    }
+
+    #[test]
+    fn empty_rich_spans_stay_empty_when_bidi_context_is_present() {
+        let context = RichTextBidiContext {
+            prefix: "\u{202e}".to_string(),
+            suffix: "\u{202c}".to_string(),
+        };
+
+        assert!(TextRenderer::rich_raster_spans(&[], Some(&context)).is_empty());
     }
 }

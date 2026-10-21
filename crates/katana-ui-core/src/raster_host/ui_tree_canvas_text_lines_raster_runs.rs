@@ -93,17 +93,10 @@ pub(in crate::raster_host) fn visual_span_positions(
             let source_end = source_start + source_span.text.len();
             let source_span_range = source_start..source_end;
             if let Some(fragment_range) = intersection(&source_span_range, &visual_range) {
-                let start = fragment_range.start.checked_sub(source_start)?;
-                let end = fragment_range.end.checked_sub(source_start)?;
-                if !text.is_char_boundary(fragment_range.start)
-                    || !text.is_char_boundary(fragment_range.end)
-                    || !source_span.text.is_char_boundary(start)
-                    || !source_span.text.is_char_boundary(end)
-                {
-                    return None;
-                }
+                let source_fragment_range =
+                    fragment_slice_range(&text, &source_span.text, &fragment_range, source_start)?;
                 let mut span = source_span.clone();
-                span.text = source_span.text[start..end].to_owned();
+                span.text = source_span.text[source_fragment_range].to_owned();
                 fragments.push(PositionedSpan {
                     line_span_index,
                     span,
@@ -142,6 +135,46 @@ fn intersection(left: &Range<usize>, right: &Range<usize>) -> Option<Range<usize
     (start < end).then_some(start..end)
 }
 
+fn fragment_slice_range(
+    text: &str,
+    source_text: &str,
+    fragment_range: &Range<usize>,
+    source_start: usize,
+) -> Option<Range<usize>> {
+    let start = fragment_range.start.checked_sub(source_start)?;
+    let end = fragment_range.end.checked_sub(source_start)?;
+    (text.is_char_boundary(fragment_range.start)
+        && text.is_char_boundary(fragment_range.end)
+        && source_text.is_char_boundary(start)
+        && source_text.is_char_boundary(end))
+    .then_some(start..end)
+}
+
 pub(super) fn is_code(span: &UiTextSpan) -> bool {
     span.style.monospace || span.style.inline_code
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fragment_slices_require_global_and_local_utf8_boundaries() {
+        assert_eq!(Some(0..2), fragment_slice_range("abc", "bc", &(1..3), 1),);
+        assert_eq!(
+            None,
+            fragment_slice_range("あ", "あ", &(1..3), 0),
+            "the global range must start at a character boundary",
+        );
+        assert_eq!(
+            None,
+            fragment_slice_range("abc", "あ", &(1..3), 1),
+            "the source span range must end at a character boundary",
+        );
+        assert_eq!(
+            None,
+            fragment_slice_range("abc", "bc", &(0..1), 1),
+            "the fragment must remain within its source span",
+        );
+    }
 }

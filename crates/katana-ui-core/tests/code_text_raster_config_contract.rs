@@ -219,10 +219,16 @@ fn mixed_inline_code_selection_copies_a_single_logical_line() {
 }
 
 #[test]
-fn mixed_rtl_inline_code_uses_visual_order_and_copies_logical_order() {
-    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
-        .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+fn mixed_rtl_inline_code_preserves_visual_order_at_a_document_baseline() {
+    use katana_ui_core::raster_host::{UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography};
+
+    let typography = UiTreeDocumentTypography::default()
+        .with_body_baseline(UiTreeTextRoleBaselineTypography::new(20.0, 32.5, 24.25));
+    let renderer =
+        UiTreeCanvasRenderer::with_document_typography(ThemeSnapshot::dark(), typography)
+            .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
     let node = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        role: "paragraph".into(),
         spans: vec![
             styled_span("אבג ", false),
             styled_span("code", true),
@@ -372,8 +378,13 @@ fn mixed_rtl_inline_code_link_hit_tracks_its_visual_raster_run() {
 
 #[test]
 fn mixed_rtl_inline_code_preserves_explicit_bidi_shape_without_exposing_controls() {
-    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
-        .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+    use katana_ui_core::raster_host::{UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography};
+
+    let typography = UiTreeDocumentTypography::default()
+        .with_body_baseline(UiTreeTextRoleBaselineTypography::new(20.0, 32.5, 24.25));
+    let renderer =
+        UiTreeCanvasRenderer::with_document_typography(ThemeSnapshot::dark(), typography)
+            .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
     let code_style = UiTextSpanStyle {
         color_rgba: [0, 255, 0, 255],
         inline_code: true,
@@ -381,6 +392,7 @@ fn mixed_rtl_inline_code_preserves_explicit_bidi_shape_without_exposing_controls
         ..UiTextSpanStyle::default()
     };
     let actual = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        role: "paragraph".into(),
         spans: vec![
             styled_span("\u{202e}A", false),
             UiTextSpan {
@@ -393,6 +405,7 @@ fn mixed_rtl_inline_code_preserves_explicit_bidi_shape_without_exposing_controls
         ..UiTextProps::default()
     });
     let expected = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        role: "paragraph".into(),
         spans: vec![UiTextSpan {
             text: "\u{202e}CODE\u{202c}".into(),
             style: code_style,
