@@ -100,6 +100,8 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/v')
         env:
           KUC_COVERAGE_EPHEMERAL_CLEANUP: "1"
+          # 同時 test thread を抑え、GitHub-hosted runner でも全workspace coverage を完走させる。
+          COVERAGE_TEST_THREADS: "4"
         run: just VERSION="${{ steps.version.outputs.version }}" release-check
 
       - name: Record release gate result
