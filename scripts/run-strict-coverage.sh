@@ -92,6 +92,7 @@ coverage_profile_path="${coverage_storage_dir}/kuc-workspace-coverage-profile-v3
 coverage_strict_state_path="${coverage_profile_path}.strict-state"
 coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"
 coverage_lcov_path="${coverage_storage_dir}/kuc-workspace-coverage.lcov"
+coverage_diagnostics_dir="${KUC_COVERAGE_LOG_DIR:-${coverage_target_dir}/kuc-coverage-diagnostics}"
 coverage_started_at="${SECONDS}"
 coverage_transaction_active=0
 coverage_target_ownership_verified=0
@@ -276,6 +277,53 @@ write_coverage_strict_state() {
   write_coverage_state "${coverage_strict_state_path}" "${value}"
 }
 
+record_coverage_report_failure() {
+  local phase="$1"
+  local exit_status="$2"
+  local command_log="$3"
+  local metadata_path="${coverage_diagnostics_dir}/coverage-report-${phase}-failure.txt"
+  local temporary_path="${metadata_path}.tmp.${BASHPID}"
+  local coverage_file
+
+  if ! {
+    printf 'phase=%s\n' "${phase}"
+    printf 'exit_status=%s\n' "${exit_status}"
+    printf 'command_log=%s\n' "${command_log}"
+    printf 'coverage_storage_dir=%s\n' "${coverage_storage_dir}"
+    printf 'coverage_target_dir=%s\n' "${coverage_target_dir}"
+    for coverage_file in "${coverage_report_path}" "${coverage_lcov_path}" "${coverage_profile_path}" "${coverage_strict_state_path}"; do
+      if [[ -f "${coverage_file}" ]]; then
+        printf 'artifact=%s bytes=%s\n' "${coverage_file}" "$(wc -c <"${coverage_file}")"
+      else
+        printf 'artifact=%s missing\n' "${coverage_file}"
+      fi
+    done
+    printf 'target_profraw_count=%s\n' "$(find "${coverage_target_dir}" -type f -name '*.profraw' -print 2>/dev/null | wc -l)"
+    printf 'storage_df=\n'
+    df -Pk "${coverage_storage_dir}"
+  } >"${temporary_path}"; then
+    echo "failed to record strict coverage ${phase} report diagnostics" >&2
+    return
+  fi
+  mv "${temporary_path}" "${metadata_path}"
+}
+
+run_coverage_report() {
+  local phase="$1"
+  shift
+  local command_log="${coverage_diagnostics_dir}/coverage-report-${phase}.log"
+
+  if run_cargo llvm-cov report --quiet "$@" >"${command_log}" 2>&1; then
+    cat "${command_log}"
+    return
+  else
+    local exit_status=$?
+    record_coverage_report_failure "${phase}" "${exit_status}" "${command_log}"
+    cat "${command_log}" >&2
+    return "${exit_status}"
+  fi
+}
+
 invalidate_coverage_profile() {
   coverage_transaction_active=1
   write_coverage_profile_state in-progress
@@ -390,6 +438,7 @@ case "${coverage_cleanup_mode}" in
     ;;
 esac
 restore_coverage_target_owner_marker_after_cleanup
+mkdir -p "${coverage_diagnostics_dir}"
 echo "coverage mode: ${coverage_mode}; scope: full; parallel binaries: ${coverage_parallel_binaries}; test threads per binary: ${coverage_threads_per_binary}"
 coverage_test_started_at="${SECONDS}"
 if [[ -n "${coverage_supplement_filter}" ]]; then
@@ -401,7 +450,7 @@ if [[ -n "${coverage_supplement_filter}" ]]; then
     "${coverage_supplement_filter}" -- \
     --include-ignored \
     --test-threads="${coverage_test_threads}"
-  run_cargo llvm-cov report --quiet \
+  run_coverage_report "summary-json" \
     "${coverage_packages[@]}" \
     --json \
     --summary-only \
@@ -428,7 +477,7 @@ else
     --logs-dir "${coverage_run_dir}/logs" \
     --max-parallel-binaries "${coverage_parallel_binaries}" \
     --test-threads "${coverage_threads_per_binary}"
-  run_cargo llvm-cov report --quiet \
+  run_coverage_report "summary-json" \
     "${coverage_packages[@]}" \
     --json \
     --summary-only \
@@ -436,7 +485,7 @@ else
     --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)'
 fi
 python3 scripts/assert-strict-coverage-json.py --validate-profile "${coverage_report_path}"
-run_cargo llvm-cov report --quiet \
+run_coverage_report "lcov" \
   "${coverage_packages[@]}" \
   --lcov \
   --output-path "${coverage_lcov_path}" \
