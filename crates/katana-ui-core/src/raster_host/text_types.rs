@@ -14,6 +14,15 @@ pub(crate) struct RichTextLineSpan {
     pub(super) style: RichTextStyle,
 }
 
+impl RichTextLineSpan {
+    pub(crate) fn with_text(&self, text: String) -> Self {
+        Self {
+            text,
+            style: self.style,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct RichTextStyle {
     pub(super) size: f32,

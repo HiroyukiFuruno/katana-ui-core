@@ -206,7 +206,6 @@ fn mixed_inline_code_selection_copies_a_single_logical_line() {
     });
     let mut canvas = Canvas::new(180, 140, 0);
     renderer.render(&mut canvas, &node, area());
-
     let runs = canvas.text_runs();
     assert_eq!(3, runs.len());
     assert!(runs.iter().all(|run| run.y() == runs[0].y()));
@@ -217,6 +216,122 @@ fn mixed_inline_code_selection_copies_a_single_logical_line() {
         Some("A code B".to_owned()),
         canvas.copy_text_in_selection(Some(start), Some(end))
     );
+}
+
+#[test]
+fn mixed_rtl_inline_code_uses_visual_order_and_copies_logical_order() {
+    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
+        .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+    let node = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        spans: vec![
+            styled_span("אבג ", false),
+            styled_span("code", true),
+            styled_span(" דהו", false),
+        ],
+        ..UiTextProps::default()
+    });
+    let mut canvas = Canvas::new(180, 140, 0);
+    renderer.render(&mut canvas, &node, area());
+
+    let runs = canvas.text_runs();
+    assert_eq!(
+        ["אבג ", "code", " דהו"],
+        runs.iter()
+            .map(|run| run.text())
+            .collect::<Vec<_>>()
+            .as_slice()
+    );
+    assert!(
+        runs[2].x() < runs[1].x(),
+        "trailing RTL body must be left of inline code"
+    );
+    assert!(
+        runs[1].x() < runs[0].x(),
+        "inline code must be left of leading RTL body"
+    );
+    let y = runs[0].y() + runs[0].height() / 2;
+    let right = runs.iter().map(|run| run.right()).max().unwrap_or(0);
+    assert_eq!(
+        Some("אבג code דהו".to_owned()),
+        canvas.copy_text_in_selection(Some((0, y)), Some((right, y)))
+    );
+}
+
+#[test]
+fn adjacent_rtl_plain_and_code_runs_reverse_within_one_visual_run() {
+    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
+        .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+    let node = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        spans: vec![styled_span("אבג ", false), styled_span("דהו", true)],
+        ..UiTextProps::default()
+    });
+    let mut canvas = Canvas::new(180, 140, 0);
+    renderer.render(&mut canvas, &node, area());
+
+    let runs = canvas.text_runs();
+    assert_eq!(
+        ["אבג ", "דהו"],
+        runs.iter()
+            .map(|run| run.text())
+            .collect::<Vec<_>>()
+            .as_slice()
+    );
+    assert!(
+        runs[1].x() < runs[0].x(),
+        "RTL code must be left of preceding RTL body"
+    );
+    let y = runs[0].y() + runs[0].height() / 2;
+    let right = runs.iter().map(|run| run.right()).max().unwrap_or(0);
+    assert_eq!(
+        Some("אבג דהו".to_owned()),
+        canvas.copy_text_in_selection(Some((0, y)), Some((right, y)))
+    );
+}
+
+#[test]
+fn mixed_direction_plain_run_splits_at_visual_boundaries_around_inline_code() {
+    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
+        .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+    let node = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        spans: vec![
+            styled_span("אבג abc ", false),
+            styled_span("CODE", true),
+            styled_span(" דהו", false),
+        ],
+        ..UiTextProps::default()
+    });
+    let mut canvas = Canvas::new(180, 140, 0);
+    renderer.render(&mut canvas, &node, area());
+
+    let runs = canvas.text_runs();
+    assert_eq!(
+        ["אבג ", "abc ", "CODE", " דהו"],
+        runs.iter()
+            .map(|run| run.text())
+            .collect::<Vec<_>>()
+            .as_slice()
+    );
+    assert!(
+        runs[3].x() < runs[1].x() && runs[1].x() < runs[2].x() && runs[2].x() < runs[0].x(),
+        "each visual-range fragment must surround inline code in visual order"
+    );
+    let y = runs[0].y() + runs[0].height() / 2;
+    let right = runs.iter().map(|run| run.right()).max().unwrap_or(0);
+    assert_eq!(
+        Some("אבג abc CODE דהו".to_owned()),
+        canvas.copy_text_in_selection(Some((0, y)), Some((right, y)))
+    );
+}
+
+fn styled_span(text: &str, monospace: bool) -> UiTextSpan {
+    UiTextSpan {
+        text: text.into(),
+        style: UiTextSpanStyle {
+            monospace,
+            ..UiTextSpanStyle::default()
+        },
+        link_target: String::new(),
+    }
 }
 
 fn green_pixels(pixels: &[u32]) -> Vec<(usize, usize, u32)> {

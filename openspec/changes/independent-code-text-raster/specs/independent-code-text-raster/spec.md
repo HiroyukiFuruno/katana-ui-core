@@ -20,3 +20,13 @@ KUC SHALL expose a renderer builder accepting an independent code raster configu
 - **WHEN** independently configured code precedes plain body text in a fractional-baseline line
 - **THEN** following body glyphs and decorations retain their body raster Y positions regardless of the leading code face
 - **AND** line decorations use the body renderer baseline while individual runs align to the configured line-box baseline
+
+#### Scenario: Bidirectional mixed line
+- **WHEN** an RTL body line contains an LTR inline-code span and an independent code raster configuration is active
+- **THEN** the plain and code runs follow the rich-line visual order
+- **AND** copying the line preserves its logical source order
+
+#### Scenario: Bidirectional fragment boundary
+- **WHEN** one plain or code run contains more than one bidi visual range around an independently rendered inline-code span
+- **THEN** KUC splits the run only at UTF-8 character boundaries and places every fragment in rich-line visual order
+- **AND** copying the fragments preserves their logical source order

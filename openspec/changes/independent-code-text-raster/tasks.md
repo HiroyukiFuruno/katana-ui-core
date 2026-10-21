@@ -3,6 +3,7 @@
 - [x] Preserve Issue #85 changes and implement independent code raster builder on the same release branch.
 - [x] Add public regression tests for body isolation, code drawing / wrapping / hit equivalence and scroll cache invalidation.
 - [x] PR #90 P1: invalidate plain-line wrapping cache when code raster config/face changes; cache keyへrenderer設定identityを含めるunit regression、およびplain code-roleのdraw/wrap contractが通過。
+- [x] PR #90 P2: RTL本文とLTR inline codeが混在する独立 raster 行で、renderer境界とUnicode bidi visual run境界の両方をUTF-8 char boundaryで分割し、visual order と論理コピー順を回帰で固定する。
 - [x] Verify focused tests, format and strict Clippy: public code config 5 tests + Card 8 tests passed; just fmt-check and raster-host lib/integration strict Clippy passed.
 - [ ] Parent release workflow: review, version, full release checks, Draft PR, review/fixes, Ready, CI, merge and public release.
 
