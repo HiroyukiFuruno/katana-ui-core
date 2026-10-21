@@ -7,6 +7,7 @@ use crate::raster_host::ui_tree_canvas_text_line_width::SpanTextRenderers;
 #[cfg(test)]
 use crate::raster_host::ui_tree_canvas_text_line_width::span_part_width;
 use katana_ui_core::render_model::{UiNode, UiTextSpan, UiTextWrapMode};
+use katana_ui_core::text_raster::{PlatformFontCatalogFingerprint, PlatformTextFaceSelection};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
@@ -25,10 +26,6 @@ thread_local! {
 pub(in crate::raster_host) struct UiTreeTextWrap;
 
 impl UiTreeTextWrap {
-    pub(in crate::raster_host) fn clear_plain_line_cache() {
-        PLAIN_LINE_CACHE.with(|cache| cache.borrow_mut().clear());
-    }
-
     #[cfg(test)]
     pub(in crate::raster_host) fn cached_plain_line_count_for_test() -> usize {
         PLAIN_LINE_CACHE.with(|cache| cache.borrow().len())
@@ -43,7 +40,7 @@ impl UiTreeTextWrap {
     ) -> Vec<String> {
         let max_width = available_width(node, x, area);
         let wrap_metrics = wrap_metrics_for_node(node, metrics);
-        let cache_key = PlainLineCacheKey::from_node(node, max_width, wrap_metrics);
+        let cache_key = PlainLineCacheKey::from_node(renderer, node, max_width, wrap_metrics);
         if let Some(lines) = cached_plain_lines(&cache_key) {
             return lines;
         }
@@ -97,10 +94,16 @@ struct PlainLineCacheKey {
     width: usize,
     font_size_bits: u32,
     line_height: usize,
+    renderer_identity: (PlatformFontCatalogFingerprint, PlatformTextFaceSelection),
 }
 
 impl PlainLineCacheKey {
-    fn from_node(node: &UiNode, width: usize, metrics: UiTreeTextMetrics) -> Self {
+    fn from_node(
+        renderer: &TextRenderer,
+        node: &UiNode,
+        width: usize,
+        metrics: UiTreeTextMetrics,
+    ) -> Self {
         Self {
             node_id: node.id().as_str().to_string(),
             label: node.props().label.clone(),
@@ -110,6 +113,7 @@ impl PlainLineCacheKey {
             width,
             font_size_bits: metrics.font_size.to_bits(),
             line_height: metrics.line_height,
+            renderer_identity: renderer.layout_identity(),
         }
     }
 }
@@ -313,6 +317,7 @@ mod tests {
         UiCommonProps, UiDimension, UiEdgeInsets, UiNode, UiNodeKind, UiTextProps, UiTextSpan,
         UiTextSpanStyle, UiTextWrapMode,
     };
+    use katana_ui_core::text_raster::{PlatformFontCatalogFingerprint, PlatformTextFaceSelection};
     use katana_ui_core::theme::{FontFamily, FontToken, ThemeSnapshot};
 
     #[test]
@@ -414,6 +419,10 @@ mod tests {
             width: 120,
             font_size_bits: 14.0_f32.to_bits(),
             line_height: 20,
+            renderer_identity: (
+                PlatformFontCatalogFingerprint::from_bytes([0; 32]),
+                PlatformTextFaceSelection::System,
+            ),
         }
     }
 

@@ -1,4 +1,6 @@
 use crate::text_raster::catalog::PlatformFontCatalog;
+#[cfg(feature = "raster-host")]
+use crate::text_raster::catalog_types::PlatformFontCatalogFingerprint;
 use crate::text_raster::config::{PlatformTextFaceSelection, PlatformTextRasterConfig};
 use crate::text_raster::layout::{ResolvedTextFaces, TextLayoutRasterizer};
 use crate::text_raster::model::{
@@ -64,6 +66,13 @@ impl PlatformTextRasterizer {
     #[must_use]
     pub fn catalog(&self) -> Arc<PlatformFontCatalog> {
         Arc::clone(&self.catalog)
+    }
+
+    #[cfg(feature = "raster-host")]
+    pub(crate) fn layout_identity(
+        &self,
+    ) -> (PlatformFontCatalogFingerprint, PlatformTextFaceSelection) {
+        (self.catalog.fingerprint(), self.face_selection)
     }
 
     pub(crate) fn from_matching_catalog_with_face_selection(

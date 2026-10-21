@@ -1,5 +1,7 @@
 use crate::raster_host::canvas::Canvas;
 use katana_ui_core::facade::UiCoreFacade;
+#[cfg(feature = "raster-host")]
+use katana_ui_core::text_raster::PlatformFontCatalogFingerprint;
 use katana_ui_core::text_raster::{
     PlatformTextFaceSelection, PlatformTextRasterConfig, PlatformTextRasterizer,
 };
@@ -60,6 +62,13 @@ impl TextRenderer {
 
     pub(super) fn has_independent_raster_config(&self) -> bool {
         self.independent_raster_config
+    }
+
+    #[cfg(feature = "raster-host")]
+    pub(in crate::raster_host) fn layout_identity(
+        &self,
+    ) -> (PlatformFontCatalogFingerprint, PlatformTextFaceSelection) {
+        self.rasterizer.borrow().layout_identity()
     }
 
     pub fn draw(&self, canvas: &mut Canvas, text: &str, x: usize, y: usize, size: f32, color: u32) {

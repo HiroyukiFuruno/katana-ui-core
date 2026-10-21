@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 const DEFAULT_CACHE_CAPACITY: usize = 128;
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum PlatformTextFaceSelection {
     #[default]
     System,
