@@ -1,4 +1,37 @@
 use super::canvas_model::Canvas;
+use super::text_selection::SelectableTextRun;
+use katana_ui_core::text_selection::UiTextSelectionRange;
+use unicode_segmentation::UnicodeSegmentation;
+
+impl SelectableTextRun {
+    fn rebased_y(&self, offset_y: usize) -> Self {
+        let glyph_positions = self
+            .text
+            .graphemes(true)
+            .enumerate()
+            .filter_map(|(index, _)| {
+                let bounds = self
+                    .model
+                    .highlight_rects(UiTextSelectionRange::new(index, index + 1))
+                    .into_iter()
+                    .next()?;
+                Some((
+                    bounds.x.saturating_sub(self.x() as i32) as usize,
+                    bounds.width as usize,
+                ))
+            })
+            .collect::<Vec<_>>();
+        Self::with_glyph_positions_in_logical_line(
+            &self.text,
+            self.x(),
+            self.y().saturating_sub(offset_y),
+            self.width(),
+            self.height(),
+            &glyph_positions,
+            self.logical_line,
+        )
+    }
+}
 
 impl Canvas {
     #[must_use]
@@ -31,14 +64,7 @@ impl Canvas {
             if rect.bottom() <= offset_y || rect.y >= offset_y.saturating_add(height) {
                 continue;
             }
-            viewport.record_text_run_in_logical_line(
-                run.text(),
-                rect.x,
-                rect.y.saturating_sub(offset_y),
-                rect.width,
-                rect.height,
-                run.logical_line(),
-            );
+            viewport.text_runs.push(run.rebased_y(offset_y));
         }
         viewport
     }
@@ -78,5 +104,34 @@ mod tests {
         assert_eq!(0, viewport.width());
         assert_eq!(2, viewport.height());
         assert!(viewport.text_runs().is_empty());
+    }
+
+    #[test]
+    fn viewport_preserves_rtl_glyph_geometry_for_selection_and_copy() {
+        let mut canvas = Canvas::new_scaled_with_raster_scale(40, 8, 1.0, 2.0, 0);
+        canvas.record_text_run_with_glyph_positions(
+            "אבג",
+            4,
+            3,
+            30,
+            2,
+            &[(20, 10), (10, 10), (0, 10)],
+        );
+
+        let viewport = canvas.viewport_y(2, 4, 0);
+        let run = &viewport.text_runs()[0];
+
+        assert_eq!(1, run.y());
+        assert_eq!(
+            vec![katana_ui_core::render_model::UiRect::new(4, 1, 10, 2)],
+            run.model()
+                .highlight_rects(katana_ui_core::text_selection::UiTextSelectionRange::new(
+                    2, 3
+                ))
+        );
+        assert_eq!(
+            Some("ג".to_string()),
+            viewport.copy_text_in_selection(Some((4, 2)), Some((14, 2)))
+        );
     }
 }

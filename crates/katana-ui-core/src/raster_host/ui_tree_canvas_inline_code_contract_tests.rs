@@ -98,6 +98,75 @@ fn inline_code_link_uses_the_code_measurement_for_its_glyph_and_hit() {
     );
 }
 
+#[test]
+fn inline_code_after_each_bidi_paragraph_keeps_raster_run_and_link_hit() {
+    let theme = ThemeSnapshot::dark();
+    let renderer = UiTreeCanvasRenderer::new(theme.clone());
+    let area = UiTreeRenderArea {
+        x: 0,
+        y: 0,
+        width: AREA_WIDTH,
+        height: AREA_HEIGHT,
+        scroll_y: 0.0,
+    };
+
+    for separator in ["\u{2029}", "\r"] {
+        let root = Text::new(format!("אבג{separator}xyz"))
+            .text_role("heading-3")
+            .text_spans(vec![
+                UiTextSpan::plain(format!("אבג{separator}")),
+                UiTextSpan {
+                    text: "xyz".to_owned(),
+                    style: UiTextSpanStyle {
+                        inline_code: true,
+                        ..UiTextSpanStyle::default()
+                    },
+                    link_target: LINK_TARGET.to_owned(),
+                },
+            ])
+            .into();
+        let hits = renderer.document_host_action_hit_rects(&root, area);
+        let link_hit = hits
+            .iter()
+            .find(|hit| hit.action.payload == LINK_TARGET)
+            .expect("the code link after the paragraph separator must retain its hit rect");
+        assert!(link_hit.rect.width > 0 && link_hit.rect.height > 0);
+
+        let palette = UiTreeCanvasPalette::from_theme(&theme);
+        let mut canvas = Canvas::new(AREA_WIDTH, AREA_HEIGHT, palette.background);
+        renderer.render(&mut canvas, &root, area);
+        let code_run = canvas
+            .text_runs()
+            .iter()
+            .find(|run| run.text().contains("xyz"))
+            .expect("the code raster run after the paragraph separator must be emitted");
+        let code_rect = (
+            code_run.x(),
+            code_run.y(),
+            code_run.right(),
+            code_run.bottom(),
+        );
+
+        assert_eq!(
+            Some(format!("אבג{separator}xyz")),
+            canvas.copy_text_in_selection(Some((0, 0)), Some((code_rect.2, code_rect.3)),),
+            "selection copy must retain the code fragment after {separator:?}"
+        );
+        assert!(
+            canvas.draw_text_selection_highlight(
+                Some((code_rect.0, code_rect.1)),
+                Some((code_rect.2, code_rect.3)),
+                palette.selection,
+            ),
+            "selection highlight must include the code fragment after {separator:?}"
+        );
+        assert!(
+            canvas.pixels().contains(&palette.link),
+            "the code fragment after {separator:?} must retain rendered link pixels"
+        );
+    }
+}
+
 fn inline_code_link_node() -> UiNode {
     inline_code_link_node_with_code_text(CODE_LINK_TEXT)
 }

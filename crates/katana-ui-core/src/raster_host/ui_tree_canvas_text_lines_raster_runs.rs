@@ -70,60 +70,69 @@ pub(in crate::raster_host) fn visual_span_positions(
         .map(|span| span.text.as_str())
         .collect::<String>();
     let bidi = BidiInfo::new(&text, None);
-    let paragraph = bidi.paragraphs.first()?;
-    let (levels, visual_ranges) = bidi.visual_runs(paragraph, paragraph.range.clone());
-    let reorders_spans = visual_ranges
-        .windows(2)
-        .any(|ranges| ranges[1].start < ranges[0].start)
-        || visual_ranges.iter().any(|range| {
-            levels
-                .get(range.start)
-                .is_some_and(unicode_bidi::Level::is_rtl)
-        });
-    if !reorders_spans {
+    if bidi.paragraphs.is_empty() {
         return None;
     }
     let mut positioned = Vec::new();
     let mut cursor = x;
-    for visual_range in visual_ranges {
-        let level = levels.get(visual_range.start)?;
-        let mut fragments = Vec::new();
-        let mut source_start = 0;
-        for (line_span_index, source_span) in line.iter().enumerate() {
-            let source_end = source_start + source_span.text.len();
-            let source_span_range = source_start..source_end;
-            if let Some(fragment_range) = intersection(&source_span_range, &visual_range) {
-                let source_fragment_range =
-                    fragment_slice_range(&text, &source_span.text, &fragment_range, source_start)?;
-                let mut span = source_span.clone();
-                span.text = source_span.text[source_fragment_range].to_owned();
-                fragments.push(PositionedSpan {
-                    line_span_index,
-                    span,
-                    x,
-                    width: 0,
-                    bidi_context: bidi_context_for_fragment(&text, &levels, &fragment_range),
-                    source_range: fragment_range,
-                    source_span_range,
-                });
+    let mut reorders_spans = false;
+    for paragraph in &bidi.paragraphs {
+        let (levels, visual_ranges) = bidi.visual_runs(paragraph, paragraph.range.clone());
+        reorders_spans |= visual_ranges
+            .windows(2)
+            .any(|ranges| ranges[1].start < ranges[0].start)
+            || visual_ranges.iter().any(|range| {
+                levels
+                    .get(range.start)
+                    .is_some_and(unicode_bidi::Level::is_rtl)
+            });
+        for visual_range in visual_ranges {
+            let level = levels.get(visual_range.start)?;
+            let mut fragments = Vec::new();
+            let mut source_start = 0;
+            for (line_span_index, source_span) in line.iter().enumerate() {
+                let source_end = source_start + source_span.text.len();
+                let source_span_range = source_start..source_end;
+                if let Some(fragment_range) = intersection(&source_span_range, &visual_range) {
+                    let source_fragment_range = fragment_slice_range(
+                        &text,
+                        &source_span.text,
+                        &fragment_range,
+                        source_start,
+                    )?;
+                    let mut span = source_span.clone();
+                    span.text = source_span.text[source_fragment_range].to_owned();
+                    fragments.push(PositionedSpan {
+                        line_span_index,
+                        span,
+                        x,
+                        width: 0,
+                        bidi_context: bidi_context_for_fragment(&text, &levels, &fragment_range),
+                        source_range: fragment_range,
+                        source_span_range,
+                    });
+                }
+                source_start = source_end;
             }
-            source_start = source_end;
+            if level.is_rtl() {
+                fragments.reverse();
+            }
+            for fragment in &mut fragments {
+                fragment.x = cursor;
+                fragment.width = span_part_width_with_bidi_context(
+                    renderers,
+                    &fragment.span,
+                    metrics,
+                    preserve_whitespace,
+                    fragment.bidi_context.as_ref(),
+                );
+                cursor = cursor.saturating_add(fragment.width as isize);
+            }
+            positioned.extend(fragments);
         }
-        if level.is_rtl() {
-            fragments.reverse();
-        }
-        for fragment in &mut fragments {
-            fragment.x = cursor;
-            fragment.width = span_part_width_with_bidi_context(
-                renderers,
-                &fragment.span,
-                metrics,
-                preserve_whitespace,
-                fragment.bidi_context.as_ref(),
-            );
-            cursor = cursor.saturating_add(fragment.width as isize);
-        }
-        positioned.extend(fragments);
+    }
+    if !reorders_spans {
+        return None;
     }
     positioned.sort_by_key(|fragment| fragment.source_range.start);
     (!positioned.is_empty()).then_some(positioned)

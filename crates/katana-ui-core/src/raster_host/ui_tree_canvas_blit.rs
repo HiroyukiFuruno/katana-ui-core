@@ -1,6 +1,8 @@
 use super::canvas::Canvas;
 use super::ui_tree_canvas_types::{CanvasBlitRequest, PhysicalCanvasBlitRequest};
+use katana_ui_core::text_selection::UiTextSelectionRange;
 use std::collections::HashMap;
+use unicode_segmentation::UnicodeSegmentation;
 
 impl Canvas {
     pub fn blit_canvas(&mut self, source: &Canvas, request: CanvasBlitRequest) {
@@ -113,14 +115,14 @@ impl Canvas {
             if rect.bottom() as f32 <= source_logical_y || rect.y as f32 >= source_bottom {
                 continue;
             }
-            self.record_text_run_in_logical_line(
-                run.text(),
-                request.dest_x.saturating_add(rect.x),
-                request
-                    .dest_y
-                    .saturating_add((rect.y as f32 - source_logical_y).max(0.0).round() as usize),
-                rect.width,
-                rect.height,
+            let target_x = request.dest_x.saturating_add(rect.x);
+            let target_y = request
+                .dest_y
+                .saturating_add((rect.y as f32 - source_logical_y).max(0.0).round() as usize);
+            self.record_text_run_with_source_glyph_geometry(
+                run,
+                target_x,
+                target_y,
                 Self::target_logical_line_id(run.logical_line(), &mut target_logical_lines),
             );
         }
@@ -179,15 +181,59 @@ impl Canvas {
             let target_y = request
                 .dest_logical_y
                 .saturating_add((rect.y as f32 - source_y).round().max(0.0) as usize);
+            self.record_text_run_with_source_glyph_geometry(
+                run,
+                target_x,
+                target_y,
+                Self::target_logical_line_id(run.logical_line(), &mut target_logical_lines),
+            );
+        }
+    }
+
+    fn record_text_run_with_source_glyph_geometry(
+        &mut self,
+        run: &super::text_selection::SelectableTextRun,
+        target_x: usize,
+        target_y: usize,
+        logical_line: Option<u64>,
+    ) {
+        let rect = run.rect();
+        let glyph_positions = run
+            .text()
+            .graphemes(true)
+            .enumerate()
+            .filter_map(|(index, _)| {
+                let glyph = run
+                    .model()
+                    .highlight_rects(UiTextSelectionRange::new(index, index + 1))
+                    .into_iter()
+                    .next()?;
+                let offset_x = (glyph.x - rect.x as i32).max(0) as usize;
+                Some((offset_x, glyph.width as usize))
+            })
+            .collect::<Vec<_>>();
+        if glyph_positions.is_empty() {
             self.record_text_run_in_logical_line(
                 run.text(),
                 target_x,
                 target_y,
                 rect.width,
                 rect.height,
-                Self::target_logical_line_id(run.logical_line(), &mut target_logical_lines),
+                logical_line,
             );
+            return;
         }
+        self.text_runs.push(
+            super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line(
+                run.text(),
+                target_x,
+                target_y,
+                rect.width,
+                rect.height,
+                &glyph_positions,
+                logical_line,
+            ),
+        );
     }
 
     fn target_logical_line_id(
@@ -205,6 +251,7 @@ impl Canvas {
 #[cfg(test)]
 mod tests {
     use super::{Canvas, CanvasBlitRequest};
+    use katana_ui_core::text_selection::UiTextSelectionRange;
 
     #[test]
     fn aligned_blit_ignores_destination_clipped_extent() {
@@ -268,6 +315,41 @@ mod tests {
         assert_eq!(
             Some("A code\nA code".to_string()),
             target.copy_text_in_selection(Some((0, 0)), Some((48, 36)))
+        );
+    }
+
+    #[test]
+    fn blit_preserves_rtl_glyph_geometry_for_partial_selection_and_copy() {
+        let mut source = Canvas::new(48, 8, 0x000000);
+        source.record_text_run_with_glyph_positions(
+            "אבג",
+            4,
+            2,
+            30,
+            2,
+            &[(20, 10), (10, 10), (0, 10)],
+        );
+        let mut target = Canvas::new(80, 12, 0x000000);
+
+        target.blit_canvas(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 30,
+                dest_y: 1,
+                width: 48,
+                height: 8,
+                source_y: 0,
+            },
+        );
+
+        let run = &target.text_runs()[0];
+        assert_eq!(
+            vec![katana_ui_core::render_model::UiRect::new(34, 3, 10, 2)],
+            run.model().highlight_rects(UiTextSelectionRange::new(2, 3))
+        );
+        assert_eq!(
+            Some("ג".to_string()),
+            target.copy_text_in_selection(Some((34, 4)), Some((44, 4)))
         );
     }
 }
