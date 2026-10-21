@@ -8,7 +8,7 @@
 - [x] PR #90 P2 follow-up: span 境界をまたぐ明示 bidi embedding / override / isolate を raster request のみに保持し、source selection/copy/link payload へ制御文字を露出しない回帰を追加する。
 - [x] PR #90 P2 follow-up: bidi visual fragment に分割された link の内部空白を hit と decoration から除外せず、元 source span の両端だけを trim する回帰を追加する。
 - [/] PR #90 P2 follow-up: RTL raster の grapheme bounds を単調な論理幅へ畳まず、視覚 x 座標と幅を選択 model へ保持する。部分選択の highlight geometry と、全選択時の論理順 copy payload を回帰で固定する。明示 embedding 内で強い方向文字を持たない fragment には resolved level の isolate も重ね、Draft review と完全 release-check を再実行する。
-- [/] PR #90 P2 follow-up: canvas viewport / blit でも既存のglyph geometryをy座標だけrebasingして保持し、複数bidi paragraphを含むno-wrap spanでは全paragraphの後続code fragmentをraster、selection、decoration、link hitまで通す。U+2029と孤立CRの回帰を固定し、再レビューと全release gateを実行する。
+- [/] PR #90 P2 follow-up: canvas viewport / blit でも既存のglyph geometryをy座標だけrebasingして保持し、複数bidi paragraphを含むno-wrap spanでは全paragraphの後続code fragmentをraster、selection、decoration、link hitまで通す。U+2029と孤立CRの回帰を固定する。段落境界で未閉鎖のembedding/override文脈をリセットして次段落へ漏らさないことを固定し、再レビューと全release gateを実行する。
 - [x] Verify focused tests, format and strict Clippy: public code config 5 tests + Card 8 tests passed; just fmt-check and raster-host lib/integration strict Clippy passed.
 - [ ] Parent release workflow: review, version, full release checks, Draft PR, review/fixes, Ready, CI, merge and public release.
 

@@ -13,7 +13,13 @@ pub(super) fn bidi_context_for_fragment(
     fragment_range: &Range<usize>,
 ) -> Option<RichTextBidiContext> {
     let mut start_stack = Vec::new();
-    apply_bidi_controls(&mut start_stack, &text[..fragment_range.start], levels, 0);
+    let paragraph_start = paragraph_start_for_fragment(text, fragment_range.start);
+    apply_bidi_controls(
+        &mut start_stack,
+        &text[paragraph_start..fragment_range.start],
+        levels,
+        paragraph_start,
+    );
     let mut end_stack = start_stack.clone();
     apply_bidi_controls(
         &mut end_stack,
@@ -40,6 +46,15 @@ pub(super) fn bidi_context_for_fragment(
         suffix.insert(0, '\u{2069}');
     }
     (!prefix.is_empty() || !suffix.is_empty()).then_some(RichTextBidiContext { prefix, suffix })
+}
+
+fn paragraph_start_for_fragment(text: &str, fragment_start: usize) -> usize {
+    text[..fragment_start]
+        .char_indices()
+        .filter(|(_, character)| unicode_bidi::bidi_class(*character) == unicode_bidi::BidiClass::B)
+        .map(|(offset, character)| offset + character.len_utf8())
+        .next_back()
+        .unwrap_or(0)
 }
 
 fn fragment_has_strong_direction(text: &str) -> bool {
@@ -204,5 +219,21 @@ mod tests {
                 .expect("the outer override must survive the closed isolate");
         assert_eq!("\u{202e}", code_context.prefix);
         assert_eq!("\u{202c}", code_context.suffix);
+    }
+
+    #[test]
+    fn paragraph_boundary_resets_unmatched_embedding_context() {
+        for separator in ['\u{2029}', '\r'] {
+            let text = format!("\u{202e}abc{separator}[]");
+            let bidi = BidiInfo::new(&text, None);
+            let fragment_start = text.len() - "[]".len();
+
+            assert_eq!(2, bidi.paragraphs.len());
+            assert!(
+                bidi_context_for_fragment(&text, &bidi.levels, &(fragment_start..text.len()))
+                    .is_none(),
+                "an unmatched embedding must not cross the {separator:?} paragraph boundary",
+            );
+        }
     }
 }
