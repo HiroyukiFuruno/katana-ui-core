@@ -1,9 +1,9 @@
-#[cfg(test)]
-use super::text_runtime_paint::selection_glyph_widths;
 use super::text_runtime_paint::{
     draw_raster, record_runtime_text_run, record_runtime_text_run_with_raster_prefix,
     visible_raster_width,
 };
+#[cfg(test)]
+use super::text_runtime_paint::{selection_glyph_positions, selection_glyph_widths};
 use super::{RichTextBidiContext, RichTextLineSpan, RichTextStyle, TextRenderer};
 use crate::raster_host::canvas::Canvas;
 use katana_ui_core::facade::UiCoreFacade;
@@ -265,6 +265,7 @@ mod tests {
     use katana_ui_core::theme::ThemeSnapshot;
     use std::cell::RefCell;
     use std::path::PathBuf;
+    use unicode_segmentation::UnicodeSegmentation;
 
     fn renderer_without_color_emoji() -> TextRenderer {
         let config = PlatformTextRasterConfig {
@@ -337,6 +338,38 @@ mod tests {
         raster.grapheme_bounds.clear();
 
         assert_eq!((vec![1, 1], 2), selection_glyph_widths("ab", &raster));
+    }
+
+    #[test]
+    fn selection_glyph_positions_preserve_rtl_raster_geometry() {
+        let text = "אבג";
+        let renderer = TextRenderer::load(&UiCoreFacade::new(ThemeSnapshot::light()), "body");
+        let raster = renderer
+            .rasterize(
+                vec![ui_span(text, RichTextStyle::new(14.0, 0xffffff))],
+                renderer.font_with_size(14.0),
+                1.0,
+                default_line_height(14.0),
+            )
+            .expect("RTL text should rasterize");
+
+        let (positions, selection_width) = selection_glyph_positions(text, &raster);
+
+        assert_eq!(text.grapheme_indices(true).count(), positions.len());
+        assert!(
+            positions
+                .windows(2)
+                .all(|positions| positions[0].0 > positions[1].0),
+            "RTL source graphemes must retain their descending visual x positions"
+        );
+        assert_eq!(
+            positions
+                .iter()
+                .map(|(x, width)| x.saturating_add(*width))
+                .max()
+                .unwrap_or(1),
+            selection_width
+        );
     }
 
     #[test]

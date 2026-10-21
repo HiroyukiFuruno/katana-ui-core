@@ -66,6 +66,7 @@ impl Canvas {
         self.text_runs.push(run);
     }
 
+    #[cfg(test)]
     pub(crate) fn record_text_run_with_glyph_widths(
         &mut self,
         text: &str,
@@ -75,28 +76,49 @@ impl Canvas {
         height: usize,
         glyph_widths: &[usize],
     ) {
+        let mut glyph_x = 0usize;
+        let glyph_positions = glyph_widths
+            .iter()
+            .map(|width| {
+                let position = (glyph_x, (*width).max(1));
+                glyph_x = glyph_x.saturating_add(position.1);
+                position
+            })
+            .collect::<Vec<_>>();
+        self.record_text_run_with_glyph_positions(text, x, y, width, height, &glyph_positions);
+    }
+
+    pub(crate) fn record_text_run_with_glyph_positions(
+        &mut self,
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        glyph_positions: &[(usize, usize)],
+    ) {
         if text.is_empty() || width == 0 || height == 0 {
             return;
         }
         let run = match self.active_text_selection_line {
             Some(logical_line) => {
-                super::text_selection::SelectableTextRun::with_glyph_widths_in_logical_line(
+                super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line(
                     text,
                     x,
                     y,
                     width,
                     height,
-                    glyph_widths,
+                    glyph_positions,
                     Some(logical_line),
                 )
             }
-            None => super::text_selection::SelectableTextRun::with_glyph_widths(
+            None => super::text_selection::SelectableTextRun::with_glyph_positions(
                 text,
                 x,
                 y,
                 width,
                 height,
-                glyph_widths,
+                glyph_positions,
             ),
         };
         self.text_runs.push(run);

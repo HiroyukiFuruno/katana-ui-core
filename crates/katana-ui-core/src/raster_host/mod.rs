@@ -29,6 +29,7 @@ pub(crate) mod switch_control;
 pub(crate) mod text;
 pub(crate) mod text_selection;
 pub(crate) mod text_selection_overlay;
+pub(crate) mod text_selection_run;
 pub(crate) mod text_selection_types;
 pub(crate) mod ui_tree_canvas;
 pub(crate) mod ui_tree_canvas_blit;

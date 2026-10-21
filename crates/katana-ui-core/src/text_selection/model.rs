@@ -71,24 +71,24 @@ impl UiTextSelectionModel {
         let Some(line) = self.line_for_y(y).or_else(|| self.lines.first()) else {
             return 0;
         };
-        let Some(first) = line.glyphs.first() else {
+        let caret_positions = visual_caret_positions(line);
+        let Some((first_x, first_caret)) = caret_positions.first().copied() else {
             return 0;
         };
-        if x <= first.caret_x_before() {
-            return first.grapheme_index;
+        if x <= first_x {
+            return first_caret;
         }
-        for glyph in &line.glyphs {
-            let midpoint = glyph.bounds.x + (glyph.bounds.width as i32 / 2);
+        for positions in caret_positions.windows(2) {
+            let (left_x, left_caret) = positions[0];
+            let (right_x, _) = positions[1];
+            let midpoint = left_x + (right_x - left_x) / 2;
             if x < midpoint {
-                return glyph.grapheme_index;
-            }
-            if x <= glyph.caret_x_after() {
-                return glyph.grapheme_index + 1;
+                return left_caret;
             }
         }
-        line.glyphs
+        caret_positions
             .last()
-            .map_or(first.grapheme_index, |glyph| glyph.grapheme_index + 1)
+            .map_or(first_caret, |(_, caret)| *caret)
     }
 
     #[must_use]
@@ -225,4 +225,54 @@ impl UiTextSelectionModel {
             byte_end.min(self.text.len()),
         )
     }
+}
+
+fn visual_caret_positions(line: &UiTextLineBox) -> Vec<(i32, usize)> {
+    let mut glyphs = line.glyphs.iter().collect::<Vec<_>>();
+    glyphs.sort_by_key(|glyph| glyph.grapheme_index);
+    let mut positions = Vec::with_capacity(glyphs.len().saturating_add(1));
+    for index in 0..=glyphs.len() {
+        let Some((x, caret)) = logical_boundary_position(&glyphs, index) else {
+            continue;
+        };
+        positions.push((x, caret));
+    }
+    positions.sort_by_key(|(x, _)| *x);
+    positions
+}
+
+fn logical_boundary_position(
+    glyphs: &[&UiTextGlyphBox],
+    boundary_index: usize,
+) -> Option<(i32, usize)> {
+    let first = *glyphs.first()?;
+    let last = *glyphs.last()?;
+    if boundary_index == 0 {
+        let x = if glyphs
+            .get(1)
+            .is_some_and(|next| next.bounds.x < first.bounds.x)
+        {
+            first.caret_x_after()
+        } else {
+            first.caret_x_before()
+        };
+        return Some((x, first.grapheme_index));
+    }
+    if boundary_index == glyphs.len() {
+        let previous = glyphs.get(boundary_index.saturating_sub(2));
+        let x = if previous.is_some_and(|previous| last.bounds.x < previous.bounds.x) {
+            last.caret_x_before()
+        } else {
+            last.caret_x_after()
+        };
+        return Some((x, last.grapheme_index.saturating_add(1)));
+    }
+    let previous = glyphs[boundary_index - 1];
+    let current = glyphs[boundary_index];
+    let x = if current.bounds.x < previous.bounds.x {
+        current.caret_x_after()
+    } else {
+        current.caret_x_before()
+    };
+    Some((x, current.grapheme_index))
 }

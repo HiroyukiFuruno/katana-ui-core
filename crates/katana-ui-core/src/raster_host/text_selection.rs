@@ -1,145 +1,10 @@
 use super::layout_metrics::LayoutRect;
 use katana_ui_core::render_model::UiRect;
-use katana_ui_core::text_selection::{
-    UiTextGlyphBox, UiTextLineBox, UiTextSelectionModel, UiTextSelectionRange,
-};
+use katana_ui_core::text_selection::UiTextSelectionRange;
 use unicode_segmentation::UnicodeSegmentation;
 
 pub use super::text_selection_types::SelectableTextRun;
 pub(in crate::raster_host) use super::text_selection_types::TextSelection;
-
-impl SelectableTextRun {
-    #[must_use]
-    pub(super) fn new(text: &str, x: usize, y: usize, width: usize, height: usize) -> Self {
-        Self::new_in_logical_line(text, x, y, width, height, None)
-    }
-
-    #[must_use]
-    pub(super) fn new_in_logical_line(
-        text: &str,
-        x: usize,
-        y: usize,
-        width: usize,
-        height: usize,
-        logical_line: Option<u64>,
-    ) -> Self {
-        let grapheme_count = text.graphemes(true).count().max(1);
-        let glyph_width = (width.max(1) / grapheme_count).max(1) as u32;
-        let model = UiTextSelectionModel::from_monospace_text(
-            text,
-            x as i32,
-            y as i32,
-            glyph_width,
-            height.max(1) as u32,
-        );
-        Self {
-            text: text.to_string(),
-            rect: LayoutRect::new(x, y, width, height),
-            model,
-            logical_line,
-        }
-    }
-
-    #[must_use]
-    pub(super) fn with_glyph_widths(
-        text: &str,
-        x: usize,
-        y: usize,
-        width: usize,
-        height: usize,
-        glyph_widths: &[usize],
-    ) -> Self {
-        Self::with_glyph_widths_in_logical_line(text, x, y, width, height, glyph_widths, None)
-    }
-
-    #[must_use]
-    pub(super) fn with_glyph_widths_in_logical_line(
-        text: &str,
-        x: usize,
-        y: usize,
-        width: usize,
-        height: usize,
-        glyph_widths: &[usize],
-        logical_line: Option<u64>,
-    ) -> Self {
-        let mut glyphs = Vec::new();
-        let mut byte_offset = 0usize;
-        let mut glyph_x = x as i32;
-        for (index, grapheme) in text.graphemes(true).enumerate() {
-            let byte_start = byte_offset;
-            byte_offset += grapheme.len();
-            let glyph_width = glyph_widths.get(index).copied().unwrap_or(1).max(1);
-            glyphs.push(
-                UiTextGlyphBox::new(
-                    index,
-                    byte_start..byte_offset,
-                    UiRect::new(glyph_x, y as i32, glyph_width as u32, height.max(1) as u32),
-                    y as i32 + height.max(1) as i32,
-                )
-                .with_text(grapheme),
-            );
-            glyph_x += glyph_width as i32;
-        }
-        let model =
-            UiTextSelectionModel::new(text, vec![UiTextLineBox::new(0..text.len(), glyphs)]);
-        Self {
-            text: text.to_string(),
-            rect: LayoutRect::new(x, y, width, height),
-            model,
-            logical_line,
-        }
-    }
-
-    #[must_use]
-    pub fn text(&self) -> &str {
-        &self.text
-    }
-
-    #[must_use]
-    pub(in crate::raster_host) fn rect(&self) -> LayoutRect {
-        self.rect
-    }
-
-    #[must_use]
-    pub fn x(&self) -> usize {
-        self.rect.x
-    }
-
-    #[must_use]
-    pub fn y(&self) -> usize {
-        self.rect.y
-    }
-
-    #[must_use]
-    pub fn width(&self) -> usize {
-        self.rect.width
-    }
-
-    #[must_use]
-    pub fn height(&self) -> usize {
-        self.rect.height
-    }
-
-    #[must_use]
-    pub fn right(&self) -> usize {
-        self.rect.right()
-    }
-
-    #[must_use]
-    pub fn bottom(&self) -> usize {
-        self.rect.bottom()
-    }
-
-    #[must_use]
-    pub(in crate::raster_host) fn model(&self) -> &UiTextSelectionModel {
-        &self.model
-    }
-
-    #[must_use]
-    pub(in crate::raster_host) const fn logical_line(&self) -> Option<u64> {
-        self.logical_line
-    }
-}
 
 impl TextSelection {
     #[must_use]
@@ -237,10 +102,14 @@ fn core_selection_for_run(
         (false, true) => ((run.x(), focus.1), focus),
         (false, false) => ((run.x(), run.y()), (run.right(), run.y())),
     };
-    let selection = run.model.drag_range(
-        (start.0 as i32, start.1 as i32),
-        (end.0 as i32, end.1 as i32),
-    );
+    let selection = if start.0 <= run.x() && end.0 >= run.right() {
+        UiTextSelectionRange::new(0, run.text().graphemes(true).count())
+    } else {
+        run.model.drag_range(
+            (start.0 as i32, start.1 as i32),
+            (end.0 as i32, end.1 as i32),
+        )
+    };
     (!selection.is_collapsed()).then_some(selection)
 }
 
@@ -367,6 +236,30 @@ mod tests {
         assert_eq!(
             ((10, 20), (40, 50)),
             ordered_selection_points(TextSelection::drag((40, 50), (10, 20)))
+        );
+    }
+
+    #[test]
+    fn rtl_glyph_positions_keep_visual_selection_geometry_and_logical_copy_text() {
+        let run = SelectableTextRun::with_glyph_positions(
+            "אבג",
+            100,
+            100,
+            30,
+            20,
+            &[(20, 10), (10, 10), (0, 10)],
+        );
+
+        assert_eq!(
+            "אבג",
+            copy_payload_for_selection(
+                std::slice::from_ref(&run),
+                TextSelection::drag((100, 110), (130, 110))
+            )
+        );
+        assert_eq!(
+            vec![super::LayoutRect::new(100, 100, 10, 20)],
+            selected_text_run_rects(&[run], TextSelection::drag((100, 110), (110, 110)))
         );
     }
 }
