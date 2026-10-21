@@ -22,6 +22,7 @@ fi
 
 copy_failed_coverage_logs() {
   local exit_status="$?"
+  local coverage_file
   local run_dir
   if [[ "${exit_status}" -eq 0 || -z "${coverage_log_dir}" ]]; then
     return "${exit_status}"
@@ -33,6 +34,19 @@ copy_failed_coverage_logs() {
       cp -a "${run_dir}/logs" "${coverage_log_dir}/$(basename "${run_dir}")"
     fi
   done
+  for coverage_file in \
+    /tmp/kuc-target/kuc-workspace-coverage-summary.json \
+    /tmp/kuc-target/kuc-workspace-coverage.lcov \
+    /tmp/kuc-target/kuc-workspace-coverage-profile-v3.sha256 \
+    /tmp/kuc-target/kuc-workspace-coverage-profile-v3.sha256.strict-state; do
+    if [[ -f "${coverage_file}" ]]; then
+      cp -a "${coverage_file}" "${coverage_log_dir}/"
+    fi
+  done
+  {
+    printf 'coverage_exit_status=%s\n' "${exit_status}"
+    df -Pk /tmp/kuc-target || true
+  } >"${coverage_log_dir}/failure-metadata.txt"
   return "${exit_status}"
 }
 trap copy_failed_coverage_logs EXIT

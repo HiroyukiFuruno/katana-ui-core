@@ -8,6 +8,7 @@ import unittest
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "scripts/coverage/prepare-ci-storage.sh"
+CONTAINER_ENTRYPOINT = REPO / "scripts/coverage/run-in-container.sh"
 RELEASE_PREFLIGHT = REPO / ".github/workflows/release-preflight.yml"
 
 
@@ -72,6 +73,13 @@ class CoverageCiStorageTests(unittest.TestCase):
             "path: ${{ runner.temp }}/kuc-coverage-test-logs",
             source,
         )
+
+    def test_failure_artifact_keeps_coverage_reports_and_storage_state(self) -> None:
+        source = CONTAINER_ENTRYPOINT.read_text(encoding="utf-8")
+        self.assertIn("kuc-workspace-coverage-summary.json", source)
+        self.assertIn("kuc-workspace-coverage.lcov", source)
+        self.assertIn("kuc-workspace-coverage-profile-v3.sha256.strict-state", source)
+        self.assertIn("failure-metadata.txt", source)
 
 
 if __name__ == "__main__":

@@ -8,4 +8,4 @@
 
 ## Release-preflight diagnostic (2026-10-21)
 
-- [/] PR #90のrelease-preflight 39522454714はfull coverage実行器の子process終了を記録しないまま失敗した。検査対象やcoverage基準を下げず、childごとの状態記録・失敗時log artifact・hosted runnerの同時thread抑制を追加して再実行する。
+- [/] PR #90のrelease-preflight 39522454714はfull coverage実行器の子process終了を記録しないまま失敗した。検査対象やcoverage基準を下げず、childごとの状態記録・失敗時のtest log/coverage report/storage state artifact・hosted runnerの同時thread抑制を追加して再実行する。
