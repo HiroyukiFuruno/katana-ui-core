@@ -1,6 +1,6 @@
 use super::{
-    SettingsListLayoutMetrics, UiNode, UiTreeHitRect, UiTreeHostActionHit,
-    UiTreeHostActionHitCollector, duplicate_panel_label, remaining_width, tree_parts,
+    SettingsListLayoutMetrics, UiNode, UiTreeHitRect, UiTreeHostActionHitCollector,
+    duplicate_panel_label, remaining_width, tree_parts,
 };
 
 impl UiTreeHostActionHitCollector<'_> {
@@ -78,13 +78,7 @@ impl UiTreeHostActionHitCollector<'_> {
                 width: row_width,
                 height: tree_parts::ROW_HEIGHT,
             };
-            for action in self.tree_row_actions(node, &tree_node.id) {
-                self.hits.push(UiTreeHostActionHit {
-                    action,
-                    rect,
-                    cursor: node.props().tree.row_cursor,
-                });
-            }
+            self.push_tree_row_action_hits(node, self.tree_row_actions(node, &tree_node.id), rect);
             self.y = self.y.saturating_add(tree_parts::ROW_HEIGHT);
         }
         self.y = self.y.saturating_add(tree_parts::NODE_GAP);

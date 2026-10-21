@@ -39,6 +39,22 @@ impl UiTreeHostActionHitCollector<'_> {
         self.push_action_hits(node, self.actions_for_node(node), rect);
     }
 
+    pub(super) fn push_tree_row_action_hits(
+        &mut self,
+        node: &UiNode,
+        actions: impl IntoIterator<Item = UiHostActionPlan>,
+        rect: UiTreeHitRect,
+    ) {
+        let rect = outset_node_hit(node, rect, self.hit_left_boundary());
+        for action in actions {
+            self.hits.push(UiTreeHostActionHit {
+                action,
+                rect,
+                cursor: node.props().tree.row_cursor,
+            });
+        }
+    }
+
     pub(super) fn push_node_hit(&mut self, node: &UiNode, rect: UiTreeHitRect) {
         let rect = outset_node_hit(node, rect, self.hit_left_boundary());
         let semantic_node_id = semantic_node_id(node).or_else(|| self.semantic_node_id.clone());
