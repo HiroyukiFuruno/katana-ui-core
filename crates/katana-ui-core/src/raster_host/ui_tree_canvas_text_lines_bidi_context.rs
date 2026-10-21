@@ -21,15 +21,24 @@ pub(super) fn bidi_context_for_fragment(
         levels,
         fragment_range.start,
     );
-    let prefix: String = start_stack
+    let mut prefix: String = start_stack
         .iter()
         .map(|control| control.character())
         .collect();
-    let suffix: String = end_stack
+    let mut suffix: String = end_stack
         .iter()
         .rev()
         .map(|control| control.closing_character())
         .collect();
+    if prefix.is_empty()
+        && suffix.is_empty()
+        && levels
+            .get(fragment_range.start)
+            .is_some_and(unicode_bidi::Level::is_rtl)
+    {
+        prefix.push('\u{2067}');
+        suffix.push('\u{2069}');
+    }
     (!prefix.is_empty() || !suffix.is_empty()).then_some(RichTextBidiContext { prefix, suffix })
 }
 
@@ -59,6 +68,9 @@ fn apply_bidi_controls(
                 if let Some(index) = stack
                     .iter()
                     .rposition(|control| matches!(control, BidiControl::Embedding(_)))
+                    && !stack[index + 1..]
+                        .iter()
+                        .any(|control| matches!(control, BidiControl::Isolate(_)))
                 {
                     stack.remove(index);
                 }
@@ -135,5 +147,39 @@ mod tests {
             bidi_context_for_fragment(text, &bidi.levels, &(code_start..text.len())).is_none(),
             "PDI must close the isolate before the next fragment",
         );
+    }
+
+    #[test]
+    fn neutral_fragment_in_an_implicit_rtl_run_gets_a_synthetic_rtl_isolate() {
+        let text = "אבג [] דהו";
+        let bidi = BidiInfo::new(text, None);
+        let start = "אבג ".len();
+        let fragment_range = start..start + "[]".len();
+
+        assert!(bidi.levels[fragment_range.start].is_rtl());
+        let context = bidi_context_for_fragment(text, &bidi.levels, &fragment_range)
+            .expect("an implicit RTL fragment must retain its resolved direction");
+        assert_eq!("\u{2067}", context.prefix);
+        assert_eq!("\u{2069}", context.suffix);
+    }
+
+    #[test]
+    fn pdf_does_not_pop_an_embedding_across_an_isolate() {
+        let text = "\u{202e}\u{2066}text\u{202c}\u{2069}CODE\u{202c}";
+        let bidi = BidiInfo::new(text, None);
+        let text_start = "\u{202e}\u{2066}".len();
+        let code_start = "\u{202e}\u{2066}text\u{202c}\u{2069}".len();
+
+        let text_context =
+            bidi_context_for_fragment(text, &bidi.levels, &(text_start..text_start + 4))
+                .expect("the isolate must preserve its outer override");
+        assert_eq!("\u{202e}\u{2066}", text_context.prefix);
+        assert_eq!("\u{2069}\u{202c}", text_context.suffix);
+
+        let code_context =
+            bidi_context_for_fragment(text, &bidi.levels, &(code_start..code_start + 4))
+                .expect("the outer override must survive the closed isolate");
+        assert_eq!("\u{202e}", code_context.prefix);
+        assert_eq!("\u{202c}", code_context.suffix);
     }
 }

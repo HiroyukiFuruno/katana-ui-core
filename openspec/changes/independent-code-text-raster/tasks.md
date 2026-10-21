@@ -13,4 +13,4 @@
 ## Release-preflight diagnostic (2026-10-21)
 
 - [x] PR #90のrelease-preflight 39614760727は子test 135件とJSON/LCOV report生成の成功後にstrict LCOVで失敗した。検査対象やcoverage基準を下げず、report phase・終了コード・stderr・空き容量・profile/report状態をfailure artifactへ残す回帰を追加し、hosted runnerで再実行した。
-- [x] #98 strict LCOVで未到達の49行を、baseline付きbidi raster描画、FSI/PDI context、raster failure、UTF-8境界の回帰テストで埋め、functions/lines 100%のrelease-preflightを通す。`just release-check` は functions `14638/14638`、strict LCOV、`cargo package`、`cargo publish --dry-run` まで通過した。
+- [/] #98 strict LCOVで未到達の49行を、baseline付きbidi raster描画、FSI/PDI context、raster failure、UTF-8境界の回帰テストで埋め、functions/lines 100%のrelease-preflightを通す。`just release-check` は functions `14638/14638`、strict LCOV、`cargo package`、`cargo publish --dry-run` まで通過した。PR #90のbidi P2修正を追加したため、同じ基準で最終release-checkを再実行する。

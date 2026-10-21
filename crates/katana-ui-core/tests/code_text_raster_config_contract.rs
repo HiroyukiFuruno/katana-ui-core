@@ -264,6 +264,41 @@ fn mixed_rtl_inline_code_preserves_visual_order_at_a_document_baseline() {
 }
 
 #[test]
+fn mixed_rtl_neutral_inline_code_keeps_its_resolved_rtl_context() {
+    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
+        .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+    let node = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        spans: vec![
+            styled_span("אבג ", false),
+            styled_span("[]", true),
+            styled_span(" דהו", false),
+        ],
+        ..UiTextProps::default()
+    });
+    let mut canvas = Canvas::new(180, 140, 0);
+    renderer.render(&mut canvas, &node, area());
+
+    let runs = canvas.text_runs();
+    assert_eq!(
+        ["אבג ", "[]", " דהו"],
+        runs.iter()
+            .map(|run| run.text())
+            .collect::<Vec<_>>()
+            .as_slice()
+    );
+    assert!(
+        runs[2].x() < runs[1].x() && runs[1].x() < runs[0].x(),
+        "a neutral code fragment must remain in the full line's RTL visual order"
+    );
+    let y = runs[0].y() + runs[0].height() / 2;
+    let right = runs.iter().map(|run| run.right()).max().unwrap_or(0);
+    assert_eq!(
+        Some("אבג [] דהו".to_owned()),
+        canvas.copy_text_in_selection(Some((0, y)), Some((right, y)))
+    );
+}
+
+#[test]
 fn adjacent_rtl_plain_and_code_runs_reverse_within_one_visual_run() {
     let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
         .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
@@ -413,20 +448,26 @@ fn mixed_rtl_inline_code_preserves_explicit_bidi_shape_without_exposing_controls
         }],
         ..UiTextProps::default()
     });
+    let mut expected_canvas = Canvas::new(180, 140, 0);
+    renderer.render(&mut expected_canvas, &expected, area());
+    let expected_run_x = expected_canvas
+        .text_runs()
+        .first()
+        .expect("expected code raster run")
+        .x();
+
     let mut actual_canvas = Canvas::new(180, 140, 0);
     renderer.render(&mut actual_canvas, &actual, area());
+    let actual_code_run = actual_canvas
+        .text_runs()
+        .iter()
+        .find(|run| run.text() == "CODE")
+        .expect("actual code raster run");
 
     assert_eq!(
-        green_pixels(&pixels(&renderer, &expected)),
-        green_pixels(actual_canvas.pixels()),
+        green_pixels_relative_to_run(expected_canvas.pixels(), expected_run_x as isize),
+        green_pixels_relative_to_run(actual_canvas.pixels(), actual_code_run.x() as isize),
         "the code fragment must keep the RLO shaping context from surrounding spans"
-    );
-    assert!(
-        actual_canvas
-            .text_runs()
-            .iter()
-            .any(|run| run.text() == "CODE"),
-        "synthetic shaping controls must not leak into selection or copy text"
     );
 }
 
@@ -495,6 +536,16 @@ fn green_pixels(pixels: &[u32]) -> Vec<(usize, usize, u32)> {
     points
         .into_iter()
         .map(|(x, y, color)| (x - left, y, color))
+        .collect()
+}
+
+fn green_pixels_relative_to_run(pixels: &[u32], run_x: isize) -> Vec<(isize, usize, u32)> {
+    pixels
+        .iter()
+        .enumerate()
+        .filter(|(_, pixel)| **pixel & 0xff00 != 0 && **pixel & 0xff00ff == 0)
+        .map(|(index, pixel)| (index % 180, index / 180, *pixel))
+        .map(|(x, y, color)| (x as isize - run_x, y, color))
         .collect()
 }
 
