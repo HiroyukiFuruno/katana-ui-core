@@ -362,7 +362,102 @@ fn mixed_rtl_inline_code_link_hit_tracks_its_visual_raster_run() {
         .find(|hit| hit.action.payload == "https://example.test/code")
         .expect("code link hit");
     assert_eq!(code_run.x(), link_hit.rect.x);
-    assert!(code_run.right() <= link_hit.rect.x + link_hit.rect.width + 1);
+    assert!(
+        code_run.right() <= link_hit.rect.x + link_hit.rect.width + 1,
+        "code={:?}, hit={:?}",
+        (code_run.x(), code_run.right()),
+        (link_hit.rect.x, link_hit.rect.x + link_hit.rect.width),
+    );
+}
+
+#[test]
+fn mixed_rtl_inline_code_preserves_explicit_bidi_shape_without_exposing_controls() {
+    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
+        .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+    let code_style = UiTextSpanStyle {
+        color_rgba: [0, 255, 0, 255],
+        inline_code: true,
+        monospace: true,
+        ..UiTextSpanStyle::default()
+    };
+    let actual = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        spans: vec![
+            styled_span("\u{202e}A", false),
+            UiTextSpan {
+                text: "CODE".into(),
+                style: code_style,
+                link_target: String::new(),
+            },
+            styled_span("Z\u{202c}", false),
+        ],
+        ..UiTextProps::default()
+    });
+    let expected = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        spans: vec![UiTextSpan {
+            text: "\u{202e}CODE\u{202c}".into(),
+            style: code_style,
+            link_target: String::new(),
+        }],
+        ..UiTextProps::default()
+    });
+    let mut actual_canvas = Canvas::new(180, 140, 0);
+    renderer.render(&mut actual_canvas, &actual, area());
+
+    assert_eq!(
+        green_pixels(&pixels(&renderer, &expected)),
+        green_pixels(actual_canvas.pixels()),
+        "the code fragment must keep the RLO shaping context from surrounding spans"
+    );
+    assert!(
+        actual_canvas
+            .text_runs()
+            .iter()
+            .any(|run| run.text() == "CODE"),
+        "synthetic shaping controls must not leak into selection or copy text"
+    );
+}
+
+#[test]
+fn mixed_bidi_link_keeps_internal_fragment_whitespace_clickable() {
+    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
+        .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+    let link_target = "https://example.test/mixed";
+    let node = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        spans: vec![
+            UiTextSpan {
+                text: "abc אבג def".into(),
+                style: UiTextSpanStyle::default(),
+                link_target: link_target.into(),
+            },
+            styled_span("CODE", true),
+        ],
+        ..UiTextProps::default()
+    });
+    let single_line_area = UiTreeRenderArea {
+        width: 10_000,
+        ..area()
+    };
+    let mut canvas = Canvas::new(single_line_area.width, single_line_area.height, 0);
+    renderer.render(&mut canvas, &node, single_line_area);
+    let hits = renderer
+        .document_host_action_hit_rects(&node, single_line_area)
+        .into_iter()
+        .filter(|hit| hit.action.payload == link_target)
+        .collect::<Vec<_>>();
+
+    for text in ["abc ", " def"] {
+        let run = canvas
+            .text_runs()
+            .iter()
+            .find(|run| run.text() == text)
+            .expect("split link raster run");
+        assert!(
+            hits.iter().any(|hit| {
+                hit.rect.x <= run.x() && run.right() <= hit.rect.x + hit.rect.width + 1
+            }),
+            "link hit must cover the full visual fragment including internal whitespace: {text:?}",
+        );
+    }
 }
 
 fn styled_span(text: &str, monospace: bool) -> UiTextSpan {

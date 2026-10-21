@@ -1,7 +1,10 @@
 #[cfg(test)]
 use super::text_runtime_paint::selection_glyph_widths;
-use super::text_runtime_paint::{draw_raster, record_runtime_text_run, visible_raster_width};
-use super::{RichTextLineSpan, RichTextStyle, TextRenderer};
+use super::text_runtime_paint::{
+    draw_raster, record_runtime_text_run, record_runtime_text_run_with_raster_prefix,
+    visible_raster_width,
+};
+use super::{RichTextBidiContext, RichTextLineSpan, RichTextStyle, TextRenderer};
 use crate::raster_host::canvas::Canvas;
 use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::render_model::{UiTextSpan, UiTextSpanStyle};
@@ -21,7 +24,76 @@ const RGBA_CHANNEL_MASK: u32 = 0xff;
 const OPAQUE_ALPHA: u8 = u8::MAX;
 const TRANSPARENT_RGBA: [u8; RGBA_COMPONENT_COUNT] = [0; RGBA_COMPONENT_COUNT];
 
+pub(super) struct RichTextDrawRequest {
+    pub(super) x: isize,
+    pub(super) paint_origin_y: f32,
+    pub(super) text_run_origin_y: f32,
+    pub(super) scale_factor: f32,
+    pub(super) raster_vertical_scale: f32,
+    pub(super) font: FontToken,
+    pub(super) line_height_px: f32,
+}
+
 impl TextRenderer {
+    pub(super) fn draw_rich_request(
+        &self,
+        canvas: &mut Canvas,
+        source_spans: &[RichTextLineSpan],
+        bidi_context: Option<&RichTextBidiContext>,
+        request: RichTextDrawRequest,
+    ) {
+        let source_text = source_spans
+            .iter()
+            .map(|span| span.text.as_str())
+            .collect::<String>();
+        let spans = Self::rich_raster_spans(source_spans, bidi_context);
+        let Some(raster) = self.rasterize(
+            spans,
+            request.font,
+            request.scale_factor,
+            request.line_height_px,
+        ) else {
+            return;
+        };
+        draw_raster(
+            canvas,
+            &raster,
+            request.x,
+            request.paint_origin_y,
+            request.scale_factor,
+            request.raster_vertical_scale,
+        );
+        record_runtime_text_run_with_raster_prefix(
+            canvas,
+            &source_text,
+            &raster,
+            request.x,
+            request.text_run_origin_y,
+            bidi_context.map_or(0, |context| context.prefix.len()),
+        );
+    }
+
+    pub(super) fn rich_raster_spans(
+        source_spans: &[RichTextLineSpan],
+        bidi_context: Option<&RichTextBidiContext>,
+    ) -> Vec<UiTextSpan> {
+        let mut spans = source_spans
+            .iter()
+            .map(|span| ui_span(&span.text, span.style))
+            .collect::<Vec<_>>();
+        let Some(context) = bidi_context else {
+            return spans;
+        };
+        let Some(first) = spans.first_mut() else {
+            return spans;
+        };
+        first.text = format!("{}{}", context.prefix, first.text);
+        if let Some(last) = spans.last_mut() {
+            last.text.push_str(&context.suffix);
+        }
+        spans
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub(super) fn draw_request(
         &self,
@@ -73,7 +145,7 @@ impl TextRenderer {
         }
     }
 
-    fn rasterize(
+    pub(super) fn rasterize(
         &self,
         spans: Vec<UiTextSpan>,
         font: FontToken,

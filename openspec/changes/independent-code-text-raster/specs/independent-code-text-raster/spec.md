@@ -34,3 +34,13 @@ KUC SHALL expose a renderer builder accepting an independent code raster configu
 #### Scenario: Bidirectional span geometry
 - **WHEN** a visually reordered independently rendered line contains a highlighted, decorated, or linked span
 - **THEN** its background, decoration, and link hit rectangle use the same visual fragment coordinates as its glyph raster run
+
+#### Scenario: Explicit bidi controls cross a raster fragment boundary
+- **WHEN** an embedding, override, or isolate starts before an independently rasterized fragment and closes after it
+- **THEN** KUC preserves that active bidi context only in the raster request for the fragment
+- **AND** selection, copy, and link payload retain the original source text without synthetic control characters
+
+#### Scenario: Link whitespace at an internal bidi fragment edge
+- **WHEN** one linked source span is split into multiple bidi visual fragments
+- **THEN** only whitespace at the original source span's leading or trailing edge may be excluded from its decoration and link hit rectangle
+- **AND** whitespace at an internal fragment edge remains clickable and decorated

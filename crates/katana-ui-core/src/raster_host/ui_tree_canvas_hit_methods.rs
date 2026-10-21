@@ -22,6 +22,8 @@ mod ui_tree_canvas_hit_control_methods;
 mod ui_tree_canvas_hit_scroll_methods;
 #[path = "ui_tree_canvas_hit_settings_methods.rs"]
 mod ui_tree_canvas_hit_settings_methods;
+#[path = "ui_tree_canvas_hit_text_link_methods.rs"]
+mod ui_tree_canvas_hit_text_link_methods;
 #[path = "ui_tree_canvas_hit_text_methods.rs"]
 mod ui_tree_canvas_hit_text_methods;
 

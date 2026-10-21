@@ -18,6 +18,7 @@ pub(super) fn push_span_geometry(
     span: &UiTextSpan,
     span_x: isize,
     width: usize,
+    visible_bounds: Option<(usize, usize)>,
     context: UiTreeTextLineContext<'_>,
     renderers: SpanTextRenderers<'_>,
     preserve_whitespace: bool,
@@ -27,14 +28,16 @@ pub(super) fn push_span_geometry(
     }
     let color = span_color(span, context.palette);
     if should_underline(span) {
-        let (decoration_x, decoration_width) = underline_part_bounds(
-            renderers,
-            span,
-            context.metrics,
-            preserve_whitespace,
-            context.node,
-            width,
-        );
+        let (decoration_x, decoration_width) = visible_bounds.unwrap_or_else(|| {
+            underline_part_bounds(
+                renderers,
+                span,
+                context.metrics,
+                preserve_whitespace,
+                context.node,
+                width,
+            )
+        });
         decorations.push(TextDecorationLine {
             x: span_x.saturating_add(decoration_x as isize),
             legacy_offset: underline_y_offset(context.metrics, context.node),
@@ -44,8 +47,9 @@ pub(super) fn push_span_geometry(
         });
     }
     if should_strikethrough(span) {
-        let (decoration_x, decoration_width) =
-            span_visible_part_bounds(renderers, span, context.metrics, preserve_whitespace);
+        let (decoration_x, decoration_width) = visible_bounds.unwrap_or_else(|| {
+            span_visible_part_bounds(renderers, span, context.metrics, preserve_whitespace)
+        });
         decorations.push(TextDecorationLine {
             x: span_x.saturating_add(decoration_x as isize),
             legacy_offset: context.metrics.strikethrough_offset,

@@ -46,10 +46,22 @@ pub(super) fn record_runtime_text_run(
     x: isize,
     y: f32,
 ) {
+    record_runtime_text_run_with_raster_prefix(canvas, text, raster, x, y, 0);
+}
+
+pub(super) fn record_runtime_text_run_with_raster_prefix(
+    canvas: &mut Canvas,
+    text: &str,
+    raster: &PlatformTextRaster,
+    x: isize,
+    y: f32,
+    raster_prefix_len: usize,
+) {
     let Some(origin_x) = usize::try_from(x).ok() else {
         return;
     };
-    let (glyph_widths, selection_width) = selection_glyph_widths(text, raster);
+    let (glyph_widths, selection_width) =
+        selection_glyph_widths_with_raster_prefix(text, raster, raster_prefix_len);
     canvas.record_text_run_with_glyph_widths(
         text,
         origin_x,
@@ -65,9 +77,26 @@ pub(super) fn record_runtime_text_run(
     );
 }
 
+pub(super) fn text_run_selection_width(
+    text: &str,
+    raster: &PlatformTextRaster,
+    raster_prefix_len: usize,
+) -> usize {
+    selection_glyph_widths_with_raster_prefix(text, raster, raster_prefix_len).1
+}
+
+#[cfg(test)]
 pub(super) fn selection_glyph_widths(
     text: &str,
     raster: &PlatformTextRaster,
+) -> (Vec<usize>, usize) {
+    selection_glyph_widths_with_raster_prefix(text, raster, 0)
+}
+
+fn selection_glyph_widths_with_raster_prefix(
+    text: &str,
+    raster: &PlatformTextRaster,
+    raster_prefix_len: usize,
 ) -> (Vec<usize>, usize) {
     let mut right = 0usize;
     let widths = text
@@ -77,8 +106,8 @@ pub(super) fn selection_glyph_widths(
                 .grapheme_bounds
                 .iter()
                 .find(|bounds| {
-                    bounds.byte_start == byte_start
-                        && bounds.byte_end == byte_start + grapheme.len()
+                    bounds.byte_start == raster_prefix_len + byte_start
+                        && bounds.byte_end == raster_prefix_len + byte_start + grapheme.len()
                 })
                 .map(|bounds| logical_position(bounds.x + bounds.width))
                 .unwrap_or_else(|| right.saturating_add(1));

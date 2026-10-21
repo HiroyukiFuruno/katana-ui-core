@@ -14,6 +14,12 @@ pub(crate) struct RichTextLineSpan {
     pub(super) style: RichTextStyle,
 }
 
+#[derive(Debug, Clone, Default)]
+pub(crate) struct RichTextBidiContext {
+    pub(in crate::raster_host) prefix: String,
+    pub(in crate::raster_host) suffix: String,
+}
+
 impl RichTextLineSpan {
     pub(crate) fn with_text(&self, text: String) -> Self {
         Self {

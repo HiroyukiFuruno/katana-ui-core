@@ -6,10 +6,14 @@ use super::super::ui_tree_canvas_text_role::UiTreeTextRoleRenderer;
 use super::super::ui_tree_canvas_types::UiTreeRenderArea;
 use katana_ui_core::render_model::{UiNode, UiTextSpan};
 
+#[path = "ui_tree_canvas_text_lines_bidi_context.rs"]
+mod bidi_context;
 #[path = "ui_tree_canvas_text_lines_decoration.rs"]
 mod line_decoration;
 #[path = "ui_tree_canvas_text_lines_plain.rs"]
 mod plain;
+#[path = "ui_tree_canvas_text_lines_raster_run_draw.rs"]
+mod raster_run_draw;
 #[path = "ui_tree_canvas_text_lines_raster_runs.rs"]
 mod raster_runs;
 #[path = "ui_tree_canvas_text_lines_rich_span.rs"]
@@ -25,12 +29,13 @@ mod wrap_state;
 
 use crate::raster_host::ui_tree_canvas_text_line_width::{
     SpanTextRenderers, preserves_whitespace, span_line_width, span_part_width,
-    span_visible_part_bounds,
+    span_part_width_with_bidi_context, span_visible_part_bounds,
+    span_visible_part_bounds_with_edges,
 };
 use line_decoration::decoration_y;
 pub(super) use line_decoration::underline_y_offset;
 use plain::draw_plain_at_logical_y as draw_plain_lines_at_logical_y;
-use raster_runs::RasterRun;
+use raster_run_draw::RasterRun;
 pub(in crate::raster_host) use raster_runs::visual_span_positions;
 use rich_span::rich_line_span;
 use span_geometry::push_span_geometry;
@@ -140,12 +145,18 @@ impl UiTreeTextLines {
                 line_x,
             ) {
                 for positioned in positioned_spans {
+                    let visible_bounds = positioned.visible_part_bounds(
+                        renderers,
+                        context.metrics,
+                        preserve_whitespace,
+                    );
                     push_span_geometry(
                         &mut span_backgrounds,
                         &mut decorations,
                         &positioned.span,
                         positioned.x,
                         positioned.width,
+                        Some(visible_bounds),
                         context,
                         renderers,
                         preserve_whitespace,
@@ -162,6 +173,7 @@ impl UiTreeTextLines {
                         span,
                         cursor_x,
                         width,
+                        None,
                         context,
                         renderers,
                         preserve_whitespace,
