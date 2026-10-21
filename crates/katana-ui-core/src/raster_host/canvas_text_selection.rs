@@ -175,6 +175,8 @@ mod tests {
         canvas.record_text_run("text", 0, 0, 0, 1);
         canvas.record_text_run_with_glyph_widths("", 0, 0, 1, 1, &[]);
         canvas.record_text_run_with_glyph_widths("text", 0, 0, 1, 0, &[1]);
+        canvas.record_text_run_in_logical_line("", 0, 0, 1, 1, Some(1));
+        canvas.record_text_run_in_logical_line("text", 0, 0, 0, 1, Some(1));
         assert!(canvas.text_runs().is_empty());
     }
 
