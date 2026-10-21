@@ -323,6 +323,48 @@ fn mixed_direction_plain_run_splits_at_visual_boundaries_around_inline_code() {
     );
 }
 
+#[test]
+fn mixed_rtl_inline_code_link_hit_tracks_its_visual_raster_run() {
+    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark())
+        .with_code_text_raster_config(config(), PlatformTextFaceSelection::CandidateChain);
+    let node = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
+        spans: vec![
+            styled_span("\u{202e}ABCDEFGHIJ", false),
+            UiTextSpan {
+                text: "CODE".into(),
+                style: UiTextSpanStyle {
+                    inline_code: true,
+                    monospace: true,
+                    underline: true,
+                    ..UiTextSpanStyle::default()
+                },
+                link_target: "https://example.test/code".into(),
+            },
+            styled_span("Z\u{202c}", false),
+        ],
+        ..UiTextProps::default()
+    });
+    let single_line_area = UiTreeRenderArea {
+        width: 10_000,
+        ..area()
+    };
+    let mut canvas = Canvas::new(single_line_area.width, single_line_area.height, 0);
+    renderer.render(&mut canvas, &node, single_line_area);
+
+    let code_run = canvas
+        .text_runs()
+        .iter()
+        .find(|run| run.text() == "CODE")
+        .expect("code raster run");
+    let link_hit = renderer
+        .document_host_action_hit_rects(&node, single_line_area)
+        .into_iter()
+        .find(|hit| hit.action.payload == "https://example.test/code")
+        .expect("code link hit");
+    assert_eq!(code_run.x(), link_hit.rect.x);
+    assert!(code_run.right() <= link_hit.rect.x + link_hit.rect.width + 1);
+}
+
 fn styled_span(text: &str, monospace: bool) -> UiTextSpan {
     UiTextSpan {
         text: text.into(),

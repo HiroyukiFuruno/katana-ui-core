@@ -14,6 +14,8 @@ mod plain;
 mod raster_runs;
 #[path = "ui_tree_canvas_text_lines_rich_span.rs"]
 mod rich_span;
+#[path = "ui_tree_canvas_text_lines_span_geometry.rs"]
+mod span_geometry;
 #[path = "ui_tree_canvas_text_span_style.rs"]
 mod span_style;
 #[path = "ui_tree_canvas_text_wrap.rs"]
@@ -25,16 +27,16 @@ use crate::raster_host::ui_tree_canvas_text_line_width::{
     SpanTextRenderers, preserves_whitespace, span_line_width, span_part_width,
     span_visible_part_bounds,
 };
+use line_decoration::decoration_y;
 pub(super) use line_decoration::underline_y_offset;
-use line_decoration::{TextDecorationLine, decoration_y, underline_part_bounds};
 use plain::draw_plain_at_logical_y as draw_plain_lines_at_logical_y;
 use raster_runs::RasterRun;
+pub(in crate::raster_host) use raster_runs::visual_span_positions;
 use rich_span::rich_line_span;
-use span_style::{draw_span_background, should_strikethrough, should_underline, span_color};
+use span_geometry::push_span_geometry;
+use span_style::{draw_span_background, span_color};
 use text_wrap::UiTreeTextWrap;
 
-const STRIKETHROUGH_LINE_THICKNESS: usize = 1;
-const UNDERLINE_LINE_THICKNESS: usize = 1;
 const UNDERLINE_HEIGHT_BOTTOM_PADDING: usize = 3;
 
 pub(super) struct UiTreeTextLines;
@@ -123,50 +125,49 @@ impl UiTreeTextLines {
                 line_width,
                 line_index,
             );
-            let mut cursor_x = line_x;
             let mut rich_line = Vec::with_capacity(render_line.len());
-            let mut decorations = Vec::new();
-            let mut span_backgrounds = Vec::with_capacity(render_line.len());
             for span in render_line {
-                let width = span_part_width(renderers, span, context.metrics, preserve_whitespace);
-                if let Some(background_x) = canvas_x(cursor_x) {
-                    span_backgrounds.push((background_x, width, span.style));
-                }
                 let color = span_color(span, context.palette);
                 rich_line.push(rich_line_span(context, renderers, span, color));
-                if should_underline(span) {
-                    let (decoration_x, decoration_width) = underline_part_bounds(
+            }
+            let mut decorations = Vec::new();
+            let mut span_backgrounds = Vec::with_capacity(render_line.len());
+            if let Some(positioned_spans) = visual_span_positions(
+                renderers,
+                render_line,
+                context.metrics,
+                preserve_whitespace,
+                line_x,
+            ) {
+                for positioned in positioned_spans {
+                    push_span_geometry(
+                        &mut span_backgrounds,
+                        &mut decorations,
+                        &positioned.span,
+                        positioned.x,
+                        positioned.width,
+                        context,
                         renderers,
-                        span,
-                        context.metrics,
                         preserve_whitespace,
-                        context.node,
+                    );
+                }
+            } else {
+                let mut cursor_x = line_x;
+                for span in render_line {
+                    let width =
+                        span_part_width(renderers, span, context.metrics, preserve_whitespace);
+                    push_span_geometry(
+                        &mut span_backgrounds,
+                        &mut decorations,
+                        span,
+                        cursor_x,
                         width,
-                    );
-                    decorations.push(TextDecorationLine {
-                        x: cursor_x.saturating_add(decoration_x as isize),
-                        legacy_offset: underline_y_offset(context.metrics, context.node),
-                        width: decoration_width,
-                        color,
-                        thickness: underline_line_thickness(),
-                    });
-                }
-                if should_strikethrough(span) {
-                    let (decoration_x, decoration_width) = span_visible_part_bounds(
+                        context,
                         renderers,
-                        span,
-                        context.metrics,
                         preserve_whitespace,
                     );
-                    decorations.push(TextDecorationLine {
-                        x: cursor_x.saturating_add(decoration_x as isize),
-                        legacy_offset: context.metrics.strikethrough_offset,
-                        width: decoration_width,
-                        color,
-                        thickness: STRIKETHROUGH_LINE_THICKNESS,
-                    });
+                    cursor_x += width as isize;
                 }
-                cursor_x += width as isize;
             }
             let runs = RasterRun::for_line(context, render_line, &rich_line, line_x);
             let raster_baseline = context.metrics.baseline_from_line_box_top.map(|_| {
@@ -259,10 +260,6 @@ pub(in crate::raster_host) fn visible_line_y(
         return None;
     }
     Some(y + (line_top - scroll_y).max(0.0))
-}
-
-const fn underline_line_thickness() -> usize {
-    UNDERLINE_LINE_THICKNESS
 }
 
 #[cfg(test)]

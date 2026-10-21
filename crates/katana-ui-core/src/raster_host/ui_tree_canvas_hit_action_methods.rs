@@ -4,9 +4,11 @@ use super::{
     node_cursor, semantic_node_id,
 };
 use crate::raster_host::ui_tree_canvas_text::text_lines::{
-    text_wrap::UiTreeTextWrap, visible_line_y,
+    text_wrap::UiTreeTextWrap, visible_line_y, visual_span_positions,
 };
-use crate::raster_host::ui_tree_canvas_text_line_width::{preserves_whitespace, span_line_width};
+use crate::raster_host::ui_tree_canvas_text_line_width::{
+    preserves_whitespace, span_line_width, span_visible_part_bounds,
+};
 use katana_ui_core::render_model::UiTextSpan;
 
 impl UiTreeHostActionHitCollector<'_> {
@@ -124,7 +126,7 @@ impl UiTreeHostActionHitCollector<'_> {
                 .map(|span| source_spans.consume(span))
                 .collect::<Vec<_>>();
             let line_width = span_line_width(renderers, line, metrics, preserve_whitespace);
-            let mut span_x =
+            let line_x =
                 UiTreeTextRoleRenderer::line_x(node, x, x, self.area, line_width, line_index);
             let line_y = if self.scroll_clip == super::ScrollHitClip::Document {
                 logical_y + line_index as f32 * metrics.line_box_height
@@ -144,34 +146,50 @@ impl UiTreeHostActionHitCollector<'_> {
             if line_height == 0 {
                 continue;
             }
-            for (span, source_index) in line.iter().zip(line_source_indices) {
-                let width = self.text_span_render_width(node, span);
-                if !span.link_target.trim().is_empty()
-                    && let Some(action) = source_index
-                        .and_then(|index| source_actions.get(index))
-                        .and_then(Option::as_ref)
-                {
-                    let (visible_offset, visible_width) =
-                        self.text_span_visible_hit_bounds(node, span);
-                    let visible_x = span_x + visible_offset as isize;
-                    let rect_x = visible_x.max(0) as usize;
-                    let hidden_width =
-                        visible_x.unsigned_abs() * usize::from(visible_x.is_negative());
-                    let clipped_width = visible_width.saturating_sub(hidden_width);
-                    if clipped_width > 0 {
-                        link_hits.push(UiTreeHostActionHit {
-                            action: action.clone(),
-                            rect: UiTreeHitRect {
-                                x: rect_x,
-                                y: line_y,
-                                width: clipped_width,
-                                height: line_height.min(height),
-                            },
-                            cursor,
-                        });
+            let mut push_link_hit =
+                |span: &UiTextSpan, source_index: Option<usize>, span_x: isize| {
+                    if !span.link_target.trim().is_empty()
+                        && let Some(action) = source_index
+                            .and_then(|index| source_actions.get(index))
+                            .and_then(Option::as_ref)
+                    {
+                        let (visible_offset, visible_width) =
+                            span_visible_part_bounds(renderers, span, metrics, preserve_whitespace);
+                        let visible_x = span_x + visible_offset as isize;
+                        let rect_x = visible_x.max(0) as usize;
+                        let hidden_width =
+                            visible_x.unsigned_abs() * usize::from(visible_x.is_negative());
+                        let clipped_width = visible_width.saturating_sub(hidden_width);
+                        if clipped_width > 0 {
+                            link_hits.push(UiTreeHostActionHit {
+                                action: action.clone(),
+                                rect: UiTreeHitRect {
+                                    x: rect_x,
+                                    y: line_y,
+                                    width: clipped_width,
+                                    height: line_height.min(height),
+                                },
+                                cursor,
+                            });
+                        }
                     }
+                };
+            if let Some(positioned_spans) =
+                visual_span_positions(renderers, line, metrics, preserve_whitespace, line_x)
+            {
+                for positioned in positioned_spans {
+                    let source_index = line_source_indices
+                        .get(positioned.line_span_index)
+                        .copied()
+                        .flatten();
+                    push_link_hit(&positioned.span, source_index, positioned.x);
                 }
-                span_x += width as isize;
+            } else {
+                let mut span_x = line_x;
+                for (span, source_index) in line.iter().zip(line_source_indices) {
+                    push_link_hit(span, source_index, span_x);
+                    span_x += self.text_span_render_width(node, span) as isize;
+                }
             }
         }
         self.hits.extend(link_hits);

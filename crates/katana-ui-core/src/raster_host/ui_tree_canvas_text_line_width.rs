@@ -25,6 +25,10 @@ impl<'a> SpanTextRenderers<'a> {
         }
         self.text
     }
+
+    pub(in crate::raster_host) fn has_independent_code_raster_config(self) -> bool {
+        self.code.has_independent_raster_config()
+    }
 }
 
 pub(in crate::raster_host) fn span_line_width(

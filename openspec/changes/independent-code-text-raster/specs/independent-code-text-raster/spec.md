@@ -30,3 +30,7 @@ KUC SHALL expose a renderer builder accepting an independent code raster configu
 - **WHEN** one plain or code run contains more than one bidi visual range around an independently rendered inline-code span
 - **THEN** KUC splits the run only at UTF-8 character boundaries and places every fragment in rich-line visual order
 - **AND** copying the fragments preserves their logical source order
+
+#### Scenario: Bidirectional span geometry
+- **WHEN** a visually reordered independently rendered line contains a highlighted, decorated, or linked span
+- **THEN** its background, decoration, and link hit rectangle use the same visual fragment coordinates as its glyph raster run
