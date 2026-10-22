@@ -331,4 +331,19 @@ mod tests {
         assert_eq!(first.text_runs(), second.text_runs());
         assert_eq!(first, second);
     }
+
+    #[test]
+    fn explicit_separator_replaces_pending_automatic_separator_and_records_empty_line() {
+        let mut canvas = Canvas::new(16, 8, 0);
+        canvas.with_text_selection_line(|_canvas| {});
+
+        canvas.with_text_selection_line_separator("\r", true, |canvas| {
+            canvas.record_text_run_in_logical_line_with_separator("body", 0, 0, 4, 1, Some(7), "");
+            canvas.record_empty_text_selection_line(0, 2, 1);
+        });
+
+        assert_eq!(2, canvas.text_runs().len());
+        assert_eq!("", canvas.text_runs()[0].separator_before());
+        assert_eq!("\r", canvas.text_runs()[1].separator_before());
+    }
 }

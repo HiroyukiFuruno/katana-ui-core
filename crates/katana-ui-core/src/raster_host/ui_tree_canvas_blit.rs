@@ -268,7 +268,9 @@ impl Canvas {
 #[cfg(test)]
 mod tests {
     use super::{Canvas, CanvasBlitRequest};
-    use katana_ui_core::text_selection::UiTextSelectionRange;
+    use katana_ui_core::text_selection::{
+        UiTextLineBox, UiTextSelectionModel, UiTextSelectionRange,
+    };
 
     #[test]
     fn aligned_blit_ignores_destination_clipped_extent() {
@@ -399,5 +401,59 @@ mod tests {
         assert_eq!(Some(true), run.resolved_bidi_rtl());
         assert_eq!(1, run.model().point_to_caret(25, 5));
         assert_eq!(0, run.model().point_to_caret(33, 5));
+    }
+
+    #[test]
+    fn scaled_blit_preserves_text_selection_geometry() {
+        let mut source = Canvas::new_scaled(24, 12, 1.25, 0x000000);
+        source.record_text_run_with_glyph_positions("ab", 4, 3, 16, 8, &[(0, 8), (8, 8)]);
+        let mut target = Canvas::new(48, 24, 0x000000);
+
+        target.blit_canvas(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 12,
+                dest_y: 4,
+                width: 24,
+                height: 12,
+                source_y: 0,
+            },
+        );
+
+        assert_eq!(
+            Some("ab".to_owned()),
+            target.copy_text_in_selection(Some((16, 7)), Some((32, 11)))
+        );
+        assert_eq!(
+            vec![katana_ui_core::render_model::UiRect::new(16, 7, 8, 8)],
+            target.text_runs()[0]
+                .model()
+                .highlight_rects(UiTextSelectionRange::new(0, 1))
+        );
+    }
+
+    #[test]
+    fn blit_falls_back_to_uniform_geometry_when_source_glyphs_are_unavailable() {
+        let mut source = Canvas::new(24, 12, 0x000000);
+        source.record_text_run("fallback", 4, 3, 16, 8);
+        source.text_runs[0].model =
+            UiTextSelectionModel::new("fallback", vec![UiTextLineBox::new(0..8, Vec::new())]);
+        let mut target = Canvas::new(48, 24, 0x000000);
+
+        target.blit_canvas(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 12,
+                dest_y: 4,
+                width: 24,
+                height: 12,
+                source_y: 0,
+            },
+        );
+
+        assert_eq!(
+            Some("fallback".to_owned()),
+            target.copy_text_in_selection(Some((16, 7)), Some((32, 11)))
+        );
     }
 }

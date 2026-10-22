@@ -168,9 +168,7 @@ fn source_span_layout(
         let Some(source_start) = bound.byte_start.checked_sub(prefix_len) else {
             continue;
         };
-        let Some(source_end) = bound.byte_end.checked_sub(prefix_len) else {
-            continue;
-        };
+        let source_end = bound.byte_end.saturating_sub(prefix_len);
         let overlaps = ranges
             .iter()
             .enumerate()
@@ -288,6 +286,38 @@ mod tests {
             renderer.measure_width_rich("🔥", style),
             renderer.measure_width_rich_with_bidi_context("🔥", style, &context),
         );
+    }
+
+    #[test]
+    fn rich_layout_exercises_raster_and_fallback_paths() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let renderer = TextRenderer::load(&facade, "body");
+        let style = RichTextStyle::new(14.0, 0xffffff);
+        let spans = vec![RichTextLineSpan {
+            text: "body".to_owned(),
+            style,
+        }];
+        let context = RichTextBidiContext::default();
+
+        let (layout, width) =
+            renderer.measure_rich_span_layout_with_bidi_context(&spans, Some(&context), false);
+        assert_eq!(1, layout.len());
+        assert!(width > 0);
+        assert!(renderer.measure_width_rich_with_bidi_context("body", style, &context) > 0);
+
+        let mut canvas = Canvas::new(96, 32, 0);
+        renderer.draw_rich_line_signed(&mut canvas, &spans, 0, 0);
+        assert!(!canvas.text_runs().is_empty());
+
+        let fallback_renderer = renderer_without_color_emoji();
+        let fallback_spans = vec![RichTextLineSpan {
+            text: "🔥".to_owned(),
+            style: style.emoji(true),
+        }];
+        let (fallback_layout, fallback_width) = fallback_renderer
+            .measure_rich_span_layout_with_bidi_context(&fallback_spans, None, false);
+        assert_eq!(1, fallback_layout.len());
+        assert!(fallback_width > 0);
     }
 
     #[test]

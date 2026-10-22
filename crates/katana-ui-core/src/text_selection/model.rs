@@ -324,6 +324,25 @@ mod tests {
     }
 
     #[test]
+    fn caret_hit_and_rect_preserve_glyph_or_default_affinity() {
+        let model = UiTextSelectionModel::new(
+            "a",
+            vec![UiTextLineBox::new(
+                0..1,
+                vec![UiTextGlyphBox::new(0, 0..1, UiRect::new(10, 4, 8, 12), 16)],
+            )],
+        );
+        let hit = model.caret_hit_for_point(10, 8);
+        assert_eq!(Some(0), hit.glyph_index());
+        assert_eq!(UiRect::new(10, 4, 1, 12), model.caret_rect_for_hit(hit));
+
+        let empty = UiTextSelectionModel::new("", Vec::new());
+        let default_hit = empty.caret_hit_for_point(10, 8);
+        assert_eq!(None, default_hit.glyph_index());
+        assert_eq!(UiRect::default(), empty.caret_rect_for_hit(default_hit));
+    }
+
+    #[test]
     fn resolved_bidi_direction_does_not_change_the_serialized_model_shape() -> serde_json::Result<()>
     {
         let model = UiTextSelectionModel::new(

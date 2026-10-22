@@ -42,23 +42,6 @@ impl PositionedSpan {
         {
             return (0, self.width);
         }
-        if self.bidi_context.is_some()
-            && (self.span.style.inline_code || self.span.style.monospace)
-            && !self
-                .span
-                .text
-                .chars()
-                .next()
-                .is_some_and(char::is_whitespace)
-            && !self
-                .span
-                .text
-                .chars()
-                .next_back()
-                .is_some_and(char::is_whitespace)
-        {
-            return (0, self.width);
-        }
         span_visible_part_bounds_with_edges(
             renderers,
             &self.span,
@@ -112,12 +95,9 @@ pub(in crate::raster_host) fn visual_span_positions(
                 let source_end = source_start + source_span.text.len();
                 let source_span_range = source_start..source_end;
                 if let Some(fragment_range) = intersection(&source_span_range, &visual_range) {
-                    let source_fragment_range = fragment_slice_range(
-                        &text,
-                        &source_span.text,
-                        &fragment_range,
-                        source_start,
-                    )?;
+                    /* WHY: `intersection` と BidiInfo の範囲は UTF-8 境界であるため、局所範囲は常に有効。 */
+                    let source_fragment_range =
+                        (fragment_range.start - source_start)..(fragment_range.end - source_start);
                     let mut span = source_span.clone();
                     span.text = source_span.text[source_fragment_range].to_owned();
                     fragments.push(PositionedSpan {
@@ -136,7 +116,7 @@ pub(in crate::raster_host) fn visual_span_positions(
                 source_start = source_end;
             }
             fragments.sort_by_key(|fragment| fragment.source_range.start);
-            let mut groups = split_shaping_groups(fragments, renderers, &text);
+            let mut groups = split_shaping_groups(fragments, renderers);
             if level.is_rtl() {
                 groups.reverse();
             }
@@ -191,7 +171,6 @@ pub(in crate::raster_host) fn visual_span_positions(
 fn split_shaping_groups(
     fragments: Vec<PositionedSpan>,
     renderers: SpanTextRenderers<'_>,
-    source_text: &str,
 ) -> Vec<Vec<PositionedSpan>> {
     let mut groups: Vec<Vec<PositionedSpan>> = Vec::new();
     for fragment in fragments {
@@ -199,7 +178,7 @@ fn split_shaping_groups(
         if let Some(group) = groups.last_mut()
             && group.last().is_some_and(|previous: &PositionedSpan| {
                 std::ptr::eq(renderers.for_span(&previous.span), renderer)
-                    && can_share_shaping_request(source_text, previous, &fragment)
+                    && previous.source_range.end == fragment.source_range.start
             })
         {
             group.push(fragment);
@@ -210,20 +189,13 @@ fn split_shaping_groups(
     groups
 }
 
-fn can_share_shaping_request(
-    _source_text: &str,
-    previous: &PositionedSpan,
-    next: &PositionedSpan,
-) -> bool {
-    previous.source_range.end == next.source_range.start
-}
-
 fn intersection(left: &Range<usize>, right: &Range<usize>) -> Option<Range<usize>> {
     let start = left.start.max(right.start);
     let end = left.end.min(right.end);
     (start < end).then_some(start..end)
 }
 
+#[cfg(test)]
 fn fragment_slice_range(
     text: &str,
     source_text: &str,
@@ -281,11 +253,7 @@ mod tests {
             positioned_fragment(1, "\u{0301}", 1..3),
         ];
 
-        let groups = split_shaping_groups(
-            fragments,
-            SpanTextRenderers::new(&renderer, &renderer),
-            "e\u{0301}",
-        );
+        let groups = split_shaping_groups(fragments, SpanTextRenderers::new(&renderer, &renderer));
 
         assert_eq!(1, groups.len());
         assert_eq!(2, groups[0].len());
@@ -301,14 +269,91 @@ mod tests {
             positioned_fragment(2, "\u{1f4bb}", 7..11),
         ];
 
-        let groups = split_shaping_groups(
-            fragments,
-            SpanTextRenderers::new(&renderer, &renderer),
-            "\u{1f469}\u{200d}\u{1f4bb}",
-        );
+        let groups = split_shaping_groups(fragments, SpanTextRenderers::new(&renderer, &renderer));
 
         assert_eq!(1, groups.len());
         assert_eq!(3, groups[0].len());
+    }
+
+    #[test]
+    fn empty_mixed_line_has_no_positioned_bidi_fragments() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let body_renderer = TextRenderer::load(&facade, "body");
+        let code_renderer = TextRenderer::load(&facade, "code").with_raster_config(
+            PlatformTextRasterConfig::default(),
+            PlatformTextFaceSelection::CandidateChain,
+        );
+        let line = vec![
+            UiTextSpan::plain(""),
+            UiTextSpan {
+                text: String::new(),
+                style: UiTextSpanStyle {
+                    inline_code: true,
+                    ..UiTextSpanStyle::default()
+                },
+                link_target: String::new(),
+            },
+        ];
+        let metrics = UiTreeTextMetrics::for_node(&UiNode::new(UiNodeKind::Text, "fixture"));
+
+        assert!(
+            visual_span_positions(
+                SpanTextRenderers::new(&body_renderer, &code_renderer),
+                &line,
+                metrics,
+                0,
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn ltr_mixed_line_has_no_positioned_bidi_fragments() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let body_renderer = TextRenderer::load(&facade, "body");
+        let code_renderer = TextRenderer::load(&facade, "code").with_raster_config(
+            PlatformTextRasterConfig::default(),
+            PlatformTextFaceSelection::CandidateChain,
+        );
+        let line = vec![
+            UiTextSpan::plain("plain "),
+            UiTextSpan {
+                text: "code".to_owned(),
+                style: UiTextSpanStyle {
+                    inline_code: true,
+                    ..UiTextSpanStyle::default()
+                },
+                link_target: String::new(),
+            },
+        ];
+        let metrics = UiTreeTextMetrics::for_node(&UiNode::new(UiNodeKind::Text, "fixture"));
+
+        assert!(
+            visual_span_positions(
+                SpanTextRenderers::new(&body_renderer, &code_renderer),
+                &line,
+                metrics,
+                0,
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn whitespace_bounded_span_uses_renderer_visible_bounds() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let renderer = TextRenderer::load(&facade, "body");
+        let mut fragment = positioned_fragment(0, " code ", 0..6);
+        fragment.width = 64;
+        let metrics = UiTreeTextMetrics::for_node(&UiNode::new(UiNodeKind::Text, "fixture"));
+
+        let (start, end) = fragment.visible_part_bounds(
+            SpanTextRenderers::new(&renderer, &renderer),
+            metrics,
+            false,
+        );
+
+        assert!(start <= end);
     }
 
     #[test]
@@ -364,9 +409,11 @@ mod tests {
 
         assert_eq!(base.shaping_run_index, combining.shaping_run_index);
         assert!(base.width > 0 && combining.width > 0);
+        let base_precedes_combining = base.x.saturating_add(base.width as isize) <= combining.x;
+        let combining_precedes_base =
+            combining.x.saturating_add(combining.width as isize) <= base.x;
         assert!(
-            base.x.saturating_add(base.width as isize) <= combining.x
-                || combining.x.saturating_add(combining.width as isize) <= base.x,
+            base_precedes_combining || combining_precedes_base,
             "styled fragments inside one grapheme must retain distinct decoration and link ranges"
         );
     }
