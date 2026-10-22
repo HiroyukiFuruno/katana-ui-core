@@ -93,7 +93,7 @@ impl UiTreeTextLines {
         x: usize,
         y: f32,
     ) {
-        let lines = UiTreeTextWrap::span_lines(
+        let lines = UiTreeTextWrap::span_lines_with_metadata(
             SpanTextRenderers::new(context.renderer, context.code_renderer),
             context.node,
             x,
@@ -111,13 +111,14 @@ impl UiTreeTextLines {
             let bold_line_storage;
             let render_line = if line_bold {
                 bold_line_storage = line
+                    .content
                     .iter()
                     .cloned()
                     .map(force_span_bold)
                     .collect::<Vec<_>>();
                 bold_line_storage.as_slice()
             } else {
-                line.as_slice()
+                line.content.as_slice()
             };
             let line_width =
                 span_line_width(renderers, render_line, context.metrics, preserve_whitespace);
@@ -198,11 +199,15 @@ impl UiTreeTextLines {
                 );
             }
 
-            canvas.with_text_selection_line(|canvas| {
-                for run in runs {
-                    run.draw(canvas, context.metrics, line_box_top);
-                }
-            });
+            canvas.with_text_selection_line_separator(
+                &line.separator_before,
+                line.separator_is_explicit,
+                |canvas| {
+                    for run in runs {
+                        run.draw(canvas, context.metrics, line_box_top);
+                    }
+                },
+            );
 
             for decoration in decorations {
                 let y = decoration_y(

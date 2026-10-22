@@ -213,18 +213,19 @@ impl Canvas {
             })
             .collect::<Vec<_>>();
         if glyph_positions.is_empty() {
-            self.record_text_run_in_logical_line(
+            self.record_text_run_in_logical_line_with_separator(
                 run.text(),
                 target_x,
                 target_y,
                 rect.width,
                 rect.height,
                 logical_line,
+                run.separator_before(),
             );
             return;
         }
         self.text_runs.push(
-            super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line_with_bidi_direction(
+            super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line_with_bidi_direction_and_separator(
                 run.text(),
                 target_x,
                 target_y,
@@ -233,6 +234,7 @@ impl Canvas {
                 &glyph_positions,
                 logical_line,
                 run.resolved_bidi_rtl(),
+                run.separator_before(),
             ),
         );
     }

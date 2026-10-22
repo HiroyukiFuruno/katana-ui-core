@@ -19,6 +19,19 @@ impl SelectableTextRun {
         height: usize,
         logical_line: Option<u64>,
     ) -> Self {
+        Self::new_in_logical_line_with_separator(text, x, y, width, height, logical_line, "")
+    }
+
+    #[must_use]
+    pub(super) fn new_in_logical_line_with_separator(
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        logical_line: Option<u64>,
+        separator_before: &str,
+    ) -> Self {
         let grapheme_count = text.graphemes(true).count().max(1);
         let glyph_width = (width.max(1) / grapheme_count).max(1) as u32;
         let model = UiTextSelectionModel::from_monospace_text(
@@ -33,6 +46,7 @@ impl SelectableTextRun {
             rect: LayoutRect::new(x, y, width, height),
             model,
             logical_line,
+            separator_before: separator_before.to_owned(),
             resolved_bidi_rtl: None,
         }
     }
@@ -128,6 +142,31 @@ impl SelectableTextRun {
         logical_line: Option<u64>,
         resolved_bidi_rtl: Option<bool>,
     ) -> Self {
+        Self::with_glyph_positions_in_logical_line_with_bidi_direction_and_separator(
+            text,
+            x,
+            y,
+            width,
+            height,
+            glyph_positions,
+            logical_line,
+            resolved_bidi_rtl,
+            "",
+        )
+    }
+
+    #[must_use]
+    pub(super) fn with_glyph_positions_in_logical_line_with_bidi_direction_and_separator(
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        glyph_positions: &[(usize, usize)],
+        logical_line: Option<u64>,
+        resolved_bidi_rtl: Option<bool>,
+        separator_before: &str,
+    ) -> Self {
         let mut glyphs = Vec::new();
         let mut byte_offset = 0usize;
         let mut fallback_x = 0usize;
@@ -166,6 +205,7 @@ impl SelectableTextRun {
             rect: LayoutRect::new(x, y, width, height),
             model,
             logical_line,
+            separator_before: separator_before.to_owned(),
             resolved_bidi_rtl,
         }
     }
@@ -223,6 +263,11 @@ impl SelectableTextRun {
     #[must_use]
     pub(in crate::raster_host) const fn logical_line(&self) -> Option<u64> {
         self.logical_line
+    }
+
+    #[must_use]
+    pub(in crate::raster_host) fn separator_before(&self) -> &str {
+        &self.separator_before
     }
 }
 

@@ -3,6 +3,7 @@ use super::{
     UiTreeHostActionHit, UiTreeHostActionHitCollector, UiTreeTextMetrics, UiTreeTextRoleRenderer,
     node_cursor,
 };
+use crate::raster_host::ui_tree_canvas_text::is_paragraph_separator;
 use crate::raster_host::ui_tree_canvas_text::text_lines::{
     text_wrap::UiTreeTextWrap, visible_line_y, visual_span_positions,
 };
@@ -203,7 +204,7 @@ fn whitespace_prefix_has_line_break(value: &str) -> bool {
     value
         .chars()
         .take_while(|character| character.is_whitespace())
-        .any(|character| matches!(character, '\n' | '\r'))
+        .any(is_paragraph_separator)
 }
 
 #[cfg(test)]
@@ -216,6 +217,8 @@ mod source_cursor_tests {
             ("prefix suffix", false, 0),
             (" suffix", true, 0),
             (" \n suffix", true, 2),
+            (" \r suffix", true, 2),
+            (" \u{2029} suffix", true, 4),
         ] {
             let spans = [UiTextSpan::plain(source)];
             let mut cursor = SourceSpanCursor::new(&spans, preserve_whitespace);

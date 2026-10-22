@@ -35,7 +35,12 @@ pub(in crate::raster_host) fn copy_payload_for_selection(
         };
         if !payload.is_empty() && !same_logical_text_line(previous_logical_line, run.logical_line())
         {
-            payload.push('\n');
+            let separator = run.separator_before();
+            if separator.is_empty() {
+                payload.push('\n');
+            } else {
+                payload.push_str(separator);
+            }
         }
         payload.push_str(&selected_text);
         previous_logical_line = run.logical_line();
@@ -226,6 +231,19 @@ mod tests {
                 super::LayoutRect::new(120, 160, 10, 20),
             ],
             selected_text_run_rects(&runs, selection)
+        );
+    }
+
+    #[test]
+    fn copy_payload_restores_explicit_separators_before_the_next_logical_line() {
+        let mut first = SelectableTextRun::new_in_logical_line("alpha", 0, 0, 40, 12, Some(1));
+        let mut second = SelectableTextRun::new_in_logical_line("beta", 0, 24, 32, 12, Some(2));
+        first.separator_before.clear();
+        second.separator_before = "\r\u{2029}".to_owned();
+
+        assert_eq!(
+            "alpha\r\u{2029}beta",
+            copy_payload_for_selection(&[first, second], TextSelection::drag((0, 0), (40, 36)))
         );
     }
 

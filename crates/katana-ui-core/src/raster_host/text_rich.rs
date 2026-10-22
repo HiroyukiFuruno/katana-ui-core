@@ -182,32 +182,12 @@ fn source_span_layout(
             .collect::<Vec<_>>();
         assign_bound_geometry(&mut geometry, &overlaps, bound, resolved_rtl);
     }
-    let mut layout = geometry
+    geometry
         .into_iter()
         .map(|range: Option<(usize, usize)>| {
             range.map_or((0, 0), |(start, end)| (start, end.saturating_sub(start)))
         })
-        .collect::<Vec<_>>();
-    remove_visual_overlaps(&mut layout);
-    layout
-}
-
-fn remove_visual_overlaps(layout: &mut [(usize, usize)]) {
-    let mut visual_order = layout
-        .iter()
-        .enumerate()
-        .filter(|(_, (_, width))| *width > 0)
-        .map(|(index, (start, _))| (index, *start))
-        .collect::<Vec<_>>();
-    visual_order.sort_by_key(|(_, start)| *start);
-    let mut right = 0usize;
-    for (index, _) in visual_order {
-        let (start, width) = layout[index];
-        let end = start.saturating_add(width);
-        let clipped_start = start.max(right);
-        layout[index] = (clipped_start, end.saturating_sub(clipped_start));
-        right = right.max(end);
-    }
+        .collect()
 }
 
 fn source_span_ranges(source_spans: &[RichTextLineSpan]) -> Vec<std::ops::Range<usize>> {
@@ -379,6 +359,29 @@ mod tests {
 
         assert_eq!(vec![(11, 0), (10, 1)], layout);
         assert_eq!(1, layout.iter().filter(|(_, width)| *width > 0).count());
+    }
+
+    #[test]
+    fn adjacent_arabic_bounds_keep_their_independently_rounded_raster_geometry() {
+        let style = RichTextStyle::new(14.0, 0);
+        let spans = vec![
+            RichTextLineSpan {
+                text: "\u{0633}".to_owned(),
+                style,
+            },
+            RichTextLineSpan {
+                text: "\u{0644}".to_owned(),
+                style,
+            },
+        ];
+        let bounds = vec![
+            grapheme_bounds(0, 2, 10.1, 1.0),
+            grapheme_bounds(2, 4, 10.9, 1.0),
+        ];
+
+        let layout = source_span_layout(&spans, &bounds, 0, true);
+
+        assert_eq!(vec![(11, 1), (11, 1)], layout);
     }
 
     fn combined_grapheme_spans() -> Vec<RichTextLineSpan> {

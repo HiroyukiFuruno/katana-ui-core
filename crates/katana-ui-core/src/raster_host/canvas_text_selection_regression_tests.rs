@@ -32,6 +32,23 @@ fn canvas_copy_separates_independent_siblings_sharing_a_y_coordinate() {
 }
 
 #[test]
+fn canvas_copy_restores_explicit_separators_across_an_empty_logical_line() {
+    let mut canvas = Canvas::new(320, 200, BACKGROUND);
+    canvas.with_text_selection_line_separator("", false, |canvas| {
+        canvas.record_text_run("alpha", 24, 32, 40, 20);
+    });
+    canvas.with_text_selection_line_separator("\r", true, |_canvas| {});
+    canvas.with_text_selection_line_separator("\u{2029}", true, |canvas| {
+        canvas.record_text_run("beta", 24, 96, 32, 20);
+    });
+
+    assert_eq!(
+        Some("alpha\r\u{2029}beta".to_owned()),
+        canvas.copy_text_in_selection(Some((20, 28)), Some((80, 120)))
+    );
+}
+
+#[test]
 fn canvas_exposes_selection_highlight_for_selected_text_runs() {
     let mut canvas = Canvas::new(320, 200, BACKGROUND);
     canvas.record_text_run("Heading", 24, 32, 80, 20);

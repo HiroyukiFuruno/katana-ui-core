@@ -8,10 +8,12 @@ use crate::raster_host::{
 use katana_ui_core::atom::Text;
 use katana_ui_core::facade::UiCoreFacade;
 use katana_ui_core::render_model::{UiNode, UiTextSpan, UiTextSpanStyle};
+use katana_ui_core::text_raster::{PlatformTextFaceSelection, PlatformTextRasterConfig};
 use katana_ui_core::theme::ThemeSnapshot;
 
 const AREA_WIDTH: usize = 480;
-const AREA_HEIGHT: usize = 80;
+/* WHY: 二段落目の glyph/hit/selection 契約を viewport clipping ではなく描画結果で検証する。 */
+const AREA_HEIGHT: usize = 128;
 const HEADING_3_FONT_SIZE: f32 = 20.0;
 const HEADING_3_LINE_BOX_HEIGHT: f32 = 28.0;
 const HEADING_3_BASELINE: f32 = 20.5;
@@ -101,7 +103,10 @@ fn inline_code_link_uses_the_code_measurement_for_its_glyph_and_hit() {
 #[test]
 fn inline_code_after_each_bidi_paragraph_keeps_raster_run_and_link_hit() {
     let theme = ThemeSnapshot::dark();
-    let renderer = UiTreeCanvasRenderer::new(theme.clone());
+    let renderer = UiTreeCanvasRenderer::new(theme.clone()).with_code_text_raster_config(
+        PlatformTextRasterConfig::default(),
+        PlatformTextFaceSelection::CandidateChain,
+    );
     let area = UiTreeRenderArea {
         x: 0,
         y: 0,
@@ -110,13 +115,18 @@ fn inline_code_after_each_bidi_paragraph_keeps_raster_run_and_link_hit() {
         scroll_y: 0.0,
     };
 
-    for separator in ["\u{2029}", "\r"] {
+    for separator in ["\n", "\r", "\r\n", "\u{2028}", "\u{2029}"] {
+        let (leading_text, code_text) = if separator == "\r\n" {
+            ("אבג\r".to_owned(), "\nxyz".to_owned())
+        } else {
+            (format!("אבג{separator}"), "xyz".to_owned())
+        };
         let root = Text::new(format!("אבג{separator}xyz"))
             .text_role("heading-3")
             .text_spans(vec![
-                UiTextSpan::plain(format!("אבג{separator}")),
+                UiTextSpan::plain(leading_text),
                 UiTextSpan {
-                    text: "xyz".to_owned(),
+                    text: code_text,
                     style: UiTextSpanStyle {
                         inline_code: true,
                         ..UiTextSpanStyle::default()
@@ -146,7 +156,27 @@ fn inline_code_after_each_bidi_paragraph_keeps_raster_run_and_link_hit() {
             code_run.right(),
             code_run.bottom(),
         );
-
+        let (glyph_left, glyph_right) = code_run_glyph_x_bounds(
+            &canvas,
+            code_rect,
+            palette.background,
+            palette.inline_code_background,
+        )
+        .expect("the code raster run after the paragraph separator must contain glyph pixels");
+        assert_eq!(
+            glyph_left, link_hit.rect.x,
+            "the visible code glyph and link hit must start at the same x after {separator:?}"
+        );
+        assert_eq!(
+            glyph_right - glyph_left,
+            link_hit.rect.width,
+            "the visible code glyph and link hit must have the same width after {separator:?}"
+        );
+        assert!(
+            code_run.x() <= link_hit.rect.x
+                && link_hit.rect.x.saturating_add(link_hit.rect.width) <= code_run.right(),
+            "the code raster run must contain the link hit after {separator:?}"
+        );
         assert_eq!(
             Some(format!("אבג{separator}xyz")),
             canvas.copy_text_in_selection(Some((0, 0)), Some((code_rect.2, code_rect.3)),),
@@ -160,11 +190,27 @@ fn inline_code_after_each_bidi_paragraph_keeps_raster_run_and_link_hit() {
             ),
             "selection highlight must include the code fragment after {separator:?}"
         );
-        assert!(
-            canvas.pixels().contains(&palette.link),
-            "the code fragment after {separator:?} must retain rendered link pixels"
-        );
     }
+}
+
+fn code_run_glyph_x_bounds(
+    canvas: &Canvas,
+    (left, top, right, bottom): (usize, usize, usize, usize),
+    background: u32,
+    inline_code_background: u32,
+) -> Option<(usize, usize)> {
+    let mut glyph_left = right.min(canvas.width());
+    let mut glyph_right = left.min(canvas.width());
+    for y in top..bottom.min(canvas.height()) {
+        for x in left..right.min(canvas.width()) {
+            let pixel = canvas.pixels()[y * canvas.width() + x];
+            if pixel != background && pixel != inline_code_background {
+                glyph_left = glyph_left.min(x);
+                glyph_right = glyph_right.max(x.saturating_add(1));
+            }
+        }
+    }
+    (glyph_left < glyph_right).then_some((glyph_left, glyph_right))
 }
 
 fn inline_code_link_node() -> UiNode {
