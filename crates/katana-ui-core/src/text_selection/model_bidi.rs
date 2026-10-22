@@ -7,13 +7,23 @@ pub(super) fn visual_caret_glyphs<'a>(
     resolved_bidi_rtl: Option<bool>,
 ) -> Vec<(&'a UiTextGlyphBox, UiTextCaretPosition)> {
     let bidi = BidiInfo::new(text, None);
+    let line_levels = bidi
+        .paragraphs
+        .iter()
+        .find(|paragraph| {
+            line.byte_range.start >= paragraph.range.start
+                && line.byte_range.end <= paragraph.range.end
+        })
+        .map(|paragraph| bidi.reordered_levels(paragraph, line.byte_range.clone()));
     let mut glyphs = line.glyphs.iter().collect::<Vec<_>>();
     glyphs.sort_by_key(|glyph| glyph.grapheme_index);
     let mut positions = Vec::with_capacity(glyphs.len().saturating_mul(2));
     for glyph in glyphs {
         let glyph_is_rtl = resolved_bidi_rtl.unwrap_or_else(|| {
-            bidi.levels
-                .get(glyph.byte_range.start)
+            line_levels
+                .as_ref()
+                .and_then(|levels| levels.get(glyph.byte_range.start))
+                .or_else(|| bidi.levels.get(glyph.byte_range.start))
                 .is_some_and(unicode_bidi::Level::is_rtl)
         });
         let (before_x, after_x) = if glyph_is_rtl {

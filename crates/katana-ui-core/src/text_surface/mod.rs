@@ -65,6 +65,9 @@ pub use surface_model::TextSurface;
 #[cfg(test)]
 mod accessibility_tests;
 #[cfg(test)]
+#[path = "bidi_selection_soft_wrap_tests.rs"]
+mod bidi_selection_soft_wrap_tests;
+#[cfg(test)]
 mod bidi_selection_tests;
 #[cfg(test)]
 mod clipboard_tests;
