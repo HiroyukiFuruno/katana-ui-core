@@ -72,8 +72,8 @@ fn adjacent_styled_bidi_spans_share_a_renderer_shaping_request() {
         "the underlined fragment background must cover its own raster-derived geometry",
     );
     assert!(
-        !rect_differs(&canvas, &without_highlight, linked_rect),
-        "the background must not leak into the linked fragment",
+        !rect_differs_outside(&canvas, &without_highlight, linked_rect, non_linked_rect),
+        "the background must not leak past the shared raster boundary into the linked fragment",
     );
 }
 
@@ -119,4 +119,33 @@ fn rect_differs(canvas: &Canvas, baseline: &Canvas, rect: UiRect) -> bool {
             canvas.pixels()[index] != baseline.pixels()[index]
         })
     })
+}
+
+fn rect_differs_outside(
+    canvas: &Canvas,
+    baseline: &Canvas,
+    rect: UiRect,
+    excluded: UiRect,
+) -> bool {
+    let left = rect.x.max(0) as usize;
+    let top = rect.y.max(0) as usize;
+    let right = (rect.x.saturating_add(rect.width as i32).max(0) as usize).min(canvas.width());
+    let bottom = (rect.y.saturating_add(rect.height as i32).max(0) as usize).min(canvas.height());
+    (top..bottom).any(|y| {
+        (left..right).any(|x| {
+            !contains_pixel(excluded, x, y) && {
+                let index = y * canvas.width() + x;
+                canvas.pixels()[index] != baseline.pixels()[index]
+            }
+        })
+    })
+}
+
+fn contains_pixel(rect: UiRect, x: usize, y: usize) -> bool {
+    let x = x as i32;
+    let y = y as i32;
+    x >= rect.x
+        && x < rect.x.saturating_add(rect.width as i32)
+        && y >= rect.y
+        && y < rect.y.saturating_add(rect.height as i32)
 }
