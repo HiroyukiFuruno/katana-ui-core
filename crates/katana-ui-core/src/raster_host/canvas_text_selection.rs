@@ -88,6 +88,7 @@ impl Canvas {
         self.record_text_run_with_glyph_positions(text, x, y, width, height, &glyph_positions);
     }
 
+    #[cfg(test)]
     pub(crate) fn record_text_run_with_glyph_positions(
         &mut self,
         text: &str,
@@ -97,12 +98,33 @@ impl Canvas {
         height: usize,
         glyph_positions: &[(usize, usize)],
     ) {
+        self.record_text_run_with_glyph_positions_with_bidi_direction(
+            text,
+            x,
+            y,
+            width,
+            height,
+            glyph_positions,
+            None,
+        );
+    }
+
+    pub(crate) fn record_text_run_with_glyph_positions_with_bidi_direction(
+        &mut self,
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        glyph_positions: &[(usize, usize)],
+        resolved_bidi_rtl: Option<bool>,
+    ) {
         if text.is_empty() || width == 0 || height == 0 {
             return;
         }
         let run = match self.active_text_selection_line {
             Some(logical_line) => {
-                super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line(
+                super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line_with_bidi_direction(
                     text,
                     x,
                     y,
@@ -110,15 +132,18 @@ impl Canvas {
                     height,
                     glyph_positions,
                     Some(logical_line),
+                    resolved_bidi_rtl,
                 )
             }
-            None => super::text_selection::SelectableTextRun::with_glyph_positions(
+            None => super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line_with_bidi_direction(
                 text,
                 x,
                 y,
                 width,
                 height,
                 glyph_positions,
+                None,
+                resolved_bidi_rtl,
             ),
         };
         self.text_runs.push(run);

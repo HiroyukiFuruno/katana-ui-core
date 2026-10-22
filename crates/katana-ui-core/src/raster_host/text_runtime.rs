@@ -32,6 +32,7 @@ pub(super) struct RichTextDrawRequest {
     pub(super) raster_vertical_scale: f32,
     pub(super) font: FontToken,
     pub(super) line_height_px: f32,
+    pub(super) resolved_rtl: Option<bool>,
 }
 
 impl TextRenderer {
@@ -70,6 +71,7 @@ impl TextRenderer {
             request.x,
             request.text_run_origin_y,
             bidi_context.map_or(0, |context| context.prefix.len()),
+            request.resolved_rtl,
         );
     }
 
@@ -407,6 +409,7 @@ mod tests {
                 raster_vertical_scale: 1.0,
                 font: renderer.font_with_size(style.size),
                 line_height_px: default_line_height(style.size),
+                resolved_rtl: None,
             },
         );
 

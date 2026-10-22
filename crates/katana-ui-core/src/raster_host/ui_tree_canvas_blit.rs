@@ -224,7 +224,7 @@ impl Canvas {
             return;
         }
         self.text_runs.push(
-            super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line(
+            super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line_with_bidi_direction(
                 run.text(),
                 target_x,
                 target_y,
@@ -232,6 +232,7 @@ impl Canvas {
                 rect.height,
                 &glyph_positions,
                 logical_line,
+                run.resolved_bidi_rtl(),
             ),
         );
     }
@@ -351,5 +352,36 @@ mod tests {
             Some("ג".to_string()),
             target.copy_text_in_selection(Some((34, 4)), Some((44, 4)))
         );
+    }
+
+    #[test]
+    fn blit_preserves_resolved_direction_for_a_single_fragment() {
+        let mut source = Canvas::new(24, 12, 0x000000);
+        source.record_text_run_with_glyph_positions_with_bidi_direction(
+            "a",
+            4,
+            3,
+            10,
+            10,
+            &[(0, 10)],
+            Some(true),
+        );
+        let mut target = Canvas::new(48, 16, 0x000000);
+
+        target.blit_canvas(
+            &source,
+            CanvasBlitRequest {
+                dest_x: 20,
+                dest_y: 1,
+                width: 24,
+                height: 12,
+                source_y: 0,
+            },
+        );
+
+        let run = &target.text_runs()[0];
+        assert_eq!(Some(true), run.resolved_bidi_rtl());
+        assert_eq!(1, run.model().point_to_caret(25, 5));
+        assert_eq!(0, run.model().point_to_caret(33, 5));
     }
 }

@@ -2,6 +2,7 @@ use super::text_runtime::{RichTextDrawRequest, default_line_height};
 use super::{Canvas, RichTextBidiContext, RichTextLineSpan, RichTextStyle, TextRenderer};
 
 impl TextRenderer {
+    #[cfg(test)]
     pub(crate) fn draw_rich_line_signed(
         &self,
         canvas: &mut Canvas,
@@ -9,16 +10,35 @@ impl TextRenderer {
         x: isize,
         y: usize,
     ) {
-        self.draw_rich_line_signed_with_optional_bidi_context(canvas, spans, None, x, y);
+        self.draw_rich_line_signed_with_optional_bidi_context(canvas, spans, None, x, y, None);
     }
 
-    pub(crate) fn draw_rich_line_signed_with_bidi_context(
+    pub(crate) fn draw_rich_line_signed_with_resolved_direction(
+        &self,
+        canvas: &mut Canvas,
+        spans: &[RichTextLineSpan],
+        x: isize,
+        y: usize,
+        resolved_rtl: Option<bool>,
+    ) {
+        self.draw_rich_line_signed_with_optional_bidi_context(
+            canvas,
+            spans,
+            None,
+            x,
+            y,
+            resolved_rtl,
+        );
+    }
+
+    pub(crate) fn draw_rich_line_signed_with_bidi_context_and_resolved_direction(
         &self,
         canvas: &mut Canvas,
         spans: &[RichTextLineSpan],
         bidi_context: &RichTextBidiContext,
         x: isize,
         y: usize,
+        resolved_rtl: Option<bool>,
     ) {
         self.draw_rich_line_signed_with_optional_bidi_context(
             canvas,
@@ -26,6 +46,7 @@ impl TextRenderer {
             Some(bidi_context),
             x,
             y,
+            resolved_rtl,
         );
     }
 
@@ -36,6 +57,7 @@ impl TextRenderer {
         bidi_context: Option<&RichTextBidiContext>,
         x: isize,
         y: usize,
+        resolved_rtl: Option<bool>,
     ) {
         let raster_vertical_scale = spans
             .iter()
@@ -63,6 +85,7 @@ impl TextRenderer {
                 raster_vertical_scale,
                 font,
                 line_height_px,
+                resolved_rtl,
             },
         );
     }

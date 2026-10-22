@@ -46,7 +46,7 @@ pub(super) fn record_runtime_text_run(
     x: isize,
     y: f32,
 ) {
-    record_runtime_text_run_with_raster_prefix(canvas, text, raster, x, y, 0);
+    record_runtime_text_run_with_raster_prefix(canvas, text, raster, x, y, 0, None);
 }
 
 pub(super) fn record_runtime_text_run_with_raster_prefix(
@@ -56,13 +56,14 @@ pub(super) fn record_runtime_text_run_with_raster_prefix(
     x: isize,
     y: f32,
     raster_prefix_len: usize,
+    resolved_rtl: Option<bool>,
 ) {
     let Some(origin_x) = usize::try_from(x).ok() else {
         return;
     };
     let (glyph_positions, selection_width) =
         selection_glyph_positions_with_raster_prefix(text, raster, raster_prefix_len);
-    canvas.record_text_run_with_glyph_positions(
+    canvas.record_text_run_with_glyph_positions_with_bidi_direction(
         text,
         origin_x,
         y.round().max(0.0) as usize,
@@ -74,6 +75,7 @@ pub(super) fn record_runtime_text_run_with_raster_prefix(
             .max()
             .unwrap_or(1),
         &glyph_positions,
+        resolved_rtl,
     );
 }
 

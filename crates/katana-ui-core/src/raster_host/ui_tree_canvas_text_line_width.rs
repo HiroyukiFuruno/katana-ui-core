@@ -296,5 +296,8 @@ mod tests {
 }
 
 #[cfg(test)]
+#[path = "ui_tree_canvas_bidi_selection_contract_tests.rs"]
+mod bidi_selection_contract_tests;
+#[cfg(test)]
 #[path = "ui_tree_canvas_inline_code_contract_tests.rs"]
 mod inline_code_contract_tests;

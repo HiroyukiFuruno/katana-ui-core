@@ -52,6 +52,36 @@ pub(crate) struct UiTextCaretPosition {
     pub line_y: i32,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct UiTextCaretHit {
+    position: usize,
+    x: i32,
+    line_y: i32,
+}
+
+impl UiTextCaretHit {
+    #[must_use]
+    pub const fn caret_position(self) -> usize {
+        self.position
+    }
+
+    pub(crate) const fn from_position(value: UiTextCaretPosition) -> Self {
+        Self {
+            position: value.position,
+            x: value.x,
+            line_y: value.line_y,
+        }
+    }
+
+    pub(crate) const fn position(self) -> UiTextCaretPosition {
+        UiTextCaretPosition {
+            position: self.position,
+            x: self.x,
+            line_y: self.line_y,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiTextLineBox {
     pub byte_range: Range<usize>,

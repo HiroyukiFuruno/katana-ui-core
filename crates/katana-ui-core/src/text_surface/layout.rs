@@ -103,11 +103,6 @@ impl TextSurfaceLayout {
     }
 
     #[must_use]
-    pub fn hit_test(&self, point_x: i32, point_y: i32) -> UiTextSelectionRange {
-        UiTextSelectionRange::caret(self.caret_position_for_point(point_x, point_y).position)
-    }
-
-    #[must_use]
     pub(crate) fn caret_position_for_point(
         &self,
         point_x: i32,

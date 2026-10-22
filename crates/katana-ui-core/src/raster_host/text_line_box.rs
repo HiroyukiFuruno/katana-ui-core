@@ -51,6 +51,7 @@ impl TextRenderer {
         );
     }
 
+    #[cfg(test)]
     pub(crate) fn draw_rich_line_signed_in_line_box(
         &self,
         canvas: &mut Canvas,
@@ -70,10 +71,35 @@ impl TextRenderer {
                 height: line_box_height,
                 baseline_from_top: baseline_from_line_box_top,
             },
+            None,
         )
     }
 
-    pub(crate) fn draw_rich_line_signed_in_line_box_with_bidi_context(
+    pub(crate) fn draw_rich_line_signed_in_line_box_with_resolved_direction(
+        &self,
+        canvas: &mut Canvas,
+        spans: &[RichTextLineSpan],
+        x: isize,
+        line_box_top: f32,
+        line_box_height: f32,
+        baseline_from_line_box_top: f32,
+        resolved_rtl: Option<bool>,
+    ) -> f32 {
+        self.draw_rich_line_signed_in_line_box_with_context(
+            canvas,
+            spans,
+            None,
+            x,
+            RichTextLineBox {
+                top: line_box_top,
+                height: line_box_height,
+                baseline_from_top: baseline_from_line_box_top,
+            },
+            resolved_rtl,
+        )
+    }
+
+    pub(crate) fn draw_rich_line_signed_in_line_box_with_bidi_context_and_resolved_direction(
         &self,
         canvas: &mut Canvas,
         spans: &[RichTextLineSpan],
@@ -82,6 +108,7 @@ impl TextRenderer {
         line_box_top: f32,
         line_box_height: f32,
         baseline_from_line_box_top: f32,
+        resolved_rtl: Option<bool>,
     ) -> f32 {
         self.draw_rich_line_signed_in_line_box_with_context(
             canvas,
@@ -93,6 +120,7 @@ impl TextRenderer {
                 height: line_box_height,
                 baseline_from_top: baseline_from_line_box_top,
             },
+            resolved_rtl,
         )
     }
 
@@ -103,6 +131,7 @@ impl TextRenderer {
         bidi_context: Option<&RichTextBidiContext>,
         x: isize,
         line_box: RichTextLineBox,
+        resolved_rtl: Option<bool>,
     ) -> f32 {
         let raster_vertical_scale = spans
             .iter()
@@ -135,6 +164,7 @@ impl TextRenderer {
                 raster_vertical_scale,
                 font,
                 line_height_px: line_box.height,
+                resolved_rtl,
             },
         );
         raster_baseline

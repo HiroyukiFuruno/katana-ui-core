@@ -7,11 +7,21 @@ use serde::{Deserialize, Serialize};
 use std::ops::Range;
 use unicode_segmentation::UnicodeSegmentation;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UiTextSelectionModel {
     text: String,
     lines: Vec<UiTextLineBox>,
+    #[serde(skip)]
+    resolved_bidi_rtl: Option<bool>,
 }
+
+impl PartialEq for UiTextSelectionModel {
+    fn eq(&self, other: &Self) -> bool {
+        self.text == other.text && self.lines == other.lines
+    }
+}
+
+impl Eq for UiTextSelectionModel {}
 
 impl UiTextSelectionModel {
     #[must_use]
@@ -19,6 +29,21 @@ impl UiTextSelectionModel {
         Self {
             text: text.into(),
             lines,
+            resolved_bidi_rtl: None,
+        }
+    }
+
+    #[must_use]
+    #[cfg(feature = "raster-host")]
+    pub(crate) fn with_resolved_bidi_direction(
+        text: impl Into<String>,
+        lines: Vec<UiTextLineBox>,
+        resolved_bidi_rtl: bool,
+    ) -> Self {
+        Self {
+            text: text.into(),
+            lines,
+            resolved_bidi_rtl: Some(resolved_bidi_rtl),
         }
     }
 
@@ -79,7 +104,7 @@ impl UiTextSelectionModel {
         let Some(line) = self.line_for_y(y).or_else(|| self.lines.first()) else {
             return UiTextCaretPosition::default();
         };
-        let caret_positions = visual_caret_positions(line, &self.text);
+        let caret_positions = visual_caret_positions(line, &self.text, self.resolved_bidi_rtl);
         let Some(first) = caret_positions.first().copied() else {
             return UiTextCaretPosition::default();
         };
@@ -134,7 +159,7 @@ impl UiTextSelectionModel {
                     .first()
                     .is_some_and(|glyph| glyph.bounds.y == affinity.line_y)
             })
-            && visual_caret_positions(line, &self.text).contains(&affinity)
+            && visual_caret_positions(line, &self.text, self.resolved_bidi_rtl).contains(&affinity)
             && let Some(glyph) = line.glyphs.first()
         {
             return UiRect::new(affinity.x, glyph.bounds.y, 1, glyph.bounds.height);
@@ -319,7 +344,8 @@ mod tests {
     }
 
     #[test]
-    fn resolved_bidi_direction_does_not_change_the_serialized_model_shape() {
+    fn resolved_bidi_direction_does_not_change_the_serialized_model_shape() -> serde_json::Result<()>
+    {
         let model = UiTextSelectionModel::new(
             "\u{05d0}",
             vec![UiTextLineBox::new(
@@ -328,18 +354,22 @@ mod tests {
             )],
         );
 
-        let serialized = serde_json::to_value(&model).expect("model serializes");
-        let object = serialized
-            .as_object()
-            .expect("model serializes as an object");
-
-        assert_eq!(2, object.len());
-        assert!(object.contains_key("text"));
-        assert!(object.contains_key("lines"));
-        let restored: UiTextSelectionModel =
-            serde_json::from_value(serialized).expect("legacy model payload deserializes");
+        let serialized = serde_json::to_value(&model)?;
+        assert_eq!(Some(2), serialized.as_object().map(serde_json::Map::len));
+        assert!(
+            serialized
+                .as_object()
+                .is_some_and(|object| object.contains_key("text"))
+        );
+        assert!(
+            serialized
+                .as_object()
+                .is_some_and(|object| object.contains_key("lines"))
+        );
+        let restored: UiTextSelectionModel = serde_json::from_value(serialized)?;
         assert_eq!(1, restored.point_to_caret(11, 5));
         assert_eq!(0, restored.point_to_caret(19, 5));
+        Ok(())
     }
 
     #[test]

@@ -9,6 +9,7 @@ mod gutter;
 mod gutter_types;
 mod layout;
 mod layout_gutter;
+mod layout_hit_test;
 mod layout_model;
 mod layout_scroll;
 mod props;

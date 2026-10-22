@@ -21,7 +21,7 @@ impl SelectableTextRun {
                 ))
             })
             .collect::<Vec<_>>();
-        Self::with_glyph_positions_in_logical_line(
+        Self::with_glyph_positions_in_logical_line_with_bidi_direction(
             &self.text,
             self.x(),
             self.y().saturating_sub(offset_y),
@@ -29,6 +29,7 @@ impl SelectableTextRun {
             self.height(),
             &glyph_positions,
             self.logical_line,
+            self.resolved_bidi_rtl(),
         )
     }
 }
@@ -133,5 +134,26 @@ mod tests {
             Some("ג".to_string()),
             viewport.copy_text_in_selection(Some((4, 2)), Some((14, 2)))
         );
+    }
+
+    #[test]
+    fn viewport_preserves_resolved_direction_for_a_single_fragment() {
+        let mut canvas = Canvas::new(24, 12, 0);
+        canvas.record_text_run_with_glyph_positions_with_bidi_direction(
+            "a",
+            4,
+            3,
+            10,
+            10,
+            &[(0, 10)],
+            Some(true),
+        );
+
+        let viewport = canvas.viewport_y(3, 9, 0);
+        let run = &viewport.text_runs()[0];
+
+        assert_eq!(Some(true), run.resolved_bidi_rtl());
+        assert_eq!(1, run.model().point_to_caret(5, 5));
+        assert_eq!(0, run.model().point_to_caret(13, 5));
     }
 }

@@ -62,6 +62,48 @@ fn pointer_selection_preserves_the_chosen_bidi_caret_affinity_in_the_frame() {
 }
 
 #[test]
+fn public_hit_test_with_affinity_preserves_the_clicked_bidi_caret_side() {
+    let text = "a\u{05d0}\u{05d1}b";
+    let layout = TextSurfaceLayout::from_grapheme_boxes(
+        "raster:bidi:public-affinity",
+        UiRect::new(0, 0, 40, 10),
+        text,
+        vec![
+            TextSurfaceGraphemeBox {
+                grapheme_index: 0,
+                byte_start: 0,
+                byte_end: 1,
+                bounds: UiRect::new(0, 0, 10, 10),
+            },
+            TextSurfaceGraphemeBox {
+                grapheme_index: 1,
+                byte_start: 1,
+                byte_end: 3,
+                bounds: UiRect::new(20, 0, 10, 10),
+            },
+            TextSurfaceGraphemeBox {
+                grapheme_index: 2,
+                byte_start: 3,
+                byte_end: 5,
+                bounds: UiRect::new(10, 0, 10, 10),
+            },
+            TextSurfaceGraphemeBox {
+                grapheme_index: 3,
+                byte_start: 5,
+                byte_end: 6,
+                bounds: UiRect::new(30, 0, 10, 10),
+            },
+        ],
+    );
+
+    let hit = layout.hit_test_with_affinity(11, 5);
+
+    assert_eq!(3, hit.caret_position());
+    assert_eq!(UiRect::new(10, 0, 1, 10), layout.caret_rect_for_hit(hit));
+    assert_eq!(3, layout.hit_test(11, 5).caret_position());
+}
+
+#[test]
 fn a_single_rtl_grapheme_uses_resolved_direction_for_hit_testing() {
     let layout = TextSurfaceLayout::from_grapheme_boxes(
         "raster:bidi:single",

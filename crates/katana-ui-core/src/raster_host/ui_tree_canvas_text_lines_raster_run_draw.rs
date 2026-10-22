@@ -11,6 +11,7 @@ pub(super) struct RasterRun<'a> {
     source_spans: Vec<UiTextSpan>,
     x: isize,
     bidi_context: Option<RichTextBidiContext>,
+    resolved_rtl: Option<bool>,
 }
 
 impl<'a> RasterRun<'a> {
@@ -27,6 +28,7 @@ impl<'a> RasterRun<'a> {
                 source_spans: line.to_vec(),
                 x,
                 bidi_context: None,
+                resolved_rtl: None,
             }];
         }
         let renderers = SpanTextRenderers::new(context.renderer, context.code_renderer);
@@ -56,6 +58,7 @@ impl<'a> RasterRun<'a> {
                 source_spans: vec![positioned.span],
                 x: positioned.x,
                 bidi_context: positioned.bidi_context,
+                resolved_rtl: Some(positioned.resolved_rtl),
             });
         }
         runs
@@ -65,7 +68,7 @@ impl<'a> RasterRun<'a> {
         if let Some(baseline) = metrics.baseline_from_line_box_top {
             if let Some(bidi_context) = &self.bidi_context {
                 self.renderer
-                    .draw_rich_line_signed_in_line_box_with_bidi_context(
+                    .draw_rich_line_signed_in_line_box_with_bidi_context_and_resolved_direction(
                         canvas,
                         &self.spans,
                         bidi_context,
@@ -73,31 +76,41 @@ impl<'a> RasterRun<'a> {
                         top,
                         metrics.line_box_height,
                         baseline,
+                        self.resolved_rtl,
                     );
             } else {
-                self.renderer.draw_rich_line_signed_in_line_box(
-                    canvas,
-                    &self.spans,
-                    self.x,
-                    top,
-                    metrics.line_box_height,
-                    baseline,
-                );
+                self.renderer
+                    .draw_rich_line_signed_in_line_box_with_resolved_direction(
+                        canvas,
+                        &self.spans,
+                        self.x,
+                        top,
+                        metrics.line_box_height,
+                        baseline,
+                        self.resolved_rtl,
+                    );
             }
         } else {
             let integer_top = top.max(0.0).floor() as usize;
             canvas.with_fractional_y_origin(top, integer_top, |canvas| {
                 if let Some(bidi_context) = &self.bidi_context {
-                    self.renderer.draw_rich_line_signed_with_bidi_context(
+                    self.renderer
+                        .draw_rich_line_signed_with_bidi_context_and_resolved_direction(
+                            canvas,
+                            &self.spans,
+                            bidi_context,
+                            self.x,
+                            integer_top,
+                            self.resolved_rtl,
+                        );
+                } else {
+                    self.renderer.draw_rich_line_signed_with_resolved_direction(
                         canvas,
                         &self.spans,
-                        bidi_context,
                         self.x,
                         integer_top,
+                        self.resolved_rtl,
                     );
-                } else {
-                    self.renderer
-                        .draw_rich_line_signed(canvas, &self.spans, self.x, integer_top);
                 }
             });
         }
@@ -124,6 +137,7 @@ fn source_runs<'a>(
             source_spans: line[start..end].to_vec(),
             x,
             bidi_context: None,
+            resolved_rtl: None,
         });
         start = end;
     }

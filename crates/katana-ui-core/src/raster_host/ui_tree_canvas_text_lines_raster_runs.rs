@@ -15,6 +15,7 @@ pub(in crate::raster_host) struct PositionedSpan {
     source_range: Range<usize>,
     source_span_range: Range<usize>,
     pub(super) bidi_context: Option<RichTextBidiContext>,
+    pub(in crate::raster_host) resolved_rtl: bool,
 }
 
 impl PositionedSpan {
@@ -108,6 +109,7 @@ pub(in crate::raster_host) fn visual_span_positions(
                         x,
                         width: 0,
                         bidi_context: bidi_context_for_fragment(&text, &levels, &fragment_range),
+                        resolved_rtl: level.is_rtl(),
                         source_range: fragment_range,
                         source_span_range,
                     });

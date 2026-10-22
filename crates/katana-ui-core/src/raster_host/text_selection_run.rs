@@ -33,6 +33,7 @@ impl SelectableTextRun {
             rect: LayoutRect::new(x, y, width, height),
             model,
             logical_line,
+            resolved_bidi_rtl: None,
         }
     }
 
@@ -81,6 +82,7 @@ impl SelectableTextRun {
     }
 
     #[must_use]
+    #[cfg(test)]
     pub(super) fn with_glyph_positions(
         text: &str,
         x: usize,
@@ -93,6 +95,7 @@ impl SelectableTextRun {
     }
 
     #[must_use]
+    #[cfg(test)]
     pub(super) fn with_glyph_positions_in_logical_line(
         text: &str,
         x: usize,
@@ -101,6 +104,29 @@ impl SelectableTextRun {
         height: usize,
         glyph_positions: &[(usize, usize)],
         logical_line: Option<u64>,
+    ) -> Self {
+        Self::with_glyph_positions_in_logical_line_with_bidi_direction(
+            text,
+            x,
+            y,
+            width,
+            height,
+            glyph_positions,
+            logical_line,
+            None,
+        )
+    }
+
+    #[must_use]
+    pub(super) fn with_glyph_positions_in_logical_line_with_bidi_direction(
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        glyph_positions: &[(usize, usize)],
+        logical_line: Option<u64>,
+        resolved_bidi_rtl: Option<bool>,
     ) -> Self {
         let mut glyphs = Vec::new();
         let mut byte_offset = 0usize;
@@ -128,13 +154,19 @@ impl SelectableTextRun {
                 .with_text(grapheme),
             );
         }
-        let model =
-            UiTextSelectionModel::new(text, vec![UiTextLineBox::new(0..text.len(), glyphs)]);
+        let lines = vec![UiTextLineBox::new(0..text.len(), glyphs)];
+        let model = match resolved_bidi_rtl {
+            Some(direction) => {
+                UiTextSelectionModel::with_resolved_bidi_direction(text, lines, direction)
+            }
+            None => UiTextSelectionModel::new(text, lines),
+        };
         Self {
             text: text.to_string(),
             rect: LayoutRect::new(x, y, width, height),
             model,
             logical_line,
+            resolved_bidi_rtl,
         }
     }
 
@@ -146,6 +178,11 @@ impl SelectableTextRun {
     #[must_use]
     pub(in crate::raster_host) fn rect(&self) -> LayoutRect {
         self.rect
+    }
+
+    #[must_use]
+    pub(in crate::raster_host) const fn resolved_bidi_rtl(&self) -> Option<bool> {
+        self.resolved_bidi_rtl
     }
 
     #[must_use]
@@ -186,5 +223,27 @@ impl SelectableTextRun {
     #[must_use]
     pub(in crate::raster_host) const fn logical_line(&self) -> Option<u64> {
         self.logical_line
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SelectableTextRun;
+
+    #[test]
+    fn resolved_outer_bidi_direction_controls_single_fragment_hit_testing() {
+        let run = SelectableTextRun::with_glyph_positions_in_logical_line_with_bidi_direction(
+            "a",
+            10,
+            0,
+            10,
+            10,
+            &[(0, 10)],
+            None,
+            Some(true),
+        );
+
+        assert_eq!(1, run.model().point_to_caret(11, 5));
+        assert_eq!(0, run.model().point_to_caret(19, 5));
     }
 }

@@ -11,6 +11,7 @@
 - [/] PR #90 P2 follow-up: canvas viewport / blit でも既存のglyph geometryをy座標だけrebasingして保持し、複数bidi paragraphを含むno-wrap spanでは全paragraphの後続code fragmentをraster、selection、decoration、link hitまで通す。U+2029と孤立CRの回帰を固定する。段落境界で未閉鎖のembedding/override文脈をリセットして次段落へ漏らさないことを固定し、再レビューと全release gateを実行する。
 - [/] PR #90 final review P2: bidi run 境界では同じ論理 boundary に由来する視覚上の両側の caret candidate を保持し、mixed-direction glyph の hit-test と部分 selection が visual glyph と整合することを回帰で固定する。再レビューと全release gateを実行する。
 - [/] PR #90 Ready review P2: pointer hit で選んだ bidi caret の visual affinity を TextSurface state と selection frame まで保持し、resolved bidi level で一グラフェム RTL run の caret side を決める。pointer press/drag/frame と raster-host の回帰を固定し、再レビューと全release gateを実行する。
+- [/] PR #90 refreshed Draft review P2: public `UiTextCaretHit` を介して caller が hit/caret の visual affinity を往復できるようにし、独立 code raster の full-line resolved bidi level を selection run、viewport、blit まで保持する。RLO 内の単独 code fragment を含む回帰、再レビュー、全 release gate を実行する。
 - [x] Verify focused tests, format and strict Clippy: public code config 5 tests + Card 8 tests passed; just fmt-check and raster-host lib/integration strict Clippy passed.
 - [ ] Parent release workflow: review, version, full release checks, Draft PR, review/fixes, Ready, CI, merge and public release.
 
