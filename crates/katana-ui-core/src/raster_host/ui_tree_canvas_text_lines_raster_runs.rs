@@ -422,6 +422,60 @@ mod tests {
         );
     }
 
+    #[test]
+    fn inline_code_group_keeps_rlo_context_when_controls_are_in_adjacent_spans() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let body_renderer = TextRenderer::load(&facade, "body");
+        let code_renderer = TextRenderer::load(&facade, "code").with_raster_config(
+            PlatformTextRasterConfig::default(),
+            PlatformTextFaceSelection::CandidateChain,
+        );
+        let line = vec![
+            UiTextSpan::plain("\u{202e}A"),
+            UiTextSpan {
+                text: "CODE".to_owned(),
+                style: UiTextSpanStyle {
+                    inline_code: true,
+                    monospace: true,
+                    ..UiTextSpanStyle::default()
+                },
+                link_target: String::new(),
+            },
+            UiTextSpan::plain("Z\u{202c}"),
+        ];
+        let metrics = UiTreeTextMetrics::for_node(&UiNode::new(UiNodeKind::Text, "fixture"));
+
+        let positioned = visual_span_positions(
+            SpanTextRenderers::new(&body_renderer, &code_renderer),
+            &line,
+            metrics,
+            0,
+        )
+        .expect("split RLO inline-code line must use visual span geometry");
+        let code = positioned
+            .iter()
+            .find(|span| span.line_span_index == 1)
+            .expect("inline-code fragment geometry");
+
+        assert_eq!("CODE", code.span.text);
+        assert_eq!(
+            Some("\u{202e}".to_owned()),
+            code.bidi_context
+                .as_ref()
+                .map(|context| context.prefix.clone())
+        );
+        assert_eq!(
+            Some("\u{202c}".to_owned()),
+            code.bidi_context
+                .as_ref()
+                .map(|context| context.suffix.clone())
+        );
+        assert!(
+            code.resolved_rtl,
+            "the code fragment must retain the RLO level"
+        );
+    }
+
     fn positioned_fragment(
         line_span_index: usize,
         text: &str,

@@ -412,7 +412,7 @@ fn mixed_rtl_inline_code_link_hit_tracks_its_visual_raster_run() {
 }
 
 #[test]
-fn mixed_rtl_inline_code_preserves_explicit_bidi_shape_without_exposing_controls() {
+fn mixed_rtl_inline_code_keeps_split_rlo_context_without_exposing_controls() {
     use katana_ui_core::raster_host::{UiTreeDocumentTypography, UiTreeTextRoleBaselineTypography};
 
     let typography = UiTreeDocumentTypography::default()
@@ -439,23 +439,6 @@ fn mixed_rtl_inline_code_preserves_explicit_bidi_shape_without_exposing_controls
         ],
         ..UiTextProps::default()
     });
-    let expected = UiNode::new(UiNodeKind::Text, "").text(UiTextProps {
-        role: "paragraph".into(),
-        spans: vec![UiTextSpan {
-            text: "\u{202e}CODE\u{202c}".into(),
-            style: code_style,
-            link_target: String::new(),
-        }],
-        ..UiTextProps::default()
-    });
-    let mut expected_canvas = Canvas::new(180, 140, 0);
-    renderer.render(&mut expected_canvas, &expected, area());
-    let expected_run_x = expected_canvas
-        .text_runs()
-        .first()
-        .expect("expected code raster run")
-        .x();
-
     let mut actual_canvas = Canvas::new(180, 140, 0);
     renderer.render(&mut actual_canvas, &actual, area());
     let actual_code_run = actual_canvas
@@ -464,11 +447,19 @@ fn mixed_rtl_inline_code_preserves_explicit_bidi_shape_without_exposing_controls
         .find(|run| run.text() == "CODE")
         .expect("actual code raster run");
 
-    assert_eq!(
-        green_pixels_relative_to_run(expected_canvas.pixels(), expected_run_x as isize),
-        green_pixels_relative_to_run(actual_canvas.pixels(), actual_code_run.x() as isize),
-        "the code fragment must keep the RLO shaping context from surrounding spans"
-    );
+    let y = actual_code_run
+        .y()
+        .saturating_add(actual_code_run.height() / 2);
+    for (start, end) in [
+        (actual_code_run.x(), actual_code_run.right()),
+        (actual_code_run.right(), actual_code_run.x()),
+    ] {
+        assert_eq!(
+            Some("CODE".to_owned()),
+            actual_canvas.copy_text_in_selection(Some((start, y)), Some((end, y))),
+            "the visible code fragment must remain selectable without its shaping controls"
+        );
+    }
 }
 
 #[test]
@@ -536,16 +527,6 @@ fn green_pixels(pixels: &[u32]) -> Vec<(usize, usize, u32)> {
     points
         .into_iter()
         .map(|(x, y, color)| (x - left, y, color))
-        .collect()
-}
-
-fn green_pixels_relative_to_run(pixels: &[u32], run_x: isize) -> Vec<(isize, usize, u32)> {
-    pixels
-        .iter()
-        .enumerate()
-        .filter(|(_, pixel)| **pixel & 0xff00 != 0 && **pixel & 0xff00ff == 0)
-        .map(|(index, pixel)| (index % 180, index / 180, *pixel))
-        .map(|(x, y, color)| (x as isize - run_x, y, color))
         .collect()
 }
 
