@@ -57,7 +57,7 @@ fn paragraph_start_for_fragment(text: &str, fragment_start: usize) -> usize {
         .unwrap_or(0)
 }
 
-fn fragment_has_strong_direction(text: &str) -> bool {
+pub(super) fn fragment_has_strong_direction(text: &str) -> bool {
     text.chars().any(|character| {
         matches!(
             unicode_bidi::bidi_class(character),

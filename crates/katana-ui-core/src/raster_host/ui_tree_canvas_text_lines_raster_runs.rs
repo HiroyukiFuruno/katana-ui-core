@@ -1,4 +1,4 @@
-use super::bidi_context::bidi_context_for_fragment;
+use super::bidi_context::{bidi_context_for_fragment, fragment_has_strong_direction};
 use super::{
     SpanTextRenderers, UiTextSpan, UiTreeTextMetrics, span_visible_part_bounds_with_edges,
 };
@@ -144,7 +144,15 @@ pub(in crate::raster_host) fn visual_span_positions(
                 let shaping_run_x = cursor;
                 let renderer = renderers.for_span(&group[0].span);
                 let group_range = group.first()?.source_range.start..group.last()?.source_range.end;
-                let bidi_context = bidi_context_for_fragment(&text, &levels, &group_range);
+                let context_range = if group
+                    .iter()
+                    .any(|fragment| fragment_has_strong_direction(&fragment.span.text))
+                {
+                    visual_range.clone()
+                } else {
+                    group_range
+                };
+                let bidi_context = bidi_context_for_fragment(&text, &levels, &context_range);
                 let rich_spans = group
                     .iter()
                     .map(|fragment| {
