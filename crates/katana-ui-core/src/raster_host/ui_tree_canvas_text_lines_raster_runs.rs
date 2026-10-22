@@ -135,7 +135,6 @@ pub(in crate::raster_host) fn visual_span_positions(
                 }
                 source_start = source_end;
             }
-            let bidi_context = bidi_context_for_fragment(&text, &levels, &visual_range);
             fragments.sort_by_key(|fragment| fragment.source_range.start);
             let mut groups = split_shaping_groups(fragments, renderers, &text);
             if level.is_rtl() {
@@ -144,6 +143,8 @@ pub(in crate::raster_host) fn visual_span_positions(
             for mut group in groups {
                 let shaping_run_x = cursor;
                 let renderer = renderers.for_span(&group[0].span);
+                let group_range = group.first()?.source_range.start..group.last()?.source_range.end;
+                let bidi_context = bidi_context_for_fragment(&text, &levels, &group_range);
                 let rich_spans = group
                     .iter()
                     .map(|fragment| {
@@ -359,6 +360,57 @@ mod tests {
             base.x.saturating_add(base.width as isize) <= combining.x
                 || combining.x.saturating_add(combining.width as isize) <= base.x,
             "styled fragments inside one grapheme must retain distinct decoration and link ranges"
+        );
+    }
+
+    #[test]
+    fn neutral_inline_code_group_keeps_rtl_context_when_body_shares_its_visual_range() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let body_renderer = TextRenderer::load(&facade, "body");
+        let code_renderer = TextRenderer::load(&facade, "code").with_raster_config(
+            PlatformTextRasterConfig::default(),
+            PlatformTextFaceSelection::CandidateChain,
+        );
+        let line = vec![
+            UiTextSpan::plain("אבג "),
+            UiTextSpan {
+                text: "(".to_owned(),
+                style: UiTextSpanStyle {
+                    inline_code: true,
+                    ..UiTextSpanStyle::default()
+                },
+                link_target: String::new(),
+            },
+        ];
+        let metrics = UiTreeTextMetrics::for_node(&UiNode::new(UiNodeKind::Text, "fixture"));
+
+        let positioned = visual_span_positions(
+            SpanTextRenderers::new(&body_renderer, &code_renderer),
+            &line,
+            metrics,
+            0,
+        )
+        .expect("mixed bidi/code line must use visual span geometry");
+        let code = positioned
+            .iter()
+            .find(|span| span.line_span_index == 1)
+            .expect("inline-code fragment geometry");
+
+        assert_eq!(
+            Some("\u{2067}".to_owned()),
+            code.bidi_context
+                .as_ref()
+                .map(|context| context.prefix.clone())
+        );
+        assert_eq!(
+            Some("\u{2069}".to_owned()),
+            code.bidi_context
+                .as_ref()
+                .map(|context| context.suffix.clone())
+        );
+        assert!(
+            code.resolved_rtl,
+            "the full visual run must retain its RTL level"
         );
     }
 
