@@ -273,6 +273,9 @@ mod tests {
 }
 
 #[cfg(test)]
+#[path = "ui_tree_canvas_bidi_highlight_contract_tests.rs"]
+mod bidi_highlight_contract_tests;
+#[cfg(test)]
 #[path = "ui_tree_canvas_bidi_selection_contract_tests.rs"]
 mod bidi_selection_contract_tests;
 #[cfg(test)]
