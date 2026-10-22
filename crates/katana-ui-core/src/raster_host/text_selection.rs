@@ -29,12 +29,12 @@ pub(in crate::raster_host) fn copy_payload_for_selection(
 ) -> String {
     let mut payload = String::new();
     let mut previous_logical_line = None;
+    let mut has_selected_run = false;
     for run in runs {
         let Some(selected_text) = selected_text_for_run(run, selection) else {
             continue;
         };
-        if !payload.is_empty() && !same_logical_text_line(previous_logical_line, run.logical_line())
-        {
+        if has_selected_run && !same_logical_text_line(previous_logical_line, run.logical_line()) {
             let separator = run.separator_before();
             if separator.is_empty() {
                 payload.push('\n');
@@ -44,6 +44,7 @@ pub(in crate::raster_host) fn copy_payload_for_selection(
         }
         payload.push_str(&selected_text);
         previous_logical_line = run.logical_line();
+        has_selected_run = true;
     }
     payload
 }
@@ -82,6 +83,15 @@ fn selected_text_run_rects_for_run(
 }
 
 fn selected_text_for_run(run: &SelectableTextRun, selection: TextSelection) -> Option<String> {
+    if run.text().is_empty() {
+        let (anchor, focus) = ordered_selection_points(selection);
+        let intersects = anchor != focus
+            && focus.1 >= run.y()
+            && anchor.1 <= run.bottom()
+            && (anchor.1 < run.y() || anchor.0 <= run.x())
+            && (focus.1 > run.bottom() || focus.0 >= run.x());
+        return intersects.then(String::new);
+    }
     if selected_text_run_rects_for_run(run, selection).is_empty() {
         return None;
     }

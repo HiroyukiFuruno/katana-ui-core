@@ -198,6 +198,20 @@ impl Canvas {
         logical_line: Option<u64>,
     ) {
         let rect = run.rect();
+        if run.text().is_empty() {
+            self.text_runs.push(
+                super::text_selection::SelectableTextRun::new_in_logical_line_with_separator(
+                    "",
+                    target_x,
+                    target_y,
+                    rect.width,
+                    rect.height,
+                    logical_line,
+                    run.separator_before(),
+                ),
+            );
+            return;
+        }
         let glyph_positions = run
             .text()
             .graphemes(true)

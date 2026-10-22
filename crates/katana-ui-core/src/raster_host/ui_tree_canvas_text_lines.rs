@@ -203,6 +203,21 @@ impl UiTreeTextLines {
                 &line.separator_before,
                 line.separator_is_explicit,
                 |canvas| {
+                    if render_line.iter().all(|span| span.text.is_empty())
+                        && context
+                            .node
+                            .props()
+                            .text
+                            .spans
+                            .iter()
+                            .any(|span| !span.text.is_empty())
+                    {
+                        canvas.record_empty_text_selection_line(
+                            line_x.max(0) as usize,
+                            line_box_top.max(0.0).floor() as usize,
+                            context.metrics.line_box_height.ceil() as usize,
+                        );
+                    }
                     for run in runs {
                         run.draw(canvas, context.metrics, line_box_top);
                     }

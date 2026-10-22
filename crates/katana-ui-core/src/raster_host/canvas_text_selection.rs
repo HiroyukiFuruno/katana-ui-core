@@ -177,7 +177,12 @@ impl Canvas {
         self.active_text_selection_separator
             .push_str(separator_before);
         self.active_text_selection_separator_is_auto = !separator_is_explicit;
+        let run_start = self.text_runs.len();
         let result = operation(self);
+        if self.text_runs.len() > run_start {
+            self.active_text_selection_separator.clear();
+            self.active_text_selection_separator_is_auto = false;
+        }
         self.pending_text_selection_separator =
             std::mem::take(&mut self.active_text_selection_separator);
         self.pending_text_selection_separator_is_auto =
@@ -240,10 +245,33 @@ impl Canvas {
         mut run: super::text_selection::SelectableTextRun,
     ) -> super::text_selection::SelectableTextRun {
         if self.active_text_selection_line.is_some() {
-            run.separator_before = std::mem::take(&mut self.active_text_selection_separator);
-            self.active_text_selection_separator_is_auto = false;
+            run.separator_before
+                .clone_from(&self.active_text_selection_separator);
         }
         run
+    }
+
+    pub(in crate::raster_host) fn record_empty_text_selection_line(
+        &mut self,
+        x: usize,
+        y: usize,
+        height: usize,
+    ) {
+        let run = super::text_selection::SelectableTextRun::new_in_logical_line(
+            "",
+            x,
+            y,
+            1,
+            height.max(1),
+            self.active_text_selection_line,
+        );
+        let run = self.with_active_text_selection_separator(run);
+        if self
+            .clip
+            .is_none_or(|clip| self.text_run_fits_clip(&run, clip))
+        {
+            self.text_runs.push(run);
+        }
     }
 
     pub(crate) fn discard_text_runs_outside_current_clip_since(&mut self, start: usize) {

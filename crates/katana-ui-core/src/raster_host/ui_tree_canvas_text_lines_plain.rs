@@ -42,6 +42,13 @@ pub(super) fn draw_plain_at_logical_y(
             &line.separator_before,
             line.separator_is_explicit,
             |canvas| {
+                if line.content.is_empty() && !context.node.props().label.is_empty() {
+                    canvas.record_empty_text_selection_line(
+                        line_x.max(0) as usize,
+                        line_box_top.max(0.0).floor() as usize,
+                        context.metrics.line_box_height.ceil() as usize,
+                    );
+                }
                 if let Some(baseline) = context.metrics.baseline_from_line_box_top {
                     context.renderer.draw_signed_styled_in_line_box(
                         canvas,

@@ -16,6 +16,7 @@ impl PartialEq for SelectableTextRun {
         self.text == other.text
             && self.rect == other.rect
             && self.model == other.model
+            && self.separator_before == other.separator_before
             && self.resolved_bidi_rtl == other.resolved_bidi_rtl
     }
 }
