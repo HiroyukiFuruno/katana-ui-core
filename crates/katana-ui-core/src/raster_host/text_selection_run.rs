@@ -246,4 +246,30 @@ mod tests {
         assert_eq!(1, run.model().point_to_caret(11, 5));
         assert_eq!(0, run.model().point_to_caret(19, 5));
     }
+
+    #[test]
+    fn resolved_direction_participates_in_run_equality() {
+        let ltr = SelectableTextRun::with_glyph_positions_in_logical_line_with_bidi_direction(
+            "a",
+            10,
+            0,
+            10,
+            10,
+            &[(0, 10)],
+            None,
+            Some(false),
+        );
+        let rtl = SelectableTextRun::with_glyph_positions_in_logical_line_with_bidi_direction(
+            "a",
+            10,
+            0,
+            10,
+            10,
+            &[(0, 10)],
+            None,
+            Some(true),
+        );
+
+        assert_ne!(ltr, rtl);
+    }
 }

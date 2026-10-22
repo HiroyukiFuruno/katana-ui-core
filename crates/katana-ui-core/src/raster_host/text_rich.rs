@@ -1,7 +1,65 @@
+#[cfg(test)]
+use super::RichTextStyle;
 use super::text_runtime::{RichTextDrawRequest, default_line_height};
-use super::{Canvas, RichTextBidiContext, RichTextLineSpan, RichTextStyle, TextRenderer};
+use super::{Canvas, RichTextBidiContext, RichTextLineSpan, TextRenderer};
 
 impl TextRenderer {
+    pub(in crate::raster_host) fn measure_rich_span_layout_with_bidi_context(
+        &self,
+        source_spans: &[RichTextLineSpan],
+        bidi_context: Option<&RichTextBidiContext>,
+    ) -> (Vec<(usize, usize)>, usize) {
+        let source_text = source_spans
+            .iter()
+            .map(|span| span.text.as_str())
+            .collect::<String>();
+        let spans = Self::rich_raster_spans(source_spans, bidi_context);
+        let font = self.font_with_size(
+            source_spans
+                .first()
+                .map(|span| span.style.size)
+                .unwrap_or(self.font.size),
+        );
+        let line_height_px = source_spans
+            .iter()
+            .map(|span| default_line_height(span.style.size))
+            .fold(default_line_height(font.size), f32::max);
+        let Some(raster) = self.rasterize(spans, font, 1.0, line_height_px) else {
+            return fallback_rich_span_layout(self, source_spans);
+        };
+        let prefix_len = bidi_context.map_or(0, |context| context.prefix.len());
+        let mut byte_start = 0usize;
+        let mut layout = Vec::with_capacity(source_spans.len());
+        for span in source_spans {
+            let byte_end = byte_start.saturating_add(span.text.len());
+            let bounds = raster
+                .grapheme_bounds
+                .iter()
+                .filter(|bounds| {
+                    bounds.byte_start >= prefix_len.saturating_add(byte_start)
+                        && bounds.byte_end <= prefix_len.saturating_add(byte_end)
+                })
+                .map(|bounds| {
+                    let start = super::text_runtime_paint::logical_origin(bounds.x);
+                    let width = super::text_runtime_paint::logical_bound_extent(bounds.width);
+                    (start, start.saturating_add(width))
+                })
+                .fold(None, |range: Option<(usize, usize)>, (start, end)| {
+                    Some(match range {
+                        Some((left, right)) => (left.min(start), right.max(end)),
+                        None => (start, end),
+                    })
+                });
+            layout.push(bounds.map_or((0, 0), |(start, end)| {
+                (start, end.saturating_sub(start).max(1))
+            }));
+            byte_start = byte_end;
+        }
+        let width =
+            super::text_runtime_paint::text_run_selection_width(&source_text, &raster, prefix_len);
+        (layout, width)
+    }
+
     #[cfg(test)]
     pub(crate) fn draw_rich_line_signed(
         &self,
@@ -90,6 +148,7 @@ impl TextRenderer {
         );
     }
 
+    #[cfg(test)]
     pub(crate) fn measure_width_rich_with_bidi_context(
         &self,
         text: &str,
@@ -115,6 +174,23 @@ impl TextRenderer {
             },
         )
     }
+}
+
+fn fallback_rich_span_layout(
+    renderer: &TextRenderer,
+    source_spans: &[RichTextLineSpan],
+) -> (Vec<(usize, usize)>, usize) {
+    let mut cursor = 0usize;
+    let layout = source_spans
+        .iter()
+        .map(|span| {
+            let width = renderer.measure_width_rich(&span.text, span.style).max(1);
+            let position = (cursor, width);
+            cursor = cursor.saturating_add(width);
+            position
+        })
+        .collect();
+    (layout, cursor.max(1))
 }
 
 #[cfg(test)]

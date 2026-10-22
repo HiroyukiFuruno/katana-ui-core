@@ -29,8 +29,7 @@ mod wrap_state;
 
 use crate::raster_host::ui_tree_canvas_text_line_width::{
     SpanTextRenderers, preserves_whitespace, span_line_width, span_part_width,
-    span_part_width_with_bidi_context, span_visible_part_bounds,
-    span_visible_part_bounds_with_edges,
+    span_visible_part_bounds, span_visible_part_bounds_with_edges,
 };
 use line_decoration::decoration_y;
 pub(super) use line_decoration::underline_y_offset;
@@ -137,13 +136,9 @@ impl UiTreeTextLines {
             }
             let mut decorations = Vec::new();
             let mut span_backgrounds = Vec::with_capacity(render_line.len());
-            if let Some(positioned_spans) = visual_span_positions(
-                renderers,
-                render_line,
-                context.metrics,
-                preserve_whitespace,
-                line_x,
-            ) {
+            if let Some(positioned_spans) =
+                visual_span_positions(renderers, render_line, context.metrics, line_x)
+            {
                 for positioned in positioned_spans {
                     let visible_bounds = positioned.visible_part_bounds(
                         renderers,

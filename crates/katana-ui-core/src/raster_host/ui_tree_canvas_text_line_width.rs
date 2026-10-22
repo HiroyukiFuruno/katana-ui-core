@@ -1,4 +1,4 @@
-use crate::raster_host::text::{RichTextBidiContext, RichTextStyle, TextRenderer};
+use crate::raster_host::text::{RichTextStyle, TextRenderer};
 use crate::raster_host::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 use katana_ui_core::render_model::{UiNode, UiTextSpan};
 
@@ -56,29 +56,6 @@ pub(in crate::raster_host) fn span_part_width(
         metrics,
         preserve_whitespace,
     )
-}
-
-pub(in crate::raster_host) fn span_part_width_with_bidi_context(
-    renderers: SpanTextRenderers<'_>,
-    span: &UiTextSpan,
-    metrics: UiTreeTextMetrics,
-    preserve_whitespace: bool,
-    bidi_context: Option<&RichTextBidiContext>,
-) -> usize {
-    let Some(bidi_context) = bidi_context else {
-        return span_part_width(renderers, span, metrics, preserve_whitespace);
-    };
-    if !(span.style.inline_code || span.style.monospace) {
-        return span_part_width(renderers, span, metrics, preserve_whitespace);
-    }
-    renderers
-        .for_span(span)
-        .measure_width_rich_with_bidi_context(
-            span.text.as_str(),
-            span_rich_text_style(span, metrics, 0),
-            bidi_context,
-        )
-        .max(1)
 }
 
 pub(in crate::raster_host) fn span_visible_part_bounds(

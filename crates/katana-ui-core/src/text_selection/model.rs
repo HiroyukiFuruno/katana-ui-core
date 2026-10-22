@@ -17,7 +17,9 @@ pub struct UiTextSelectionModel {
 
 impl PartialEq for UiTextSelectionModel {
     fn eq(&self, other: &Self) -> bool {
-        self.text == other.text && self.lines == other.lines
+        self.text == other.text
+            && self.lines == other.lines
+            && self.resolved_bidi_rtl == other.resolved_bidi_rtl
     }
 }
 
@@ -370,6 +372,21 @@ mod tests {
         assert_eq!(1, restored.point_to_caret(11, 5));
         assert_eq!(0, restored.point_to_caret(19, 5));
         Ok(())
+    }
+
+    #[test]
+    fn resolved_bidi_direction_participates_in_model_equality() {
+        let ltr = UiTextSelectionModel::new(
+            "a",
+            vec![UiTextLineBox::new(
+                0..1,
+                vec![UiTextGlyphBox::new(0, 0..1, UiRect::new(0, 0, 10, 10), 10)],
+            )],
+        );
+        let mut rtl = ltr.clone();
+        rtl.resolved_bidi_rtl = Some(true);
+
+        assert_ne!(ltr, rtl);
     }
 
     #[test]

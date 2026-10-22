@@ -1,14 +1,17 @@
 use super::bidi_context::bidi_context_for_fragment;
 use super::{
-    SpanTextRenderers, UiTextSpan, UiTreeTextMetrics, span_part_width_with_bidi_context,
-    span_visible_part_bounds_with_edges,
+    SpanTextRenderers, UiTextSpan, UiTreeTextMetrics, span_visible_part_bounds_with_edges,
 };
-use crate::raster_host::text::RichTextBidiContext;
+use crate::raster_host::text::{RichTextBidiContext, RichTextLineSpan};
+use crate::raster_host::ui_tree_canvas_text_line_width::span_rich_text_style;
 use std::ops::Range;
 use unicode_bidi::BidiInfo;
+use unicode_segmentation::UnicodeSegmentation;
 
 pub(in crate::raster_host) struct PositionedSpan {
     pub(in crate::raster_host) line_span_index: usize,
+    pub(in crate::raster_host) shaping_run_index: usize,
+    pub(in crate::raster_host) shaping_run_x: isize,
     pub(in crate::raster_host) span: UiTextSpan,
     pub(in crate::raster_host) x: isize,
     pub(in crate::raster_host) width: usize,
@@ -25,6 +28,21 @@ impl PositionedSpan {
         metrics: UiTreeTextMetrics,
         preserve_whitespace: bool,
     ) -> (usize, usize) {
+        if !self
+            .span
+            .text
+            .chars()
+            .next()
+            .is_some_and(char::is_whitespace)
+            && !self
+                .span
+                .text
+                .chars()
+                .next_back()
+                .is_some_and(char::is_whitespace)
+        {
+            return (0, self.width);
+        }
         if self.bidi_context.is_some()
             && (self.span.style.inline_code || self.span.style.monospace)
             && !self
@@ -57,7 +75,6 @@ pub(in crate::raster_host) fn visual_span_positions(
     renderers: SpanTextRenderers<'_>,
     line: &[UiTextSpan],
     metrics: UiTreeTextMetrics,
-    preserve_whitespace: bool,
     x: isize,
 ) -> Option<Vec<PositionedSpan>> {
     if !renderers.has_independent_code_raster_config() {
@@ -77,6 +94,7 @@ pub(in crate::raster_host) fn visual_span_positions(
     let mut positioned = Vec::new();
     let mut cursor = x;
     let mut reorders_spans = false;
+    let mut shaping_run_index = 0usize;
     for paragraph in &bidi.paragraphs {
         let (levels, visual_ranges) = bidi.visual_runs(paragraph, paragraph.range.clone());
         reorders_spans |= visual_ranges
@@ -105,10 +123,12 @@ pub(in crate::raster_host) fn visual_span_positions(
                     span.text = source_span.text[source_fragment_range].to_owned();
                     fragments.push(PositionedSpan {
                         line_span_index,
+                        shaping_run_index: 0,
+                        shaping_run_x: x,
                         span,
                         x,
                         width: 0,
-                        bidi_context: bidi_context_for_fragment(&text, &levels, &fragment_range),
+                        bidi_context: None,
                         resolved_rtl: level.is_rtl(),
                         source_range: fragment_range,
                         source_span_range,
@@ -116,21 +136,38 @@ pub(in crate::raster_host) fn visual_span_positions(
                 }
                 source_start = source_end;
             }
+            let bidi_context = bidi_context_for_fragment(&text, &levels, &visual_range);
+            fragments.sort_by_key(|fragment| fragment.source_range.start);
+            let mut groups = split_shaping_groups(fragments, renderers, &text);
             if level.is_rtl() {
-                fragments.reverse();
+                groups.reverse();
             }
-            for fragment in &mut fragments {
-                fragment.x = cursor;
-                fragment.width = span_part_width_with_bidi_context(
-                    renderers,
-                    &fragment.span,
-                    metrics,
-                    preserve_whitespace,
-                    fragment.bidi_context.as_ref(),
-                );
-                cursor = cursor.saturating_add(fragment.width as isize);
+            for mut group in groups {
+                let shaping_run_x = cursor;
+                let renderer = renderers.for_span(&group[0].span);
+                let rich_spans = group
+                    .iter()
+                    .map(|fragment| {
+                        renderer.rich_line_span(
+                            fragment.span.text.clone(),
+                            span_rich_text_style(&fragment.span, metrics, 0),
+                        )
+                    })
+                    .collect::<Vec<RichTextLineSpan>>();
+                let (layout, group_width) = renderer
+                    .measure_rich_span_layout_with_bidi_context(&rich_spans, bidi_context.as_ref());
+                for (fragment, (offset, width)) in group.iter_mut().zip(layout) {
+                    fragment.x = cursor.saturating_add(offset as isize);
+                    fragment.width = width;
+                    fragment.shaping_run_x = shaping_run_x;
+                    fragment.bidi_context = bidi_context.clone();
+                    fragment.shaping_run_index = shaping_run_index;
+                    fragment.resolved_rtl = level.is_rtl();
+                }
+                cursor = cursor.saturating_add(group_width as isize);
+                positioned.extend(group);
+                shaping_run_index = shaping_run_index.saturating_add(1);
             }
-            positioned.extend(fragments);
         }
     }
     if !reorders_spans {
@@ -138,6 +175,39 @@ pub(in crate::raster_host) fn visual_span_positions(
     }
     positioned.sort_by_key(|fragment| fragment.source_range.start);
     (!positioned.is_empty()).then_some(positioned)
+}
+
+fn split_shaping_groups(
+    fragments: Vec<PositionedSpan>,
+    renderers: SpanTextRenderers<'_>,
+    source_text: &str,
+) -> Vec<Vec<PositionedSpan>> {
+    let mut groups: Vec<Vec<PositionedSpan>> = Vec::new();
+    for fragment in fragments {
+        let renderer = renderers.for_span(&fragment.span);
+        if let Some(group) = groups.last_mut()
+            && group.last().is_some_and(|previous: &PositionedSpan| {
+                std::ptr::eq(renderers.for_span(&previous.span), renderer)
+                    && can_share_shaping_request(source_text, previous, &fragment)
+            })
+        {
+            group.push(fragment);
+        } else {
+            groups.push(vec![fragment]);
+        }
+    }
+    groups
+}
+
+fn can_share_shaping_request(
+    source_text: &str,
+    previous: &PositionedSpan,
+    next: &PositionedSpan,
+) -> bool {
+    previous.source_range.end == next.source_range.start
+        && source_text
+            .grapheme_indices(true)
+            .any(|(index, _)| index == next.source_range.start)
 }
 
 fn intersection(left: &Range<usize>, right: &Range<usize>) -> Option<Range<usize>> {
@@ -168,6 +238,9 @@ pub(super) fn is_code(span: &UiTextSpan) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::raster_host::text::TextRenderer;
+    use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::theme::ThemeSnapshot;
 
     #[test]
     fn fragment_slices_require_global_and_local_utf8_boundaries() {
@@ -187,5 +260,43 @@ mod tests {
             fragment_slice_range("abc", "bc", &(0..1), 1),
             "the fragment must remain within its source span",
         );
+    }
+
+    #[test]
+    fn split_grapheme_fragments_stay_in_separate_shaping_groups() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let renderer = TextRenderer::load(&facade, "body");
+        let fragments = vec![
+            positioned_fragment(0, "e", 0..1),
+            positioned_fragment(1, "\u{0301}", 1..3),
+        ];
+
+        let groups = split_shaping_groups(
+            fragments,
+            SpanTextRenderers::new(&renderer, &renderer),
+            "e\u{0301}",
+        );
+
+        assert_eq!(2, groups.len());
+        assert!(groups.iter().all(|group| group.len() == 1));
+    }
+
+    fn positioned_fragment(
+        line_span_index: usize,
+        text: &str,
+        source_range: Range<usize>,
+    ) -> PositionedSpan {
+        PositionedSpan {
+            line_span_index,
+            shaping_run_index: 0,
+            shaping_run_x: 0,
+            span: UiTextSpan::plain(text),
+            x: 0,
+            width: 0,
+            bidi_context: None,
+            resolved_rtl: false,
+            source_span_range: source_range.clone(),
+            source_range,
+        }
     }
 }

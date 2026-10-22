@@ -12,7 +12,10 @@ pub struct SelectableTextRun {
 
 impl PartialEq for SelectableTextRun {
     fn eq(&self, other: &Self) -> bool {
-        self.text == other.text && self.rect == other.rect && self.model == other.model
+        self.text == other.text
+            && self.rect == other.rect
+            && self.model == other.model
+            && self.resolved_bidi_rtl == other.resolved_bidi_rtl
     }
 }
 

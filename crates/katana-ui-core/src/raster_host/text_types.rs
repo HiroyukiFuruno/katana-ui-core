@@ -14,7 +14,7 @@ pub(crate) struct RichTextLineSpan {
     pub(super) style: RichTextStyle,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct RichTextBidiContext {
     pub(in crate::raster_host) prefix: String,
     pub(in crate::raster_host) suffix: String,

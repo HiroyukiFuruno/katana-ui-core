@@ -20,6 +20,8 @@ const RED_SHIFT: u32 = 16;
 const GREEN_SHIFT: u32 = 8;
 const CHANNEL_MASK: u32 = 0xff;
 
+#[path = "ui_tree_canvas_text_lines_bidi_decoration_tests.rs"]
+mod bidi_decoration_tests;
 #[path = "ui_tree_canvas_text_lines_decoration_tests.rs"]
 mod decoration_tests;
 #[path = "ui_tree_canvas_text_lines_fractional_tests.rs"]

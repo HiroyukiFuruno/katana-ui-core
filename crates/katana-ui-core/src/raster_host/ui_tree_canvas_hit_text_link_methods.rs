@@ -91,8 +91,7 @@ impl UiTreeHostActionHitCollector<'_> {
                         }
                     }
                 };
-            if let Some(positioned_spans) =
-                visual_span_positions(renderers, line, metrics, preserve_whitespace, line_x)
+            if let Some(positioned_spans) = visual_span_positions(renderers, line, metrics, line_x)
             {
                 for positioned in positioned_spans {
                     let source_index = line_source_indices

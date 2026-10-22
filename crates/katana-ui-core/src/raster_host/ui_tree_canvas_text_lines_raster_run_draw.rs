@@ -12,6 +12,7 @@ pub(super) struct RasterRun<'a> {
     x: isize,
     bidi_context: Option<RichTextBidiContext>,
     resolved_rtl: Option<bool>,
+    visual_run_index: Option<usize>,
 }
 
 impl<'a> RasterRun<'a> {
@@ -29,17 +30,13 @@ impl<'a> RasterRun<'a> {
                 x,
                 bidi_context: None,
                 resolved_rtl: None,
+                visual_run_index: None,
             }];
         }
         let renderers = SpanTextRenderers::new(context.renderer, context.code_renderer);
         let mut source_runs = source_runs(line, rich, renderers, x);
-        let Some(positioned_spans) = visual_span_positions(
-            renderers,
-            line,
-            context.metrics,
-            preserves_whitespace(context.node),
-            x,
-        ) else {
+        let Some(positioned_spans) = visual_span_positions(renderers, line, context.metrics, x)
+        else {
             assign_source_positions(
                 &mut source_runs,
                 renderers,
@@ -49,16 +46,30 @@ impl<'a> RasterRun<'a> {
             );
             return source_runs;
         };
-        let mut runs = Vec::with_capacity(positioned_spans.len());
+        let mut runs: Vec<RasterRun<'a>> = Vec::with_capacity(positioned_spans.len());
         for positioned in positioned_spans {
             let rich_span = &rich[positioned.line_span_index];
+            let renderer = renderers.for_span(&positioned.span);
+            let compatible_run = runs.last_mut().filter(|run| {
+                run.visual_run_index == Some(positioned.shaping_run_index)
+                    && std::ptr::eq(run.renderer, renderer)
+                    && run.bidi_context == positioned.bidi_context
+                    && run.resolved_rtl == Some(positioned.resolved_rtl)
+            });
+            if let Some(run) = compatible_run {
+                run.spans
+                    .push(rich_span.with_text(positioned.span.text.clone()));
+                run.source_spans.push(positioned.span);
+                continue;
+            }
             runs.push(Self {
-                renderer: renderers.for_span(&positioned.span),
+                renderer,
                 spans: vec![rich_span.with_text(positioned.span.text.clone())],
                 source_spans: vec![positioned.span],
-                x: positioned.x,
+                x: positioned.shaping_run_x,
                 bidi_context: positioned.bidi_context,
                 resolved_rtl: Some(positioned.resolved_rtl),
+                visual_run_index: Some(positioned.shaping_run_index),
             });
         }
         runs
@@ -138,6 +149,7 @@ fn source_runs<'a>(
             x,
             bidi_context: None,
             resolved_rtl: None,
+            visual_run_index: None,
         });
         start = end;
     }

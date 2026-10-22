@@ -145,11 +145,11 @@ fn logical_extent(extent: usize, scale_factor: f32) -> usize {
         .max(1.0) as usize
 }
 
-fn logical_origin(position: f32) -> usize {
+pub(super) fn logical_origin(position: f32) -> usize {
     position.ceil().max(0.0) as usize
 }
 
-fn logical_bound_extent(extent: f32) -> usize {
+pub(super) fn logical_bound_extent(extent: f32) -> usize {
     extent.ceil().max(1.0) as usize
 }
 
