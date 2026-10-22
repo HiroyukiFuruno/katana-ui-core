@@ -212,7 +212,7 @@ impl UiTextSelectionModel {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_selection::UiTextCaretPosition;
+    use crate::text_selection::{UiTextCaretHit, UiTextCaretPosition};
 
     #[test]
     fn bidi_run_boundaries_keep_both_visual_caret_candidates() {
@@ -307,6 +307,20 @@ mod tests {
             model.caret_rect_with_affinity(UiTextSelectionRange::caret(1), Some(affinity)),
             "the caret must use the glyph that emitted the hit affinity"
         );
+    }
+
+    #[test]
+    fn caret_hits_with_different_glyphs_are_not_equal_at_the_same_position() {
+        let position = UiTextCaretPosition {
+            position: 1,
+            x: 20,
+            line_y: 0,
+            glyph_index: None,
+        };
+        let first = UiTextCaretHit::from_position_and_glyph(position, Some(0));
+        let second = UiTextCaretHit::from_position_and_glyph(position, Some(1));
+
+        assert_ne!(first, second);
     }
 
     #[test]

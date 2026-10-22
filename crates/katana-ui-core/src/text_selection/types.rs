@@ -63,7 +63,10 @@ pub struct UiTextCaretHit {
 
 impl PartialEq for UiTextCaretHit {
     fn eq(&self, other: &Self) -> bool {
-        self.position == other.position && self.x == other.x && self.line_y == other.line_y
+        self.position == other.position
+            && self.x == other.x
+            && self.line_y == other.line_y
+            && self.glyph_index == other.glyph_index
     }
 }
 
