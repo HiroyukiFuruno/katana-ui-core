@@ -1,4 +1,7 @@
-use super::{UiTextGlyphBox, UiTextLineBox, UiTextPasteResult, UiTextSelectionRange};
+use super::model_bidi::visual_caret_positions;
+use super::{
+    UiTextCaretPosition, UiTextGlyphBox, UiTextLineBox, UiTextPasteResult, UiTextSelectionRange,
+};
 use crate::render_model::UiRect;
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
@@ -58,7 +61,7 @@ impl UiTextSelectionModel {
             lines.push(UiTextLineBox::new(line_start..byte_offset, glyphs));
             byte_offset = byte_offset.saturating_add(1);
         }
-        Self { text, lines }
+        Self::new(text, lines)
     }
 
     #[must_use]
@@ -68,27 +71,30 @@ impl UiTextSelectionModel {
 
     #[must_use]
     pub fn point_to_caret(&self, x: i32, y: i32) -> usize {
+        self.point_to_caret_position(x, y).position
+    }
+
+    #[must_use]
+    pub(crate) fn point_to_caret_position(&self, x: i32, y: i32) -> UiTextCaretPosition {
         let Some(line) = self.line_for_y(y).or_else(|| self.lines.first()) else {
-            return 0;
+            return UiTextCaretPosition::default();
         };
-        let caret_positions = visual_caret_positions(line);
-        let Some((first_x, first_caret)) = caret_positions.first().copied() else {
-            return 0;
+        let caret_positions = visual_caret_positions(line, &self.text);
+        let Some(first) = caret_positions.first().copied() else {
+            return UiTextCaretPosition::default();
         };
-        if x <= first_x {
-            return first_caret;
+        if x <= first.x {
+            return first;
         }
         for positions in caret_positions.windows(2) {
-            let (left_x, left_caret) = positions[0];
-            let (right_x, _) = positions[1];
-            let midpoint = left_x + (right_x - left_x) / 2;
+            let left = positions[0];
+            let right = positions[1];
+            let midpoint = left.x + (right.x - left.x) / 2;
             if x < midpoint {
-                return left_caret;
+                return left;
             }
         }
-        caret_positions
-            .last()
-            .map_or(first_caret, |(_, caret)| *caret)
+        caret_positions.last().copied().unwrap_or(first)
     }
 
     #[must_use]
@@ -112,7 +118,27 @@ impl UiTextSelectionModel {
 
     #[must_use]
     pub fn caret_rect(&self, selection: UiTextSelectionRange) -> UiRect {
+        self.caret_rect_with_affinity(selection, None)
+    }
+
+    #[must_use]
+    pub(crate) fn caret_rect_with_affinity(
+        &self,
+        selection: UiTextSelectionRange,
+        affinity: Option<UiTextCaretPosition>,
+    ) -> UiRect {
         let caret = selection.caret_position();
+        if let Some(affinity) = affinity.filter(|value| value.position == caret)
+            && let Some(line) = self.lines.iter().find(|line| {
+                line.glyphs
+                    .first()
+                    .is_some_and(|glyph| glyph.bounds.y == affinity.line_y)
+            })
+            && visual_caret_positions(line, &self.text).contains(&affinity)
+            && let Some(glyph) = line.glyphs.first()
+        {
+            return UiRect::new(affinity.x, glyph.bounds.y, 1, glyph.bounds.height);
+        }
         if let Some(glyph) = self
             .all_glyphs()
             .find(|glyph| glyph.grapheme_index == caret)
@@ -227,34 +253,6 @@ impl UiTextSelectionModel {
     }
 }
 
-fn visual_caret_positions(line: &UiTextLineBox) -> Vec<(i32, usize)> {
-    let mut glyphs = line.glyphs.iter().collect::<Vec<_>>();
-    glyphs.sort_by_key(|glyph| glyph.grapheme_index);
-    let mut positions = Vec::with_capacity(glyphs.len().saturating_mul(2));
-    for (index, glyph) in glyphs.iter().enumerate() {
-        let (before_x, after_x) = if glyph_is_rtl_in_visual_order(&glyphs, index) {
-            (glyph.caret_x_after(), glyph.caret_x_before())
-        } else {
-            (glyph.caret_x_before(), glyph.caret_x_after())
-        };
-        positions.push((before_x, glyph.grapheme_index));
-        positions.push((after_x, glyph.grapheme_index.saturating_add(1)));
-    }
-    positions.sort_by_key(|(x, _)| *x);
-    positions
-}
-
-fn glyph_is_rtl_in_visual_order(glyphs: &[&UiTextGlyphBox], index: usize) -> bool {
-    let glyph = glyphs[index];
-    index
-        .checked_sub(1)
-        .and_then(|previous| glyphs.get(previous))
-        .is_some_and(|previous| glyph.bounds.x < previous.bounds.x)
-        || glyphs
-            .get(index.saturating_add(1))
-            .is_some_and(|next| next.bounds.x < glyph.bounds.x)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -286,5 +284,75 @@ mod tests {
             vec![UiRect::new(10, 0, 10, 10)],
             model.highlight_rects(selection)
         );
+    }
+
+    #[test]
+    fn selected_visual_caret_affinity_is_available_for_rendering() {
+        let text = "a\u{05d0}\u{05d1}b";
+        let model = UiTextSelectionModel::new(
+            text,
+            vec![UiTextLineBox::new(
+                0..text.len(),
+                vec![
+                    UiTextGlyphBox::new(0, 0..1, UiRect::new(0, 0, 10, 10), 10),
+                    UiTextGlyphBox::new(1, 1..3, UiRect::new(20, 0, 10, 10), 10),
+                    UiTextGlyphBox::new(2, 3..5, UiRect::new(10, 0, 10, 10), 10),
+                    UiTextGlyphBox::new(3, 5..6, UiRect::new(30, 0, 10, 10), 10),
+                ],
+            )],
+        );
+
+        let affinity = model.point_to_caret_position(11, 5);
+
+        assert_eq!(
+            UiTextCaretPosition {
+                position: 3,
+                x: 10,
+                line_y: 0,
+            },
+            affinity
+        );
+        assert_eq!(
+            UiRect::new(10, 0, 1, 10),
+            model.caret_rect_with_affinity(UiTextSelectionRange::caret(3), Some(affinity))
+        );
+    }
+
+    #[test]
+    fn resolved_bidi_direction_does_not_change_the_serialized_model_shape() {
+        let model = UiTextSelectionModel::new(
+            "\u{05d0}",
+            vec![UiTextLineBox::new(
+                0..2,
+                vec![UiTextGlyphBox::new(0, 0..2, UiRect::new(10, 0, 10, 10), 10)],
+            )],
+        );
+
+        let serialized = serde_json::to_value(&model).expect("model serializes");
+        let object = serialized
+            .as_object()
+            .expect("model serializes as an object");
+
+        assert_eq!(2, object.len());
+        assert!(object.contains_key("text"));
+        assert!(object.contains_key("lines"));
+        let restored: UiTextSelectionModel =
+            serde_json::from_value(serialized).expect("legacy model payload deserializes");
+        assert_eq!(1, restored.point_to_caret(11, 5));
+        assert_eq!(0, restored.point_to_caret(19, 5));
+    }
+
+    #[test]
+    fn a_single_rtl_grapheme_uses_its_resolved_direction() {
+        let model = UiTextSelectionModel::new(
+            "\u{05d0}",
+            vec![UiTextLineBox::new(
+                0..2,
+                vec![UiTextGlyphBox::new(0, 0..2, UiRect::new(10, 0, 10, 10), 10)],
+            )],
+        );
+
+        assert_eq!(1, model.point_to_caret(11, 5));
+        assert_eq!(0, model.point_to_caret(19, 5));
     }
 }

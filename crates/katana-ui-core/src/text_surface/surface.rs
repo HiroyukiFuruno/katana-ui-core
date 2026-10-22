@@ -20,7 +20,11 @@ impl TextSurface {
             props.viewport.scroll_x,
             props.viewport.scroll_y,
         );
-        Self { props, state }
+        Self {
+            props,
+            state,
+            caret_affinity: None,
+        }
     }
 
     #[must_use]
@@ -44,6 +48,7 @@ impl TextSurface {
             return false;
         }
         self.state.text_area = self.props.text_area.state().clone();
+        self.caret_affinity = None;
         true
     }
 
@@ -93,6 +98,7 @@ impl TextSurface {
             layout,
             viewport,
             state: &self.state,
+            caret_affinity: self.caret_affinity,
             label: self.props.accessibility_label.clone(),
             accessibility_actions: &self.props.accessibility_actions,
             context_target_label: self.props.context_target_label.as_deref(),
@@ -162,6 +168,7 @@ impl TextSurface {
         selection_requested: bool,
     ) -> TextSurfaceActionOutcome {
         self.state.text_area = outcome.state.clone();
+        self.caret_affinity = None;
         let mut events = outcome
             .events
             .into_iter()
@@ -189,6 +196,7 @@ impl TextSurface {
         };
         let result = ComponentAction::apply_action(&mut self.props.text_area, &action);
         self.state.text_area = self.props.text_area.state().clone();
+        self.caret_affinity = None;
         TextSurfaceActionOutcome {
             handled: result.handled,
             events: result

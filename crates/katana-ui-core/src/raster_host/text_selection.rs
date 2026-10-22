@@ -240,6 +240,14 @@ mod tests {
     }
 
     #[test]
+    fn one_grapheme_rtl_run_uses_its_resolved_direction() {
+        let run = SelectableTextRun::with_glyph_positions("\u{05d0}", 10, 0, 10, 10, &[(0, 10)]);
+
+        assert_eq!(1, run.model().point_to_caret(11, 5));
+        assert_eq!(0, run.model().point_to_caret(19, 5));
+    }
+
+    #[test]
     fn rtl_glyph_positions_keep_visual_selection_geometry_and_logical_copy_text() {
         let run = SelectableTextRun::with_glyph_positions(
             "אבג",

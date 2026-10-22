@@ -45,6 +45,13 @@ impl UiTextGlyphBox {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct UiTextCaretPosition {
+    pub position: usize,
+    pub x: i32,
+    pub line_y: i32,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct UiTextLineBox {
     pub byte_range: Range<usize>,

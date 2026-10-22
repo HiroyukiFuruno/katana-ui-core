@@ -64,6 +64,8 @@ pub use surface_model::TextSurface;
 #[cfg(test)]
 mod accessibility_tests;
 #[cfg(test)]
+mod bidi_selection_tests;
+#[cfg(test)]
 mod clipboard_tests;
 #[cfg(test)]
 mod focus_request_tests;
