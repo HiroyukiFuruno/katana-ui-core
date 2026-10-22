@@ -16,6 +16,11 @@ pub struct Canvas {
     pub(super) pixels: Vec<u32>,
     pub(super) clip: Option<CanvasClip>,
     pub(super) text_runs: Vec<SelectableTextRun>,
+    pub(super) active_text_selection_line: Option<u64>,
+    pub(super) active_text_selection_separator: String,
+    pub(super) active_text_selection_separator_is_auto: bool,
+    pub(super) pending_text_selection_separator: String,
+    pub(super) pending_text_selection_separator_is_auto: bool,
     pub(super) physical_y_offset: usize,
 }
 

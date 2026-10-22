@@ -14,6 +14,10 @@ mod text_table;
 #[path = "ui_tree_canvas_text_types.rs"]
 mod text_types;
 
+pub(in crate::raster_host) fn is_paragraph_separator(character: char) -> bool {
+    matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}')
+}
+
 use text_cursor::logical_canvas_boundary;
 use text_lines::{UiTreeTextLineContext, UiTreeTextLines};
 use text_table::{UiTreeTextTable, UiTreeTextTableContext};

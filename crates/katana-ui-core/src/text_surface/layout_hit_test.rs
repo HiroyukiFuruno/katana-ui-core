@@ -1,0 +1,20 @@
+use super::layout_model::TextSurfaceLayout;
+use crate::render_model::UiRect;
+use crate::text_selection::{UiTextCaretHit, UiTextSelectionRange};
+
+impl TextSurfaceLayout {
+    #[must_use]
+    pub fn hit_test(&self, point_x: i32, point_y: i32) -> UiTextSelectionRange {
+        UiTextSelectionRange::caret(self.caret_position_for_point(point_x, point_y).position)
+    }
+
+    #[must_use]
+    pub fn hit_test_with_affinity(&self, point_x: i32, point_y: i32) -> UiTextCaretHit {
+        self.selection_model.caret_hit_for_point(point_x, point_y)
+    }
+
+    #[must_use]
+    pub fn caret_rect_for_hit(&self, hit: UiTextCaretHit) -> UiRect {
+        self.selection_model.caret_rect_for_hit(hit)
+    }
+}

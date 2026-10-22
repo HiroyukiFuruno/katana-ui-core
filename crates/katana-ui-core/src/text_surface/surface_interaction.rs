@@ -74,7 +74,7 @@ impl TextSurface {
                 },
             );
         }
-        let hit = layout.hit_test(point.x, point.y).caret_position();
+        let hit = layout.caret_position_for_point(point.x, point.y);
         self.state.pointer_anchor = Some(point);
         let start = if extend_selection {
             layout
@@ -84,7 +84,7 @@ impl TextSurface {
                 )
                 .caret_position()
         } else {
-            hit
+            hit.position
         };
         self.select_grapheme_range(layout, start, hit)
     }
@@ -103,8 +103,8 @@ impl TextSurface {
                 },
             );
         };
-        let start = layout.hit_test(anchor.x, anchor.y).caret_position();
-        let end = layout.hit_test(point.x, point.y).caret_position();
+        let start = layout.caret_position_for_point(anchor.x, anchor.y).position;
+        let end = layout.caret_position_for_point(point.x, point.y);
         self.select_grapheme_range(layout, start, end)
     }
 
@@ -123,14 +123,19 @@ impl TextSurface {
         &mut self,
         layout: &TextSurfaceLayout,
         start: usize,
-        end: usize,
+        end: crate::text_selection::UiTextCaretPosition,
     ) -> TextSurfaceActionOutcome {
         let (selection_start, selection_end) = layout.byte_offsets_for_grapheme_range(
-            crate::text_selection::UiTextSelectionRange::new(start, end),
+            crate::text_selection::UiTextSelectionRange::new(start, end.position),
         );
-        self.apply_text_area_action(TextAreaAction::Select(TextAreaSelection {
+        let mut outcome = self.apply_text_area_action(TextAreaAction::Select(TextAreaSelection {
             start: selection_start,
             end: selection_end,
-        }))
+        }));
+        if outcome.handled {
+            self.caret_affinity = Some(end);
+            outcome.state = self.state.clone();
+        }
+        outcome
     }
 }

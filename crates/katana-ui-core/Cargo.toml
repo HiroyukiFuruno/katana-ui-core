@@ -35,6 +35,7 @@ sha2 = { workspace = true, optional = true }
 tempfile = { workspace = true, optional = true }
 tiny-skia = { workspace = true, optional = true }
 unicode-segmentation.workspace = true
+unicode-bidi.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { workspace = true, optional = true }

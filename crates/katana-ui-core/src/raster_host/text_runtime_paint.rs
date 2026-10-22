@@ -46,11 +46,24 @@ pub(super) fn record_runtime_text_run(
     x: isize,
     y: f32,
 ) {
+    record_runtime_text_run_with_raster_prefix(canvas, text, raster, x, y, 0, None);
+}
+
+pub(super) fn record_runtime_text_run_with_raster_prefix(
+    canvas: &mut Canvas,
+    text: &str,
+    raster: &PlatformTextRaster,
+    x: isize,
+    y: f32,
+    raster_prefix_len: usize,
+    resolved_rtl: Option<bool>,
+) {
     let Some(origin_x) = usize::try_from(x).ok() else {
         return;
     };
-    let (glyph_widths, selection_width) = selection_glyph_widths(text, raster);
-    canvas.record_text_run_with_glyph_widths(
+    let (glyph_positions, selection_width) =
+        selection_glyph_positions_with_raster_prefix(text, raster, raster_prefix_len);
+    canvas.record_text_run_with_glyph_positions_with_bidi_direction(
         text,
         origin_x,
         y.round().max(0.0) as usize,
@@ -61,34 +74,69 @@ pub(super) fn record_runtime_text_run(
             .map(|bounds| bounds.height.ceil().max(1.0) as usize)
             .max()
             .unwrap_or(1),
-        &glyph_widths,
+        &glyph_positions,
+        resolved_rtl,
     );
 }
 
+pub(super) fn text_run_selection_width(
+    text: &str,
+    raster: &PlatformTextRaster,
+    raster_prefix_len: usize,
+) -> usize {
+    selection_glyph_positions_with_raster_prefix(text, raster, raster_prefix_len).1
+}
+
+#[cfg(test)]
 pub(super) fn selection_glyph_widths(
     text: &str,
     raster: &PlatformTextRaster,
 ) -> (Vec<usize>, usize) {
-    let mut right = 0usize;
-    let widths = text
+    let (glyph_positions, selection_width) =
+        selection_glyph_positions_with_raster_prefix(text, raster, 0);
+    (
+        glyph_positions
+            .into_iter()
+            .map(|(_, width)| width)
+            .collect(),
+        selection_width,
+    )
+}
+
+#[cfg(test)]
+pub(super) fn selection_glyph_positions(
+    text: &str,
+    raster: &PlatformTextRaster,
+) -> (Vec<(usize, usize)>, usize) {
+    selection_glyph_positions_with_raster_prefix(text, raster, 0)
+}
+
+fn selection_glyph_positions_with_raster_prefix(
+    text: &str,
+    raster: &PlatformTextRaster,
+    raster_prefix_len: usize,
+) -> (Vec<(usize, usize)>, usize) {
+    let mut fallback_right = 0usize;
+    let mut selection_right = 0usize;
+    let positions = text
         .grapheme_indices(true)
         .map(|(byte_start, grapheme)| {
-            let next_right = raster
+            let (x, width) = raster
                 .grapheme_bounds
                 .iter()
                 .find(|bounds| {
-                    bounds.byte_start == byte_start
-                        && bounds.byte_end == byte_start + grapheme.len()
+                    bounds.byte_start == raster_prefix_len + byte_start
+                        && bounds.byte_end == raster_prefix_len + byte_start + grapheme.len()
                 })
-                .map(|bounds| logical_position(bounds.x + bounds.width))
-                .unwrap_or_else(|| right.saturating_add(1));
-            let next_right = next_right.max(right.saturating_add(1));
-            let width = next_right.saturating_sub(right);
-            right = next_right;
-            width
+                .map(|bounds| (logical_origin(bounds.x), logical_bound_extent(bounds.width)))
+                .unwrap_or((fallback_right, 1));
+            let right = x.saturating_add(width);
+            fallback_right = fallback_right.max(right);
+            selection_right = selection_right.max(right);
+            (x, width)
         })
         .collect::<Vec<_>>();
-    (widths, right.max(1))
+    (positions, selection_right.max(1))
 }
 
 fn logical_extent(extent: usize, scale_factor: f32) -> usize {
@@ -97,8 +145,12 @@ fn logical_extent(extent: usize, scale_factor: f32) -> usize {
         .max(1.0) as usize
 }
 
-fn logical_position(position: f32) -> usize {
-    position.ceil().max(1.0) as usize
+pub(super) fn logical_origin(position: f32) -> usize {
+    position.ceil().max(0.0) as usize
+}
+
+pub(super) fn logical_bound_extent(extent: f32) -> usize {
+    extent.ceil().max(1.0) as usize
 }
 
 pub(super) fn visible_raster_width(raster: &PlatformTextRaster, scale_factor: f32) -> usize {

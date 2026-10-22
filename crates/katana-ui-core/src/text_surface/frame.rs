@@ -11,7 +11,7 @@ use super::props::TextSurfaceViewport;
 use super::state::TextSurfaceState;
 use crate::atom::TextAreaState;
 use crate::render_model::{UiIconProps, UiRect};
-use crate::text_selection::UiTextSelectionRange;
+use crate::text_selection::{UiTextCaretPosition, UiTextSelectionRange};
 
 const MAXIMUM_GUTTER_MARKER_EXTENT_PX: u32 = 16;
 
@@ -19,6 +19,7 @@ pub(crate) struct TextSurfaceFrameInput<'a> {
     pub(crate) layout: &'a TextSurfaceLayout,
     pub(crate) viewport: TextSurfaceViewport,
     pub(crate) state: &'a TextSurfaceState,
+    pub(crate) caret_affinity: Option<UiTextCaretPosition>,
     pub(crate) label: String,
     pub(crate) accessibility_actions: &'a TextSurfaceAccessibilityLabels,
     pub(crate) context_target_label: Option<&'a str>,
@@ -37,6 +38,7 @@ impl TextSurfaceFrameRecord {
             layout,
             viewport,
             state,
+            caret_affinity,
             label,
             accessibility_actions,
             context_target_label,
@@ -59,7 +61,7 @@ impl TextSurfaceFrameRecord {
             caret: state.text_area.caret,
             selection_start: state.text_area.selection.start,
             selection_end: state.text_area.selection.end,
-            selection: selection_frame(layout, &state.text_area),
+            selection: selection_frame(layout, state, caret_affinity),
             preedit: preedit_frame(layout, &state.text_area),
             annotations: annotation_frames(layout, annotations),
             gutter: gutter_frames(
@@ -216,11 +218,21 @@ fn preedit_frame(
         })
 }
 
-fn selection_frame(layout: &TextSurfaceLayout, state: &TextAreaState) -> TextSurfaceSelectionFrame {
-    let range = layout.grapheme_range_for_byte_offsets(state.selection.start, state.selection.end);
+fn selection_frame(
+    layout: &TextSurfaceLayout,
+    state: &TextSurfaceState,
+    caret_affinity: Option<UiTextCaretPosition>,
+) -> TextSurfaceSelectionFrame {
+    let range = layout.grapheme_range_for_byte_offsets(
+        state.text_area.selection.start,
+        state.text_area.selection.end,
+    );
     TextSurfaceSelectionFrame {
         range,
         rects: layout.selection_rects(range),
-        caret: layout.caret_rect(UiTextSelectionRange::caret(range.caret_position())),
+        caret: layout.caret_rect_with_affinity(
+            UiTextSelectionRange::caret(range.caret_position()),
+            caret_affinity,
+        ),
     }
 }

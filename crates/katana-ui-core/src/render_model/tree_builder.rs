@@ -9,6 +9,13 @@ use super::{
 use crate::theme::ThemeSnapshot;
 
 impl UiNode {
+    /// 同一 node の hit 領域を左へ拡張し、描画原点から独立させます。
+    #[must_use]
+    pub fn hit_outset_left(mut self, value: u16) -> Self {
+        self.hit_outset_left = value;
+        self
+    }
+
     #[must_use]
     pub fn interaction(mut self, value: UiInteractionState) -> Self {
         self.props.interaction = value;

@@ -84,6 +84,10 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: bash scripts/ci/install-headless-display.sh
 
+      - name: Install ffmpeg on Ubuntu
+        if: matrix.os == 'ubuntu-latest'
+        run: bash scripts/ci/install-ffmpeg.sh
+
       - name: Install ffmpeg on macOS
         if: matrix.os == 'macos-latest'
         run: brew install ffmpeg

@@ -4,7 +4,7 @@ use super::{
     dimension_px,
 };
 use crate::raster_host::ui_tree_canvas_text_line_width::{
-    SpanTextRenderers, preserves_whitespace, span_part_width, span_visible_part_bounds,
+    SpanTextRenderers, preserves_whitespace, span_part_width,
 };
 
 impl UiTreeHostActionHitCollector<'_> {
@@ -30,19 +30,6 @@ impl UiTreeHostActionHitCollector<'_> {
 
     pub(super) fn text_span_render_width(&self, node: &UiNode, span: &UiTextSpan) -> usize {
         span_part_width(
-            self.span_text_renderers(node),
-            span,
-            UiTreeTextMetrics::for_node_with_typography(node, self.typography),
-            preserves_whitespace(node),
-        )
-    }
-
-    pub(super) fn text_span_visible_hit_bounds(
-        &self,
-        node: &UiNode,
-        span: &UiTextSpan,
-    ) -> (usize, usize) {
-        span_visible_part_bounds(
             self.span_text_renderers(node),
             span,
             UiTreeTextMetrics::for_node_with_typography(node, self.typography),

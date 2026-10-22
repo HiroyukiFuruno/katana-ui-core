@@ -25,6 +25,10 @@ impl<'a> SpanTextRenderers<'a> {
         }
         self.text
     }
+
+    pub(in crate::raster_host) fn has_independent_code_raster_config(self) -> bool {
+        self.code.has_independent_raster_config()
+    }
 }
 
 pub(in crate::raster_host) fn span_line_width(
@@ -60,25 +64,44 @@ pub(in crate::raster_host) fn span_visible_part_bounds(
     metrics: UiTreeTextMetrics,
     preserve_whitespace: bool,
 ) -> (usize, usize) {
+    span_visible_part_bounds_with_edges(renderers, span, metrics, preserve_whitespace, true, true)
+}
+
+pub(in crate::raster_host) fn span_visible_part_bounds_with_edges(
+    renderers: SpanTextRenderers<'_>,
+    span: &UiTextSpan,
+    metrics: UiTreeTextMetrics,
+    preserve_whitespace: bool,
+    trim_leading: bool,
+    trim_trailing: bool,
+) -> (usize, usize) {
     let full_width = span_part_width(renderers, span, metrics, preserve_whitespace);
     if span.text.chars().all(is_inline_whitespace) {
         return (0, full_width);
     }
 
-    let leading_width = inline_whitespace_prefix_width(
-        renderers,
-        span,
-        span.text.as_str(),
-        metrics,
-        preserve_whitespace,
-    );
-    let trailing_width = inline_whitespace_suffix_width(
-        renderers,
-        span,
-        span.text.as_str(),
-        metrics,
-        preserve_whitespace,
-    );
+    let leading_width = if trim_leading {
+        inline_whitespace_prefix_width(
+            renderers,
+            span,
+            span.text.as_str(),
+            metrics,
+            preserve_whitespace,
+        )
+    } else {
+        0
+    };
+    let trailing_width = if trim_trailing {
+        inline_whitespace_suffix_width(
+            renderers,
+            span,
+            span.text.as_str(),
+            metrics,
+            preserve_whitespace,
+        )
+    } else {
+        0
+    };
     let visible_width = full_width
         .saturating_sub(leading_width)
         .saturating_sub(trailing_width)
@@ -249,6 +272,12 @@ mod tests {
     }
 }
 
+#[cfg(test)]
+#[path = "ui_tree_canvas_bidi_highlight_contract_tests.rs"]
+mod bidi_highlight_contract_tests;
+#[cfg(test)]
+#[path = "ui_tree_canvas_bidi_selection_contract_tests.rs"]
+mod bidi_selection_contract_tests;
 #[cfg(test)]
 #[path = "ui_tree_canvas_inline_code_contract_tests.rs"]
 mod inline_code_contract_tests;

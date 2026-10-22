@@ -54,6 +54,9 @@ jobs:
       - name: Install headless display
         run: bash scripts/ci/install-headless-display.sh
 
+      - name: Install ffmpeg for release check
+        run: bash scripts/ci/install-ffmpeg.sh
+
       - name: Resolve version
         id: version
         if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/v')
@@ -100,7 +103,20 @@ jobs:
         if: github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/v')
         env:
           KUC_COVERAGE_EPHEMERAL_CLEANUP: "1"
+          KUC_COVERAGE_LOG_DIR: ${{ runner.temp }}/kuc-coverage-test-logs
+          # 全workspace coverage の実行器を二つの単一thread childに制限し、hosted runner の
+          # native UI test が同時に確保する資源を抑える。検査対象とcoverage基準は変えない。
+          COVERAGE_TEST_THREADS: "2"
         run: just VERSION="${{ steps.version.outputs.version }}" release-check
+
+      - name: Upload failed coverage test logs
+        if: failure() && steps.release_check.outcome == 'failure' && (github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/v'))
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: kuc-coverage-test-logs-${{ github.run_id }}
+          path: ${{ runner.temp }}/kuc-coverage-test-logs
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Record release gate result
         if: always() && (github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'release/v'))

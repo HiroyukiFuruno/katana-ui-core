@@ -5,12 +5,28 @@ use std::cell::RefCell;
 pub struct TextRenderer {
     pub(super) rasterizer: RefCell<PlatformTextRasterizer>,
     pub(super) font: FontToken,
+    pub(super) independent_raster_config: bool,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct RichTextLineSpan {
     pub(super) text: String,
     pub(super) style: RichTextStyle,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct RichTextBidiContext {
+    pub(in crate::raster_host) prefix: String,
+    pub(in crate::raster_host) suffix: String,
+}
+
+impl RichTextLineSpan {
+    pub(crate) fn with_text(&self, text: String) -> Self {
+        Self {
+            text,
+            style: self.style,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

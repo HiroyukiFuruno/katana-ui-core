@@ -1,4 +1,11 @@
 use super::canvas_model::Canvas;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+static NEXT_TEXT_SELECTION_LINE: AtomicU64 = AtomicU64::new(0);
+
+pub(in crate::raster_host) fn next_text_selection_line_id() -> u64 {
+    NEXT_TEXT_SELECTION_LINE.fetch_add(1, Ordering::Relaxed)
+}
 
 impl Canvas {
     #[must_use]
@@ -45,12 +52,22 @@ impl Canvas {
         if text.is_empty() || width == 0 || height == 0 {
             return;
         }
-        self.text_runs
-            .push(super::text_selection::SelectableTextRun::new(
-                text, x, y, width, height,
-            ));
+        let run = match self.active_text_selection_line {
+            Some(logical_line) => super::text_selection::SelectableTextRun::new_in_logical_line(
+                text,
+                x,
+                y,
+                width,
+                height,
+                Some(logical_line),
+            ),
+            None => super::text_selection::SelectableTextRun::new(text, x, y, width, height),
+        };
+        let run = self.with_active_text_selection_separator(run);
+        self.text_runs.push(run);
     }
 
+    #[cfg(test)]
     pub(crate) fn record_text_run_with_glyph_widths(
         &mut self,
         text: &str,
@@ -60,18 +77,201 @@ impl Canvas {
         height: usize,
         glyph_widths: &[usize],
     ) {
+        let mut glyph_x = 0usize;
+        let glyph_positions = glyph_widths
+            .iter()
+            .map(|width| {
+                let position = (glyph_x, (*width).max(1));
+                glyph_x = glyph_x.saturating_add(position.1);
+                position
+            })
+            .collect::<Vec<_>>();
+        self.record_text_run_with_glyph_positions(text, x, y, width, height, &glyph_positions);
+    }
+
+    #[cfg(test)]
+    pub(crate) fn record_text_run_with_glyph_positions(
+        &mut self,
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        glyph_positions: &[(usize, usize)],
+    ) {
+        self.record_text_run_with_glyph_positions_with_bidi_direction(
+            text,
+            x,
+            y,
+            width,
+            height,
+            glyph_positions,
+            None,
+        );
+    }
+
+    pub(crate) fn record_text_run_with_glyph_positions_with_bidi_direction(
+        &mut self,
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        glyph_positions: &[(usize, usize)],
+        resolved_bidi_rtl: Option<bool>,
+    ) {
         if text.is_empty() || width == 0 || height == 0 {
             return;
         }
-        self.text_runs
-            .push(super::text_selection::SelectableTextRun::with_glyph_widths(
+        let run = match self.active_text_selection_line {
+            Some(logical_line) => {
+                super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line_with_bidi_direction(
+                    text,
+                    x,
+                    y,
+                    width,
+                    height,
+                    glyph_positions,
+                    Some(logical_line),
+                    resolved_bidi_rtl,
+                )
+            }
+            None => super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line_with_bidi_direction(
                 text,
                 x,
                 y,
                 width,
                 height,
-                glyph_widths,
-            ));
+                glyph_positions,
+                None,
+                resolved_bidi_rtl,
+            ),
+        };
+        let run = self.with_active_text_selection_separator(run);
+        self.text_runs.push(run);
+    }
+
+    #[cfg(test)]
+    pub(in crate::raster_host) fn with_text_selection_line<T>(
+        &mut self,
+        operation: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        self.with_text_selection_line_separator("\n", false, operation)
+    }
+
+    pub(in crate::raster_host) fn with_text_selection_line_separator<T>(
+        &mut self,
+        separator_before: &str,
+        separator_is_explicit: bool,
+        operation: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let previous = self.active_text_selection_line;
+        let previous_separator = std::mem::take(&mut self.active_text_selection_separator);
+        let previous_separator_is_auto = self.active_text_selection_separator_is_auto;
+        self.active_text_selection_line = Some(next_text_selection_line_id());
+        if separator_is_explicit && self.pending_text_selection_separator_is_auto {
+            self.pending_text_selection_separator.clear();
+        }
+        self.active_text_selection_separator =
+            std::mem::take(&mut self.pending_text_selection_separator);
+        self.active_text_selection_separator
+            .push_str(separator_before);
+        self.active_text_selection_separator_is_auto = !separator_is_explicit;
+        let run_start = self.text_runs.len();
+        let result = operation(self);
+        if self.text_runs.len() > run_start {
+            self.active_text_selection_separator.clear();
+            self.active_text_selection_separator_is_auto = false;
+        }
+        self.pending_text_selection_separator =
+            std::mem::take(&mut self.active_text_selection_separator);
+        self.pending_text_selection_separator_is_auto =
+            self.active_text_selection_separator_is_auto;
+        self.active_text_selection_line = previous;
+        self.active_text_selection_separator = previous_separator;
+        self.active_text_selection_separator_is_auto = previous_separator_is_auto;
+        result
+    }
+
+    #[cfg(test)]
+    pub(in crate::raster_host) fn record_text_run_in_logical_line(
+        &mut self,
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        logical_line: Option<u64>,
+    ) {
+        self.record_text_run_in_logical_line_with_separator(
+            text,
+            x,
+            y,
+            width,
+            height,
+            logical_line,
+            "",
+        );
+    }
+
+    pub(in crate::raster_host) fn record_text_run_in_logical_line_with_separator(
+        &mut self,
+        text: &str,
+        x: usize,
+        y: usize,
+        width: usize,
+        height: usize,
+        logical_line: Option<u64>,
+        separator_before: &str,
+    ) {
+        if text.is_empty() || width == 0 || height == 0 {
+            return;
+        }
+        self.text_runs.push(
+            super::text_selection::SelectableTextRun::new_in_logical_line_with_separator(
+                text,
+                x,
+                y,
+                width,
+                height,
+                logical_line,
+                separator_before,
+            ),
+        );
+    }
+
+    fn with_active_text_selection_separator(
+        &mut self,
+        mut run: super::text_selection::SelectableTextRun,
+    ) -> super::text_selection::SelectableTextRun {
+        if self.active_text_selection_line.is_some() {
+            run.separator_before
+                .clone_from(&self.active_text_selection_separator);
+        }
+        run
+    }
+
+    pub(in crate::raster_host) fn record_empty_text_selection_line(
+        &mut self,
+        x: usize,
+        y: usize,
+        height: usize,
+    ) {
+        let run = super::text_selection::SelectableTextRun::new_in_logical_line(
+            "",
+            x,
+            y,
+            1,
+            height.max(1),
+            self.active_text_selection_line,
+        );
+        let run = self.with_active_text_selection_separator(run);
+        if self
+            .clip
+            .is_none_or(|clip| self.text_run_fits_clip(&run, clip))
+        {
+            self.text_runs.push(run);
+        }
     }
 
     pub(crate) fn discard_text_runs_outside_current_clip_since(&mut self, start: usize) {
@@ -112,6 +312,38 @@ mod tests {
         canvas.record_text_run("text", 0, 0, 0, 1);
         canvas.record_text_run_with_glyph_widths("", 0, 0, 1, 1, &[]);
         canvas.record_text_run_with_glyph_widths("text", 0, 0, 1, 0, &[1]);
+        canvas.record_text_run_in_logical_line("", 0, 0, 1, 1, Some(1));
+        canvas.record_text_run_in_logical_line("text", 0, 0, 0, 1, Some(1));
         assert!(canvas.text_runs().is_empty());
+    }
+
+    #[test]
+    fn logical_line_ids_do_not_change_canvas_or_text_run_equality() {
+        let mut first = Canvas::new(8, 8, 0);
+        first.with_text_selection_line(|canvas| {
+            canvas.record_text_run("text", 0, 0, 4, 1);
+        });
+        let mut second = Canvas::new(8, 8, 0);
+        second.with_text_selection_line(|canvas| {
+            canvas.record_text_run("text", 0, 0, 4, 1);
+        });
+
+        assert_eq!(first.text_runs(), second.text_runs());
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn explicit_separator_replaces_pending_automatic_separator_and_records_empty_line() {
+        let mut canvas = Canvas::new(16, 8, 0);
+        canvas.with_text_selection_line(|_canvas| {});
+
+        canvas.with_text_selection_line_separator("\r", true, |canvas| {
+            canvas.record_text_run_in_logical_line_with_separator("body", 0, 0, 4, 1, Some(7), "");
+            canvas.record_empty_text_selection_line(0, 2, 1);
+        });
+
+        assert_eq!(2, canvas.text_runs().len());
+        assert_eq!("", canvas.text_runs()[0].separator_before());
+        assert_eq!("\r", canvas.text_runs()[1].separator_before());
     }
 }

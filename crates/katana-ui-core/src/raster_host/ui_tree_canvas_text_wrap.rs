@@ -1,14 +1,26 @@
 use super::super::super::text::TextRenderer;
 use super::super::super::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
 use super::super::super::ui_tree_canvas_types::UiTreeRenderArea;
-use super::wrap_state::SpanWrapState;
+use super::super::is_paragraph_separator;
+#[cfg(test)]
 pub(super) use super::wrap_state::span_segments;
+use super::wrap_state::{SpanWrapState, WrappedTextLine};
 use crate::raster_host::ui_tree_canvas_text_line_width::SpanTextRenderers;
 #[cfg(test)]
 use crate::raster_host::ui_tree_canvas_text_line_width::span_part_width;
 use katana_ui_core::render_model::{UiNode, UiTextSpan, UiTextWrapMode};
+use katana_ui_core::text_raster::{PlatformFontCatalogFingerprint, PlatformTextFaceSelection};
 use std::cell::RefCell;
 use std::collections::HashMap;
+
+#[path = "ui_tree_canvas_text_wrap_paragraphs.rs"]
+mod paragraphs;
+#[cfg(test)]
+use paragraphs::{alert_plain_lines, fixed_char_chunks, span_no_wrap_lines};
+use paragraphs::{
+    alert_plain_lines_with_metadata, paragraph_lines, plain_lines_with_separator_metadata,
+    span_no_wrap_lines_with_metadata,
+};
 
 const MIN_TEXT_WIDTH: usize = 120;
 const COMPACT_DOCUMENT_FONT_SIZE: f32 = 14.0;
@@ -25,6 +37,11 @@ thread_local! {
 pub(in crate::raster_host) struct UiTreeTextWrap;
 
 impl UiTreeTextWrap {
+    #[cfg(test)]
+    pub(in crate::raster_host) fn cached_plain_line_count_for_test() -> usize {
+        PLAIN_LINE_CACHE.with(|cache| cache.borrow().len())
+    }
+
     pub(super) fn plain_lines(
         renderer: &TextRenderer,
         node: &UiNode,
@@ -32,27 +49,63 @@ impl UiTreeTextWrap {
         area: UiTreeRenderArea,
         metrics: UiTreeTextMetrics,
     ) -> Vec<String> {
+        Self::plain_lines_with_metadata(renderer, node, x, area, metrics)
+            .into_iter()
+            .map(|line| line.content)
+            .collect()
+    }
+
+    pub(super) fn plain_lines_with_metadata(
+        renderer: &TextRenderer,
+        node: &UiNode,
+        x: usize,
+        area: UiTreeRenderArea,
+        metrics: UiTreeTextMetrics,
+    ) -> Vec<WrappedTextLine<String>> {
         let max_width = available_width(node, x, area);
         let wrap_metrics = wrap_metrics_for_node(node, metrics);
-        let cache_key = PlainLineCacheKey::from_node(node, max_width, wrap_metrics);
-        if let Some(lines) = cached_plain_lines(&cache_key) {
-            return lines;
+        let cache_key = PlainLineCacheKey::from_node(renderer, node, max_width, wrap_metrics);
+        let contains_separator = node.props().label.chars().any(is_paragraph_separator);
+        if !contains_separator && let Some(lines) = cached_plain_lines(&cache_key) {
+            return lines
+                .into_iter()
+                .enumerate()
+                .map(|(index, content)| WrappedTextLine {
+                    content,
+                    separator_before: if index > 0 { "\n" } else { "" }.to_owned(),
+                    separator_is_explicit: false,
+                })
+                .collect();
         }
         if !should_wrap(node) {
-            let lines: Vec<String> = node.props().label.split('\n').map(str::to_string).collect();
-            remember_plain_lines(cache_key, &lines);
+            let lines = paragraph_lines(&node.props().label);
+            if !contains_separator {
+                remember_plain_lines(
+                    cache_key,
+                    &lines
+                        .iter()
+                        .map(|line| line.content.clone())
+                        .collect::<Vec<_>>(),
+                );
+            }
             return lines;
         }
         let lines = if node.props().text.role == "alert" {
-            alert_plain_lines(&node.props().label)
+            alert_plain_lines_with_metadata(&node.props().label)
         } else {
-            node.props()
-                .label
-                .split('\n')
-                .flat_map(|line| wrap_plain_line(renderer, line, max_width, wrap_metrics))
-                .collect()
+            plain_lines_with_separator_metadata(&node.props().label, |line| {
+                wrap_plain_line(renderer, line, max_width, wrap_metrics)
+            })
         };
-        remember_plain_lines(cache_key, &lines);
+        if !contains_separator {
+            remember_plain_lines(
+                cache_key,
+                &lines
+                    .iter()
+                    .map(|line| line.content.clone())
+                    .collect::<Vec<_>>(),
+            );
+        }
         lines
     }
 
@@ -63,18 +116,27 @@ impl UiTreeTextWrap {
         area: UiTreeRenderArea,
         metrics: UiTreeTextMetrics,
     ) -> Vec<Vec<UiTextSpan>> {
+        Self::span_lines_with_metadata(renderers, node, x, area, metrics)
+            .into_iter()
+            .map(|line| line.content)
+            .collect()
+    }
+
+    pub(super) fn span_lines_with_metadata(
+        renderers: SpanTextRenderers<'_>,
+        node: &UiNode,
+        x: usize,
+        area: UiTreeRenderArea,
+        metrics: UiTreeTextMetrics,
+    ) -> Vec<WrappedTextLine<Vec<UiTextSpan>>> {
         if !should_wrap(node) {
-            return span_no_wrap_lines(&node.props().text.spans);
+            return span_no_wrap_lines_with_metadata(&node.props().text.spans);
         }
         let mut state =
             SpanWrapState::new(available_width(node, x, area), preserves_whitespace(node));
         let wrap_metrics = wrap_metrics_for_node(node, metrics);
-        for span in &node.props().text.spans {
-            for segment in span_segments(span) {
-                state.push(renderers, segment, wrap_metrics);
-            }
-        }
-        state.finish()
+        state.push_spans(renderers, &node.props().text.spans, wrap_metrics);
+        state.finish_with_metadata()
     }
 }
 
@@ -88,10 +150,16 @@ struct PlainLineCacheKey {
     width: usize,
     font_size_bits: u32,
     line_height: usize,
+    renderer_identity: (PlatformFontCatalogFingerprint, PlatformTextFaceSelection),
 }
 
 impl PlainLineCacheKey {
-    fn from_node(node: &UiNode, width: usize, metrics: UiTreeTextMetrics) -> Self {
+    fn from_node(
+        renderer: &TextRenderer,
+        node: &UiNode,
+        width: usize,
+        metrics: UiTreeTextMetrics,
+    ) -> Self {
         Self {
             node_id: node.id().as_str().to_string(),
             label: node.props().label.clone(),
@@ -101,6 +169,7 @@ impl PlainLineCacheKey {
             width,
             font_size_bits: metrics.font_size.to_bits(),
             line_height: metrics.line_height,
+            renderer_identity: renderer.layout_identity(),
         }
     }
 }
@@ -121,57 +190,6 @@ fn remember_plain_lines(key: PlainLineCacheKey, lines: &[String]) {
 
 fn should_wrap(node: &UiNode) -> bool {
     matches!(node.props().text.wrap, UiTextWrapMode::Wrap)
-}
-
-fn alert_plain_lines(label: &str) -> Vec<String> {
-    let mut lines = label.split('\n');
-    let title = lines.next().unwrap_or_default();
-    let body_lines = lines.collect::<Vec<_>>();
-    let title_max_chars = if body_lines.is_empty() {
-        ALERT_TITLE_MAX_CHARS
-    } else {
-        ALERT_BODY_MAX_CHARS
-    };
-    let mut wrapped = fixed_char_chunks(title, title_max_chars);
-    for body in body_lines {
-        wrapped.extend(fixed_char_chunks(body, ALERT_BODY_MAX_CHARS));
-    }
-    wrapped
-}
-
-fn fixed_char_chunks(text: &str, max_chars: usize) -> Vec<String> {
-    let characters = text.chars().collect::<Vec<_>>();
-    let mut chunks = Vec::new();
-    for chunk in characters.chunks(max_chars) {
-        chunks.push(chunk.iter().collect());
-    }
-    if chunks.is_empty() {
-        chunks.push(String::new());
-    }
-    chunks
-}
-
-fn span_no_wrap_lines(spans: &[UiTextSpan]) -> Vec<Vec<UiTextSpan>> {
-    let mut lines = vec![Vec::new()];
-    for span in spans {
-        push_no_wrap_span(&mut lines, span);
-    }
-    lines
-}
-
-fn push_no_wrap_span(lines: &mut Vec<Vec<UiTextSpan>>, span: &UiTextSpan) {
-    for (index, part) in span.text.split('\n').enumerate() {
-        if index > 0 {
-            lines.push(Vec::new());
-        }
-        if part.is_empty() {
-            continue;
-        }
-        let mut segment = span.clone();
-        segment.text = part.to_string();
-        let line_index = lines.len() - 1;
-        lines[line_index].push(segment);
-    }
 }
 
 fn wrap_plain_line(
@@ -208,11 +226,7 @@ impl SpanWrapStateExt for SpanWrapState {
         spans: Vec<UiTextSpan>,
         metrics: UiTreeTextMetrics,
     ) -> Vec<Vec<UiTextSpan>> {
-        for span in &spans {
-            for segment in span_segments(span) {
-                self.push(renderers, segment, metrics);
-            }
-        }
+        self.push_spans(renderers, &spans, metrics);
         self.finish()
     }
 }
@@ -304,6 +318,7 @@ mod tests {
         UiCommonProps, UiDimension, UiEdgeInsets, UiNode, UiNodeKind, UiTextProps, UiTextSpan,
         UiTextSpanStyle, UiTextWrapMode,
     };
+    use katana_ui_core::text_raster::{PlatformFontCatalogFingerprint, PlatformTextFaceSelection};
     use katana_ui_core::theme::{FontFamily, FontToken, ThemeSnapshot};
 
     #[test]
@@ -364,12 +379,126 @@ mod tests {
         assert_eq!(vec![String::new()], alert_plain_lines(""));
         assert_eq!(vec![String::new()], fixed_char_chunks("", 4));
 
-        let lines = span_no_wrap_lines(&[UiTextSpan::plain("\nalpha\n\nbeta")]);
-        assert_eq!(4, lines.len());
+        let lines =
+            span_no_wrap_lines(&[UiTextSpan::plain("\u{2029}alpha\r\nbeta\u{2028}\ngamma")]);
+        assert_eq!(5, lines.len());
         assert!(lines[0].is_empty());
         assert_eq!("alpha", lines[1][0].text);
-        assert!(lines[2].is_empty());
-        assert_eq!("beta", lines[3][0].text);
+        assert_eq!("beta", lines[2][0].text);
+        assert!(lines[3].is_empty());
+        assert_eq!("gamma", lines[4][0].text);
+    }
+
+    #[test]
+    fn paragraph_line_metadata_preserves_consecutive_explicit_separators() {
+        let lines = super::paragraph_lines("alpha\r\u{2029}beta");
+
+        assert_eq!(
+            lines
+                .iter()
+                .map(|line| line.content.as_str())
+                .collect::<Vec<_>>(),
+            vec!["alpha", "", "beta"]
+        );
+        assert_eq!(
+            lines
+                .iter()
+                .map(|line| line.separator_before.as_str())
+                .collect::<Vec<_>>(),
+            vec!["", "\r", "\u{2029}"]
+        );
+        assert_eq!(
+            lines
+                .iter()
+                .map(|line| line.separator_is_explicit)
+                .collect::<Vec<_>>(),
+            vec![false, true, true]
+        );
+    }
+
+    #[test]
+    fn paragraph_line_metadata_keeps_crlf_as_one_explicit_separator() {
+        let lines = super::paragraph_lines("alpha\r\nbeta");
+
+        assert_eq!(
+            lines
+                .iter()
+                .map(|line| line.content.as_str())
+                .collect::<Vec<_>>(),
+            vec!["alpha", "beta"]
+        );
+        assert_eq!(
+            lines
+                .iter()
+                .map(|line| line.separator_before.as_str())
+                .collect::<Vec<_>>(),
+            vec!["", "\r\n"]
+        );
+        assert_eq!(
+            lines
+                .iter()
+                .map(|line| line.separator_is_explicit)
+                .collect::<Vec<_>>(),
+            vec![false, true]
+        );
+    }
+
+    #[test]
+    fn no_wrap_lines_merge_crlf_across_adjacent_spans() {
+        let lines = super::paragraphs::span_no_wrap_lines_with_metadata(&[
+            UiTextSpan::plain("a\r"),
+            UiTextSpan::plain("\nb"),
+        ]);
+
+        assert_eq!(
+            lines
+                .iter()
+                .map(|line| {
+                    line.content
+                        .iter()
+                        .map(|segment| segment.text.as_str())
+                        .collect::<String>()
+                })
+                .collect::<Vec<_>>(),
+            vec!["a", "b"]
+        );
+        assert_eq!(
+            lines
+                .iter()
+                .map(|line| line.separator_before.as_str())
+                .collect::<Vec<_>>(),
+            vec!["", "\r\n"]
+        );
+    }
+
+    #[test]
+    fn no_wrap_lines_do_not_merge_nonadjacent_cr_and_lf() {
+        for spans in [
+            vec![UiTextSpan::plain("a\r \nb")],
+            vec![UiTextSpan::plain("a\r"), UiTextSpan::plain(" \nb")],
+        ] {
+            let lines = super::paragraphs::span_no_wrap_lines_with_metadata(&spans);
+
+            assert_eq!(
+                lines
+                    .iter()
+                    .map(|line| {
+                        line.content
+                            .iter()
+                            .map(|segment| segment.text.as_str())
+                            .collect::<String>()
+                    })
+                    .collect::<Vec<_>>(),
+                vec!["a", " ", "b"]
+            );
+            assert_eq!(
+                lines
+                    .iter()
+                    .map(|line| line.separator_before.as_str())
+                    .collect::<Vec<_>>(),
+                vec!["", "\r", "\n"]
+            );
+        }
     }
 
     #[test]
@@ -405,6 +534,10 @@ mod tests {
             width: 120,
             font_size_bits: 14.0_f32.to_bits(),
             line_height: 20,
+            renderer_identity: (
+                PlatformFontCatalogFingerprint::from_bytes([0; 32]),
+                PlatformTextFaceSelection::System,
+            ),
         }
     }
 

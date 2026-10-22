@@ -26,6 +26,8 @@ const OVERLAY_BUTTON_MARGIN_PX: u16 = 8;
 mod ui_tree_canvas_hit_control_tests;
 #[path = "ui_tree_canvas_hit_media_frame_tests.rs"]
 mod ui_tree_canvas_hit_media_frame_tests;
+#[path = "ui_tree_canvas_hit_outset_tests.rs"]
+mod ui_tree_canvas_hit_outset_tests;
 #[path = "ui_tree_canvas_hit_overlay_tests.rs"]
 mod ui_tree_canvas_hit_overlay_tests;
 #[path = "ui_tree_canvas_hit_overlay_visual_tests.rs"]

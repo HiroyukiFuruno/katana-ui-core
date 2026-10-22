@@ -2022,7 +2022,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "cap-fs-ext",
  "cap-std",
@@ -2037,13 +2037,14 @@ dependencies = [
  "sha2",
  "tempfile",
  "tiny-skia 0.12.0",
+ "unicode-bidi",
  "unicode-segmentation",
  "windows-sys 0.61.2",
 ]
 
 [[package]]
 name = "katana-ui-core-native-ime-evidence"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "egui",
  "egui-winit",
@@ -2058,7 +2059,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core-storybook"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "eframe",
  "egui",

@@ -154,10 +154,22 @@ def run_binary(task: tuple[str, Path, Path], run_root: Path, index: int, test_th
         raise RunnerError(f"XDG runtime socket path is too long: {runtime_dir}")
     stdout = out_dir / "stdout.log"
     stderr = out_dir / "stderr.log"
+    status = out_dir / "status.json"
     env = os.environ.copy()
     env["XDG_RUNTIME_DIR"] = str(runtime_dir)
     env["KUC_STORYBOOK_MOUSE_TRACE"] = str(out_dir / "storybook-mouse-trace.jsonl")
     started = time.monotonic()
+    status.write_text(
+        json.dumps(
+            {
+                "state": "running",
+                "package": package,
+                "executable": str(exe),
+                "test_threads": test_threads,
+            }
+        )
+        + "\n"
+    )
     try:
         print(f"run-test-binaries: start package={package} executable={exe}", file=sys.stderr, flush=True)
         with stdout.open("wb") as so, stderr.open("wb") as se:
@@ -170,7 +182,26 @@ def run_binary(task: tuple[str, Path, Path], run_root: Path, index: int, test_th
             )
     finally:
         shutil.rmtree(runtime_dir, ignore_errors=True)
-    return package, exe, proc.returncode, stdout, stderr, time.monotonic() - started
+    elapsed = time.monotonic() - started
+    status.write_text(
+        json.dumps(
+            {
+                "state": "finished",
+                "package": package,
+                "executable": str(exe),
+                "test_threads": test_threads,
+                "returncode": proc.returncode,
+                "elapsed_seconds": round(elapsed, 2),
+            }
+        )
+        + "\n"
+    )
+    print(
+        f"run-test-binaries: finish package={package} executable={exe} code={proc.returncode} elapsed_seconds={elapsed:.2f}",
+        file=sys.stderr,
+        flush=True,
+    )
+    return package, exe, proc.returncode, stdout, stderr, elapsed
 def emit_failures(failed: list[tuple[str, Path, int, Path, Path, float]]) -> None:
     for package, exe, code, so, se, _elapsed in failed:
         print(f"FAILED {package} code={code} exe={exe}", file=sys.stderr)
@@ -312,6 +343,16 @@ def self_test() -> int:
         m = json.loads(normal.stdout.splitlines()[-1])
         if m.get("total") != len(ALLOWED_PACKAGES):
             print("self-test failed: manifest", file=sys.stderr)
+            return 1
+        normal_statuses = [
+            json.loads(path.read_text())
+            for path in (root / "normal").glob("run-*/*/status.json")
+        ]
+        if len(normal_statuses) != len(ALLOWED_PACKAGES) or any(
+            status.get("state") != "finished" or status.get("returncode") != 0
+            for status in normal_statuses
+        ):
+            print("self-test failed: execution status", file=sys.stderr)
             return 1
         bad_file = root / "bad-json.json"
         bad_file.write_text("{")

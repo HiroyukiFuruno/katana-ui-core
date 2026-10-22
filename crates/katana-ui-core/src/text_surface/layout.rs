@@ -3,7 +3,7 @@ use super::layout_model::{
 };
 use crate::render_model::UiRect;
 use crate::text_selection::{
-    UiTextGlyphBox, UiTextLineBox, UiTextSelectionModel, UiTextSelectionRange,
+    UiTextCaretPosition, UiTextGlyphBox, UiTextLineBox, UiTextSelectionModel, UiTextSelectionRange,
 };
 use std::collections::BTreeMap;
 use unicode_segmentation::UnicodeSegmentation;
@@ -103,8 +103,13 @@ impl TextSurfaceLayout {
     }
 
     #[must_use]
-    pub fn hit_test(&self, point_x: i32, point_y: i32) -> UiTextSelectionRange {
-        UiTextSelectionRange::caret(self.selection_model.point_to_caret(point_x, point_y))
+    pub(crate) fn caret_position_for_point(
+        &self,
+        point_x: i32,
+        point_y: i32,
+    ) -> UiTextCaretPosition {
+        self.selection_model
+            .point_to_caret_position(point_x, point_y)
     }
 
     #[must_use]
@@ -115,6 +120,16 @@ impl TextSurfaceLayout {
     #[must_use]
     pub fn caret_rect(&self, selection: UiTextSelectionRange) -> UiRect {
         self.selection_model.caret_rect(selection)
+    }
+
+    #[must_use]
+    pub(crate) fn caret_rect_with_affinity(
+        &self,
+        selection: UiTextSelectionRange,
+        affinity: Option<UiTextCaretPosition>,
+    ) -> UiRect {
+        self.selection_model
+            .caret_rect_with_affinity(selection, affinity)
     }
 
     #[must_use]

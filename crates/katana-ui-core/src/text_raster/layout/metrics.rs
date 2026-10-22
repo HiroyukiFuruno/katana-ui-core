@@ -37,9 +37,38 @@ pub(super) fn collect_grapheme_advances(
 }
 
 pub(super) fn line_offsets(text: &str) -> Vec<usize> {
-    std::iter::once(0)
-        .chain(text.char_indices().filter_map(|(index, character)| {
-            (character == '\n').then_some(index + MIN_GRAPHEME_COUNT)
-        }))
-        .collect()
+    let mut offsets = vec![0];
+    let mut characters = text.char_indices().peekable();
+    while let Some((index, character)) = characters.next() {
+        if !matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}') {
+            continue;
+        }
+        if character == '\r'
+            && matches!(characters.peek().copied(), Some((_, '\n')))
+            && let Some((next_index, next)) = characters.next()
+        {
+            offsets.push(next_index + next.len_utf8());
+            continue;
+        }
+        offsets.push(index + character.len_utf8());
+    }
+    offsets
+}
+
+#[cfg(test)]
+mod tests {
+    use super::line_offsets;
+
+    #[test]
+    fn line_offsets_preserve_utf8_byte_offsets_for_all_line_separators() {
+        assert_eq!(
+            line_offsets("a\nb\rc\u{2028}d\u{2029}e"),
+            vec![0, 2, 4, 8, 12]
+        );
+    }
+
+    #[test]
+    fn line_offsets_treat_crlf_as_one_source_separator() {
+        assert_eq!(line_offsets("a\r\nb"), vec![0, 3]);
+    }
 }

@@ -2,7 +2,6 @@
 set -euo pipefail
 
 readonly packages=(
-  ffmpeg
   fonts-noto-cjk
   fonts-noto-color-emoji
   fonts-noto-mono
@@ -18,35 +17,8 @@ readonly packages=(
   libxrandr-dev
   pkg-config
 )
-readonly max_attempts=3
-readonly apt_timeout_seconds=300
-
-install_packages() {
-  local attempt=1
-
-  while [ "${attempt}" -le "${max_attempts}" ]; do
-    local log_file
-    log_file="${RUNNER_TEMP:-/tmp}/kuc-apt-install-${attempt}.log"
-    echo "KUC headless-display install attempt ${attempt}/${max_attempts}; log=${log_file}"
-
-    if timeout "${apt_timeout_seconds}" sudo apt-get update >"${log_file}" 2>&1 \
-      && timeout "${apt_timeout_seconds}" sudo env DEBIAN_FRONTEND=noninteractive \
-        apt-get install --yes --no-install-recommends "${packages[@]}" >>"${log_file}" 2>&1; then
-      return 0
-    else
-      local exit_code=$?
-      echo "KUC headless-display install attempt ${attempt} failed (exit=${exit_code})."
-    fi
-
-    tail -n 200 "${log_file}" || true
-    attempt=$((attempt + 1))
-  done
-
-  echo "KUC headless-display install failed after ${max_attempts} attempts." >&2
-  exit 1
-}
-
-install_packages
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+bash "${script_dir}/install-apt-packages.sh" "${packages[@]}"
 
 readonly mono_font=/usr/share/fonts/truetype/noto/NotoSansMono-Regular.ttf
 readonly emoji_font=/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf

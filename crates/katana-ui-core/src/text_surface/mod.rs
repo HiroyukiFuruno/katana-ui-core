@@ -9,6 +9,7 @@ mod gutter;
 mod gutter_types;
 mod layout;
 mod layout_gutter;
+mod layout_hit_test;
 mod layout_model;
 mod layout_scroll;
 mod props;
@@ -63,6 +64,11 @@ pub use surface_model::TextSurface;
 
 #[cfg(test)]
 mod accessibility_tests;
+#[cfg(test)]
+#[path = "bidi_selection_soft_wrap_tests.rs"]
+mod bidi_selection_soft_wrap_tests;
+#[cfg(test)]
+mod bidi_selection_tests;
 #[cfg(test)]
 mod clipboard_tests;
 #[cfg(test)]

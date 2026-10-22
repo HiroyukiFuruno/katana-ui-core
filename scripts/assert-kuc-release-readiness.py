@@ -796,12 +796,20 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         'coverage_strict_state_path="${coverage_profile_path}.strict-state"',
         'coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"',
         'coverage_lcov_path="${coverage_storage_dir}/kuc-workspace-coverage.lcov"',
+        'coverage_diagnostics_dir="${KUC_COVERAGE_LOG_DIR:-${coverage_target_dir}/kuc-coverage-diagnostics}"',
         "coverage_production_digest()",
         "coverage_profile_signature()",
         "native_coverage_runtime_id()",
         "write_coverage_state()",
         "write_coverage_profile_state()",
         "write_coverage_strict_state()",
+        "record_coverage_report_failure()",
+        "run_coverage_report()",
+        'run_coverage_report "summary-json"',
+        'run_coverage_report "lcov"',
+        "phase=%s",
+        "exit_status=%s",
+        "target_profraw_count=%s",
         "invalidate_coverage_profile()",
         "finalize_coverage_process()",
         "trap finalize_coverage_process EXIT",
@@ -978,7 +986,7 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         coverage_source.find("run_cargo_raw llvm-cov show-env --sh"),
         coverage_source.find("run_cargo_raw test"),
         coverage_source.find("python3 scripts/coverage/run-test-binaries.py"),
-        coverage_source.find("run_cargo llvm-cov report --quiet"),
+        coverage_source.find('run_coverage_report "summary-json"'),
     )
     profile_validation = coverage_source.rfind(
         "python3 scripts/assert-strict-coverage-json.py --validate-profile"
@@ -2079,12 +2087,19 @@ def write_justfile_test_scope_self_test_file(
         'coverage_strict_state_path="${coverage_profile_path}.strict-state"\n'
         'coverage_report_path="${coverage_storage_dir}/kuc-workspace-coverage-summary.json"\n'
         'coverage_lcov_path="${coverage_storage_dir}/kuc-workspace-coverage.lcov"\n'
+        'coverage_diagnostics_dir="${KUC_COVERAGE_LOG_DIR:-${coverage_target_dir}/kuc-coverage-diagnostics}"\n'
         "coverage_production_digest() { :; }\n"
         "coverage_profile_signature() { :; }\n"
         "native_coverage_runtime_id() { :; }\n"
         "write_coverage_state() { :; }\n"
         "write_coverage_profile_state() { :; }\n"
         "write_coverage_strict_state() { :; }\n"
+        "record_coverage_report_failure() {\n"
+        '  printf "phase=%s\\n" "${phase}"\n'
+        '  printf "exit_status=%s\\n" "${exit_status}"\n'
+        '  printf "target_profraw_count=%s\\n" "0"\n'
+        "}\n"
+        "run_coverage_report() { run_cargo llvm-cov report --quiet; }\n"
         "ensure_coverage_target_cache_dir() { :; }\n"
         "restore_coverage_target_owner_marker_after_cleanup() { :; }\n"
         "invalidate_coverage_profile() {\n"
@@ -2135,7 +2150,7 @@ def write_justfile_test_scope_self_test_file(
         '  --test-threads "${coverage_threads_per_binary}"\n'
         'coverage_min_free_gib="${KUC_COVERAGE_MIN_FREE_GIB:-2}"\n'
         'df -Pk "${coverage_storage_dir}"\n'
-        "run_cargo llvm-cov report --quiet \\\n"
+        "run_coverage_report \"summary-json\" \\\n"
         '  "${coverage_packages[@]}" --json --summary-only \\\n'
         '  --output-path "${coverage_report_path}" \\\n'
         "  --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\\.rs$|[^/]+_tests\\.rs$)'\n"
@@ -2144,7 +2159,7 @@ def write_justfile_test_scope_self_test_file(
         "  -p kuc-consumer-app \\\n"
         "  --all-targets --all-features --locked\n"
         'python3 scripts/assert-strict-coverage-json.py --validate-profile "${coverage_report_path}"\n'
-        "run_cargo llvm-cov report --quiet \\\n"
+        "run_coverage_report \"lcov\" \\\n"
         '  "${coverage_packages[@]}" --lcov \\\n'
         '  --output-path "${coverage_lcov_path}" \\\n'
         "  --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\\.rs$|[^/]+_tests\\.rs$)'\n"

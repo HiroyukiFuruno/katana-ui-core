@@ -1,5 +1,7 @@
 use crate::raster_host::canvas::Canvas;
 use katana_ui_core::facade::UiCoreFacade;
+#[cfg(feature = "raster-host")]
+use katana_ui_core::text_raster::PlatformFontCatalogFingerprint;
 use katana_ui_core::text_raster::{
     PlatformTextFaceSelection, PlatformTextRasterConfig, PlatformTextRasterizer,
 };
@@ -7,9 +9,11 @@ use katana_ui_core::text_raster::{
 #[path = "text_types.rs"]
 mod text_types;
 pub use text_types::TextRenderer;
-pub(crate) use text_types::{RichTextLineSpan, RichTextStyle};
+pub(crate) use text_types::{RichTextBidiContext, RichTextLineSpan, RichTextStyle};
 #[path = "text_line_box.rs"]
 mod text_line_box;
+#[path = "text_rich.rs"]
+mod text_rich;
 #[path = "text_runtime.rs"]
 mod text_runtime;
 #[path = "text_runtime_paint.rs"]
@@ -41,7 +45,32 @@ impl TextRenderer {
                 face_selection,
             )),
             font,
+            independent_raster_config: false,
         }
+    }
+
+    pub(super) fn with_raster_config(
+        mut self,
+        config: PlatformTextRasterConfig,
+        face_selection: PlatformTextFaceSelection,
+    ) -> Self {
+        self.independent_raster_config = true;
+        self.rasterizer = std::cell::RefCell::new(PlatformTextRasterizer::new_with_face_selection(
+            config,
+            face_selection,
+        ));
+        self
+    }
+
+    pub(super) fn has_independent_raster_config(&self) -> bool {
+        self.independent_raster_config
+    }
+
+    #[cfg(feature = "raster-host")]
+    pub(in crate::raster_host) fn layout_identity(
+        &self,
+    ) -> (PlatformFontCatalogFingerprint, PlatformTextFaceSelection) {
+        self.rasterizer.borrow().layout_identity()
     }
 
     pub fn draw(&self, canvas: &mut Canvas, text: &str, x: usize, y: usize, size: f32, color: u32) {
@@ -104,44 +133,6 @@ impl TextRenderer {
             RichTextStyle::new(size, color),
             true,
             canvas.scale_factor(),
-        );
-    }
-
-    pub(crate) fn draw_rich_line_signed(
-        &self,
-        canvas: &mut Canvas,
-        spans: &[RichTextLineSpan],
-        x: isize,
-        y: usize,
-    ) {
-        let raster_vertical_scale = spans
-            .iter()
-            .map(|span| span.style.raster_vertical_scale)
-            .fold(1.0_f32, f32::max);
-        let font = self.font_with_size(
-            spans
-                .first()
-                .map(|span| span.style.size)
-                .unwrap_or(self.font.size),
-        );
-        let line_height_px = spans
-            .iter()
-            .map(|span| default_line_height(span.style.size))
-            .fold(default_line_height(font.size), f32::max);
-        let spans = spans
-            .iter()
-            .map(|span| ui_span(&span.text, span.style))
-            .collect();
-        self.draw_request(
-            canvas,
-            spans,
-            x,
-            y as f32,
-            y as f32,
-            canvas.scale_factor(),
-            raster_vertical_scale,
-            font,
-            line_height_px,
         );
     }
 

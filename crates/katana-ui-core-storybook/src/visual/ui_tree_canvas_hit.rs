@@ -41,6 +41,7 @@ mod methods;
 
 pub(super) struct UiTreeHostActionHitCollector<'a> {
     area: UiTreeRenderArea,
+    viewport_left_boundary: usize,
     actions: Vec<UiHostActionPlan>,
     hits: Vec<UiTreeHostActionHit>,
     node_hits: Vec<UiTreeNodeHit>,
@@ -277,6 +278,7 @@ impl UiTreeHostActionHitCollector<'_> {
     ) -> UiTreeHostActionHitCollector<'a> {
         UiTreeHostActionHitCollector {
             area,
+            viewport_left_boundary: area.x,
             actions,
             hits: Vec::new(),
             node_hits: Vec::new(),
