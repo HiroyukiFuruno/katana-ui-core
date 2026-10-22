@@ -6,7 +6,6 @@ use crate::raster_host::text::{RichTextBidiContext, RichTextLineSpan};
 use crate::raster_host::ui_tree_canvas_text_line_width::span_rich_text_style;
 use std::ops::Range;
 use unicode_bidi::BidiInfo;
-use unicode_segmentation::UnicodeSegmentation;
 
 pub(in crate::raster_host) struct PositionedSpan {
     pub(in crate::raster_host) line_span_index: usize,
@@ -154,8 +153,11 @@ pub(in crate::raster_host) fn visual_span_positions(
                         )
                     })
                     .collect::<Vec<RichTextLineSpan>>();
-                let (layout, group_width) = renderer
-                    .measure_rich_span_layout_with_bidi_context(&rich_spans, bidi_context.as_ref());
+                let (layout, group_width) = renderer.measure_rich_span_layout_with_bidi_context(
+                    &rich_spans,
+                    bidi_context.as_ref(),
+                    level.is_rtl(),
+                );
                 for (fragment, (offset, width)) in group.iter_mut().zip(layout) {
                     fragment.x = cursor.saturating_add(offset as isize);
                     fragment.width = width;
@@ -200,14 +202,11 @@ fn split_shaping_groups(
 }
 
 fn can_share_shaping_request(
-    source_text: &str,
+    _source_text: &str,
     previous: &PositionedSpan,
     next: &PositionedSpan,
 ) -> bool {
     previous.source_range.end == next.source_range.start
-        && source_text
-            .grapheme_indices(true)
-            .any(|(index, _)| index == next.source_range.start)
 }
 
 fn intersection(left: &Range<usize>, right: &Range<usize>) -> Option<Range<usize>> {
@@ -240,6 +239,8 @@ mod tests {
     use super::*;
     use crate::raster_host::text::TextRenderer;
     use katana_ui_core::facade::UiCoreFacade;
+    use katana_ui_core::render_model::{UiNode, UiNodeKind, UiTextSpanStyle};
+    use katana_ui_core::text_raster::{PlatformTextFaceSelection, PlatformTextRasterConfig};
     use katana_ui_core::theme::ThemeSnapshot;
 
     #[test]
@@ -263,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn split_grapheme_fragments_stay_in_separate_shaping_groups() {
+    fn split_grapheme_fragments_share_a_shaping_group() {
         let facade = UiCoreFacade::new(ThemeSnapshot::dark());
         let renderer = TextRenderer::load(&facade, "body");
         let fragments = vec![
@@ -277,8 +278,88 @@ mod tests {
             "e\u{0301}",
         );
 
-        assert_eq!(2, groups.len());
-        assert!(groups.iter().all(|group| group.len() == 1));
+        assert_eq!(1, groups.len());
+        assert_eq!(2, groups[0].len());
+    }
+
+    #[test]
+    fn zwj_fragments_share_a_shaping_group() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let renderer = TextRenderer::load(&facade, "body");
+        let fragments = vec![
+            positioned_fragment(0, "\u{1f469}", 0..4),
+            positioned_fragment(1, "\u{200d}", 4..7),
+            positioned_fragment(2, "\u{1f4bb}", 7..11),
+        ];
+
+        let groups = split_shaping_groups(
+            fragments,
+            SpanTextRenderers::new(&renderer, &renderer),
+            "\u{1f469}\u{200d}\u{1f4bb}",
+        );
+
+        assert_eq!(1, groups.len());
+        assert_eq!(3, groups[0].len());
+    }
+
+    #[test]
+    fn combined_grapheme_fragments_keep_individual_visual_geometry() {
+        let facade = UiCoreFacade::new(ThemeSnapshot::dark());
+        let renderer = TextRenderer::load(&facade, "body");
+        let code_renderer = TextRenderer::load(&facade, "code").with_raster_config(
+            PlatformTextRasterConfig::default(),
+            PlatformTextFaceSelection::CandidateChain,
+        );
+        let line = vec![
+            UiTextSpan::plain("\u{05d0}"),
+            UiTextSpan {
+                text: "e".to_owned(),
+                style: UiTextSpanStyle {
+                    underline: true,
+                    highlight: true,
+                    ..UiTextSpanStyle::default()
+                },
+                link_target: String::new(),
+            },
+            UiTextSpan {
+                text: "\u{0301}".to_owned(),
+                style: UiTextSpanStyle::default(),
+                link_target: "https://example.test/combining".to_owned(),
+            },
+            UiTextSpan {
+                text: "x".to_owned(),
+                style: UiTextSpanStyle {
+                    inline_code: true,
+                    ..UiTextSpanStyle::default()
+                },
+                link_target: String::new(),
+            },
+        ];
+        let metrics = UiTreeTextMetrics::for_node(&UiNode::new(UiNodeKind::Text, "fixture"));
+
+        let positioned = visual_span_positions(
+            SpanTextRenderers::new(&renderer, &code_renderer),
+            &line,
+            metrics,
+            0,
+        )
+        .expect("mixed bidi/code line must use visual span geometry");
+        let base = positioned
+            .iter()
+            .find(|span| span.line_span_index == 1)
+            .expect("base fragment geometry");
+        let combining = positioned
+            .iter()
+            .find(|span| span.line_span_index == 2)
+            .expect("combining fragment geometry");
+
+        assert_eq!(base.shaping_run_index, combining.shaping_run_index);
+        assert!(base.width > 0 && combining.width > 0);
+        assert!(
+            base.x.saturating_add(base.width as isize) <= combining.x
+                || combining.x.saturating_add(combining.width as isize) <= base.x,
+            "styled fragments inside one grapheme must retain distinct decoration and link ranges"
+        );
     }
 
     fn positioned_fragment(
