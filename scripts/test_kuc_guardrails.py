@@ -13,6 +13,13 @@ def write_text(path: Path, source: str) -> None:
     path.write_text(source, encoding="utf-8")
 
 
+def workflow_step(source: str, name: str) -> str:
+    marker = f"      - name: {name}"
+    start = source.index(marker)
+    end = source.find("\n      - name:", start + len(marker))
+    return source[start:].strip("\n") if end < 0 else source[start:end].strip("\n")
+
+
 def write_repo_policy(root: Path, spec_extra: str = "") -> None:
     baseline = "KUC repo `scripts/` `kal` 側\n"
     spec = (
@@ -4027,12 +4034,19 @@ class KucGuardrailsTest(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         installer = root / "scripts/ci/install-headless-display.sh"
         installer_source = installer.read_text(encoding="utf-8")
+        apt_installer = root / "scripts/ci/install-apt-packages.sh"
+        apt_installer_source = apt_installer.read_text(encoding="utf-8")
 
-        self.assertIn("readonly max_attempts=3", installer_source)
-        self.assertIn("readonly apt_timeout_seconds=300", installer_source)
-        self.assertIn('timeout "${apt_timeout_seconds}" sudo apt-get update', installer_source)
-        self.assertIn("tail -n 200", installer_source)
-        self.assertIn("failed after ${max_attempts} attempts", installer_source)
+        self.assertIn('bash "${script_dir}/install-apt-packages.sh"', installer_source)
+        self.assertNotIn("ffmpeg", installer_source)
+        self.assertIn("readonly max_attempts=3", apt_installer_source)
+        self.assertIn(
+            'readonly apt_timeout_seconds="${KUC_APT_TIMEOUT_SECONDS:-${default_apt_timeout_seconds}}"',
+            apt_installer_source,
+        )
+        self.assertIn('timeout "${apt_timeout_seconds}" sudo apt-get update', apt_installer_source)
+        self.assertIn("tail -n 200", apt_installer_source)
+        self.assertIn("failed after ${max_attempts} attempts", apt_installer_source)
 
         for workflow_name in (
             "test-and-build.yml",
@@ -4045,6 +4059,78 @@ class KucGuardrailsTest(unittest.TestCase):
                 )
                 self.assertIn("bash scripts/ci/install-headless-display.sh", source)
                 self.assertNotIn("sudo apt-get update", source)
+
+    def test_ffmpeg_is_installed_before_the_checks_that_use_real_video(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        ffmpeg_installer = (
+            root / "scripts/ci/install-ffmpeg.sh"
+        ).read_text(encoding="utf-8")
+        preflight = (root / ".github/workflows/release-preflight.yml").read_text(
+            encoding="utf-8"
+        )
+        release = (root / ".github/workflows/release.yml").read_text(
+            encoding="utf-8"
+        )
+        test_and_build = (root / ".github/workflows/test-and-build.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn(
+            'KUC_APT_TIMEOUT_SECONDS=600 exec bash "${script_dir}/install-apt-packages.sh" ffmpeg',
+            ffmpeg_installer,
+        )
+        self.assertEqual(
+            workflow_step(test_and_build, "Install ffmpeg on Ubuntu"),
+            "      - name: Install ffmpeg on Ubuntu\n"
+            "        if: matrix.os == 'ubuntu-latest'\n"
+            "        run: bash scripts/ci/install-ffmpeg.sh",
+        )
+        self.assertLess(
+            test_and_build.index("Install ffmpeg on Ubuntu"),
+            test_and_build.index("Run tests"),
+        )
+        self.assertEqual(
+            workflow_step(test_and_build, "Install ffmpeg on macOS"),
+            "      - name: Install ffmpeg on macOS\n"
+            "        if: matrix.os == 'macos-latest'\n"
+            "        run: brew install ffmpeg",
+        )
+        self.assertLess(
+            test_and_build.index("Install ffmpeg on macOS"),
+            test_and_build.index("Run tests"),
+        )
+        self.assertEqual(
+            workflow_step(test_and_build, "Install ffmpeg on Windows"),
+            "      - name: Install ffmpeg on Windows\n"
+            "        if: matrix.os == 'windows-latest'\n"
+            "        run: choco install ffmpeg --yes --no-progress",
+        )
+        self.assertLess(
+            test_and_build.index("Install ffmpeg on Windows"),
+            test_and_build.index("Run tests"),
+        )
+        self.assertEqual(
+            workflow_step(preflight, "Install ffmpeg for release check"),
+            "      - name: Install ffmpeg for release check\n"
+            "        run: bash scripts/ci/install-ffmpeg.sh",
+        )
+        self.assertLess(
+            preflight.index("Install ffmpeg for release check"),
+            preflight.index("Quality gate"),
+        )
+        self.assertLess(
+            preflight.index("Install ffmpeg for release check"),
+            preflight.index("Release check"),
+        )
+        self.assertEqual(
+            workflow_step(release, "Install ffmpeg for release check"),
+            "      - name: Install ffmpeg for release check\n"
+            "        run: bash scripts/ci/install-ffmpeg.sh",
+        )
+        self.assertLess(
+            release.index("Install ffmpeg for release check"),
+            release.index("Find verified reusable release check"),
+        )
 
     def test_release_publish_retry_uses_the_immutable_tag_publish_script(self) -> None:
         root = Path(__file__).resolve().parents[1]
