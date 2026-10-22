@@ -10,14 +10,11 @@ impl TextSurfaceLayout {
 
     #[must_use]
     pub fn hit_test_with_affinity(&self, point_x: i32, point_y: i32) -> UiTextCaretHit {
-        UiTextCaretHit::from_position(self.caret_position_for_point(point_x, point_y))
+        self.selection_model.caret_hit_for_point(point_x, point_y)
     }
 
     #[must_use]
     pub fn caret_rect_for_hit(&self, hit: UiTextCaretHit) -> UiRect {
-        self.caret_rect_with_affinity(
-            UiTextSelectionRange::caret(hit.caret_position()),
-            Some(hit.position()),
-        )
+        self.selection_model.caret_rect_for_hit(hit)
     }
 }

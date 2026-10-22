@@ -1,11 +1,11 @@
-use super::{UiTextCaretPosition, UiTextLineBox};
+use super::{UiTextCaretPosition, UiTextGlyphBox, UiTextLineBox};
 use unicode_bidi::BidiInfo;
 
-pub(super) fn visual_caret_positions(
-    line: &UiTextLineBox,
+pub(super) fn visual_caret_glyphs<'a>(
+    line: &'a UiTextLineBox,
     text: &str,
     resolved_bidi_rtl: Option<bool>,
-) -> Vec<UiTextCaretPosition> {
+) -> Vec<(&'a UiTextGlyphBox, UiTextCaretPosition)> {
     let bidi = BidiInfo::new(text, None);
     let mut glyphs = line.glyphs.iter().collect::<Vec<_>>();
     glyphs.sort_by_key(|glyph| glyph.grapheme_index);
@@ -21,17 +21,25 @@ pub(super) fn visual_caret_positions(
         } else {
             (glyph.caret_x_before(), glyph.caret_x_after())
         };
-        positions.push(UiTextCaretPosition {
-            position: glyph.grapheme_index,
-            x: before_x,
-            line_y: glyph.bounds.y,
-        });
-        positions.push(UiTextCaretPosition {
-            position: glyph.grapheme_index.saturating_add(1),
-            x: after_x,
-            line_y: glyph.bounds.y,
-        });
+        positions.push((
+            glyph,
+            UiTextCaretPosition {
+                position: glyph.grapheme_index,
+                x: before_x,
+                line_y: glyph.bounds.y,
+                glyph_index: Some(glyph.grapheme_index),
+            },
+        ));
+        positions.push((
+            glyph,
+            UiTextCaretPosition {
+                position: glyph.grapheme_index.saturating_add(1),
+                x: after_x,
+                line_y: glyph.bounds.y,
+                glyph_index: Some(glyph.grapheme_index),
+            },
+        ));
     }
-    positions.sort_by_key(|candidate| candidate.x);
+    positions.sort_by_key(|(_, candidate)| candidate.x);
     positions
 }

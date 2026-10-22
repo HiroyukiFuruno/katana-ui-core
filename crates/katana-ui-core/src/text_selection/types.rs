@@ -50,14 +50,24 @@ pub(crate) struct UiTextCaretPosition {
     pub position: usize,
     pub x: i32,
     pub line_y: i32,
+    pub(crate) glyph_index: Option<usize>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy)]
 pub struct UiTextCaretHit {
     position: usize,
     x: i32,
     line_y: i32,
+    glyph_index: Option<usize>,
 }
+
+impl PartialEq for UiTextCaretHit {
+    fn eq(&self, other: &Self) -> bool {
+        self.position == other.position && self.x == other.x && self.line_y == other.line_y
+    }
+}
+
+impl Eq for UiTextCaretHit {}
 
 impl UiTextCaretHit {
     #[must_use]
@@ -66,11 +76,23 @@ impl UiTextCaretHit {
     }
 
     pub(crate) const fn from_position(value: UiTextCaretPosition) -> Self {
+        Self::from_position_and_glyph(value, value.glyph_index)
+    }
+
+    pub(crate) const fn from_position_and_glyph(
+        value: UiTextCaretPosition,
+        glyph_index: Option<usize>,
+    ) -> Self {
         Self {
             position: value.position,
             x: value.x,
             line_y: value.line_y,
+            glyph_index,
         }
+    }
+
+    pub(crate) const fn glyph_index(self) -> Option<usize> {
+        self.glyph_index
     }
 
     pub(crate) const fn position(self) -> UiTextCaretPosition {
@@ -78,6 +100,7 @@ impl UiTextCaretHit {
             position: self.position,
             x: self.x,
             line_y: self.line_y,
+            glyph_index: self.glyph_index,
         }
     }
 }

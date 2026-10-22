@@ -1,7 +1,4 @@
-use super::model_bidi::visual_caret_positions;
-use super::{
-    UiTextCaretPosition, UiTextGlyphBox, UiTextLineBox, UiTextPasteResult, UiTextSelectionRange,
-};
+use super::{UiTextGlyphBox, UiTextLineBox, UiTextPasteResult, UiTextSelectionRange};
 use crate::render_model::UiRect;
 use serde::{Deserialize, Serialize};
 use std::ops::Range;
@@ -24,6 +21,9 @@ impl PartialEq for UiTextSelectionModel {
 }
 
 impl Eq for UiTextSelectionModel {}
+
+#[path = "model_caret.rs"]
+mod model_caret;
 
 impl UiTextSelectionModel {
     #[must_use]
@@ -102,29 +102,6 @@ impl UiTextSelectionModel {
     }
 
     #[must_use]
-    pub(crate) fn point_to_caret_position(&self, x: i32, y: i32) -> UiTextCaretPosition {
-        let Some(line) = self.line_for_y(y).or_else(|| self.lines.first()) else {
-            return UiTextCaretPosition::default();
-        };
-        let caret_positions = visual_caret_positions(line, &self.text, self.resolved_bidi_rtl);
-        let Some(first) = caret_positions.first().copied() else {
-            return UiTextCaretPosition::default();
-        };
-        if x <= first.x {
-            return first;
-        }
-        for positions in caret_positions.windows(2) {
-            let left = positions[0];
-            let right = positions[1];
-            let midpoint = left.x + (right.x - left.x) / 2;
-            if x < midpoint {
-                return left;
-            }
-        }
-        caret_positions.last().copied().unwrap_or(first)
-    }
-
-    #[must_use]
     pub fn drag_range(&self, start: (i32, i32), end: (i32, i32)) -> UiTextSelectionRange {
         UiTextSelectionRange::new(
             self.point_to_caret(start.0, start.1),
@@ -141,54 +118,6 @@ impl UiTextSelectionModel {
         self.glyphs_in_range(range)
             .map(|glyph| glyph.bounds)
             .collect()
-    }
-
-    #[must_use]
-    pub fn caret_rect(&self, selection: UiTextSelectionRange) -> UiRect {
-        self.caret_rect_with_affinity(selection, None)
-    }
-
-    #[must_use]
-    pub(crate) fn caret_rect_with_affinity(
-        &self,
-        selection: UiTextSelectionRange,
-        affinity: Option<UiTextCaretPosition>,
-    ) -> UiRect {
-        let caret = selection.caret_position();
-        if let Some(affinity) = affinity.filter(|value| value.position == caret)
-            && let Some(line) = self.lines.iter().find(|line| {
-                line.glyphs
-                    .first()
-                    .is_some_and(|glyph| glyph.bounds.y == affinity.line_y)
-            })
-            && visual_caret_positions(line, &self.text, self.resolved_bidi_rtl).contains(&affinity)
-            && let Some(glyph) = line.glyphs.first()
-        {
-            return UiRect::new(affinity.x, glyph.bounds.y, 1, glyph.bounds.height);
-        }
-        if let Some(glyph) = self
-            .all_glyphs()
-            .find(|glyph| glyph.grapheme_index == caret)
-        {
-            return UiRect::new(
-                glyph.caret_x_before(),
-                glyph.bounds.y,
-                1,
-                glyph.bounds.height,
-            );
-        }
-        if let Some(glyph) = self
-            .all_glyphs()
-            .find(|glyph| glyph.grapheme_index + 1 == caret)
-        {
-            return UiRect::new(
-                glyph.caret_x_after(),
-                glyph.bounds.y,
-                1,
-                glyph.bounds.height,
-            );
-        }
-        UiRect::default()
     }
 
     #[must_use]
@@ -283,6 +212,7 @@ impl UiTextSelectionModel {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::text_selection::UiTextCaretPosition;
 
     #[test]
     fn bidi_run_boundaries_keep_both_visual_caret_candidates() {
@@ -336,12 +266,46 @@ mod tests {
                 position: 3,
                 x: 10,
                 line_y: 0,
+                glyph_index: Some(2),
             },
             affinity
         );
         assert_eq!(
             UiRect::new(10, 0, 1, 10),
             model.caret_rect_with_affinity(UiTextSelectionRange::caret(3), Some(affinity))
+        );
+    }
+
+    #[test]
+    fn affinity_caret_uses_the_hit_glyph_height_in_mixed_bidi_line() {
+        let text = "a\u{05d0}";
+        let model = UiTextSelectionModel::new(
+            text,
+            vec![UiTextLineBox::new(
+                0..text.len(),
+                vec![
+                    UiTextGlyphBox::new(0, 0..1, UiRect::new(0, 0, 10, 8), 8),
+                    UiTextGlyphBox::new(1, 1..3, UiRect::new(10, 0, 10, 24), 24),
+                ],
+            )],
+        );
+
+        let affinity = model.point_to_caret_position(19, 5);
+
+        assert_eq!(
+            UiTextCaretPosition {
+                position: 1,
+                x: 20,
+                line_y: 0,
+                glyph_index: Some(1),
+            },
+            affinity,
+            "the hit resolves to the RTL glyph's visual candidate"
+        );
+        assert_eq!(
+            UiRect::new(20, 0, 1, 24),
+            model.caret_rect_with_affinity(UiTextSelectionRange::caret(1), Some(affinity)),
+            "the caret must use the glyph that emitted the hit affinity"
         );
     }
 

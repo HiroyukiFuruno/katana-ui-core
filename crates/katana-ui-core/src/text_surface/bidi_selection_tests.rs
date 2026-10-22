@@ -104,6 +104,83 @@ fn public_hit_test_with_affinity_preserves_the_clicked_bidi_caret_side() {
 }
 
 #[test]
+fn affinity_hit_keeps_the_clicked_ltr_boundary_glyph_height() {
+    let layout = TextSurfaceLayout::from_grapheme_boxes(
+        "raster:bidi:equal-boundary-height",
+        UiRect::new(0, 0, 20, 24),
+        "ab",
+        vec![
+            TextSurfaceGraphemeBox {
+                grapheme_index: 0,
+                byte_start: 0,
+                byte_end: 1,
+                bounds: UiRect::new(0, 0, 10, 8),
+            },
+            TextSurfaceGraphemeBox {
+                grapheme_index: 1,
+                byte_start: 1,
+                byte_end: 2,
+                bounds: UiRect::new(10, 0, 10, 24),
+            },
+        ],
+    );
+
+    let hit = layout.hit_test_with_affinity(10, 5);
+
+    assert_eq!(1, hit.caret_position());
+    assert_eq!(
+        UiRect::new(10, 0, 1, 24),
+        layout.caret_rect_for_hit(hit),
+        "the hit's exact boundary candidate must retain the second glyph height"
+    );
+}
+
+#[test]
+fn affinity_hit_keeps_the_clicked_rtl_boundary_glyph_height() {
+    let text = "a\u{05d0}\u{05d1}b";
+    let layout = TextSurfaceLayout::from_grapheme_boxes(
+        "raster:bidi:equal-rtl-boundary-height",
+        UiRect::new(0, 0, 40, 24),
+        text,
+        vec![
+            TextSurfaceGraphemeBox {
+                grapheme_index: 0,
+                byte_start: 0,
+                byte_end: 1,
+                bounds: UiRect::new(0, 0, 10, 10),
+            },
+            TextSurfaceGraphemeBox {
+                grapheme_index: 1,
+                byte_start: 1,
+                byte_end: 3,
+                bounds: UiRect::new(20, 0, 10, 8),
+            },
+            TextSurfaceGraphemeBox {
+                grapheme_index: 2,
+                byte_start: 3,
+                byte_end: 5,
+                bounds: UiRect::new(10, 0, 10, 24),
+            },
+            TextSurfaceGraphemeBox {
+                grapheme_index: 3,
+                byte_start: 5,
+                byte_end: 6,
+                bounds: UiRect::new(30, 0, 10, 10),
+            },
+        ],
+    );
+
+    let hit = layout.hit_test_with_affinity(20, 5);
+
+    assert_eq!(2, hit.caret_position());
+    assert_eq!(
+        UiRect::new(20, 0, 1, 24),
+        layout.caret_rect_for_hit(hit),
+        "the equal RTL boundary must retain the second visual candidate's glyph height"
+    );
+}
+
+#[test]
 fn a_single_rtl_grapheme_uses_resolved_direction_for_hit_testing() {
     let layout = TextSurfaceLayout::from_grapheme_boxes(
         "raster:bidi:single",
