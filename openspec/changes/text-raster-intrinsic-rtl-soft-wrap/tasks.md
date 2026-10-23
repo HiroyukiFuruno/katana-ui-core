@@ -12,6 +12,7 @@
 - [x] visual wrapとsource newlineを分離し、CR/LF/CRLF/U+2028/U+2029を維持する。
 - [/] review P2: inline codeの空白保持をspan単位に限定し、混在する通常本文の空白契約を回帰検証する。
 - [x] 公開v0.4.4へversion/内部依存/lockを同期し、全直接・推移依存の最新互換版を評価する。
+- [x] CI Actionの公式release/tagを照合し、SHA固定とOIDC/artifact契約を保って更新する（YAML構文、ガード121件、梱包5件が成功）。
 - [ ] focused回帰、fmt、strict lint、AST、完全release-checkを通す。品質gateを緩和しない。
 
 ## 公開DoD

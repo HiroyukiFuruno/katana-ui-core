@@ -15,5 +15,7 @@ RTL/LTR/FSI/PDI、combining grapheme、明示max_widthのwrap、空段落、sour
 ## 依存関係
 `just update-safe`で互換lock更新を実施（tmp/v044-update-safe.log）。`cargo outdated --workspace`で直接・推移依存を再評価（tmp/v044-outdated.log）。egui/eframe 0.37への更新は、egui featureで公開する型を変える互換性のない移行になるため、このpatch修正では0.36.2を維持する。glifo 0.2など上流が要求する旧系列の推移依存も、互換範囲外へ単独で強制更新しない。Tokio 1.54.1等の互換更新は採用する。
 
+CI Actionも公式release/tagを照合し、[checkout v7.0.1](https://github.com/actions/checkout/releases/tag/v7.0.1)、[upload-artifact v7.0.2](https://github.com/actions/upload-artifact/releases/tag/v7.0.2)、[download-artifact v8.0.2](https://github.com/actions/download-artifact/releases/tag/v8.0.2)、[crates-io-auth-action v1.0.6](https://github.com/rust-lang/crates-io-auth-action/releases/tag/v1.0.6)のcommit SHAへ固定した。rust-toolchainも2026-10-23に取得したmasterのSHAへ同期する。既存のstable指定、OIDCの権限・token出力、artifact名・path・ZIP検証を維持し、uploadには既定値と同じ `archive: true` を明示する。mutableなrust-cache@v2とinstall-actionのtool別tagは既存の追従方式を維持する。
+
 ## 実行調整
 容量不足時の共通cleanupはrootだけが担当し、agentは重複実行せず報告する。全体の重いgateもrootが逐次回収する。2026-10-23のcleanupは一部guard/同時実行ENOENTでexit1、ただしdfで48GiBの空きを確認した。

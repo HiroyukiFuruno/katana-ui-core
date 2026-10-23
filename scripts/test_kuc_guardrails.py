@@ -4006,7 +4006,7 @@ class KucGuardrailsTest(unittest.TestCase):
         ]
         auth_action = (
             "rust-lang/crates-io-auth-action@"
-            "c6f97d42243bad5fab37ca0427f495c86d5b1a18"
+            "3268eb413133e2960fa4ae0e963ca76380c54cd9"
         )
 
         for workflow_path in workflow_paths:
