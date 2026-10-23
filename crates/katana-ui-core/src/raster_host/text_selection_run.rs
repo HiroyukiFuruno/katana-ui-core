@@ -46,6 +46,7 @@ impl SelectableTextRun {
             rect: LayoutRect::new(x, y, width, height),
             model,
             logical_line,
+            visual_line: None,
             separator_before: separator_before.to_owned(),
             resolved_bidi_rtl: None,
         }
@@ -205,6 +206,7 @@ impl SelectableTextRun {
             rect: LayoutRect::new(x, y, width, height),
             model,
             logical_line,
+            visual_line: None,
             separator_before: separator_before.to_owned(),
             resolved_bidi_rtl,
         }

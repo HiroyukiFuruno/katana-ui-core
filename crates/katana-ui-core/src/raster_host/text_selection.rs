@@ -29,14 +29,22 @@ pub(in crate::raster_host) fn copy_payload_for_selection(
 ) -> String {
     let mut payload = String::new();
     let mut previous_logical_line = None;
+    let mut previous_visual_line = None;
     let mut has_selected_run = false;
     for run in runs {
         let Some(selected_text) = selected_text_for_run(run, selection) else {
             continue;
         };
-        if has_selected_run && !same_logical_text_line(previous_logical_line, run.logical_line()) {
+        if has_selected_run {
             let separator = run.separator_before();
-            if separator.is_empty() {
+            if same_logical_text_line(previous_logical_line, run.logical_line()) {
+                if run.visual_line.is_some()
+                    && previous_visual_line != run.visual_line
+                    && separator != "\n"
+                {
+                    payload.push_str(separator);
+                }
+            } else if separator.is_empty() {
                 payload.push('\n');
             } else {
                 payload.push_str(separator);
@@ -44,6 +52,7 @@ pub(in crate::raster_host) fn copy_payload_for_selection(
         }
         payload.push_str(&selected_text);
         previous_logical_line = run.logical_line();
+        previous_visual_line = run.visual_line;
         has_selected_run = true;
     }
     payload
@@ -254,6 +263,40 @@ mod tests {
         assert_eq!(
             "alpha\r\u{2029}beta",
             copy_payload_for_selection(&[first, second], TextSelection::drag((0, 0), (40, 36)))
+        );
+    }
+
+    #[test]
+    fn copy_payload_emits_wrapped_source_separator_once_per_visual_line() {
+        let mut first = SelectableTextRun::new_in_logical_line("alpha", 0, 0, 40, 12, Some(1));
+        first.visual_line = Some(10);
+        let mut second = SelectableTextRun::new_in_logical_line_with_separator(
+            "beta",
+            0,
+            24,
+            32,
+            12,
+            Some(1),
+            " ",
+        );
+        second.visual_line = Some(11);
+        let mut third = SelectableTextRun::new_in_logical_line_with_separator(
+            " gamma",
+            32,
+            24,
+            40,
+            12,
+            Some(1),
+            " ",
+        );
+        third.visual_line = Some(11);
+
+        assert_eq!(
+            "alpha beta gamma",
+            copy_payload_for_selection(
+                &[first, second, third],
+                TextSelection::drag((0, 0), (80, 36)),
+            )
         );
     }
 

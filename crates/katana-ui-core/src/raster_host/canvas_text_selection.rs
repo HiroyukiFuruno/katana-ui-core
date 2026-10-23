@@ -156,6 +156,7 @@ impl Canvas {
         mut run: super::text_selection::SelectableTextRun,
     ) -> super::text_selection::SelectableTextRun {
         if self.active_text_selection_line.is_some() {
+            run.visual_line = self.active_text_selection_visual_line;
             run.separator_before
                 .clone_from(&self.active_text_selection_separator);
         }

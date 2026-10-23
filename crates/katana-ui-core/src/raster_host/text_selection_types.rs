@@ -7,6 +7,7 @@ pub struct SelectableTextRun {
     pub(in crate::raster_host) rect: LayoutRect,
     pub(in crate::raster_host) model: UiTextSelectionModel,
     pub(in crate::raster_host) logical_line: Option<u64>,
+    pub(in crate::raster_host) visual_line: Option<u64>,
     pub(in crate::raster_host) separator_before: String,
     pub(in crate::raster_host) resolved_bidi_rtl: Option<bool>,
 }

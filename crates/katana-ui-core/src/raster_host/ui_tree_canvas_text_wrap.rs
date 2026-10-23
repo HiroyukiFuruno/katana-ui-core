@@ -30,7 +30,7 @@ const ALERT_BODY_MAX_CHARS: usize = 58;
 const MAX_PLAIN_LINE_CACHE_ENTRIES: usize = 4_096;
 
 thread_local! {
-    static PLAIN_LINE_CACHE: RefCell<HashMap<PlainLineCacheKey, Vec<String>>> =
+    static PLAIN_LINE_CACHE: RefCell<HashMap<PlainLineCacheKey, Vec<WrappedTextLine<String>>>> =
         RefCell::new(HashMap::new());
 }
 
@@ -67,26 +67,12 @@ impl UiTreeTextWrap {
         let cache_key = PlainLineCacheKey::from_node(renderer, node, max_width, wrap_metrics);
         let contains_separator = node.props().label.chars().any(is_paragraph_separator);
         if !contains_separator && let Some(lines) = cached_plain_lines(&cache_key) {
-            return lines
-                .into_iter()
-                .enumerate()
-                .map(|(index, content)| WrappedTextLine {
-                    content,
-                    separator_before: if index > 0 { "\n" } else { "" }.to_owned(),
-                    separator_is_explicit: false,
-                })
-                .collect();
+            return lines;
         }
         if !should_wrap(node) {
             let lines = paragraph_lines(&node.props().label);
             if !contains_separator {
-                remember_plain_lines(
-                    cache_key,
-                    &lines
-                        .iter()
-                        .map(|line| line.content.clone())
-                        .collect::<Vec<_>>(),
-                );
+                remember_plain_lines(cache_key, &lines);
             }
             return lines;
         }
@@ -98,13 +84,7 @@ impl UiTreeTextWrap {
             })
         };
         if !contains_separator {
-            remember_plain_lines(
-                cache_key,
-                &lines
-                    .iter()
-                    .map(|line| line.content.clone())
-                    .collect::<Vec<_>>(),
-            );
+            remember_plain_lines(cache_key, &lines);
         }
         lines
     }
@@ -174,11 +154,11 @@ impl PlainLineCacheKey {
     }
 }
 
-fn cached_plain_lines(key: &PlainLineCacheKey) -> Option<Vec<String>> {
+fn cached_plain_lines(key: &PlainLineCacheKey) -> Option<Vec<WrappedTextLine<String>>> {
     PLAIN_LINE_CACHE.with(|cache| cache.borrow().get(key).cloned())
 }
 
-fn remember_plain_lines(key: PlainLineCacheKey, lines: &[String]) {
+fn remember_plain_lines(key: PlainLineCacheKey, lines: &[WrappedTextLine<String>]) {
     PLAIN_LINE_CACHE.with(|cache| {
         let mut cache = cache.borrow_mut();
         if cache.len() >= MAX_PLAIN_LINE_CACHE_ENTRIES {
@@ -197,38 +177,27 @@ fn wrap_plain_line(
     line: &str,
     max_width: usize,
     metrics: UiTreeTextMetrics,
-) -> Vec<String> {
+) -> Vec<WrappedTextLine<String>> {
     let spans = vec![UiTextSpan {
         text: line.to_string(),
         style: Default::default(),
         link_target: String::new(),
     }];
-    SpanWrapState::new(max_width, false)
-        .tap_segments(SpanTextRenderers::new(renderer, renderer), spans, metrics)
+    let mut state = SpanWrapState::new(max_width, false);
+    state.push_spans(SpanTextRenderers::new(renderer, renderer), &spans, metrics);
+    state
+        .finish_with_metadata()
         .into_iter()
-        .map(|segments| segments.into_iter().map(|segment| segment.text).collect())
+        .map(|line| WrappedTextLine {
+            content: line
+                .content
+                .into_iter()
+                .map(|segment| segment.text)
+                .collect(),
+            separator_before: line.separator_before,
+            separator_is_explicit: line.separator_is_explicit,
+        })
         .collect()
-}
-
-trait SpanWrapStateExt {
-    fn tap_segments(
-        self,
-        renderers: SpanTextRenderers<'_>,
-        spans: Vec<UiTextSpan>,
-        metrics: UiTreeTextMetrics,
-    ) -> Vec<Vec<UiTextSpan>>;
-}
-
-impl SpanWrapStateExt for SpanWrapState {
-    fn tap_segments(
-        mut self,
-        renderers: SpanTextRenderers<'_>,
-        spans: Vec<UiTextSpan>,
-        metrics: UiTreeTextMetrics,
-    ) -> Vec<Vec<UiTextSpan>> {
-        self.push_spans(renderers, &spans, metrics);
-        self.finish()
-    }
 }
 
 #[cfg(test)]
@@ -299,8 +268,8 @@ fn is_compact_document_text(node: &UiNode, metrics: UiTreeTextMetrics) -> bool {
 mod tests {
     use super::{
         MAX_PLAIN_LINE_CACHE_ENTRIES, PLAIN_LINE_CACHE, PlainLineCacheKey, UiTreeTextWrap,
-        alert_plain_lines, available_width, fixed_char_chunks, remember_plain_lines,
-        span_no_wrap_lines, span_segments, span_width,
+        WrappedTextLine, alert_plain_lines, available_width, fixed_char_chunks,
+        remember_plain_lines, span_no_wrap_lines, span_segments, span_width,
     };
     use crate::raster_host::text::TextRenderer;
     use crate::raster_host::ui_tree_canvas_text_line_width::{SpanTextRenderers, whitespace_width};
@@ -505,18 +474,27 @@ mod tests {
             for index in 0..MAX_PLAIN_LINE_CACHE_ENTRIES {
                 cache.insert(
                     cache_key(format!("existing-{index}")),
-                    vec!["old".to_string()],
+                    vec![WrappedTextLine {
+                        content: "old".to_string(),
+                        separator_before: String::new(),
+                        separator_is_explicit: false,
+                    }],
                 );
             }
         });
 
         let key = cache_key("replacement".to_string());
-        remember_plain_lines(key.clone(), &["new".to_string()]);
+        let replacement = WrappedTextLine {
+            content: "new".to_string(),
+            separator_before: String::new(),
+            separator_is_explicit: false,
+        };
+        remember_plain_lines(key.clone(), std::slice::from_ref(&replacement));
 
         PLAIN_LINE_CACHE.with(|cache| {
             let cache = cache.borrow();
             assert_eq!(1, cache.len());
-            assert_eq!(Some(&vec!["new".to_string()]), cache.get(&key));
+            assert_eq!(Some(&vec![replacement]), cache.get(&key));
         });
     }
 

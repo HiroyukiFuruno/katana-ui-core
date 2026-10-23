@@ -55,11 +55,13 @@ impl Canvas {
         logical_line: u64,
         separator_before: &str,
         separator_is_explicit: bool,
-    ) -> (Option<u64>, String, bool, usize) {
+    ) -> (Option<u64>, Option<u64>, String, bool, usize) {
         let previous = self.active_text_selection_line;
+        let previous_visual_line = self.active_text_selection_visual_line;
         let previous_separator = std::mem::take(&mut self.active_text_selection_separator);
         let previous_is_auto = self.active_text_selection_separator_is_auto;
         self.active_text_selection_line = Some(logical_line);
+        self.active_text_selection_visual_line = Some(next_text_selection_line_id());
         if separator_is_explicit && self.pending_text_selection_separator_is_auto {
             self.pending_text_selection_separator.clear();
         }
@@ -70,20 +72,26 @@ impl Canvas {
         self.active_text_selection_separator_is_auto = !separator_is_explicit;
         (
             previous,
+            previous_visual_line,
             previous_separator,
             previous_is_auto,
             self.text_runs.len(),
         )
     }
 
-    fn finish_text_selection_line(&mut self, previous: (Option<u64>, String, bool, usize)) {
-        let (previous_line, previous_separator, previous_is_auto, run_start) = previous;
+    fn finish_text_selection_line(
+        &mut self,
+        previous: (Option<u64>, Option<u64>, String, bool, usize),
+    ) {
+        let (previous_line, previous_visual_line, previous_separator, previous_is_auto, run_start) =
+            previous;
         self.clear_consumed_text_selection_separator(run_start);
         self.pending_text_selection_separator =
             std::mem::take(&mut self.active_text_selection_separator);
         self.pending_text_selection_separator_is_auto =
             self.active_text_selection_separator_is_auto;
         self.active_text_selection_line = previous_line;
+        self.active_text_selection_visual_line = previous_visual_line;
         self.active_text_selection_separator = previous_separator;
         self.active_text_selection_separator_is_auto = previous_is_auto;
     }

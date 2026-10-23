@@ -134,23 +134,20 @@ fn separator_end(text: &str, index: usize, character: char) -> usize {
 
 pub(super) fn plain_lines_with_separator_metadata(
     label: &str,
-    wrap: impl Fn(&str) -> Vec<String>,
+    wrap: impl Fn(&str) -> Vec<WrappedTextLine<String>>,
 ) -> Vec<WrappedTextLine<String>> {
     paragraph_lines(label)
         .into_iter()
         .flat_map(|source_line| {
-            wrap(&source_line.content)
-                .into_iter()
-                .enumerate()
-                .map(move |(index, content)| WrappedTextLine {
-                    content,
-                    separator_before: if index == 0 {
-                        source_line.separator_before.clone()
-                    } else {
-                        "\n".to_owned()
-                    },
-                    separator_is_explicit: index == 0 && source_line.separator_is_explicit,
-                })
+            wrap(&source_line.content).into_iter().enumerate().map(
+                move |(index, mut wrapped_line)| {
+                    if index == 0 {
+                        wrapped_line.separator_before = source_line.separator_before.clone();
+                        wrapped_line.separator_is_explicit = source_line.separator_is_explicit;
+                    }
+                    wrapped_line
+                },
+            )
         })
         .collect()
 }

@@ -11,6 +11,7 @@ pub(super) fn span_segments(span: &UiTextSpan) -> Vec<UiTextSpan> {
     segments::span_segments(span)
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct WrappedTextLine<T> {
     pub(super) content: T,
     pub(super) separator_before: String,
@@ -103,7 +104,12 @@ impl SpanWrapState {
         }
         let width = span_part_width(renderers, &segment, metrics, preserve_segment_whitespace);
         if self.current_width > 0 && self.current_width.saturating_add(width) > self.max_width {
-            self.start_new_line("\n", false);
+            let source_separator = if preserve_segment_whitespace {
+                ""
+            } else {
+                leading_whitespace(segment.text.as_str())
+            };
+            self.start_new_line(source_separator, false);
         }
         if !preserve_segment_whitespace && self.current_width == 0 {
             segment.text = segment.text.trim_start().to_string();
@@ -121,6 +127,7 @@ impl SpanWrapState {
         self.current_line.push(segment);
     }
 
+    #[cfg(test)]
     pub(super) fn finish(self) -> Vec<Vec<UiTextSpan>> {
         self.finish_with_metadata()
             .into_iter()
@@ -237,6 +244,14 @@ impl SpanWrapState {
         self.start_new_line("\n", false);
         chunk.clear();
     }
+}
+
+fn leading_whitespace(text: &str) -> &str {
+    let separator_length = text
+        .char_indices()
+        .find_map(|(index, character)| (!character.is_whitespace()).then_some(index))
+        .unwrap_or(text.len());
+    &text[..separator_length]
 }
 
 #[cfg(test)]

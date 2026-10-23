@@ -21,17 +21,20 @@ impl SelectableTextRun {
                 ))
             })
             .collect::<Vec<_>>();
-        Self::with_glyph_positions_in_logical_line_with_bidi_direction_and_separator(
-            &self.text,
-            self.x(),
-            self.y().saturating_sub(offset_y),
-            self.width(),
-            self.height(),
-            &glyph_positions,
-            self.logical_line,
-            self.resolved_bidi_rtl(),
-            self.separator_before(),
-        )
+        let mut rebased =
+            Self::with_glyph_positions_in_logical_line_with_bidi_direction_and_separator(
+                &self.text,
+                self.x(),
+                self.y().saturating_sub(offset_y),
+                self.width(),
+                self.height(),
+                &glyph_positions,
+                self.logical_line,
+                self.resolved_bidi_rtl(),
+                self.separator_before(),
+            );
+        rebased.visual_line = self.visual_line;
+        rebased
     }
 }
 
