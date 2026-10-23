@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -4044,7 +4046,12 @@ class KucGuardrailsTest(unittest.TestCase):
             'readonly apt_timeout_seconds="${KUC_APT_TIMEOUT_SECONDS:-${default_apt_timeout_seconds}}"',
             apt_installer_source,
         )
-        self.assertIn('timeout "${apt_timeout_seconds}" sudo apt-get update', apt_installer_source)
+        self.assertIn(
+            'timeout "${apt_timeout_seconds}" sudo apt-get "${apt_acquire_options[@]}" update',
+            apt_installer_source,
+        )
+        self.assertIn("readonly apt_acquire_timeout_seconds=30", apt_installer_source)
+        self.assertIn("readonly apt_acquire_retries=2", apt_installer_source)
         self.assertIn("tail -n 200", apt_installer_source)
         self.assertIn("failed after ${max_attempts} attempts", apt_installer_source)
 
@@ -4059,6 +4066,61 @@ class KucGuardrailsTest(unittest.TestCase):
                 )
                 self.assertIn("bash scripts/ci/install-headless-display.sh", source)
                 self.assertNotIn("sudo apt-get update", source)
+
+    def test_apt_installer_passes_bounded_acquire_options(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        installer = root / "scripts/ci/install-apt-packages.sh"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            temp_root = Path(tmp)
+            fake_bin = temp_root / "bin"
+            fake_bin.mkdir()
+            capture = temp_root / "apt-arguments.log"
+            timeout_capture = temp_root / "timeout-arguments.log"
+            fake_timeout = fake_bin / "timeout"
+            fake_sudo = fake_bin / "sudo"
+            write_text(
+                fake_timeout,
+                '#!/usr/bin/env bash\nprintf \'%s\\n\' "$1" >> "$KUC_TIMEOUT_ARGUMENTS"\n'
+                'shift\nexec "$@"\n',
+            )
+            write_text(
+                fake_sudo,
+                '#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" >> "$KUC_APT_ARGUMENTS"\n',
+            )
+            fake_timeout.chmod(0o755)
+            fake_sudo.chmod(0o755)
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "PATH": f"{fake_bin}:{environment['PATH']}",
+                    "KUC_APT_ARGUMENTS": str(capture),
+                    "KUC_TIMEOUT_ARGUMENTS": str(timeout_capture),
+                    "KUC_APT_TIMEOUT_SECONDS": "300",
+                    "RUNNER_TEMP": tmp,
+                }
+            )
+
+            result = subprocess.run(
+                ["bash", str(installer), "fonts-noto-cjk"],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            invocations = capture.read_text(encoding="utf-8").splitlines()
+            self.assertEqual(len(invocations), 2, invocations)
+            self.assertEqual(
+                timeout_capture.read_text(encoding="utf-8").splitlines(),
+                ["300", "300"],
+            )
+            for invocation in invocations:
+                with self.subTest(invocation=invocation):
+                    self.assertIn("-o Acquire::http::Timeout=30", invocation)
+                    self.assertIn("-o Acquire::https::Timeout=30", invocation)
+                    self.assertIn("-o Acquire::Retries=2", invocation)
 
     def test_ffmpeg_is_installed_before_the_checks_that_use_real_video(self) -> None:
         root = Path(__file__).resolve().parents[1]

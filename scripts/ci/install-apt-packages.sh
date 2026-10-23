@@ -4,6 +4,13 @@ set -euo pipefail
 readonly max_attempts=3
 readonly default_apt_timeout_seconds=300
 readonly apt_timeout_seconds="${KUC_APT_TIMEOUT_SECONDS:-${default_apt_timeout_seconds}}"
+readonly apt_acquire_timeout_seconds=30
+readonly apt_acquire_retries=2
+readonly apt_acquire_options=(
+  -o "Acquire::http::Timeout=${apt_acquire_timeout_seconds}"
+  -o "Acquire::https::Timeout=${apt_acquire_timeout_seconds}"
+  -o "Acquire::Retries=${apt_acquire_retries}"
+)
 
 case "${apt_timeout_seconds}" in
   '' | *[!0-9]*)
@@ -30,9 +37,9 @@ install_packages() {
     log_file="${RUNNER_TEMP:-/tmp}/kuc-apt-install-${attempt}.log"
     echo "KUC apt install attempt ${attempt}/${max_attempts}; packages=$*; log=${log_file}"
 
-    if timeout "${apt_timeout_seconds}" sudo apt-get update >"${log_file}" 2>&1 \
+    if timeout "${apt_timeout_seconds}" sudo apt-get "${apt_acquire_options[@]}" update >"${log_file}" 2>&1 \
       && timeout "${apt_timeout_seconds}" sudo env DEBIAN_FRONTEND=noninteractive \
-        apt-get install --yes --no-install-recommends "$@" >>"${log_file}" 2>&1; then
+        apt-get "${apt_acquire_options[@]}" install --yes --no-install-recommends "$@" >>"${log_file}" 2>&1; then
       return 0
     else
       local exit_code=$?
