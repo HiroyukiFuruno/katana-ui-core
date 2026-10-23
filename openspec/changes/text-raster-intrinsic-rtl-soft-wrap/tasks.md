@@ -15,6 +15,7 @@
 - [x] CI Actionの公式release/tagを照合し、SHA固定とOIDC/artifact契約を保って更新する（YAML構文、ガード121件、梱包5件が成功）。
 - [/] review P1: plain/rich proseのsoft wrapで除かれる語間空白をselection metadataへ保持し、コピーで単語を結合しない（実Canvas cold/warm・全体/逆選択/betaのみ・複数style span、raster-host core1064成功）。
 - [x] #107: APT archive取得停止へのrequest timeout/retryを明示し、outer300秒/3attempts・package/font hashを維持する（local guard122成功、実CIは未検証）。
+- [/] review P1（再review）: aligned/scaled blitのrun再構築でもvisual-line metadataを保持し、転送後のprose/rich copyを回帰検証する（discussion_r4356036444）。
 - [ ] focused回帰、fmt、strict lint、AST、完全release-checkを通す。品質gateを緩和しない。
 
 ## 公開DoD
@@ -38,3 +39,12 @@
 - f9d1baa先行snapshotの完全gate42875はexit0。coverage functions14844/14844、lines157930/157942、既存strict LCOV判定成功、package/publish dry-runと未公開確認成功（`tmp/v044-release-check-final.log`）。その後のreview修正は含まれないため、修正後HEADの最終証拠へ流用しない。修正後の`just check`をローカル実行し、同一HEADのCI `release-check`で全coverage/package/publication guardを回収する。検査対象・基準は維持する。
 
 - review修正後の完全 `just check`: session74126 exit0、`tmp/v044-review-fix-check-complete.log`。fmt/AST/types/全strict lint、全target/feature4743（136suites）、native IME10、native contracts22、Unicode6、guard122とconsumer/Storybook contractが成功。修正後HEADのCI完全release-check（coverage/packageを含む）は未回収。
+
+- exact102c18eへの再cloud reviewでblit後の語間空白欠落P1を取得。最初のP1はpush後reply/resolve済み（discussion_r4356015992）。再指摘の修正・検証・push・該当thread返信/resolveと更新後HEADの完全CIが終わるまでDraftを維持する。
+
+- 再reviewのblit P1は実Canvas aligned/scaledでred後、metadata転送によりfocused6件とstrict Clippyが成功（`tmp/verification/v044-blit-soft-wrap-{red,green}.log`）。root全体check初回は追加helperの数値定数、次はその整形差分で停止したため、どちらも成功証拠としない。
+- 102c18eのUbuntu CIはrich beta-only試験でglyph下端41が次行top40へ入る座標を検出しFAIL（`tmp/v044-review-ci-tests-failed.log`）。選択点をglyph中央の同じ高さへ修正し、期待値betaは維持する。Linux実fontでfocused再検証する。
+- #107の30秒Acquire設定だけではpreflight39899020226もexit124を3回発生。3回目の取得64.7MB/4分57秒でdpkg完了時間が残らない。`tmp/v044-preflight-acquire-timeout-failed.log`。outer300秒/3回は維持し、低速Azure mirrorから既存公式HTTPS mirrorへ限定切替を実装・検証する。
+
+- 最終working treeの完全 `just check`: session74136 exit0、`tmp/v044-blit-mirror-full-check.log`。4746 tests/136 suites、fmt/AST/全strict Clippy、native IME10/native contracts22、guard125、Storybook77が成功。Linux/arm64の既存coverage image内でもprose copy6件が成功（`tmp/verification/v044-prose-linux-center.log`、ゼロ件だった初回呼出しは成功証拠から除外）。公開前の同一HEAD CI完全release-checkは引き続き必須。
+- Azure mirror限定fallbackは4件のunit、ShellCheck、bash構文、Python compileと上記guard125で成功。署名・suite・component・package/font hash・outer300秒/3回を維持。実hosted CIの成功は未回収。

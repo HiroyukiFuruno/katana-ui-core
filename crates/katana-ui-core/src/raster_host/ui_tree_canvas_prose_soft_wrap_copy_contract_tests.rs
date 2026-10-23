@@ -1,4 +1,5 @@
 use crate::raster_host::ui_tree_canvas_text_line_width::preserves_whitespace;
+use crate::raster_host::ui_tree_canvas_types::CanvasBlitRequest;
 use crate::raster_host::{Canvas, UiTreeCanvasRenderer, UiTreeRenderArea};
 use katana_ui_core::atom::Text;
 use katana_ui_core::render_model::{UiNode, UiTextSpan, UiTextSpanStyle, UiTextWrapMode};
@@ -6,6 +7,7 @@ use katana_ui_core::text_selection::UiTextSelectionRange;
 use katana_ui_core::theme::ThemeSnapshot;
 
 const COPY_AREA_HEIGHT: usize = 1_200;
+const BLIT_COPY_WIDTH: usize = 120;
 
 #[test]
 fn soft_wrapped_plain_prose_copy_preserves_source_whitespace() {
@@ -46,6 +48,22 @@ fn prose_copy_preserves_explicit_newlines() {
         Some("alpha\nbeta".to_owned()),
         canvas.copy_text_in_selection(Some((0, 0)), Some((width, area.height)))
     );
+}
+
+#[test]
+fn aligned_blit_preserves_soft_wrap_copy_whitespace() {
+    assert_soft_wrap_copy_after_blit(1.0);
+}
+
+#[test]
+fn scaled_blit_preserves_soft_wrap_copy_whitespace() {
+    assert_soft_wrap_copy_after_blit(2.0);
+}
+
+#[test]
+fn scaled_blit_preserves_rich_continuation_line_grouping() {
+    let root = wrapped_rich_prose_node();
+    assert_copy_after_blit(&root, BLIT_COPY_WIDTH, 2.0, "xxxxxxxxxxxx alpha beta gamma");
 }
 
 fn wrapped_plain_prose_node() -> UiNode {
@@ -103,6 +121,47 @@ fn assert_prose_copy_contract(root: &UiNode, width: usize, expected: &str) {
     }
 }
 
+fn assert_soft_wrap_copy_after_blit(scale_factor: f32) {
+    let root = wrapped_plain_prose_node();
+    assert_copy_after_blit(
+        &root,
+        BLIT_COPY_WIDTH,
+        scale_factor,
+        "xxxxxxxxxxxx alpha beta",
+    );
+}
+
+fn assert_copy_after_blit(root: &UiNode, width: usize, scale_factor: f32, expected: &str) {
+    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark());
+    let area = UiTreeRenderArea {
+        x: 0,
+        y: 0,
+        width,
+        height: COPY_AREA_HEIGHT,
+        scroll_y: 0.0,
+    };
+    let mut source = Canvas::new(area.width, area.height, 0);
+    renderer.render(&mut source, root, area);
+
+    let mut target = Canvas::new_scaled(area.width, area.height, scale_factor, 0);
+    target.blit_canvas(
+        &source,
+        CanvasBlitRequest {
+            dest_x: 0,
+            dest_y: 0,
+            width: area.width,
+            height: area.height,
+            source_y: 0,
+        },
+    );
+
+    assert_eq!(
+        Some(expected.to_owned()),
+        target.copy_text_in_selection(Some((0, 0)), Some((area.width, area.height))),
+        "blit at scale {scale_factor} must preserve source whitespace across visual lines"
+    );
+}
+
 fn assert_full_prose_selection(
     canvas: &Canvas,
     width: usize,
@@ -146,16 +205,12 @@ fn assert_beta_only_selection(canvas: &Canvas) {
         ));
         let first = beta_rects.first().expect("beta must map to glyphs");
         let last = beta_rects.last().expect("beta must map to glyphs");
-        let previous_visual_bottom = canvas.text_runs()[..beta_index]
-            .iter()
-            .map(|previous_run| previous_run.bottom())
-            .max()
-            .unwrap_or(first.y.max(0) as usize);
-        let start_y = (first.y.max(0) as usize).max(previous_visual_bottom.saturating_add(1));
-        let start = (first.x as usize, start_y);
+        /* WHY: glyph下端は次の行と重なるfontがあるため、語の中央の高さで選択する。 */
+        let selection_y = first.y.saturating_add_unsigned(first.height / 2).max(0) as usize;
+        let start = (first.x as usize, selection_y);
         let end = (
             last.x.saturating_add_unsigned(last.width) as usize,
-            last.y.saturating_add_unsigned(last.height) as usize,
+            selection_y,
         );
         assert_eq!(
             Some(SELECTED_WORD.to_owned()),

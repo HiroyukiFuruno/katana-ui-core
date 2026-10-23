@@ -110,6 +110,7 @@ impl Canvas {
     ) {
         let source_bottom = source_logical_y + request.height as f32;
         let mut target_logical_lines = HashMap::new();
+        let mut target_visual_lines = HashMap::new();
         for run in source.text_runs() {
             let rect = run.rect();
             if rect.bottom() as f32 <= source_logical_y || rect.y as f32 >= source_bottom {
@@ -124,6 +125,7 @@ impl Canvas {
                 target_x,
                 target_y,
                 Self::target_logical_line_id(run.logical_line(), &mut target_logical_lines),
+                Self::target_visual_line_id(run.visual_line, &mut target_visual_lines),
             );
         }
     }
@@ -170,6 +172,7 @@ impl Canvas {
         let source_bottom = request.source_y.saturating_add(request.height);
         let source_y = request.source_logical_y;
         let mut target_logical_lines = HashMap::new();
+        let mut target_visual_lines = HashMap::new();
         for run in source.text_runs() {
             let rect = run.rect();
             let physical_rect_top = source.to_physical_y(rect.y);
@@ -186,6 +189,7 @@ impl Canvas {
                 target_x,
                 target_y,
                 Self::target_logical_line_id(run.logical_line(), &mut target_logical_lines),
+                Self::target_visual_line_id(run.visual_line, &mut target_visual_lines),
             );
         }
     }
@@ -196,10 +200,11 @@ impl Canvas {
         target_x: usize,
         target_y: usize,
         logical_line: Option<u64>,
+        visual_line: Option<u64>,
     ) {
         let rect = run.rect();
         if run.text().is_empty() {
-            self.text_runs.push(
+            let mut copied_run =
                 super::text_selection::SelectableTextRun::new_in_logical_line_with_separator(
                     "",
                     target_x,
@@ -208,8 +213,9 @@ impl Canvas {
                     rect.height,
                     logical_line,
                     run.separator_before(),
-                ),
-            );
+                );
+            copied_run.visual_line = visual_line;
+            self.text_runs.push(copied_run);
             return;
         }
         let glyph_positions = run
@@ -227,6 +233,7 @@ impl Canvas {
             })
             .collect::<Vec<_>>();
         if glyph_positions.is_empty() {
+            let run_start = self.text_runs.len();
             self.record_text_run_in_logical_line_with_separator(
                 run.text(),
                 target_x,
@@ -236,9 +243,12 @@ impl Canvas {
                 logical_line,
                 run.separator_before(),
             );
+            if let Some(copied_run) = self.text_runs.get_mut(run_start) {
+                copied_run.visual_line = visual_line;
+            }
             return;
         }
-        self.text_runs.push(
+        let mut copied_run =
             super::text_selection::SelectableTextRun::with_glyph_positions_in_logical_line_with_bidi_direction_and_separator(
                 run.text(),
                 target_x,
@@ -249,8 +259,9 @@ impl Canvas {
                 logical_line,
                 run.resolved_bidi_rtl(),
                 run.separator_before(),
-            ),
-        );
+            );
+        copied_run.visual_line = visual_line;
+        self.text_runs.push(copied_run);
     }
 
     fn target_logical_line_id(
@@ -260,6 +271,17 @@ impl Canvas {
         source_logical_line.map(|source_logical_line| {
             *target_logical_lines
                 .entry(source_logical_line)
+                .or_insert_with(super::canvas_text_selection::next_text_selection_line_id)
+        })
+    }
+
+    fn target_visual_line_id(
+        source_visual_line: Option<u64>,
+        target_visual_lines: &mut HashMap<u64, u64>,
+    ) -> Option<u64> {
+        source_visual_line.map(|source_visual_line| {
+            *target_visual_lines
+                .entry(source_visual_line)
                 .or_insert_with(super::canvas_text_selection::next_text_selection_line_id)
         })
     }
