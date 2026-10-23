@@ -93,23 +93,26 @@ impl SpanWrapState {
             );
             return;
         }
-        if !self.preserve_whitespace && self.current_width == 0 {
+        let preserve_segment_whitespace =
+            self.preserve_whitespace || segment.style.inline_code || segment.style.monospace;
+        if !preserve_segment_whitespace && self.current_width == 0 {
             segment.text = segment.text.trim_start().to_string();
         }
         if segment.text.is_empty() {
             return;
         }
-        let width = span_part_width(renderers, &segment, metrics, self.preserve_whitespace);
+        let width = span_part_width(renderers, &segment, metrics, preserve_segment_whitespace);
         if self.current_width > 0 && self.current_width.saturating_add(width) > self.max_width {
             self.start_new_line("\n", false);
         }
-        if !self.preserve_whitespace && self.current_width == 0 {
+        if !preserve_segment_whitespace && self.current_width == 0 {
             segment.text = segment.text.trim_start().to_string();
         }
-        if !self.preserve_whitespace && segment.text.trim().is_empty() && self.current_width == 0 {
+        if !preserve_segment_whitespace && segment.text.trim().is_empty() && self.current_width == 0
+        {
             return;
         }
-        let width = span_part_width(renderers, &segment, metrics, self.preserve_whitespace);
+        let width = span_part_width(renderers, &segment, metrics, preserve_segment_whitespace);
         if width > self.max_width {
             self.push_oversized_segment(renderers, segment, metrics);
             return;
@@ -194,6 +197,8 @@ impl SpanWrapState {
             0, self.current_width,
             "oversized segments must start on a fresh line"
         );
+        let preserve_segment_whitespace =
+            self.preserve_whitespace || segment.style.inline_code || segment.style.monospace;
         let mut chunk = String::new();
         for character in segment.text.chars() {
             let mut candidate = chunk.clone();
@@ -203,7 +208,7 @@ impl SpanWrapState {
                 renderers,
                 &candidate_segment,
                 metrics,
-                self.preserve_whitespace,
+                preserve_segment_whitespace,
             );
             if candidate_width > self.max_width && !chunk.is_empty() {
                 self.push_current_chunk(&segment, &mut chunk, renderers, metrics);
@@ -224,7 +229,9 @@ impl SpanWrapState {
             return;
         }
         let next = segment_with_text(segment, chunk.as_str());
-        let width = span_part_width(renderers, &next, metrics, self.preserve_whitespace);
+        let preserve_segment_whitespace =
+            self.preserve_whitespace || segment.style.inline_code || segment.style.monospace;
+        let width = span_part_width(renderers, &next, metrics, preserve_segment_whitespace);
         self.current_width = width;
         self.current_line.push(next);
         self.start_new_line("\n", false);

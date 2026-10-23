@@ -1,4 +1,5 @@
 use super::super::super::canvas::Canvas;
+use super::super::super::canvas_text_selection_visual_line::resolve_text_selection_line_id;
 use super::super::super::text::RichTextStyle;
 use super::super::super::ui_tree_canvas_text_role::UiTreeTextRoleRenderer;
 use super::{UiTreeTextLineContext, UiTreeTextWrap, visible_line_y};
@@ -10,6 +11,7 @@ pub(super) fn draw_plain_at_logical_y(
     x: usize,
     y: f32,
 ) {
+    let mut logical_line = None;
     for (index, line) in UiTreeTextWrap::plain_lines_with_metadata(
         context.renderer,
         context.node,
@@ -20,6 +22,8 @@ pub(super) fn draw_plain_at_logical_y(
     .iter()
     .enumerate()
     {
+        let logical_line_id =
+            resolve_text_selection_line_id(&mut logical_line, line.separator_is_explicit);
         let Some(line_box_top) = visible_line_y(index, y, context.area, context.metrics) else {
             continue;
         };
@@ -38,7 +42,8 @@ pub(super) fn draw_plain_at_logical_y(
         .max(1);
         let line_x =
             UiTreeTextRoleRenderer::line_x(context.node, origin_x, x, context.area, width, index);
-        canvas.with_text_selection_line_separator(
+        canvas.with_text_selection_line_id(
+            logical_line_id,
             &line.separator_before,
             line.separator_is_explicit,
             |canvas| {

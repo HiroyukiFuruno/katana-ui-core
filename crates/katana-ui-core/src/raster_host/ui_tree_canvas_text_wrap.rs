@@ -5,9 +5,9 @@ use super::super::is_paragraph_separator;
 #[cfg(test)]
 pub(super) use super::wrap_state::span_segments;
 use super::wrap_state::{SpanWrapState, WrappedTextLine};
-use crate::raster_host::ui_tree_canvas_text_line_width::SpanTextRenderers;
 #[cfg(test)]
 use crate::raster_host::ui_tree_canvas_text_line_width::span_part_width;
+use crate::raster_host::ui_tree_canvas_text_line_width::{SpanTextRenderers, preserves_whitespace};
 use katana_ui_core::render_model::{UiNode, UiTextSpan, UiTextWrapMode};
 use katana_ui_core::text_raster::{PlatformFontCatalogFingerprint, PlatformTextFaceSelection};
 use std::cell::RefCell;
@@ -261,10 +261,6 @@ fn dimension_px(value: &katana_ui_core::render_model::UiDimension) -> usize {
         katana_ui_core::render_model::UiDimension::Px(value) => usize::from(*value),
         _ => 0,
     }
-}
-
-fn preserves_whitespace(node: &UiNode) -> bool {
-    node.props().text.role == "code" || node.props().font_role == "code"
 }
 
 fn wrap_metrics_for_node(node: &UiNode, mut metrics: UiTreeTextMetrics) -> UiTreeTextMetrics {
