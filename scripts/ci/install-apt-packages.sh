@@ -11,6 +11,21 @@ readonly apt_acquire_options=(
   -o "Acquire::https::Timeout=${apt_acquire_timeout_seconds}"
   -o "Acquire::Retries=${apt_acquire_retries}"
 )
+readonly apt_config_root="${KUC_APT_CONFIG_ROOT:-/etc/apt}"
+
+if [ -n "${KUC_APT_CONFIG_ROOT:-}" ]; then
+  case "${KUC_APT_CONFIG_ROOT}" in
+    /*) ;;
+    *)
+      echo "KUC apt config root must be an absolute path." >&2
+      exit 2
+      ;;
+  esac
+  if [ "${KUC_APT_CONFIG_ROOT}" = "/" ]; then
+    echo "KUC apt config root must not be the filesystem root." >&2
+    exit 2
+  fi
+fi
 
 case "${apt_timeout_seconds}" in
   '' | *[!0-9]*)
@@ -28,6 +43,39 @@ if [ "$#" -eq 0 ]; then
   echo "KUC apt installer requires at least one package." >&2
   exit 2
 fi
+
+prefer_official_ubuntu_mirrors() {
+  local mirror_list_file="${apt_config_root}/apt-mirrors.txt"
+  local source_file
+  local fallback_applied=false
+
+  if [ -f "${mirror_list_file}" ] && grep -Eq '^https?://azure\.archive\.ubuntu\.com/ubuntu/?([[:space:]]|$)' "${mirror_list_file}"; then
+    if grep -Eq '^https://(archive|security)\.ubuntu\.com/ubuntu/?([[:space:]]|$)' "${mirror_list_file}"; then
+      sudo perl -ni -e 'print unless m{^https?://azure\.archive\.ubuntu\.com/ubuntu/?(?:\s|$)}' "${mirror_list_file}"
+    else
+      sudo perl -pi -e 's#^https?://azure\.archive\.ubuntu\.com/ubuntu/?#https://archive.ubuntu.com/ubuntu/#' "${mirror_list_file}"
+    fi
+    fallback_applied=true
+  fi
+
+  for source_file in \
+    "${apt_config_root}/sources.list" \
+    "${apt_config_root}/sources.list.d/ubuntu.sources"; do
+    if [ -f "${source_file}" ] && grep -Eq 'https?://azure\.archive\.ubuntu\.com/ubuntu(/|[[:space:]]|$)' "${source_file}"; then
+      sudo perl -pi \
+        -e 's#http://azure\.archive\.ubuntu\.com/ubuntu(?=/|\s|$)#https://archive.ubuntu.com/ubuntu#g;' \
+        -e 's#https://azure\.archive\.ubuntu\.com/ubuntu(?=/|\s|$)#https://archive.ubuntu.com/ubuntu#g' \
+        "${source_file}"
+      fallback_applied=true
+    fi
+  done
+
+  if [ "${fallback_applied}" = true ]; then
+    echo "KUC apt fallback prefers official Ubuntu HTTPS archives after Azure mirror failure."
+  else
+    echo "KUC apt fallback found no Azure mirror in the supported Ubuntu source files."
+  fi
+}
 
 install_packages() {
   local attempt=1
@@ -47,6 +95,9 @@ install_packages() {
     fi
 
     tail -n 200 "${log_file}" || true
+    if [ "${attempt}" -eq 1 ]; then
+      prefer_official_ubuntu_mirrors
+    fi
     attempt=$((attempt + 1))
   done
 
