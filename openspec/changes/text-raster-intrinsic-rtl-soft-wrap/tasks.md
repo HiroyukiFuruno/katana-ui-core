@@ -17,6 +17,7 @@
 - [x] #107: APT archive取得停止へのrequest timeout/retryを明示し、outer300秒/3attempts・package/font hashを維持する（local guard122成功、実CIは未検証）。
 - [/] review P1（再review）: aligned/scaled blitのrun再構築でもvisual-line metadataを保持し、転送後のprose/rich copyを回帰検証する（discussion_r4356036444）。
 - [/] review P1（3回目）: oversized wordの文字分割後にも原文の語間空白を保持する（discussion_r4356221362）。実Canvasでplain/rich・別span空白・明示区切りを回帰検証した。更新HEADへのpush・thread返信/resolve・再reviewは公開DoDで継続する。
+- [/] review P1（4回目）: 非oversized語の直後に空白だけのspanがoverflowした場合も、すべての非明示visual境界へ後続spanの原文空白を蓄積する（discussion_r4356701474）。push後のthread返信/resolveと更新HEADの再reviewを公開DoDで継続する。
 - [ ] focused回帰、fmt、strict lint、AST、完全release-checkを通す。品質gateを緩和しない。
 
 ## 公開DoD
@@ -56,3 +57,8 @@
 - 先行fullcheck88628は追加cross-span欠落の修正前にrootが停止しexit143となったため成功証拠から除外する。修正後の完全 `just check` はsession30752、`tmp/v044-crossspan-final-full-check.log`で実行中。完了結果は回収後に記録する。
 
 - session30752はmacOS arm64の生成済みrlib内の内部LLVMシンボル欠落でlink失敗（exit101）。対象KUCのdev cacheだけを `cargo clean -p katana-ui-core --profile dev` で再生成した後、同じ完全 `just check` を `CARGO_INCREMENTAL=0` で再実行し、session47204がexit0となった（`tmp/v044-crossspan-clean-full-check.log`）。全target/feature4754件・136suites、native IME10、native contracts22、Unicode6、guard125、Storybook77、fmt/AST/types/全strict Clippyとconsumer契約が成功。ソースや品質gateは緩和していない。修正後HEADの完全CI release-check（strict coverage/packageを含む）は引き続き必須。
+
+- b013b6dを通常commit/pushし、3回目P1へdiscussion_r4356671177で返信・thread resolveした。4回目のexact-head review（request issuecomment-6358691806）は非LFの自動折り返し境界の追加P1を指摘したためDraftを維持する。b013b6dのCI/preflight/NativeIMEは39909924742/39909924672/39909924779で実行中だが、追加修正後HEADの証拠には流用しない。
+
+- 4回目P1の実Canvas redは、120pxに収まるboldの25個の`i`と別spanの空白・LFで原文空白が欠落する例（`tmp/verification/pr106-normal-boundary-final5.log`）。すべての非明示境界をautomaticとして扱う1行修正で、richの1/2/3空白span、通常語/oversized語、後続語/全5区切りと分割CRLF、cold/warmのmatrixが成功した。plainは既存の正規化契約を維持する1空白と全5区切りを検査し、codeはEOF末尾空白も幅1/8で厳密保持を検査した。plainの複数空白正規化を誤ってP1と扱った初回splitspaceログはred証拠に含めない。focused17件成功（`pr106-normal-boundary-copy-contracts-final2.log`）。
+- 最終ソースの完全 `just check` はexit0、4755 tests/136 suites、native IME10/native contracts22/Unicode6、guard125、Storybook77とfmt/AST/全strict Clippy・consumer契約が成功（`tmp/v044-all-automatic-boundaries-full-check.log`）。同じ更新HEADの完全CI release-check・再review・公開はまだ未完了。

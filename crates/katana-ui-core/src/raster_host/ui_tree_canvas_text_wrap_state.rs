@@ -214,8 +214,7 @@ impl SpanWrapState {
         }
         self.current_separator_before = next_separator_before.to_owned();
         self.current_separator_is_explicit = separator_is_explicit;
-        self.current_separator_is_automatic_wrap =
-            !separator_is_explicit && next_separator_before == "\n";
+        self.current_separator_is_automatic_wrap = !separator_is_explicit;
     }
 
     fn push_current_line(&mut self) {
