@@ -25,6 +25,7 @@ pub(super) struct SpanWrapState {
     current_line: Vec<UiTextSpan>,
     current_separator_before: String,
     current_separator_is_explicit: bool,
+    current_separator_is_automatic_wrap: bool,
     current_width: usize,
 }
 
@@ -37,6 +38,7 @@ impl SpanWrapState {
             current_line: Vec::new(),
             current_separator_before: String::new(),
             current_separator_is_explicit: false,
+            current_separator_is_automatic_wrap: false,
             current_width: 0,
         }
     }
@@ -48,7 +50,7 @@ impl SpanWrapState {
         segment: UiTextSpan,
         metrics: UiTreeTextMetrics,
     ) {
-        self.push_with_source_adjacency(renderers, segment, metrics, true);
+        self.push_with_source_adjacency(renderers, segment, metrics, true, "");
     }
 
     pub(super) fn push_spans(
@@ -68,6 +70,7 @@ impl SpanWrapState {
                     segment.span,
                     metrics,
                     source_adjacent_to_carriage_return,
+                    segment.whitespace_before_separator.as_str(),
                 );
             }
             if !span.text.is_empty() {
@@ -82,13 +85,35 @@ impl SpanWrapState {
         mut segment: UiTextSpan,
         metrics: UiTreeTextMetrics,
         source_adjacent_to_carriage_return: bool,
+        whitespace_before_separator: &str,
     ) {
         if matches!(
             segment.text.as_str(),
             "\n" | "\r" | "\r\n" | "\u{2028}" | "\u{2029}"
         ) {
+            let separator_prefix = if !source_adjacent_to_carriage_return
+                && self.current_separator_is_explicit
+                && self.current_separator_before.ends_with('\r')
+                && segment.text == "\n"
+            {
+                /* WHY: CR と LF の間にある空白は既存の段落区切り正規化に従ってコピーへ含めない。 */
+                ""
+            } else {
+                whitespace_before_separator
+            };
+            let source_separator = if self.current_line.is_empty()
+                && self.current_separator_is_automatic_wrap
+                && self.current_separator_before != "\n"
+            {
+                format!(
+                    "{}{separator_prefix}{}",
+                    self.current_separator_before, segment.text
+                )
+            } else {
+                format!("{separator_prefix}{}", segment.text)
+            };
             self.start_new_line_with_source_adjacency(
-                segment.text.as_str(),
+                source_separator.as_str(),
                 true,
                 source_adjacent_to_carriage_return,
             );
@@ -97,6 +122,15 @@ impl SpanWrapState {
         let preserve_segment_whitespace =
             self.preserve_whitespace || segment.style.inline_code || segment.style.monospace;
         if !preserve_segment_whitespace && self.current_width == 0 {
+            if self.current_separator_is_automatic_wrap {
+                /* WHY: チャンク境界の自動改行へ、コピー時に使う元の区切り空白を蓄積する。 */
+                let source_whitespace = leading_whitespace(segment.text.as_str());
+                if self.current_separator_before == "\n" {
+                    self.current_separator_before = source_whitespace.to_owned();
+                } else {
+                    self.current_separator_before.push_str(source_whitespace);
+                }
+            }
             segment.text = segment.text.trim_start().to_string();
         }
         if segment.text.is_empty() {
@@ -162,7 +196,7 @@ impl SpanWrapState {
         if source_adjacent_to_carriage_return
             && self.current_line.is_empty()
             && self.current_separator_is_explicit
-            && self.current_separator_before == "\r"
+            && self.current_separator_before.ends_with('\r')
             && next_separator_before == "\n"
         {
             self.current_separator_before.push('\n');
@@ -180,6 +214,8 @@ impl SpanWrapState {
         }
         self.current_separator_before = next_separator_before.to_owned();
         self.current_separator_is_explicit = separator_is_explicit;
+        self.current_separator_is_automatic_wrap =
+            !separator_is_explicit && next_separator_before == "\n";
     }
 
     fn push_current_line(&mut self) {
@@ -191,6 +227,7 @@ impl SpanWrapState {
                 false,
             ),
         });
+        self.current_separator_is_automatic_wrap = false;
         self.current_width = 0;
     }
 

@@ -136,20 +136,54 @@ pub(super) fn plain_lines_with_separator_metadata(
     label: &str,
     wrap: impl Fn(&str) -> Vec<WrappedTextLine<String>>,
 ) -> Vec<WrappedTextLine<String>> {
-    paragraph_lines(label)
-        .into_iter()
-        .flat_map(|source_line| {
-            wrap(&source_line.content).into_iter().enumerate().map(
-                move |(index, mut wrapped_line)| {
-                    if index == 0 {
-                        wrapped_line.separator_before = source_line.separator_before.clone();
-                        wrapped_line.separator_is_explicit = source_line.separator_is_explicit;
-                    }
-                    wrapped_line
-                },
-            )
-        })
-        .collect()
+    let source_lines = paragraph_lines(label);
+    let mut wrapped_lines = Vec::new();
+    let mut trailing_source_whitespace = String::new();
+    for (source_index, source_line) in source_lines.iter().enumerate() {
+        let mut source_wrapped_lines = wrap(&source_line.content);
+        if let Some(first) = source_wrapped_lines.first_mut() {
+            first.separator_before = format!(
+                "{trailing_source_whitespace}{}",
+                source_line.separator_before
+            );
+            first.separator_is_explicit = source_line.separator_is_explicit;
+        }
+        trailing_source_whitespace.clear();
+        if source_index + 1 < source_lines.len() {
+            trailing_source_whitespace.push_str(missing_trailing_source_whitespace(
+                &source_line.content,
+                &source_wrapped_lines,
+            ));
+        }
+        wrapped_lines.extend(source_wrapped_lines);
+    }
+    wrapped_lines
+}
+
+fn missing_trailing_source_whitespace<'a>(
+    source_line: &'a str,
+    wrapped_lines: &[WrappedTextLine<String>],
+) -> &'a str {
+    let trimmed = source_line.trim_end_matches(char::is_whitespace);
+    let source_trailing_whitespace = &source_line[trimmed.len()..];
+    let retained_trailing_whitespace = wrapped_lines
+        .iter()
+        .rev()
+        .flat_map(|line| line.content.chars().rev())
+        .take_while(|character| character.is_whitespace())
+        .collect::<String>();
+    let retained_trailing_whitespace = retained_trailing_whitespace
+        .chars()
+        .rev()
+        .collect::<String>();
+
+    for (offset, _) in source_trailing_whitespace.char_indices() {
+        let candidate = &source_trailing_whitespace[offset..];
+        if retained_trailing_whitespace.ends_with(candidate) {
+            return &source_trailing_whitespace[..offset];
+        }
+    }
+    source_trailing_whitespace
 }
 
 pub(super) fn alert_plain_lines_with_metadata(label: &str) -> Vec<WrappedTextLine<String>> {

@@ -51,6 +51,31 @@ fn prose_copy_preserves_explicit_newlines() {
 }
 
 #[test]
+fn prose_copy_preserves_same_span_space_before_explicit_newline() {
+    let node: UiNode = Text::new("alpha \nbeta")
+        .text_role("markdown-paragraph")
+        .wrap(UiTextWrapMode::Wrap)
+        .into();
+    let renderer = UiTreeCanvasRenderer::new(ThemeSnapshot::dark());
+    let width = 120;
+    let area = UiTreeRenderArea {
+        x: 0,
+        y: 0,
+        width,
+        height: COPY_AREA_HEIGHT,
+        scroll_y: 0.0,
+    };
+    let mut canvas = Canvas::new(width, area.height, 0);
+
+    renderer.render(&mut canvas, &node, area);
+
+    assert_eq!(
+        Some("alpha \nbeta".to_owned()),
+        canvas.copy_text_in_selection(Some((0, 0)), Some((width, area.height)))
+    );
+}
+
+#[test]
 fn aligned_blit_preserves_soft_wrap_copy_whitespace() {
     assert_soft_wrap_copy_after_blit(1.0);
 }

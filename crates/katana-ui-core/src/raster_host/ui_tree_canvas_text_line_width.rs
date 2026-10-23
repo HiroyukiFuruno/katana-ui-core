@@ -282,6 +282,9 @@ mod bidi_selection_contract_tests;
 #[path = "ui_tree_canvas_inline_code_contract_tests.rs"]
 mod inline_code_contract_tests;
 #[cfg(test)]
+#[path = "ui_tree_canvas_preserved_whitespace_copy_contract_tests.rs"]
+mod preserved_whitespace_copy_contract_tests;
+#[cfg(test)]
 #[path = "ui_tree_canvas_prose_soft_wrap_copy_contract_tests.rs"]
 mod prose_soft_wrap_copy_contract_tests;
 #[cfg(test)]

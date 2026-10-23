@@ -16,6 +16,7 @@
 - [/] review P1: plain/rich proseのsoft wrapで除かれる語間空白をselection metadataへ保持し、コピーで単語を結合しない（実Canvas cold/warm・全体/逆選択/betaのみ・複数style span、raster-host core1064成功）。
 - [x] #107: APT archive取得停止へのrequest timeout/retryを明示し、outer300秒/3attempts・package/font hashを維持する（local guard122成功、実CIは未検証）。
 - [/] review P1（再review）: aligned/scaled blitのrun再構築でもvisual-line metadataを保持し、転送後のprose/rich copyを回帰検証する（discussion_r4356036444）。
+- [/] review P1（3回目）: oversized wordの文字分割後にも原文の語間空白を保持する（discussion_r4356221362）。実Canvasでplain/rich・別span空白・明示区切りを回帰検証した。更新HEADへのpush・thread返信/resolve・再reviewは公開DoDで継続する。
 - [ ] focused回帰、fmt、strict lint、AST、完全release-checkを通す。品質gateを緩和しない。
 
 ## 公開DoD
@@ -48,3 +49,10 @@
 
 - 最終working treeの完全 `just check`: session74136 exit0、`tmp/v044-blit-mirror-full-check.log`。4746 tests/136 suites、fmt/AST/全strict Clippy、native IME10/native contracts22、guard125、Storybook77が成功。Linux/arm64の既存coverage image内でもprose copy6件が成功（`tmp/verification/v044-prose-linux-center.log`、ゼロ件だった初回呼出しは成功証拠から除外）。公開前の同一HEAD CI完全release-checkは引き続き必須。
 - Azure mirror限定fallbackは4件のunit、ShellCheck、bash構文、Python compileと上記guard125で成功。署名・suite・component・package/font hash・outer300秒/3回を維持。実hosted CIの成功は未回収。
+
+- exact438fed0の3回目cloud reviewでoversized word直後の語間空白欠落を取得。blit P1はpush後discussion_r4356195659へ返信してresolve済み。新P1修正後のHEADで再reviewと完全CIを必要とする。438fed0のpreflightはAPT取得を通過しRelease check実行中だが、新修正の最終証拠とはしない。
+
+- 3回目P1の追加red/green: `tmp/verification/pr106-crossspan-red.log`で、oversized word後の空白だけのspanと次spanの明示改行の組合せを再現した。空のvisual lineだけで原文空白を区切りへ移し、非空lineのprefixを重複させない。CR/LF/CRLF/U+2028/U+2029とspan間CRLF、既存の非隣接CR・空白・LF正規化を維持した。Linuxのcopy contract16件とwrap-state8件、fmt・AST・focused Clippy・diff-checkが成功（`pr106-crossspan-green-final.log`、`pr106-copy-contracts-final2.log`、`pr106-wrap-state-final2.log`、`pr106-final-{fmt,ast,clippy}.log`）。
+- 先行fullcheck88628は追加cross-span欠落の修正前にrootが停止しexit143となったため成功証拠から除外する。修正後の完全 `just check` はsession30752、`tmp/v044-crossspan-final-full-check.log`で実行中。完了結果は回収後に記録する。
+
+- session30752はmacOS arm64の生成済みrlib内の内部LLVMシンボル欠落でlink失敗（exit101）。対象KUCのdev cacheだけを `cargo clean -p katana-ui-core --profile dev` で再生成した後、同じ完全 `just check` を `CARGO_INCREMENTAL=0` で再実行し、session47204がexit0となった（`tmp/v044-crossspan-clean-full-check.log`）。全target/feature4754件・136suites、native IME10、native contracts22、Unicode6、guard125、Storybook77、fmt/AST/types/全strict Clippyとconsumer契約が成功。ソースや品質gateは緩和していない。修正後HEADの完全CI release-check（strict coverage/packageを含む）は引き続き必須。
