@@ -1,4 +1,5 @@
 use super::super::canvas::Canvas;
+use super::super::canvas_text_selection_visual_line::resolve_text_selection_line_id;
 use super::super::text::TextRenderer;
 use super::super::ui_tree_canvas_palette::UiTreeCanvasPalette;
 use super::super::ui_tree_canvas_text_metrics::UiTreeTextMetrics;
@@ -102,7 +103,10 @@ impl UiTreeTextLines {
         );
         let preserve_whitespace = preserves_whitespace(context.node);
         let renderers = SpanTextRenderers::new(context.renderer, context.code_renderer);
+        let mut logical_line = None;
         for (line_index, line) in lines.iter().enumerate() {
+            let logical_line_id =
+                resolve_text_selection_line_id(&mut logical_line, line.separator_is_explicit);
             let Some(line_box_top) = visible_line_y(line_index, y, context.area, context.metrics)
             else {
                 continue;
@@ -199,7 +203,8 @@ impl UiTreeTextLines {
                 );
             }
 
-            canvas.with_text_selection_line_separator(
+            canvas.with_text_selection_line_id(
+                logical_line_id,
                 &line.separator_before,
                 line.separator_is_explicit,
                 |canvas| {

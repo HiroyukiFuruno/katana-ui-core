@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import os
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -4006,7 +4008,7 @@ class KucGuardrailsTest(unittest.TestCase):
         ]
         auth_action = (
             "rust-lang/crates-io-auth-action@"
-            "c6f97d42243bad5fab37ca0427f495c86d5b1a18"
+            "3268eb413133e2960fa4ae0e963ca76380c54cd9"
         )
 
         for workflow_path in workflow_paths:
@@ -4044,7 +4046,12 @@ class KucGuardrailsTest(unittest.TestCase):
             'readonly apt_timeout_seconds="${KUC_APT_TIMEOUT_SECONDS:-${default_apt_timeout_seconds}}"',
             apt_installer_source,
         )
-        self.assertIn('timeout "${apt_timeout_seconds}" sudo apt-get update', apt_installer_source)
+        self.assertIn(
+            'timeout "${apt_timeout_seconds}" sudo apt-get "${apt_acquire_options[@]}" update',
+            apt_installer_source,
+        )
+        self.assertIn("readonly apt_acquire_timeout_seconds=30", apt_installer_source)
+        self.assertIn("readonly apt_acquire_retries=2", apt_installer_source)
         self.assertIn("tail -n 200", apt_installer_source)
         self.assertIn("failed after ${max_attempts} attempts", apt_installer_source)
 
@@ -4059,6 +4066,270 @@ class KucGuardrailsTest(unittest.TestCase):
                 )
                 self.assertIn("bash scripts/ci/install-headless-display.sh", source)
                 self.assertNotIn("sudo apt-get update", source)
+
+    def test_apt_installer_passes_bounded_acquire_options(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        installer = root / "scripts/ci/install-apt-packages.sh"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            temp_root = Path(tmp)
+            fake_bin = temp_root / "bin"
+            fake_bin.mkdir()
+            capture = temp_root / "apt-arguments.log"
+            timeout_capture = temp_root / "timeout-arguments.log"
+            fake_timeout = fake_bin / "timeout"
+            fake_sudo = fake_bin / "sudo"
+            write_text(
+                fake_timeout,
+                '#!/usr/bin/env bash\nprintf \'%s\\n\' "$1" >> "$KUC_TIMEOUT_ARGUMENTS"\n'
+                'shift\nexec "$@"\n',
+            )
+            write_text(
+                fake_sudo,
+                '#!/usr/bin/env bash\nprintf \'%s\\n\' "$*" >> "$KUC_APT_ARGUMENTS"\n',
+            )
+            fake_timeout.chmod(0o755)
+            fake_sudo.chmod(0o755)
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "PATH": f"{fake_bin}:{environment['PATH']}",
+                    "KUC_APT_ARGUMENTS": str(capture),
+                    "KUC_TIMEOUT_ARGUMENTS": str(timeout_capture),
+                    "KUC_APT_TIMEOUT_SECONDS": "300",
+                    "RUNNER_TEMP": tmp,
+                }
+            )
+
+            result = subprocess.run(
+                ["bash", str(installer), "fonts-noto-cjk"],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            invocations = capture.read_text(encoding="utf-8").splitlines()
+            self.assertEqual(len(invocations), 2, invocations)
+            self.assertEqual(
+                timeout_capture.read_text(encoding="utf-8").splitlines(),
+                ["300", "300"],
+            )
+            for invocation in invocations:
+                with self.subTest(invocation=invocation):
+                    self.assertIn("-o Acquire::http::Timeout=30", invocation)
+                    self.assertIn("-o Acquire::https::Timeout=30", invocation)
+                    self.assertIn("-o Acquire::Retries=2", invocation)
+
+    def test_apt_installer_falls_back_from_azure_without_changing_other_sources(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        installer = root / "scripts/ci/install-apt-packages.sh"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            temp_root = Path(tmp)
+            fake_bin = temp_root / "bin"
+            config_root = temp_root / "apt"
+            fake_bin.mkdir()
+            write_text(
+                config_root / "apt-mirrors.txt",
+                "http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\n"
+                "https://archive.ubuntu.com/ubuntu/\tpriority:2\n"
+                "https://security.ubuntu.com/ubuntu/\tpriority:3\n",
+            )
+            write_text(
+                config_root / "sources.list.d/ubuntu.sources",
+                "Types: deb\nURIs: http://azure.archive.ubuntu.com/ubuntu/\n"
+                "Suites: noble noble-updates\nComponents: main universe\n"
+                "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n",
+            )
+            write_text(
+                config_root / "sources.list.d/vendor.sources",
+                "Types: deb\nURIs: https://packages.example.test/ubuntu/\n"
+                "Suites: stable\nComponents: main\n",
+            )
+            write_text(
+                config_root / "sources.list",
+                "deb https://azure.archive.ubuntu.com/ubuntu/ noble main\n",
+            )
+            fake_timeout = fake_bin / "timeout"
+            fake_sudo = fake_bin / "sudo"
+            write_text(
+                fake_timeout,
+                '#!/usr/bin/env bash\nshift\nexec "$@"\n',
+            )
+            write_text(
+                fake_sudo,
+                '#!/usr/bin/env bash\n'
+                'if [ "$1" = perl ]; then exec "$@"; fi\n'
+                'if [ "$1" = apt-get ] && [ "${@: -1}" = update ] && [ ! -e "$KUC_FIRST_UPDATE_FAILED" ]; then\n'
+                '  touch "$KUC_FIRST_UPDATE_FAILED"\n'
+                '  echo "simulated Azure mirror timeout" >&2\n'
+                '  exit 1\n'
+                'fi\n',
+            )
+            fake_timeout.chmod(0o755)
+            fake_sudo.chmod(0o755)
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "PATH": f"{fake_bin}:{environment['PATH']}",
+                    "KUC_APT_CONFIG_ROOT": str(config_root),
+                    "KUC_FIRST_UPDATE_FAILED": str(temp_root / "first-update-failed"),
+                    "RUNNER_TEMP": tmp,
+                }
+            )
+
+            result = subprocess.run(
+                ["bash", str(installer), "fonts-noto-cjk"],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("prefers official Ubuntu HTTPS archives", result.stdout)
+            self.assertEqual(
+                (config_root / "apt-mirrors.txt").read_text(encoding="utf-8"),
+                "https://archive.ubuntu.com/ubuntu/\tpriority:2\n"
+                "https://security.ubuntu.com/ubuntu/\tpriority:3\n",
+            )
+            self.assertEqual(
+                (config_root / "sources.list.d/ubuntu.sources").read_text(
+                    encoding="utf-8"
+                ),
+                "Types: deb\nURIs: https://archive.ubuntu.com/ubuntu/\n"
+                "Suites: noble noble-updates\nComponents: main universe\n"
+                "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n",
+            )
+            self.assertIn(
+                "https://packages.example.test/ubuntu/",
+                (config_root / "sources.list.d/vendor.sources").read_text(
+                    encoding="utf-8"
+                ),
+            )
+            self.assertEqual(
+                (config_root / "sources.list").read_text(encoding="utf-8"),
+                "deb https://archive.ubuntu.com/ubuntu/ noble main\n",
+            )
+
+    def test_apt_installer_keeps_mirrorlist_usable_without_an_existing_https_entry(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        installer = root / "scripts/ci/install-apt-packages.sh"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            temp_root = Path(tmp)
+            fake_bin = temp_root / "bin"
+            config_root = temp_root / "apt"
+            fake_bin.mkdir()
+            mirror_list = config_root / "apt-mirrors.txt"
+            write_text(
+                mirror_list,
+                "http://azure.archive.ubuntu.com/ubuntu/\tpriority:1\n",
+            )
+            fake_timeout = fake_bin / "timeout"
+            fake_sudo = fake_bin / "sudo"
+            write_text(fake_timeout, '#!/usr/bin/env bash\nshift\nexec "$@"\n')
+            write_text(
+                fake_sudo,
+                '#!/usr/bin/env bash\n'
+                'if [ "$1" = perl ]; then exec "$@"; fi\n'
+                'if [ "$1" = apt-get ] && [[ " $* " == *" update "* ]] && [ ! -e "$KUC_FIRST_UPDATE_FAILED" ]; then\n'
+                '  touch "$KUC_FIRST_UPDATE_FAILED"\n'
+                '  exit 1\n'
+                'fi\n',
+            )
+            fake_timeout.chmod(0o755)
+            fake_sudo.chmod(0o755)
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "PATH": f"{fake_bin}:{environment['PATH']}",
+                    "KUC_APT_CONFIG_ROOT": str(config_root),
+                    "KUC_FIRST_UPDATE_FAILED": str(temp_root / "first-update-failed"),
+                    "RUNNER_TEMP": tmp,
+                }
+            )
+
+            result = subprocess.run(
+                ["bash", str(installer), "fonts-noto-cjk"],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(
+                mirror_list.read_text(encoding="utf-8"),
+                "https://archive.ubuntu.com/ubuntu/\tpriority:1\n",
+            )
+
+    def test_apt_installer_ignores_absent_azure_and_rejects_unsafe_config_root(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        installer = root / "scripts/ci/install-apt-packages.sh"
+
+        with tempfile.TemporaryDirectory() as tmp:
+            temp_root = Path(tmp)
+            fake_bin = temp_root / "bin"
+            config_root = temp_root / "apt"
+            fake_bin.mkdir()
+            mirror_list = config_root / "apt-mirrors.txt"
+            write_text(
+                mirror_list,
+                "https://packages.example.test/ubuntu/\tpriority:1\n",
+            )
+            fake_timeout = fake_bin / "timeout"
+            fake_sudo = fake_bin / "sudo"
+            write_text(fake_timeout, '#!/usr/bin/env bash\nshift\nexec "$@"\n')
+            write_text(
+                fake_sudo,
+                '#!/usr/bin/env bash\n'
+                'if [ "$1" = apt-get ] && [ "${@: -1}" = update ] && [ ! -e "$KUC_FIRST_UPDATE_FAILED" ]; then\n'
+                '  touch "$KUC_FIRST_UPDATE_FAILED"\n'
+                '  exit 1\n'
+                'fi\n',
+            )
+            fake_timeout.chmod(0o755)
+            fake_sudo.chmod(0o755)
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "PATH": f"{fake_bin}:{environment['PATH']}",
+                    "KUC_APT_CONFIG_ROOT": str(config_root),
+                    "KUC_FIRST_UPDATE_FAILED": str(temp_root / "first-update-failed"),
+                    "RUNNER_TEMP": tmp,
+                }
+            )
+
+            result = subprocess.run(
+                ["bash", str(installer), "fonts-noto-cjk"],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("found no Azure mirror", result.stdout)
+            self.assertEqual(
+                mirror_list.read_text(encoding="utf-8"),
+                "https://packages.example.test/ubuntu/\tpriority:1\n",
+            )
+
+            for unsafe_root in ("relative/path", "/"):
+                with self.subTest(unsafe_root=unsafe_root):
+                    unsafe_environment = environment.copy()
+                    unsafe_environment["KUC_APT_CONFIG_ROOT"] = unsafe_root
+                    rejected = subprocess.run(
+                        ["bash", str(installer), "fonts-noto-cjk"],
+                        check=False,
+                        capture_output=True,
+                        text=True,
+                        env=unsafe_environment,
+                    )
+                    self.assertEqual(rejected.returncode, 2, rejected.stderr)
 
     def test_ffmpeg_is_installed_before_the_checks_that_use_real_video(self) -> None:
         root = Path(__file__).resolve().parents[1]

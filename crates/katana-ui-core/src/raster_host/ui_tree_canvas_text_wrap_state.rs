@@ -11,6 +11,7 @@ pub(super) fn span_segments(span: &UiTextSpan) -> Vec<UiTextSpan> {
     segments::span_segments(span)
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct WrappedTextLine<T> {
     pub(super) content: T,
     pub(super) separator_before: String,
@@ -24,6 +25,7 @@ pub(super) struct SpanWrapState {
     current_line: Vec<UiTextSpan>,
     current_separator_before: String,
     current_separator_is_explicit: bool,
+    current_separator_is_automatic_wrap: bool,
     current_width: usize,
 }
 
@@ -36,6 +38,7 @@ impl SpanWrapState {
             current_line: Vec::new(),
             current_separator_before: String::new(),
             current_separator_is_explicit: false,
+            current_separator_is_automatic_wrap: false,
             current_width: 0,
         }
     }
@@ -47,7 +50,7 @@ impl SpanWrapState {
         segment: UiTextSpan,
         metrics: UiTreeTextMetrics,
     ) {
-        self.push_with_source_adjacency(renderers, segment, metrics, true);
+        self.push_with_source_adjacency(renderers, segment, metrics, true, "");
     }
 
     pub(super) fn push_spans(
@@ -67,6 +70,7 @@ impl SpanWrapState {
                     segment.span,
                     metrics,
                     source_adjacent_to_carriage_return,
+                    segment.whitespace_before_separator.as_str(),
                 );
             }
             if !span.text.is_empty() {
@@ -81,35 +85,74 @@ impl SpanWrapState {
         mut segment: UiTextSpan,
         metrics: UiTreeTextMetrics,
         source_adjacent_to_carriage_return: bool,
+        whitespace_before_separator: &str,
     ) {
         if matches!(
             segment.text.as_str(),
             "\n" | "\r" | "\r\n" | "\u{2028}" | "\u{2029}"
         ) {
+            let separator_prefix = if !source_adjacent_to_carriage_return
+                && self.current_separator_is_explicit
+                && self.current_separator_before.ends_with('\r')
+                && segment.text == "\n"
+            {
+                /* WHY: CR と LF の間にある空白は既存の段落区切り正規化に従ってコピーへ含めない。 */
+                ""
+            } else {
+                whitespace_before_separator
+            };
+            let source_separator = if self.current_line.is_empty()
+                && self.current_separator_is_automatic_wrap
+                && self.current_separator_before != "\n"
+            {
+                format!(
+                    "{}{separator_prefix}{}",
+                    self.current_separator_before, segment.text
+                )
+            } else {
+                format!("{separator_prefix}{}", segment.text)
+            };
             self.start_new_line_with_source_adjacency(
-                segment.text.as_str(),
+                source_separator.as_str(),
                 true,
                 source_adjacent_to_carriage_return,
             );
             return;
         }
-        if !self.preserve_whitespace && self.current_width == 0 {
+        let preserve_segment_whitespace =
+            self.preserve_whitespace || segment.style.inline_code || segment.style.monospace;
+        if !preserve_segment_whitespace && self.current_width == 0 {
+            if self.current_separator_is_automatic_wrap {
+                /* WHY: チャンク境界の自動改行へ、コピー時に使う元の区切り空白を蓄積する。 */
+                let source_whitespace = leading_whitespace(segment.text.as_str());
+                if self.current_separator_before == "\n" {
+                    self.current_separator_before = source_whitespace.to_owned();
+                } else {
+                    self.current_separator_before.push_str(source_whitespace);
+                }
+            }
             segment.text = segment.text.trim_start().to_string();
         }
         if segment.text.is_empty() {
             return;
         }
-        let width = span_part_width(renderers, &segment, metrics, self.preserve_whitespace);
+        let width = span_part_width(renderers, &segment, metrics, preserve_segment_whitespace);
         if self.current_width > 0 && self.current_width.saturating_add(width) > self.max_width {
-            self.start_new_line("\n", false);
+            let source_separator = if preserve_segment_whitespace {
+                ""
+            } else {
+                leading_whitespace(segment.text.as_str())
+            };
+            self.start_new_line(source_separator, false);
         }
-        if !self.preserve_whitespace && self.current_width == 0 {
+        if !preserve_segment_whitespace && self.current_width == 0 {
             segment.text = segment.text.trim_start().to_string();
         }
-        if !self.preserve_whitespace && segment.text.trim().is_empty() && self.current_width == 0 {
+        if !preserve_segment_whitespace && segment.text.trim().is_empty() && self.current_width == 0
+        {
             return;
         }
-        let width = span_part_width(renderers, &segment, metrics, self.preserve_whitespace);
+        let width = span_part_width(renderers, &segment, metrics, preserve_segment_whitespace);
         if width > self.max_width {
             self.push_oversized_segment(renderers, segment, metrics);
             return;
@@ -118,6 +161,7 @@ impl SpanWrapState {
         self.current_line.push(segment);
     }
 
+    #[cfg(test)]
     pub(super) fn finish(self) -> Vec<Vec<UiTextSpan>> {
         self.finish_with_metadata()
             .into_iter()
@@ -152,7 +196,7 @@ impl SpanWrapState {
         if source_adjacent_to_carriage_return
             && self.current_line.is_empty()
             && self.current_separator_is_explicit
-            && self.current_separator_before == "\r"
+            && self.current_separator_before.ends_with('\r')
             && next_separator_before == "\n"
         {
             self.current_separator_before.push('\n');
@@ -170,6 +214,7 @@ impl SpanWrapState {
         }
         self.current_separator_before = next_separator_before.to_owned();
         self.current_separator_is_explicit = separator_is_explicit;
+        self.current_separator_is_automatic_wrap = !separator_is_explicit;
     }
 
     fn push_current_line(&mut self) {
@@ -181,6 +226,7 @@ impl SpanWrapState {
                 false,
             ),
         });
+        self.current_separator_is_automatic_wrap = false;
         self.current_width = 0;
     }
 
@@ -194,6 +240,8 @@ impl SpanWrapState {
             0, self.current_width,
             "oversized segments must start on a fresh line"
         );
+        let preserve_segment_whitespace =
+            self.preserve_whitespace || segment.style.inline_code || segment.style.monospace;
         let mut chunk = String::new();
         for character in segment.text.chars() {
             let mut candidate = chunk.clone();
@@ -203,7 +251,7 @@ impl SpanWrapState {
                 renderers,
                 &candidate_segment,
                 metrics,
-                self.preserve_whitespace,
+                preserve_segment_whitespace,
             );
             if candidate_width > self.max_width && !chunk.is_empty() {
                 self.push_current_chunk(&segment, &mut chunk, renderers, metrics);
@@ -224,12 +272,22 @@ impl SpanWrapState {
             return;
         }
         let next = segment_with_text(segment, chunk.as_str());
-        let width = span_part_width(renderers, &next, metrics, self.preserve_whitespace);
+        let preserve_segment_whitespace =
+            self.preserve_whitespace || segment.style.inline_code || segment.style.monospace;
+        let width = span_part_width(renderers, &next, metrics, preserve_segment_whitespace);
         self.current_width = width;
         self.current_line.push(next);
         self.start_new_line("\n", false);
         chunk.clear();
     }
+}
+
+fn leading_whitespace(text: &str) -> &str {
+    let separator_length = text
+        .char_indices()
+        .find_map(|(index, character)| (!character.is_whitespace()).then_some(index))
+        .unwrap_or(text.len());
+    &text[..separator_length]
 }
 
 #[cfg(test)]

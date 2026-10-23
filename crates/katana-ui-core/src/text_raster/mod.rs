@@ -33,3 +33,7 @@ mod catalog_contract_tests;
 mod surface_layout_tests;
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+#[path = "rasterizer_tests_intrinsic_rtl.rs"]
+mod intrinsic_rtl_tests;

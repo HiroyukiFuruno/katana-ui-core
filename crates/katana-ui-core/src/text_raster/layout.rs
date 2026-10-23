@@ -5,7 +5,7 @@ use crate::text_raster::model::{
     PlatformTextMetricsRequest, PlatformTextRasterError, PlatformTextRasterRequest,
     RGBA_CHANNEL_COUNT,
 };
-use cosmic_text::{Attrs, Buffer, FontSystem, Metrics, Shaping, SwashCache, Wrap};
+use cosmic_text::{Align, Attrs, Buffer, FontSystem, Metrics, Shaping, SwashCache, Wrap};
 
 mod attributes;
 mod metrics;
@@ -80,7 +80,12 @@ impl TextLayoutRasterizer {
                 .map(|attrs| (span.text.as_str(), attrs))
             })
             .collect::<Result<Vec<_>, _>>()?;
-        buffer.set_rich_text(rich_text, &Attrs::new(), Shaping::Advanced, None);
+        buffer.set_rich_text(
+            rich_text,
+            &Attrs::new(),
+            Shaping::Advanced,
+            raster_alignment(request),
+        );
         let max_ascent = buffer
             .line_layout(0)
             .and_then(|lines| lines.first())
@@ -134,7 +139,12 @@ impl TextLayoutRasterizer {
             })
             .collect::<Result<Vec<_>, _>>();
         let rich_text = rich_text?;
-        buffer.set_rich_text(rich_text, &Attrs::new(), Shaping::Advanced, None);
+        buffer.set_rich_text(
+            rich_text,
+            &Attrs::new(),
+            Shaping::Advanced,
+            Some(Align::Left),
+        );
         let first_line = buffer
             .line_layout(0)
             .and_then(|lines| lines.first())
@@ -196,7 +206,12 @@ impl TextLayoutRasterizer {
             })
             .collect::<Result<Vec<_>, _>>();
         let rich_text = rich_text?;
-        buffer.set_rich_text(rich_text, &Attrs::new(), Shaping::Advanced, None);
+        buffer.set_rich_text(
+            rich_text,
+            &Attrs::new(),
+            Shaping::Advanced,
+            raster_alignment(request),
+        );
         let source_text = request.text();
         let grapheme_bounds = collect_grapheme_bounds(&mut buffer, &source_text, scale);
         let (width, height) = raster_extent(&grapheme_bounds, scale)?;
@@ -208,6 +223,11 @@ impl TextLayoutRasterizer {
             grapheme_bounds,
         })
     }
+}
+
+fn raster_alignment(request: &PlatformTextRasterRequest) -> Option<Align> {
+    /* WHY: 幅未指定のRTLを内部buffer右端へ寄せず、外側のbidi配置へローカルboundsを渡す。 */
+    request.max_width_px.is_none().then_some(Align::Left)
 }
 
 #[cfg(test)]

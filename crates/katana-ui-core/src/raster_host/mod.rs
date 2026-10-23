@@ -17,6 +17,7 @@ pub(crate) mod canvas_round_rect;
 pub(crate) mod canvas_scale;
 pub(crate) mod canvas_scroll;
 pub(crate) mod canvas_text_selection;
+mod canvas_text_selection_visual_line;
 pub(crate) mod canvas_viewport;
 pub mod document_typography;
 pub(crate) mod layout_metrics;
