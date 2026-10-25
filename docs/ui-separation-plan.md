@@ -15,8 +15,8 @@ atoms / molecules と Storybook の実装正本は [`openspec/changes/establish-
 このファイルには root architecture と依存境界だけを置き、部品ごとの option / action / event / state / preset / test は新 change 側で管理する。
 
 `ScrollArea` は KUC の layout foundation として、axis、offset、viewport/content extent、scrollbar visibility / placement、scroll command、edge event、nested state identity を typed contract で持つ。
-KDV / KLE の本文 viewer / editor scroll policy や editor-preview 同期は KUC に入れず、利用側がこの scroll container を組み合わせて実装する。
-KDV が描画済みの HTML / PDF / PNG / JPG 相当 preview surface は `ImageSurface` node として `UiTree` に載せるが、Markdown display-list、KMM node id、検索 engine、PDF page model は KUC に入れない。
+利用側の本文 viewer / editor scroll policy や editor-preview 同期は KUC に入れず、利用側がこの scroll container を組み合わせて実装する。
+利用側が描画済みの HTML / PDF / PNG / JPG 相当 preview surface は `ImageSurface` node として `UiTree` に載せるが、Markdown display-list、domain node id、検索 engine、PDF page model は KUC に入れない。
 
 ## Repository の役割
 
@@ -26,14 +26,14 @@ KDV が描画済みの HTML / PDF / PNG / JPG 相当 preview surface は `ImageS
 - **runtime / window / surface API も core が持つ** (Application::new().window(...).run() のような起動 entry / multi-window / fullscreen / icon を neutral 化)。
 - framework-specific UI / native-renderer は **adapter (出力先)** として後ろに置く。core crate に framework 依存を持ち込まない。
 - atoms / molecules / layout primitive / theme token / event model / render model / accessibility / adapter contract を提供する。
-- KatanA 固有の概念を持たない (KDV / KLE / KMM 等の domain crate に依存しない)。
+- 特定製品固有の概念を持たない (domain crate に依存しない)。
 
 詳細: [`root-plan-source.md` 1. KUC の責務](architecture/ui-separation/root-plan-source.md#1-kuc-の責務)
 
 ## 担当 Phase
 
 - **Phase 1**: KUC neutral core 化 (本 repo のメイン作業)
-- **P4-0**: Primary adapter 選定 (KatanA 側で決定するが、本 repo の release / 品質ゲートに直結)
+- **P4-0**: KUCのpublic adapter契約と選定根拠を本repoで検証する。hostによるadapter採用はKUCのrelease条件へ加えない。
 - **横断**: P0 (governance / naming / ADR)
 
 依存グラフ抜粋: [`root-plan-source.md` 4. Phase 依存](architecture/ui-separation/root-plan-source.md#4-phase-依存)
@@ -41,7 +41,7 @@ KDV が描画済みの HTML / PDF / PNG / JPG 相当 preview surface は `ImageS
 ```
 P0 → P1 (本 repo)
        ↓ provides: render model / theme token / event model / adapter contract
-     P4 (katana-ui composition がこの output を消費)
+     P4 (generic host UI composition がこの output を消費)
 ```
 
 ## Phase 1 概要
@@ -51,7 +51,7 @@ P0 → P1 (本 repo)
 設計原則 (master 5.1.1):
 
 - Framework-neutral
-- Katana domain-neutral
+- Application domain-neutral
 - State-light
 - Render-model oriented
 - Adapter contract first

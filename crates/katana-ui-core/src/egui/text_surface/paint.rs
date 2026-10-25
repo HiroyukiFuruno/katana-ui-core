@@ -8,6 +8,7 @@ use super::model::{
 use super::raster::{RasterFrame, rasterize_gutter_label};
 use crate::egui::raster_extent::LogicalRasterExtent;
 use crate::egui::texture_cache::RgbaTextureCache;
+use crate::egui::texture_tiles::texture_tiles;
 use crate::render_model::{RGBA_CHANNEL_COUNT, UiRect};
 use crate::svg_raster::UiSvgRasterizer;
 use crate::text_raster::{PlatformTextRaster, PlatformTextRasterizer};
@@ -195,15 +196,36 @@ pub(super) fn paint_surface(
                 painter.rect_filled(egui_rect(*bounds), 0.0, color(*color_rgba));
             }
             TextSurfacePaintOperationKind::Texture { bounds, texture } => {
-                let texture = texture_for_plan_texture(cache, ui.ctx(), texture);
-                painter.image(
-                    texture.id(),
-                    egui_rect(*bounds),
-                    egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
-                    egui::Color32::WHITE,
+                let max_texture_side = ui.ctx().input(|input| input.max_texture_side).max(1);
+                paint_texture_tiles(
+                    &painter,
+                    cache,
+                    ui.ctx(),
+                    *bounds,
+                    texture,
+                    max_texture_side,
                 );
             }
         }
+    }
+}
+
+fn paint_texture_tiles(
+    painter: &egui::Painter,
+    cache: &mut RgbaTextureCache,
+    context: &egui::Context,
+    bounds: UiRect,
+    texture: &TextSurfacePaintTexture,
+    max_texture_side: usize,
+) {
+    for (tile_bounds, tile) in texture_tiles(bounds, texture, max_texture_side) {
+        let handle = texture_for_plan_texture(cache, context, &tile);
+        painter.image(
+            handle.id(),
+            egui_rect(tile_bounds),
+            egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
+            egui::Color32::WHITE,
+        );
     }
 }
 

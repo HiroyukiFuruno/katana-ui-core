@@ -1,14 +1,27 @@
-use super::support::ui_rect;
+use super::drag_feedback::TabStripDragFeedback;
 use super::{
-    CORNER_RADIUS_PX, DRAG_GHOST_OFFSET_PX, DRAG_GHOST_RGBA, DROP_LEFT_RATIO, DROP_RIGHT_RATIO,
-    PREEDIT_RGBA, RGBA_ALPHA_INDEX, TAB_GAP_PX, TAB_PADDING_PX, TabStripDragState,
-    TabStripDropCandidateKind, TabStripPaintOperation, TabStripPaintOperationKind,
-    TabStripPaintTexture, TabStripProposal, TabStripProposalOperation, TabStripResolvedDrop,
+    DROP_LEFT_RATIO, DROP_RIGHT_RATIO, TAB_GAP_PX, TabStripDragState, TabStripDropCandidateKind,
+    TabStripPaintOperation, TabStripProposal, TabStripProposalOperation, TabStripResolvedDrop,
     TabStripRetainedError, TabStripRetainedState, TabStripTabDescriptor, TabStripTabPlacement,
     TabStripTabTarget, TabStripText, publish_labeled_button_accesskit,
 };
 
 impl TabStripRetainedState {
+    pub(crate) fn suspend_interaction(&mut self) -> Result<(), TabStripRetainedError> {
+        if let Some(mut drag) = self.drag.take()
+            && let Err(error) =
+                self.forward_drag_terminal(&mut drag, TabStripProposalOperation::CancelDrag)
+        {
+            self.drag = Some(drag);
+            return Err(error);
+        }
+        self.group_drag = None;
+        self.drag_release_pending = false;
+        self.group_drag_release_pending = false;
+        self.overlay_primary_press = None;
+        Ok(())
+    }
+
     pub(super) fn publish_response_accesskit(&self, ui: &egui::Ui, response_id: egui::Id) {
         let Some((bounds, label, disabled)) = self.routes.route_for_response(response_id) else {
             return;
@@ -95,6 +108,7 @@ impl TabStripRetainedState {
         )?;
         self.drag = Some(TabStripDragState {
             source: tab.target.copy_for_route(),
+            origin: None,
             label: TabStripText::new(tab.label.value.as_str()),
             pointer: ui
                 .input(|input| input.pointer.latest_pos())
@@ -119,7 +133,19 @@ impl TabStripRetainedState {
             .unwrap_or(drag.pointer);
         drag.pointer = pointer;
         let escape = ui.input(|input| input.key_pressed(egui::Key::Escape));
-        let release = std::mem::take(&mut self.drag_release_pending);
+        let pointer_released = ui.input(|input| {
+            input.events.iter().any(|event| {
+                matches!(
+                    event,
+                    egui::Event::PointerButton {
+                        button: egui::PointerButton::Primary,
+                        pressed: false,
+                        ..
+                    }
+                )
+            })
+        });
+        let release = std::mem::take(&mut self.drag_release_pending) || pointer_released;
         let drop = self.resolve_tab_drop(pointer, &drag.source, strip_bounds, end_drop_available);
         if escape || release {
             let operation = if !escape {
@@ -132,10 +158,22 @@ impl TabStripRetainedState {
             } else {
                 TabStripProposalOperation::CancelDrag
             };
-            self.forward_proposal(self.routes.correlation_for_proposal(), operation)?;
+            if let Err(error) = self.forward_drag_terminal(&mut drag, operation) {
+                self.drag = Some(drag);
+                return Err(error);
+            }
             return Ok(());
         }
-        self.paint_tab_drag_feedback(ui, &drag, drop.as_ref(), strip_bounds, operations)?;
+        self.paint_drag_feedback(
+            ui,
+            TabStripDragFeedback {
+                label: &drag.label,
+                pointer: drag.pointer,
+                indicator: drop.map(|value| value.indicator),
+            },
+            strip_bounds,
+            operations,
+        )?;
         self.drag = Some(drag);
         Ok(())
     }
@@ -197,73 +235,6 @@ impl TabStripRetainedState {
                     egui::vec2(2.0, (strip_bounds.height() - TAB_GAP_PX * 2.0).max(1.0)),
                 ),
             })
-    }
-
-    pub(super) fn paint_tab_drag_feedback(
-        &mut self,
-        ui: &egui::Ui,
-        drag: &TabStripDragState,
-        drop: Option<&TabStripResolvedDrop>,
-        strip_bounds: egui::Rect,
-        operations: &mut Vec<TabStripPaintOperation>,
-    ) -> Result<(), TabStripRetainedError> {
-        let raster = self
-            .rasterizer
-            .rasterize(&drag.label, ui.ctx().pixels_per_point())
-            .map_err(TabStripRetainedError::Raster)?;
-        let texture = TabStripPaintTexture {
-            identity: "tab-strip-drag-ghost".to_owned(),
-            width: raster.width,
-            height: raster.height,
-            rgba_pixels: raster.rgba_pixels,
-        };
-        let ghost = egui::Rect::from_min_size(
-            drag.pointer + egui::vec2(DRAG_GHOST_OFFSET_PX, DRAG_GHOST_OFFSET_PX),
-            egui::vec2(
-                texture.width as f32 + TAB_PADDING_PX * 2.0,
-                (strip_bounds.height() - TAB_GAP_PX * 2.0).max(1.0),
-            ),
-        );
-        ui.painter().rect_filled(
-            ghost,
-            CORNER_RADIUS_PX,
-            egui::Color32::from_rgba_unmultiplied(
-                DRAG_GHOST_RGBA[0],
-                DRAG_GHOST_RGBA[1],
-                DRAG_GHOST_RGBA[2],
-                DRAG_GHOST_RGBA[RGBA_ALPHA_INDEX],
-            ),
-        );
-        operations.push(TabStripPaintOperation {
-            clip_bounds: ui_rect(strip_bounds),
-            kind: TabStripPaintOperationKind::Fill {
-                bounds: ui_rect(ghost),
-                color_rgba: DRAG_GHOST_RGBA,
-            },
-        });
-        let text_bounds = egui::Rect::from_min_size(
-            egui::pos2(
-                ghost.min.x + TAB_PADDING_PX,
-                ghost.center().y - texture.height as f32 / 2.0,
-            ),
-            egui::vec2(texture.width as f32, texture.height as f32),
-        );
-        self.paint_overlay_texture(ui, operations, strip_bounds, &texture, text_bounds);
-        if let Some(drop) = drop {
-            ui.painter().rect_filled(
-                drop.indicator,
-                1.0,
-                egui::Color32::from_rgb(PREEDIT_RGBA[0], PREEDIT_RGBA[1], PREEDIT_RGBA[2]),
-            );
-            operations.push(TabStripPaintOperation {
-                clip_bounds: ui_rect(strip_bounds),
-                kind: TabStripPaintOperationKind::Fill {
-                    bounds: ui_rect(drop.indicator),
-                    color_rgba: PREEDIT_RGBA,
-                },
-            });
-        }
-        Ok(())
     }
 
     pub(super) fn forward_proposal(

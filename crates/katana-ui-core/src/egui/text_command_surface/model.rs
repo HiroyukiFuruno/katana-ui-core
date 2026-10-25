@@ -40,6 +40,8 @@ impl EguiTextCommandSurface {
     ) -> Self {
         self.deferred_floating_toolbar = Some(toolbar);
         self.floating_visibility = visibility;
+        self.floating_visibility_controlled =
+            visibility == FloatingCommandToolbarVisibility::VisibleAtCaret;
         self
     }
 

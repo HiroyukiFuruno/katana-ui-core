@@ -8,6 +8,7 @@ mod raster_extent;
 #[cfg(feature = "storybook-artifacts")]
 mod system;
 mod texture_cache;
+mod texture_tiles;
 
 pub mod artifact_compositor;
 pub mod command_chrome;

@@ -97,3 +97,56 @@ fn ui_rect_clamps_negative_dimensions_to_zero() {
     assert_eq!(compact.width, 0);
     assert_eq!(compact.height, 0);
 }
+
+#[test]
+fn path_helpers_use_descriptor_order_when_root_items_are_omitted() {
+    let projection = projection_for_path_tests();
+    let mut fallback = projection;
+    fallback.root_items.clear();
+
+    assert!(tab_menu_for_path(&fallback, "root-group-0-group-0-tab-0").is_some());
+    assert!(group_for_path(&fallback, "root-group-0-group-0").is_some());
+    let target = fallback.groups[0].groups[0].target.copy_for_route();
+    assert_eq!(
+        group_path_for_target(&fallback, &target).as_deref(),
+        Some("root-group-0-group-0")
+    );
+    assert!(tab_menu_for_path(&fallback, "root-tab-0").is_none());
+    assert!(group_for_path(&fallback, "unknown").is_none());
+}
+
+#[test]
+fn fallback_group_paths_find_direct_and_nested_opaque_targets() {
+    let mut projection = projection_for_path_tests();
+    projection.root_items.clear();
+    let direct = projection.groups[0].target.copy_for_route();
+    let nested = projection.groups[0].groups[0].target.copy_for_route();
+    let unknown = TabStripGroupTarget::from_opaque_bytes(b"missing-group");
+
+    assert_eq!(
+        group_path_for_target(&projection, &direct).as_deref(),
+        Some("root-group-0")
+    );
+    assert_eq!(
+        group_path_for_target(&projection, &nested).as_deref(),
+        Some("root-group-0-group-0")
+    );
+    assert!(group_path_for_target(&projection, &unknown).is_none());
+}
+
+#[test]
+fn group_path_helper_rejects_stale_root_indices_and_unknown_nested_targets() {
+    let mut malformed = projection_for_path_tests();
+    malformed.root_items = vec![TabStripRootItem::Group(usize::MAX)];
+    let unknown = TabStripGroupTarget::from_opaque_bytes(b"unknown");
+    assert!(group_path_for_target(&malformed, &unknown).is_none());
+
+    let fallback = projection_for_path_tests();
+    let nested = fallback.groups[0].groups[0].groups[0]
+        .target
+        .copy_for_route();
+    assert_eq!(
+        group_path_for_target(&fallback, &nested).as_deref(),
+        Some("root-group-0-group-0-group-0")
+    );
+}

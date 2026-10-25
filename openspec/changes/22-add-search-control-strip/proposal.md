@@ -1,5 +1,7 @@
 ## Why
 
+外部画面名は観測例であり、要件は汎用のsearch-control state/action/event contractとして定義する。検索エンジンや特定consumerの移行・採用はKUCの完了条件に含めない。
+
 `katana` の検索 modal、KLE の find / replace、KDV の viewer 検索、`katana-chat-ui` の履歴検索は、どれも「検索入力 + option toggle + 前後移動 + 件数表示」を必要とする。
 画面上では、検索欄の横に match case、whole word、regex、前へ / 次へ、clear、件数が並ぶ。
 

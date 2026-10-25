@@ -1,5 +1,7 @@
 ## Why
 
+外部画面名は観測例であり、要件は汎用のshortcut combo表示・platform表現・accessibility contractとして定義する。特定consumerの移行や採用はKUCの完了条件に含めない。
+
 `katana` の `widgets/shortcut.rs`、command palette のショートカット表示、各 toolbar action のキー表示、`katana-chat-ui` の slash launcher エントリ説明など、KeyCap を「組み合わせ（Combo）」で並べる需要が広く存在する。`KeyCap` atom は単独のキー表示だけで、`Cmd+Shift+P` のようなコンボ表示と「修飾キー+主キーの並び」「区切り（+ / 　／ 矢印）」「macOS と Windows / Linux の platform 別表示」を typed に表現しない。
 
 加えて「キーボードショートカット早見表（cheatsheet）」widget が欲しいケースが繰り返し発生する（command palette、settings、`?` ホットキー表示）。

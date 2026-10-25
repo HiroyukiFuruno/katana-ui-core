@@ -58,3 +58,42 @@ fn layout_raster_dimension_rejects_non_finite_dimensions() {
         Err(PlatformTextRasterError::NonFiniteLayoutExtent)
     );
 }
+
+#[test]
+fn hard_break_uses_the_logical_terminal_for_rtl_and_ltr_lines() {
+    let mut rtl_bounds =
+        BTreeMap::from([((0, 2), bounds(10.0, 20.0)), ((2, 4), bounds(10.0, 20.0))]);
+    rtl_bounds.get_mut(&(0, 2)).unwrap().x = 10.0;
+    rtl_bounds.get_mut(&(2, 4)).unwrap().x = 0.0;
+    add_hard_break_bounds(
+        "אב\nx",
+        &mut rtl_bounds,
+        &BTreeMap::from([(0, (0.0, 0.0, 20.0, 4))]),
+        20.0,
+    );
+    assert_eq!(rtl_bounds.get(&(4, 5)).unwrap().x, 0.0);
+
+    let mut ltr_bounds =
+        BTreeMap::from([((0, 1), bounds(10.0, 20.0)), ((1, 2), bounds(10.0, 20.0))]);
+    ltr_bounds.get_mut(&(1, 2)).unwrap().x = 10.0;
+    add_hard_break_bounds(
+        "ab\nx",
+        &mut ltr_bounds,
+        &BTreeMap::from([(0, (20.0, 0.0, 20.0, 2))]),
+        20.0,
+    );
+    assert_eq!(ltr_bounds.get(&(2, 3)).unwrap().x, 20.0);
+}
+
+#[test]
+fn hard_break_empty_rows_do_not_reuse_the_previous_row_terminal() {
+    let mut bounds = BTreeMap::from([((0, 1), bounds(10.0, 20.0))]);
+    add_hard_break_bounds(
+        "a\n\nb",
+        &mut bounds,
+        &BTreeMap::from([(0, (10.0, 0.0, 20.0, 1)), (1, (0.0, 20.0, 20.0, 2))]),
+        20.0,
+    );
+    assert_eq!(bounds.get(&(1, 2)).unwrap().x, 10.0);
+    assert_eq!(bounds.get(&(2, 3)).unwrap().x, 0.0);
+}

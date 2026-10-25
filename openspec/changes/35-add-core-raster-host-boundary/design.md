@@ -1,5 +1,7 @@
 # Design — 35-add-core-raster-host-boundary
 
+> この design は過去の v0.3.x release 要求・証跡を追跡する履歴であり、現行 v0.5.0 の release 条件ではない。KUCの汎用raster-host contractと、外部採用・受入の履歴を分離して読む。
+
 ## Ownership
 
 KUC は generic UI tree の rasterization、presentation、座標変換、hit-test を所有する。

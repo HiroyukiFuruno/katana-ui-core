@@ -57,6 +57,10 @@ mod tests {
     fn every_root_artifact_error_has_a_stable_child_specific_message() {
         let cases = [
             (
+                EguiTextCommandSurfaceArtifactError::MissingSelectionDialog,
+                "selection-dialog child requires a paint plan",
+            ),
+            (
                 EguiTextCommandSurfaceArtifactError::MissingToolbar,
                 "toolbar child requires a toolbar plan",
             ),

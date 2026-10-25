@@ -1,16 +1,20 @@
 #![cfg(feature = "egui")]
+#[cfg(feature = "native-ime-evidence")]
+#[path = "support/live_unicode.rs"]
+mod live_unicode_support;
 use katana_ui_core::egui::context_menu::{ContextMenuPresentation, ContextMenuPresentationItem};
 use katana_ui_core::egui::text_command_surface::{
     EguiTextCommandSurfaceCommandFamilyProjection, EguiTextCommandSurfaceFloatingPresentation,
-    EguiTextCommandSurfaceHostProjectionEncoder, EguiTextCommandSurfaceHostRoot,
-    EguiTextCommandSurfaceHostTargetToken, EguiTextCommandSurfacePresentationToken,
-    EguiTextCommandSurfaceRootEventTransport, EguiTextCommandSurfaceRootFactory,
-    EguiTextCommandSurfaceRootFactoryError, EguiTextCommandSurfaceSearchPresentation,
-    KucOpaqueHostEffectBatch, KucRootEventBatchContext, KucRootEventBatchForwarder,
-    TabStripCorrelation, TabStripGroupCapabilities, TabStripGroupDescriptor,
-    TabStripGroupPopupPresentation, TabStripGroupTarget, TabStripMenuEntry, TabStripMenuOperation,
-    TabStripProjection, TabStripProjectionLease, TabStripTabCapabilities, TabStripTabDescriptor,
-    TabStripTabTarget, TabStripText,
+    EguiTextCommandSurfaceHostProjectionEncoder, EguiTextCommandSurfaceHostProjectionLease,
+    EguiTextCommandSurfaceHostRoot, EguiTextCommandSurfaceHostTargetToken,
+    EguiTextCommandSurfacePresentationToken, EguiTextCommandSurfaceRootEventTransport,
+    EguiTextCommandSurfaceRootFactory, EguiTextCommandSurfaceRootFactoryError,
+    EguiTextCommandSurfaceSearchPresentation, KucOpaqueHostEffectBatch, KucRootEventBatchContext,
+    KucRootEventBatchForwarder, StatusDiagnosticsProjectionLease, TabStripCorrelation,
+    TabStripGroupCapabilities, TabStripGroupDescriptor, TabStripGroupPopupPresentation,
+    TabStripGroupTarget, TabStripMenuEntry, TabStripMenuOperation, TabStripProjection,
+    TabStripProjectionLease, TabStripTabCapabilities, TabStripTabDescriptor, TabStripTabTarget,
+    TabStripText,
 };
 use katana_ui_core::egui::text_command_surface::{
     EguiTextCommandSurfacePresentation, TextCommandSurfaceStyle,
@@ -22,6 +26,9 @@ use katana_ui_core::molecule::command_chrome::{
 };
 use katana_ui_core::molecule::selection::ContextMenuItemKind;
 use katana_ui_core::molecule::structured::{ReplaceMode, SearchOptions};
+use katana_ui_core::molecule::{
+    StatusBar, StatusBarMode, StatusBarSegment, StatusBarSegmentAlignment,
+};
 use katana_ui_core::render_model::UiStateId;
 use katana_ui_core::render_model::UiTextSpan;
 use katana_ui_core::text_surface::{
@@ -33,15 +40,15 @@ fn host_context_presentation() -> EguiTextCommandSurfacePresentation {
     let text = TextSurface::new(
         TextSurfaceProps::new(
             katana_ui_core::atom::TextArea::new("host-root-context-text")
-                .value("# KLE / KUC\n\n日本語 ⭐️"),
+                .value("# API / KUC\n\n日本語 ⭐️"),
             Vec::<UiTextSpan>::new(),
             TextSurfaceViewport::new(0, 0, 1280, 720),
         )
-        .accessibility_label("KLE Storybook text surface")
-        .context_target_label("KLE Storybook context target"),
+        .accessibility_label("KUC text surface")
+        .context_target_label("KUC context target"),
     );
     let mut text = TextSurfacePresentation::from_props(text.props());
-    text.selection_start = "# KLE / KUC\n\n".len();
+    text.selection_start = "# API / KUC\n\n".len();
     text.selection_end = text.selection_start + "日本語 ⭐️".len();
     EguiTextCommandSurfacePresentation {
         text_state_id: Some(UiStateId::new("host-root-context-text")),
@@ -314,10 +321,43 @@ fn host_frame(
             events,
             ..egui::RawInput::default()
         },
-        |ui| frame = Some(root.show(ui).expect("host root show")),
+        |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
+                frame = Some(root.show(ui).expect("host root show"));
+            });
+        },
     );
     full_output.textures_delta.clear();
     frame.expect("host root frame")
+}
+
+fn host_frame_with_output(
+    context: &egui::Context,
+    root: &mut EguiTextCommandSurfaceHostRoot,
+    events: Vec<egui::Event>,
+    width: f32,
+) -> (
+    katana_ui_core::egui::text_command_surface::EguiTextCommandSurfaceHostRootFrame,
+    egui::FullOutput,
+) {
+    let mut frame = None;
+    let mut output = context.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(width, 720.0),
+            )),
+            events,
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
+                frame = Some(root.show(ui).expect("host root show"));
+            });
+        },
+    );
+    output.textures_delta.clear();
+    (frame.expect("host root frame"), output)
 }
 
 #[test]
@@ -370,7 +410,7 @@ fn host_root_fresh_lease_context_open_then_leaf_capture_preserves_context_state(
 }
 
 #[test]
-fn host_root_complex_kle_context_fixture_preserves_current_frame_context_leaf() {
+fn host_root_complex_public_context_fixture_preserves_current_frame_context_leaf() {
     let context = egui::Context::default();
     context.enable_accesskit();
     let mut root = EguiTextCommandSurfaceRootFactory::new()
@@ -592,6 +632,393 @@ fn family_projection_round_trips_and_distinct_families_render() {
         .expect("legacy synchronization must preserve compatibility");
 }
 
+#[cfg(feature = "native-ime-evidence")]
+#[test]
+fn live_unicode_observer_uses_the_same_root_frame_and_rejects_invalid_ranges() {
+    let context = egui::Context::default();
+    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        1,
+        b"unicode-observer-target".to_vec(),
+        host_context_presentation(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
+    )
+    .expect("unicode observer token");
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain(token)
+        .expect("unicode observer root");
+    let frame = host_frame(&context, &mut root, Vec::new());
+    let text = "# API / KUC\n\n日本語 ⭐️";
+    let start = text.find("日本語").expect("Japanese probe");
+    let end = start + "日本語".len();
+    let observed = frame
+        .observe_unicode((start, end))
+        .expect("live observation");
+    assert_eq!((start, end), observed.observed_range());
+    assert_eq!([0x65e5, 0x672c, 0x8a9e], observed.scalars());
+    assert_eq!(frame.record().identity(), observed.root_id());
+    assert_eq!(frame.record().record_hash(), observed.root_record_hash());
+    assert_eq!(frame.record().rgba_hash(), observed.root_rgba_hash());
+    assert_eq!(observed.root_frame_hash(), observed.root_record_hash());
+    assert!(observed.frame_id().starts_with(observed.root_id()));
+    assert!(!observed.crop().pixels.is_empty());
+    assert_eq!(start, observed.hit_test().byte_start);
+    assert!(observed.hit_test().byte_end > start);
+    assert!(observed.hit_test().byte_end <= end);
+    observed
+        .validate_binding(
+            observed.root_id(),
+            observed.frame_id(),
+            observed.root_record_hash(),
+            observed.root_rgba_hash(),
+        )
+        .expect("observation binding");
+    assert!(
+        observed
+            .validate_binding(
+                "other-root",
+                observed.frame_id(),
+                observed.root_record_hash(),
+                observed.root_rgba_hash()
+            )
+            .is_err()
+    );
+    assert!(
+        observed
+            .validate_binding(
+                observed.root_id(),
+                observed.frame_id(),
+                "tampered",
+                observed.root_rgba_hash()
+            )
+            .is_err()
+    );
+    let receipt = frame
+        .forward_events_once(&mut live_unicode_support::LiveForwarder::default())
+        .expect("forwarding receipt");
+    assert!(
+        observed
+            .native_observations(&observed, &receipt, (0, "日本語".len()))
+            .is_err()
+    );
+
+    let invalid_utf8 = frame.observe_unicode((start + 1, end));
+    assert!(invalid_utf8.is_err(), "mid-scalar range must fail closed");
+    let invalid_grapheme = frame.observe_unicode((0, start + 1));
+    assert!(
+        invalid_grapheme.is_err(),
+        "partial grapheme range must fail closed"
+    );
+}
+
+#[cfg(feature = "native-ime-evidence")]
+#[test]
+fn live_unicode_observer_runtime_binds_native_shapes_to_one_forwarded_frame() {
+    let mut presentation = host_context_presentation();
+    let value = "日本語 ⭐️ / ☆ / 👩‍💻";
+    presentation.text.value = value.to_owned();
+    presentation.text.selection_start = 0;
+    presentation.text.selection_end = value.len();
+    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        1,
+        b"live-unicode-runtime".to_vec(),
+        presentation,
+        TextCommandSurfaceStyle::standard().expect("standard style"),
+    )
+    .expect("runtime token");
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain(token)
+        .expect("runtime root");
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let frame = host_frame(&context, &mut root, Vec::new());
+    let value = "日本語 ⭐️ / ☆ / 👩‍💻";
+    let star = value.find("⭐️").expect("star");
+    let control = value.find('☆').expect("control");
+    let primary = frame
+        .observe_unicode((star, star + "⭐️".len()))
+        .expect("primary");
+    let contrast = frame
+        .observe_unicode((control, control + "☆".len()))
+        .expect("contrast");
+    assert_ne!(primary.crop().pixels, contrast.crop().pixels);
+    let receipt = frame
+        .forward_events_once(&mut live_unicode_support::LiveForwarder::default())
+        .expect("receipt");
+    let (native, crop, hashes) = primary
+        .native_observations(&contrast, &receipt, (0, "日本語".len()))
+        .expect("native interop");
+    assert_eq!(2, native.hit_tests.len());
+    assert_eq!(crop.control_width, contrast.crop().bounds.width);
+    assert_eq!(
+        receipt.frame_serial().to_string(),
+        primary.frame_id().rsplit(':').next().unwrap()
+    );
+    assert!(hashes.receipt_sha256.len() == 64);
+    {
+        use katana_ui_core::native_ime_evidence::{
+            NativeImeEvidenceArtifact, NativeImeTranscript, NativeImeVerificationError,
+            NativeImeVerificationExpectations, NativeRunBinding, SCHEMA_VERSION,
+        };
+        let artifact = NativeImeEvidenceArtifact {
+            schema_version: SCHEMA_VERSION.into(),
+            revision: "runtime-contract".into(),
+            platform: std::env::consts::OS.into(),
+            run: NativeRunBinding {
+                run_id: "synthetic-live-root".into(),
+                challenge: "runtime-challenge".into(),
+                producer_id: "contract-test".into(),
+                runner_id: "contract-runner".into(),
+                input_method: "RawInput".into(),
+                origin: "synthetic".into(),
+            },
+            ime: NativeImeTranscript {
+                preedit: "にほんご".into(),
+                commit: native.committed_text.clone(),
+                preedit_sequence: 1,
+                commit_sequence: 2,
+            },
+            scalar_sequence: primary.scalars().to_vec(),
+            rgba_crop: crop,
+            observations: hashes,
+            frame_observations: native,
+            artifact_sha256: String::new(),
+        }
+        .seal()
+        .expect("existing artifact writer");
+        assert!(artifact.has_valid_digest().expect("digest"));
+        let expected = NativeImeVerificationExpectations {
+            revision: artifact.revision.clone(),
+            platform: artifact.platform.clone(),
+            run_id: artifact.run.run_id.clone(),
+            challenge: artifact.run.challenge.clone(),
+            producer_id: artifact.run.producer_id.clone(),
+            runner_id: artifact.run.runner_id.clone(),
+            attested_artifact_sha256: artifact.artifact_sha256.clone(),
+        };
+        assert_eq!(
+            artifact.verify(&expected),
+            Err(NativeImeVerificationError::InvalidOrigin)
+        );
+    }
+    assert!(
+        primary
+            .native_observations(&contrast, &receipt, (1, 9))
+            .is_err()
+    );
+    assert!(
+        primary
+            .validate_binding(
+                primary.root_id(),
+                "different-frame",
+                primary.root_record_hash(),
+                primary.root_rgba_hash()
+            )
+            .is_err()
+    );
+    assert!(
+        primary
+            .validate_binding(
+                primary.root_id(),
+                primary.frame_id(),
+                primary.root_record_hash(),
+                "tampered-rgba"
+            )
+            .is_err()
+    );
+
+    let mut updated_presentation = host_context_presentation();
+    let updated_value = "更新 日本語 ⭐️ / ☆ / 👩‍💻";
+    updated_presentation.text.value = updated_value.to_owned();
+    updated_presentation.text.selection_start = 0;
+    updated_presentation.text.selection_end = updated_value.len();
+    let updated_token = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        2,
+        b"live-unicode-runtime".to_vec(),
+        updated_presentation,
+        TextCommandSurfaceStyle::standard().expect("updated style"),
+    )
+    .expect("updated token");
+    root.synchronize_with_lease(EguiTextCommandSurfaceHostProjectionLease::new(
+        updated_token,
+        |_context: KucRootEventBatchContext| Ok(None),
+    ))
+    .expect("updated lease");
+    let updated_frame = host_frame(&context, &mut root, Vec::new());
+    let updated_star = updated_value.find("⭐️").expect("updated star");
+    let updated_control = updated_value.find('☆').expect("updated control");
+    let updated_primary = updated_frame
+        .observe_unicode((updated_star, updated_star + "⭐️".len()))
+        .expect("updated primary");
+    let updated_contrast = updated_frame
+        .observe_unicode((updated_control, updated_control + "☆".len()))
+        .expect("updated contrast");
+    let updated_receipt = updated_frame
+        .forward_events_once(&mut live_unicode_support::LiveForwarder::default())
+        .expect("updated receipt");
+    assert!(
+        updated_primary
+            .native_observations(&updated_contrast, &receipt, (0, 6))
+            .is_err(),
+        "a receipt from the prior frame must not bind to the current observations"
+    );
+    assert!(
+        primary
+            .native_observations(&updated_contrast, &receipt, (0, 6))
+            .is_err(),
+        "old primary must not bind to updated control"
+    );
+    assert!(
+        updated_primary
+            .native_observations(&contrast, &updated_receipt, (0, 6))
+            .is_err(),
+        "updated primary must not bind to old control"
+    );
+    updated_primary
+        .native_observations(&updated_contrast, &updated_receipt, (0, 6))
+        .expect("updated observations");
+}
+
+#[test]
+fn full_root_status_projection_retains_accessibility_hash_across_update_and_narrow_width() {
+    let status_presentation = || {
+        let text = TextSurface::new(TextSurfaceProps::new(
+            katana_ui_core::atom::TextArea::new("status-root-text").value("日本語 status"),
+            Vec::<UiTextSpan>::new(),
+            TextSurfaceViewport::new(0, 0, 640, 360),
+        ));
+        EguiTextCommandSurfacePresentation {
+            text_state_id: Some(UiStateId::new("status-root-text")),
+            text: TextSurfacePresentation::from_props(text.props()),
+            toolbar: None,
+            floating: None,
+            search: None,
+            context_menu: None,
+        }
+    };
+    let status = || {
+        StatusBar::new("status")
+            .mode(StatusBarMode::MultiSegment)
+            .segment(
+                StatusBarSegment::new("ready", "Ready")
+                    .alignment(StatusBarSegmentAlignment::Leading)
+                    .accessibility_label("Status: Ready"),
+            )
+            .segment(
+                StatusBarSegment::new("changes", "Unsaved changes")
+                    .alignment(StatusBarSegmentAlignment::Trailing)
+                    .accessibility_label("Status: Unsaved changes"),
+            )
+    };
+    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        1,
+        b"status-full-root".to_vec(),
+        status_presentation(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
+    )
+    .expect("status token");
+    let lease = EguiTextCommandSurfaceHostProjectionLease::new(
+        token,
+        |_context: KucRootEventBatchContext| Ok(None),
+    )
+    .with_status_diagnostics(StatusDiagnosticsProjectionLease::new().with_status_bar(status()));
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(lease)
+        .expect("status root");
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let (first, first_output) = host_frame_with_output(&context, &mut root, Vec::new(), 800.0);
+    assert!(!first.record().accessibility_snapshot_hash().is_empty());
+    let update = first_output
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .expect("status AccessKit update");
+    for label in ["Status: Ready", "Status: Unsaved changes"] {
+        let node = update
+            .nodes
+            .iter()
+            .find_map(|(_, node)| (node.label() == Some(label)).then_some(node))
+            .unwrap_or_else(|| panic!("missing status label {label}"));
+        assert_eq!(node.role(), egui::accesskit::Role::Label);
+        assert!(
+            node.bounds()
+                .is_some_and(|bounds| bounds.x1 > bounds.x0 && bounds.y1 > bounds.y0)
+        );
+        assert!(!node.supports_action(egui::accesskit::Action::Click));
+    }
+    let updated = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        2,
+        b"status-full-root".to_vec(),
+        status_presentation(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
+    )
+    .expect("status update token");
+    let update_lease = EguiTextCommandSurfaceHostProjectionLease::new(
+        updated,
+        |_context: KucRootEventBatchContext| Ok(None),
+    )
+    .with_status_diagnostics(
+        StatusDiagnosticsProjectionLease::new().with_status_bar(
+            StatusBar::new("status")
+                .mode(StatusBarMode::MultiSegment)
+                .segment(
+                    StatusBarSegment::new("ready", "A very long updated status message")
+                        .accessibility_label("Status: Updated"),
+                ),
+        ),
+    );
+    root.synchronize_with_lease(update_lease)
+        .expect("status update");
+    let (second, second_output) = host_frame_with_output(&context, &mut root, Vec::new(), 96.0);
+    assert!(!second.record().accessibility_snapshot_hash().is_empty());
+    assert_ne!(
+        first.record().accessibility_snapshot_hash(),
+        second.record().accessibility_snapshot_hash()
+    );
+    let update = second_output
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .expect("narrow status AccessKit update");
+    let updated = update
+        .nodes
+        .iter()
+        .find_map(|(_, node)| (node.label() == Some("Status: Updated")).then_some(node))
+        .expect("updated status label");
+    assert!(
+        updated
+            .bounds()
+            .is_some_and(|bounds| bounds.x1 > bounds.x0 && bounds.y1 > bounds.y0)
+    );
+    let cleared = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        3,
+        b"status-full-root".to_vec(),
+        status_presentation(),
+        TextCommandSurfaceStyle::standard().expect("standard style"),
+    )
+    .expect("status clear token");
+    root.synchronize_with_lease(
+        EguiTextCommandSurfaceHostProjectionLease::new(
+            cleared,
+            |_context: KucRootEventBatchContext| Ok(None),
+        )
+        .with_status_diagnostics(
+            StatusDiagnosticsProjectionLease::new()
+                .with_status_bar(StatusBar::new("status").mode(StatusBarMode::MultiSegment)),
+        ),
+    )
+    .expect("status clear");
+    let (_, cleared_output) = host_frame_with_output(&context, &mut root, Vec::new(), 96.0);
+    if let Some(update) = cleared_output.platform_output.accesskit_update.as_ref() {
+        assert!(
+            !update
+                .nodes
+                .iter()
+                .any(|(_, node)| node.label() == Some("Status: Updated"))
+        );
+    }
+}
+
 #[test]
 fn host_lease_tab_strip_reaches_the_public_root_composite() {
     let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
@@ -807,4 +1234,166 @@ fn unknown_family_wire_version_fails_closed() {
         Err(EguiTextCommandSurfaceRootFactoryError::Decode(_))
             | Err(EguiTextCommandSurfaceRootFactoryError::InvalidToken(_))
     ));
+}
+
+#[cfg(feature = "native-ime-evidence")]
+#[test]
+fn live_unicode_observer_tracks_ime_commit_and_text_input_without_changing_state() {
+    use katana_ui_core::atom::{TextArea, TextAreaEvent};
+    use katana_ui_core::text_surface::{
+        TextSurfaceEvent, TextSurfaceFocusRequest, TextSurfaceFocusRequestToken,
+    };
+    let surface = TextSurface::new(TextSurfaceProps::new(
+        TextArea::new("live-ime-body").value("").ime_enabled(true),
+        Vec::new(),
+        TextSurfaceViewport::new(0, 0, 1280, 720),
+    ));
+    let mut text = TextSurfacePresentation::from_props(surface.props());
+    text.focus_request = Some(TextSurfaceFocusRequest::new(
+        TextSurfaceFocusRequestToken::new("live-ime-focus"),
+        true,
+    ));
+    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
+        1,
+        b"live-ime-input",
+        EguiTextCommandSurfacePresentation {
+            text_state_id: Some(UiStateId::new("live-ime-document")),
+            text,
+            toolbar: None,
+            floating: None,
+            search: None,
+            context_menu: None,
+        },
+        TextCommandSurfaceStyle::standard().expect("style"),
+    )
+    .expect("token");
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain(token)
+        .expect("root");
+    let context = egui::Context::default();
+    let mut host = live_unicode_support::LiveForwarder::default();
+    for _ in 0..3 {
+        host_frame(&context, &mut root, vec![])
+            .forward_events_once(&mut host)
+            .expect("warm forward");
+    }
+    host.text_events.clear();
+    let preedit = host_frame(
+        &context,
+        &mut root,
+        vec![egui::Event::Ime(egui::ImeEvent::Preedit {
+            text: "にほんご".into(),
+            active_range_chars: None,
+        })],
+    );
+    assert!(
+        preedit.observe_unicode((0, "日本語".len())).is_err(),
+        "preedit is not committed document text"
+    );
+    preedit
+        .forward_events_once(&mut host)
+        .expect("preedit forward");
+    let committed = host_frame(
+        &context,
+        &mut root,
+        vec![egui::Event::Ime(egui::ImeEvent::Commit("日本語".into()))],
+    );
+    committed
+        .forward_events_once(&mut host)
+        .expect("commit forward");
+    let suffix = " ⭐️ / ☆ / 👩‍💻";
+    let frame = host_frame(&context, &mut root, vec![egui::Event::Text(suffix.into())]);
+    let final_text = format!("日本語{suffix}");
+    let saved = frame
+        .ui_selection_after_input()
+        .snapshot()
+        .expect("focused final snapshot")
+        .clone();
+    let star = final_text.find("⭐️").expect("star");
+    let control = final_text.find('☆').expect("control");
+    let primary = frame
+        .observe_unicode((star, star + "⭐️".len()))
+        .expect("actual color observation");
+    let contrast = frame
+        .observe_unicode((control, control + "☆".len()))
+        .expect("actual control observation");
+    let zwj = final_text.find("👩‍💻").expect("ZWJ");
+    assert!(frame.observe_unicode((zwj, zwj + "👩‍💻".len())).is_ok());
+    assert!(frame.observe_unicode((zwj, zwj + '👩'.len_utf8())).is_err());
+    assert_eq!(primary.final_text(), final_text);
+    assert_eq!(primary.scalars(), [0x2b50, 0xfe0f]);
+    assert_eq!(contrast.scalars(), [0x2606]);
+    assert!(primary.measurement().width > 0);
+    assert!(primary.caret().bounds.height > 0);
+    assert!(primary.accesskit().is_some());
+    assert_eq!(
+        root.ui_selection_before_input().snapshot(),
+        Some(&saved),
+        "observing must not move selection"
+    );
+    let receipt = frame
+        .forward_events_once(&mut host)
+        .expect("real dispatch receipt");
+    assert!(frame.forward_events_once(&mut host).is_err());
+    let (native, crop, hashes) = primary
+        .native_observations(&contrast, &receipt, (0, "日本語".len()))
+        .expect("interop");
+    assert_eq!(native.committed_text, "日本語");
+    assert_eq!(native.final_text, final_text);
+    assert_eq!(hashes.root_id, primary.root_id());
+    assert_ne!(crop.pixels, crop.control_pixels);
+    let values = host
+        .text_events
+        .iter()
+        .filter_map(|event| match event {
+            TextSurfaceEvent::TextArea(TextAreaEvent::Change(value)) => Some(value.as_str()),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert!(values.contains(&"日本語"));
+    assert_eq!(values.last(), Some(&final_text.as_str()));
+    let selections = host
+        .text_events
+        .iter()
+        .filter_map(|event| match event {
+            TextSurfaceEvent::SelectionChanged {
+                selection_start,
+                selection_end,
+            } => Some((*selection_start, *selection_end)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        selections.contains(&(9, 9)),
+        "IME commit publishes the final caret"
+    );
+    assert_eq!(selections.last(), Some(&(36, 36)));
+    let mut echo = TextSurfacePresentation::from_props(surface.props());
+    echo.value = values.last().expect("host text").to_string();
+    (echo.selection_start, echo.selection_end) = *selections.last().expect("host selection");
+    root.synchronize(
+        EguiTextCommandSurfaceHostProjectionEncoder::token(
+            2,
+            b"live-ime-input",
+            EguiTextCommandSurfacePresentation {
+                text_state_id: Some(UiStateId::new("live-ime-document")),
+                text: echo,
+                toolbar: None,
+                floating: None,
+                search: None,
+                context_menu: None,
+            },
+            TextCommandSurfaceStyle::standard().expect("style"),
+        )
+        .expect("controlled echo token"),
+    )
+    .expect("controlled echo");
+    let idle = host_frame(&context, &mut root, vec![]);
+    assert_eq!(idle.ui_selection_after_input().snapshot(), Some(&saved));
+    assert_eq!(
+        idle.observe_unicode((star, star + "⭐️".len()))
+            .expect("idle observation")
+            .final_text(),
+        final_text
+    );
 }

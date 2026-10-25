@@ -108,14 +108,19 @@ fn text_runs(root_id: egui::Id, layout: &TextSurfaceLayout) -> Vec<TextRun> {
     layout
         .lines
         .iter()
-        .filter_map(|line| {
+        .enumerate()
+        .filter_map(|(physical_row, line)| {
             let graphemes = layout
                 .graphemes
                 .iter()
                 .filter(|grapheme| grapheme.bounds.y == line.bounds.y)
                 .collect::<Vec<_>>();
-            let first = graphemes.first()?;
-            let last = graphemes.last()?;
+            let grapheme_start = graphemes
+                .first()
+                .map_or(layout.graphemes.len(), |first| first.grapheme_index);
+            let grapheme_end = graphemes
+                .last()
+                .map_or(grapheme_start, |last| last.grapheme_index.saturating_add(1));
             let mut value = String::new();
             let mut character_lengths = Vec::new();
             let mut character_positions = Vec::new();
@@ -123,6 +128,14 @@ fn text_runs(root_id: egui::Id, layout: &TextSurfaceLayout) -> Vec<TextRun> {
             let mut character_offsets = vec![0];
             for grapheme in &graphemes {
                 let segment = layout.text().get(grapheme.byte_start..grapheme.byte_end)?;
+                if segment == "\r\n" {
+                    value.push_str(segment);
+                    character_lengths.push(segment.len() as u8);
+                    character_positions.push((grapheme.bounds.x - line.bounds.x) as f32);
+                    character_widths.push(0.0);
+                    character_offsets.push(character_lengths.len());
+                    continue;
+                }
                 let mut first_character = true;
                 for character in segment.chars() {
                     value.push(character);
@@ -137,10 +150,10 @@ fn text_runs(root_id: egui::Id, layout: &TextSurfaceLayout) -> Vec<TextRun> {
                 }
                 character_offsets.push(character_lengths.len());
             }
-            (!value.is_empty()).then(|| TextRun {
-                id: root_id.with(("text-run", line.logical_row)),
-                grapheme_start: first.grapheme_index,
-                grapheme_end: last.grapheme_index.saturating_add(1),
+            Some(TextRun {
+                id: root_id.with(("text-run", physical_row)),
+                grapheme_start,
+                grapheme_end,
                 character_offsets,
                 value,
                 bounds: line.bounds,
@@ -179,7 +192,10 @@ fn text_selection(
 fn text_position(runs: &[TextRun], grapheme_index: usize) -> egui::accesskit::TextPosition {
     let run = runs
         .iter()
-        .find(|run| grapheme_index >= run.grapheme_start && grapheme_index <= run.grapheme_end)
+        .find(|run| {
+            grapheme_index == run.grapheme_start
+                || (grapheme_index > run.grapheme_start && grapheme_index < run.grapheme_end)
+        })
         .or_else(|| runs.last());
     let Some(run) = run else {
         return egui::accesskit::TextPosition {

@@ -1,8 +1,7 @@
 use super::accessibility::publish_accesskit;
 use super::artifact_model::{
     EguiTextSurfaceError, EguiTextSurfaceFrameRecord, EguiTextSurfaceOutput,
-    TextSurfaceArtifactFrame, context_target_from_actual_input, publish_ime_output,
-    raster_identity, ui_rect,
+    TextSurfaceArtifactFrame, context_target_from_actual_input, publish_ime_output, ui_rect,
 };
 use super::controlled_focus::{focus_request_event, synchronize_focus_request};
 use super::controlled_scroll::{
@@ -10,57 +9,23 @@ use super::controlled_scroll::{
 };
 use super::events::TextSurfaceInteraction;
 use super::measurement::{
-    controlled_gutter_width, placeholder_bounds, placeholder_raster_identity, surface_extent_for_ui,
+    placeholder_bounds, placeholder_raster_identity, raster_texture_bounds, surface_extent_for_ui,
 };
 use super::model::{
     EguiTextSurfaceAdapter, EguiTextSurfaceInputPolicy, TextSurfacePaintStyle,
     TextSurfaceRasterStyle,
 };
 use super::paint::{PaintLayers, build_paint_plan, paint_surface};
-use super::raster::{RasterFrame, layout_for_surface, rasterize_placeholder, rasterize_surface};
+use super::raster::{layout_for_surface, rasterize_placeholder};
 use crate::render_model::UiRect;
 use crate::text_surface::{
     TextSurface, TextSurfaceFocusRequestResult, TextSurfacePoint, TextSurfaceViewportSizing,
 };
 
 mod constructors;
+mod rasterization;
 
 impl EguiTextSurfaceAdapter {
-    fn raster(
-        &mut self,
-        surface: &TextSurface,
-        style: &TextSurfaceRasterStyle,
-        content_width: f32,
-        scale_factor: f32,
-    ) -> Result<RasterFrame, EguiTextSurfaceError> {
-        rasterize_surface(
-            &mut self.rasterizer,
-            surface,
-            style,
-            content_width,
-            scale_factor,
-            raster_identity(surface, style),
-            &self.metrics,
-        )
-    }
-
-    fn gutter(
-        &mut self,
-        frame: &RasterFrame,
-        surface: &TextSurface,
-        style: &TextSurfaceRasterStyle,
-        scale_factor: f32,
-    ) -> Result<u32, EguiTextSurfaceError> {
-        let layout = layout_for_surface(frame, surface, TextSurfacePoint::new(0, 0));
-        controlled_gutter_width(
-            &mut self.rasterizer,
-            &layout,
-            style,
-            scale_factor,
-            &self.metrics,
-        )
-    }
-
     pub(crate) fn request_focus_for_next_frame(&mut self, focused: bool) {
         self.pending_focus_request = Some(focused);
     }
@@ -141,6 +106,11 @@ impl EguiTextSurfaceAdapter {
         let initial_frame =
             surface.frame_with_bounds(&initial_layout, surface_bounds, viewport_bounds);
         let pointer_exclusion_bounds = std::mem::take(&mut self.pointer_exclusion_bounds);
+        let pending_focus_request = if ui.is_sizing_pass() {
+            None
+        } else {
+            self.pending_focus_request.take()
+        };
         let mut events = TextSurfaceInteraction::apply_interactions(
             ui,
             &response,
@@ -148,10 +118,12 @@ impl EguiTextSurfaceAdapter {
             &initial_layout,
             &initial_frame,
             input_policy,
-            self.pending_focus_request.take(),
+            pending_focus_request,
             &pointer_exclusion_bounds,
         );
-        let focus_request = synchronize_focus_request(&response, surface);
+        let focus_request = (!ui.is_sizing_pass())
+            .then(|| synchronize_focus_request(&response, surface))
+            .flatten();
         if let Some(TextSurfaceFocusRequestResult::Acknowledged(value)) = focus_request.as_ref() {
             self.pending_focus_request = Some(value.focused);
         }
@@ -206,7 +178,11 @@ impl EguiTextSurfaceAdapter {
             &self.metrics,
         )?;
         let record = EguiTextSurfaceFrameRecord {
-            texture_bounds: frame.content_bounds,
+            texture_bounds: raster_texture_bounds(
+                &frame.content_bounds,
+                &raster_frame,
+                scale_factor,
+            ),
             hit_target: surface.state().text_area.state_id.as_str().to_string(),
             raster_identity: raster_frame.identity.clone(),
             placeholder_raster_identity: placeholder.as_ref().map(|value| value.identity.clone()),

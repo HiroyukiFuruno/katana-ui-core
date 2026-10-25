@@ -228,6 +228,8 @@ def schedule_batches(binaries: list[tuple[str, Path, Path]], max_parallel: int) 
     )
     tasks = [binary for _index, binary in ordered]
     return [tasks[offset:offset + max_parallel] for offset in range(0, len(tasks), max_parallel)]
+def is_storybook(task: tuple[str, Path, Path]) -> bool:
+    return task[0] == "katana-ui-core-storybook"
 def run_suite(binaries: list[tuple[str, Path, Path]], logs_dir: Path, max_parallel: int, test_threads: int) -> int:
     logs_dir.mkdir(parents=True, exist_ok=True)
     run_root = logs_dir / f"run-{time.time_ns()}"
@@ -236,27 +238,38 @@ def run_suite(binaries: list[tuple[str, Path, Path]], logs_dir: Path, max_parall
     failed: list[tuple[str, Path, int, Path, Path, float]] = []
     start = time.monotonic()
     ordered = [task for batch in schedule_batches(binaries, max_parallel) for task in batch]
-    cursor = 0
-    with ThreadPoolExecutor(max_workers=max_parallel) as ex:
-        futures = {}
-        while cursor < min(max_parallel, len(ordered)):
-            task = ordered[cursor]
-            futures[ex.submit(run_binary, task, run_root, cursor, test_threads)] = task
-            cursor += 1
-        while futures:
-            future = next(as_completed(tuple(futures)))
-            futures.pop(future)
-            try:
-                result = future.result()
-            except Exception as error:
-                fail(f"failed to run test binary: {error}")
-            results.append(result)
-            if result[2] != 0:
-                failed.append(result)
-            if not failed and cursor < len(ordered):
-                task = ordered[cursor]
-                futures[ex.submit(run_binary, task, run_root, cursor, test_threads)] = task
+    indexed_ordered = list(enumerate(ordered))
+    storybook = [entry for entry in indexed_ordered if is_storybook(entry[1])]
+    remaining = [entry for entry in indexed_ordered if not is_storybook(entry[1])]
+    # OOM対策のためStorybook binaryは排他phaseで先行し、その後だけ通常parallelを許可する。
+    def run_phase(indexed: list[tuple[int, tuple[str, Path, Path]]], workers: int) -> bool:
+        cursor = 0
+        phase_failed = False
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            futures = {}
+            while cursor < min(workers, len(indexed)):
+                index, task = indexed[cursor]
+                futures[ex.submit(run_binary, task, run_root, index, test_threads)] = task
                 cursor += 1
+            while futures:
+                future = next(as_completed(tuple(futures)))
+                futures.pop(future)
+                try:
+                    result = future.result()
+                except Exception as error:
+                    fail(f"failed to run test binary: {error}")
+                results.append(result)
+                if result[2] != 0:
+                    failed.append(result)
+                    phase_failed = True
+                if not phase_failed and cursor < len(indexed):
+                    index, task = indexed[cursor]
+                    futures[ex.submit(run_binary, task, run_root, index, test_threads)] = task
+                    cursor += 1
+        return not phase_failed
+    storybook_ok = run_phase(storybook, 1)
+    if storybook_ok:
+        run_phase(remaining, max_parallel)
     elapsed = time.monotonic() - start
     if failed:
         print(f"run-test-binaries: failed {len(failed)} binaries after {elapsed:.2f}s", file=sys.stderr)
@@ -311,26 +324,35 @@ def self_test() -> int:
         for i, name in enumerate(ALLOWED_PACKAGES):
             ok[name] = exe(name, f"ok-{i}.py", "print('ok')")
         fail = exe(ALLOWED_PACKAGES[1], "fail.py", "import sys;print('bad', file=sys.stderr); sys.exit(1)")
-        slow: dict[str, str] = {}
         event_start = "import os,time\nfrom pathlib import Path\nn=__file__\nf=os.getenv('KUC_SELFTEST_EVENT_FILE')\nif f: open(f,'a',encoding='utf-8').write(f'{time.time()}\\t{n}\\tstart\\n')\n"
         event_end = "if f: open(f,'a',encoding='utf-8').write(f'{time.time()}\\t{n}\\tend\\n')\n"
         refill_marker = "Path(os.environ['KUC_SELFTEST_REFILL_MARKER'])"
-        slow[ALLOWED_PACKAGES[0]] = exe(
+        slow_0 = exe(
             ALLOWED_PACKAGES[0],
             "slow-0.py",
             event_start
             + f"marker={refill_marker}\ndeadline=time.monotonic()+2\nwhile not marker.exists() and time.monotonic()<deadline: time.sleep(0.01)\n"
             + event_end,
         )
-        slow[ALLOWED_PACKAGES[1]] = exe(
+        storybook_1 = exe(
             ALLOWED_PACKAGES[1],
             "slow-1.py",
             event_start + "time.sleep(0.1)\n" + event_end,
         )
-        slow[ALLOWED_PACKAGES[2]] = exe(
+        storybook_1b = exe(
+            ALLOWED_PACKAGES[1],
+            "slow-1b.py",
+            event_start + "time.sleep(0.1)\n" + event_end,
+        )
+        slow_2 = exe(
             ALLOWED_PACKAGES[2],
             "slow-2.py",
-            event_start + f"{refill_marker}.touch()\ntime.sleep(0.1)\n" + event_end,
+            event_start + "time.sleep(0.05)\n" + event_end,
+        )
+        light = exe(
+            ALLOWED_PACKAGES[0],
+            "light.py",
+            event_start + f"{refill_marker}.touch()\n" + event_end,
         )
         def write_artifact(items: list[tuple[str, str]]) -> Path:
             p = root / f"artifact-{time.time_ns()}.json"
@@ -404,7 +426,13 @@ def self_test() -> int:
             print("self-test failed: failure log", file=sys.stderr)
             return 1
         event = root / "parallel.log"
-        parallel = [(name, slow[name]) for name in ALLOWED_PACKAGES]
+        parallel = [
+            (ALLOWED_PACKAGES[0], slow_0),
+            (ALLOWED_PACKAGES[1], storybook_1),
+            (ALLOWED_PACKAGES[2], slow_2),
+            (ALLOWED_PACKAGES[1], storybook_1b),
+            (ALLOWED_PACKAGES[0], light),
+        ]
         par = run_case(
             script,
             write_artifact(parallel),
@@ -423,7 +451,12 @@ def self_test() -> int:
         for raw in event.read_text().splitlines():
             timestamp, executable, kind = raw.split("\t")
             event_times[(Path(executable).name, kind)] = float(timestamp)
-        if event_times[("slow-2.py", "start")] >= event_times[("slow-0.py", "end")]:
+        storybook_end = max(event_times[(name, "end")] for name in ["slow-1.py", "slow-1b.py"])
+        remaining_start = min(event_times[(name, "start")] for name in ["slow-0.py", "slow-2.py", "light.py"])
+        if event_times[("slow-1.py", "end")] > event_times[("slow-1b.py", "start")] or storybook_end > remaining_start:
+            print("self-test failed: Storybook exclusivity phase", file=sys.stderr)
+            return 1
+        if event_times[("light.py", "start")] >= event_times[("slow-0.py", "end")]:
             print("self-test failed: continuous refill", file=sys.stderr)
             return 1
         scheduled = schedule_batches([
@@ -436,7 +469,15 @@ def self_test() -> int:
         if [task[1].name for task in scheduled[0]] != ["katana_ui_core_storybook-heavy", "katana_ui_core-heavy"]:
             print("self-test failed: long-running schedule", file=sys.stderr)
             return 1
-        print("self-test passed: 3/3")
+        for index, (package, executable) in enumerate(parallel):
+            statuses = list((root / "parallel").glob(f"run-*/{index:03d}_{package}_{Path(executable).name}/status.json"))
+            if len(statuses) != 1:
+                print("self-test failed: stable binary index", file=sys.stderr)
+                return 1
+        if len(event_times) != len(parallel) * 2:
+            print("self-test failed: all-target execution", file=sys.stderr)
+            return 1
+        print("self-test passed: 4/4")
         return 0
     finally:
         shutil.rmtree(root, ignore_errors=True)

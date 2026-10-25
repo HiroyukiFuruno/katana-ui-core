@@ -182,9 +182,9 @@ impl FullRootManifest {
                     "the MP4 is encoded from the same root-owned RGBA frame sequence and decoded back with the required frame count",
                 ],
                 does_not_prove: vec![
-                    "KLE or KatanA host semantic actions, parser behavior, or document mutation",
+                    "host semantic actions, parser behavior, or document mutation",
                     "execution on an OS listed as typed unavailable",
-                    "actual KatanA host E2E, even though the closed KUC root event receipts are recorded",
+                    "application host E2E beyond the recorded KUC root event receipts",
                 ],
             },
             frames: sequence

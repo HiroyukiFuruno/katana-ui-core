@@ -76,7 +76,7 @@ pub(in crate::visual) fn context_menu_node_for_test() -> UiNode {
 }
 
 pub(in crate::visual) fn settings_list_root() -> UiNode {
-    SettingsList::new("KDV settings")
+    SettingsList::new("App settings")
         .density(SettingsListDensity::Compact)
         .section(
             SettingsSection::new("display", "Display")

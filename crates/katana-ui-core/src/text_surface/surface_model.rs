@@ -7,4 +7,5 @@ pub struct TextSurface {
     pub(super) props: TextSurfaceProps,
     pub(super) state: TextSurfaceState,
     pub(super) caret_affinity: Option<UiTextCaretPosition>,
+    pub(super) preferred_column: Option<i32>,
 }

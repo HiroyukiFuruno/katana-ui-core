@@ -37,6 +37,7 @@ impl EguiTextCommandSurfaceRootEventTransport {
         Dispatcher: KucRootEventBatchDispatcher,
     {
         let RootEventPayload {
+            selection_dialog,
             text,
             toolbar,
             floating,
@@ -84,6 +85,10 @@ impl EguiTextCommandSurfaceRootEventTransport {
                     child_class: EguiTextCommandSurfaceRootEventChildClass::DiagnosticsList,
                     event_count: diagnostics_list.len(),
                 },
+                EguiTextCommandSurfaceRootEventClassDispatch {
+                    child_class: EguiTextCommandSurfaceRootEventChildClass::SelectionDialog,
+                    event_count: selection_dialog.len(),
+                },
             ],
         };
 
@@ -107,6 +112,9 @@ impl EguiTextCommandSurfaceRootEventTransport {
             .map_err(EguiTextCommandSurfaceRootEventBatchDispatchError::Dispatcher)?;
         dispatcher
             .dispatch_diagnostics_list_events(diagnostics_list)
+            .map_err(EguiTextCommandSurfaceRootEventBatchDispatchError::Dispatcher)?;
+        dispatcher
+            .dispatch_selection_dialog_events(selection_dialog)
             .map_err(EguiTextCommandSurfaceRootEventBatchDispatchError::Dispatcher)?;
         for submission in source_address_submissions {
             let Some(port) = source_address_submission_port.as_ref() else {

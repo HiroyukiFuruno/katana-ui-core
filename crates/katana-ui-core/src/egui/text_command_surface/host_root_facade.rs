@@ -20,7 +20,7 @@ impl EguiTextCommandSurfaceHostRoot {
         self.process.show(ui)
     }
 
-    /// Applies a newer opaque token without exposing child models or layout facts.
+    /// 子モデルやレイアウト情報を公開せず、新しい不透明トークンを適用する。
     pub fn synchronize(
         &mut self,
         token: EguiTextCommandSurfacePresentationToken,
@@ -31,43 +31,34 @@ impl EguiTextCommandSurfaceHostRoot {
         )
     }
 
-    /// Applies a newer token and replaces the private host effect router.
+    /// 新しいトークンを適用し、非公開のhost効果ルーターを置き換える。
     pub fn synchronize_with_lease(
         &mut self,
         lease: EguiTextCommandSurfaceHostProjectionLease,
     ) -> Result<bool, EguiTextCommandSurfaceRootFactoryError> {
-        let (token, router, source_address, tab_strip, status_diagnostics, editor_viewport) =
-            lease.into_parts();
+        let (token, attachments) = lease.into_parts_with_attachments();
         self.process.synchronize_with_router(
             token.revision,
             super::host_root_token_codec::decode_token(&token)?,
-            router,
-            source_address,
-            tab_strip,
-            status_diagnostics,
-            editor_viewport,
+            attachments,
         )
     }
 
-    /// Advances a pre-issued lease while keeping state changed by prior dispatched events.
+    /// 先に発行したleaseを進め、これまでにdispatchしたイベントによる状態を保持する。
+    #[cfg(any(test, feature = "storybook-artifacts"))]
     pub(crate) fn synchronize_with_lease_preserving_state(
         &mut self,
         lease: EguiTextCommandSurfaceHostProjectionLease,
     ) -> Result<bool, EguiTextCommandSurfaceRootFactoryError> {
-        let (token, router, source_address, tab_strip, status_diagnostics, editor_viewport) =
-            lease.into_parts();
+        let (token, attachments) = lease.into_parts_with_attachments();
         self.process.synchronize_router_preserving_state(
             token.revision,
             super::host_root_token_codec::decode_token(&token)?,
-            router,
-            source_address,
-            tab_strip,
-            status_diagnostics,
-            editor_viewport,
+            attachments,
         )
     }
 
-    /// Shows the complete retained root once and returns only the closed facade frame.
+    /// retained root全体を一度表示し、閉じたfacade frameだけを返す。
     pub fn show(
         &mut self,
         ui: &mut egui::Ui,
@@ -78,11 +69,38 @@ impl EguiTextCommandSurfaceHostRoot {
             self.process.presentation_revision(),
             &output,
         );
-        Ok(EguiTextCommandSurfaceHostRootFrame { output, record })
+        let mut selection_observation = self.process.selection_observation(
+            super::ui_selection::KucUiSelectionPhase::AfterInput,
+            self.process.selection_visible,
+            ui.ctx().will_discard(),
+        );
+        selection_observation.finalize_after_pass(ui.ctx());
+        Ok(EguiTextCommandSurfaceHostRootFrame {
+            font_identity: self.process.unicode_font_identity(),
+            output,
+            record,
+            selection_observation,
+            frame_serial: self.process.selection_frame_serial(),
+        })
     }
 }
 
 impl EguiTextCommandSurfaceHostRootFrame {
+    pub fn observe_unicode(
+        &self,
+        range: (usize, usize),
+    ) -> Result<
+        super::live_unicode::KucLiveUnicodeObservation,
+        crate::egui::text_command_surface::unicode_evidence::KucUnicodeColorGlyphEvidenceError,
+    > {
+        super::live_unicode::KucLiveUnicodeObservation::observe(
+            &self.output,
+            range,
+            self.frame_serial,
+            &self.font_identity,
+        )
+    }
+
     #[cfg(feature = "storybook-artifacts")]
     pub(crate) const fn artifact_output(&self) -> &EguiTextCommandSurfaceRootOutput {
         &self.output
@@ -93,16 +111,18 @@ impl EguiTextCommandSurfaceHostRootFrame {
         &self.record
     }
 
-    /// Returns the current KUC-owned generic interaction locator.
+    /// 現在のKUC所有の汎用interaction locatorを返す。
     #[must_use]
     pub const fn interaction_locator(&self) -> &super::super::root::KucInteractionLocator {
         self.output.interaction_locator()
     }
 
+    #[cfg(any(test, feature = "storybook-artifacts"))]
     pub(crate) const fn text_scroll_y(&self) -> i32 {
         self.output.evidence_text.record.frame.viewport.scroll_y
     }
 
+    #[cfg(any(test, feature = "storybook-artifacts"))]
     pub(crate) fn contains_command_activation(
         &self,
         action_identity: &str,
@@ -113,15 +133,17 @@ impl EguiTextCommandSurfaceHostRootFrame {
             .contains_command_activation(action_identity, floating)
     }
 
+    #[cfg(any(test, feature = "storybook-artifacts"))]
     pub(crate) const fn context_menu_is_visible(&self) -> bool {
         self.output.context_menu_is_visible()
     }
 
+    #[cfg(any(test, feature = "storybook-artifacts"))]
     pub(crate) fn contains_context_menu_opened(&self) -> bool {
         self.output.events().contains_context_menu_opened()
     }
 
-    /// Forwards the closed event transport exactly once.
+    /// 閉じたイベントtransportを一度だけforwardする。
     pub fn forward_events_once<Forwarder>(
         &self,
         forwarder: &mut Forwarder,

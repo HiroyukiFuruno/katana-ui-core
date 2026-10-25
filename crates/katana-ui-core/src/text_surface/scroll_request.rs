@@ -134,6 +134,12 @@ mod tests {
                     grapheme_index: 2,
                     byte_start: 2,
                     byte_end: 3,
+                    bounds: UiRect::new(20, 0, 1, 20),
+                },
+                TextSurfaceGraphemeBox {
+                    grapheme_index: 3,
+                    byte_start: 3,
+                    byte_end: 4,
                     bounds: UiRect::new(0, 20, 10, 20),
                 },
             ],

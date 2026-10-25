@@ -1,7 +1,8 @@
 use super::{
     EguiTextCommandSurfaceRootEventClassDispatch, EguiTextCommandSurfaceRootEventDispatchReceipt,
     EguiTextCommandSurfaceRootEventForwardingReceipt, ROOT_EVENT_CONTEXT_MENU_INDEX,
-    ROOT_EVENT_DIAGNOSTICS_INDEX, ROOT_EVENT_SEARCH_INDEX, ROOT_EVENT_STATUS_BAR_INDEX,
+    ROOT_EVENT_DIAGNOSTICS_INDEX, ROOT_EVENT_SEARCH_INDEX, ROOT_EVENT_SELECTION_DIALOG_INDEX,
+    ROOT_EVENT_STATUS_BAR_INDEX,
 };
 
 impl EguiTextCommandSurfaceRootEventDispatchReceipt {
@@ -44,8 +45,18 @@ impl EguiTextCommandSurfaceRootEventDispatchReceipt {
     pub const fn diagnostics_list_count(self) -> usize {
         self.class_dispatches[ROOT_EVENT_DIAGNOSTICS_INDEX].event_count
     }
+
+    #[must_use]
+    pub const fn selection_dialog_count(self) -> usize {
+        self.class_dispatches[ROOT_EVENT_SELECTION_DIALOG_INDEX].event_count
+    }
 }
 impl EguiTextCommandSurfaceRootEventForwardingReceipt {
+    #[must_use]
+    pub const fn frame_serial(&self) -> u64 {
+        self.frame_serial
+    }
+
     #[must_use]
     pub fn root_identity(&self) -> &str {
         &self.root_identity

@@ -2,21 +2,21 @@
 
 ## Status
 
-This design is required before KUC can be a release candidate for KLE v0.1.0.
+This design is required before KUC can be a release candidate for a consumer.
 The current adapter has `expect` and `panic!` paths around catalog policy,
 theme lookup, text rasterization, and paint-plan production. Those paths are
 release blockers: a failed generic KUC frame must never be converted into a
-process abort, a blank fallback frame, or KLE-owned recovery.
+process abort, a blank fallback frame, or consumer-owned recovery.
 
 ## Ownership
 
 - KUC owns catalog policy validation, theme tokens, child construction, frame
   composition, rasterization, and typed errors.
-- KLE receives only a closed KUC result or error. It must not retry with a
+- A consumer receives only a closed KUC result or error. It must not retry with a
   different catalog, inspect child state, synthesize a paint plan, or render a
   fallback surface.
-- KatanA remains responsible for its host effects after a separately approved
-  KLE adoption. It is not an error-recovery path for KUC presentation.
+- The host remains responsible for its effects after separately approving KUC
+  adoption. It is not an error-recovery path for KUC presentation.
 
 ## Public Contract
 
@@ -52,7 +52,7 @@ process abort, a blank fallback frame, or KLE-owned recovery.
    root frame atomic: either all required child plans are present or the frame
    fails.
 4. Update the retained root factory and all real consumers to propagate the
-   closed error. KLE remains opaque throughout.
+   closed error. Consumers remain opaque throughout.
 5. Add contract tests for every error variant, then run full KUC check on all
    three native CI profiles. No lint suppression, `unwrap_or`, default raster,
    or error-to-empty-output conversion is permitted.
@@ -64,4 +64,4 @@ process abort, a blank fallback frame, or KLE-owned recovery.
 - A child raster or missing paint plan prevents an opaque root receipt.
 - The normal root keeps one catalog and preserves Japanese IME, exact `⭐️`
   (`U+2B50 U+FE0F`), `☆`, ZWJ, AccessKit, and deterministic artifact tests.
-- KLE's AST boundary continues to reject local presentation or recovery logic.
+- The consumer AST boundary continues to reject local presentation or recovery logic.

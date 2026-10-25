@@ -27,6 +27,9 @@ impl std::fmt::Display for EguiTextCommandSurfaceRootFactoryError {
                 formatter,
                 "root lease revision {revision} was already consumed"
             ),
+            Self::ContextMenuEnabledResolver(error) => {
+                write!(formatter, "context-menu enabled resolver failed: {error}")
+            }
         }
     }
 }

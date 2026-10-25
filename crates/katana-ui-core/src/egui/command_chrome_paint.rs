@@ -10,6 +10,16 @@ use super::command_chrome_types::{
 use crate::egui::texture_cache::RgbaTextureCache;
 use crate::render_model::{RGBA_CHANNEL_COUNT, UiRect};
 
+#[path = "command_chrome_paint/render.rs"]
+mod render;
+pub(super) fn paint_command_chrome(
+    ui: &egui::Ui,
+    cache: &mut RgbaTextureCache,
+    plan: &CommandChromePaintPlan,
+) {
+    render::paint_command_chrome(ui, cache, plan);
+}
+
 const ACTION_PADDING_PX: u32 = 8;
 
 pub(super) struct ActionPaintSource {
@@ -20,7 +30,6 @@ pub(super) struct ActionPaintSource {
     disabled: bool,
     rendered: RenderedAction,
 }
-
 impl ActionPaintSource {
     pub(super) fn new(
         primary_bounds: UiRect,
@@ -113,45 +122,6 @@ pub(super) fn union_bounds(left: UiRect, right: UiRect) -> UiRect {
         u32::try_from(right_edge.saturating_sub(x)).unwrap_or_default(),
         u32::try_from(bottom_edge.saturating_sub(y)).unwrap_or_default(),
     )
-}
-
-pub(super) fn paint_command_chrome(
-    ui: &egui::Ui,
-    cache: &mut RgbaTextureCache,
-    plan: &CommandChromePaintPlan,
-) {
-    for operation in &plan.operations {
-        let painter = ui
-            .painter()
-            .with_clip_rect(egui_rect(operation.clip_bounds));
-        match &operation.kind {
-            CommandChromePaintOperationKind::Fill { bounds, color_rgba } => {
-                painter.rect_filled(egui_rect(*bounds), 0.0, color(*color_rgba));
-            }
-            CommandChromePaintOperationKind::RoundedFill {
-                bounds,
-                color_rgba,
-                radius_px,
-            } => {
-                painter.rect_filled(egui_rect(*bounds), *radius_px as f32, color(*color_rgba));
-            }
-            CommandChromePaintOperationKind::Texture { bounds, texture } => {
-                let texture = cache.texture_for_rgba(
-                    ui.ctx(),
-                    &texture.identity,
-                    texture.width as usize,
-                    texture.height as usize,
-                    &texture.rgba_pixels,
-                );
-                painter.image(
-                    texture.id(),
-                    egui_rect(*bounds),
-                    egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
-                    egui::Color32::WHITE,
-                );
-            }
-        }
-    }
 }
 
 fn append_action_operations(
@@ -278,15 +248,4 @@ fn raster_bounds(x: i32, action_bounds: UiRect, raster: &RenderedRaster) -> UiRe
         raster.width,
         raster.height,
     )
-}
-
-fn egui_rect(bounds: UiRect) -> egui::Rect {
-    egui::Rect::from_min_size(
-        egui::pos2(bounds.x as f32, bounds.y as f32),
-        egui::vec2(bounds.width as f32, bounds.height as f32),
-    )
-}
-
-fn color([red, green, blue, alpha]: [u8; RGBA_CHANNEL_COUNT]) -> egui::Color32 {
-    egui::Color32::from_rgba_unmultiplied(red, green, blue, alpha)
 }

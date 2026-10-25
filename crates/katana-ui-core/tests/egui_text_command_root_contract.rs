@@ -798,7 +798,8 @@ fn external_consumer_can_retain_public_dispatch_receipt() {
     assert_eq!(receipt.context_menu_count(), 0);
     assert_eq!(receipt.status_bar_count(), 0);
     assert_eq!(receipt.diagnostics_list_count(), 0);
-    assert_eq!(receipt.class_dispatches().len(), 7);
+    assert_eq!(receipt.selection_dialog_count(), 0);
+    assert_eq!(receipt.class_dispatches().len(), 8);
 }
 
 #[test]

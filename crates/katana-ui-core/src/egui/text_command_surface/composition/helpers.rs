@@ -62,7 +62,14 @@ impl EguiTextCommandSurfaceAdapter {
         text: &EguiTextSurfaceOutput,
         selection: (usize, usize),
     ) {
-        if selection.0 == selection.1 {
+        /* WHY: キャレット表示は明示指定かつ編集可能な本文のフォーカス中だけ許可する。 */
+        let caret_toolbar_visible = selection.0 == selection.1
+            && surface.text.state().text_area.focused
+            && !surface.text.state().text_area.readonly
+            && !surface.text.state().text_area.disabled
+            && surface.floating_visibility_controlled
+            && surface.floating_visibility == FloatingCommandToolbarVisibility::VisibleAtCaret;
+        if selection.0 == selection.1 && !caret_toolbar_visible {
             self.floating_selection = None;
             self.closed_selection = None;
             if let Some(floating) = surface.floating.as_mut() {

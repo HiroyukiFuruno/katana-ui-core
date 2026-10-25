@@ -36,6 +36,15 @@ pub(super) fn placeholder_bounds(
     })
 }
 
+pub(super) fn raster_texture_bounds(
+    content_bounds: &UiRect,
+    raster: &RasterFrame,
+    scale_factor: f32,
+) -> UiRect {
+    let (width, height) = LogicalRasterExtent::size(&raster.raster, scale_factor);
+    UiRect::new(content_bounds.x, content_bounds.y, width, height)
+}
+
 pub(super) fn controlled_gutter_width(
     rasterizer: &mut PlatformTextRasterizer,
     layout: &TextSurfaceLayout,

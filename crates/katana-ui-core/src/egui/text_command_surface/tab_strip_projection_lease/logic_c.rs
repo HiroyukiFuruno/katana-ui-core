@@ -43,6 +43,7 @@ impl TabStripGroupPopupPresentation {
     pub const fn new() -> Self {
         Self {
             rename_placeholder: None,
+            request_inline_rename: false,
             entries: Vec::new(),
         }
     }
@@ -50,6 +51,13 @@ impl TabStripGroupPopupPresentation {
     #[must_use]
     pub fn rename_placeholder(mut self, value: TabStripText) -> Self {
         self.rename_placeholder = Some(value);
+        self
+    }
+
+    /// Requests an immediate inline rename after the host accepts this group.
+    #[must_use]
+    pub const fn request_inline_rename(mut self, value: bool) -> Self {
+        self.request_inline_rename = value;
         self
     }
 

@@ -1,5 +1,7 @@
 ## Why
 
+外部画面名は観測例であり、要件はdomain-freeなcloseable/draggable/grouped tab strip contractとして定義する。document/session domainや特定consumerの移行・採用はKUCの完了条件に含めない。
+
 KUC は `Tabs` molecule（segmented / preset 切替えとしての水平 tabs）を持つが、`katana` の document / workspace tab が要求する「閉じるボタン付き / dirty 表示 / ドラッグ並べ替え / グループ表示 / drop indicator / overflow nav / 右クリック context menu / ghost preview」を満たさない。`katana-chat-ui` も session や履歴候補を tab 状に切り替える需要がある。
 
 ただし KUC が `Workspace` や `Document` の意味を持ってはならない。

@@ -10,7 +10,7 @@ fn tab_strip_context_menu_uses_secondary_input_accesskit_and_one_opaque_route()
     use crate::egui::text_command_surface::{
         TabStripContextMenuPresentation, TabStripCorrelation, TabStripMenuEntry,
         TabStripMenuOperation, TabStripProjection, TabStripProjectionLease, TabStripTabDescriptor,
-        TabStripTabTarget, TabStripText,
+        TabStripTabCapabilities, TabStripTabTarget, TabStripText,
     };
 
     let forwarded = Rc::new(RefCell::new(Vec::new()));
@@ -23,6 +23,7 @@ fn tab_strip_context_menu_uses_secondary_input_accesskit_and_one_opaque_route()
             TabStripTabTarget::from_opaque_bytes(b"tab-context-menu-target"),
             TabStripText::new("日本語 ⭐️"),
         )
+            .capabilities(TabStripTabCapabilities::new().closeable(true))
         .context_menu(TabStripContextMenuPresentation::new().entry(
             TabStripMenuEntry::action(
                 TabStripText::new("閉じる ⭐️"),
@@ -101,7 +102,8 @@ fn group_popup_rasters_rename_and_projects_host_swatch_without_local_confirmatio
 -> Result<(), Box<dyn std::error::Error>> {
     use super::super::tab_strip_proposal_port::TabStripProposalOperationClass;
     use crate::egui::text_command_surface::{
-        TabStripCorrelation, TabStripGroupDescriptor, TabStripGroupPopupPresentation,
+        TabStripCorrelation, TabStripGroupCapabilities, TabStripGroupDescriptor,
+        TabStripGroupPopupPresentation,
         TabStripGroupTarget, TabStripProjection, TabStripProjectionLease, TabStripSwatchDescriptor,
         TabStripSwatchTarget, TabStripText,
     };
@@ -116,6 +118,12 @@ fn group_popup_rasters_rename_and_projects_host_swatch_without_local_confirmatio
         TabStripGroupDescriptor::new(
             TabStripGroupTarget::from_opaque_bytes(b"group-popup-target"),
             TabStripText::new("グループ ⭐️"),
+        )
+        .capabilities(
+            TabStripGroupCapabilities::new()
+                .menu_available(true)
+                .recolorable(true)
+                .renamable(true),
         )
         .swatch(
             TabStripSwatchDescriptor::new(

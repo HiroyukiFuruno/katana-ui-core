@@ -343,6 +343,43 @@ mod tests {
         assert_eq!(explicit.resolved_rows(&layout).len(), 1);
     }
 
+    #[test]
+    fn automatic_gutter_deduplicates_soft_wrapped_visual_lines_per_logical_row() {
+        let source = "ab";
+        let surface = TextSurface::new(
+            TextSurfaceProps::new(
+                TextArea::new("soft-wrap-gutter").value(source),
+                vec![UiTextSpan::plain(source)],
+                TextSurfaceViewport::new(0, 0, VIEWPORT_WIDTH, VIEWPORT_HEIGHT),
+            )
+            .gutter(TextSurfaceGutter::new(GUTTER_WIDTH).automatic_numbered()),
+        );
+        let layout = TextSurfaceLayout::from_grapheme_boxes(
+            "soft-wrap-gutter",
+            UiRect::new(TEXT_ORIGIN_X, 0, 80, 40),
+            source,
+            vec![
+                grapheme_box(0, 0, 1, TEXT_ORIGIN_X, 0),
+                grapheme_box(1, 1, source.len(), TEXT_ORIGIN_X, 20),
+            ],
+        );
+        assert_eq!(
+            layout
+                .lines
+                .iter()
+                .map(|line| line.logical_row)
+                .collect::<Vec<_>>(),
+            vec![0, 0]
+        );
+        let frame = surface.frame(&layout);
+        assert_eq!(frame.gutter.len(), 1);
+        assert_eq!(frame.gutter[0].logical_row, 0);
+        assert_eq!(frame.gutter[0].bounds.y, 0);
+        assert_eq!(frame.accessibility.gutter_targets.len(), 1);
+        assert_eq!(frame.accessibility.gutter_targets[0].bounds.y, 0);
+        assert_eq!(frame.visible_logical_rows, vec![0]);
+    }
+
     fn grapheme_box(
         grapheme_index: usize,
         byte_start: usize,

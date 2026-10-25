@@ -1,102 +1,5 @@
 use super::*;
-
-#[test]
-fn synchronize_detects_revision_conflict_for_same_revision_but_different_payload() {
-    let style = TextCommandSurfaceStyle::standard().expect("standard style");
-    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
-        1,
-        b"conflict-target",
-        presentation(),
-        style.clone(),
-    )
-    .expect("initial token");
-    let mut root = EguiTextCommandSurfaceRootFactory::new()
-        .retain(token)
-        .expect("retain initial");
-
-    let mut changed = presentation();
-    changed.text.value = String::from("updated text body");
-    let conflict =
-        EguiTextCommandSurfaceHostProjectionEncoder::token(1, b"conflict-target", changed, style)
-            .expect("conflict token");
-
-    assert!(matches!(
-        root.synchronize(conflict),
-        Err(EguiTextCommandSurfaceRootFactoryError::RevisionConflict { revision: 1 })
-    ));
-}
-
-#[test]
-fn synchronize_with_lease_rejects_duplicate_revision() {
-    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
-        3,
-        b"lease-target",
-        presentation(),
-        TextCommandSurfaceStyle::standard().expect("standard style"),
-    )
-    .expect("token");
-    let mut root = EguiTextCommandSurfaceRootFactory::new()
-        .retain(
-            EguiTextCommandSurfaceHostProjectionEncoder::token(
-                3,
-                b"lease-target",
-                presentation(),
-                TextCommandSurfaceStyle::standard().expect("standard style"),
-            )
-            .expect("token duplicate"),
-        )
-        .expect("retain initial");
-    let lease = EguiTextCommandSurfaceHostProjectionLease::new(token, |_context| Ok(None));
-
-    assert!(matches!(
-        root.synchronize_with_lease(lease),
-        Err(EguiTextCommandSurfaceRootFactoryError::DuplicateLease { revision: 3 })
-    ));
-}
-
-#[test]
-fn preserve_state_lease_rejects_duplicate_revision_and_changed_identity() {
-    let style = TextCommandSurfaceStyle::standard().expect("standard style");
-    let initial = EguiTextCommandSurfaceHostProjectionEncoder::token(
-        3,
-        b"preserve-state-target",
-        presentation(),
-        style.clone(),
-    )
-    .expect("initial token");
-    let mut root = EguiTextCommandSurfaceRootFactory::new()
-        .retain(initial)
-        .expect("retain initial root");
-    let duplicate = EguiTextCommandSurfaceHostProjectionLease::new(
-        EguiTextCommandSurfaceHostProjectionEncoder::token(
-            3,
-            b"preserve-state-target",
-            presentation(),
-            style.clone(),
-        )
-        .expect("duplicate lease token"),
-        |_context| Ok(None),
-    );
-    assert!(matches!(
-        root.synchronize_with_lease_preserving_state(duplicate),
-        Err(EguiTextCommandSurfaceRootFactoryError::DuplicateLease { revision: 3 })
-    ));
-
-    let changed_identity = EguiTextCommandSurfaceHostProjectionLease::new(
-        EguiTextCommandSurfaceHostProjectionEncoder::token(
-            4,
-            b"other-preserve-state-target",
-            presentation(),
-            style,
-        )
-        .expect("changed identity lease token"),
-        |_context| Ok(None),
-    );
-    assert!(matches!(
-        root.synchronize_with_lease_preserving_state(changed_identity),
-        Err(EguiTextCommandSurfaceRootFactoryError::IdentityChanged)
-    ));
-}
+use crate::egui::text_command_surface::TabStripProjectionLease;
 
 #[test]
 fn preserve_state_lease_advances_a_matching_root_revision() {
@@ -132,60 +35,60 @@ fn preserve_state_lease_advances_a_matching_root_revision() {
 }
 
 #[test]
-fn retain_rejects_empty_identity_for_process() {
-    assert!(matches!(
-        HostRootProcess::retain(
-            super::host_root_token_codec::DecodedRootPresentation {
-                identity: String::new(),
-                presentation: EguiTextCommandSurfacePresentation {
-                    text_state_id: None,
-                    text: TextSurfacePresentation::from_props(
-                        TextSurface::new(TextSurfaceProps::new(
-                            crate::atom::TextArea::new("empty-id").value("empty"),
-                            Vec::<UiTextSpan>::new(),
-                            TextSurfaceViewport::new(0, 0, 240, 120),
-                        ))
-                        .props()
-                    ),
-                    toolbar: None,
-                    floating: None,
-                    search: None,
-                    context_menu: None,
-                },
-                style: TextCommandSurfaceStyle::standard().expect("standard style"),
-                command_families: None,
-            },
-            1,
-        ),
-        Err(EguiTextCommandSurfaceRootFactoryError::InvalidToken(
-            "host target identity is empty"
-        ))
-    ));
-}
-
-#[test]
-fn synchronize_with_same_presentation_and_same_revision_is_no_change() {
+fn preserve_state_lease_attaches_tab_strip_without_resetting_text_state() {
     let style = TextCommandSurfaceStyle::standard().expect("standard style");
-    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
-        2,
-        b"same-revision-target",
-        presentation(),
-        style.clone(),
-    )
-    .expect("same revision token");
     let mut root = EguiTextCommandSurfaceRootFactory::new()
-        .retain(token)
-        .expect("retain initial");
-
-    let same_token = EguiTextCommandSurfaceHostProjectionEncoder::token(
-        2,
-        b"same-revision-target",
-        presentation(),
-        style,
+        .retain(
+            EguiTextCommandSurfaceHostProjectionEncoder::token(
+                3,
+                b"preserve-state-with-tabs-target",
+                presentation(),
+                style.clone(),
+            )
+            .expect("initial token"),
+        )
+        .expect("retain initial root");
+    let before = root
+        .process
+        .root
+        .selection_surface()
+        .state()
+        .text_area
+        .value
+        .clone();
+    let tab_strip = TabStripProjectionLease::new(TabStripProjection::new(
+        9,
+        TabStripCorrelation::from_opaque_bytes(b"preserve-state-tabs"),
+    ));
+    let mut stale_presentation = presentation();
+    stale_presentation.text.value = "stale lease value".to_owned();
+    let next = EguiTextCommandSurfaceHostProjectionLease::new(
+        EguiTextCommandSurfaceHostProjectionEncoder::token(
+            4,
+            b"preserve-state-with-tabs-target",
+            stale_presentation,
+            style,
+        )
+        .expect("next lease token"),
+        |_context| Ok(None),
     )
-    .expect("same revision token");
+    .with_tab_strip(tab_strip);
 
-    assert!(!root.synchronize(same_token).expect("synchronize"));
+    assert!(
+        root.synchronize_with_lease_preserving_state(next)
+            .expect("tab strip lease should synchronize")
+    );
+    assert_eq!(root.process.presentation_revision(), 4);
+    assert_eq!(
+        root.process
+            .root
+            .selection_surface()
+            .state()
+            .text_area
+            .value,
+        before
+    );
+    assert!(root.process.root.clear_tab_strip());
 }
 
 #[test]

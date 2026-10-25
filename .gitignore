@@ -6,6 +6,9 @@ tmp
 /dist/
 /build/
 
+# coverage実行中の一時入力を正式な変更へ混入させない。
+/.codex/coverage-source.*/
+
 # Python
 __pycache__/
 *.py[cod]

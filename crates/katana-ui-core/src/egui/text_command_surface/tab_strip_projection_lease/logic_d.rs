@@ -157,6 +157,7 @@ impl TabStripProjection {
             correlation,
             groups: Vec::new(),
             tabs: Vec::new(),
+            root_items: Vec::new(),
             capabilities: TabStripSurfaceCapabilities::new(),
             navigation: None,
             scroll_presentation: TabStripScrollPresentation::new(),
@@ -165,13 +166,17 @@ impl TabStripProjection {
 
     #[must_use]
     pub fn tab(mut self, value: TabStripTabDescriptor) -> Self {
+        let index = self.tabs.len();
         self.tabs.push(value);
+        self.root_items.push(TabStripRootItem::Tab(index));
         self
     }
 
     #[must_use]
     pub fn group(mut self, value: TabStripGroupDescriptor) -> Self {
+        let index = self.groups.len();
         self.groups.push(value);
+        self.root_items.push(TabStripRootItem::Group(index));
         self
     }
 

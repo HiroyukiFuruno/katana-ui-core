@@ -84,3 +84,36 @@ fn focused_query_ignores_a_pressed_non_search_key_before_routing_escape() {
         [CommandChromeSearchEvent::CloseRequested]
     );
 }
+
+#[test]
+fn focused_query_routes_repeated_arrow_navigation_without_text_input() {
+    let context = egui::Context::default();
+    let mut strip = CommandChromeSearchStrip::new(SearchControlStrip::new("Search"), strings());
+    let mut events = Vec::new();
+    let mut output = context.run_ui(
+        egui::RawInput {
+            events: [egui::Key::ArrowUp, egui::Key::ArrowDown, egui::Key::ArrowUp]
+                .into_iter()
+                .map(|key| egui::Event::Key {
+                    key,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: egui::Modifiers::default(),
+                })
+                .collect(),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            events = query_key_events(ui, &mut strip, true);
+        },
+    );
+    output.textures_delta.clear();
+    assert_eq!(3, events.len());
+    assert!(events.iter().all(|event| matches!(
+        event,
+        CommandChromeSearchEvent::Strip {
+            event: crate::molecule::structured::SearchControlStripEvent::SearchNavigationRequested { .. }
+        }
+    )));
+}

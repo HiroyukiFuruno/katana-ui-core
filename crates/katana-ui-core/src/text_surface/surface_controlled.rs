@@ -23,7 +23,13 @@ impl TextSurface {
     /// Applies host-controlled presentation without fabricating an interaction action/event.
     /// KUC-owned focus, drag, scroll, IME/preedit, layout and texture state stay intact.
     pub fn synchronize_presentation(&mut self, value: TextSurfacePresentation) -> bool {
+        let selection_changed = self.state.text_area.selection.start != value.selection_start
+            || self.state.text_area.selection.end != value.selection_end;
         let value_changed = self.props.text_area.synchronize_value(value.value);
+        if value_changed || selection_changed {
+            self.preferred_column = None;
+            self.caret_affinity = None;
+        }
         let mut changed = value_changed;
         changed |= self
             .props

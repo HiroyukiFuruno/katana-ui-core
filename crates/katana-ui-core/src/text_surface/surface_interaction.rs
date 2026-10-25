@@ -5,6 +5,11 @@ use super::surface_model::TextSurface;
 use crate::atom::{TextAreaAction, TextAreaSelection};
 
 impl TextSurface {
+    #[cfg(any(feature = "egui", test))]
+    pub(crate) fn suspend_pointer_interaction(&mut self) {
+        self.state.pointer_anchor = None;
+    }
+
     #[must_use]
     pub fn apply_layout_action(
         &mut self,

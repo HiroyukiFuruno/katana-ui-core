@@ -75,12 +75,14 @@ pub(super) fn show_dropdown(
     let menu_id = ui
         .id()
         .with(("kuc-command-chrome-dropdown", open.action_id().as_str()));
+    let parent_enabled = ui.is_enabled();
     /* WHY: The toolbar is commonly rendered in a height-constrained child UI. A dropdown must
     use a KUC-owned foreground layer so both its pixels and hit targets escape that child clip. */
     let (items, paint_sources) = egui::Area::new(menu_id)
         .order(egui::Order::Foreground)
         .fixed_pos(menu_rect.min)
         .constrain(false)
+        .enabled(parent_enabled)
         .show(ui.ctx(), |menu_ui| {
             menu_ui.set_min_size(menu_rect.size());
             let mut items = Vec::with_capacity(rendered.len());

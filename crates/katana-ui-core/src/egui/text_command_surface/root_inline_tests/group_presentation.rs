@@ -3,7 +3,8 @@ fn group_popup_swatch_uses_its_host_projected_color_and_forwards_recolor_once()
 -> Result<(), Box<dyn std::error::Error>> {
     use super::super::tab_strip_proposal_port::TabStripProposalOperationClass;
     use crate::egui::text_command_surface::{
-        TabStripCorrelation, TabStripGroupDescriptor, TabStripGroupPopupPresentation,
+        TabStripCorrelation, TabStripGroupCapabilities, TabStripGroupDescriptor,
+        TabStripGroupPopupPresentation,
         TabStripGroupTarget, TabStripProjection, TabStripProjectionLease, TabStripSwatchDescriptor,
         TabStripSwatchTarget, TabStripText,
     };
@@ -18,6 +19,12 @@ fn group_popup_swatch_uses_its_host_projected_color_and_forwards_recolor_once()
         TabStripGroupDescriptor::new(
             TabStripGroupTarget::from_opaque_bytes(b"group-swatch-target"),
             TabStripText::new("色 ⭐️"),
+        )
+        .capabilities(
+            TabStripGroupCapabilities::new()
+                .menu_available(true)
+                .recolorable(true)
+                .renamable(true),
         )
         .swatch(
             TabStripSwatchDescriptor::new(

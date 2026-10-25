@@ -1,8 +1,7 @@
-//! Crate-private, proposal-specific transport for the retained tab-strip root.
+//! 保持中のtab-strip rootからhostへ型付き操作を渡す終端。
 //!
-//! This is deliberately separate from the public root-frame event batch. A
-//! proposal is consumed at most once by its own nonce; the handle never has a
-//! root-global consumed flag that could suppress a later valid interaction.
+//! show中の操作通知とroot-frameのevent batchは別の経路とする。
+//! proposalごとのnonceで一回限りの配送を管理し、後続の正当な操作を抑止しない。
 
 mod model {
     include!("tab_strip_proposal_port/model.rs");

@@ -1,11 +1,14 @@
 //! Closed retained root contract for KUC text-command composition.
 
 mod interaction_locator;
+#[path = "root/modal_input.rs"]
+mod modal_input;
+#[path = "root/projections.rs"]
+mod projections;
 mod root_event;
 mod root_frame;
 #[path = "root/root_types.rs"]
 mod root_types;
-
 use super::source_address_projection_lease::SourceAddressProjectionLease;
 use super::status_diagnostics_projection_lease::StatusDiagnosticsProjectionLease;
 use super::tab_strip_projection_lease::TabStripProjectionLease;
@@ -46,6 +49,36 @@ pub use root_types::{
 };
 
 impl EguiTextCommandSurfaceRoot {
+    pub(crate) fn synchronize_selection_dialog(
+        &mut self,
+        lease: super::SelectionDialogProjectionLease,
+    ) -> Result<bool, super::SelectionDialogProjectionError> {
+        if let Some(dialog) = self.selection_dialog.as_mut() {
+            return dialog.synchronize(lease);
+        }
+        self.selection_dialog = Some(super::selection_dialog::SelectionDialogRetainedState::new(
+            lease,
+            &self.adapter.text_raster_resources,
+        ));
+        Ok(true)
+    }
+
+    pub(crate) const fn selection_frame_serial(&self) -> u64 {
+        self.frame_serial
+    }
+
+    pub(crate) fn selection_surface(&self) -> &crate::text_surface::TextSurface {
+        &self.surface.text
+    }
+
+    pub(crate) fn restore_selection_surface(
+        &mut self,
+        value: &crate::text_surface::TextSurfaceUiSelection,
+    ) {
+        self.surface.text.restore_ui_selection(value);
+        self.state_revision = self.state_revision.saturating_add(1);
+    }
+
     pub(crate) fn evidence_catalog(&self) -> &crate::text_raster::PlatformFontCatalog {
         &self.adapter.catalog
     }
@@ -90,6 +123,7 @@ impl EguiTextCommandSurfaceRoot {
         resources: PlatformTextRasterResources,
     ) -> Self {
         Self {
+            selection_dialog: None,
             surface,
             adapter: EguiTextCommandSurfaceAdapter::with_resources(resources),
             identity: identity.into(),
@@ -115,85 +149,6 @@ impl EguiTextCommandSurfaceRoot {
         changed
     }
 
-    pub fn attach_source_address(&mut self, lease: SourceAddressProjectionLease) {
-        let (strip, port) = lease.into_parts();
-        self.surface.set_source_address(strip);
-        self.source_address_submission_port = port;
-    }
-
-    pub(crate) fn clear_source_address(&mut self) -> bool {
-        let cleared = self.surface.clear_source_address();
-        self.source_address_submission_port = None;
-        cleared
-    }
-
-    /// Mounts the generic KUC status child into this retained root.
-    pub(crate) fn attach_status_bar(&mut self, status_bar: crate::molecule::StatusBar) {
-        self.status_bar = Some(status_bar);
-    }
-
-    /// Mounts the generic KUC diagnostics child into this retained root.
-    pub(crate) fn attach_diagnostics_list(
-        &mut self,
-        diagnostics_list: crate::molecule::DiagnosticsList,
-    ) {
-        self.diagnostics_list = Some(diagnostics_list);
-    }
-
-    /// Consumes a generic child projection without exposing child models through the root API.
-    pub fn attach_status_diagnostics(&mut self, lease: StatusDiagnosticsProjectionLease) {
-        let (status_bar, diagnostics_list) = lease.into_parts();
-        if let Some(status_bar) = status_bar {
-            self.attach_status_bar(status_bar);
-        }
-        if let Some(diagnostics_list) = diagnostics_list {
-            self.attach_diagnostics_list(diagnostics_list);
-        }
-    }
-
-    pub(crate) fn attach_tab_strip(
-        &mut self,
-        lease: TabStripProjectionLease,
-    ) -> Result<bool, EguiTextCommandSurfaceError> {
-        TabStripRetainedState::from_lease(
-            lease,
-            std::sync::Arc::clone(&self.adapter.catalog),
-            self.adapter.text_raster_config.clone(),
-        )
-        .map(|tab_strip| {
-            self.tab_strip = Some(tab_strip);
-            true
-        })
-        .map_err(Into::into)
-    }
-
-    pub(crate) fn clear_tab_strip(&mut self) -> bool {
-        self.tab_strip.take().is_some()
-    }
-
-    pub(crate) fn clear_status_diagnostics(&mut self) -> bool {
-        let changed = self.status_bar.is_some() || self.diagnostics_list.is_some();
-        self.status_bar = None;
-        self.diagnostics_list = None;
-        changed
-    }
-
-    pub(crate) fn attach_editor_viewport(&mut self, lease: super::EditorViewportProjectionLease) {
-        self.editor_viewport = Some(lease);
-    }
-
-    pub(crate) fn clear_editor_viewport(&mut self) -> bool {
-        self.editor_viewport.take().is_some()
-    }
-
-    pub(crate) fn synchronize_command_families(
-        &mut self,
-        primary: Option<crate::molecule::command_chrome::CommandChromeFamilyId>,
-        floating: Option<crate::molecule::command_chrome::CommandChromeFamilyId>,
-    ) -> bool {
-        self.surface.synchronize_command_families(primary, floating)
-    }
-
     /// Renders one actual root frame and returns only its closed frame/event contracts.
     pub fn show(
         &mut self,
@@ -202,15 +157,49 @@ impl EguiTextCommandSurfaceRoot {
     ) -> Result<EguiTextCommandSurfaceRootOutput, EguiTextCommandSurfaceRootError> {
         ui.ctx().enable_accesskit();
         self.frame_serial = self.frame_serial.saturating_add(1);
-        let mut output = self.adapter.show_with_tab_strip(
-            ui,
-            &mut self.surface,
-            style,
-            self.tab_strip.as_mut(),
-            self.status_bar.as_mut(),
-            self.diagnostics_list.as_mut(),
-            self.editor_viewport.as_mut(),
-        )?;
+        if let Some(dialog) = self.selection_dialog.as_mut() {
+            dialog.prepare_input(ui);
+        }
+        let dialog_open = self
+            .selection_dialog
+            .as_ref()
+            .is_some_and(|dialog| dialog.is_open());
+        if dialog_open {
+            if let Some(dialog) = self.selection_dialog.as_mut() {
+                dialog.capture_restore_focus(ui.ctx());
+            }
+            modal_input::suspend(self)?;
+        }
+        let modal_events =
+            dialog_open.then(|| ui.input_mut(|input| std::mem::take(&mut input.events)));
+        let output_result = ui
+            .add_enabled_ui(!dialog_open, |ui| {
+                self.adapter.show_with_tab_strip(
+                    ui,
+                    &mut self.surface,
+                    style,
+                    self.tab_strip.as_mut(),
+                    self.status_bar.as_mut(),
+                    self.diagnostics_list.as_mut(),
+                    self.editor_viewport.as_mut(),
+                )
+            })
+            .inner;
+        if let Some(events) = modal_events {
+            ui.input_mut(|input| input.events = events);
+        }
+        let output = output_result?;
+        let dialog = if let Some(dialog) = self.selection_dialog.as_mut() {
+            dialog
+                .show(ui.ctx(), style)
+                .map_err(EguiTextCommandSurfaceRootError::Serialization)?
+        } else {
+            None
+        };
+        let mut output = output.with_selection_dialog(dialog);
+        let accesskit = super::accesskit_evidence::finish_frame(ui.ctx());
+        output.accesskit_evidence = accesskit.entries;
+        output.accesskit_text_input_nodes = accesskit.text_input_nodes;
         let mut events =
             build_event_batch(&mut output, self.source_address_submission_port.clone())
                 .map_err(EguiTextCommandSurfaceRootError::Serialization)?;
@@ -218,6 +207,7 @@ impl EguiTextCommandSurfaceRoot {
             self.state_revision = self.state_revision.saturating_add(1);
         }
         events.set_root_metadata(&self.identity, self.state_revision);
+        events.set_root_frame_serial(self.frame_serial);
         let context = events.current_context();
         let bound_evidence = super::accesskit_evidence::bind_frame(
             output.accesskit_evidence.clone(),
@@ -239,6 +229,7 @@ impl EguiTextCommandSurfaceRoot {
             &bound_evidence,
         );
         let artifact_order = output.artifact_order().to_vec();
+        #[cfg(any(test, feature = "storybook-artifacts"))]
         let context_menu_visible = output
             .context_menu
             .as_ref()
@@ -246,9 +237,11 @@ impl EguiTextCommandSurfaceRoot {
         Ok(EguiTextCommandSurfaceRootOutput {
             evidence_text: output.text,
             evidence_composite: composite,
+            accesskit_evidence: output.accesskit_evidence,
             accesskit_text_input_nodes: output.accesskit_text_input_nodes,
             locator,
             artifact_order,
+            #[cfg(any(test, feature = "storybook-artifacts"))]
             context_menu_visible,
             frame,
             events,
@@ -295,6 +288,7 @@ impl EguiTextCommandSurfaceRootOutput {
     }
 
     #[must_use]
+    #[cfg(any(test, feature = "storybook-artifacts"))]
     pub(crate) const fn context_menu_is_visible(&self) -> bool {
         self.context_menu_visible
     }

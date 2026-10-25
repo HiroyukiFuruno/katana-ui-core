@@ -1,47 +1,38 @@
 ---
 name: pr-release-flow
-description: PRの更新（squash・署名付きコミット）からrelease実行までを同じ運用で回す。`/pr-release-flow` で実行し、CI再発防止の順番を守る。
+description: katana-ui-core の release/vX.Y.Z ブランチを署名済み1コミットに整え、Draft PR、レビュー、merge後のActions・registry検証までを一貫して進める。
 ---
 
-# PR・Release 共通運用フロー
+# KUC PR・Release フロー
 
-このスキルは `/pr-release-flow` として使う。
+KUC の release/vX.Y.Z ブランチと master 向けPRを扱う。詳細な実装・品質手順は [impl-release workflow](../../workflows/impl-release.md) を参照する。
 
-## 使う場面
-- PRを更新して再度 merge 可能状態へする
-- release前の PR 前提を揃えたい
-- release実行と検証までの運用を固定したい
+## 前提確認
 
-## 実行順（固定）
+```sh
+rtk git status --short --branch
+rtk git fetch origin --prune --tags
+rtk proxy just --list --unsorted
+rtk proxy just VERSION=vX.Y.Z release-target-check
+```
 
-1. 事前確認
-   - `git status --short --branch`
-   - `git fetch origin --prune --tags`
-2. PRをsquash署名済み1コミット化
-   - 署名前確認: `PR_NUMBER=<n> PR_NO_PUSH=1 just prepare-release-pr`
-   - 実行前に PR head 名が `release/v` であることを確認。`release-v` 系なら先に `release/v` に rename してから squash。
-   - push付き: `PR_NUMBER=<n> just prepare-release-pr`
-3. PR CI確認
-   - `gh pr checks <n> --repo HiroyukiFuruno/katana-markdown-linter --watch`
-4. Merge
-   - `gh pr merge --merge --delete-branch <n>`
-5. release（必要時）
-   - `git switch main && git pull --ff-only origin main`
-   - `just VERSION=vX.Y.Z release-target-check`
-   - `just VERSION=vX.Y.Z release-check`
-   - `just VERSION=vX.Y.Z release`
-   - `just VERSION=vX.Y.Z release-verify`
+既存差分を混ぜず、現在のKUC checkoutで `release/vX.Y.Z` を使用する。別repo、追加worktree、`fix/*` や `feature/*` ブランチは作らない。
 
-## 必須ルール
+## PR準備とレビュー
 
-- `prepare-release-pr` の PR更新は `squash` + `-S`（署名）に固定。
-- `release/v` 以外（例: `release-v*`）のブランチは受け付けず、squash 前に rename する。
-- Mergeは `--admin` を使わない。
-- `main` を必ずベースにして確認。
-- `release` targetの失敗時は別ルート `gh workflow run` に逃げない。
+1. [prepare-release-pr](../prepare-release-pr/SKILL.md) の手順で master 基準の差分を署名付き1コミットへまとめる。
+2. 新規release branchなら通常の `rtk proxy env KUC_PUSH_CONFIRMED=1 git push -u origin release/vX.Y.Z` を使う。既存PRの更新では対象を確認したうえで `rtk proxy env KUC_PUSH_CONFIRMED=1 git push --force-with-lease origin HEAD:release/vX.Y.Z` を使う。
+3. `rtk proxy gh pr create --draft --base master --head release/vX.Y.Z` でDraft PRを作る。既存PRは新規作成せず更新する。
+4. Draftのまま `rtk proxy gh pr comment <PR> --body '@codex review'` を行い、自己レビューも差分・受入条件・DoDに対して実施する。
+5. 指摘を修正し、各threadへreplyしてresolveする。P0/P1が0件であることを確認してから `rtk proxy gh pr ready <PR>` を実行する。
+6. `rtk proxy gh pr checks <PR> --watch` でrequired checksを確認する。
 
-## 参照
+## Merge後と公開確認
 
-- `.codex/workflows/pr-release-runbook.md`
-- `.codex/skills/prepare-release-pr/SKILL.md`
-- `just/release.just` の `prepare-release-pr`
+1. `rtk proxy gh pr merge --merge <PR>` を使う。`--admin` と `--delete-branch` は使わない。
+2. masterへmergeされた後、GitHub ActionsのRelease workflowとcrates.io上の `katana-ui-core` 公開版を確認する。ローカルでtag作成、GitHub Release作成、`cargo publish` の直接実行で迂回しない。
+3. registryから取得したKUCのpublic APIを単独consumer smokeで検証する。外部consumerの採用・受入はKUC release gateにしない。
+4. 対応Issueの受入証跡を確認してから `rtk proxy gh issue close <ISSUE>` を行う。
+5. `branch-hygiene` スキルに従い、merge済みのローカルrelease branchや不要なworktreeだけを整理する。リモートbranchは削除しない。
+
+完了は、レビュー、required checks、merge、Actions、registry、単独smoke、Issue、整理の各証跡が揃った時点とする。

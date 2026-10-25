@@ -4,6 +4,8 @@ use super::types::{
     EguiStatusBarError, EguiStatusBarOutput, StatusBarPaintOperation, StatusBarPaintOperationKind,
     StatusBarPaintPlan, StatusBarPaintTexture, StatusBarRenderStyle,
 };
+use crate::egui::texture_cache::RgbaTextureCache;
+use crate::egui::texture_tiles::rgba_texture_tiles;
 use crate::interaction::placement::{
     AnchorKind, Placement, PlacementConsumer, PlacementEngine, PlacementRequest, Rect, Size,
 };
@@ -36,14 +38,15 @@ impl EguiStatusBarAdapter {
         let Some(anchor) = self.segment_bounds.get(id.as_str()).copied() else {
             return Ok(());
         };
-        let (title, title_texture) =
+        let (title_size, title_texture) =
             self.rasterize_overlay(ui, spec.title(), POPOVER_TITLE_RGBA)?;
-        let (body, body_texture) = self.rasterize_overlay(ui, spec.body(), POPOVER_BODY_RGBA)?;
+        let (body_size, body_texture) =
+            self.rasterize_overlay(ui, spec.body(), POPOVER_BODY_RGBA)?;
         let frame = egui::Frame::popup(ui.style());
         let frame_margin = frame.total_margin().sum();
         let panel_size = egui::vec2(
-            title.size.x.max(body.size.x) + frame_margin.x,
-            title.size.y + ui.style().spacing.item_spacing.y + body.size.y + frame_margin.y,
+            title_size.x.max(body_size.x) + frame_margin.x,
+            title_size.y + ui.style().spacing.item_spacing.y + body_size.y + frame_margin.y,
         );
         let viewport = ui.clip_rect();
         let request = PlacementRequest::new(
@@ -57,6 +60,8 @@ impl EguiStatusBarAdapter {
         )
         .offset(POPOVER_OFFSET_PX.round() as i32);
         let placement = PlacementEngine::resolve_for(PlacementConsumer::Popover, &request);
+        let texture_cache = &mut self.textures;
+        let parent_enabled = ui.is_enabled();
         egui::Area::new(self.id.with(("popover", id.as_str())))
             .order(egui::Order::Foreground)
             .default_size(panel_size)
@@ -65,27 +70,30 @@ impl EguiStatusBarAdapter {
                 placement.position.x as f32,
                 placement.position.y as f32,
             ))
+            .enabled(parent_enabled)
             .show(ui.ctx(), |ui| {
                 frame
                     .show(ui, |ui| {
-                        let title =
-                            ui.add(egui::Image::from_texture(title).fit_to_original_size(1.0));
-                        let body =
-                            ui.add(egui::Image::from_texture(body).fit_to_original_size(1.0));
-                        paint_plan.operations.push(StatusBarPaintOperation {
-                            clip_bounds: StatusBarPaint::ui_rect(title.rect),
-                            kind: StatusBarPaintOperationKind::Texture {
-                                bounds: StatusBarPaint::ui_rect(title.rect),
-                                texture: title_texture,
-                            },
-                        });
-                        paint_plan.operations.push(StatusBarPaintOperation {
-                            clip_bounds: StatusBarPaint::ui_rect(body.rect),
-                            kind: StatusBarPaintOperationKind::Texture {
-                                bounds: StatusBarPaint::ui_rect(body.rect),
-                                texture: body_texture,
-                            },
-                        });
+                        let title = ui.allocate_exact_size(title_size, egui::Sense::hover()).0;
+                        let body = ui.allocate_exact_size(body_size, egui::Sense::hover()).0;
+                        let max_texture_side =
+                            ui.ctx().input(|input| input.max_texture_side).max(1);
+                        paint_overlay_tiles(
+                            ui,
+                            texture_cache,
+                            title,
+                            &title_texture,
+                            max_texture_side,
+                            paint_plan,
+                        );
+                        paint_overlay_tiles(
+                            ui,
+                            texture_cache,
+                            body,
+                            &body_texture,
+                            max_texture_side,
+                            paint_plan,
+                        );
                     })
                     .inner
             });
@@ -97,7 +105,7 @@ impl EguiStatusBarAdapter {
         ui: &egui::Ui,
         text: &str,
         color_rgba: [u8; RGBA_CHANNEL_COUNT],
-    ) -> Result<(egui::load::SizedTexture, StatusBarPaintTexture), EguiStatusBarError> {
+    ) -> Result<(egui::Vec2, StatusBarPaintTexture), EguiStatusBarError> {
         let scale = ui.ctx().pixels_per_point();
         let style = StatusBarRenderStyle::standard();
         let raster = self.text_rasterizer.rasterize(&PlatformTextRasterRequest {
@@ -120,19 +128,15 @@ impl EguiStatusBarAdapter {
             hex::encode(Sha256::digest(&pixels))
         );
         let texture = StatusBarPaintTexture {
-            identity: identity.clone(),
+            identity,
             width: raster.width as u32,
             height: raster.height as u32,
-            rgba_pixels: pixels.clone(),
+            rgba_pixels: pixels,
         };
-        let handle = self.textures.texture_for_rgba(
-            ui.ctx(),
-            &identity,
-            raster.width,
-            raster.height,
-            &pixels,
-        );
-        Ok((egui::load::SizedTexture::from_handle(&handle), texture))
+        Ok((
+            egui::vec2(raster.width as f32, raster.height as f32),
+            texture,
+        ))
     }
 
     pub(super) fn close_popover(
@@ -145,6 +149,55 @@ impl EguiStatusBarAdapter {
         out.events
             .extend(status.apply_action(&StatusBarAction::ClosePopover { id: id.into() }));
         ui.memory_mut(|memory| memory.request_focus(self.id.with(id)));
+    }
+}
+
+fn paint_overlay_tiles(
+    ui: &egui::Ui,
+    textures: &mut RgbaTextureCache,
+    bounds: egui::Rect,
+    texture: &StatusBarPaintTexture,
+    max_texture_side: usize,
+    paint_plan: &mut StatusBarPaintPlan,
+) {
+    let bounds = StatusBarPaint::ui_rect(bounds);
+    for (tile_bounds, tile) in rgba_texture_tiles(
+        bounds,
+        &texture.identity,
+        texture.width,
+        texture.height,
+        &texture.rgba_pixels,
+        max_texture_side,
+    ) {
+        let handle = textures.texture_for_rgba(
+            ui.ctx(),
+            &tile.identity,
+            tile.width as usize,
+            tile.height as usize,
+            &tile.rgba_pixels,
+        );
+        let rect = egui::Rect::from_min_size(
+            egui::pos2(tile_bounds.x as f32, tile_bounds.y as f32),
+            egui::vec2(tile_bounds.width as f32, tile_bounds.height as f32),
+        );
+        ui.painter().image(
+            handle.id(),
+            rect,
+            egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
+            egui::Color32::WHITE,
+        );
+        paint_plan.operations.push(StatusBarPaintOperation {
+            clip_bounds: bounds,
+            kind: StatusBarPaintOperationKind::Texture {
+                bounds: tile_bounds,
+                texture: StatusBarPaintTexture {
+                    identity: tile.identity,
+                    width: tile.width,
+                    height: tile.height,
+                    rgba_pixels: tile.rgba_pixels,
+                },
+            },
+        });
     }
 }
 

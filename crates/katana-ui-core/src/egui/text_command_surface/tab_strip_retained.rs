@@ -2,8 +2,8 @@
 
 use super::tab_strip_projection_lease::{
     TabStripContextMenuPresentation, TabStripGroupDescriptor, TabStripGroupTarget,
-    TabStripMenuEntry, TabStripProjection, TabStripProjectionLease, TabStripTabDescriptor,
-    TabStripTabTarget, TabStripText,
+    TabStripMenuEntry, TabStripProjection, TabStripProjectionLease, TabStripRootItem,
+    TabStripTabDescriptor, TabStripTabTarget, TabStripText,
 };
 use super::tab_strip_proposal_port::{
     TabStripProposal, TabStripProposalOperation, TabStripProposalPortError,
@@ -173,8 +173,20 @@ struct TabStripLabelRender {
 
 struct TabStripDragState {
     source: TabStripTabTarget,
+    origin: Option<drag_origin::TabStripDragOrigin>,
     label: TabStripText,
     pointer: egui::Pos2,
+}
+
+struct TabStripGroupDragState {
+    source: TabStripGroupTarget,
+    label: TabStripText,
+    pointer: egui::Pos2,
+}
+
+struct TabStripResolvedGroupDrop {
+    destination: super::tab_strip_proposal_port::TabStripGroupPlacement,
+    indicator: egui::Rect,
 }
 
 enum TabStripDropCandidateKind {
@@ -212,8 +224,12 @@ pub(crate) struct TabStripRetainedState {
     overlay_primary_press: Option<egui::Id>,
     rename_adapter: EguiTextSurfaceAdapter,
     drag: Option<TabStripDragState>,
+    group_drag: Option<TabStripGroupDragState>,
     drag_release_pending: bool,
+    group_drag_release_pending: bool,
     drag_candidates: Vec<TabStripDropCandidate>,
+    group_drag_candidates: Vec<TabStripDropCandidate>,
+    inline_rename_consumed: Vec<TabStripGroupTarget>,
 }
 
 #[derive(Debug)]
@@ -231,6 +247,7 @@ pub(crate) enum TabStripRetainedError {
     MissingPort,
     MissingRoute,
     MissingOverlayBounds,
+    InvalidInlineRenameRequest,
     Port(TabStripProposalPortError),
 }
 
@@ -245,6 +262,9 @@ impl std::fmt::Display for TabStripRetainedError {
             Self::MissingOverlayBounds => {
                 formatter.write_str("tab overlay did not produce combined bounds")
             }
+            Self::InvalidInlineRenameRequest => {
+                formatter.write_str("inline rename requires a renamable group and placeholder")
+            }
             Self::Port(error) => write!(formatter, "tab proposal forwarding failed: {error:?}"),
         }
     }
@@ -252,14 +272,19 @@ impl std::fmt::Display for TabStripRetainedError {
 
 impl std::error::Error for TabStripRetainedError {}
 
+mod drag_feedback;
+mod drag_origin;
+mod group_drag;
 mod interaction;
 mod label_paint;
+mod lease_state;
 mod overlay;
 mod overlay_paint;
 mod overlay_panel;
 mod paint;
 mod retained_state;
 mod support;
+mod tab_paint;
 
 #[cfg(test)]
 #[path = "tab_strip_retained/tab_strip_retained_tests.rs"]

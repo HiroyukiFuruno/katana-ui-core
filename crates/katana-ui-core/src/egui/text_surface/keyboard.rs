@@ -7,11 +7,38 @@ use crate::text_surface::{
     TextSurfaceHistoryOperation, TextSurfaceLayout,
 };
 
+#[cfg(test)]
+#[path = "keyboard_boundary_tests.rs"]
+mod boundary_tests;
+
 pub(super) fn input_event(
     surface: &mut TextSurface,
     layout: &TextSurfaceLayout,
     event: egui::Event,
 ) -> Vec<TextSurfaceEvent> {
+    let vertical = matches!(
+        event,
+        egui::Event::Key {
+            key: egui::Key::ArrowUp | egui::Key::ArrowDown,
+            pressed: true,
+            ..
+        }
+    );
+    let preferred_column = vertical.then(|| {
+        surface.preferred_column().unwrap_or_else(|| {
+            let selection = layout.grapheme_range_for_byte_offsets(
+                surface.state().text_area.selection.start,
+                surface.state().text_area.selection.end,
+            );
+            layout
+                .caret_rect(selection)
+                .x
+                .saturating_sub(layout.content_bounds.x)
+        })
+    });
+    if vertical {
+        surface.set_preferred_column(preferred_column);
+    }
     let action = match event {
         egui::Event::Copy => {
             TextSurfaceAction::ClipboardRequest(TextSurfaceClipboardOperation::Copy)
@@ -45,7 +72,11 @@ pub(super) fn input_event(
         }
         _ => return Vec::new(),
     };
-    surface.apply_action(action).events
+    let outcome = surface.apply_action(action);
+    if outcome.handled {
+        surface.set_preferred_column(preferred_column);
+    }
+    outcome.events
 }
 
 fn key_action(
@@ -94,7 +125,25 @@ fn select_action(
         surface.state().text_area.selection.start,
         surface.state().text_area.selection.end,
     );
-    let target = target_grapheme(layout, current, key);
+    let navigation_selection = if extend_selection {
+        UiTextSelectionRange::caret(current.caret_position())
+    } else {
+        current
+    };
+    let target = if matches!(key, egui::Key::ArrowUp | egui::Key::ArrowDown) {
+        let mut caret_rect = layout.caret_rect(current);
+        if let Some(column) = surface.preferred_column() {
+            caret_rect.x = layout.content_bounds.x.saturating_add(column);
+        }
+        vertical_target_grapheme(
+            layout,
+            navigation_selection.caret_position(),
+            caret_rect,
+            key == egui::Key::ArrowDown,
+        )
+    } else {
+        target_grapheme(layout, navigation_selection, key)
+    };
     let range = if extend_selection {
         UiTextSelectionRange::new(current.anchor, target)
     } else {
@@ -115,6 +164,13 @@ fn target_grapheme(
     selection: UiTextSelectionRange,
     key: egui::Key,
 ) -> usize {
+    if !selection.is_collapsed() {
+        match key {
+            egui::Key::ArrowLeft => return selection.ordered().start,
+            egui::Key::ArrowRight => return selection.ordered().end,
+            _ => {}
+        }
+    }
     let caret = selection.caret_position();
     let current_rect = layout.caret_rect(UiTextSelectionRange::caret(caret));
     match key {

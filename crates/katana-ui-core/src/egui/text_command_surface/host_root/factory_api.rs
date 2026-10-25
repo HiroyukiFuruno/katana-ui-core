@@ -20,6 +20,7 @@ impl EguiTextCommandSurfaceRootFactory {
             process: HostRootProcess::retain(decoded, token.revision())?,
         })
     }
+    #[cfg(any(test, feature = "storybook-artifacts"))]
     pub(crate) fn has_same_root_identity(
         &self,
         left: &EguiTextCommandSurfacePresentationToken,
@@ -31,19 +32,10 @@ impl EguiTextCommandSurfaceRootFactory {
         &self,
         lease: EguiTextCommandSurfaceHostProjectionLease,
     ) -> Result<EguiTextCommandSurfaceHostRoot, EguiTextCommandSurfaceRootFactoryError> {
-        let (token, router, source_address, tab_strip, status_diagnostics, editor_viewport) =
-            lease.into_parts();
+        let (token, attachments) = lease.into_parts_with_attachments();
         let decoded = decode_token(&token)?;
-        HostRootProcess::retain_with_router(
-            decoded,
-            token.revision(),
-            router,
-            source_address,
-            tab_strip,
-            status_diagnostics,
-            editor_viewport,
-        )
-        .map(|process| EguiTextCommandSurfaceHostRoot { process })
+        HostRootProcess::retain_with_router(decoded, token.revision(), attachments)
+            .map(|process| EguiTextCommandSurfaceHostRoot { process })
     }
 }
 impl Default for EguiTextCommandSurfaceRootFactory {

@@ -7,6 +7,7 @@ fn current_context_returns_empty_payloads_after_transport_consumption() {
     assert_eq!(context.state_revision(), 0);
     assert_eq!(context.source_address_submission_count(), 0);
     assert!(context.text_events().is_empty());
+    assert!(context.selection_dialog_events().is_empty());
     assert!(context.toolbar_events().is_empty());
     assert!(context.floating_events().is_empty());
     assert!(context.search_events().is_empty());
@@ -19,6 +20,23 @@ fn current_context_returns_empty_payloads_after_transport_consumption() {
             .iter()
             .all(|dispatch| dispatch.event_count == 0)
     );
+}
+
+#[test]
+fn dialog_context_preserves_the_typed_operation_until_transport_consumption() {
+    use crate::egui::text_command_surface::{SelectionDialogEvent, SelectionDialogOperation};
+
+    let event = SelectionDialogEvent {
+        revision: 7,
+        occurrence: 9,
+        operation: SelectionDialogOperation::Closed,
+    };
+    let mut payload = RootEventPayload::empty();
+    payload.selection_dialog.push(event.clone());
+    let batch = EguiTextCommandSurfaceRootEventBatch::new(payload, "dialog-context".to_owned());
+    assert_eq!(batch.current_context().selection_dialog_events(), &[event]);
+    assert!(batch.transport.borrow_mut().take().is_some());
+    assert!(batch.current_context().selection_dialog_events().is_empty());
 }
 
 #[test]
@@ -39,6 +57,7 @@ fn command_detach_clears_text_only_when_command_activation_is_present() {
         context_menu: None,
         status_bar: None,
         diagnostics_list: None,
+        selection_dialog: Vec::new(),
         source_address_submissions: Vec::new(),
     };
     let batch = EguiTextCommandSurfaceRootEventBatch::new(payload, String::new());
@@ -66,6 +85,7 @@ fn context_menu_detach_is_one_shot_with_expected_duplicate_error() {
         ]),
         status_bar: None,
         diagnostics_list: None,
+        selection_dialog: Vec::new(),
         source_address_submissions: Vec::new(),
     };
     let batch = EguiTextCommandSurfaceRootEventBatch::new(payload, String::new());

@@ -125,7 +125,7 @@ fn navigation_input_lease() -> SourceAddressProjectionLease {
 /// KUC-only terminal sink for a generic tab-strip scenario.
 ///
 /// The scenario owns the targets and never exposes a tab/group operation to a
-/// Storybook or KLE consumer. Real hosts supply a private port that resolves
+/// Storybook or another consumer. Real hosts supply a private port that resolves
 /// the same sealed proposal against their authoritative state.
 struct WorkspaceTabsAcknowledgementPort;
 

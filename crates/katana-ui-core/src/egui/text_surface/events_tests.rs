@@ -11,6 +11,8 @@ const TEST_SURFACE_HEIGHT: u32 = 20;
 
 #[path = "events_tests/context_target.rs"]
 mod context_target;
+#[path = "events_tests/disabled.rs"]
+mod disabled;
 #[path = "events_tests/focus_and_gutter.rs"]
 mod focus_and_gutter;
 #[path = "events_tests/scroll_and_drag.rs"]

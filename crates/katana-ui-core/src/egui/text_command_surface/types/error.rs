@@ -1,3 +1,4 @@
+use super::super::KucContextMenuEnabledResolverError;
 use crate::egui::command_chrome::EguiCommandChromeError;
 use crate::egui::context_menu::ContextMenuAdapterError;
 use crate::egui::text_surface::EguiTextSurfaceError;
@@ -31,6 +32,7 @@ pub enum EguiTextCommandSurfaceError {
     Text(EguiTextSurfaceError),
     Chrome(EguiCommandChromeError),
     ContextMenu(ContextMenuAdapterError),
+    ContextMenuEnabledResolver(KucContextMenuEnabledResolverError),
     TabStrip {
         message: String,
     },
@@ -71,6 +73,12 @@ impl From<EguiCommandChromeError> for EguiTextCommandSurfaceError {
 impl From<ContextMenuAdapterError> for EguiTextCommandSurfaceError {
     fn from(value: ContextMenuAdapterError) -> Self {
         Self::ContextMenu(value)
+    }
+}
+
+impl From<KucContextMenuEnabledResolverError> for EguiTextCommandSurfaceError {
+    fn from(value: KucContextMenuEnabledResolverError) -> Self {
+        Self::ContextMenuEnabledResolver(value)
     }
 }
 
@@ -119,6 +127,12 @@ impl std::fmt::Display for EguiTextCommandSurfaceError {
             Self::Chrome(error) => write!(formatter, "text-command command chrome failed: {error}"),
             Self::ContextMenu(error) => {
                 write!(formatter, "text-command context menu failed: {error}")
+            }
+            Self::ContextMenuEnabledResolver(error) => {
+                write!(
+                    formatter,
+                    "text-command context-menu enabled resolver failed: {error}"
+                )
             }
             Self::TabStrip { message } => {
                 write!(formatter, "text-command tab strip failed: {message}")

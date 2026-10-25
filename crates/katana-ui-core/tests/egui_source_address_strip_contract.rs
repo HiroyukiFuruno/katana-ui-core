@@ -34,6 +34,48 @@ fn strip() -> SourceAddressStrip {
     strip
 }
 
+#[test]
+fn long_source_address_label_uploads_only_backend_sized_tiles() {
+    let context = egui::Context::default();
+    let mut adapter = EguiSourceAddressStripAdapter::new("source-texture-limit").expect("adapter");
+    let long = "長いソースアドレス ".repeat(40);
+    let mut source = SourceAddressStrip::new(SourceAddressPresentation::new(
+        long.clone(),
+        long.clone(),
+        "source address",
+    ));
+    let mut result = None;
+    let mut output = context.run_ui(
+        egui::RawInput {
+            max_texture_side: Some(1024),
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(800.0, 120.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            result = Some(adapter.show(ui, &mut source));
+        },
+    );
+    let source_result = result.expect("source address output");
+    let uploaded = output
+        .textures_delta
+        .set
+        .values()
+        .flat_map(|deltas| deltas.iter().map(|delta| delta.image.size()))
+        .collect::<Vec<_>>();
+    output.textures_delta.clear();
+    assert!(source_result.is_ok());
+    assert!(!uploaded.is_empty(), "source address emitted no textures");
+    assert!(
+        uploaded
+            .iter()
+            .all(|size| size.iter().all(|side| *side <= 1024)),
+        "source-address texture upload exceeded backend limit"
+    );
+}
+
 fn frame(
     context: &egui::Context,
     adapter: &mut EguiSourceAddressStripAdapter,

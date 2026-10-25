@@ -3,8 +3,8 @@ use super::{
     OVERLAY_LABEL_FONT_WEIGHT, OVERLAY_ROW_HEIGHT_PX, PREEDIT_RGBA, PRIMARY_TEXT_RGBA,
     SELECTION_RGBA, TabStripContextMenuPresentation, TabStripGroupDescriptor,
     TabStripPaintOperation, TabStripPaintOperationKind, TabStripPaintPlan, TabStripPaintTexture,
-    TabStripProjection, TabStripRenameDraft, TextSurfacePaintOperationKind, TextSurfacePaintStyle,
-    TextSurfaceRasterStyle, UiRect,
+    TabStripProjection, TabStripRenameDraft, TabStripRootItem, TextSurfacePaintOperationKind,
+    TextSurfacePaintStyle, TextSurfaceRasterStyle, UiRect,
 };
 
 pub(super) struct TabStripOverlayOutcome {
@@ -41,6 +41,34 @@ pub(super) fn tab_menu_for_path<'a>(
     projection: &'a TabStripProjection,
     path: &str,
 ) -> Option<&'a TabStripContextMenuPresentation> {
+    let mut tab_occurrence = 0;
+    let mut group_occurrence = 0;
+    for item in &projection.root_items {
+        match item {
+            TabStripRootItem::Tab(index) if path == format!("root-tab-{tab_occurrence}") => {
+                return projection
+                    .tabs
+                    .get(*index)
+                    .and_then(|tab| tab.context_menu.as_ref());
+            }
+            TabStripRootItem::Group(index) => {
+                if let Some(group) = projection.groups.get(*index)
+                    && let Some(menu) =
+                        tab_menu_for_group(group, &format!("root-group-{group_occurrence}"), path)
+                {
+                    return Some(menu);
+                }
+            }
+            _ => {}
+        }
+        match item {
+            TabStripRootItem::Tab(_) => tab_occurrence += 1,
+            TabStripRootItem::Group(_) => group_occurrence += 1,
+        }
+    }
+    if !projection.root_items.is_empty() {
+        return None;
+    }
     for (index, tab) in projection.tabs.iter().enumerate() {
         if path == format!("root-tab-{index}") {
             return tab.context_menu.as_ref();
@@ -72,11 +100,71 @@ pub(super) fn group_for_path<'a>(
     projection: &'a TabStripProjection,
     path: &str,
 ) -> Option<&'a TabStripGroupDescriptor> {
+    let mut group_occurrence = 0;
+    for item in &projection.root_items {
+        if let TabStripRootItem::Group(index) = item
+            && let Some(group) = projection.groups.get(*index)
+            && let Some(found) =
+                group_for_group(group, &format!("root-group-{group_occurrence}"), path)
+        {
+            return Some(found);
+        }
+        if matches!(item, TabStripRootItem::Group(_)) {
+            group_occurrence += 1;
+        }
+    }
+    if !projection.root_items.is_empty() {
+        return None;
+    }
     projection
         .groups
         .iter()
         .enumerate()
         .find_map(|(index, group)| group_for_group(group, &format!("root-group-{index}"), path))
+}
+
+pub(super) fn group_path_for_target(
+    projection: &TabStripProjection,
+    target: &super::super::tab_strip_projection_lease::TabStripGroupTarget,
+) -> Option<String> {
+    let mut group_occurrence = 0;
+    for item in &projection.root_items {
+        if let super::super::tab_strip_projection_lease::TabStripRootItem::Group(index) = item {
+            let prefix = format!("root-group-{group_occurrence}");
+            if let Some(group) = projection.groups.get(*index)
+                && let Some(path) = group_path_for_group(group, target, &prefix)
+            {
+                return Some(path);
+            }
+            group_occurrence += 1;
+        }
+    }
+    if projection.root_items.is_empty() {
+        for (index, group) in projection.groups.iter().enumerate() {
+            if let Some(path) = group_path_for_group(group, target, &format!("root-group-{index}"))
+            {
+                return Some(path);
+            }
+        }
+    }
+    None
+}
+
+fn group_path_for_group(
+    group: &TabStripGroupDescriptor,
+    target: &super::super::tab_strip_projection_lease::TabStripGroupTarget,
+    prefix: &str,
+) -> Option<String> {
+    if &group.target == target {
+        return Some(prefix.to_owned());
+    }
+    for (index, child) in group.groups.iter().enumerate() {
+        if let Some(path) = group_path_for_group(child, target, &format!("{prefix}-group-{index}"))
+        {
+            return Some(path);
+        }
+    }
+    None
 }
 
 pub(super) fn group_for_group<'a>(

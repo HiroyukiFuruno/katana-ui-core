@@ -1,13 +1,19 @@
 use super::layout_model::TextSurfaceLayout;
 use crate::render_model::UiRect;
+use std::collections::BTreeSet;
 
 impl TextSurfaceLayout {
     /// Returns the logical rows whose KUC layout bounds intersect `viewport`.
     #[must_use]
     pub fn visible_logical_rows(&self, viewport: UiRect) -> Vec<usize> {
+        let mut seen_logical_rows = BTreeSet::new();
         self.lines
             .iter()
-            .filter_map(|line| Self::intersects(line.bounds, viewport).then_some(line.logical_row))
+            .filter_map(|line| {
+                Self::intersects(line.bounds, viewport)
+                    .then_some(line.logical_row)
+                    .filter(|row| seen_logical_rows.insert(*row))
+            })
             .collect()
     }
 
@@ -99,6 +105,50 @@ mod tests {
         );
         assert_eq!(Some(UiRect::new(0, 0, 6, 20)), layout.line_bounds(0));
         assert_eq!(None, layout.line_bounds(9));
+    }
+
+    #[test]
+    fn visible_rows_deduplicate_soft_wraps_and_preserve_logical_order() {
+        let source = "abc\nd";
+        let layout = TextSurfaceLayout::from_grapheme_boxes(
+            "layout-scroll-soft-wrap",
+            UiRect::new(0, 0, 24, 80),
+            source,
+            vec![
+                TextSurfaceGraphemeBox {
+                    grapheme_index: 0,
+                    byte_start: 0,
+                    byte_end: 1,
+                    bounds: UiRect::new(0, 0, 6, 20),
+                },
+                TextSurfaceGraphemeBox {
+                    grapheme_index: 1,
+                    byte_start: 1,
+                    byte_end: 2,
+                    bounds: UiRect::new(0, 20, 6, 20),
+                },
+                TextSurfaceGraphemeBox {
+                    grapheme_index: 2,
+                    byte_start: 2,
+                    byte_end: 3,
+                    bounds: UiRect::new(0, 40, 6, 20),
+                },
+                TextSurfaceGraphemeBox {
+                    grapheme_index: 3,
+                    byte_start: 4,
+                    byte_end: 5,
+                    bounds: UiRect::new(0, 60, 6, 20),
+                },
+            ],
+        );
+        assert_eq!(
+            vec![0],
+            layout.visible_logical_rows(UiRect::new(0, 0, 24, 20))
+        );
+        assert_eq!(
+            vec![0, 1],
+            layout.visible_logical_rows(UiRect::new(0, 20, 24, 60))
+        );
     }
 
     #[test]

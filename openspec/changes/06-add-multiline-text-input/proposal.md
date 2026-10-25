@@ -1,5 +1,7 @@
 ## Why
 
+外部画面名は観測例であり、要件は汎用の複数行フォーム入力・IME・auto-grow contractとして定義する。特定consumerの移行や採用はKUCの完了条件に含めない。
+
 `katana-chat-ui` の composer は `ChatUiComposerInputKind::ImeMultilineEditor`（複数行 IME 対応の入力エディタ）を必要とするが、これは document editor（KLE 担当）ではなく「入力フォーム」用途である。`katana` 側でも検索バーや簡易メモ入力など複数行の入力が必要な箇所がある。
 
 KUC の `Input` atom は 1 行入力前提で、複数行・自動行数調整（auto-grow）・最大行数 / 最小行数・行折返し方針・スクロール挙動・IME composition の複数行扱い・複数行の placeholder・行末改行コミットの違い（Enter で改行 vs Cmd/Ctrl+Enter で送信）を契約していない。これは「document editor」とは異なる「multi-line input control」の責務である。

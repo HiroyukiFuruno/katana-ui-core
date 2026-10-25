@@ -1,4 +1,5 @@
 use super::*;
+use crate::egui::text_command_surface::TabStripTabCapabilities;
 
 #[test]
 fn render_overlay_group_popup_submits_rename_when_text_is_entered() {
@@ -8,6 +9,11 @@ fn render_overlay_group_popup_submits_rename_when_text_is_entered() {
             TabStripGroupDescriptor::new(
                 TabStripGroupTarget::from_opaque_bytes(b"group-popup"),
                 TabStripText::new("group"),
+            )
+            .capabilities(
+                TabStripGroupCapabilities::new()
+                    .menu_available(true)
+                    .renamable(true),
             )
             .popup(
                 TabStripGroupPopupPresentation::new()
@@ -26,6 +32,13 @@ fn render_overlay_group_popup_submits_rename_when_text_is_entered() {
     };
 
     let context = egui::Context::default();
+    let mut warm_output = context.run_ui(egui::RawInput::default(), |ui| {
+        state
+            .show(ui)
+            .expect("rename overlay should mount before receiving input");
+    });
+    warm_output.textures_delta.clear();
+
     let mut root_output = None;
     let mut platform_output = context.run_ui(
         egui::RawInput {
@@ -133,6 +146,7 @@ fn render_overlay_group_popup_with_swatch_entries_renders_prefix_and_menu() {
                 TabStripGroupTarget::from_opaque_bytes(b"group-with-swatch"),
                 TabStripText::new("group"),
             )
+            .capabilities(TabStripGroupCapabilities::new().menu_available(true))
             .swatch(TabStripSwatchDescriptor::new(
                 TabStripSwatchTarget::from_opaque_bytes(b"swatch"),
                 RgbaColor::new(1, 2, 3, 255),
@@ -193,6 +207,7 @@ fn render_overlay_propagates_real_missing_port_after_pointer_press_and_release()
                 TabStripTabTarget::from_opaque_bytes(b"tab-with-missing-port-overlay"),
                 TabStripText::new("tab"),
             )
+            .capabilities(TabStripTabCapabilities::new().closeable(true))
             .context_menu(
                 crate::egui::text_command_surface::TabStripContextMenuPresentation::new()
                     .entry(entry()),

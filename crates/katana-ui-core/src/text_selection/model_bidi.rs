@@ -40,6 +40,14 @@ pub(super) fn visual_caret_glyphs<'a>(
                 glyph_index: Some(glyph.grapheme_index),
             },
         ));
+        let separator = text.get(glyph.byte_range.clone()).is_some_and(|value| {
+            value
+                .chars()
+                .all(|character| matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}'))
+        });
+        if separator {
+            continue;
+        }
         positions.push((
             glyph,
             UiTextCaretPosition {

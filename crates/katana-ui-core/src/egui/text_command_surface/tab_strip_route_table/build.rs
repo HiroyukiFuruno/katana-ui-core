@@ -1,11 +1,34 @@
 use super::super::tab_strip_projection_lease::{
-    TabStripContextMenuPresentation, TabStripGroupDescriptor, TabStripMenuEntry,
+    TabStripContextMenuPresentation, TabStripGroupDescriptor, TabStripMenuEntry, TabStripRootItem,
     TabStripTabDescriptor, TabStripTabTarget,
 };
 use super::{TabStripRoute, TabStripRouteTable};
 use std::collections::BTreeMap;
 
 impl TabStripRouteTable {
+    pub(super) fn insert_root_items(
+        routes: &mut BTreeMap<String, TabStripRoute>,
+        projection: &super::super::tab_strip_projection_lease::TabStripProjection,
+    ) {
+        let mut tab_occurrence = 0;
+        let mut group_occurrence = 0;
+        for item in &projection.root_items {
+            match item {
+                TabStripRootItem::Tab(index) => {
+                    if let Some(tab) = projection.tabs.get(*index) {
+                        Self::insert_tab(routes, tab, format!("root-tab-{tab_occurrence}"));
+                    }
+                    tab_occurrence += 1;
+                }
+                TabStripRootItem::Group(index) => {
+                    if let Some(group) = projection.groups.get(*index) {
+                        Self::insert_group(routes, group, format!("root-group-{group_occurrence}"));
+                    }
+                    group_occurrence += 1;
+                }
+            }
+        }
+    }
     pub(super) fn insert_tab(
         routes: &mut BTreeMap<String, TabStripRoute>,
         tab: &TabStripTabDescriptor,

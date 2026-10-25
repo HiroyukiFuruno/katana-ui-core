@@ -20,7 +20,7 @@ component 構造、component 内部状態（state）、見た目設定（style�
 UI ごとの状態（state）は component 内部 model で管理する。
 同じ種類・同じ label の UI が複数あっても、`UiNodeId` と `UiStateId` は一意にする。
 旧 Adapter 実装は参照資料として扱い、新しい UI は同等範囲 + runtime / window / surface などの +α をゼロから作り直す。
-この状態管理制約は `kal` 本体や `kal.json` には足さず、repo-local の `scripts/assert-kuc-state-ownership.py` を `just ast-lint` から呼んで検査する。
+この状態管理制約は共有lint toolの本体や設定には足さず、repo-local の `scripts/assert-kuc-state-ownership.py` を `just ast-lint` から呼んで検査する。
 純 Rust component、内部 state、後付け style の 3 点を KUC core で満たせない場合、独自実装を続けるより Adapter など既存 UI framework を base に必要部品だけを作る判断へ戻す。
 
 KUC は以下を持つ。
@@ -85,12 +85,12 @@ P0 (governance / naming / ADR)
   ↓
 P1 (KUC neutral core)
   ↓ provides: render model / theme token / event model / adapter contract / runtime / window / surface
-P4 (katana-ui composition)
+P4 (consumer UI composition)
   prereq: P1 output
 ```
 
 KUC repo の `ui-core-root-plan` は P0-B / P0-C / P1 / P4-0 のうち、KUC に閉じて実施できる作業だけを扱う。
-KatanA 本体、KDV、KLE、KCF、KDR、KMM、KCU の実装変更はこの repo では行わない。
+外部 consumer、文書処理、言語編集、配布、レンダリング等の実装変更はこの repo では行わない。
 
 ## 5. P0-B: naming / ADR tasks
 
@@ -105,7 +105,7 @@ KatanA 本体、KDV、KLE、KCF、KDR、KMM、KCU の実装変更はこの repo 
 - P0-B-015: storybook crate を `katana-ui-core-storybook` に rename する。
 - P0-B-016: Justfile / scripts / release の旧名参照を更新する。
 - P0-B-017: README / CONTRIBUTING に UI Core 責務を明記する。
-- P0-B-018: 関連 repo の dependency 表記追従は KUC repo 内では実装しない。KUC 側では `docs/external-followups.md` に「repo 名、変更対象ファイル、期待する dependency 表記、KUC 側の根拠 task ID」を記録する。
+- P0-B-018: 外部 consumer の dependency 表記追従は KUC repo 内では実装しない。必要な追従は consumer 側で管理し、KUC 側では中立 API 契約と根拠 task ID だけを記録する。
 - P0-B-019: 過去 OpenSpec changes / handoff / tmp 文書の `katana-ui-widget` 表記は履歴として残す。新規 OpenSpec changes は `katana-ui-core` 表記を使う。
 
 ## 6. P0-C: dependency policy tasks
@@ -115,8 +115,8 @@ KatanA 本体、KDV、KLE、KCF、KDR、KMM、KCU の実装変更はこの repo 
 - P0-C-009: `workspace.dependencies` の shared version policy を整理する。KUC core が参照してよい dependency と outside core に限定する dependency を `docs/dependency-policy.md` に表で記録する。
 - P0-C-010: core feature policy を整理する。feature 名、default 有無、core compile への影響、release gate を `docs/dependency-policy.md` に表で記録する。
 
-KUC repo では P0-C-004 以降の KDV / KLE / KatanA 側 guardrail は実装しない。
-必要な追従は `docs/external-followups.md` に repo 名、変更対象ファイル、期待する dependency 表記、KUC 側の根拠 task ID を記録する。
+KUC repo では P0-C-004 以降の外部 consumer 側 guardrail は実装しない。
+必要な追従は consumer 側で管理し、KUC では外部採用や公開状態を release gate に取り込まない。
 
 ## 7. P1-A: workspace restructuring
 
@@ -263,7 +263,7 @@ KUC active tree は external runtime / renderer の選定、比較、品質 gate
 KUC Issue の完了判定は、KUC 自身が所有する public API、後方互換性、KUC 内の自動回帰、package / release quality gate に限定する。下流 repository の採用状況、個別画面の品質スコア、下流 release は KUC Issue を open のままにする条件にしてはならない。
 
 - 正: KUC の API・実装・KUC 内 contract test・公開品質ゲートを満たしたら KUC Issue を Close し、下流の採用や表示差異はその repository の Issue で追跡する。
-- 誤: KDV / KLE / KatanA の registry-only 受入、canonical score、release を KUC Issue の DoD や Close 条件に含める。
+- 誤: 外部 consumer の registry-only 受入、canonical score、release を KUC Issue の DoD や Close 条件に含める。
 - 下流から発見された問題でも、KUC の中立 API 契約に還元できる部分だけを KUC Issue とする。consumer 固有の補償、fixture、renderer、採用作業は owner repository へ handoff する。
 
 ## 15. KUC done criteria

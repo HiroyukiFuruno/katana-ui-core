@@ -385,13 +385,13 @@ mod tests {
     #[test]
     fn external_error_mappers_preserve_operation_context() {
         assert_eq!(
-            "Failed to create window",
+            "Failed to create window: test",
             storybook_visual_error(katana_ui_core_storybook::StorybookVisualError::from(
                 minifb::Error::WindowCreate("test".to_string())
             ))
         );
         assert_eq!(
-            "Failed to create window",
+            "Failed to create window: test",
             minifb_error(minifb::Error::WindowCreate("test".to_string()))
         );
         assert!(

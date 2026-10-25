@@ -40,6 +40,46 @@ fn invalid_action_icon_fails_closed() {
 }
 
 #[test]
+fn long_command_label_uploads_only_backend_sized_tiles() {
+    let context = egui::Context::default();
+    let mut adapter = EguiCommandChromeAdapter::default();
+    let mut toolbar = CommandChromeToolbar::new().action(CommandChromeAction::new(
+        "long-label",
+        "長いコマンドラベル ".repeat(40),
+    ));
+    let mut output = None;
+    let mut full_output = context.run_ui(
+        egui::RawInput {
+            max_texture_side: Some(1024),
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(SCREEN_WIDTH, SCREEN_HEIGHT),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            output = Some(adapter.show_toolbar(ui, &mut toolbar, &raster_style(), &paint_style()));
+        },
+    );
+    let toolbar_result = output.expect("command chrome output");
+    let uploaded = full_output
+        .textures_delta
+        .set
+        .values()
+        .flat_map(|deltas| deltas.iter().map(|delta| delta.image.size()))
+        .collect::<Vec<_>>();
+    full_output.textures_delta.clear();
+    assert!(toolbar_result.is_ok());
+    assert!(!uploaded.is_empty(), "command chrome emitted no textures");
+    assert!(
+        uploaded
+            .iter()
+            .all(|size| size.iter().all(|side| *side <= 1024)),
+        "command chrome texture upload exceeded backend limit"
+    );
+}
+
+#[test]
 fn invalid_dropdown_item_icon_fails_closed_during_layout() {
     let context = egui::Context::default();
     let mut adapter = EguiCommandChromeAdapter::default();

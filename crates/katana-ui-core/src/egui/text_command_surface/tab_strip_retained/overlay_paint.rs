@@ -1,4 +1,5 @@
 use super::support::ui_rect;
+use super::tab_paint::paint_texture_tiled;
 use super::{
     DRAG_GHOST_OFFSET_PX, TabStripPaintOperation, TabStripPaintOperationKind, TabStripPaintTexture,
     TabStripRetainedError, TabStripRetainedState,
@@ -46,18 +47,13 @@ impl TabStripRetainedState {
         texture: &TabStripPaintTexture,
         bounds: egui::Rect,
     ) {
-        let handle = self.textures.texture_for_rgba(
+        let painter = ui.painter().with_clip_rect(clip_bounds);
+        paint_texture_tiled(
+            &painter,
             ui.ctx(),
-            &texture.identity,
-            texture.width as usize,
-            texture.height as usize,
-            &texture.rgba_pixels,
-        );
-        ui.painter().with_clip_rect(clip_bounds).image(
-            handle.id(),
-            bounds,
-            egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
-            egui::Color32::WHITE,
+            &mut self.textures,
+            ui_rect(bounds),
+            texture,
         );
         operations.push(TabStripPaintOperation {
             clip_bounds: ui_rect(clip_bounds),

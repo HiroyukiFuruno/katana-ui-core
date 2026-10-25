@@ -12,6 +12,8 @@ use crate::egui::text_surface::EguiTextSurfaceOutput;
 
 /// KUC-owned retained root that composes the generic text-command children once.
 pub struct EguiTextCommandSurfaceRoot {
+    pub(super) selection_dialog:
+        Option<super::super::selection_dialog::SelectionDialogRetainedState>,
     pub(super) surface: EguiTextCommandSurface,
     pub(super) adapter: EguiTextCommandSurfaceAdapter,
     pub(super) identity: String,
@@ -31,10 +33,12 @@ pub struct EguiTextCommandSurfaceRootOutput {
     pub(super) events: EguiTextCommandSurfaceRootEventBatch,
     pub(crate) evidence_text: EguiTextSurfaceOutput,
     pub(crate) evidence_composite: ArtifactCompositeFrame,
+    pub(crate) accesskit_evidence: Vec<super::super::accesskit_evidence::AccessKitEvidence>,
     pub(crate) accesskit_text_input_nodes:
         Vec<super::super::accesskit_projection::AccessKitTextInputNode>,
     pub(super) locator: interaction_locator::KucInteractionLocator,
     pub(super) artifact_order: Vec<super::super::types::EguiTextCommandSurfaceChild>,
+    #[cfg(any(test, feature = "storybook-artifacts"))]
     pub(super) context_menu_visible: bool,
     #[cfg(test)]
     pub(crate) toolbar_record: Option<crate::egui::command_chrome::EguiCommandChromeFrameRecord>,
@@ -51,6 +55,7 @@ pub struct EguiTextCommandSurfaceRootOutput {
 #[derive(Debug)]
 pub enum EguiTextCommandSurfaceRootError {
     Surface(EguiTextCommandSurfaceError),
+    ContextMenuEnabledResolver(super::super::KucContextMenuEnabledResolverError),
     Artifact(EguiTextCommandSurfaceArtifactError),
     Composite(ArtifactCompositeError),
     Serialization(String),
@@ -58,7 +63,18 @@ pub enum EguiTextCommandSurfaceRootError {
 
 impl From<EguiTextCommandSurfaceError> for EguiTextCommandSurfaceRootError {
     fn from(value: EguiTextCommandSurfaceError) -> Self {
-        Self::Surface(value)
+        match value {
+            EguiTextCommandSurfaceError::ContextMenuEnabledResolver(error) => {
+                Self::ContextMenuEnabledResolver(error)
+            }
+            value => Self::Surface(value),
+        }
+    }
+}
+
+impl From<super::super::KucContextMenuEnabledResolverError> for EguiTextCommandSurfaceRootError {
+    fn from(value: super::super::KucContextMenuEnabledResolverError) -> Self {
+        Self::ContextMenuEnabledResolver(value)
     }
 }
 
@@ -78,6 +94,10 @@ impl std::fmt::Display for EguiTextCommandSurfaceRootError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Surface(error) => write!(formatter, "text-command root surface failed: {error}"),
+            Self::ContextMenuEnabledResolver(error) => write!(
+                formatter,
+                "text-command root context-menu enabled resolver failed: {error}"
+            ),
             Self::Artifact(error) => {
                 write!(formatter, "text-command root artifact failed: {error}")
             }

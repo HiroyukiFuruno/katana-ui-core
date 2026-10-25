@@ -102,7 +102,7 @@ mod source_guards {
                 "sanitized command projection leaked forbidden term: {term}"
             );
         }
-        assert!(!source.contains("KatanA"));
+        assert!(!source.contains("katana"));
         assert!(!source.contains("pub fn bytes"));
         assert!(!source.contains("pub fn as_bytes"));
         assert!(!source.contains("serialize"));

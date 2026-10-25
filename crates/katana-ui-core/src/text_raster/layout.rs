@@ -120,10 +120,7 @@ impl TextLayoutRasterizer {
         let mut buffer = Buffer::new(font_system, metrics);
         let mut buffer = buffer.borrow_with(font_system);
         buffer.set_wrap(Wrap::None);
-        buffer.set_size(
-            Some(FALLBACK_LAYOUT_WIDTH * scale),
-            Some(FALLBACK_LAYOUT_HEIGHT * scale),
-        );
+        buffer.set_size(Some(FALLBACK_LAYOUT_WIDTH * scale), None);
         let spans = [UiTextSpan::plain(request.text.clone())];
         let rich_text = spans
             .iter()
@@ -189,7 +186,7 @@ impl TextLayoutRasterizer {
         buffer.set_wrap(Wrap::Word);
         buffer.set_size(
             Some(request.normalized_max_width(FALLBACK_LAYOUT_WIDTH, MAX_LAYOUT_WIDTH) * scale),
-            Some(FALLBACK_LAYOUT_HEIGHT * scale),
+            None,
         );
         let runs = normalized_runs(&request.spans);
         let rich_text = runs

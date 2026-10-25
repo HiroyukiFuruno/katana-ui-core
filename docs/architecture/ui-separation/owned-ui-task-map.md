@@ -75,7 +75,7 @@
 | ContextMenu | molecule | pointer 起点 / submenu / keyboard navigation |
 | DragAndDropPrimitive | atom / molecule / interaction | DragHandle / DropIndicator / DragPreview / DragData / DropTarget / keyboard drag。OS payload は adapter contract で `os/*` tag に変換する |
 | CloseableTabStrip | molecule | closeable / dirty / draggable tab。workspace / document domain は持たない |
-| TextArea | atom | 複数行フォーム入力。KLE 本文 editor ではない |
+| TextArea | atom | 複数行フォーム入力。製品固有の本文 editor ではない |
 | Chip | atom | filter / tag 表示。variant / tone / size / selected / dismissible / keyboard dismiss を持つ |
 | AttachmentChip | molecule | file / image / URL / paste / resource 添付。status / progress / retry action を持つ |
 | ChipGroup | molecule | wrap / overflow menu / horizontal scroll / reorder opt-in を持つ chip container |
@@ -115,5 +115,5 @@ Storybook 自身を構成するため、次は内部構成部品として許可�
 - 左 TreeView は探索と選択のために使い、中央本文に全件 component card を毎回出す構成は採用しない。
 - Storybook は正しさの主根拠ではない。
 - 部品の正しさは自動テスト、数値化された layout / rendering contract、input regression、state / event / action contract、guard で判定する。
-- `kal` 側へ KUC 固有ルールを追記しない。
+- 共有lint toolへ KUC 固有ルールを追加せず、このrepositoryのguardで管理する。
 - `katana-widget-parity-backlog` と `ui-core-interaction-visual-parity` は、この文書と新 change へ要件を移した後は superseded として扱う。

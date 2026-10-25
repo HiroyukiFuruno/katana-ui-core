@@ -18,6 +18,10 @@ use egui::RawInput;
 
 #[path = "host_root_factory_tests/lease_contract.rs"]
 mod lease_contract;
+#[path = "host_root_factory_tests/lease_identity.rs"]
+mod lease_identity;
+#[path = "host_root_factory_tests/preserving_state_drag.rs"]
+mod preserving_state_drag;
 #[path = "host_root_factory_tests/synchronization_contract.rs"]
 mod synchronization_contract;
 #[path = "host_root_factory_tests/token_contract.rs"]

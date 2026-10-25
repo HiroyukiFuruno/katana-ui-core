@@ -1,5 +1,7 @@
 ## Why
 
+外部画面名は観測例であり、要件は汎用のwindow-control button groupとintent dispatch contractとして定義する。OS chromeや特定consumerの移行・採用はKUCの完了条件に含めない。
+
 `katana` の title area と `katana-chat-ui` の header は、close / minimize / maximize などの window control と、provider icon / 新規 chat / 履歴 button のような header action を並べる。
 
 ただし title bar、window chrome、drag region、native decoration は app / adapter の責務であり、KUC の atoms / molecules 公開範囲を超える。

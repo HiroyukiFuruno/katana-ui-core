@@ -1,5 +1,7 @@
 ## Why
 
+外部画面名は観測例であり、要件は汎用の2-pane split、ratio、resize、boundary contractとして定義する。特定consumerの移行や採用はKUCの完了条件に含めない。
+
 `katana` の editor / preview 分割、KDV の TOC / viewer 分割、KLE の find / editor 周辺分割、Storybook の navigation / preview / inspector 分割は、どれも「2つの領域を境界線で分け、比率を変えられる UI」を必要とする。
 
 KUC には `SplitPane` があるが、現状は layout model として存在するだけで、次を完了条件として固定できていない。

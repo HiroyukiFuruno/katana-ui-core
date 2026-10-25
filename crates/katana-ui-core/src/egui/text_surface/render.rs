@@ -10,7 +10,8 @@ use super::controlled_scroll::{
 };
 use super::input::TextSurfaceInteraction;
 use super::measurement::{
-    controlled_gutter_width, placeholder_bounds, placeholder_raster_identity, surface_extent_for_ui,
+    controlled_gutter_width, placeholder_bounds, placeholder_raster_identity,
+    raster_texture_bounds, surface_extent_for_ui,
 };
 use super::model::{
     EguiTextSurfaceAdapter, EguiTextSurfaceInputPolicy, TextSurfacePaintStyle,
@@ -148,7 +149,7 @@ pub(super) fn show_with_input_policy_unpainted(
     );
     let placeholder = placeholder_result?;
     let record = EguiTextSurfaceFrameRecord {
-        texture_bounds: frame.content_bounds,
+        texture_bounds: raster_texture_bounds(&frame.content_bounds, &raster_frame, scale_factor),
         hit_target: surface.state().text_area.state_id.as_str().to_string(),
         raster_identity: raster_frame.identity.clone(),
         placeholder_raster_identity: placeholder.as_ref().map(|value| value.identity.clone()),

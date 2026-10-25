@@ -144,11 +144,16 @@ impl TabStripRetainedState {
                 rename,
             });
         }
-        let area_id = ui.id().with(("tab-strip-group-popup-prefix", path));
+        let area_id = self
+            .routes
+            .interaction_id(ui.id(), path)
+            .with("tab-strip-group-popup-prefix");
+        let parent_enabled = ui.is_enabled();
         let shown = egui::Area::new(area_id)
             .order(egui::Order::Foreground)
             .constrain(false)
             .fixed_pos(anchor)
+            .enabled(parent_enabled)
             .show(ui.ctx(), |popup_ui| {
                 let (bounds, _) = popup_ui.allocate_exact_size(
                     egui::vec2(OVERLAY_WIDTH_PX, height),
@@ -227,12 +232,12 @@ impl TabStripRetainedState {
                             egui::pos2(x, y),
                             egui::vec2(OVERLAY_SWATCH_SIZE_PX, OVERLAY_SWATCH_SIZE_PX),
                         );
+                        let route_path = format!("{path}-popup-swatch-{index}");
                         let response = popup_ui.interact(
                             rect,
-                            area_id.with(("swatch", index)),
+                            self.routes.interaction_id(area_id, &route_path),
                             egui::Sense::click(),
                         );
-                        let route_path = format!("{path}-popup-swatch-{index}");
                         self.routes.register_response(
                             &route_path,
                             response.id,

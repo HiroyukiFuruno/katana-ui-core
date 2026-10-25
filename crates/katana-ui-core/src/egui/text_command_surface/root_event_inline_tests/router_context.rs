@@ -98,7 +98,7 @@ fn router_context_snapshots_all_generic_payloads_without_consuming_root_batch() 
                 .iter()
                 .map(|dispatch| dispatch.event_count)
                 .collect::<Vec<_>>(),
-            vec![1, 1, 1, 3, 1, 0, 0]
+            vec![1, 1, 1, 3, 1, 0, 0, 0]
         );
         Ok::<Option<KucOpaqueHostEffectBatch>, KucOpaqueHostEffectError>(None)
     };

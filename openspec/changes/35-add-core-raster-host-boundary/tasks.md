@@ -1,3 +1,5 @@
+> この tasks は過去の v0.3.x release の追跡記録であり、現行 v0.5.0 の完了条件ではない。既存の版、score、検査結果、外部consumer受入状態は改ざんせず、現行KUC gateとは分離する。
+
 # Tasks — 35-add-core-raster-host-boundary
 
 Issue: <https://github.com/HiroyukiFuruno/katana-ui-core/issues/35>

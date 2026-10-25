@@ -24,7 +24,7 @@
 - [x] 2.7 P1-A-007: core crate の package description を framework-neutral な説明へ変更する。
 - [x] 2.8 P1-A-008: README から Adapter 前提の説明を削除する。
 - [x] 2.9 P1-A-009: README に core policy 節を追加する。必須項目は framework-neutral core、core dependency 禁止、Storybook 経路、release gate、`docs/dependency-policy.md` へのリンク。
-- [x] 2.10 P1-A-010: release metadata は core crate の publish と consumer / Storybook gate に限定する。
+- [x] 2.10 P1-A-010: release metadata は core crate の publish と KUC内 consumer-app / Storybook gate に限定する。外部 repository の採用・受入は含めない。
 
 ## 3. Core module skeleton
 
@@ -148,7 +148,7 @@
 - [x] 6.6 P1-K-001: `examples/kuc-consumer-app` を workspace member として維持する。
 - [x] 6.7 P1-K-002: consumer app は input、search、select、combo、text area、image surface、scroll、split pane、tabs、toolbar を組み合わせる。
 - [x] 6.8 P1-K-003: consumer app は text input、textarea resize、scroll、split pane、tab close/add/pin/group/context command を action / event / state で検証する。
-- [x] 6.9 P1-K-004: `consumer-app-contract` を `kuc-guardrails` と `release-readiness-check` の前提にする。
+- [x] 6.9 P1-K-004: KUC内 `consumer-app-contract` を `kuc-guardrails` と `release-readiness-check` の前提にする。外部 consumer acceptance とは区別する。
 - [x] 6.10 P1-K-005: Storybook は core-only catalog として扱い、consumer readiness の完了根拠にはしない。
 
 ## 7. Quality gate update
@@ -159,7 +159,7 @@
 - [x] 7.4 P1-J-004: `just check` に dependency leak guard を追加する。
 - [x] 7.5 P1-J-005: Storybook gate を `katana-ui-core` core-only 対象に変更する。
 - [x] 7.6 P1-J-006: release dry-run に core crate を含める。
-- [x] 7.7 P1-J-007: release dry-run は core crate、Storybook、consumer smoke を対象にする。
+- [x] 7.7 P1-J-007: release dry-run は core crate、Storybook、KUC内 consumer smoke を対象にする。
 - [x] 7.8 P1-J-008: `README.md` の core policy 節に、framework-neutral core、core dependency 禁止、Storybook 経路、release gate の参照先を追加する。
 - [x] 7.9 P8-A-001: `docs/architecture/ui-separation/root-plan-source.md`、`docs/ui-separation-plan.md`、`openspec/changes/ui-core-root-plan/tasks.md` の task ID drift を検出する検査を準備する。
 - [x] 7.10 `git diff --check -- openspec/changes/ui-core-root-plan docs/ui-separation-plan.md README.md Cargo.toml crates storybook scripts Justfile` が通る。
@@ -174,7 +174,7 @@
 - [x] 8.6 P4-0-006: external runtime / renderer の failure は KUC core release を止めない。
 - [x] 8.7 P4-0-007: primary 切り替え時の旧 primary 降格 flow は KUC active tree では管理しない。
 - [x] 8.8 この change の実装着手前に `./scripts/openspec validate ui-core-root-plan --strict` を通す。
-- [x] 8.9 実装完了時に `just check`、consumer app contract、Storybook gate、release dry-run を通す。
+- [x] 8.9 実装完了時に `just check`、KUC内 consumer app contract、Storybook gate、release dry-run を通す。外部 repository の受入は含めない。
 
 ## 9. User Review Phase
 
@@ -201,4 +201,4 @@
 - [x] 9.21 ユーザーFB: text-input は `readonly` / `placeholder` / 左 icon slot 予約 / SVG icon / 内部 SVG icon button callback を Storybook preset と core render model 契約の両方で扱う。（`openspec/changes/storybook-page-text-input/tasks.md`、`visual_interaction_text_input*_tests`、`atom_props_contract`、`storybook-ui-harness` guard に固定）
 - [x] 9.22 ユーザーFB: button / text-button / svg-button / icon-text-button は hover 時に visible border を描き、Storybook native window では clickable hit area 上で hand cursor に切り替える。button atom の共通 default cursor も `UiCursor::Pointer` にする。
 - [x] 9.23 ユーザーFB: Storybook preset tab は表示幅を超える場合に横スクロールし、外部 / 内部の preset 選択時に active tab が見える位置へ自動追従することを layout / interaction test で固定する。
-- [x] 9.24 ユーザーFB: Storybook `tabs` は Katana workspace tab と同等に、追加 / close / move / group / pin / unpin / overflow を live control、preset、state/action/event、自動テストで固定する。
+- [x] 9.24 ユーザーFB: Storybook `tabs` は domain-free workspace tab strip として、追加 / close / move / group / pin / unpin / overflow を live control、preset、state/action/event、自動テストで固定する。
