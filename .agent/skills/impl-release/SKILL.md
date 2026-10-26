@@ -1,21 +1,18 @@
 ---
 name: impl-release
-description: katana-ui-coreで指定バージョンのOpenSpec実装、品質確認、リリースPR、GitHub Release、crates.io publish、事後整理までを一気通貫で進めるときに使う。/impl-release vX.Y.Z と同等のリリース実装ワークフロー。
+description: katana-ui-core のIssue/OpenSpec実装、品質確認、Draft PRのレビュー、GitHub Actionsによる公開、registry検証、事後整理を一貫して進める。
 ---
 
 # impl-release
 
-このスキルは、`/impl-release vX.Y.Z` として扱うリリース実装ワークフローの入口です。
+KUC自身の要件・公開API・自動検証・公開を完了条件とする。
 
-## 実行ルール
+実行前に[現行リリース手順](../../../.codex/workflows/impl-release.md)を読む。
 
-1. ユーザー指定のバージョン（例: `v0.12.2`）を対象にする。
-2. 詳細手順は `.agent/workflows/impl-release.md` を正として読み込む。
-3. OpenSpec 実装、検証、リリース準備、PR 作成、自己レビュー、公開、事後整理まで進める。
-4. 作業開始前に必ず `git status --short --branch` を確認し、既存差分と関心事を混ぜない。
-5. `just VERSION=vX.Y.Z release` が失敗した場合、代替の tag / publish コマンドで迂回しない。状態を調査し、修正してから同じフローへ戻る。
-
-## 注意
-
-- `workflows/impl-release.md` は手順書であり、Agent のスキル呼び出し対象ではない。
-- `/` から呼び出したい場合は、この `impl-release` スキルを使う。
+1. 現在の差分・stash・worktreeを確認し、同じ`release/vX.Y.Z`ブランチで対象差分を統合する。
+2. `rtk proxy just VERSION=vX.Y.Z release-target-check`で公開済みrelease lineと対象版を照合する。
+3. Issue/OpenSpecの受入条件を実装・自動回帰へ対応付け、依存更新と既存の品質ゲートを完了する。
+4. Draft PRを作成し、`@codex review`と自己レビュー、指摘修正・reply/resolve、P0/P1ゼロを経てReadyへ進める。
+5. required checks成功後にmergeし、GitHub ActionsのGitHub Releaseとcrates.io公開、registry版だけの検証、Issue Close、branch-hygieneを確認する。
+6. 承認済みのcommit/push/merge/release/cleanupは再確認せず継続する。失敗は原因と証跡を回収して修正し、同じ公開フローへ戻る。
+7. 外部repositoryの採用・受入・Issue状態をKUCの完了条件へ追加しない。

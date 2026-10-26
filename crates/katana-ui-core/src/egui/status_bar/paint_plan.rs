@@ -1,6 +1,7 @@
 use super::adapter::EguiStatusBarAdapter;
 use super::paint::StatusBarPaint;
 use super::types::{StatusBarPaintOperationKind, StatusBarPaintPlan};
+use crate::egui::texture_tiles::rgba_texture_tiles;
 
 impl EguiStatusBarAdapter {
     pub(super) fn paint_plan(&mut self, ui: &egui::Ui, plan: &StatusBarPaintPlan) {
@@ -17,19 +18,29 @@ impl EguiStatusBarAdapter {
                     );
                 }
                 StatusBarPaintOperationKind::Texture { bounds, texture } => {
-                    let handle = self.textures.texture_for_rgba(
-                        ui.ctx(),
+                    let max_texture_side = ui.ctx().input(|input| input.max_texture_side).max(1);
+                    for (tile_bounds, tile) in rgba_texture_tiles(
+                        *bounds,
                         &texture.identity,
-                        texture.width as usize,
-                        texture.height as usize,
+                        texture.width,
+                        texture.height,
                         &texture.rgba_pixels,
-                    );
-                    painter.image(
-                        handle.id(),
-                        StatusBarPaint::egui_rect(*bounds),
-                        egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
-                        egui::Color32::WHITE,
-                    );
+                        max_texture_side,
+                    ) {
+                        let handle = self.textures.texture_for_rgba(
+                            ui.ctx(),
+                            &tile.identity,
+                            tile.width as usize,
+                            tile.height as usize,
+                            &tile.rgba_pixels,
+                        );
+                        painter.image(
+                            handle.id(),
+                            StatusBarPaint::egui_rect(tile_bounds),
+                            egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
+                            egui::Color32::WHITE,
+                        );
+                    }
                 }
             }
         }

@@ -36,11 +36,12 @@ fn boxed_router_lease_keeps_router_and_debug_opaque() {
         format!("{lease:?}"),
         "EguiTextCommandSurfaceHostProjectionLease(..)"
     );
-    let (_token, _router, source, tab, status, viewport) = lease.into_parts();
-    assert!(source.is_none());
-    assert!(tab.is_none());
-    assert!(status.is_none());
-    assert!(viewport.is_none());
+    let (_token, attachments) = lease.into_parts_with_attachments();
+    assert!(attachments.source_address.is_none());
+    assert!(attachments.tab_strip.is_none());
+    assert!(attachments.status_diagnostics.is_none());
+    assert!(attachments.editor_viewport.is_none());
+    assert!(attachments.context_menu_enabled_resolver.is_none());
 }
 
 #[test]

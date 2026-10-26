@@ -2,7 +2,7 @@ use super::super::tab_strip_projection_lease::{
     TabStripCorrelation, TabStripGroupTarget, TabStripSwatchTarget, TabStripTabTarget, TabStripText,
 };
 
-/// Generic opaque placement capability. KLE must not import or inspect it.
+/// 添字を公開せず、opaque targetでタブの移動先を表す。
 pub enum TabStripTabPlacement {
     Before(TabStripTabTarget),
     After(TabStripTabTarget),
@@ -11,14 +11,14 @@ pub enum TabStripTabPlacement {
     NewGroup,
 }
 
-/// Generic destination for moving a group without exposing an index.
+/// 添字を公開せず、opaque targetでグループの移動先を表す。
 pub enum TabStripGroupPlacement {
     Before(TabStripGroupTarget),
     After(TabStripGroupTarget),
     EndOfStrip,
 }
 
-/// Internal operation family. It is an opaque capability at the KLE boundary.
+/// hostが対象と確定値を処理する型付き操作通知。
 pub enum TabStripProposalOperation {
     SelectTab(TabStripTabTarget),
     SelectPrevious,
@@ -74,7 +74,7 @@ pub enum TabStripProposalOperation {
     },
 }
 
-/// Sealed internal proposal created after KUC-private route lookup.
+/// KUCのroute解決後に発行され、hostへ一度だけ渡される操作。
 pub struct TabStripProposal {
     nonce: u64,
     correlation: TabStripCorrelation,
@@ -96,6 +96,16 @@ impl TabStripProposal {
 
     pub const fn nonce(&self) -> u64 {
         self.nonce
+    }
+
+    /// payloadを公開せず、hostが発行したcorrelationと照合できる値を返す。
+    pub fn correlation(&self) -> TabStripCorrelation {
+        TabStripCorrelation::from_opaque_bytes(self.correlation.payload.to_vec())
+    }
+
+    /// proposalを消費してhostへ型付き操作を渡す。KUCは対象のアプリ固有の意味を解釈しない。
+    pub fn into_operation(self) -> TabStripProposalOperation {
+        self.operation
     }
 
     pub fn consume_for_port(self) {

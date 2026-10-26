@@ -1,3 +1,5 @@
+> この spec は過去の release line の受入記録を保持する履歴であり、現行 v0.5.0 のrelease gateではない。現行要件ではregistry-only自動consumerのKUC契約として解釈し、外部repositoryの採用・Issue closeを完了条件にしない。
+
 ## ADDED Requirements
 
 ### Requirement: framework-neutral document raster fidelity

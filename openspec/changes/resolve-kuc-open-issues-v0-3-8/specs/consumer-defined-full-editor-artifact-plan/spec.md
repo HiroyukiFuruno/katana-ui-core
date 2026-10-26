@@ -1,3 +1,5 @@
+> この spec は過去の release line の契約記録を保持する履歴であり、現行 v0.5.0 のrelease gateではない。現行の汎用artifact contractはKUC公開APIとregistry-only自動consumerで検証する。
+
 ## ADDED Requirements
 
 ### Requirement: consumer-defined generic artifact plan

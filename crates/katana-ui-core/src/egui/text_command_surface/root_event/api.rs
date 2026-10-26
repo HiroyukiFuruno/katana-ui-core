@@ -11,6 +11,11 @@ use crate::text_surface::TextSurfaceEvent;
 
 impl KucRootEventBatchContext {
     #[must_use]
+    pub fn selection_dialog_events(&self) -> &[super::super::super::SelectionDialogEvent] {
+        &self.selection_dialog_events
+    }
+
+    #[must_use]
     pub fn root_identity(&self) -> &str {
         &self.root_identity
     }

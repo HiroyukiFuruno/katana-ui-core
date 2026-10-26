@@ -27,6 +27,7 @@ pub struct EguiContextMenuAdapter {
     pub(super) metrics: crate::egui::text_surface::SharedTextMetrics,
     pub(super) svg_rasterizer: crate::svg_raster::UiSvgRasterizer,
     pub(super) textures: crate::egui::texture_cache::RgbaTextureCache,
+    pub(super) last_successful_bounds: Option<UiRect>,
 }
 
 /// Controlled host presentation with only generic, opaque menu data.

@@ -1,3 +1,5 @@
+> この tasks は過去の v0.3.x release の追跡記録であり、現行 v0.5.0 の完了条件ではない。既存の版、score、検査結果、外部consumer受入状態は改ざんせず、現行KUC汎用契約のgateとは分離する。
+
 ## 1. 統合基準と公開 raster host
 
 - [ ] 1.1 v0.3.7 の KDV registry-only 91/95 を同一 crop convention で KUC-owned numerical contract として再現し、差分を raster host の render / wrap / layout / hit-test metrics に限定する。

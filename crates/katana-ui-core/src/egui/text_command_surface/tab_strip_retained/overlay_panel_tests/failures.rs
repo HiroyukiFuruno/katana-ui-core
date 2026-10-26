@@ -1,4 +1,5 @@
 use super::*;
+use crate::egui::text_command_surface::TabStripTabCapabilities;
 
 #[test]
 fn overlay_tree_propagates_real_missing_port_after_pointer_press_and_release() {
@@ -15,6 +16,7 @@ fn overlay_tree_propagates_real_missing_port_after_pointer_press_and_release() {
                 TabStripTabTarget::from_opaque_bytes(b"tab-with-missing-port-menu"),
                 TabStripText::new("tab"),
             )
+            .capabilities(TabStripTabCapabilities::new().closeable(true))
             .context_menu(TabStripContextMenuPresentation::new().entry(entry())),
         );
     let mut state = build_state_from_lease(TabStripProjectionLease::new(projection));
@@ -182,6 +184,7 @@ fn overlay_panel_closes_when_action_row_is_activated() {
                 TabStripTabTarget::from_opaque_bytes(b"tab-with-menu"),
                 TabStripText::new("tab"),
             )
+            .capabilities(TabStripTabCapabilities::new().closeable(true))
             .context_menu(TabStripContextMenuPresentation::new().entry(close_entry())),
         );
     let mut state = build_state_from_lease(

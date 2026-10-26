@@ -62,6 +62,7 @@ impl EguiContextMenuAdapter {
             metrics,
             svg_rasterizer: UiSvgRasterizer::new(UiSvgRasterConfig::default()),
             textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
+            last_successful_bounds: None,
         })
     }
 
@@ -82,6 +83,7 @@ impl EguiContextMenuAdapter {
             metrics,
             svg_rasterizer: UiSvgRasterizer::new(UiSvgRasterConfig::default()),
             textures: RgbaTextureCache::new(DEFAULT_TEXTURE_CACHE_CAPACITY),
+            last_successful_bounds: None,
         }
     }
 
@@ -162,10 +164,12 @@ impl EguiContextMenuAdapter {
             self.reveal_keyboard_highlight(bounds, measured.height, items.len());
         }
         let area_id = ui.id().with("kuc-context-menu-surface");
+        let parent_enabled = ui.is_enabled();
         let area = egui::Area::new(area_id)
             .order(egui::Order::Foreground)
             .constrain(false)
             .fixed_pos(egui::pos2(bounds.x as f32, bounds.y as f32))
+            .enabled(parent_enabled)
             .show(ui.ctx(), |menu_ui| {
                 menu_ui.set_min_size(egui::vec2(bounds.width as f32, bounds.height as f32));
                 menu_ui.set_clip_rect(egui_rect(bounds));
@@ -210,6 +214,7 @@ impl EguiContextMenuAdapter {
         }
         let plan = translate_plan(&measured, bounds, self.vertical_scroll_offset);
         paint_plan(ui, &mut self.textures, &plan);
+        self.last_successful_bounds = Some(bounds);
         let record = EguiContextMenuFrameRecord {
             bounds,
             viewport_bounds: anchor.viewport_bounds(),

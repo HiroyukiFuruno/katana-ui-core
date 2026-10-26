@@ -17,6 +17,11 @@ fn tab_strip_retained_error_display_covers_all_variants() {
             .to_string()
             .contains("tab overlay did not produce combined bounds")
     );
+    assert!(
+        TabStripRetainedError::InvalidInlineRenameRequest
+            .to_string()
+            .contains("inline rename requires a renamable group and placeholder")
+    );
 
     let raster_error =
         TabStripRetainedError::Raster(crate::text_raster::PlatformTextRasterError::EmptyText);

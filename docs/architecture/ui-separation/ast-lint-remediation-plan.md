@@ -26,14 +26,14 @@ The 2026-08-26 baseline contains 469 findings:
 
 The largest ownership clusters are `tab_strip_retained` (137),
 `diagnostics_list` (70), `status_bar` (66), and `source_address_strip` (52).
-They are generic KUC UI modules, not KLE code.
+They are generic KUC UI modules, not external consumer code.
 
 ## Boundaries
 
 - KUC owns reusable raster, input, focus, layout, accessibility, and command
   surface behavior.
-- KLE composes opaque KUC projections and must not receive KUC implementation
-  types or Katana-specific actions.
+- External consumers compose opaque KUC projections and must not receive KUC
+  implementation types or consumer-specific actions.
 - Refactoring may not add an emoji, font, or platform fallback. Construction
   and rendering failures stay typed and propagate to the caller.
 - Splits preserve public contracts with re-exports only where the current API
@@ -72,7 +72,7 @@ surfaces. It changes module ownership, not behavior.
 owns KUC text-raster calls and error conversion. `paint` owns pure plan
 construction. `interaction` or `accessibility` owns physical egui input and
 AccessKit publication. `adapter` owns retained state and composition only.
-No destination module imports KLE or KatanA host code.
+No destination module imports external consumer host code.
 
 ### Completed Batch: Source Address
 
@@ -159,14 +159,14 @@ guardrails, and page-layout checks with zero AST findings. `just check` passes
 all 2,187 workspace tests, and `just storybook-regression` passes the 77-page
 headless surface, 403 live interactions, requirement gate, and interaction
 smoke. This closes AST remediation only; publication, immutable version pinning,
-and real KatanA-host parity remain separate release gates.
+and real external-host parity remain separate from the KUC release gate.
 
-## Evidence Required Before KLE Release
+## Evidence Required Before KUC Release
 
 - `just check` is green on a clean KUC candidate.
 - Unicode evidence distinguishes `⭐` from `⭐️` in the KUC raster path.
 - Storybook runtime artifacts exercise command controls, find/replace,
   Markdown authoring controls, source address, diagnostics, tabs, and
   accessibility actions through actual KUC events.
-- The published KUC version and commit are immutable inputs to KLE's source
-  closure capture.
+- The published KUC version and commit are immutable inputs to consumer
+  integration, but consumer adoption and release remain outside the KUC gate.

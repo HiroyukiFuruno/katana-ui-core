@@ -32,6 +32,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
+mod dialog;
 mod error;
 pub use error::EguiTextCommandSurfaceError;
 
@@ -84,6 +85,7 @@ pub struct EguiTextCommandSurfaceAdapter {
     pub(crate) closed_selection: Option<(usize, usize)>,
     pub(crate) context_menu: Option<EguiContextMenuAdapter>,
     pub(crate) context_target: Option<TextSurfaceContextTargetAnchor>,
+    pub(crate) context_menu_enabled_resolver: Option<super::ContextMenuEnabledResolver>,
     pub(crate) metrics: crate::egui::text_surface::SharedTextMetrics,
     pub(crate) source_address: crate::egui::source_address_strip::EguiSourceAddressStripAdapter,
     pub(crate) status_bar: EguiStatusBarAdapter,
@@ -136,6 +138,7 @@ impl EguiTextCommandSurfaceAdapter {
             closed_selection: None,
             context_menu: None,
             context_target: None,
+            context_menu_enabled_resolver: None,
             metrics: Rc::clone(&metrics),
             source_address,
             status_bar,
@@ -188,6 +191,7 @@ impl TextCommandSurfaceStyle {
 
 #[derive(Debug)]
 pub struct EguiTextCommandSurfaceOutput {
+    pub(crate) selection_dialog: Option<super::selection_dialog::SelectionDialogOutput>,
     pub root_bounds: UiRect,
     pub text: EguiTextSurfaceOutput,
     pub toolbar: Option<EguiCommandChromeOutput>,
@@ -225,6 +229,7 @@ impl EguiTextCommandSurfaceOutput {
         children: RootChildOutputs,
     ) -> Self {
         Self {
+            selection_dialog: None,
             root_bounds,
             text,
             toolbar: children.toolbar,
@@ -264,6 +269,7 @@ pub(crate) struct SourceAddressRootOutput {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EguiTextCommandSurfaceChild {
+    SelectionDialog,
     TabStrip,
     TabStripOverlay,
     SourceAddress,

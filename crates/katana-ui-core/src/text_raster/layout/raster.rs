@@ -16,9 +16,31 @@ pub(super) fn collect_grapheme_bounds(
     scale: f32,
 ) -> Vec<PlatformTextGraphemeBounds> {
     let line_offsets = line_offsets(source_text);
+    let line_height = buffer.metrics().line_height / scale;
+    let mut line_metrics = BTreeMap::<usize, (f32, f32, f32, usize)>::new();
     let mut bounds = BTreeMap::<(usize, usize), PlatformTextGraphemeBounds>::new();
     for run in buffer.layout_runs() {
         let line_offset = line_offsets.get(run.line_i).copied().unwrap_or_default();
+        if let Some(terminal) = run.glyphs.iter().max_by_key(|glyph| glyph.end) {
+            let terminal_end = line_offset + terminal.end;
+            let terminal_x = if terminal.level.is_rtl() {
+                terminal.x / scale
+            } else {
+                (terminal.x + terminal.w) / scale
+            };
+            let entry = line_metrics.entry(run.line_i).or_insert((
+                terminal_x,
+                run.line_top / scale,
+                run.line_height / scale,
+                0,
+            ));
+            if terminal_end >= entry.3 {
+                entry.0 = terminal_x;
+                entry.1 = run.line_top / scale;
+                entry.2 = run.line_height / scale;
+                entry.3 = terminal_end;
+            }
+        }
         for glyph in run.glyphs {
             let cluster = &run.text[glyph.start..glyph.end];
             let graphemes = cluster.grapheme_indices(true).collect::<Vec<_>>();
@@ -38,7 +60,45 @@ pub(super) fn collect_grapheme_bounds(
             }
         }
     }
+    add_hard_break_bounds(source_text, &mut bounds, &line_metrics, line_height);
     bounds.into_values().collect()
+}
+
+fn add_hard_break_bounds(
+    text: &str,
+    bounds: &mut BTreeMap<(usize, usize), PlatformTextGraphemeBounds>,
+    lines: &BTreeMap<usize, (f32, f32, f32, usize)>,
+    line_height: f32,
+) {
+    let mut logical_row = 0;
+    let mut next_y = 0.0;
+    for (start, grapheme) in text.grapheme_indices(true) {
+        if !grapheme
+            .chars()
+            .all(|character| matches!(character, '\n' | '\r' | '\u{2028}' | '\u{2029}'))
+        {
+            continue;
+        }
+        let (x, y, height, _) =
+            lines
+                .get(&logical_row)
+                .copied()
+                .unwrap_or((0.0, next_y, line_height, 0));
+        let end = start + grapheme.len();
+        bounds.insert(
+            (start, end),
+            PlatformTextGraphemeBounds {
+                byte_start: start,
+                byte_end: end,
+                x,
+                y,
+                width: MIN_GRAPHEME_EXTENT_PX,
+                height: height.max(MIN_GRAPHEME_EXTENT_PX),
+            },
+        );
+        logical_row += 1;
+        next_y = y + height;
+    }
 }
 
 fn grapheme_index(cluster: &str, byte_index: usize) -> usize {

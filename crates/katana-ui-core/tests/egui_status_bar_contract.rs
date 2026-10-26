@@ -30,6 +30,45 @@ fn status_bar() -> StatusBar {
         )
 }
 
+#[test]
+fn long_status_label_uploads_only_backend_sized_tiles() {
+    let context = egui::Context::default();
+    let mut adapter = EguiStatusBarAdapter::new("status-texture-limit").expect("adapter");
+    let mut status = StatusBar::new("長い状態")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(StatusBarSegment::new("long", "長い状態 ".repeat(40)));
+    let mut result = None;
+    let mut output = context.run_ui(
+        egui::RawInput {
+            max_texture_side: Some(1024),
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(800.0, 80.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            result = Some(adapter.show(ui, &mut status));
+        },
+    );
+    let status_result = result.expect("status output");
+    let uploaded = output
+        .textures_delta
+        .set
+        .values()
+        .flat_map(|deltas| deltas.iter().map(|delta| delta.image.size()))
+        .collect::<Vec<_>>();
+    output.textures_delta.clear();
+    assert!(status_result.is_ok());
+    assert!(!uploaded.is_empty(), "status bar emitted no textures");
+    assert!(
+        uploaded
+            .iter()
+            .all(|size| size.iter().all(|side| *side <= 1024)),
+        "status-bar texture upload exceeded backend limit"
+    );
+}
+
 fn frame(
     context: &egui::Context,
     adapter: &mut EguiStatusBarAdapter,
@@ -57,6 +96,46 @@ fn frame(
         .ok_or_else(|| "status-bar receipt was not produced".to_owned())?
         .map_err(|error| error.to_string())?;
     Ok((output, receipt.events().to_vec()))
+}
+
+fn frame_with_texture_limit(
+    context: &egui::Context,
+    adapter: &mut EguiStatusBarAdapter,
+    status: &mut StatusBar,
+    max_texture_side: usize,
+) -> Result<egui::FullOutput, String> {
+    let mut receipt = None;
+    let output = context.run_ui(
+        egui::RawInput {
+            max_texture_side: Some(max_texture_side),
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(800.0, 80.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            egui::CentralPanel::default().show(ui, |ui| {
+                receipt = Some(adapter.show(ui, status));
+            });
+        },
+    );
+    let receipt = match receipt {
+        Some(receipt) => receipt,
+        None => {
+            let mut output = output;
+            output.textures_delta.clear();
+            return Err("status-bar receipt was not produced".to_owned());
+        }
+    };
+    match receipt {
+        Ok(_) => Ok(output),
+        Err(error) => {
+            let mut output = output;
+            output.textures_delta.clear();
+            Err(error.to_string())
+        }
+    }
 }
 
 fn with_open_popover(mut status: StatusBar, id: &str) -> Result<StatusBar, String> {
@@ -168,6 +247,43 @@ fn accesskit_activation_maps_to_existing_generic_status_action() -> Result<(), S
         }],
         events
     );
+    Ok(())
+}
+
+#[test]
+fn noninteractive_status_segments_publish_label_bounds_without_click() -> Result<(), String> {
+    let context = egui::Context::default();
+    context.enable_accesskit();
+    let mut adapter =
+        EguiStatusBarAdapter::new("status-passive-accesskit").map_err(|error| error.to_string())?;
+    let mut status = StatusBar::new("status")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(StatusBarSegment::new("ready", "Ready").accessibility_label("Status: Ready"))
+        .segment(
+            StatusBarSegment::new("dirty", "Unsaved changes")
+                .accessibility_label("Status: Unsaved changes"),
+        );
+    let (output, events) = frame(&context, &mut adapter, &mut status, Vec::new())?;
+    assert!(events.is_empty());
+    let update = output
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .ok_or_else(|| "passive status AccessKit update missing".to_owned())?;
+    for label in ["Status: Ready", "Status: Unsaved changes"] {
+        let node = update
+            .nodes
+            .iter()
+            .map(|(_, node)| node)
+            .find(|node| node.label() == Some(label))
+            .ok_or_else(|| format!("missing passive status node: {label}"))?;
+        assert_eq!(node.role(), egui::accesskit::Role::Label);
+        assert!(
+            node.bounds()
+                .is_some_and(|bounds| bounds.x1 > bounds.x0 && bounds.y1 > bounds.y0)
+        );
+        assert!(!node.supports_action(egui::accesskit::Action::Click));
+    }
     Ok(())
 }
 
@@ -640,6 +756,46 @@ fn progress_icon_tooltip_and_popover_are_rasterized_and_one_shot() -> Result<(),
     assert!(
         no_events.is_empty(),
         "transport must be one-shot after close: {no_events:?}"
+    );
+    Ok(())
+}
+
+#[test]
+fn long_popover_title_and_body_respect_texture_limit() -> Result<(), String> {
+    let context = egui::Context::default();
+    let mut adapter = EguiStatusBarAdapter::new("status-popover-texture-limit")
+        .map_err(|error| error.to_string())?;
+    let title = "長いpopover title ⭐️ ".repeat(40);
+    let body = (1..=96)
+        .map(|line| format!("popover body line {line:02} 日本語⭐️"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let mut status = StatusBar::new("状態")
+        .mode(StatusBarMode::MultiSegment)
+        .segment(
+            StatusBarSegment::new("target", "対象").popover(StatusBarPopoverSpec::new(title, body)),
+        );
+    let mut warmup = frame_with_texture_limit(&context, &mut adapter, &mut status, 1024)?;
+    warmup.textures_delta.clear();
+    let mut status = with_open_popover(status, "target")?;
+    let mut sizes = Vec::new();
+    for _ in 0..3 {
+        let mut output = frame_with_texture_limit(&context, &mut adapter, &mut status, 1024)?;
+        sizes.extend(
+            output
+                .textures_delta
+                .set
+                .values()
+                .flat_map(|deltas| deltas.iter().map(|delta| delta.image.size())),
+        );
+        output.textures_delta.clear();
+    }
+    assert!(!sizes.is_empty(), "popover must upload title/body textures");
+    assert!(
+        sizes
+            .iter()
+            .all(|[width, height]| *width <= 1024 && *height <= 1024),
+        "popover texture sizes exceeded backend limit: {sizes:?}"
     );
     Ok(())
 }

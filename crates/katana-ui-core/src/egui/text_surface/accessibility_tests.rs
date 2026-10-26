@@ -1,6 +1,13 @@
 use super::*;
 
 #[test]
+fn empty_accessibility_runs_use_the_null_text_position() {
+    let position = text_position(&[], 0);
+    assert_eq!(position.node, egui::Id::NULL.accesskit_id());
+    assert_eq!(position.character_index, 0);
+}
+
+#[test]
 fn accessibility_target_keys_are_stable_for_surface_gutter_marker_and_context() {
     assert_eq!(
         "surface",

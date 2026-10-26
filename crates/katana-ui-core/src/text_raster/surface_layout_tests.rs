@@ -108,6 +108,67 @@ fn composed_raster_layout_records_preedit_range_and_caret_without_separate_measu
     Ok(())
 }
 
+#[test]
+fn rtl_hard_break_and_hit_testing_follow_the_logical_terminal()
+-> Result<(), Box<dyn std::error::Error>> {
+    let text = "אב\nx";
+    let mut rasterizer = PlatformTextRasterizer::new(PlatformTextRasterConfig::default());
+    let raster = rasterizer.rasterize(&PlatformTextRasterRequest::from_text(
+        text,
+        editor_font(),
+        TEXT_COLOR,
+    ))?;
+    let newline = raster
+        .grapheme_bounds
+        .iter()
+        .find(|bounds| text.get(bounds.byte_start..bounds.byte_end) == Some("\n"))
+        .ok_or("hard break bound missing")?;
+    let rtl_bounds = raster
+        .grapheme_bounds
+        .iter()
+        .filter(|bounds| bounds.byte_end <= "אב".len())
+        .collect::<Vec<_>>();
+    let left = rtl_bounds
+        .iter()
+        .map(|bounds| bounds.x)
+        .fold(f32::INFINITY, f32::min);
+    assert_eq!(newline.x, left);
+
+    let layout = raster.text_surface_layout(
+        "platform-text-raster:rtl-hard-break",
+        TextSurfacePoint::new(SURFACE_ORIGIN_X, SURFACE_ORIGIN_Y),
+    );
+    assert_eq!(
+        SURFACE_ORIGIN_X.saturating_add(newline.x as i32),
+        layout.caret_rect(UiTextSelectionRange::caret(2)).x
+    );
+    Ok(())
+}
+
+#[test]
+fn mixed_bidi_hard_break_uses_the_last_logical_glyph_edge() -> Result<(), Box<dyn std::error::Error>>
+{
+    let text = "aאב\nx";
+    let mut rasterizer = PlatformTextRasterizer::new(PlatformTextRasterConfig::default());
+    let raster = rasterizer.rasterize(&PlatformTextRasterRequest::from_text(
+        text,
+        editor_font(),
+        TEXT_COLOR,
+    ))?;
+    let newline = raster
+        .grapheme_bounds
+        .iter()
+        .find(|bounds| text.get(bounds.byte_start..bounds.byte_end) == Some("\n"))
+        .ok_or("mixed bidi hard break bound missing")?;
+    let terminal = raster
+        .grapheme_bounds
+        .iter()
+        .find(|bounds| text.get(bounds.byte_start..bounds.byte_end) == Some("ב"))
+        .ok_or("mixed bidi terminal bound missing")?;
+    assert_eq!(newline.x, terminal.x);
+    Ok(())
+}
+
 fn editor_font() -> FontToken {
     FontToken {
         name: "editor".to_string(),

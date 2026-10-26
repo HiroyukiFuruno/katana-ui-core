@@ -1,3 +1,5 @@
+> この change は過去の v0.3.x release 要求・証跡を追跡する履歴であり、現行 v0.5.0 の release 条件ではない。外部consumer名・Issue・版・scoreは履歴根拠として保持し、現行KUCの完了条件へ追加しない。
+
 ## Why
 
 KDV v0.5.6 の KatanA canonical crop gate は 95/95 を維持する必要がある。しかし crates.io の `katana-ui-core` 0.3.6 は document role の raster font size、line height、vertical baseline を theme 由来の一体値として導出するため、横方向のtext advanceを調整すると縦方向のlayoutまで変化する。

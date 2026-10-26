@@ -19,16 +19,18 @@ impl FloatingCommandToolbar {
     /// Synchronizes consumer frame facts without fabricating interaction events.
     /// Focus, dropdown and tooltip state remain KUC-owned and are not reset.
     pub fn synchronize_presentation(&mut self, value: FloatingCommandToolbarPresentation) -> bool {
+        let desired_open = !matches!(value.visibility, FloatingCommandToolbarVisibility::Closed);
         let changed = self.layout.anchor != value.anchor
             || self.layout.viewport != value.viewport
-            || self.visibility_model() != value.visibility;
+            || self.is_open() != desired_open;
         if !changed {
             return false;
         }
         self.layout.anchor = value.anchor;
         self.layout.viewport = value.viewport;
         match value.visibility {
-            FloatingCommandToolbarVisibility::Visible => {
+            FloatingCommandToolbarVisibility::Visible
+            | FloatingCommandToolbarVisibility::VisibleAtCaret => {
                 self.open = true;
                 self.resolve_placement();
             }

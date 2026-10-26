@@ -1,11 +1,8 @@
 use super::layout_model::{
-    TextSurfaceCompositionLayout, TextSurfaceGraphemeBox, TextSurfaceLayout, TextSurfaceLineBox,
+    TextSurfaceCompositionLayout, TextSurfaceGraphemeBox, TextSurfaceLayout,
 };
 use crate::render_model::UiRect;
-use crate::text_selection::{
-    UiTextCaretPosition, UiTextGlyphBox, UiTextLineBox, UiTextSelectionModel, UiTextSelectionRange,
-};
-use std::collections::BTreeMap;
+use crate::text_selection::{UiTextCaretPosition, UiTextSelectionModel, UiTextSelectionRange};
 use unicode_segmentation::UnicodeSegmentation;
 
 impl TextSurfaceLayout {
@@ -30,8 +27,11 @@ impl TextSurfaceLayout {
         graphemes: Vec<TextSurfaceGraphemeBox>,
     ) -> Self {
         let text = text.into();
-        let lines = Self::line_boxes(&graphemes);
-        let selection_model = Self::selection_model(&text, &graphemes);
+        let lines = super::layout_lines::line_boxes(&text, &graphemes, content_bounds);
+        let content_bounds = lines.iter().fold(content_bounds, |bounds, line| {
+            Self::union(bounds, line.bounds)
+        });
+        let selection_model = Self::selection_model(&text, &graphemes, &lines);
         Self {
             identity: identity.into(),
             content_bounds,
@@ -79,6 +79,10 @@ impl TextSurfaceLayout {
         byte_start: usize,
         byte_end: usize,
     ) -> UiTextSelectionRange {
+        if byte_start > byte_end {
+            let ordered = self.grapheme_range_for_byte_offsets(byte_end, byte_start);
+            return UiTextSelectionRange::new(ordered.focus, ordered.anchor);
+        }
         if byte_start == byte_end {
             return UiTextSelectionRange::caret(self.grapheme_index_for_byte_offset(byte_start));
         }
@@ -156,50 +160,6 @@ impl TextSurfaceLayout {
         self.graphemes
             .get(grapheme_index)
             .map_or(self.text.len(), |value| value.byte_start)
-    }
-
-    fn selection_model(text: &str, graphemes: &[TextSurfaceGraphemeBox]) -> UiTextSelectionModel {
-        let mut rows = BTreeMap::<i32, Vec<UiTextGlyphBox>>::new();
-        for value in graphemes {
-            let glyph = UiTextGlyphBox::new(
-                value.grapheme_index,
-                value.byte_start..value.byte_end,
-                value.bounds,
-                value.bounds.y.saturating_add(value.bounds.height as i32),
-            )
-            .with_text(
-                text.get(value.byte_start..value.byte_end)
-                    .unwrap_or_default(),
-            );
-            rows.entry(value.bounds.y).or_default().push(glyph);
-        }
-        let lines = rows
-            .into_values()
-            .map(|glyphs| {
-                let byte_start = glyphs.first().map_or(0, |glyph| glyph.byte_range.start);
-                let byte_end = glyphs
-                    .last()
-                    .map_or(byte_start, |glyph| glyph.byte_range.end);
-                UiTextLineBox::new(byte_start..byte_end, glyphs)
-            })
-            .collect();
-        UiTextSelectionModel::new(text, lines)
-    }
-
-    fn line_boxes(graphemes: &[TextSurfaceGraphemeBox]) -> Vec<TextSurfaceLineBox> {
-        let mut rows = BTreeMap::<i32, UiRect>::new();
-        for value in graphemes {
-            rows.entry(value.bounds.y)
-                .and_modify(|bounds| *bounds = Self::union(*bounds, value.bounds))
-                .or_insert(value.bounds);
-        }
-        rows.into_values()
-            .enumerate()
-            .map(|(logical_row, bounds)| TextSurfaceLineBox {
-                logical_row,
-                bounds,
-            })
-            .collect()
     }
 
     pub(super) fn intersects(left: UiRect, right: UiRect) -> bool {

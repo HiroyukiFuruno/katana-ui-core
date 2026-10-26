@@ -1,5 +1,7 @@
 ## Why
 
+外部画面名は観測例であり、要件は汎用のmulti-segment status/progress/action contractとして定義する。特定consumerの移行や採用はKUCの完了条件に含めない。
+
 `katana` の status bar（`top_bar/status_bar.rs`、`workspace_toolbar.rs`）、`katana-chat-ui` の usage / adapter 状態の表示、`katana-markdown-linter` の linter summary は、いずれも複数 segment を持つ status bar 構造を取る（leading に file info、center に lint summary、trailing に encoding / line:col / language 等）。
 
 KUC は `StatusBar` molecule と `ProgressBar` atom を持つが、現状は「severity message 1 件 + dismiss + action」と線形 progress に留まる。

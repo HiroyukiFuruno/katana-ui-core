@@ -1,5 +1,7 @@
 ## Why
 
+外部画面名は観測例であり、要件は汎用のtoast queue/dedupe/pause/state contractとして定義する。特定consumerの移行や採用はKUCの完了条件に含めない。
+
 KUC は `NotificationToast` molecule を持つが、現状は単一 toast の表示モデルに留まり、複数 toast が連続発生したときの「スタッキング（stacking）」「重複排除（deduplication）」「位置（top-left / top-right / bottom-right 等）」「同時表示上限」「キュー管理」「pause-on-hover」を持たない。
 
 `katana` の保存通知、`katana-chat-ui` のエージェントイベント通知、`katana-markdown-linter` の lint 完了通知などで、複数 toast が前後して発生する。consumer ごとにキュー管理を作っており、挙動の揺れと記述コストが大きい。

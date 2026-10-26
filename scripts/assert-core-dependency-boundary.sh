@@ -35,8 +35,13 @@ if [ "${#failures[@]}" -gt 0 ]; then
 fi
 
 storybook_manifest="$ROOT_DIR/crates/katana-ui-core-storybook/Cargo.toml"
-if grep -q "katana-document-viewer" "$storybook_manifest"; then
+storybook_katana_deps="$(
+  rg -n '^\s*katana-[A-Za-z0-9_-]+\s*=' "$storybook_manifest" \
+    | rg -v '^.*katana-ui-core(-storybook)?\s*=' || true
+)"
+if [ -n "$storybook_katana_deps" ]; then
   printf '%s\n' "core dependency boundary failed"
-  printf -- '- %s\n' "Storybook release gate must not depend on katana-document-viewer; keep KDV integration in the consumer repo"
+  printf -- '- %s\n' "Storybook must not depend on an external katana-* crate; keep sibling integration in the consumer repo"
+  printf '%s\n' "$storybook_katana_deps"
   exit 1
 fi

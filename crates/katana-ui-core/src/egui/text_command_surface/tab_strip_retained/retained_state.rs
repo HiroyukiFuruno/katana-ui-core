@@ -5,8 +5,8 @@ use super::{
     RgbaTextureCache, TAB_GAP_PX, TAB_STRIP_HEIGHT_PX, TabStripIcon, TabStripIconControl,
     TabStripOverlayState, TabStripPaintOperation, TabStripPaintOperationKind, TabStripPaintPlan,
     TabStripProjection, TabStripProjectionLease, TabStripRetainedError, TabStripRetainedState,
-    TabStripRootOutput, TabStripRouteTable, TabStripTextRasterizer, UiSvgRasterConfig,
-    UiSvgRasterizer,
+    TabStripRootItem, TabStripRootOutput, TabStripRouteTable, TabStripTextRasterizer,
+    UiSvgRasterConfig, UiSvgRasterizer,
 };
 
 impl TabStripRetainedState {
@@ -38,8 +38,12 @@ impl TabStripRetainedState {
             )
             .map_err(TabStripRetainedError::Raster)?,
             drag: None,
+            group_drag: None,
             drag_release_pending: false,
+            group_drag_release_pending: false,
             drag_candidates: Vec::new(),
+            group_drag_candidates: Vec::new(),
+            inline_rename_consumed: Vec::new(),
         })
     }
 
@@ -49,6 +53,7 @@ impl TabStripRetainedState {
     ) -> Result<TabStripRootOutput, TabStripRetainedError> {
         self.routes.begin_frame();
         self.drag_candidates.clear();
+        self.group_drag_candidates.clear();
         let revision = self.projection.revision;
         let correlation = self.projection.correlation.copy_for_route();
         let projection = std::mem::replace(
@@ -58,6 +63,7 @@ impl TabStripRetainedState {
                 correlation: correlation.copy_for_route(),
                 tabs: Vec::new(),
                 groups: Vec::new(),
+                root_items: Vec::new(),
                 capabilities: Default::default(),
                 navigation: None,
                 scroll_presentation: Default::default(),
@@ -133,27 +139,63 @@ impl TabStripRetainedState {
                         tab_bounds.size(),
                     );
                     let mut x = content_bounds.min.x + TAB_GAP_PX;
-                    for (index, tab) in projection.tabs.iter().enumerate() {
-                        self.render_tab(
-                            tabs_ui,
-                            tab,
-                            format!("root-tab-{index}"),
-                            &mut x,
-                            tab_bounds,
-                            &mut operations,
-                            active_reveal_pending,
-                        )?;
+                    let mut tab_occurrence = 0;
+                    let mut group_occurrence = 0;
+                    for item in &projection.root_items {
+                        match item {
+                            TabStripRootItem::Tab(index) => {
+                                if let Some(tab) = projection.tabs.get(*index) {
+                                    self.render_tab(
+                                        tabs_ui,
+                                        tab,
+                                        format!("root-tab-{tab_occurrence}"),
+                                        &mut x,
+                                        tab_bounds,
+                                        &mut operations,
+                                        active_reveal_pending,
+                                    )?;
+                                }
+                                tab_occurrence += 1;
+                            }
+                            TabStripRootItem::Group(index) => {
+                                if let Some(group) = projection.groups.get(*index) {
+                                    self.render_group(
+                                        tabs_ui,
+                                        group,
+                                        format!("root-group-{group_occurrence}"),
+                                        &mut x,
+                                        tab_bounds,
+                                        &mut operations,
+                                        active_reveal_pending,
+                                    )?;
+                                }
+                                group_occurrence += 1;
+                            }
+                        }
                     }
-                    for (index, group) in projection.groups.iter().enumerate() {
-                        self.render_group(
-                            tabs_ui,
-                            group,
-                            format!("root-group-{index}"),
-                            &mut x,
-                            tab_bounds,
-                            &mut operations,
-                            active_reveal_pending,
-                        )?;
+                    if projection.root_items.is_empty() {
+                        for (index, tab) in projection.tabs.iter().enumerate() {
+                            self.render_tab(
+                                tabs_ui,
+                                tab,
+                                format!("root-tab-{index}"),
+                                &mut x,
+                                tab_bounds,
+                                &mut operations,
+                                active_reveal_pending,
+                            )?;
+                        }
+                        for (index, group) in projection.groups.iter().enumerate() {
+                            self.render_group(
+                                tabs_ui,
+                                group,
+                                format!("root-group-{index}"),
+                                &mut x,
+                                tab_bounds,
+                                &mut operations,
+                                active_reveal_pending,
+                            )?;
+                        }
                     }
                     tabs_ui.allocate_rect(
                         egui::Rect::from_min_max(
@@ -174,6 +216,7 @@ impl TabStripRetainedState {
             projection.capabilities.tab_drop_at_end_available,
             &mut operations,
         )?;
+        self.resolve_group_drag(ui, tab_bounds, &mut operations)?;
         if let Some(navigation) = projection.navigation.as_ref() {
             let mut navigation_x = tab_bounds.max.x + TAB_GAP_PX;
             self.render_icon_control(

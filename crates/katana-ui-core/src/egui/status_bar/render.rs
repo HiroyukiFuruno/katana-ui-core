@@ -145,8 +145,15 @@ impl EguiStatusBarAdapter {
         );
         self.segment_bounds
             .insert(segment.id.clone(), response.rect);
+        publish_accessibility(
+            ui,
+            response.id,
+            bounds,
+            &segment.accessibility,
+            &segment.id,
+            segment.interactive,
+        );
         if segment.interactive {
-            publish_accessibility(ui, response.id, bounds, &segment.accessibility, &segment.id);
             let response_has_focus = response.has_focus();
             let (pointer_within_bounds, accesskit_activation, keyboard_activation) =
                 ui.input(|input| {

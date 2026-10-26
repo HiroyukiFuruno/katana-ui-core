@@ -3,10 +3,10 @@ use super::super::tab_strip_proposal_port::{
 };
 use super::*;
 use crate::egui::text_command_surface::{
-    TabStripCorrelation, TabStripGroupDescriptor, TabStripGroupPopupPresentation,
-    TabStripGroupTarget, TabStripMenuEntry, TabStripMenuOperation, TabStripProjection,
-    TabStripProjectionLease, TabStripSwatchDescriptor, TabStripSwatchTarget, TabStripTabDescriptor,
-    TabStripTabTarget, TabStripText,
+    TabStripCorrelation, TabStripGroupCapabilities, TabStripGroupDescriptor,
+    TabStripGroupPopupPresentation, TabStripGroupTarget, TabStripMenuEntry, TabStripMenuOperation,
+    TabStripProjection, TabStripProjectionLease, TabStripSwatchDescriptor, TabStripSwatchTarget,
+    TabStripTabDescriptor, TabStripTabTarget, TabStripText,
 };
 use crate::molecule::RgbaColor;
 use std::rc::Rc;
@@ -183,13 +183,14 @@ fn render_overlay_is_opened_for_group_popup_with_minimal_prefix() {
                 TabStripGroupTarget::from_opaque_bytes(b"group-popup"),
                 TabStripText::new("group"),
             )
-            .popup(TabStripGroupPopupPresentation::new().entry(
-                TabStripMenuEntry::action(
+            .capabilities(TabStripGroupCapabilities::new().menu_available(true))
+            .popup(
+                TabStripGroupPopupPresentation::new().entry(TabStripMenuEntry::action(
                     TabStripText::new("open"),
                     TabStripText::new("open"),
                     TabStripMenuOperation::RequestClose,
-                ),
-            )),
+                )),
+            ),
         );
     state.overlay = TabStripOverlayState::GroupPopup {
         path: "root-group-0".to_string(),
@@ -219,6 +220,11 @@ fn render_overlay_group_popup_cancel_keeps_no_rename_submission() {
             TabStripGroupDescriptor::new(
                 TabStripGroupTarget::from_opaque_bytes(b"group-rename"),
                 TabStripText::new("group"),
+            )
+            .capabilities(
+                TabStripGroupCapabilities::new()
+                    .menu_available(true)
+                    .renamable(true),
             )
             .popup(
                 TabStripGroupPopupPresentation::new()

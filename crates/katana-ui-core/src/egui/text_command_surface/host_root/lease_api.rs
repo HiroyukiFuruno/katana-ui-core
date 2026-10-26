@@ -5,10 +5,11 @@ use super::super::status_diagnostics_projection_lease::StatusDiagnosticsProjecti
 use super::super::tab_strip_projection_lease::TabStripProjectionLease;
 use super::host_root_types::{
     EguiTextCommandSurfaceHostProjectionLease, EguiTextCommandSurfacePresentationToken,
-    HostProjectionParts,
+    HostProjectionAttachments, HostProjectionAttachmentsParts,
 };
 
 impl EguiTextCommandSurfaceHostProjectionLease {
+    #[cfg(any(test, feature = "storybook-artifacts"))]
     pub(crate) fn token(&self) -> &EguiTextCommandSurfacePresentationToken {
         &self.token
     }
@@ -33,6 +34,7 @@ impl EguiTextCommandSurfaceHostProjectionLease {
             tab_strip: None,
             status_diagnostics: None,
             editor_viewport: None,
+            context_menu_enabled_resolver: None,
         }
     }
 
@@ -57,14 +59,32 @@ impl EguiTextCommandSurfaceHostProjectionLease {
         self
     }
 
-    pub(super) fn into_parts(self) -> HostProjectionParts {
+    #[must_use]
+    pub fn with_context_menu_enabled_resolver<F>(mut self, resolver: F) -> Self
+    where
+        F: FnMut(
+                &str,
+                bool,
+            ) -> Result<
+                bool,
+                crate::egui::text_command_surface::KucContextMenuEnabledResolverError,
+            > + 'static,
+    {
+        self.context_menu_enabled_resolver = Some(Box::new(resolver));
+        self
+    }
+
+    pub(super) fn into_parts_with_attachments(self) -> HostProjectionAttachmentsParts {
         (
             self.token,
-            self.router,
-            self.source_address,
-            self.tab_strip,
-            self.status_diagnostics,
-            self.editor_viewport,
+            HostProjectionAttachments {
+                router: self.router,
+                source_address: self.source_address,
+                tab_strip: self.tab_strip,
+                status_diagnostics: self.status_diagnostics,
+                editor_viewport: self.editor_viewport,
+                context_menu_enabled_resolver: self.context_menu_enabled_resolver,
+            },
         )
     }
 }

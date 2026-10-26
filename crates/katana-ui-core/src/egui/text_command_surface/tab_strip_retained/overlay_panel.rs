@@ -128,11 +128,16 @@ impl TabStripRetainedState {
                     }
                 })
                 .sum::<f32>();
-        let area_id = ui.id().with(("tab-strip-overlay", route_prefix, depth));
+        let area_id = self
+            .routes
+            .interaction_id(ui.id(), route_prefix)
+            .with(("tab-strip-overlay", depth));
+        let parent_enabled = ui.is_enabled();
         let response = egui::Area::new(area_id)
             .order(egui::Order::Foreground)
             .constrain(false)
             .fixed_pos(position)
+            .enabled(parent_enabled)
             .show(ui.ctx(), |menu_ui| {
                 let (bounds, _) = menu_ui.allocate_exact_size(
                     egui::vec2(OVERLAY_WIDTH_PX, height),
@@ -196,7 +201,8 @@ impl TabStripRetainedState {
                     );
                     let response = menu_ui.interact(
                         row,
-                        area_id.with(index),
+                        self.routes
+                            .interaction_id(area_id, &format!("{route_prefix}-{index}")),
                         if entry.enabled {
                             egui::Sense::click()
                         } else {

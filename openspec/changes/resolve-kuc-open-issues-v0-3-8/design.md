@@ -1,3 +1,5 @@
+> この design は過去の v0.3.x release 要求・証跡を追跡する履歴であり、現行 v0.5.0 の release 条件ではない。ここに残る外部consumer名・版・Issue・scoreは履歴根拠であり、現行KUCの完了条件へ追加しない。
+
 ## Context
 
 KUC v0.3.7 は `raster-host` と四辺別 grid border を公開したが、KDV の exact registry consumer は canonical crop 91/95 であり、Issue #35 は再オープンしている。Issue #37 の API 実装は公開済みだが、KDV consumer の registry-only acceptance が未完了である。加えて、#40 は固定8 scenario だけを扱う artifact API、#43 は logical/physical scale の不整合、#44 は session projection に保存されない search state を問題としている。

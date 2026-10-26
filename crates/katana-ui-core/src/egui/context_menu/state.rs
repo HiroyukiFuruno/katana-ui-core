@@ -1,4 +1,4 @@
-use super::interaction::collect_events;
+use super::interaction::{collect_events, is_outside_click};
 use super::surface::{contains, local_anchor};
 use super::types::{EguiContextMenuAdapter, EguiContextMenuOutput};
 use crate::egui::text_surface::TextSurfaceContextTargetAnchor;
@@ -9,6 +9,27 @@ use crate::molecule::selection::{
 use crate::render_model::UiRect;
 
 impl EguiContextMenuAdapter {
+    pub(crate) fn dismiss_from_input(
+        &mut self,
+        ui: &egui::Ui,
+        allow_outside_click: bool,
+    ) -> Option<EguiContextMenuOutput> {
+        if !self.menu.is_open() {
+            return None;
+        }
+        let bounds = self.last_successful_bounds?;
+        let reason = ui.input(|input| {
+            if input.key_pressed(egui::Key::Escape) {
+                Some(ContextMenuCloseReason::Escape)
+            } else if allow_outside_click && is_outside_click(input, bounds) {
+                Some(ContextMenuCloseReason::OutsideClick)
+            } else {
+                None
+            }
+        })?;
+        Some(self.close(ui, reason))
+    }
+
     pub(super) fn open_if_needed(
         &mut self,
         ui: &egui::Ui,
@@ -71,6 +92,7 @@ impl EguiContextMenuAdapter {
         self.submenu_path.clear();
         self.reset_scroll();
         self.anchor = None;
+        self.last_successful_bounds = None;
         EguiContextMenuOutput {
             record: None,
             events,

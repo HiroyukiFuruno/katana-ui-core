@@ -24,6 +24,7 @@ impl TextSurface {
             props,
             state,
             caret_affinity: None,
+            preferred_column: None,
         }
     }
 
@@ -49,6 +50,7 @@ impl TextSurface {
         }
         self.state.text_area = self.props.text_area.state().clone();
         self.caret_affinity = None;
+        self.preferred_column = None;
         true
     }
 
@@ -139,8 +141,9 @@ impl TextSurface {
         action: TextAreaAction,
     ) -> TextSurfaceActionOutcome {
         let selection_requested = matches!(&action, TextAreaAction::Select(_));
+        let previous_selection = self.state.text_area.selection;
         let outcome = self.props.text_area.apply_text_area_action(action);
-        self.apply_text_area_outcome(outcome, selection_requested)
+        self.apply_text_area_outcome(outcome, selection_requested, previous_selection)
     }
 
     pub(super) fn clamp_scroll_offset(&mut self) {
@@ -152,8 +155,9 @@ impl TextSurface {
     }
 
     fn apply_text_area_key(&mut self, key: TextAreaKeyChord) -> TextSurfaceActionOutcome {
+        let previous_selection = self.state.text_area.selection;
         match self.props.text_area.handle_key(key) {
-            Ok(outcome) => self.apply_text_area_outcome(outcome, false),
+            Ok(outcome) => self.apply_text_area_outcome(outcome, false, previous_selection),
             Err(error) => TextSurfaceActionOutcome {
                 handled: false,
                 events: vec![TextSurfaceEvent::KeyValidationFailed { key, error }],
@@ -166,15 +170,18 @@ impl TextSurface {
         &mut self,
         outcome: TextAreaActionOutcome,
         selection_requested: bool,
+        previous_selection: crate::atom::TextAreaSelection,
     ) -> TextSurfaceActionOutcome {
         self.state.text_area = outcome.state.clone();
         self.caret_affinity = None;
+        self.preferred_column = None;
         let mut events = outcome
             .events
             .into_iter()
             .map(TextSurfaceEvent::TextArea)
             .collect::<Vec<_>>();
-        if selection_requested && outcome.handled {
+        if outcome.handled && (selection_requested || previous_selection != outcome.state.selection)
+        {
             events.push(TextSurfaceEvent::SelectionChanged {
                 selection_start: outcome.state.selection.start,
                 selection_end: outcome.state.selection.end,
@@ -282,17 +289,5 @@ impl TextSurface {
                 marker_id,
             },
         )
-    }
-
-    pub(super) fn gutter_outcome(
-        &self,
-        handled: bool,
-        event: TextSurfaceEvent,
-    ) -> TextSurfaceActionOutcome {
-        TextSurfaceActionOutcome {
-            handled,
-            events: handled.then_some(event).into_iter().collect(),
-            state: self.state.clone(),
-        }
     }
 }

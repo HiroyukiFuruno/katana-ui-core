@@ -7,6 +7,7 @@ mod composition;
 #[cfg(feature = "storybook-artifacts")]
 mod consumer_artifact_plan;
 mod context_menu;
+mod context_menu_enabled_resolver;
 mod editor_viewport_projection_lease;
 mod editor_viewport_render;
 mod host_root;
@@ -16,6 +17,7 @@ mod root;
 mod sanitized_document_root;
 mod scenario;
 mod scenario_session;
+mod selection_dialog;
 mod source_address_projection_lease;
 mod status_diagnostics_projection_lease;
 mod synchronization;
@@ -36,6 +38,7 @@ pub use consumer_artifact_plan::{
     ConsumerArtifactPlanV1, ConsumerArtifactPlanV2, ConsumerArtifactStageBinding,
     GenericEffectClass, GenericInteractionClass, IssuedConsumerArtifactPlan,
 };
+pub(crate) use context_menu_enabled_resolver::ContextMenuEnabledResolver;
 pub use editor_viewport_projection_lease::{
     EditorViewportProjectionError, EditorViewportProjectionLease,
 };
@@ -45,7 +48,10 @@ pub use host_root::{
     EguiTextCommandSurfaceHostRootFrame, EguiTextCommandSurfaceHostRootRecord,
     EguiTextCommandSurfaceHostRootRecordDimensions, EguiTextCommandSurfaceHostTargetToken,
     EguiTextCommandSurfacePresentationToken, EguiTextCommandSurfaceRootFactory,
-    EguiTextCommandSurfaceRootFactoryError,
+    EguiTextCommandSurfaceRootFactoryError, KucContextMenuEnabledResolverError,
+    KucLiveUnicodeObservation, KucUiSelectionAvailability, KucUiSelectionObservation,
+    KucUiSelectionPhase, KucUiSelectionRestoreError, KucUiSelectionRestoreRequest,
+    KucUiSelectionSnapshot,
 };
 /// A generic, one-shot host effect deferred until root event dispatch completes.
 pub use root::KucOpaqueHostEffectBatch;
@@ -101,6 +107,12 @@ pub use scenario::{
     KucOpaqueMotionContinuation, KucOpaqueMotionContinuationError,
 };
 pub use scenario_session::FullTextCommandSurfaceScenarioSession;
+pub use selection_dialog::{
+    FileSelectionItem, FileSelectionProjection, KucDialogControls, KucDialogTarget,
+    SearchResultMode, SearchResultOption, SearchResultProjection, SearchResultRow,
+    SelectionDialogEvent, SelectionDialogOperation, SelectionDialogProjection,
+    SelectionDialogProjectionError, SelectionDialogProjectionLease,
+};
 pub use source_address_projection_lease::{
     SourceAddressProjectionLease, SourceAddressSubmissionPort, SourceAddressSubmissionPortError,
 };

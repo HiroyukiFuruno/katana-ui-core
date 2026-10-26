@@ -48,6 +48,11 @@ impl TabStripText {
             value: value.into(),
         }
     }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.value
+    }
 }
 
 impl TabStripControlPresentation {

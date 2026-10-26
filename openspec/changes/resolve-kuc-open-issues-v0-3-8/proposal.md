@@ -1,3 +1,5 @@
+> この change は過去の v0.3.x release 要求・証跡を追跡する履歴であり、現行 v0.5.0 の release 条件ではない。現行のKUC汎用契約とgateは `docs/issue-release-v0.4.5-tasks.md`、`docs/issue-release-v0.4.5-acceptance.md`、および現行OpenSpecで管理する。
+
 ## Why
 
 公開済み `katana-ui-core` v0.3.7 では、KDV の registry-only canonical crop が 91/95 に留まり、四辺別 grid border の下流受入も未完了である。さらに、consumer-defined full-editor artifact の公開契約、HiDPI の text layout、毎フレーム同期する scenario session の検索 Close が未解決で、consumer が独自補正や状態管理を持たずに KUC を利用できない。

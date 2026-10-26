@@ -8,6 +8,7 @@ use super::types::{
 
 const SELECTION_MIN_WIDTH_PX: i32 = 24;
 const SELECTION_EDGE_INSET_PX: f32 = 8.0;
+const SELECTION_START_FRACTION: f32 = 0.25;
 
 impl KucOpaqueTextSelectionContinuation {
     /// Applies this KUC-issued pointer step exactly once to the next raw input frame.
@@ -184,12 +185,32 @@ impl TextSelectionGeometry {
             .min(viewport.y.saturating_add_unsigned(viewport.height));
         let width = right.saturating_sub(left);
         let height = bottom.saturating_sub(top);
-        if width <= SELECTION_MIN_WIDTH_PX || height <= 0 {
+        if width <= 0 || height <= 0 || viewport.width <= SELECTION_MIN_WIDTH_PX as u32 {
             return None;
         }
-        let y = top as f32 + height as f32 / 2.0;
-        let start = egui::pos2(left as f32 + SELECTION_EDGE_INSET_PX, y);
-        let end = egui::pos2(right as f32 - SELECTION_EDGE_INSET_PX, y);
+        let row = output.text.raster.grapheme_bounds.iter().find(|glyph| {
+            let y = content.y as f32 + glyph.y;
+            y >= top as f32
+                && y + glyph.height <= bottom as f32
+                && output
+                    .text
+                    .raster
+                    .text
+                    .get(glyph.byte_start..glyph.byte_end)
+                    .is_some_and(|text| {
+                        !text
+                            .chars()
+                            .all(|character| matches!(character, '\n' | '\r'))
+                    })
+        })?;
+        let y = content.y as f32 + row.y + row.height / 2.0;
+        let start_x =
+            (content.x as f32 + row.x + row.width * SELECTION_START_FRACTION).max(left as f32);
+        let end_x = (right as f32 - SELECTION_EDGE_INSET_PX)
+            .max(start_x + SELECTION_MIN_WIDTH_PX as f32)
+            .min(viewport.x.saturating_add_unsigned(viewport.width) as f32 - 1.0);
+        let start = egui::pos2(start_x, y);
+        let end = egui::pos2(end_x, y);
         Some(Self {
             start,
             midpoint: egui::pos2((start.x + end.x) / 2.0, y),

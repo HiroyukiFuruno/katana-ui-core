@@ -11,14 +11,26 @@ use super::tab_strip_projection_lease::{
 };
 use super::tab_strip_proposal_port::TabStripProposalOperation;
 use crate::render_model::UiRect;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 mod build;
+mod capabilities;
+mod identity;
+
+#[cfg(test)]
+#[path = "tab_strip_route_table/identity_tests.rs"]
+mod identity_tests;
 mod proposal;
+
+#[cfg(test)]
+#[path = "tab_strip_route_table/coverage_tests.rs"]
+mod coverage_tests;
 
 pub(super) struct TabStripRouteTable {
     correlation: TabStripCorrelation,
     routes: BTreeMap<String, TabStripRoute>,
+    identities: BTreeMap<String, egui::Id>,
+    blocked_paths: BTreeSet<String>,
     frame_response_paths: HashMap<egui::Id, String>,
     frame_routes: HashMap<egui::Id, TabStripFrameRoute>,
 }
@@ -77,15 +89,27 @@ impl TabStripRouteTable {
                 routes.insert("tab-strip-overflow".to_owned(), TabStripRoute::OpenOverflow);
             }
         }
-        for (index, tab) in projection.tabs.iter().enumerate() {
-            Self::insert_tab(&mut routes, tab, format!("root-tab-{index}"));
+        if projection.root_items.is_empty() {
+            for (index, tab) in projection.tabs.iter().enumerate() {
+                Self::insert_tab(&mut routes, tab, format!("root-tab-{index}"));
+            }
+            for (index, group) in projection.groups.iter().enumerate() {
+                Self::insert_group(&mut routes, group, format!("root-group-{index}"));
+            }
+        } else {
+            Self::insert_root_items(&mut routes, projection);
         }
-        for (index, group) in projection.groups.iter().enumerate() {
-            Self::insert_group(&mut routes, group, format!("root-group-{index}"));
-        }
+        let blocked_paths: BTreeSet<_> = routes
+            .iter()
+            .filter(|(_, route)| !capabilities::RouteCapabilities::allows(projection, route))
+            .map(|(path, _)| path.clone())
+            .collect();
+        routes.retain(|path, _| !blocked_paths.contains(path));
         Self {
             correlation: projection.correlation.copy_for_route(),
             routes,
+            identities: identity::projection_identities(projection),
+            blocked_paths,
             frame_response_paths: HashMap::new(),
             frame_routes: HashMap::new(),
         }
@@ -108,7 +132,7 @@ impl TabStripRouteTable {
         label: &str,
         disabled: bool,
     ) {
-        if self.routes.contains_key(path) {
+        if self.routes.contains_key(path) || self.blocked_paths.contains(path) {
             self.frame_response_paths
                 .insert(response_id, path.to_owned());
             self.frame_routes.insert(
@@ -117,7 +141,7 @@ impl TabStripRouteTable {
                     path: path.to_owned(),
                     bounds,
                     label: label.to_owned(),
-                    disabled,
+                    disabled: disabled || self.blocked_paths.contains(path),
                 },
             );
         }
@@ -380,6 +404,12 @@ mod tests {
     fn routes_include_overflow_and_navigation_controls_when_navigation_is_present() {
         let projection =
             TabStripProjection::new(1, TabStripCorrelation::from_opaque_bytes(b"correlation"))
+                .capabilities(
+                    TabStripSurfaceCapabilities::new()
+                        .previous_available(true)
+                        .next_available(true)
+                        .overflow_available(true),
+                )
                 .navigation(
                     crate::egui::text_command_surface::TabStripNavigationPresentation::new(
                         crate::egui::text_command_surface::TabStripControlPresentation::new(
@@ -484,7 +514,12 @@ mod tests {
                                 TabStripMenuOperation::Ungroup,
                             )),
                     )
-                    .capabilities(TabStripGroupCapabilities::new().collapsible(true)),
+                    .capabilities(
+                        TabStripGroupCapabilities::new()
+                            .collapsible(true)
+                            .renamable(true)
+                            .ungroupable(true),
+                    ),
                 )
                 .tab(
                     TabStripTabDescriptor::new(
@@ -562,7 +597,11 @@ mod tests {
                             ),
                         ),
                     )
-                    .capabilities(TabStripGroupCapabilities::new().collapsible(true)),
+                    .capabilities(
+                        TabStripGroupCapabilities::new()
+                            .collapsible(true)
+                            .ungroupable(true),
+                    ),
                 );
         let routes = TabStripRouteTable::from_projection(&projection);
 
@@ -728,10 +767,16 @@ mod tests {
             ));
         let projection =
             TabStripProjection::new(11, TabStripCorrelation::from_opaque_bytes(b"correlation"))
+                .capabilities(TabStripSurfaceCapabilities::new().restore_available(true))
                 .tab(
                     TabStripTabDescriptor::new(
                         TabStripTabTarget::from_opaque_bytes(b"tab"),
                         TabStripText::new("tab"),
+                    )
+                    .capabilities(
+                        TabStripTabCapabilities::new()
+                            .closeable(true)
+                            .groupable(true),
                     )
                     .context_menu(tab_menu),
                 )
@@ -739,6 +784,12 @@ mod tests {
                     TabStripGroupDescriptor::new(
                         TabStripGroupTarget::from_opaque_bytes(b"group"),
                         TabStripText::new("group"),
+                    )
+                    .capabilities(
+                        TabStripGroupCapabilities::new()
+                            .ungroupable(true)
+                            .closeable(true)
+                            .recolorable(true),
                     )
                     .popup(group_popup)
                     .swatch(TabStripSwatchDescriptor::new(

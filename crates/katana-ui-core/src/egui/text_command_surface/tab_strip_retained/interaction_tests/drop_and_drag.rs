@@ -127,6 +127,7 @@ fn resolve_tab_drag_cancel_when_release_requested_and_no_destination() {
     state.port = Some(TabStripProposalPortHandle::new(recorder));
     state.drag = Some(TabStripDragState {
         source: source.copy_for_route(),
+        origin: None,
         label: TabStripText::new("label"),
         pointer: egui::pos2(20.0, 10.0),
     });
@@ -179,6 +180,7 @@ fn resolve_tab_drag_escapes_on_escape_keypress() {
     state.port = Some(TabStripProposalPortHandle::new(recorder));
     state.drag = Some(TabStripDragState {
         source: source.copy_for_route(),
+        origin: None,
         label: TabStripText::new("label"),
         pointer: egui::pos2(20.0, 10.0),
     });
@@ -218,4 +220,39 @@ fn resolve_tab_drag_escapes_on_escape_keypress() {
             .contains(&TabStripProposalOperationClass::CancelDrag)
     );
     assert!(state.drag.is_none());
+}
+
+#[test]
+fn resolve_tab_drag_paints_feedback_and_retains_drag_before_release() {
+    let mut state = build_state_with_projection(TabStripProjection::new(
+        1,
+        TabStripCorrelation::from_opaque_bytes(b"corr"),
+    ));
+    state.drag = Some(TabStripDragState {
+        source: TabStripTabTarget::from_opaque_bytes(b"tab-drag"),
+        origin: None,
+        label: TabStripText::new("tab"),
+        pointer: egui::pos2(10.0, 10.0),
+    });
+    let context = egui::Context::default();
+    let mut operations = Vec::new();
+    let mut frame = context.run_ui(
+        egui::RawInput {
+            events: vec![egui::Event::PointerMoved(egui::pos2(12.0, 10.0))],
+            ..Default::default()
+        },
+        |ui| {
+            state
+                .resolve_tab_drag(
+                    ui,
+                    egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(100.0, 20.0)),
+                    false,
+                    &mut operations,
+                )
+                .expect("active drag should paint feedback");
+        },
+    );
+    frame.textures_delta.clear();
+    assert!(state.drag.is_some());
+    assert!(!operations.is_empty());
 }

@@ -10,7 +10,7 @@ pub use model::{
     TabStripContextMenuPresentation, TabStripControlPresentation, TabStripCorrelation,
     TabStripGroupCapabilities, TabStripGroupDescriptor, TabStripGroupPopupPresentation,
     TabStripGroupTarget, TabStripMenuEntry, TabStripMenuOperation, TabStripNavigationPresentation,
-    TabStripProjection, TabStripProjectionLease, TabStripScrollPresentation,
+    TabStripProjection, TabStripProjectionLease, TabStripRootItem, TabStripScrollPresentation,
     TabStripSurfaceCapabilities, TabStripSwatchDescriptor, TabStripSwatchTarget,
     TabStripTabCapabilities, TabStripTabDescriptor, TabStripTabTarget, TabStripText,
 };

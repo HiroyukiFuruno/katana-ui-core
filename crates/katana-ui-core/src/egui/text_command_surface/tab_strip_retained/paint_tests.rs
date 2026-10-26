@@ -1,4 +1,5 @@
 use super::super::{ICON_SIZE_PX, TabStripIcon};
+use super::super::{TabStripIconControl, TabStripPaintOperationKind};
 use super::*;
 use crate::egui::text_command_surface::tab_strip_proposal_port::{
     TabStripProposalPort, TabStripProposalPortError,
@@ -18,6 +19,8 @@ const ICON_TEST_BOUNDS_WIDTH_PX: f32 = 180.0;
 mod drag;
 #[path = "paint_tests/raster_failures.rs"]
 mod raster_failures;
+#[path = "paint_tests/rename.rs"]
+mod rename;
 
 fn build_state_from_lease(lease: TabStripProjectionLease) -> TabStripRetainedState {
     let config = crate::text_raster::PlatformTextRasterConfig::default();

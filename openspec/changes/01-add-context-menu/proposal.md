@@ -1,5 +1,7 @@
 ## Why
 
+外部画面名は観測例であり、要件は汎用のcontext-menu state/action/event/placement contractとして定義する。特定consumerの移行や採用はKUCの完了条件に含めない。
+
 `katana` / `katana-chat-ui` の各画面（編集器、エクスプローラ、tab bar、message list、attachment、output handoff）はすべて右クリックでセクション付きメニューを開くことを前提にしている。KUC は `Menu` / `MenuButton` molecule を持つが、いずれも anchor を持つトリガー要素から開く前提であり、画面任意座標（pointer 座標または focused element）に開く文脈メニュー（context menu）に必要な API（pointer 起点 anchor、headers / dividers / submenu、エッジフリップ、キーボード ナビゲーション、外側クリック / Esc クローズ）を備えていない。
 
 これにより consumer は KUC の外で独自の右クリック menu を再実装する必要があり、tab bar の `tab_context_menu`、editor の `context_menu`、explorer の `header_menu` などはすべて KUC 外実装になっている。core が canonical な ContextMenu を提供しないと、入力 / イベント / 状態が ad hoc に重複し、自動テスト / 画像回帰 / 入力回帰の対象から外れる。

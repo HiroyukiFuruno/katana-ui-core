@@ -8,9 +8,11 @@ use katana_ui_core::render_model::{UiIconProps, UiTextSpan};
 use katana_ui_core::text_raster::{PlatformTextRasterConfig, PlatformTextRasterError};
 use katana_ui_core::text_surface::{
     TextSurface, TextSurfaceAccessibilityActionKind, TextSurfaceAccessibilityLabels,
-    TextSurfaceAction, TextSurfaceAnnotation, TextSurfaceAnnotationStyle,
-    TextSurfaceClipboardOperation, TextSurfaceEvent, TextSurfaceGutter, TextSurfaceGutterRow,
-    TextSurfaceProps, TextSurfaceViewport,
+    TextSurfaceAccessibilityTarget, TextSurfaceAction, TextSurfaceAnnotation,
+    TextSurfaceAnnotationStyle, TextSurfaceAutomaticGutterPresentation,
+    TextSurfaceAutomaticGutterRangeOverride, TextSurfaceClipboardOperation, TextSurfaceEvent,
+    TextSurfaceGutter, TextSurfaceGutterRangeStartAnchor, TextSurfaceGutterRow,
+    TextSurfacePresentation, TextSurfaceProps, TextSurfaceViewport,
 };
 use katana_ui_core::theme::{FontFamily, FontToken};
 
@@ -196,6 +198,149 @@ fn actual_egui_surface_uses_kuc_raster_texture_and_one_frame_record() {
             .saturating_mul(usize::try_from(text_texture.height).unwrap_or_default())
             .saturating_mul(4),
         text_texture.rgba_pixels.len()
+    );
+}
+
+#[test]
+fn trailing_empty_lines_keep_scroll_extent_without_stretching_text_texture() {
+    let context = egui::Context::default();
+    let mut adapter = EguiTextSurfaceAdapter::default();
+    let mut content_heights = Vec::new();
+    let mut texture_heights = Vec::new();
+
+    for (index, value) in ["a", "a\n", "a\n\n"].into_iter().enumerate() {
+        let mut surface = surface_with_text_area(
+            TextArea::new(format!("trailing-empty-{index}")).value(value),
+            value,
+        );
+        let rendered = run_frame(&context, &mut adapter, &mut surface, Vec::new())
+            .expect("trailing-empty-line surface should render");
+        let text_texture = rendered
+            .artifact
+            .paint_plan
+            .operations
+            .iter()
+            .find_map(|operation| match (&operation.layer, &operation.kind) {
+                (
+                    EguiTextSurfaceDrawLayer::TextTexture,
+                    TextSurfacePaintOperationKind::Texture { bounds, texture },
+                ) => Some((*bounds, texture.width, texture.height)),
+                _ => None,
+            })
+            .expect("text texture operation");
+        assert_eq!(rendered.record.texture_bounds, text_texture.0);
+        assert_eq!(text_texture.1, rendered.record.texture_bounds.width);
+        assert_eq!(text_texture.2, rendered.record.texture_bounds.height);
+        assert!(rendered.record.frame.selection.caret.height > 0);
+        assert!(
+            rendered.record.frame.content_bounds.height >= rendered.record.texture_bounds.height
+        );
+        content_heights.push(rendered.record.frame.content_bounds.height);
+        texture_heights.push(rendered.record.texture_bounds.height);
+    }
+
+    assert!(content_heights[1] > content_heights[0]);
+    assert!(content_heights[2] > content_heights[1]);
+    assert_eq!(texture_heights[0], texture_heights[1]);
+    assert!(texture_heights[2] > texture_heights[1]);
+    assert!(content_heights[1] > texture_heights[1]);
+    assert!(content_heights[2] > texture_heights[2]);
+}
+
+#[test]
+fn soft_wrapped_public_surface_exposes_one_gutter_target_per_logical_row() {
+    let context = egui::Context::default();
+    let mut adapter = EguiTextSurfaceAdapter::default();
+    let source = "soft wrapped text ".repeat(12);
+    let mut surface = TextSurface::new(
+        TextSurfaceProps::new(
+            TextArea::new("soft-wrap-gutter-public").value(&source),
+            UiTextSpan::emoji_marked_spans(&source, Default::default()),
+            TextSurfaceViewport::new(0, 0, 160, 160),
+        )
+        .gutter(TextSurfaceGutter::new(24).automatic_numbered()),
+    );
+    let mut presentation = TextSurfacePresentation::from_props(surface.props());
+    presentation.automatic_gutter = Some(
+        TextSurfaceAutomaticGutterPresentation::new().override_range(
+            TextSurfaceAutomaticGutterRangeOverride {
+                byte_start: 0,
+                byte_end: source.len(),
+                start_anchor: TextSurfaceGutterRangeStartAnchor::ContainingLine,
+                marker_id: "soft-wrap-marker".to_owned(),
+                priority: 1,
+                accessibility_label: "wrapped line marker".to_owned(),
+                accessibility_description: None,
+                visual_role: "wrapped".to_owned(),
+                icon: None,
+            },
+        ),
+    );
+    assert!(surface.synchronize_presentation(presentation));
+    let rendered = run_frame(&context, &mut adapter, &mut surface, Vec::new())
+        .expect("soft-wrapped public surface should render");
+    let visible_rows = &rendered.record.frame.visible_logical_rows;
+    assert!(rendered.record.frame.content_bounds.height > LINE_HEIGHT as u32);
+    assert_eq!(visible_rows, &[0]);
+    let gutter_rows = &rendered.record.frame.gutter;
+    let accessibility_rows = &rendered.record.frame.accessibility.gutter_targets;
+    assert_eq!(gutter_rows.len(), 1);
+    assert_eq!(gutter_rows[0].logical_row, 0);
+    assert_eq!(
+        gutter_rows[0].bounds.y,
+        rendered.record.frame.content_bounds.y
+    );
+    assert_eq!(gutter_rows[0].display_label, "1");
+    assert_eq!(
+        gutter_rows[0].marker_id.as_deref(),
+        Some("soft-wrap-marker")
+    );
+    assert_eq!(accessibility_rows.len(), 2);
+    let marker_targets = accessibility_rows
+        .iter()
+        .filter_map(|node| match &node.target {
+            TextSurfaceAccessibilityTarget::GutterMarker {
+                logical_row,
+                marker_id,
+            } => Some((*logical_row, marker_id.as_str(), node.bounds)),
+            _ => None,
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(marker_targets.len(), 1);
+    assert_eq!(marker_targets[0].0, 0);
+    assert_eq!(marker_targets[0].1, "soft-wrap-marker");
+    assert_eq!(
+        marker_targets[0].2,
+        gutter_rows[0]
+            .marker_bounds
+            .unwrap_or(gutter_rows[0].bounds)
+    );
+    assert!(
+        gutter_rows
+            .windows(2)
+            .all(|rows| rows[0].logical_row < rows[1].logical_row)
+    );
+    assert!(gutter_rows.windows(2).all(|rows| {
+        rows[0]
+            .bounds
+            .y
+            .saturating_add_unsigned(rows[0].bounds.height)
+            <= rows[1].bounds.y
+    }));
+    assert_eq!(
+        gutter_rows
+            .iter()
+            .map(|row| row.logical_row)
+            .collect::<Vec<_>>(),
+        accessibility_rows
+            .iter()
+            .filter_map(|row| match &row.target {
+                katana_ui_core::text_surface::TextSurfaceAccessibilityTarget::GutterRow {
+                    logical_row,
+                } => Some(*logical_row),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
     );
 }
 

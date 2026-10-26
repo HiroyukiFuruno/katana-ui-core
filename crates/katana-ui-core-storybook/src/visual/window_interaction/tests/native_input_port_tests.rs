@@ -47,6 +47,7 @@ impl StorybookWindowInput for FakeWindowInput {
             MouseButton::Left => self.left_down,
             MouseButton::Right => self.right_down,
             MouseButton::Middle => false,
+            MouseButton::Back | MouseButton::Forward => false,
         }
     }
 

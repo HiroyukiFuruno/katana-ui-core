@@ -7,11 +7,12 @@ mod dispatcher;
 mod receipt;
 mod transport;
 
-const ROOT_EVENT_CLASS_COUNT: usize = 7;
+const ROOT_EVENT_CLASS_COUNT: usize = 8;
 const ROOT_EVENT_SEARCH_INDEX: usize = 3;
 const ROOT_EVENT_CONTEXT_MENU_INDEX: usize = 4;
 const ROOT_EVENT_STATUS_BAR_INDEX: usize = 5;
 const ROOT_EVENT_DIAGNOSTICS_INDEX: usize = 6;
+const ROOT_EVENT_SELECTION_DIALOG_INDEX: usize = 7;
 
 pub(super) fn build_event_batch(
     output: &mut super::super::types::EguiTextCommandSurfaceOutput,
@@ -52,6 +53,7 @@ pub struct KucOpaqueHostEffectBatch {
 /// Event payloads and child models remain private to KUC.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KucRootEventBatchContext {
+    selection_dialog_events: Vec<super::super::SelectionDialogEvent>,
     root_identity: String,
     state_revision: u64,
     correlation_fingerprint: String,
@@ -78,6 +80,7 @@ pub trait KucRootEffectRouter {
 pub struct KucOpaqueHostEffectError;
 
 struct RootEventPayload {
+    selection_dialog: Vec<super::super::SelectionDialogEvent>,
     text: Vec<TextSurfaceEvent>,
     toolbar: Option<Vec<CommandChromeToolbarEvent>>,
     floating: Option<Vec<FloatingCommandToolbarEvent>>,
@@ -104,6 +107,7 @@ pub struct EguiTextCommandSurfaceRootEventTransport {
 /// Deterministic receipt returned after a root event transport was forwarded.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EguiTextCommandSurfaceRootEventForwardingReceipt {
+    frame_serial: u64,
     root_identity: String,
     state_revision: u64,
     correlation_fingerprint: String,
@@ -127,6 +131,7 @@ pub enum EguiTextCommandSurfaceRootEventBatchDispatchError<DispatcherError> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EguiTextCommandSurfaceRootEventChildClass {
+    SelectionDialog,
     Text,
     Toolbar,
     Floating,
@@ -165,6 +170,7 @@ pub(crate) enum EguiTextCommandSurfaceRootEventCommandDetachError {
 
 /// Sealed root event batch. Its payload can leave KUC only through `forward_once`.
 pub struct EguiTextCommandSurfaceRootEventBatch {
+    frame_serial: u64,
     transport: std::cell::RefCell<Option<EguiTextCommandSurfaceRootEventTransport>>,
     root_identity: String,
     state_revision: u64,
@@ -179,6 +185,13 @@ pub struct EguiTextCommandSurfaceRootEventBatch {
 /// Generic callback used to dispatch one-time root event payload per child class.
 pub trait KucRootEventBatchDispatcher {
     type Error;
+
+    fn dispatch_selection_dialog_events(
+        &mut self,
+        _events: Vec<super::super::SelectionDialogEvent>,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
 
     fn dispatch_text_events(&mut self, events: Vec<TextSurfaceEvent>) -> Result<(), Self::Error>;
     fn dispatch_toolbar_events(

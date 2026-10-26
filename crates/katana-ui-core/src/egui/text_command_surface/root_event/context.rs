@@ -47,8 +47,12 @@ impl EguiTextCommandSurfaceRootEventBatch {
         let source_address_submission_count = transport
             .as_ref()
             .map_or(0, |value| value.payload.source_address_submissions.len());
+        let selection_dialog_events = transport
+            .as_ref()
+            .map_or_else(Vec::new, |value| value.payload.selection_dialog.clone());
         drop(transport);
         KucRootEventBatchContext {
+            selection_dialog_events,
             root_identity: self.root_identity.clone(),
             state_revision: self.state_revision,
             correlation_fingerprint: self.correlation_fingerprint.borrow().clone(),
@@ -113,6 +117,10 @@ impl EguiTextCommandSurfaceRootEventBatch {
                     child_class: EguiTextCommandSurfaceRootEventChildClass::DiagnosticsList,
                     event_count: 0,
                 },
+                EguiTextCommandSurfaceRootEventClassDispatch {
+                    child_class: EguiTextCommandSurfaceRootEventChildClass::SelectionDialog,
+                    event_count: 0,
+                },
             ];
         };
         [
@@ -147,6 +155,10 @@ impl EguiTextCommandSurfaceRootEventBatch {
                     .diagnostics_list
                     .as_ref()
                     .map_or(0, Vec::len),
+            },
+            EguiTextCommandSurfaceRootEventClassDispatch {
+                child_class: EguiTextCommandSurfaceRootEventChildClass::SelectionDialog,
+                event_count: transport.payload.selection_dialog.len(),
             },
         ]
     }

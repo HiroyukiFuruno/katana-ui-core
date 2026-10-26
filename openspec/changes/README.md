@@ -3,7 +3,7 @@
 この一覧は `katana-ui-core` repo 内の OpenSpec 変更単位（OpenSpec change）だけを扱う。
 実装者は repo 外の sibling repository を直接読まない。
 root 計画の根拠は `openspec/changes/ui-core-root-plan/` と `docs/architecture/ui-separation/root-plan-source.md` にコピー済みの内容を使う。
-`katana` / `katana-chat-ui` / KDV / KLE の UI 層から読んだ追加根拠は、実装前に repo-local の棚卸しとして `docs/inventory/katana-katana-chat-ui-kdv-kle-ui-needs.md` へ固定する。
+外部UI層から読んだ追加根拠は、実装前に履歴証拠として `docs/inventory/katana-katana-chat-ui-kdv-kle-ui-needs.md` へ固定する。そこにある外部名・path・責務は現行KUC要件ではなく、実装時は汎用UI contractへ翻訳する。
 
 ## 新規計画
 
@@ -12,8 +12,8 @@ root 計画の根拠は `openspec/changes/ui-core-root-plan/` と `docs/architec
 | root | `ui-core-root-plan` | KUC をフレームワーク非依存（framework-neutral）UI Core として再定義し、runtime / window / surface / adapter 境界を固定する親 change | この change を先に読む |
 | implementation | `establish-kuc-atoms-molecules-catalog` | Storybook menu 77 page を KUC の atoms / molecules と Storybook harness へ移管し、自動品質ゲートを正本化する親 change | `ui-core-root-plan` の境界を確認後に読む |
 
-KDV の Markdown viewer UI 構築に必要な周辺 UI は既存 change を使う。
-ただし KDV が生成した HTML / PDF / PNG / JPG 相当の RGBA preview surface を KUC `UiTree` に載せる契約は `23-add-preview-surface-image-contract` で扱う。
+Markdown / preview viewer UI の周辺 UI は既存 change を使う。
+ただし利用側が生成した HTML / PDF / PNG / JPG 相当の RGBA preview surface を KUC `UiTree` に載せる契約は `23-add-preview-surface-image-contract` で扱う。特定viewerの採用・受入はKUCのrelease gateに含めない。
 対応表は `establish-kuc-atoms-molecules-catalog/kdv-ui-build-readiness.md` を正本にする。
 
 ## 現行 Storybook 実装キュー
@@ -36,14 +36,14 @@ KDV の Markdown viewer UI 構築に必要な周辺 UI は既存 change を使�
 
 ## 履歴入力元 — `NN-add-*` 系列
 
-`katana` / `katana-chat-ui` / KDV / KLE の利用側画面を KUC の atoms / molecules で組めるようにするための、優先度順 (`01` が最優先) の機能追加 change。
+利用側画面を KUC の atoms / molecules で組めるようにするための、優先度順 (`01` が最優先) の機能追加 change。外部repository名は観測例であり、現行APIの依存先ではない。
 prefix の数字は優先度を表すもので、`archive/2026-05-25-18-accordion` などの旧 archive change（命名がそのまま prefix 番号を持つ）とは別系列。
 旧系列は機能名そのもの (`18-accordion`) を archive した履歴、現行系列は `NN-add-*` 形式で識別する。
 現在は Storybook menu leaf change の入力元として扱い、新規実装の着手順には使わない。
 
 KUC の公開対象は最小部品（atoms）と複合部品（molecules）までとする。
 画面全体の構造（organisms）、画面ひな形（templates）、本文エディター、本文プレビュー、チャット画面全体は KUC に入れない。
-KDV (`katana-document-viewer`) / KLE (`katana-language-editor`) は、KUC や他の部品を利用して個別に実装する利用側である。
+viewer / editor は、KUC や他の部品を利用して個別に実装する利用側である。特定consumerの採用状況・Issue状態はKUCの完了条件に含めない。
 
 | priority | change | 主 capability | 主な依存 |
 | --- | --- | --- | --- |

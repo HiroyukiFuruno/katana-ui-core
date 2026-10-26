@@ -1,5 +1,7 @@
 ## Why
 
+外部画面名は観測例であり、要件は汎用のempty-state structure/action/accessibility contractとして定義する。特定consumerの移行や採用はKUCの完了条件に含めない。
+
 `katana` の explorer 空表示（`explorer/empty.rs`）、search no result、tab bar が空のとき、chat history が空のとき、DiagnosticsList が clean の場合、command palette の検索結果空など、「空表示（empty state）」は consumer のあらゆる場所に存在する。
 
 現状 KUC には empty state 用 molecule がなく、consumer ごとに「アイコン + 見出し + 補足 + アクション」を ad hoc に組んでいる。揃った余白・揃ったタイポグラフィ・action button の有無で揺れが出ており、layout snapshot / render command / theme token / accessibility payload の契約対象にもなっていない。

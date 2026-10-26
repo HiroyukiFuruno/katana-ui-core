@@ -1,4 +1,5 @@
 use super::super::TabStripDropCandidate;
+use super::super::support::ui_rect;
 use super::super::tab_strip_proposal_port::{
     TabStripProposalOperationClass, TabStripProposalPort, TabStripProposalPortError,
     TabStripProposalPortHandle,
@@ -19,8 +20,14 @@ const DROP_STRIP_WIDTH_PX: f32 = 100.0;
 const DROP_WIDE_STRIP_WIDTH_PX: f32 = 200.0;
 const DROP_POINTER_Y_PX: f32 = 5.0;
 
+#[path = "interaction_tests/drag_failure.rs"]
+mod drag_failure;
 #[path = "interaction_tests/drop_and_drag.rs"]
 mod drop_and_drag;
+#[path = "interaction_tests/group_drag.rs"]
+mod group_drag;
+#[path = "interaction_tests/pointer_release.rs"]
+mod pointer_release;
 
 fn build_state_with_projection(projection: TabStripProjection) -> TabStripRetainedState {
     let lease = TabStripProjectionLease::new(projection);
@@ -116,6 +123,7 @@ fn start_tab_drag_is_fail_closed_without_port_and_reuses_existing_drag_state() {
         ));
         state.drag = Some(TabStripDragState {
             source: tab.target.copy_for_route(),
+            origin: None,
             label: TabStripText::new("drag"),
             pointer: bounds.center(),
         });

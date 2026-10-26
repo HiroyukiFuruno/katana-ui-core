@@ -227,7 +227,13 @@ def collect_branch_states(repo_root: Path, default: str, repo: str | None) -> di
     return states
 
 
-def evaluate_and_cleanup(repo_root: Path, default: str, states: dict[str, BranchState]) -> int:
+def evaluate_and_cleanup(
+    repo_root: Path,
+    default: str,
+    states: dict[str, BranchState],
+    *,
+    remote: bool = False,
+) -> int:
     failed = 0
     removed_any = False
 
@@ -237,7 +243,9 @@ def evaluate_and_cleanup(repo_root: Path, default: str, states: dict[str, Branch
         if branch == default:
             reasons.append("default")
 
-        merged_ok = (not state.local or state.local_merged) and (not state.remote or state.remote_merged)
+        merged_ok = (not state.local or state.local_merged) and (
+            not remote or not state.remote or state.remote_merged
+        )
         clean_ok = (not state.local) or state.clean
         if not merged_ok:
             reasons.append("unmerged")
@@ -255,7 +263,7 @@ def evaluate_and_cleanup(repo_root: Path, default: str, states: dict[str, Branch
             run_git(["branch", "-d", branch], cwd=repo_root)
             removed_any = True
             print(f"[cleanup] deleted local branch {branch}")
-        if state.remote:
+        if remote and state.remote:
             run_git(["push", "origin", "--delete", branch], cwd=repo_root)
             removed_any = True
             print(f"[cleanup] deleted remote branch origin/{branch}")
@@ -275,6 +283,11 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get("GITHUB_REPOSITORY"),
         help="Repository for `gh release view`, default from GITHUB_REPOSITORY",
     )
+    parser.add_argument(
+        "--remote",
+        action="store_true",
+        help="Also delete matching origin release branches after merge verification",
+    )
     return parser.parse_args()
 
 
@@ -291,7 +304,7 @@ def main() -> int:
     ensure_default_ready(repo_root, default)
     states = collect_branch_states(repo_root, default, args.repo)
     print(f"[cleanup] candidates: {', '.join(sorted(states)) or 'none'}")
-    return evaluate_and_cleanup(repo_root, default, states)
+    return evaluate_and_cleanup(repo_root, default, states, remote=args.remote)
 
 
 if __name__ == "__main__":

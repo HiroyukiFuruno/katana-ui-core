@@ -7,6 +7,7 @@ use super::types::{EguiTextCommandSurfaceChild, EguiTextCommandSurfaceOutput};
 /// Typed rejection for an artifact order that does not match its child outputs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EguiTextCommandSurfaceArtifactError {
+    MissingSelectionDialog,
     MissingToolbar,
     MissingSearch,
     MissingSourceAddress,
@@ -24,6 +25,7 @@ pub enum EguiTextCommandSurfaceArtifactError {
 impl std::fmt::Display for EguiTextCommandSurfaceArtifactError {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let message = match self {
+            Self::MissingSelectionDialog => "selection-dialog child requires a paint plan",
             Self::MissingToolbar => "toolbar child requires a toolbar plan",
             Self::MissingSearch => "search child requires a search plan",
             Self::MissingSourceAddress => "source-address child requires a source-address plan",
@@ -112,6 +114,13 @@ impl EguiTextCommandSurfaceOutput {
         let mut plans = Vec::with_capacity(self.artifact_order().len());
         for child in self.artifact_order() {
             plans.push(match child {
+                EguiTextCommandSurfaceChild::SelectionDialog => ArtifactPaintPlanRef::TextSurface(
+                    &self
+                        .selection_dialog
+                        .as_ref()
+                        .ok_or(EguiTextCommandSurfaceArtifactError::MissingSelectionDialog)?
+                        .paint_plan,
+                ),
                 EguiTextCommandSurfaceChild::TabStrip => ArtifactPaintPlanRef::TabStrip(
                     &self
                         .tab_strip

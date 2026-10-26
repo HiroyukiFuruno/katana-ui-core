@@ -4,7 +4,12 @@ impl From<super::super::types::EguiTextCommandSurfaceError>
     for EguiTextCommandSurfaceRootFactoryError
 {
     fn from(error: super::super::types::EguiTextCommandSurfaceError) -> Self {
-        Self::Root(error.to_string())
+        match error {
+            super::super::types::EguiTextCommandSurfaceError::ContextMenuEnabledResolver(error) => {
+                Self::ContextMenuEnabledResolver(error)
+            }
+            error => Self::Root(error.to_string()),
+        }
     }
 }
 
@@ -12,7 +17,12 @@ impl From<super::super::root::EguiTextCommandSurfaceRootError>
     for EguiTextCommandSurfaceRootFactoryError
 {
     fn from(error: super::super::root::EguiTextCommandSurfaceRootError) -> Self {
-        Self::Root(error.to_string())
+        match error {
+            super::super::root::EguiTextCommandSurfaceRootError::ContextMenuEnabledResolver(
+                error,
+            ) => Self::ContextMenuEnabledResolver(error),
+            error => Self::Root(error.to_string()),
+        }
     }
 }
 
@@ -45,6 +55,7 @@ impl std::fmt::Display for EguiTextCommandSurfaceRootFactoryError {
                 write!(formatter, "root presentation token decode failed: {error}")
             }
             Self::Root(error) => error.fmt(formatter),
+            Self::ContextMenuEnabledResolver(error) => error.fmt(formatter),
             Self::OpaqueHostEffect => formatter.write_str("opaque host effect router failed"),
             Self::OpaqueHostEffectRejected => {
                 formatter.write_str("opaque host effect batch was rejected")

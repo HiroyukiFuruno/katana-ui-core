@@ -1,21 +1,25 @@
 use crate::molecule::RgbaColor;
 
 /// An opaque capability target for one projected tab.
+#[derive(Clone, PartialEq, Eq)]
 pub struct TabStripTabTarget {
     pub(crate) payload: Box<[u8]>,
 }
 
 /// An opaque capability target for one projected group.
+#[derive(Clone, PartialEq, Eq)]
 pub struct TabStripGroupTarget {
     pub(crate) payload: Box<[u8]>,
 }
 
 /// An opaque host-issued swatch choice. It never carries a color value.
+#[derive(Clone, PartialEq, Eq)]
 pub struct TabStripSwatchTarget {
     pub(crate) payload: Box<[u8]>,
 }
 
 /// Localized text retained by KUC for presentation only.
+#[derive(Clone, PartialEq, Eq)]
 pub struct TabStripText {
     pub(crate) value: String,
 }
@@ -129,6 +133,7 @@ pub struct TabStripContextMenuPresentation {
 /// KUC-private inline rename sub-state for this accepted projection.
 pub struct TabStripGroupPopupPresentation {
     pub(crate) rename_placeholder: Option<TabStripText>,
+    pub(crate) request_inline_rename: bool,
     pub(crate) entries: Vec<TabStripMenuEntry>,
 }
 
@@ -162,12 +167,23 @@ pub struct TabStripProjection {
     pub(crate) correlation: TabStripCorrelation,
     pub(crate) groups: Vec<TabStripGroupDescriptor>,
     pub(crate) tabs: Vec<TabStripTabDescriptor>,
+    /// Root occurrences in host-provided presentation order.
+    pub(crate) root_items: Vec<TabStripRootItem>,
     pub(crate) capabilities: TabStripSurfaceCapabilities,
     pub(crate) navigation: Option<TabStripNavigationPresentation>,
     pub(crate) scroll_presentation: TabStripScrollPresentation,
 }
 
+/// One root-level occurrence in a tab strip. The index refers to the matching
+/// item in [`TabStripProjection::tab`] or [`TabStripProjection::group`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TabStripRootItem {
+    Tab(usize),
+    Group(usize),
+}
+
 /// Opaque correlation token for one projection revision.
+#[derive(Clone, PartialEq, Eq)]
 pub struct TabStripCorrelation {
     pub(crate) payload: Box<[u8]>,
 }

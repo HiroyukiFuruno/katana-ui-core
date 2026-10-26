@@ -11,6 +11,8 @@ if ! command -v Xvfb >/dev/null; then
   exit 1
 fi
 
+KUC_XVFB_REAL_TEST=1 python3 scripts/test_coverage_xvfb.py
+
 if [[ -n "${CARGO:-}" ]]; then
   read -r -a cargo_command <<<"${CARGO}"
 elif command -v rtk >/dev/null; then
@@ -37,7 +39,7 @@ while [[ -e "/tmp/.X${display_number}-lock" || -S "/tmp/.X11-unix/X${display_num
 done
 xvfb_log="${CARGO_TARGET_DIR:-target}/kuc-xvfb.log"
 mkdir -p "$(dirname "${xvfb_log}")"
-Xvfb ":${display_number}" -screen 0 1600x1200x24 -nolisten tcp -ac >"${xvfb_log}" 2>&1 &
+Xvfb ":${display_number}" -screen 0 1600x1200x24 -nolisten tcp -ac -noreset >"${xvfb_log}" 2>&1 &
 xvfb_pid=$!
 
 cleanup_xvfb() {
@@ -233,6 +235,7 @@ coverage_profile_signature() {
       Cargo.lock \
       Justfile \
       scripts/run-strict-coverage.sh \
+      scripts/test_coverage_xvfb.py \
       scripts/assert-strict-coverage-json.py \
       scripts/assert-strict-coverage-lcov.py \
       scripts/coverage/run-test-binaries.py \
@@ -496,6 +499,11 @@ if python3 scripts/assert-strict-coverage-lcov.py "${coverage_lcov_path}"; then
   write_coverage_strict_state "passed:${pending_profile_signature}"
 else
   write_coverage_strict_state "failed:${pending_profile_signature}"
+  run_coverage_report "detail-json" \
+    "${coverage_packages[@]}" \
+    --json \
+    --output-path "${coverage_diagnostics_dir}/kuc-workspace-coverage-detail.json" \
+    --ignore-filename-regex '(^|/)(tests/|[^/]+_tests/|tests\.rs$|[^/]+_tests\.rs$)'
   # 失敗したCIでも不足行を特定できるよう、同じprofile・scopeの診断をログへ残す。
   run_cargo_raw llvm-cov report --show-missing-lines --quiet \
     "${coverage_packages[@]}" \

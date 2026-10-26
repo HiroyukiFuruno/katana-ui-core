@@ -12,13 +12,18 @@
 
 ## 承認済みリリースの継続
 
+- 複数 Issue の対応とリリースを依頼された場合は、対象 Issue 全てを一つの Draft PR・一つのリリースにまとめる。個別修正ごとに分割公開せず、全件の受入条件・回帰・品質ゲートが揃ってから公開する（ユーザー明示指示、2026-10-25）。
+
 - KUC は独立 repository として完結させる。外部 consumer の要望は KUC の generic 要件へ翻訳して実装してよいが、KUC の完了・release 条件へ外部 repository の採用、受入、Issue 状態を加えてはならない。KUC 自身の要件、public API、contract、自動検証、公開だけで判定する。
+- KUC は単独で動作する汎用 UI の境界設計を基本とする。実装・コードコメント・API 文書へ、他 repository の名前、事情、状態、採用手順を持ち込まない。アプリ固有の本文 store・検索・ファイル解釈は host-owned opaque target と型付きイベントの外側に残し、独立した公開 API 回帰で検証する（ユーザー明示指示、2026-10-25）。
+- 境界違反を発見した場合は、既存の実装・コメント・API 文書も対象に是正する。特定 consumer への依存を名称置換だけで隠さず、単独で成立する汎用契約へ直して検証する。
 
 - 目的と完了条件が明確なら、承認済みの commit / push / merge / release / cleanup は再確認せず実行する。進捗報告でターンを終了しない。
 - 元タスクがarchive・中断された場合は、同じ作業ツリーの実行状況と差分を確認し、競合がなければ残作業を引き継ぐ。引継ぎ待ちを新たな承認条件にしない。
 - coverage失敗は既存LCOVの未到達行を先に修正し、限定テスト後に最終release-checkを実行する。終了コード・ログ・session_idを保持し、稼働targetをcleanしない。
+- Cargo検査は既存just target、個別検査は `python3 scripts/maintenance/cargo_guard.py run -- <command>` を使う。clean/sweepも同じguardを通し、生成物の使用中は整理を終了コード75で拒否する。
 - 文書・ルールだけの変更を理由に製品full gateを追加しない。ルール整理を製品リリースの代わりにしない。
-- 公開後のconsumer受入がDoDに含まれる場合、GitHub Release/crates.io公開だけで完了にしない。受入未達をIssueへ記録するだけで停止せず、修正・検証を継続する。
+- 公開後はregistryから取得したKUCのpublic API契約を自動検証する。他repositoryへの採用や受入をKUCの完了条件へ追加しない。
 
 ## Storybook の扱い
 
@@ -30,7 +35,7 @@ Storybook を「確認環境」「目視確認の場」「静的な部品一覧�
 
 01〜24 は、見た目だけ、文字だけ、同じ骨格の preview、ログだけの変化では完了にしない。
 各 UI は option、action、event、state、preset、preview、settings、対応する自動テストを持ち、要件行から検証コードへ追跡できる必要がある。
-v0.1.0 の DoD は、`katana` と `katana-chat-ui` が `katana-ui-core` だけで app UI を構築できるだけの public API と contract が揃っていることとする。
+v0.1.0 の DoD は、汎用のhostがKUCのpublic APIとcontractだけでapp UIを構築でき、その振る舞いをKUC自身の自動検証で確認できることとする。
 
 ## 画像証跡の扱い
 

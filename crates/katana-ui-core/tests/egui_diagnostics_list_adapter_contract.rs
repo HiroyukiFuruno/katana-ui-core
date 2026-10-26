@@ -443,6 +443,52 @@ fn many_diagnostics() -> DiagnosticsList {
     })
 }
 
+#[test]
+fn long_diagnostic_label_uploads_only_backend_sized_tiles() {
+    let context = egui::Context::default();
+    let mut adapter = EguiDiagnosticsListAdapter::new("diagnostics-texture-limit").unwrap();
+    let mut diagnostics = DiagnosticsList::new("長い診断").item(DiagnosticItem::new(
+        "long-item",
+        DiagnosticSeverity::Error,
+        "長い診断内容 ".repeat(40),
+        DiagnosticLocation::new("src/long.rs", 1, 1),
+    ));
+    let mut output_error = None;
+    let mut output = context.run_ui(
+        egui::RawInput {
+            max_texture_side: Some(1024),
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(2200.0, 240.0),
+            )),
+            ..egui::RawInput::default()
+        },
+        |ui| {
+            if let Err(error) = adapter.show(ui, &mut diagnostics) {
+                output_error = Some(error.to_string());
+            }
+        },
+    );
+    let uploaded = output
+        .textures_delta
+        .set
+        .values()
+        .flat_map(|deltas| deltas.iter().map(|delta| delta.image.size()))
+        .collect::<Vec<_>>();
+    output.textures_delta.clear();
+    assert!(
+        output_error.is_none(),
+        "diagnostics failed: {output_error:?}"
+    );
+    assert!(!uploaded.is_empty(), "diagnostics emitted no textures");
+    assert!(
+        uploaded
+            .iter()
+            .all(|size| size.iter().all(|side| *side <= 1024)),
+        "diagnostics texture upload exceeded backend limit"
+    );
+}
+
 fn frame(
     context: &egui::Context,
     adapter: &mut EguiDiagnosticsListAdapter,

@@ -11,6 +11,7 @@ use super::tab_strip_projection_lease::TabStripProjectionLease;
 #[cfg(test)]
 use super::types::EguiTextCommandSurfacePresentation;
 
+mod evidence_identity;
 #[path = "host_root/command_families.rs"]
 mod host_root_command_families;
 #[path = "host_root/errors.rs"]
@@ -35,12 +36,23 @@ mod host_root_token_api;
 mod host_root_token_codec;
 #[path = "host_root/types.rs"]
 mod host_root_types;
+#[path = "host_root/live_unicode.rs"]
+mod live_unicode;
+mod selection_commit;
+mod ui_selection;
+
+pub use live_unicode::KucLiveUnicodeObservation;
+pub use ui_selection::{
+    KucUiSelectionAvailability, KucUiSelectionObservation, KucUiSelectionPhase,
+    KucUiSelectionRestoreError, KucUiSelectionRestoreRequest, KucUiSelectionSnapshot,
+};
 
 #[cfg(test)]
 use super::types::TextCommandSurfaceStyle;
 #[cfg(test)]
 use host_root_process::HostRootProcess;
 
+pub use super::context_menu_enabled_resolver::KucContextMenuEnabledResolverError;
 pub use host_root_types::{
     EguiTextCommandSurfaceCommandFamilyProjection, EguiTextCommandSurfaceHostProjectionEncoder,
     EguiTextCommandSurfaceHostProjectionLease, EguiTextCommandSurfaceHostRoot,

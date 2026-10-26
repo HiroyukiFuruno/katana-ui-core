@@ -14,7 +14,9 @@ REPO_ROOT := justfile_directory()
 RTK := env_var_or_default("RTK", `command -v rtk 2> /dev/null || true`)
 RTK_CMD := if RTK == "" { "" } else { RTK + " " }
 JOBS := env_var_or_default("JOBS", "2")
-CARGO := env_var_or_default("CARGO", RTK_CMD + "cargo")
+CARGO_TOOL := env_var_or_default("CARGO", RTK_CMD + "cargo")
+CARGO_GUARD := (if RTK == "" { "python3 " } else { RTK + " proxy python3 " }) + quote(REPO_ROOT / "scripts/maintenance/cargo_guard.py")
+CARGO := CARGO_GUARD + " run -- " + CARGO_TOOL
 COVERAGE_BUILD_JOBS := env_var_or_default("CARGO_BUILD_JOBS", JOBS)
 COVERAGE_TEST_THREADS := env_var_or_default("COVERAGE_TEST_THREADS", "8")
 KUC_WORKSPACE_PACKAGES := "-p katana-ui-core -p katana-ui-core-storybook -p kuc-consumer-app"
@@ -58,6 +60,7 @@ native-ime-contract:
 # Run strict Clippy checks
 lint:
     {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --lib --all-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
+    {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --lib --no-default-features --features egui,native-ime-evidence --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
     {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --tests --no-default-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
     {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core --all-targets --all-features --locked -- -D warnings
     {{CARGO}} clippy -j {{JOBS}} -p katana-ui-core-storybook -p kuc-consumer-app --all-targets --all-features --locked -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::todo -D clippy::unimplemented -D clippy::dbg_macro -D clippy::panic -D clippy::wildcard_imports
@@ -84,6 +87,9 @@ consumer-app-contract:
 
 # Run katana-ui-core specific guardrails
 kuc-guardrails: consumer-app-contract
+    python3 scripts/test_cargo_guard.py
+    python3 scripts/test_coverage_xvfb.py
+    python3 scripts/test_core_public_api_neutral.py
     python3 scripts/test_kuc_guardrails.py
     python3 scripts/test_next_storybook_page_change.py
     python3 scripts/coverage/run-test-binaries.py --self-test
@@ -107,6 +113,7 @@ kuc-guardrails: consumer-app-contract
     python3 scripts/test_verify_release_target.py
     python3 scripts/test_verify_release_gate.py
     python3 scripts/test_verify_reusable_release_evidence.py
+    python3 scripts/test_release_cleanup.py
     python3 scripts/storybook_native_window_probe.py --self-test
     python3 scripts/assert-strict-coverage-json.py --self-test
     python3 scripts/assert-strict-coverage-lcov.py --self-test
@@ -124,9 +131,7 @@ kuw-guardrails: kuc-guardrails
 
 # Verify the registry-safe raster host compiles without GUI runtime dependencies.
 raster-host-contract:
-    {{CARGO}} check -p katana-ui-core --no-default-features --features raster-host --locked
-    CARGO="{{CARGO}}" bash scripts/assert-core-dependency-boundary.sh
-    bash scripts/assert-core-public-api-neutral.sh
+    {{CARGO_GUARD}} run -- bash -c 'set -e; {{CARGO_TOOL}} check -p katana-ui-core --no-default-features --features raster-host --locked; CARGO="{{CARGO_TOOL}}" bash scripts/assert-core-dependency-boundary.sh; bash scripts/assert-core-public-api-neutral.sh'
 
 # Install repository-local git hooks
 install-hooks:
@@ -161,12 +166,12 @@ integration-test: consumer-app-contract
 
 # Run end-to-end headless Storybook scenarios against real component behavior.
 e2e-test:
-    bash scripts/storybook-requirement-gate.sh
+    {{CARGO_GUARD}} run -- bash scripts/storybook-requirement-gate.sh
 
 # Run smoke tests for launch and interactive Storybook paths.
 smoke-test: storybook-smoke storybook-interaction-smoke
 
-# Alias used by KML-style workflows
+# 既存のテスト実行入口との互換性を保つ。
 test: unit-test
 
 # Run coverage as a release confidence gate
@@ -185,15 +190,15 @@ coverage-adapter-supplement test_target test_filter: fmt-check ast-lint
 
 # Run the Linux/Xvfb coverage implementation directly
 coverage-linux:
-    CARGO="{{CARGO}}" bash scripts/run-strict-coverage.sh
+    {{CARGO_GUARD}} run -- env CARGO="{{CARGO_TOOL}}" bash scripts/run-strict-coverage.sh
 
 # Run the Linux/Xvfb iteration path without discarding unchanged coverage build artifacts.
 coverage-linux-iterate:
-    KUC_COVERAGE_REUSE=1 CARGO="{{CARGO}}" bash scripts/run-strict-coverage.sh
+    {{CARGO_GUARD}} run -- env KUC_COVERAGE_REUSE=1 CARGO="{{CARGO_TOOL}}" bash scripts/run-strict-coverage.sh
 
 # Supplement an unchanged full-workspace profile with one focused adapter test target on Linux.
 coverage-linux-adapter-supplement test_target test_filter:
-    KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} KUC_COVERAGE_REUSE=1 CARGO="{{CARGO}}" bash scripts/run-strict-coverage.sh
+    {{CARGO_GUARD}} run -- env KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} KUC_COVERAGE_REUSE=1 CARGO="{{CARGO_TOOL}}" bash scripts/run-strict-coverage.sh
 
 # Run strict Linux/Xvfb coverage from macOS or Windows without opening a window
 coverage-container:
@@ -217,11 +222,11 @@ check: fmt-check ast-lint check-types lint unit-test native-ime-contract kuc-gua
 
 # Sweep old build artifacts locally (older than 7 days)
 sweep:
-    @{{CARGO}} sweep --time 7 || true
+    @{{CARGO_GUARD}} clean -- {{CARGO_TOOL}} sweep --time 7
 
 # Remove build artifacts
-clean: sweep
-    {{CARGO}} clean
+clean:
+    {{CARGO_GUARD}} clean -- {{CARGO_TOOL}} clean
 
 # Update dependency crates to latest compatible versions
 update-safe:
@@ -259,7 +264,7 @@ storybook-visual-snapshot:
 
 # Check Storybook pages can build without opening visible windows.
 storybook-smoke:
-    bash scripts/storybook-headless-smoke.sh
+    {{CARGO_GUARD}} run -- bash scripts/storybook-headless-smoke.sh
 
 # Verify VERSION follows the published release line
 release-target-check:
@@ -292,7 +297,7 @@ release-local-cleanup:
 
 # Check Storybook overlay/action pages in an opened state, not only initial mount.
 storybook-interaction-smoke:
-    bash scripts/storybook-interaction-smoke.sh
+    {{CARGO_GUARD}} run -- bash scripts/storybook-interaction-smoke.sh
 
 # Drive the visible Storybook native window with OS input and write per-page traces.
 storybook-native-window-probe:
@@ -353,7 +358,7 @@ storybook-interaction-pending-only:
 
 # Check Storybook pages against requirement scenarios, not only crash-free launch.
 storybook-requirement-gate:
-    bash scripts/storybook-requirement-gate.sh
+    {{CARGO_GUARD}} run -- bash scripts/storybook-requirement-gate.sh
 
 # Run all KUC Rust tests used by the Storybook regression gate.
 cargo-test:

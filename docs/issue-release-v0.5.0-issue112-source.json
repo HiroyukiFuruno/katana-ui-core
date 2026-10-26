@@ -1,0 +1,18 @@
+{
+  "url": "https://github.com/HiroyukiFuruno/katana-ui-core/issues/112",
+  "title": "公開full-rootでContextMenu項目の有効状態を表示直前に解決できるようにする",
+  "issue_number": 112,
+  "body": "## 依頼内容\n\n公開full-rootのContextMenuに、項目の`enabled`を表示直前にhost側で解決する汎用resolverを追加してください。\n\nメニューの開閉・描画・配置・hit test・focusは引き続きKUCが所有し、呼び出し元は項目の有効状態だけを返す形にしてください。clipboardやMarkdownなどの固有処理をKUCへ持ち込む必要はありません。\n\n## 完了条件\n\n- 公開projection leaseからresolverを注入でき、既存のstatic presentationだけを使う呼び出し元は互換維持される。\n- メニューが閉じているframeではresolverを呼ばない。初回表示frameを含む各表示frameで最新値を解決し、同じframeの描画・操作可否・AccessKit・公開frame recordへ一貫して反映する。呼び出し元にメニュー開閉状態やgeometryの複製を要求しない。\n- 公開full-rootを使う入力回帰で、閉時の呼出し0回、初回の即時反映、表示中の値変更、disabled項目の操作拒否、閉じた後の照会停止を検査する。内部モデルの直呼びだけで代用しない。\n- resolver失敗は型付きで検出でき、古いenabled値を成功結果として再利用しない。既存のroot identity・revision・correlation・stale lease・one-shotの保護を維持する。\n- 依存関係を最新互換版へ更新し、既存の品質ゲートを維持する。公開registry版でこのAPIが利用でき、公開APIだけを使う外部consumerのcompileとroot入力回帰が通る。\n",
+  "state": null,
+  "user": null,
+  "assignees": null,
+  "labels": null,
+  "milestone": null,
+  "state_reason": null,
+  "comments": null,
+  "created_at": null,
+  "updated_at": null,
+  "closed_at": null,
+  "display_url": "https://github.com/HiroyukiFuruno/katana-ui-core/issues/112",
+  "display_title": "公開full-rootでContextMenu項目の有効状態を表示直前に解決できるようにする"
+}

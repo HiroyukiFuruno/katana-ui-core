@@ -121,7 +121,7 @@ fn runtime_and_window_reports_include_every_field() {
 #[test]
 fn visual_error_formats_window_and_placement_sources() {
     let window = StorybookVisualError::from(minifb::Error::WindowCreate("test".to_string()));
-    assert_eq!("Failed to create window", window.to_string());
+    assert_eq!("Failed to create window: test", window.to_string());
     let placement = StorybookVisualError::from(ModalWindowPlacementError::ParentOutsideDisplay);
     assert_eq!("ParentOutsideDisplay", placement.to_string());
     let eframe = StorybookVisualError::from(eframe::Error::AppCreation(Box::new(

@@ -10,8 +10,10 @@ mod gutter_types;
 mod layout;
 mod layout_gutter;
 mod layout_hit_test;
+mod layout_lines;
 mod layout_model;
 mod layout_scroll;
+mod layout_selection;
 mod props;
 mod scroll_request;
 mod scroll_request_types;
@@ -22,7 +24,13 @@ mod surface_controlled;
 mod surface_focus;
 mod surface_interaction;
 mod surface_model;
+mod surface_outcome;
 mod surface_scroll;
+#[cfg(feature = "egui")]
+mod ui_selection;
+
+#[cfg(feature = "egui")]
+pub(crate) use ui_selection::TextSurfaceUiSelection;
 
 pub use accessibility::{
     TextSurfaceAccessibilityAction, TextSurfaceAccessibilityActionKind,
@@ -77,6 +85,8 @@ mod focus_request_tests;
 mod gutter_tests;
 #[cfg(test)]
 mod interaction_tests;
+#[cfg(test)]
+mod pointer_suspend_tests;
 #[cfg(test)]
 mod scroll_precision_tests;
 #[cfg(test)]

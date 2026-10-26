@@ -13,6 +13,7 @@ impl RootEventPayload {
     #[cfg(test)]
     pub(super) fn empty() -> Self {
         Self {
+            selection_dialog: Vec::new(),
             text: Vec::new(),
             toolbar: None,
             floating: None,
@@ -26,6 +27,10 @@ impl RootEventPayload {
 
     fn from_output(output: &EguiTextCommandSurfaceOutput) -> Self {
         Self {
+            selection_dialog: output
+                .selection_dialog
+                .as_ref()
+                .map_or_else(Vec::new, |dialog| dialog.events.clone()),
             text: output.text.events.clone(),
             toolbar: output.toolbar.as_ref().map(|value| value.events.clone()),
             floating: output.floating.as_ref().map(|value| value.events.clone()),
@@ -48,6 +53,7 @@ impl RootEventPayload {
 
     pub(super) fn event_cardinality(&self) -> usize {
         self.text.len()
+            + self.selection_dialog.len()
             + self.toolbar.as_ref().map_or(0, Vec::len)
             + self.floating.as_ref().map_or(0, Vec::len)
             + self.search.as_ref().map_or(0, Vec::len)
@@ -60,6 +66,7 @@ impl RootEventPayload {
 
 #[derive(Serialize)]
 pub(super) struct RootEventEnvelope<'a> {
+    pub(super) selection_dialog: &'a [super::super::super::SelectionDialogEvent],
     pub(super) text: &'a [TextSurfaceEvent],
     pub(super) toolbar: Option<&'a [CommandChromeToolbarEvent]>,
     pub(super) floating: Option<&'a [FloatingCommandToolbarEvent]>,
@@ -117,6 +124,7 @@ impl RootEventFingerprint {
 impl RootEventFingerprint {
     pub(super) fn fingerprint_payload(payload: &RootEventPayload) -> Result<String, String> {
         let envelope = RootEventEnvelope {
+            selection_dialog: &payload.selection_dialog,
             text: &payload.text,
             toolbar: payload.toolbar.as_deref(),
             floating: payload.floating.as_deref(),

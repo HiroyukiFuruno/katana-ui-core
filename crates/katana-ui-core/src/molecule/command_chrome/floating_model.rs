@@ -43,6 +43,8 @@ pub enum FloatingCommandToolbarVisibility {
     #[default]
     Closed,
     Visible,
+    /// 編集可能な text surface が collapsed caret を保持する間だけ表示する。
+    VisibleAtCaret,
 }
 
 /// Consumer-supplied frame facts for an adapter-measured floating toolbar.
@@ -146,7 +148,7 @@ impl FloatingCommandToolbar {
     /// visible 初期状態では placement を直ちに解決する。
     #[must_use]
     pub fn initial_visibility(mut self, value: FloatingCommandToolbarVisibility) -> Self {
-        if value == FloatingCommandToolbarVisibility::Visible {
+        if !matches!(value, FloatingCommandToolbarVisibility::Closed) {
             self.initialize_visible();
         }
         self
@@ -272,5 +274,17 @@ mod tests {
         assert!(toolbar.is_open());
         assert!(toolbar.placement_model().is_some());
         assert!(toolbar.bounds_model().is_some());
+    }
+
+    #[test]
+    fn caret_visibility_is_an_explicit_open_variant() {
+        let toolbar = FloatingCommandToolbar::new(toolbar(), layout())
+            .initial_visibility(FloatingCommandToolbarVisibility::VisibleAtCaret);
+
+        assert!(toolbar.is_open());
+        assert_eq!(
+            FloatingCommandToolbarVisibility::Visible,
+            toolbar.visibility_model()
+        );
     }
 }

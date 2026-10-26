@@ -15,6 +15,12 @@ use katana_ui_core::molecule::RgbaColor;
 
 struct AcceptingProposalPort;
 
+#[test]
+fn host_can_read_typed_rename_text_without_inspecting_opaque_targets() {
+    let name = TabStripText::new("日本語 ⭐️");
+    assert_eq!(name.as_str(), "日本語 ⭐️");
+}
+
 impl TabStripProposalPort for AcceptingProposalPort {
     fn forward_proposal(
         &mut self,
@@ -110,24 +116,23 @@ fn source_guard_rejects_legacy_aliases_and_wire_payload_shapes() {
 }
 
 #[test]
-fn opaque_values_do_not_implement_clone_or_serialize_by_source_contract() {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("src/egui/text_command_surface/tab_strip_projection_lease/types.rs");
-    let source = fs::read_to_string(path).expect("tab-strip boundary source");
-    for type_name in [
-        "TabStripTabTarget",
-        "TabStripGroupTarget",
-        "TabStripSwatchTarget",
-        "TabStripProjectionLease",
-    ] {
-        let start = source
-            .find(&format!("struct {type_name}"))
-            .or_else(|| source.find(&format!("pub struct {type_name}")))
-            .unwrap_or_else(|| panic!("missing {type_name}"));
-        let tail = &source[start..source.len().min(start + 500)];
-        assert!(!tail.contains("derive(Clone)"), "{type_name} is Clone");
-        assert!(!tail.contains("Serialize"), "{type_name} is serializable");
-    }
+fn opaque_targets_can_be_retained_and_compared_without_exposing_payloads() {
+    let tab = TabStripTabTarget::from_opaque_bytes(b"private-tab");
+    let group = TabStripGroupTarget::from_opaque_bytes(b"private-group");
+    let swatch = TabStripSwatchTarget::from_opaque_bytes(b"private-swatch");
+    assert_eq!(tab, tab.clone());
+    assert_eq!(group, group.clone());
+    assert_eq!(swatch, swatch.clone());
+    assert_ne!(tab, TabStripTabTarget::from_opaque_bytes(b"other-tab"));
+    assert_ne!(
+        group,
+        TabStripGroupTarget::from_opaque_bytes(b"other-group")
+    );
+    assert_ne!(
+        swatch,
+        TabStripSwatchTarget::from_opaque_bytes(b"other-swatch")
+    );
+    assert!(!format!("{tab:?} {group:?} {swatch:?}").contains("private-"));
 }
 
 #[test]

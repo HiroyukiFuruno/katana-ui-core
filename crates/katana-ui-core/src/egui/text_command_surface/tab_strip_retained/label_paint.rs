@@ -1,4 +1,5 @@
 use super::support::ui_rect;
+use super::tab_paint::paint_texture_tiled;
 use super::{
     ACTIVE_TAB_RGBA, CORNER_RADIUS_PX, ICON_SIZE_PX, INACTIVE_TAB_RGBA, PRIMARY_TEXT_RGBA,
     RGBA_ALPHA_INDEX, RgbaColor, TAB_GAP_PX, TAB_PADDING_PX, TRAILING_CONTROL_WIDTH_PX,
@@ -36,7 +37,7 @@ impl TabStripRetainedState {
         );
         let response = ui.interact(
             rect,
-            ui.id().with(path.clone()),
+            self.routes.interaction_id(ui.id(), &path),
             if draggable {
                 egui::Sense::click_and_drag()
             } else {
@@ -57,6 +58,23 @@ impl TabStripRetainedState {
             if !drag_started && !response.dragged() && !drag_stopped {
                 self.forward_response_activation(ui, &response)?;
             }
+        } else {
+            ui.ctx().accesskit_node_builder(response.id, |node| {
+                /* WHY: 二次ボタンmenu用のsenseがあっても、非操作labelへAX操作を残さない。 */
+                node.clear_actions();
+                node.set_role(egui::accesskit::Role::Label);
+                node.set_label(text.value.as_str());
+                node.set_bounds(egui::accesskit::Rect {
+                    x0: rect.min.x.into(),
+                    y0: rect.min.y.into(),
+                    x1: rect.max.x.into(),
+                    y1: rect.max.y.into(),
+                });
+            });
+            crate::egui::text_command_surface::accesskit_evidence::record_custom(
+                ui.ctx(), response.id, ui_rect(rect), &text.value, true, &path,
+                crate::egui::text_command_surface::accesskit_evidence::AccessKitTargetClass::TabStripControl,
+            );
         }
         let raster_fingerprint = hex::encode(Sha256::digest(&raster.rgba_pixels));
         let texture = TabStripPaintTexture {
@@ -65,13 +83,6 @@ impl TabStripRetainedState {
             height: raster.height,
             rgba_pixels: raster.rgba_pixels,
         };
-        let texture_handle = self.textures.texture_for_rgba(
-            ui.ctx(),
-            &texture.identity,
-            texture.width as usize,
-            texture.height as usize,
-            &texture.rgba_pixels,
-        );
         let background = if active {
             ACTIVE_TAB_RGBA
         } else {
@@ -94,11 +105,12 @@ impl TabStripRetainedState {
             ),
             egui::vec2(texture.width as f32, texture.height as f32),
         );
-        ui.painter().image(
-            texture_handle.id(),
-            label_rect,
-            egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
-            egui::Color32::WHITE,
+        paint_texture_tiled(
+            ui.painter(),
+            ui.ctx(),
+            &mut self.textures,
+            ui_rect(label_rect),
+            &texture,
         );
         operations.push(TabStripPaintOperation {
             clip_bounds: ui_rect(bounds),
@@ -142,7 +154,11 @@ impl TabStripRetainedState {
                 (bounds.height() - TAB_GAP_PX * 2.0).max(1.0),
             ),
         );
-        let response = ui.interact(rect, ui.id().with(&control.path), egui::Sense::click());
+        let response = ui.interact(
+            rect,
+            self.routes.interaction_id(ui.id(), &control.path),
+            egui::Sense::click(),
+        );
         self.routes.register_response(
             &control.path,
             response.id,
@@ -166,18 +182,12 @@ impl TabStripRetainedState {
                 PRIMARY_TEXT_RGBA[RGBA_ALPHA_INDEX],
             ),
         )?;
-        let handle = self.textures.texture_for_rgba(
+        paint_texture_tiled(
+            ui.painter(),
             ui.ctx(),
-            &texture.identity,
-            texture.width as usize,
-            texture.height as usize,
-            &texture.rgba_pixels,
-        );
-        ui.painter().image(
-            handle.id(),
-            rect,
-            egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(1.0, 1.0)),
-            egui::Color32::WHITE,
+            &mut self.textures,
+            ui_rect(rect),
+            &texture,
         );
         operations.push(TabStripPaintOperation {
             clip_bounds: ui_rect(bounds),

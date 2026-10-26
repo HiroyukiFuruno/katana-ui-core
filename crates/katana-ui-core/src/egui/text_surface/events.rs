@@ -19,6 +19,17 @@ impl TextSurfaceInteraction {
         pending_focus_request: Option<bool>,
         pointer_exclusion_bounds: &[crate::render_model::UiRect],
     ) -> Vec<TextSurfaceEvent> {
+        if ui.is_sizing_pass() {
+            return Vec::new();
+        }
+        if surface.state().text_area.disabled || !ui.is_enabled() {
+            surface.suspend_pointer_interaction();
+            response.surrender_focus();
+            if surface.state().text_area.focused {
+                return set_focus(surface, false);
+            }
+            return Vec::new();
+        }
         let pointer_excluded = pointer_event_in_bounds(ui, pointer_exclusion_bounds);
         let accepts_text_input =
             response.has_focus() || ui.ctx().memory(|memory| memory.focused().is_none());
@@ -31,6 +42,18 @@ impl TextSurfaceInteraction {
             input_policy.retain_pointer_focus,
             pointer_excluded,
         );
+        if surface.state().text_area.focused {
+            ui.memory_mut(|memory| {
+                memory.set_focus_lock_filter(
+                    response.id,
+                    egui::EventFilter {
+                        horizontal_arrows: true,
+                        vertical_arrows: true,
+                        ..Default::default()
+                    },
+                )
+            });
+        }
         if !pointer_excluded {
             events.extend(pointer_events(ui, response, surface, layout, frame));
         }
@@ -170,7 +193,29 @@ fn pointer_events(
     if let Some(events) = gutter_pointer_events(surface, frame, point) {
         return events;
     }
-    if response.drag_started() || response.clicked() {
+    if response.drag_started() {
+        let press = ui
+            .input(|input| input.pointer.press_origin())
+            .map(surface_point)
+            .unwrap_or(point);
+        let extend_selection = ui.ctx().input(|input| input.modifiers.shift);
+        let mut events = surface
+            .apply_layout_action(
+                layout,
+                TextSurfaceLayoutAction::PointerPress {
+                    point: press,
+                    extend_selection,
+                },
+            )
+            .events;
+        events.extend(
+            surface
+                .apply_layout_action(layout, TextSurfaceLayoutAction::PointerDrag { point })
+                .events,
+        );
+        return events;
+    }
+    if response.clicked() {
         let extend_selection = ui.ctx().input(|input| input.modifiers.shift);
         return surface
             .apply_layout_action(

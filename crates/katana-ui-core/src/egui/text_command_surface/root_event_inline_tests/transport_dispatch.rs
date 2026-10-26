@@ -50,6 +50,10 @@ fn transport_dispatches_all_classes_in_fixed_order_and_returns_counts() {
                 child_class: EguiTextCommandSurfaceRootEventChildClass::DiagnosticsList,
                 event_count: 0,
             },
+            EguiTextCommandSurfaceRootEventClassDispatch {
+                child_class: EguiTextCommandSurfaceRootEventChildClass::SelectionDialog,
+                event_count: 0,
+            },
         ]
     );
     assert_eq!(
@@ -66,6 +70,7 @@ fn transport_dispatches_all_classes_in_fixed_order_and_returns_counts() {
             receipt.context_menu_count(),
             receipt.status_bar_count(),
             receipt.diagnostics_list_count(),
+            receipt.selection_dialog_count(),
         ]
     );
 }

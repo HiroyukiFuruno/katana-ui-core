@@ -10,6 +10,7 @@ use std::sync::Arc;
 /// constructed from its configuration. Callers that need to supply an
 /// arbitrary catalog separately must continue to use
 /// [`PlatformTextRasterizer::with_catalog`].
+#[derive(Clone)]
 pub struct PlatformTextRasterResources {
     catalog: Arc<PlatformFontCatalog>,
     config: PlatformTextRasterConfig,

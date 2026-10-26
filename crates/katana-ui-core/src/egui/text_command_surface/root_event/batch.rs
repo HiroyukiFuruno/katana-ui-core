@@ -1,3 +1,7 @@
+#[cfg(any(test, feature = "storybook-artifacts"))]
+#[path = "batch_observation.rs"]
+mod observation;
+
 use super::super::super::source_address_projection_lease::SourceAddressSubmissionPortHandle;
 use super::dispatcher::RootEventFingerprint;
 use super::{
@@ -10,7 +14,6 @@ use super::{
 use crate::molecule::command_chrome::{
     CommandChromeSearchEvent, CommandChromeToolbarEvent, FloatingCommandToolbarEvent,
 };
-use crate::molecule::selection::ContextMenuEvent;
 use std::cell::{Cell, RefCell};
 
 impl EguiTextCommandSurfaceRootEventBatch {
@@ -52,6 +55,7 @@ impl EguiTextCommandSurfaceRootEventBatch {
         let correlation_fingerprint =
             RootEventFingerprint::correlation_fingerprint("", 0, &event_batch_fingerprint);
         Self {
+            frame_serial: 0,
             transport: std::cell::RefCell::new(Some(EguiTextCommandSurfaceRootEventTransport {
                 payload,
                 opaque_host_effect_batch: None,
@@ -70,48 +74,6 @@ impl EguiTextCommandSurfaceRootEventBatch {
 
     pub(crate) fn has_events(&self) -> bool {
         self.event_cardinality.get() != 0
-    }
-
-    pub(crate) fn contains_command_activation(
-        &self,
-        action_identity: &str,
-        floating: bool,
-    ) -> bool {
-        let transport = self.transport.borrow();
-        let Some(transport) = transport.as_ref() else {
-            return false;
-        };
-        if floating {
-            transport.payload.floating.as_ref().is_some_and(|events| {
-                events.iter().any(|event| {
-                    matches!(event, FloatingCommandToolbarEvent::Toolbar {
-                        event: CommandChromeToolbarEvent::CommandActivated { action_id },
-                    } if action_id.as_str() == action_identity)
-                })
-            })
-        } else {
-            transport.payload.toolbar.as_ref().is_some_and(|events| {
-                events.iter().any(|event| {
-                    matches!(event, CommandChromeToolbarEvent::CommandActivated { action_id }
-                        if action_id.as_str() == action_identity)
-                })
-            })
-        }
-    }
-
-    pub(crate) fn contains_context_menu_opened(&self) -> bool {
-        let transport = self.transport.borrow();
-        transport.as_ref().is_some_and(|transport| {
-            transport
-                .payload
-                .context_menu
-                .as_ref()
-                .is_some_and(|events| {
-                    events
-                        .iter()
-                        .any(|event| matches!(event, ContextMenuEvent::Opened { .. }))
-                })
-        })
     }
 
     #[cfg(test)]
@@ -253,8 +215,13 @@ impl EguiTextCommandSurfaceRootEventBatch {
         );
     }
 
+    pub(crate) fn set_root_frame_serial(&mut self, frame_serial: u64) {
+        self.frame_serial = frame_serial;
+    }
+
     fn receipt(&self) -> EguiTextCommandSurfaceRootEventForwardingReceipt {
         EguiTextCommandSurfaceRootEventForwardingReceipt {
+            frame_serial: self.frame_serial,
             root_identity: self.root_identity.clone(),
             state_revision: self.state_revision,
             correlation_fingerprint: self.correlation_fingerprint.borrow().clone(),

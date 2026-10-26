@@ -144,6 +144,7 @@ fn detached_root_envelope_excludes_search_events() {
         .expect("transport remains available")
         .payload;
     let envelope = RootEventEnvelope {
+        selection_dialog: &payload.selection_dialog,
         text: &payload.text,
         toolbar: payload.toolbar.as_deref(),
         floating: payload.floating.as_deref(),

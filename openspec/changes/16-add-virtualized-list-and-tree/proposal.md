@@ -1,5 +1,7 @@
 ## Why
 
+外部画面名は観測例であり、要件は汎用のvirtualized list/tree、scroll、focus、selection contractとして定義する。特定consumerの移行や採用はKUCの完了条件に含めない。
+
 `katana` explorer の大量ファイルツリー、command palette の検索結果（数百〜数千件）、`katana-chat-ui` の long history、`katana-markdown-linter` の diagnostics 多数件など、大量項目を扱う場面で virtualization（仮想化）が必要。現状 `List` / `SelectionList` / `TreeView` / `CommandPalette` / `DiagnosticsList` は全件描画前提で、項目数が増えると描画コスト / フレーム時間 / accessibility 計算が爆発する。
 
 ## What Changes

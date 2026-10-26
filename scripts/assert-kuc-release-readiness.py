@@ -736,8 +736,9 @@ def justfile_test_scope_failures(root: Path = ROOT) -> list[str]:
         'coverage: fmt-check ast-lint\n    bash scripts/coverage/prepare-ci-storage.sh "{{REPO_ROOT}}"\n    just coverage-container',
         "coverage-iterate: fmt-check ast-lint\n    just coverage-container-iterate",
         "coverage-adapter-supplement test_target test_filter: fmt-check ast-lint\n    KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} just coverage-container-adapter-supplement",
-        "KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh",
-        "KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh",
+        '{{CARGO_GUARD}} run -- env CARGO="{{CARGO_TOOL}}" bash scripts/run-strict-coverage.sh',
+        '{{CARGO_GUARD}} run -- env KUC_COVERAGE_REUSE=1 CARGO="{{CARGO_TOOL}}" bash scripts/run-strict-coverage.sh',
+        '{{CARGO_GUARD}} run -- env KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} KUC_COVERAGE_REUSE=1 CARGO="{{CARGO_TOOL}}" bash scripts/run-strict-coverage.sh',
         "_coverage-container-run reuse:",
         'bash scripts/coverage/run-container.sh "{{COVERAGE_IMAGE}}" "{{REPO_ROOT}}" "{{COVERAGE_BUILD_JOBS}}" "{{COVERAGE_TEST_THREADS}}" "{{reuse}}"',
         "check: fmt-check ast-lint check-types lint unit-test",
@@ -1969,13 +1970,13 @@ def write_justfile_test_scope_self_test_file(
         "    KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} just coverage-container-adapter-supplement\n"
         "\n"
         "coverage-linux:\n"
-        "    CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh\n"
+        '    {{CARGO_GUARD}} run -- env CARGO="{{CARGO_TOOL}}" bash scripts/run-strict-coverage.sh\n'
         "\n"
         "coverage-linux-iterate:\n"
-        "    KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh\n"
+        '    {{CARGO_GUARD}} run -- env KUC_COVERAGE_REUSE=1 CARGO="{{CARGO_TOOL}}" bash scripts/run-strict-coverage.sh\n'
         "\n"
         "coverage-linux-adapter-supplement test_target test_filter:\n"
-        "    KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} KUC_COVERAGE_REUSE=1 CARGO=\"{{CARGO}}\" bash scripts/run-strict-coverage.sh\n"
+        '    {{CARGO_GUARD}} run -- env KUC_COVERAGE_SUPPLEMENT_TARGET={{quote(test_target)}} KUC_COVERAGE_SUPPLEMENT_FILTER={{quote(test_filter)}} KUC_COVERAGE_REUSE=1 CARGO="{{CARGO_TOOL}}" bash scripts/run-strict-coverage.sh\n'
         "\n"
         "coverage-container-adapter-supplement:\n"
         "    just _coverage-container-run 1\n"

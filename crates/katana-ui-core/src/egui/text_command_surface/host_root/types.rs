@@ -1,4 +1,7 @@
 use super::super::EditorViewportProjectionLease;
+use super::super::context_menu_enabled_resolver::{
+    ContextMenuEnabledResolver, KucContextMenuEnabledResolverError,
+};
 use super::super::root::EguiTextCommandSurfaceRootOutput;
 use super::super::source_address_projection_lease::SourceAddressProjectionLease;
 use super::super::status_diagnostics_projection_lease::StatusDiagnosticsProjectionLease;
@@ -8,13 +11,18 @@ use super::host_root_process::HostRootProcess;
 use crate::molecule::command_chrome::CommandChromeFamilyId;
 use serde::{Deserialize, Serialize};
 
-pub(super) type HostProjectionParts = (
+pub(super) struct HostProjectionAttachments {
+    pub(super) router: Box<dyn super::super::root::KucRootEffectRouter>,
+    pub(super) source_address: Option<SourceAddressProjectionLease>,
+    pub(super) tab_strip: Option<TabStripProjectionLease>,
+    pub(super) status_diagnostics: Option<StatusDiagnosticsProjectionLease>,
+    pub(super) editor_viewport: Option<EditorViewportProjectionLease>,
+    pub(super) context_menu_enabled_resolver: Option<ContextMenuEnabledResolver>,
+}
+
+pub(super) type HostProjectionAttachmentsParts = (
     EguiTextCommandSurfacePresentationToken,
-    Box<dyn super::super::root::KucRootEffectRouter>,
-    Option<SourceAddressProjectionLease>,
-    Option<TabStripProjectionLease>,
-    Option<StatusDiagnosticsProjectionLease>,
-    Option<EditorViewportProjectionLease>,
+    HostProjectionAttachments,
 );
 
 /// Opaque host target token. Its payload cannot be inspected by a consumer.
@@ -37,6 +45,7 @@ pub struct EguiTextCommandSurfaceHostProjectionLease {
     pub(super) tab_strip: Option<TabStripProjectionLease>,
     pub(super) status_diagnostics: Option<StatusDiagnosticsProjectionLease>,
     pub(super) editor_viewport: Option<EditorViewportProjectionLease>,
+    pub(super) context_menu_enabled_resolver: Option<ContextMenuEnabledResolver>,
 }
 
 /// Encodes host-projected generic presentation data into an opaque root token.
@@ -60,6 +69,9 @@ pub struct EguiTextCommandSurfaceHostRoot {
 /// Closed root record returned by the consumer-safe facade.
 /// One root frame. The event batch is intentionally inaccessible except through forwarding.
 pub struct EguiTextCommandSurfaceHostRootFrame {
+    pub(super) font_identity: (Option<String>, String),
+    pub(super) selection_observation: super::ui_selection::KucUiSelectionObservation,
+    pub(super) frame_serial: u64,
     pub(super) output: EguiTextCommandSurfaceRootOutput,
     pub(super) record: super::host_root_record::EguiTextCommandSurfaceHostRootRecord,
 }
@@ -76,6 +88,7 @@ pub enum EguiTextCommandSurfaceRootFactoryError {
     OpaqueHostEffect,
     OpaqueHostEffectRejected,
     DuplicateLease { revision: u64 },
+    ContextMenuEnabledResolver(KucContextMenuEnabledResolverError),
 }
 
 #[derive(Deserialize, Serialize)]

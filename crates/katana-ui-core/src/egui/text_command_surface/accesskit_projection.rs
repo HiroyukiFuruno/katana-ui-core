@@ -1,3 +1,4 @@
+#[cfg(any(test, feature = "storybook-artifacts"))]
 use sha2::Digest;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,6 +52,7 @@ impl AccessKitTextInputNode {
         )
     }
 
+    #[cfg(any(test, feature = "storybook-artifacts"))]
     pub(crate) fn snapshot_hash(&self) -> String {
         let bounds = self.bounds.map(|bounds| {
             serde_json::json!({
@@ -81,6 +83,7 @@ impl From<egui::accesskit::Rect> for AccessKitTextInputBounds {
     }
 }
 
+#[cfg(any(test, feature = "storybook-artifacts"))]
 fn role_name(role: AccessKitTextInputRole) -> &'static str {
     match role {
         AccessKitTextInputRole::TextInput => "text-input",
