@@ -68,3 +68,15 @@ pub use host_root_record::{
 #[cfg(test)]
 #[path = "host_root_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "host_root/group_color_pixel_tests.rs"]
+mod group_color_pixel_tests;
+
+#[cfg(test)]
+#[path = "host_root/search_highlight_pixel_tests.rs"]
+mod search_highlight_pixel_tests;
+
+#[cfg(test)]
+#[path = "host_root/global_action_pixel_tests.rs"]
+mod global_action_pixel_tests;

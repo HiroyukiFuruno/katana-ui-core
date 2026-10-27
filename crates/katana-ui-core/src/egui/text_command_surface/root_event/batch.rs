@@ -28,6 +28,18 @@ impl EguiTextCommandSurfaceRootEventBatch {
     where
         Forwarder: KucRootEventBatchForwarder,
     {
+        {
+            let transport = self.transport.borrow();
+            if let Some(transport) = transport.as_ref()
+                && !transport.payload.global_actions.is_empty()
+            {
+                match &transport.global_guard {
+                    None => return Err(EguiTextCommandSurfaceRootEventBatchForwardError::GlobalAuthorizationRequired),
+                    Some(guard) if !guard.is_valid() => return Err(EguiTextCommandSurfaceRootEventBatchForwardError::GlobalAuthorizationFailed),
+                    Some(_) => {}
+                }
+            }
+        }
         let transport = self
             .transport
             .borrow_mut()
@@ -58,6 +70,7 @@ impl EguiTextCommandSurfaceRootEventBatch {
             frame_serial: 0,
             transport: std::cell::RefCell::new(Some(EguiTextCommandSurfaceRootEventTransport {
                 payload,
+                global_guard: None,
                 opaque_host_effect_batch: None,
                 source_address_submission_port,
             })),
@@ -70,6 +83,31 @@ impl EguiTextCommandSurfaceRootEventBatch {
             command_detached: Cell::new(false),
             context_menu_detached: Cell::new(false),
         }
+    }
+
+    pub(crate) fn authorize_global(
+        &self,
+        generation: std::rc::Weak<Cell<u64>>,
+        epoch: u64,
+        committed: std::rc::Rc<dyn Fn() -> bool>,
+    ) -> bool {
+        let mut transport = self.transport.borrow_mut();
+        let Some(transport) = transport.as_mut() else {
+            return false;
+        };
+        transport.global_guard = Some(super::GlobalActionGuard {
+            generation,
+            epoch,
+            committed,
+        });
+        true
+    }
+
+    pub(crate) fn has_global_events(&self) -> bool {
+        self.transport
+            .borrow()
+            .as_ref()
+            .is_some_and(|transport| !transport.payload.global_actions.is_empty())
     }
 
     pub(crate) fn has_events(&self) -> bool {

@@ -52,6 +52,8 @@ fn group_drag_skips_when_another_drag_is_active_and_cancels_without_destination(
         TabStripCorrelation::from_opaque_bytes(b"corr"),
     ));
     state.drag = Some(TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source: TabStripTabTarget::from_opaque_bytes(b"tab-drag"),
         origin: None,
         label: TabStripText::new("tab"),

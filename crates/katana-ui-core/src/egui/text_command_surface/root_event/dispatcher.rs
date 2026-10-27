@@ -14,6 +14,7 @@ impl RootEventPayload {
     pub(super) fn empty() -> Self {
         Self {
             selection_dialog: Vec::new(),
+            global_actions: Vec::new(),
             text: Vec::new(),
             toolbar: None,
             floating: None,
@@ -27,6 +28,7 @@ impl RootEventPayload {
 
     fn from_output(output: &EguiTextCommandSurfaceOutput) -> Self {
         Self {
+            global_actions: Vec::new(),
             selection_dialog: output
                 .selection_dialog
                 .as_ref()
@@ -53,6 +55,7 @@ impl RootEventPayload {
 
     pub(super) fn event_cardinality(&self) -> usize {
         self.text.len()
+            + self.global_actions.len()
             + self.selection_dialog.len()
             + self.toolbar.as_ref().map_or(0, Vec::len)
             + self.floating.as_ref().map_or(0, Vec::len)
@@ -67,6 +70,8 @@ impl RootEventPayload {
 #[derive(Serialize)]
 pub(super) struct RootEventEnvelope<'a> {
     pub(super) selection_dialog: &'a [super::super::super::SelectionDialogEvent],
+    #[serde(skip_serializing_if = "<[super::super::KucGlobalActionEvent]>::is_empty")]
+    pub(super) global_actions: &'a [super::super::KucGlobalActionEvent],
     pub(super) text: &'a [TextSurfaceEvent],
     pub(super) toolbar: Option<&'a [CommandChromeToolbarEvent]>,
     pub(super) floating: Option<&'a [FloatingCommandToolbarEvent]>,
@@ -82,8 +87,10 @@ impl RootEventDispatcher {
     pub(super) fn build_event_batch(
         output: &mut EguiTextCommandSurfaceOutput,
         source_address_submission_port: Option<SourceAddressSubmissionPortHandle>,
+        global_actions: Vec<super::super::KucGlobalActionEvent>,
     ) -> Result<EguiTextCommandSurfaceRootEventBatch, String> {
         let mut payload = RootEventPayload::from_output(output);
+        payload.global_actions = global_actions;
         if let Some(source_address) = output.source_address.as_mut() {
             payload.source_address_submissions = source_address.output.take_submissions();
         }
@@ -125,6 +132,7 @@ impl RootEventFingerprint {
     pub(super) fn fingerprint_payload(payload: &RootEventPayload) -> Result<String, String> {
         let envelope = RootEventEnvelope {
             selection_dialog: &payload.selection_dialog,
+            global_actions: &payload.global_actions,
             text: &payload.text,
             toolbar: payload.toolbar.as_deref(),
             floating: payload.floating.as_deref(),

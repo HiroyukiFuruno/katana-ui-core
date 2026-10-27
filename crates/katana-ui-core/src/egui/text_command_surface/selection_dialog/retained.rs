@@ -3,6 +3,7 @@ mod focus;
 mod input;
 mod search;
 mod search_actions;
+mod search_history;
 
 #[cfg(test)]
 #[path = "retained/coverage_tests.rs"]
@@ -15,6 +16,7 @@ use super::model::{
     SelectionDialogProjectionError, SelectionDialogProjectionLease,
 };
 use super::paint::{DialogPainter, activated, fill, rect};
+use super::query_history::{SearchQueryArrowKeyPolicy, SearchQueryHistoryDirection};
 use crate::atom::{TextArea, TextAreaEvent, TextAreaWrapPolicy};
 use crate::egui::text_surface::{
     EguiTextSurfaceAdapter, EguiTextSurfaceInputPolicy, EguiTextSurfaceKey,
@@ -39,6 +41,11 @@ struct DialogInput {
     adapter: EguiTextSurfaceAdapter,
 }
 
+struct HistoryTraversal {
+    draft: String,
+    index: usize,
+}
+
 pub(crate) struct SelectionDialogRetainedState {
     identity: crate::render_model::UiStateId,
     lease: SelectionDialogProjectionLease,
@@ -52,6 +59,7 @@ pub(crate) struct SelectionDialogRetainedState {
     deferred_input: Vec<egui::Event>,
     mounted: bool,
     failure_reported: bool,
+    history_traversal: Option<HistoryTraversal>,
 }
 
 impl SelectionDialogRetainedState {
@@ -74,6 +82,7 @@ impl SelectionDialogRetainedState {
             deferred_input: Vec::new(),
             mounted: false,
             failure_reported: false,
+            history_traversal: None,
         }
     }
 
@@ -86,6 +95,34 @@ impl SelectionDialogRetainedState {
                 current: self.lease.revision,
                 received: lease.revision,
             });
+        }
+        let preserve_history = match (&self.lease.projection, &lease.projection) {
+            (SelectionDialogProjection::Search(old), SelectionDialogProjection::Search(new))
+                if self.lease.open && lease.open && old.active_mode == new.active_mode =>
+            {
+                let old_mode = old.modes.iter().find(|mode| mode.target == old.active_mode);
+                let new_mode = new.modes.iter().find(|mode| mode.target == new.active_mode);
+                match (old_mode, new_mode) {
+                    (Some(old_mode), Some(new_mode)) => {
+                        old_mode.query == new_mode.query
+                            && old_mode
+                                .history
+                                .iter()
+                                .map(|row| (&row.target, &row.label, row.disabled))
+                                .eq(new_mode
+                                    .history
+                                    .iter()
+                                    .map(|row| (&row.target, &row.label, row.disabled)))
+                            && self.lease.arrow_policy(&old.active_mode)
+                                == lease.arrow_policy(&new.active_mode)
+                    }
+                    _ => false,
+                }
+            }
+            _ => false,
+        };
+        if !preserve_history {
+            self.history_traversal = None;
         }
         self.selected = None;
         self.failure_reported = false;
@@ -201,6 +238,9 @@ impl SelectionDialogRetainedState {
         {
             context.memory_mut(|memory| memory.request_focus(id));
             context.request_repaint();
+        }
+        if !self.lease.open {
+            self.history_traversal = None;
         }
         operations.insert(
             0,

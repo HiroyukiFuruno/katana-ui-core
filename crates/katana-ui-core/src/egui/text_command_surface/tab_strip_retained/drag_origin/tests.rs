@@ -80,6 +80,8 @@ fn state_with_port(port: Option<TabStripProposalPortHandle>) -> TabStripRetained
     .expect("origin fixture state");
     state.port = port;
     state.drag = Some(TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source: target.clone(),
         origin: None,
         label: TabStripText::new("origin"),

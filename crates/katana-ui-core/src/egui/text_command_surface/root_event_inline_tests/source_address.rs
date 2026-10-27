@@ -39,6 +39,7 @@ fn source_submission_port_handle_survives_distinct_one_shot_transports() {
         payload.source_address_submissions.push(source_submission());
         let transport = EguiTextCommandSurfaceRootEventTransport {
             payload,
+            global_guard: None,
             opaque_host_effect_batch: None,
             source_address_submission_port: Some(port.clone()),
         };
@@ -63,6 +64,7 @@ fn source_submission_missing_or_rejected_port_fails_closed() {
     payload.source_address_submissions.push(source_submission());
     let transport = EguiTextCommandSurfaceRootEventTransport {
         payload,
+        global_guard: None,
         opaque_host_effect_batch: None,
         source_address_submission_port: None,
     };
@@ -83,6 +85,7 @@ fn source_submission_missing_or_rejected_port_fails_closed() {
     payload.source_address_submissions.push(source_submission());
     let transport = EguiTextCommandSurfaceRootEventTransport {
         payload,
+        global_guard: None,
         opaque_host_effect_batch: None,
         source_address_submission_port: Some(SourceAddressSubmissionPortHandle::new(
             RecordingSourcePort {

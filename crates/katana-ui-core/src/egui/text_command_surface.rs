@@ -73,6 +73,10 @@ pub use root::{
     KucOpaqueHostEffectAttachError, KucRootEventBatchDispatcher, KucRootEventBatchForwarder,
 };
 pub use root::{
+    KucGlobalAction, KucGlobalActionEvent, KucGlobalActionFocusPolicy, KucGlobalActionTarget,
+    KucGlobalActionsProjection, KucGlobalShortcut,
+};
+pub use root::{
     KucInteractionActionClass, KucInteractionLocator, KucInteractionLocatorError,
     KucInteractionRequestError, KucInteractionSelector, KucOpaqueClickContinuation,
     KucOpaqueClickContinuationError, KucOpaqueInteractionRequest, KucOpaqueSearchTraceContinuation,
@@ -109,8 +113,9 @@ pub use scenario::{
 pub use scenario_session::FullTextCommandSurfaceScenarioSession;
 pub use selection_dialog::{
     FileSelectionItem, FileSelectionProjection, KucDialogControls, KucDialogTarget,
-    SearchResultMode, SearchResultOption, SearchResultProjection, SearchResultRow,
-    SelectionDialogEvent, SelectionDialogOperation, SelectionDialogProjection,
+    SearchHighlightProjection, SearchHighlightProjectionError, SearchQueryArrowKeyPolicy,
+    SearchQueryHistoryDirection, SearchResultMode, SearchResultOption, SearchResultProjection,
+    SearchResultRow, SelectionDialogEvent, SelectionDialogOperation, SelectionDialogProjection,
     SelectionDialogProjectionError, SelectionDialogProjectionLease,
 };
 pub use source_address_projection_lease::{
@@ -119,14 +124,16 @@ pub use source_address_projection_lease::{
 pub use status_diagnostics_projection_lease::StatusDiagnosticsProjectionLease;
 pub use tab_strip_projection_lease::{
     TabStripContextMenuPresentation, TabStripControlPresentation, TabStripCorrelation,
-    TabStripGroupCapabilities, TabStripGroupDescriptor, TabStripGroupPopupPresentation,
-    TabStripGroupTarget, TabStripMenuEntry, TabStripMenuOperation, TabStripNavigationPresentation,
-    TabStripProjection, TabStripProjectionLease, TabStripScrollPresentation,
+    TabStripDropPolicy, TabStripGroupCapabilities, TabStripGroupColorPresentation,
+    TabStripGroupDescriptor, TabStripGroupPopupPresentation, TabStripGroupTarget,
+    TabStripMenuEntry, TabStripMenuOperation, TabStripNavigationPresentation, TabStripProjection,
+    TabStripProjectionLease, TabStripRenamePolicy, TabStripScrollPresentation,
     TabStripSurfaceCapabilities, TabStripSwatchDescriptor, TabStripSwatchTarget,
     TabStripTabCapabilities, TabStripTabDescriptor, TabStripTabTarget, TabStripText,
 };
 pub use tab_strip_proposal_port::{
-    TabStripGroupPlacement, TabStripProposal, TabStripProposalOperation, TabStripProposalPort,
+    TabStripGroupPlacement, TabStripInlineRenameStarted, TabStripProposal,
+    TabStripProposalOperation, TabStripProposalOrigin, TabStripProposalPort,
     TabStripProposalPortError, TabStripProposalPortHandle, TabStripTabPlacement,
 };
 pub use tab_strip_text_raster::{TabStripTextRaster, TabStripTextRasterizer};

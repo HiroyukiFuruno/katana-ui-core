@@ -1,10 +1,13 @@
-use super::keyboard::input_event;
+mod ordered;
+
 use crate::egui::text_surface::gutter_interaction::gutter_pointer_events;
 use crate::egui::text_surface::model::EguiTextSurfaceInputPolicy;
 use crate::text_surface::{
     TextSurface, TextSurfaceAction, TextSurfaceEvent, TextSurfaceFrameRecord, TextSurfaceLayout,
     TextSurfaceLayoutAction, TextSurfacePoint,
 };
+use ordered::apply_keyboard;
+pub(crate) use ordered::{OrderedKeyboardInput, OrderedKeyboardRouting};
 
 pub(crate) struct TextSurfaceInteraction;
 
@@ -18,6 +21,33 @@ impl TextSurfaceInteraction {
         input_policy: &EguiTextSurfaceInputPolicy,
         pending_focus_request: Option<bool>,
         pointer_exclusion_bounds: &[crate::render_model::UiRect],
+    ) -> Vec<TextSurfaceEvent> {
+        Self::apply_interactions_ordered(
+            ui,
+            response,
+            surface,
+            layout,
+            frame,
+            input_policy,
+            pending_focus_request,
+            pointer_exclusion_bounds,
+            OrderedKeyboardRouting {
+                handler: None,
+                refresh: &mut |_| None,
+            },
+        )
+    }
+
+    pub(crate) fn apply_interactions_ordered(
+        ui: &egui::Ui,
+        response: &egui::Response,
+        surface: &mut TextSurface,
+        layout: &TextSurfaceLayout,
+        frame: &TextSurfaceFrameRecord,
+        input_policy: &EguiTextSurfaceInputPolicy,
+        pending_focus_request: Option<bool>,
+        pointer_exclusion_bounds: &[crate::render_model::UiRect],
+        routing: OrderedKeyboardRouting<'_>,
     ) -> Vec<TextSurfaceEvent> {
         if ui.is_sizing_pass() {
             return Vec::new();
@@ -60,12 +90,14 @@ impl TextSurfaceInteraction {
         if !surface.state().text_area.focused || !accepts_text_input {
             return events;
         }
-        for event in ui.input(|input| input.events.clone()) {
-            if input_policy.suppresses_event(&event) {
-                continue;
-            }
-            events.extend(input_event(surface, layout, event));
-        }
+        events.extend(apply_keyboard(
+            ui,
+            surface,
+            layout,
+            input_policy,
+            routing.handler,
+            routing.refresh,
+        ));
         let scroll = ui.input(|input| input.smooth_scroll_delta());
         if scroll != egui::Vec2::ZERO && (response.hovered() || response.has_focus()) {
             events.extend(

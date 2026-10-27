@@ -176,6 +176,8 @@ fn synchronize_lease_cancels_tab_drag_when_source_is_removed_or_disabled() {
     let mut state = build_state_with_projection(initial);
     state.port = Some(TabStripProposalPortHandle::new(AcceptingPort));
     state.drag = Some(TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source: source.copy_for_route(),
         origin: None,
         label: TabStripText::new("source"),
@@ -199,6 +201,8 @@ fn synchronize_lease_cancels_tab_drag_when_source_is_removed_or_disabled() {
     );
     state.port = Some(TabStripProposalPortHandle::new(AcceptingPort));
     state.drag = Some(TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source,
         origin: None,
         label: TabStripText::new("source"),
@@ -231,6 +235,8 @@ fn synchronize_lease_keeps_old_tab_drag_when_cancel_is_rejected() {
     );
     state.port = Some(TabStripProposalPortHandle::new(RejectingPort));
     state.drag = Some(TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source,
         origin: None,
         label: TabStripText::new("source"),

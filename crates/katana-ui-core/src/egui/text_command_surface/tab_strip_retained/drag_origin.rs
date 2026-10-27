@@ -28,11 +28,16 @@ impl TabStripRetainedState {
         operation: TabStripProposalOperation,
     ) -> Result<(), TabStripRetainedError> {
         let Some(origin) = drag.origin.as_mut() else {
-            return self.forward_proposal(self.routes.correlation_for_proposal(), operation);
+            return self.forward_proposal_with_origin(
+                self.routes.correlation_for_proposal(),
+                operation,
+                super::tab_strip_proposal_port::TabStripProposalOrigin::DragTerminal,
+            );
         };
         self.next_nonce = self.next_nonce.saturating_add(1);
         let proposal =
-            TabStripProposal::new(self.next_nonce, origin.correlation.clone(), operation);
+            TabStripProposal::new(self.next_nonce, origin.correlation.clone(), operation)
+                .with_origin(super::tab_strip_proposal_port::TabStripProposalOrigin::DragTerminal);
         origin
             .port
             .as_mut()

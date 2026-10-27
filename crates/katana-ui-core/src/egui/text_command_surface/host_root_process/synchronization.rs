@@ -56,6 +56,11 @@ impl HostRootProcess {
         changed |= self.root.clear_source_address();
         changed |= self.root.clear_status_diagnostics();
         changed |= self.root.clear_editor_viewport();
+        changed |= self.root.global_actions.take().is_some();
+        self.root.global_renderer = None;
+        self.root
+            .global_generation
+            .set(self.root.global_generation.get().saturating_add(1));
         self.style = decoded.style;
         self.presentation = decoded.presentation;
         self.command_families = decoded.command_families;
@@ -82,6 +87,7 @@ impl HostRootProcess {
             status_diagnostics: status,
             editor_viewport: viewport,
             context_menu_enabled_resolver,
+            global_actions,
             ..
         } = attachments;
         /* WHY: hostが取消を拒否した場合、外側の状態を再試行可能なまま保持する。 */
@@ -93,6 +99,7 @@ impl HostRootProcess {
         changed |= self.apply_presentation(revision, decoded, preserve_tabs);
         changed |= self.synchronize_lease_projections(source, status, viewport);
         self.effect_router = Some(attachments.router);
+        self.root.global_actions = global_actions;
         self.root
             .set_context_menu_enabled_resolver(context_menu_enabled_resolver);
         Ok(changed)
@@ -127,6 +134,11 @@ impl HostRootProcess {
             attachments.editor_viewport,
         );
         self.effect_router = Some(attachments.router);
+        self.root.global_actions = attachments.global_actions;
+        self.root.global_renderer = None;
+        self.root
+            .global_generation
+            .set(self.root.global_generation.get().saturating_add(1));
         self.presentation_revision = revision;
         self.root
             .set_context_menu_enabled_resolver(attachments.context_menu_enabled_resolver);

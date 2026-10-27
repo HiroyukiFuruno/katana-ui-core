@@ -196,6 +196,37 @@ fn search_filter_input_error_propagates_after_query_input_succeeds() {
 }
 
 #[test]
+fn oversized_query_propagates_input_error_without_losing_projection() {
+    let mut mode = mode_with_row(SearchResultRow {
+        target: KucDialogTarget::from_opaque_bytes(b"result"),
+        label: "result".into(),
+        auxiliary_label: None,
+        snippet: None,
+        highlights: Vec::new(),
+        disabled: false,
+    });
+    mode.query = "x".repeat(16_384);
+    let lease = search_lease(controls(), mode);
+    let resources = PlatformTextRasterResources::new(PlatformTextRasterConfig::default());
+    let mut state = SelectionDialogRetainedState::new(lease, &resources);
+    let before = state.lease.projection.clone();
+    let style = TextCommandSurfaceStyle::standard().expect("style");
+    let context = egui::Context::default();
+    let mut result = None;
+    let mut output = context.run_ui(egui::RawInput::default(), |ui| {
+        result = Some(state.show(ui.ctx(), &style));
+    });
+    output.textures_delta.clear();
+    let error = result
+        .expect("frame")
+        .expect_err("oversized query must fail");
+    assert!(error.contains("pixel limit"));
+    assert_eq!(state.inputs.len(), 1);
+    assert_eq!(state.lease.projection, before);
+    assert!(state.lease.open);
+}
+
+#[test]
 fn search_filter_input_completes_include_branch() {
     let lease = search_lease(
         controls(),

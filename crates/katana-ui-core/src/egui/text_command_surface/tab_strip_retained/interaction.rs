@@ -18,7 +18,7 @@ impl TabStripRetainedState {
         self.group_drag = None;
         self.drag_release_pending = false;
         self.group_drag_release_pending = false;
-        self.overlay_primary_press = None;
+        self.overlay_input.primary_press = None;
         Ok(())
     }
 
@@ -48,7 +48,7 @@ impl TabStripRetainedState {
             })
         });
         if primary_pressed {
-            self.overlay_primary_press = Some(response.id);
+            self.overlay_input.primary_press = Some(response.id);
         }
         let primary_released = ui.input(|input| {
             input.events.iter().any(|event| {
@@ -56,13 +56,13 @@ impl TabStripRetainedState {
             })
         });
         let captured_pointer = primary_released
-            && self.overlay_primary_press == Some(response.id)
+            && self.overlay_input.primary_press == Some(response.id)
             && response.rect.contains(
                 ui.input(|input| input.pointer.latest_pos())
                     .unwrap_or(response.rect.center()),
             );
-        if primary_released && self.overlay_primary_press == Some(response.id) {
-            self.overlay_primary_press = None;
+        if primary_released && self.overlay_input.primary_press == Some(response.id) {
+            self.overlay_input.primary_press = None;
         }
         let pointer = response.clicked() || captured_pointer;
         if pointer {
@@ -90,7 +90,11 @@ impl TabStripRetainedState {
             .routes
             .proposal_for_response(response_id)
             .ok_or(TabStripRetainedError::MissingRoute)?;
-        self.forward_proposal(correlation, operation)
+        let origin = self
+            .routes
+            .origin_for_response(response_id)
+            .ok_or(TabStripRetainedError::MissingRoute)?;
+        self.forward_proposal_with_origin(correlation, operation, origin)
     }
 
     pub(super) fn start_tab_drag(
@@ -113,6 +117,11 @@ impl TabStripRetainedState {
             pointer: ui
                 .input(|input| input.pointer.latest_pos())
                 .unwrap_or(bounds.center()),
+            center_offset_x: bounds.center().x
+                - ui.input(|input| input.pointer.press_origin())
+                    .unwrap_or(bounds.center())
+                    .x,
+            ghost_width: bounds.width(),
         });
         Ok(())
     }
@@ -146,7 +155,18 @@ impl TabStripRetainedState {
             })
         });
         let release = std::mem::take(&mut self.drag_release_pending) || pointer_released;
-        let drop = self.resolve_tab_drop(pointer, &drag.source, strip_bounds, end_drop_available);
+        let nearest = self.projection.drop_policy
+            == super::tab_strip_projection_lease::TabStripDropPolicy::NearestGhostCenter;
+        let center_x = pointer.x + drag.center_offset_x;
+        let drop = if nearest {
+            self.resolve_nearest_tab_drop(
+                center_x,
+                end_drop_available,
+                self.tab_viewport.unwrap_or(strip_bounds),
+            )
+        } else {
+            self.resolve_tab_drop(pointer, &drag.source, strip_bounds, end_drop_available)
+        };
         if escape || release {
             let operation = if !escape {
                 drop.map_or(TabStripProposalOperation::CancelDrag, |value| {
@@ -168,8 +188,16 @@ impl TabStripRetainedState {
             ui,
             TabStripDragFeedback {
                 label: &drag.label,
-                pointer: drag.pointer,
+                pointer: if nearest {
+                    egui::pos2(
+                        center_x - drag.ghost_width / 2.0 - super::DRAG_GHOST_OFFSET_PX,
+                        drag.pointer.y,
+                    )
+                } else {
+                    drag.pointer
+                },
                 indicator: drop.map(|value| value.indicator),
+                ghost_width: nearest.then_some(drag.ghost_width),
             },
             strip_bounds,
             operations,
@@ -242,25 +270,27 @@ impl TabStripRetainedState {
         correlation: super::tab_strip_projection_lease::TabStripCorrelation,
         operation: super::tab_strip_proposal_port::TabStripProposalOperation,
     ) -> Result<(), TabStripRetainedError> {
+        self.forward_proposal_with_origin(
+            correlation,
+            operation,
+            super::tab_strip_proposal_port::TabStripProposalOrigin::TabBody,
+        )
+    }
+
+    pub(super) fn forward_proposal_with_origin(
+        &mut self,
+        correlation: super::tab_strip_projection_lease::TabStripCorrelation,
+        operation: super::tab_strip_proposal_port::TabStripProposalOperation,
+        origin: super::tab_strip_proposal_port::TabStripProposalOrigin,
+    ) -> Result<(), TabStripRetainedError> {
         self.next_nonce = self.next_nonce.saturating_add(1);
-        let proposal = TabStripProposal::new(self.next_nonce, correlation, operation);
+        let proposal =
+            TabStripProposal::new(self.next_nonce, correlation, operation).with_origin(origin);
         self.port
             .as_mut()
             .ok_or(TabStripRetainedError::MissingPort)?
             .forward_once(proposal)
             .map_err(TabStripRetainedError::Port)
-    }
-
-    pub(super) fn forward_rename_route(
-        &mut self,
-        path: &str,
-        name: TabStripText,
-    ) -> Result<(), TabStripRetainedError> {
-        let (correlation, operation) = self
-            .routes
-            .rename_proposal_for(path, name)
-            .ok_or(TabStripRetainedError::MissingRoute)?;
-        self.forward_proposal(correlation, operation)
     }
 }
 

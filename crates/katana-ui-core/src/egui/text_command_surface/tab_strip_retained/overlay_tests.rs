@@ -1,6 +1,7 @@
 use super::super::tab_strip_proposal_port::{
     TabStripProposalOperationClass, TabStripProposalPort, TabStripProposalPortError,
 };
+use super::super::{OVERLAY_WIDTH_PX, TabStripPaintOperationKind, TabStripRenameDraft};
 use super::*;
 use crate::egui::text_command_surface::{
     TabStripCorrelation, TabStripGroupCapabilities, TabStripGroupDescriptor,

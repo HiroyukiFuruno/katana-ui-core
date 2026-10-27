@@ -18,6 +18,7 @@ pub(super) struct HostProjectionAttachments {
     pub(super) status_diagnostics: Option<StatusDiagnosticsProjectionLease>,
     pub(super) editor_viewport: Option<EditorViewportProjectionLease>,
     pub(super) context_menu_enabled_resolver: Option<ContextMenuEnabledResolver>,
+    pub(super) global_actions: Option<super::super::root::KucGlobalActionsProjection>,
 }
 
 pub(super) type HostProjectionAttachmentsParts = (
@@ -46,6 +47,7 @@ pub struct EguiTextCommandSurfaceHostProjectionLease {
     pub(super) status_diagnostics: Option<StatusDiagnosticsProjectionLease>,
     pub(super) editor_viewport: Option<EditorViewportProjectionLease>,
     pub(super) context_menu_enabled_resolver: Option<ContextMenuEnabledResolver>,
+    pub(super) global_actions: Option<super::super::root::KucGlobalActionsProjection>,
 }
 
 /// Encodes host-projected generic presentation data into an opaque root token.
@@ -72,6 +74,9 @@ pub struct EguiTextCommandSurfaceHostRootFrame {
     pub(super) font_identity: (Option<String>, String),
     pub(super) selection_observation: super::ui_selection::KucUiSelectionObservation,
     pub(super) frame_serial: u64,
+    pub(super) global_generation: std::rc::Weak<std::cell::Cell<u64>>,
+    pub(super) global_epoch: u64,
+    pub(super) global_commit: super::selection_commit::SelectionCommit,
     pub(super) output: EguiTextCommandSurfaceRootOutput,
     pub(super) record: super::host_root_record::EguiTextCommandSurfaceHostRootRecord,
 }

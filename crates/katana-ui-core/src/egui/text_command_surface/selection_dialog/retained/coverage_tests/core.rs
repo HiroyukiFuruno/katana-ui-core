@@ -65,6 +65,33 @@ fn search_rejects_an_active_mode_that_disappeared_without_mutating_state() {
 }
 
 #[test]
+fn corrupted_internal_mode_cannot_preserve_a_history_draft_across_sync() {
+    let row = super::super::super::model::SearchResultRow {
+        target: KucDialogTarget::from_opaque_bytes(b"history"),
+        label: "old".into(),
+        auxiliary_label: None,
+        snippet: None,
+        highlights: Vec::new(),
+        disabled: false,
+    };
+    let mode = super::mode_with_row(row);
+    let old = super::search_lease(controls(), mode.clone());
+    let mut next = super::search_lease(controls(), mode);
+    next.revision = 2;
+    if let SelectionDialogProjection::Search(search) = &mut next.projection {
+        search.modes.clear();
+    }
+    let resources = PlatformTextRasterResources::new(PlatformTextRasterConfig::default());
+    let mut state = SelectionDialogRetainedState::new(old, &resources);
+    state.history_traversal = Some(super::super::HistoryTraversal {
+        draft: "draft".into(),
+        index: 0,
+    });
+    assert_eq!(state.synchronize(next), Ok(true));
+    assert!(state.history_traversal.is_none());
+}
+
+#[test]
 fn file_projection_validation_rejects_duplicate_targets() {
     let target = KucDialogTarget::from_opaque_bytes(b"same");
     let item =

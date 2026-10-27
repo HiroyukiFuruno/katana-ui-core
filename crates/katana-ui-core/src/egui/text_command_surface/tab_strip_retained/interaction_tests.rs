@@ -122,6 +122,8 @@ fn start_tab_drag_is_fail_closed_without_port_and_reuses_existing_drag_state() {
             Err(TabStripRetainedError::MissingPort)
         ));
         state.drag = Some(TabStripDragState {
+            center_offset_x: 0.0,
+            ghost_width: 0.0,
             source: tab.target.copy_for_route(),
             origin: None,
             label: TabStripText::new("drag"),

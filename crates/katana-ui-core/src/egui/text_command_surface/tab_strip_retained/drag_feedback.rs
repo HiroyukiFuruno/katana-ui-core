@@ -10,6 +10,7 @@ pub(super) struct TabStripDragFeedback<'a> {
     pub(super) label: &'a TabStripText,
     pub(super) pointer: egui::Pos2,
     pub(super) indicator: Option<egui::Rect>,
+    pub(super) ghost_width: Option<f32>,
 }
 
 #[derive(Clone, Copy)]
@@ -63,7 +64,9 @@ impl TabStripRetainedState {
         let ghost = egui::Rect::from_min_size(
             feedback.pointer + egui::vec2(DRAG_GHOST_OFFSET_PX, DRAG_GHOST_OFFSET_PX),
             egui::vec2(
-                texture.width as f32 + TAB_PADDING_PX * 2.0,
+                feedback
+                    .ghost_width
+                    .unwrap_or(texture.width as f32 + TAB_PADDING_PX * 2.0),
                 (strip_bounds.height() - TAB_GAP_PX * 2.0).max(1.0),
             ),
         );

@@ -74,11 +74,24 @@ pub enum TabStripProposalOperation {
     },
 }
 
+/// 操作を発行した UI の種類。位置やラベルは公開しない。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TabStripProposalOrigin {
+    TabBody,
+    TrailingControl,
+    ContextMenu,
+    Navigation,
+    GroupHeader,
+    GroupPopup,
+    DragTerminal,
+}
+
 /// KUCのroute解決後に発行され、hostへ一度だけ渡される操作。
 pub struct TabStripProposal {
     nonce: u64,
     correlation: TabStripCorrelation,
     operation: TabStripProposalOperation,
+    origin: Option<TabStripProposalOrigin>,
 }
 
 impl TabStripProposal {
@@ -91,7 +104,20 @@ impl TabStripProposal {
             nonce,
             correlation,
             operation,
+            origin: None,
         }
+    }
+
+    /// 明示された起点を付ける。従来の constructor は None を返す。
+    #[must_use]
+    pub const fn with_origin(mut self, origin: TabStripProposalOrigin) -> Self {
+        self.origin = Some(origin);
+        self
+    }
+
+    #[must_use]
+    pub const fn origin(&self) -> Option<TabStripProposalOrigin> {
+        self.origin
     }
 
     pub const fn nonce(&self) -> u64 {

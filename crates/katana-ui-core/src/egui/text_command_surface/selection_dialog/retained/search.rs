@@ -29,6 +29,7 @@ impl SelectionDialogRetainedState {
             if allowed && activated(ui, &response) && mode.target != search.active_mode {
                 search.active_mode = mode.target.clone();
                 mode_changed = true;
+                self.history_traversal = None;
                 self.selected = None;
                 self.event(
                     events,
@@ -46,15 +47,45 @@ impl SelectionDialogRetainedState {
         let mode = &mut search.modes[index];
         let target = mode.target.clone();
         let mode_key = target.interaction_key();
-        if self.input(
+        let history_policy = allowed
+            && self.lease.arrow_policy(&target) == super::SearchQueryArrowKeyPolicy::History;
+        let key = format!("kuc.dialog.query.{mode_key}");
+        let ime_active = self
+            .inputs
+            .get(&key)
+            .is_some_and(|input| input.surface.state().text_area.composition.is_some())
+            || ui.input(|input| {
+                input
+                    .events
+                    .iter()
+                    .any(|event| matches!(event, egui::Event::Ime(_)))
+            });
+        let mut ordered = super::search_history::QueryHistoryInput {
+            traversal: self.history_traversal.take(),
+            mode: mode.clone(),
+            operations: Vec::new(),
+            ime_active,
+        };
+        let changed = self.input_ordered(
             ui,
-            format!("kuc.dialog.query.{mode_key}"),
+            key,
             &mode.label,
             &mut mode.query,
             style,
             first || mode_changed,
             operations,
-        )? {
+            history_policy.then_some(
+                &mut ordered as &mut dyn crate::egui::text_surface::OrderedKeyboardInput,
+            ),
+        )?;
+        self.history_traversal = ordered.traversal;
+        if history_policy {
+            for operation in ordered.operations {
+                self.selected = None;
+                self.event(events, operation);
+            }
+        } else if changed {
+            self.history_traversal = None;
             self.selected = None;
             self.event(
                 events,

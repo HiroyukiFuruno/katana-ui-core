@@ -47,6 +47,14 @@ impl EguiTextCommandSurfaceRootEventBatch {
         let source_address_submission_count = transport
             .as_ref()
             .map_or(0, |value| value.payload.source_address_submissions.len());
+        let class_count = if transport
+            .as_ref()
+            .is_some_and(|value| !value.payload.global_actions.is_empty())
+        {
+            ROOT_EVENT_CLASS_COUNT
+        } else {
+            ROOT_EVENT_CLASS_COUNT - 1
+        };
         let selection_dialog_events = transport
             .as_ref()
             .map_or_else(Vec::new, |value| value.payload.selection_dialog.clone());
@@ -57,6 +65,7 @@ impl EguiTextCommandSurfaceRootEventBatch {
             state_revision: self.state_revision,
             correlation_fingerprint: self.correlation_fingerprint.borrow().clone(),
             class_dispatches: self.class_dispatches(),
+            class_count,
             text_events,
             toolbar_events,
             floating_events,
@@ -121,6 +130,10 @@ impl EguiTextCommandSurfaceRootEventBatch {
                     child_class: EguiTextCommandSurfaceRootEventChildClass::SelectionDialog,
                     event_count: 0,
                 },
+                EguiTextCommandSurfaceRootEventClassDispatch {
+                    child_class: EguiTextCommandSurfaceRootEventChildClass::GlobalAction,
+                    event_count: 0,
+                },
             ];
         };
         [
@@ -159,6 +172,10 @@ impl EguiTextCommandSurfaceRootEventBatch {
             EguiTextCommandSurfaceRootEventClassDispatch {
                 child_class: EguiTextCommandSurfaceRootEventChildClass::SelectionDialog,
                 event_count: transport.payload.selection_dialog.len(),
+            },
+            EguiTextCommandSurfaceRootEventClassDispatch {
+                child_class: EguiTextCommandSurfaceRootEventChildClass::GlobalAction,
+                event_count: transport.payload.global_actions.len(),
             },
         ]
     }

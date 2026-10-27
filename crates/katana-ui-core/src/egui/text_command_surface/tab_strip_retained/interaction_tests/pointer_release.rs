@@ -22,6 +22,8 @@ fn resolve_tab_drag_finishes_on_pointer_release_when_response_disappears() {
     ));
     state.port = Some(TabStripProposalPortHandle::new(recorder));
     state.drag = Some(TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source,
         origin: None,
         label: TabStripText::new("label"),
@@ -72,6 +74,8 @@ fn suspend_interaction_is_idempotent_and_preserves_drag_on_cancel_failure() {
     ));
     state.port = Some(TabStripProposalPortHandle::new(RejectingPort));
     state.drag = Some(TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source,
         origin: None,
         label: TabStripText::new("label"),
@@ -90,7 +94,7 @@ fn suspend_interaction_is_idempotent_and_preserves_drag_on_cancel_failure() {
         2,
         TabStripCorrelation::from_opaque_bytes(b"corr"),
     ));
-    idle.overlay_primary_press = Some(egui::Id::new("press"));
+    idle.overlay_input.primary_press = Some(egui::Id::new("press"));
     idle.group_drag_release_pending = true;
     idle.suspend_interaction().expect("idle suspend");
     idle.suspend_interaction().expect("repeat suspend");
@@ -98,5 +102,5 @@ fn suspend_interaction_is_idempotent_and_preserves_drag_on_cancel_failure() {
     assert!(idle.group_drag.is_none());
     assert!(!idle.drag_release_pending);
     assert!(!idle.group_drag_release_pending);
-    assert!(idle.overlay_primary_press.is_none());
+    assert!(idle.overlay_input.primary_press.is_none());
 }

@@ -10,6 +10,8 @@ const LEDGER_ID: &str = "kuc.text-command.accesskit-evidence";
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AccessKitTargetClass {
     TextSurfaceContextTarget,
+    GlobalActionMenu,
+    GlobalAction,
     TextInput,
     Toolbar,
     FloatingToolbar,
@@ -237,6 +239,8 @@ impl From<UiRect> for AccessKitBoundsSnapshot {
 fn target_class_name(class: AccessKitTargetClass) -> &'static str {
     match class {
         AccessKitTargetClass::TextSurfaceContextTarget => "text-surface-context-target",
+        AccessKitTargetClass::GlobalActionMenu => "global-action-menu",
+        AccessKitTargetClass::GlobalAction => "global-action",
         AccessKitTargetClass::TextInput => "text-input",
         AccessKitTargetClass::Toolbar => "toolbar",
         AccessKitTargetClass::FloatingToolbar => "floating-toolbar",

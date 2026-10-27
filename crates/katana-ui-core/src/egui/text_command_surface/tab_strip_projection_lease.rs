@@ -8,9 +8,10 @@ mod model {
 
 pub use model::{
     TabStripContextMenuPresentation, TabStripControlPresentation, TabStripCorrelation,
-    TabStripGroupCapabilities, TabStripGroupDescriptor, TabStripGroupPopupPresentation,
-    TabStripGroupTarget, TabStripMenuEntry, TabStripMenuOperation, TabStripNavigationPresentation,
-    TabStripProjection, TabStripProjectionLease, TabStripRootItem, TabStripScrollPresentation,
+    TabStripDropPolicy, TabStripGroupCapabilities, TabStripGroupColorPresentation,
+    TabStripGroupDescriptor, TabStripGroupPopupPresentation, TabStripGroupTarget,
+    TabStripMenuEntry, TabStripMenuOperation, TabStripNavigationPresentation, TabStripProjection,
+    TabStripProjectionLease, TabStripRenamePolicy, TabStripRootItem, TabStripScrollPresentation,
     TabStripSurfaceCapabilities, TabStripSwatchDescriptor, TabStripSwatchTarget,
     TabStripTabCapabilities, TabStripTabDescriptor, TabStripTabTarget, TabStripText,
 };

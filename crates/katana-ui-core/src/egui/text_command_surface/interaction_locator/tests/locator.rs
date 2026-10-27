@@ -504,7 +504,7 @@ fn mismatched_bound_evidence_is_ignored_after_an_actual_surface_frame() {
         entry.target_identity == "mismatch-action"
             && entry.target_class == AccessKitTargetClass::Toolbar
     }));
-    let batch = super::super::super::root_event::build_event_batch(&mut output, None)
+    let batch = super::super::super::root_event::build_event_batch(&mut output, None, Vec::new())
         .expect("root event batch");
     let event_context = batch.current_context();
     let mismatched = crate::egui::text_command_surface::accesskit_evidence::bind_frame(

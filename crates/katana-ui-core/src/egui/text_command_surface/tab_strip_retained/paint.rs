@@ -33,6 +33,14 @@ impl TabStripRetainedState {
                         .then(|| format!("{path}-header")),
                 },
                 draggable: group.capabilities.draggable,
+                background_color: group.color_presentation.map(|color| {
+                    if group.capabilities.collapsed {
+                        color.collapsed_background
+                    } else {
+                        color.background
+                    }
+                }),
+                marker_color: group.color_presentation.map(|color| color.marker),
             },
         )?;
         self.group_drag_candidates.push(TabStripDropCandidate {
@@ -56,6 +64,23 @@ impl TabStripRetainedState {
         {
             return Err(TabStripRetainedError::InvalidInlineRenameRequest);
         }
+        if group.capabilities.renamable
+            && group.popup.as_ref().is_some_and(|popup| {
+                popup.request_inline_rename && popup.rename_placeholder.is_some()
+            })
+            && !self
+                .inline_rename_consumed
+                .iter()
+                .any(|target| target == &group.target)
+            && let TabStripOverlayState::GroupPopup {
+                path: current,
+                rename: Some(draft),
+                ..
+            } = &mut self.overlay
+            && current == &path
+        {
+            draft.requested_start = true;
+        }
         if matches!(self.overlay, TabStripOverlayState::Closed)
             && group.capabilities.renamable
             && let Some(popup) = group.popup.as_ref()
@@ -66,15 +91,13 @@ impl TabStripRetainedState {
                 .iter()
                 .any(|target| target == &group.target)
         {
-            self.inline_rename_consumed.push(group.target.clone());
+            let mut draft = TabStripRenameDraft::new(&group.label.value, &placeholder.value);
+            draft.requested_start = true;
             self.overlay = TabStripOverlayState::GroupPopup {
                 path: path.clone(),
                 anchor: egui::pos2(label.bounds.min.x, label.bounds.max.y + TAB_GAP_PX),
                 submenu_path: Vec::new(),
-                rename: Some(Box::new(TabStripRenameDraft::new(
-                    &group.label.value,
-                    &placeholder.value,
-                ))),
+                rename: Some(Box::new(draft)),
             };
         }
         if group.capabilities.accepts_tab_drop {
@@ -84,6 +107,7 @@ impl TabStripRetainedState {
             });
         }
         if label.secondary_clicked && group.capabilities.menu_available && group.popup.is_some() {
+            self.overlay_input.opened_by_secondary = Some((path.clone(), label.bounds));
             self.overlay = TabStripOverlayState::GroupPopup {
                 path: path.clone(),
                 anchor: egui::pos2(label.bounds.min.x, label.bounds.max.y + TAB_GAP_PX),
@@ -103,7 +127,9 @@ impl TabStripRetainedState {
         }
         *x += label.advance;
         if !group.capabilities.collapsed {
-            for (index, tab) in group.tabs.iter().enumerate() {
+            let previous_member_color = self.member_color;
+            self.member_color = group.color_presentation.map(|color| color.member);
+            let rendered = group.tabs.iter().enumerate().try_for_each(|(index, tab)| {
                 self.render_tab(
                     ui,
                     tab,
@@ -112,8 +138,10 @@ impl TabStripRetainedState {
                     bounds,
                     operations,
                     active_reveal_pending,
-                )?;
-            }
+                )
+            });
+            self.member_color = previous_member_color;
+            rendered?;
             for (index, child) in group.groups.iter().enumerate() {
                 self.render_group(
                     ui,
@@ -153,9 +181,14 @@ impl TabStripRetainedState {
                     route_path: tab.capabilities.selectable.then(|| format!("{path}-label")),
                 },
                 draggable: tab.capabilities.draggable,
+                background_color: None,
+                marker_color: self.member_color,
             },
         )?;
-        if tab.capabilities.accepts_tab_drop {
+        if tab.capabilities.accepts_tab_drop
+            || self.projection.drop_policy
+                == super::tab_strip_projection_lease::TabStripDropPolicy::NearestGhostCenter
+        {
             self.drag_candidates.push(TabStripDropCandidate {
                 bounds: label.bounds,
                 kind: TabStripDropCandidateKind::Tab(tab.target.copy_for_route()),
@@ -173,6 +206,7 @@ impl TabStripRetainedState {
             self.drag_release_pending = true;
         }
         if label.secondary_clicked && tab.context_menu.is_some() {
+            self.overlay_input.opened_by_secondary = Some((path.clone(), label.bounds));
             self.overlay = TabStripOverlayState::TabMenu {
                 path: path.clone(),
                 anchor: egui::pos2(label.bounds.min.x, label.bounds.max.y + TAB_GAP_PX),

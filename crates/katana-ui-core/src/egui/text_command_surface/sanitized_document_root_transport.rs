@@ -46,6 +46,7 @@ impl SanitizedDocumentRootEventTransport {
             Err(
                 EguiTextCommandSurfaceRootEventBatchDispatchError::AlreadyConsumed
                 | EguiTextCommandSurfaceRootEventBatchDispatchError::OpaqueHostEffect
+                | EguiTextCommandSurfaceRootEventBatchDispatchError::StaleGlobalAction
                 | EguiTextCommandSurfaceRootEventBatchDispatchError::SourceAddressPort(_),
             ) => Err(SanitizedDocumentRootEventDispatchError::OpaqueHostEffect),
         }
@@ -125,6 +126,10 @@ where
         .map_err(|error| match error {
             EguiTextCommandSurfaceRootEventBatchForwardError::AlreadyConsumed => {
                 SanitizedDocumentRootEventForwardError::AlreadyConsumed
+            }
+            EguiTextCommandSurfaceRootEventBatchForwardError::GlobalAuthorizationRequired
+            | EguiTextCommandSurfaceRootEventBatchForwardError::GlobalAuthorizationFailed => {
+                SanitizedDocumentRootEventForwardError::StaleFrame
             }
             EguiTextCommandSurfaceRootEventBatchForwardError::Forwarder(error) => match error {
                 RootEventForwarderBridgeError::InconsistentTabEventBatch => {

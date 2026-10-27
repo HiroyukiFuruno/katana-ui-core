@@ -14,9 +14,13 @@ mod transport {
 #[cfg(test)]
 pub(crate) use model::TabStripProposalOperationClass;
 pub use model::{
-    TabStripGroupPlacement, TabStripProposal, TabStripProposalOperation, TabStripTabPlacement,
+    TabStripGroupPlacement, TabStripProposal, TabStripProposalOperation, TabStripProposalOrigin,
+    TabStripTabPlacement,
 };
-pub use transport::{TabStripProposalPort, TabStripProposalPortError, TabStripProposalPortHandle};
+pub use transport::{
+    TabStripInlineRenameStarted, TabStripProposalPort, TabStripProposalPortError,
+    TabStripProposalPortHandle,
+};
 
 #[cfg(test)]
 mod tests {

@@ -220,6 +220,8 @@ fn show_projection_propagates_real_drag_release_without_a_port() {
     output.textures_delta.clear();
 
     state.drag = Some(super::super::TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source: TabStripTabTarget::from_opaque_bytes(b"drag-source"),
         origin: None,
         label: TabStripText::new("drag"),

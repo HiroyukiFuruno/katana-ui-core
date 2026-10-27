@@ -106,8 +106,13 @@ impl TextArea {
 
     pub(super) fn delete_backward(&mut self, events: &mut Vec<TextAreaEvent>) -> bool {
         let previous_value = self.state.value.clone();
-        self.state.caret = caret::delete_previous_grapheme(&mut self.state.value, self.state.caret);
-        self.state.selection = TextAreaSelection::collapsed(self.state.caret);
+        if self.state.selection.start != self.state.selection.end {
+            self.replace_selection_or_insert("");
+        } else {
+            self.state.caret =
+                caret::delete_previous_grapheme(&mut self.state.value, self.state.caret);
+            self.state.selection = TextAreaSelection::collapsed(self.state.caret);
+        }
         if self.state.value == previous_value {
             return false;
         }

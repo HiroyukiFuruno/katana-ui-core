@@ -9,6 +9,8 @@ use super::{
 };
 use sha2::{Digest, Sha256};
 
+const GROUP_MARKER_WIDTH_PX: f32 = 3.0;
+
 impl TabStripRetainedState {
     pub(super) fn render_label(
         &mut self,
@@ -25,6 +27,8 @@ impl TabStripRetainedState {
             active_reveal_pending,
             interaction,
             draggable,
+            background_color,
+            marker_color,
         } = request;
         let raster = self
             .rasterizer
@@ -83,7 +87,9 @@ impl TabStripRetainedState {
             height: raster.height,
             rgba_pixels: raster.rgba_pixels,
         };
-        let background = if active {
+        let background = if let Some(color) = background_color {
+            [color.red, color.green, color.blue, color.alpha]
+        } else if active {
             ACTIVE_TAB_RGBA
         } else {
             INACTIVE_TAB_RGBA
@@ -98,6 +104,36 @@ impl TabStripRetainedState {
                 background[RGBA_ALPHA_INDEX],
             ),
         );
+        operations.push(TabStripPaintOperation {
+            clip_bounds: ui_rect(bounds),
+            kind: TabStripPaintOperationKind::Fill {
+                bounds: ui_rect(rect),
+                color_rgba: background,
+            },
+        });
+        if let Some(color) = marker_color {
+            let marker = egui::Rect::from_min_size(
+                rect.min,
+                egui::vec2(GROUP_MARKER_WIDTH_PX, rect.height()),
+            );
+            ui.painter().rect_filled(
+                marker,
+                0.0,
+                egui::Color32::from_rgba_unmultiplied(
+                    color.red,
+                    color.green,
+                    color.blue,
+                    color.alpha,
+                ),
+            );
+            operations.push(TabStripPaintOperation {
+                clip_bounds: ui_rect(bounds),
+                kind: TabStripPaintOperationKind::Fill {
+                    bounds: ui_rect(marker),
+                    color_rgba: [color.red, color.green, color.blue, color.alpha],
+                },
+            });
+        }
         let label_rect = egui::Rect::from_min_size(
             egui::pos2(
                 rect.min.x + TAB_PADDING_PX,
@@ -112,13 +148,6 @@ impl TabStripRetainedState {
             ui_rect(label_rect),
             &texture,
         );
-        operations.push(TabStripPaintOperation {
-            clip_bounds: ui_rect(bounds),
-            kind: TabStripPaintOperationKind::Fill {
-                bounds: ui_rect(rect),
-                color_rgba: background,
-            },
-        });
         operations.push(TabStripPaintOperation {
             clip_bounds: ui_rect(bounds),
             kind: TabStripPaintOperationKind::Texture {

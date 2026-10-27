@@ -11,6 +11,71 @@ fn real_transport_debug_remains_opaque() {
 }
 
 #[test]
+fn real_global_batch_requires_authorization_before_sanitized_bridge() {
+    use crate::atom::TextArea;
+    use crate::egui::text_command_surface::{
+        EguiTextCommandSurface, EguiTextCommandSurfaceRoot, KucGlobalAction, KucGlobalActionTarget,
+        KucGlobalActionsProjection, KucGlobalShortcut, SanitizedDocumentRootEventForwardError,
+        TextCommandSurfaceStyle,
+    };
+    use crate::text_surface::{TextSurface, TextSurfaceProps, TextSurfaceViewport};
+    let text = TextSurface::new(TextSurfaceProps::new(
+        TextArea::new("global-sanitized"),
+        Vec::new(),
+        TextSurfaceViewport::new(0, 0, 640, 480),
+    ));
+    let mut root = EguiTextCommandSurfaceRoot::with_identity(
+        "global-sanitized",
+        EguiTextCommandSurface::new(text),
+    )
+    .expect("root");
+    root.global_actions = Some(KucGlobalActionsProjection::new("Actions").action(
+        KucGlobalAction::new(
+            KucGlobalActionTarget::from_opaque_bytes(b"action"),
+            "Action",
+            KucGlobalShortcut::new(
+                egui::Key::F,
+                egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            ),
+        ),
+    ));
+    let context = egui::Context::default();
+    let mut result = None;
+    let mut frame = context.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, ROOT_VIEWPORT_SIZE)),
+            events: vec![egui::Event::Key {
+                key: egui::Key::F,
+                physical_key: None,
+                pressed: true,
+                repeat: false,
+                modifiers: egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+            }],
+            ..Default::default()
+        },
+        |ui| result = Some(root.show(ui, &TextCommandSurfaceStyle::standard().expect("style"))),
+    );
+    frame.textures_delta.clear();
+    let output = result.expect("frame").expect("show");
+    let tabs = RefCell::new(Some(Vec::<SanitizedTabProjectionClosedEvent>::new()));
+    let search = RefCell::new(Some(Vec::<SanitizedSearchEventTransport>::new()));
+    let commands = RefCell::new(Some(Vec::<SanitizedCommandActivationTransport>::new()));
+    let menus = RefCell::new(Some(Vec::<SanitizedContextMenuActivationTransport>::new()));
+    let mut forwarder = RetainingForwarder { transport: None };
+    assert!(matches!(
+        forward_root_events_once(&output, &tabs, &search, &commands, &menus, &mut forwarder),
+        Err(SanitizedDocumentRootEventForwardError::StaleFrame)
+    ));
+    assert!(forwarder.transport.is_none());
+    assert!(
+        tabs.borrow().is_some()
+            && search.borrow().is_some()
+            && commands.borrow().is_some()
+            && menus.borrow().is_some()
+    );
+}
+
+#[test]
 fn real_transport_maps_child_rejection_and_second_dispatch_consumption() {
     let mut transport = real_sanitized_transport();
     let mut dispatcher = TestDispatcher { fail_text: true };
@@ -37,10 +102,12 @@ fn real_transport_dispatches_successfully_with_the_same_dispatcher_type() {
         .dispatch_root_once(&mut dispatcher)
         .expect("the actual opaque transport dispatches successfully");
 
-    assert!(receipt
-        .class_dispatches()
-        .iter()
-        .all(|dispatch| dispatch.event_count == 0));
+    assert!(
+        receipt
+            .class_dispatches()
+            .iter()
+            .all(|dispatch| dispatch.event_count == 0)
+    );
 }
 
 struct RemovingSourcePortForwarder {

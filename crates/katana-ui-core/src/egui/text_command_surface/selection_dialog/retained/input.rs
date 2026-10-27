@@ -19,6 +19,20 @@ impl SelectionDialogRetainedState {
         focus: bool,
         operations: &mut Vec<TextSurfacePaintOperation>,
     ) -> Result<bool, String> {
+        self.input_ordered(ui, key, label, value, style, focus, operations, None)
+    }
+
+    pub(super) fn input_ordered(
+        &mut self,
+        ui: &mut egui::Ui,
+        key: String,
+        label: &str,
+        value: &mut String,
+        style: &TextCommandSurfaceStyle,
+        focus: bool,
+        operations: &mut Vec<TextSurfacePaintOperation>,
+        ordered: Option<&mut dyn crate::egui::text_surface::OrderedKeyboardInput>,
+    ) -> Result<bool, String> {
         let resources = &self.resources;
         let input = self.inputs.entry(key).or_insert_with_key(|key| {
             let area = TextArea::new(label)
@@ -53,21 +67,31 @@ impl SelectionDialogRetainedState {
         if focus {
             input.adapter.request_focus_for_next_frame(true);
         }
-        let output = input
-            .adapter
-            .show_with_input_policy(
+        let policy = EguiTextSurfaceInputPolicy::default()
+            .suppress(EguiTextSurfaceKey::ArrowUp)
+            .suppress(EguiTextSurfaceKey::ArrowDown)
+            .suppress(EguiTextSurfaceKey::Enter)
+            .suppress(EguiTextSurfaceKey::Escape)
+            .without_context_target();
+        let output = if let Some(ordered) = ordered {
+            input.adapter.show_with_ordered_input(
                 ui,
                 &mut input.surface,
                 &style.text_raster,
                 &style.text_paint,
-                &EguiTextSurfaceInputPolicy::default()
-                    .suppress(EguiTextSurfaceKey::ArrowUp)
-                    .suppress(EguiTextSurfaceKey::ArrowDown)
-                    .suppress(EguiTextSurfaceKey::Enter)
-                    .suppress(EguiTextSurfaceKey::Escape)
-                    .without_context_target(),
+                &policy,
+                ordered,
             )
-            .map_err(|error| error.to_string())?;
+        } else {
+            input.adapter.show_with_input_policy(
+                ui,
+                &mut input.surface,
+                &style.text_raster,
+                &style.text_paint,
+                &policy,
+            )
+        }
+        .map_err(|error| error.to_string())?;
         operations.extend(output.artifact.paint_plan.operations);
         let changed = output
             .events

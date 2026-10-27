@@ -3,11 +3,18 @@
 mod api;
 mod batch;
 mod context;
+mod effect;
+pub use effect::{
+    KucOpaqueHostEffectBatch, KucOpaqueHostEffectError, KucRootEffectRouter,
+    KucRootEventBatchForwarder,
+};
 mod dispatcher;
+mod global_guard;
+use global_guard::GlobalActionGuard;
 mod receipt;
 mod transport;
 
-const ROOT_EVENT_CLASS_COUNT: usize = 8;
+const ROOT_EVENT_CLASS_COUNT: usize = 9;
 const ROOT_EVENT_SEARCH_INDEX: usize = 3;
 const ROOT_EVENT_CONTEXT_MENU_INDEX: usize = 4;
 const ROOT_EVENT_STATUS_BAR_INDEX: usize = 5;
@@ -19,8 +26,13 @@ pub(super) fn build_event_batch(
     source_address_submission_port: Option<
         super::super::source_address_projection_lease::SourceAddressSubmissionPortHandle,
     >,
+    global_actions: Vec<super::KucGlobalActionEvent>,
 ) -> Result<EguiTextCommandSurfaceRootEventBatch, String> {
-    dispatcher::RootEventDispatcher::build_event_batch(output, source_address_submission_port)
+    dispatcher::RootEventDispatcher::build_event_batch(
+        output,
+        source_address_submission_port,
+        global_actions,
+    )
 }
 
 use super::super::source_address_projection_lease::{
@@ -34,21 +46,6 @@ use crate::molecule::{DiagnosticsListEvent, StatusBarEvent};
 use crate::text_surface::TextSurfaceEvent;
 use std::cell::{Cell, RefCell};
 
-/// Generic KUC callback used to forward one opaque root event transport.
-pub trait KucRootEventBatchForwarder {
-    type Error;
-
-    fn forward_root_event_batch(
-        &mut self,
-        transport: EguiTextCommandSurfaceRootEventTransport,
-    ) -> Result<(), Self::Error>;
-}
-
-/// Host-owned opaque one-shot effect batch.
-pub struct KucOpaqueHostEffectBatch {
-    effect: Option<Box<dyn FnOnce() -> Result<(), KucOpaqueHostEffectError>>>,
-}
-
 /// Generic current-root event information supplied to a host effect router.
 /// Event payloads and child models remain private to KUC.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,6 +55,7 @@ pub struct KucRootEventBatchContext {
     state_revision: u64,
     correlation_fingerprint: String,
     class_dispatches: [EguiTextCommandSurfaceRootEventClassDispatch; ROOT_EVENT_CLASS_COUNT],
+    class_count: usize,
     text_events: Vec<TextSurfaceEvent>,
     toolbar_events: Vec<CommandChromeToolbarEvent>,
     floating_events: Vec<FloatingCommandToolbarEvent>,
@@ -68,19 +66,9 @@ pub struct KucRootEventBatchContext {
     diagnostics_list_events: Vec<DiagnosticsListEvent>,
 }
 
-/// Generic KUC router for a non-wire host effect.
-pub trait KucRootEffectRouter {
-    fn route(
-        &mut self,
-        context: KucRootEventBatchContext,
-    ) -> Result<Option<KucOpaqueHostEffectBatch>, KucOpaqueHostEffectError>;
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct KucOpaqueHostEffectError;
-
 struct RootEventPayload {
     selection_dialog: Vec<super::super::SelectionDialogEvent>,
+    global_actions: Vec<super::KucGlobalActionEvent>,
     text: Vec<TextSurfaceEvent>,
     toolbar: Option<Vec<CommandChromeToolbarEvent>>,
     floating: Option<Vec<FloatingCommandToolbarEvent>>,
@@ -99,6 +87,7 @@ pub enum KucOpaqueHostEffectAttachError {
 }
 
 pub struct EguiTextCommandSurfaceRootEventTransport {
+    global_guard: Option<GlobalActionGuard>,
     payload: RootEventPayload,
     opaque_host_effect_batch: Option<KucOpaqueHostEffectBatch>,
     source_address_submission_port: Option<SourceAddressSubmissionPortHandle>,
@@ -119,6 +108,7 @@ pub struct EguiTextCommandSurfaceRootEventForwardingReceipt {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EguiTextCommandSurfaceRootEventDispatchReceipt {
     class_dispatches: [EguiTextCommandSurfaceRootEventClassDispatch; ROOT_EVENT_CLASS_COUNT],
+    class_count: usize,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -127,11 +117,13 @@ pub enum EguiTextCommandSurfaceRootEventBatchDispatchError<DispatcherError> {
     Dispatcher(DispatcherError),
     OpaqueHostEffect,
     SourceAddressPort(SourceAddressSubmissionPortError),
+    StaleGlobalAction,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EguiTextCommandSurfaceRootEventChildClass {
     SelectionDialog,
+    GlobalAction,
     Text,
     Toolbar,
     Floating,
@@ -152,6 +144,8 @@ pub struct EguiTextCommandSurfaceRootEventClassDispatch {
 pub enum EguiTextCommandSurfaceRootEventBatchForwardError<ForwarderError> {
     AlreadyConsumed,
     Forwarder(ForwarderError),
+    GlobalAuthorizationRequired,
+    GlobalAuthorizationFailed,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -185,6 +179,13 @@ pub struct EguiTextCommandSurfaceRootEventBatch {
 /// Generic callback used to dispatch one-time root event payload per child class.
 pub trait KucRootEventBatchDispatcher {
     type Error;
+
+    fn dispatch_global_action_events(
+        &mut self,
+        _events: Vec<super::KucGlobalActionEvent>,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
 
     fn dispatch_selection_dialog_events(
         &mut self,

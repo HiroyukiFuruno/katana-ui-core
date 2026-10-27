@@ -43,6 +43,14 @@ pub struct TabStripScrollPresentation {
     pub(crate) request_active_reveal: bool,
 }
 
+/// タブの挿入位置を決める方法。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TabStripDropPolicy {
+    #[default]
+    Region,
+    NearestGhostCenter,
+}
+
 /// Generic tab capabilities used by the renderer and route table.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct TabStripTabCapabilities {
@@ -128,12 +136,21 @@ pub struct TabStripContextMenuPresentation {
     pub(crate) entries: Vec<TabStripMenuEntry>,
 }
 
+/// 名前の通知タイミング。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TabStripRenamePolicy {
+    #[default]
+    OnSubmit,
+    OnChange,
+}
+
 /// Host-projected group-popup presentation. Opening, focus, submenu state, and
 /// dismissal are retained inside KUC; `rename_placeholder` only authorizes the
 /// KUC-private inline rename sub-state for this accepted projection.
 pub struct TabStripGroupPopupPresentation {
     pub(crate) rename_placeholder: Option<TabStripText>,
     pub(crate) request_inline_rename: bool,
+    pub(crate) rename_policy: TabStripRenamePolicy,
     pub(crate) entries: Vec<TabStripMenuEntry>,
 }
 
@@ -149,6 +166,32 @@ pub struct TabStripTabDescriptor {
     pub(crate) context_menu: Option<TabStripContextMenuPresentation>,
 }
 
+/// グループのヘッダーと所属タブへ適用する独立した表示色。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TabStripGroupColorPresentation {
+    pub(crate) marker: RgbaColor,
+    pub(crate) background: RgbaColor,
+    pub(crate) collapsed_background: RgbaColor,
+    pub(crate) member: RgbaColor,
+}
+
+impl TabStripGroupColorPresentation {
+    #[must_use]
+    pub const fn new(
+        marker: RgbaColor,
+        background: RgbaColor,
+        collapsed_background: RgbaColor,
+        member: RgbaColor,
+    ) -> Self {
+        Self {
+            marker,
+            background,
+            collapsed_background,
+            member,
+        }
+    }
+}
+
 /// Generic nested projected group descriptor.
 pub struct TabStripGroupDescriptor {
     pub(crate) target: TabStripGroupTarget,
@@ -156,6 +199,7 @@ pub struct TabStripGroupDescriptor {
     pub(crate) accessibility_label: Option<TabStripText>,
     pub(crate) capabilities: TabStripGroupCapabilities,
     pub(crate) swatches: Vec<TabStripSwatchDescriptor>,
+    pub(crate) color_presentation: Option<TabStripGroupColorPresentation>,
     pub(crate) tabs: Vec<TabStripTabDescriptor>,
     pub(crate) groups: Vec<TabStripGroupDescriptor>,
     pub(crate) popup: Option<TabStripGroupPopupPresentation>,
@@ -172,6 +216,7 @@ pub struct TabStripProjection {
     pub(crate) capabilities: TabStripSurfaceCapabilities,
     pub(crate) navigation: Option<TabStripNavigationPresentation>,
     pub(crate) scroll_presentation: TabStripScrollPresentation,
+    pub(crate) drop_policy: TabStripDropPolicy,
 }
 
 /// One root-level occurrence in a tab strip. The index refers to the matching

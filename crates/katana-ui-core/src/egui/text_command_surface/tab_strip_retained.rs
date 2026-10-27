@@ -41,41 +41,22 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::Arc;
 
-pub(super) const TAB_STRIP_HEIGHT_PX: f32 = 36.0;
-const TAB_PADDING_PX: f32 = 10.0;
-const TAB_GAP_PX: f32 = 4.0;
-const NAVIGATION_CONTROL_WIDTH_PX: f32 = 28.0;
-const NAVIGATION_AREA_WIDTH_PX: f32 = (NAVIGATION_CONTROL_WIDTH_PX + TAB_GAP_PX) * 2.0;
-const TRAILING_CONTROL_WIDTH_PX: f32 = 24.0;
-const ICON_SIZE_PX: u32 = 16;
-const OVERLAY_WIDTH_PX: f32 = 232.0;
-const OVERLAY_ROW_HEIGHT_PX: f32 = 28.0;
-const OVERLAY_PADDING_PX: f32 = 8.0;
-const OVERLAY_SEPARATOR_HEIGHT_PX: f32 = 9.0;
-const OVERLAY_SWATCH_SIZE_PX: f32 = 18.0;
-const CORNER_RADIUS_PX: f32 = 3.0;
-const PRIMARY_TEXT_RGBA: [u8; 4] = [218, 218, 218, 255];
-const INACTIVE_TAB_RGBA: [u8; 4] = [47, 47, 47, 255];
-const DISABLED_TAB_RGBA: [u8; 4] = [40, 40, 40, 255];
-const ACTIVE_TAB_RGBA: [u8; 4] = [60, 83, 104, 255];
-const OVERLAY_INPUT_RGBA: [u8; 4] = [34, 53, 67, 255];
-const SELECTION_RGBA: [u8; 4] = [62, 83, 101, 255];
-const PREEDIT_RGBA: [u8; 4] = [121, 192, 255, 255];
-const OVERLAY_BACKGROUND_RGBA: [u8; 4] = [43, 43, 43, 255];
-const OVERLAY_SEPARATOR_RGBA: [u8; 4] = [82, 82, 82, 255];
-const DRAG_GHOST_RGBA: [u8; 4] = [62, 83, 101, 230];
-const ICON_ENABLED_RGB: [u8; 3] = [218, 218, 218];
-const ICON_DISABLED_RGB: [u8; 3] = [105, 105, 105];
-const DROP_LEFT_RATIO: f32 = 0.25;
-const DROP_RIGHT_RATIO: f32 = 0.75;
-const DRAG_GHOST_OFFSET_PX: f32 = 10.0;
-const OVERLAY_SWATCH_INSET_PX: f32 = 4.0;
-const OVERLAY_SWATCH_GAP_PX: f32 = 6.0;
-const OVERLAY_LABEL_FONT_SIZE_PX: f32 = 14.0;
-const OVERLAY_LABEL_FONT_WEIGHT: u16 = 400;
-const CHECKMARK_INSET_PX: f32 = 12.0;
-const RGBA_ALPHA_INDEX: usize = 3;
+use label_layout::{TabStripLabelInteraction, TabStripLabelRender, TabStripLabelRenderRequest};
 
+pub(super) use constants::TAB_STRIP_HEIGHT_PX;
+use constants::{
+    ACTIVE_TAB_RGBA, CHECKMARK_INSET_PX, CORNER_RADIUS_PX, DISABLED_TAB_RGBA, DRAG_GHOST_OFFSET_PX,
+    DRAG_GHOST_RGBA, DROP_LEFT_RATIO, DROP_RIGHT_RATIO, ICON_DISABLED_RGB, ICON_ENABLED_RGB,
+    ICON_SIZE_PX, INACTIVE_TAB_RGBA, NAVIGATION_AREA_WIDTH_PX, NAVIGATION_CONTROL_WIDTH_PX,
+    OVERLAY_BACKGROUND_RGBA, OVERLAY_INPUT_RGBA, OVERLAY_LABEL_FONT_SIZE_PX,
+    OVERLAY_LABEL_FONT_WEIGHT, OVERLAY_PADDING_PX, OVERLAY_ROW_HEIGHT_PX,
+    OVERLAY_SEPARATOR_HEIGHT_PX, OVERLAY_SEPARATOR_RGBA, OVERLAY_SWATCH_GAP_PX,
+    OVERLAY_SWATCH_INSET_PX, OVERLAY_SWATCH_SIZE_PX, OVERLAY_WIDTH_PX, PREEDIT_RGBA,
+    PRIMARY_TEXT_RGBA, RGBA_ALPHA_INDEX, SELECTION_RGBA, TAB_GAP_PX, TAB_PADDING_PX,
+    TRAILING_CONTROL_WIDTH_PX,
+};
+
+#[derive(Clone)]
 enum TabStripOverlayState {
     Closed,
     TabMenu {
@@ -91,9 +72,11 @@ enum TabStripOverlayState {
     },
 }
 
+#[derive(Clone)]
 struct TabStripRenameDraft {
     surface: TextSurface,
     initial: String,
+    requested_start: bool,
 }
 
 impl TabStripRenameDraft {
@@ -129,6 +112,7 @@ impl TabStripRenameDraft {
         Self {
             surface,
             initial: initial.to_owned(),
+            requested_start: false,
         }
     }
 
@@ -141,19 +125,20 @@ impl TabStripRenameDraft {
     }
 }
 
-struct TabStripLabelInteraction {
-    route_path: Option<String>,
+struct TabStripPendingRenameStart {
+    target: TabStripGroupTarget,
+    correlation: tab_strip_projection_lease::TabStripCorrelation,
+    port: TabStripProposalPortHandle,
+    commit: pass_commit::TabStripPassCommit,
 }
 
-struct TabStripLabelRenderRequest<'a> {
-    text: &'a super::tab_strip_projection_lease::TabStripText,
-    path: String,
-    x: f32,
-    bounds: egui::Rect,
-    active: bool,
-    active_reveal_pending: &'a mut bool,
-    interaction: TabStripLabelInteraction,
-    draggable: bool,
+struct TabStripPendingRenameChanges {
+    target: TabStripGroupTarget,
+    correlation: tab_strip_projection_lease::TabStripCorrelation,
+    port: TabStripProposalPortHandle,
+    commit: pass_commit::TabStripPassCommit,
+    names: Vec<TabStripText>,
+    before: Option<TabStripOverlayState>,
 }
 
 struct TabStripIconControl<'a> {
@@ -163,19 +148,13 @@ struct TabStripIconControl<'a> {
     path: &'a str,
 }
 
-struct TabStripLabelRender {
-    advance: f32,
-    secondary_clicked: bool,
-    drag_started: bool,
-    drag_stopped: bool,
-    bounds: egui::Rect,
-}
-
 struct TabStripDragState {
     source: TabStripTabTarget,
     origin: Option<drag_origin::TabStripDragOrigin>,
     label: TabStripText,
     pointer: egui::Pos2,
+    center_offset_x: f32,
+    ghost_width: f32,
 }
 
 struct TabStripGroupDragState {
@@ -221,15 +200,19 @@ pub(crate) struct TabStripRetainedState {
     horizontal_scroll_offset: f32,
     next_nonce: u64,
     overlay: TabStripOverlayState,
-    overlay_primary_press: Option<egui::Id>,
+    overlay_input: overlay_input::TabStripOverlayInput,
     rename_adapter: EguiTextSurfaceAdapter,
     drag: Option<TabStripDragState>,
     group_drag: Option<TabStripGroupDragState>,
     drag_release_pending: bool,
     group_drag_release_pending: bool,
     drag_candidates: Vec<TabStripDropCandidate>,
+    tab_viewport: Option<egui::Rect>,
     group_drag_candidates: Vec<TabStripDropCandidate>,
     inline_rename_consumed: Vec<TabStripGroupTarget>,
+    member_color: Option<RgbaColor>,
+    pending_rename_start: Option<TabStripPendingRenameStart>,
+    pending_rename_changes: Option<TabStripPendingRenameChanges>,
 }
 
 #[derive(Debug)]
@@ -272,16 +255,24 @@ impl std::fmt::Display for TabStripRetainedError {
 
 impl std::error::Error for TabStripRetainedError {}
 
+mod constants;
 mod drag_feedback;
 mod drag_origin;
 mod group_drag;
+mod group_popup;
 mod interaction;
+mod label_layout;
 mod label_paint;
 mod lease_state;
+mod nearest_drop;
 mod overlay;
+mod overlay_input;
 mod overlay_paint;
 mod overlay_panel;
+mod overlay_tree;
 mod paint;
+mod pass_commit;
+mod rename_delivery;
 mod retained_state;
 mod support;
 mod tab_paint;
@@ -289,3 +280,7 @@ mod tab_paint;
 #[cfg(test)]
 #[path = "tab_strip_retained/tab_strip_retained_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "tab_strip_retained/coverage_gap_tests.rs"]
+mod coverage_gap_tests;

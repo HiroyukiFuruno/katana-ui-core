@@ -2,7 +2,7 @@ use super::*;
 use crate::egui::text_command_surface::TabStripGroupPopupPresentation;
 
 #[test]
-fn requested_inline_rename_is_consumed_per_target() {
+fn projected_inline_rename_is_not_consumed_before_editor_is_rendered() {
     let mut state = build_state();
     let group = TabStripGroupDescriptor::new(
         TabStripGroupTarget::from_opaque_bytes(b"rename-once"),
@@ -56,7 +56,13 @@ fn requested_inline_rename_is_consumed_per_target() {
             .expect("second frame should render");
     });
     second_frame.textures_delta.clear();
-    assert!(matches!(state.overlay, TabStripOverlayState::Closed));
+    assert!(matches!(
+        state.overlay,
+        TabStripOverlayState::GroupPopup {
+            rename: Some(_),
+            ..
+        }
+    ));
 }
 
 #[test]
