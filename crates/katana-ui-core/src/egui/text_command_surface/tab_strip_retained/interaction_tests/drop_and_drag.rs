@@ -126,6 +126,8 @@ fn resolve_tab_drag_cancel_when_release_requested_and_no_destination() {
     let recorder = RecordingPort::new(std::rc::Rc::clone(&recorded_operations));
     state.port = Some(TabStripProposalPortHandle::new(recorder));
     state.drag = Some(TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source: source.copy_for_route(),
         origin: None,
         label: TabStripText::new("label"),
@@ -179,6 +181,8 @@ fn resolve_tab_drag_escapes_on_escape_keypress() {
     let recorder = RecordingPort::new(std::rc::Rc::clone(&operations));
     state.port = Some(TabStripProposalPortHandle::new(recorder));
     state.drag = Some(TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source: source.copy_for_route(),
         origin: None,
         label: TabStripText::new("label"),
@@ -229,6 +233,8 @@ fn resolve_tab_drag_paints_feedback_and_retains_drag_before_release() {
         TabStripCorrelation::from_opaque_bytes(b"corr"),
     ));
     state.drag = Some(TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source: TabStripTabTarget::from_opaque_bytes(b"tab-drag"),
         origin: None,
         label: TabStripText::new("tab"),

@@ -1,113 +1,13 @@
-use super::support::{TabStripOverlayOutcome, TabStripOverlayPanel, ui_rect, union_bounds};
+use super::support::{TabStripOverlayPanel, ui_rect};
 use super::{
     CHECKMARK_INSET_PX, CORNER_RADIUS_PX, OVERLAY_BACKGROUND_RGBA, OVERLAY_PADDING_PX,
     OVERLAY_ROW_HEIGHT_PX, OVERLAY_SEPARATOR_HEIGHT_PX, OVERLAY_SEPARATOR_RGBA,
     OVERLAY_SWATCH_GAP_PX, OVERLAY_SWATCH_INSET_PX, OVERLAY_WIDTH_PX, PRIMARY_TEXT_RGBA,
-    RGBA_ALPHA_INDEX, SELECTION_RGBA, TAB_GAP_PX, TabStripMenuEntry, TabStripPaintOperation,
-    TabStripPaintOperationKind, TabStripPaintPlan, TabStripRetainedError, TabStripRetainedState,
-    UiRect,
+    RGBA_ALPHA_INDEX, SELECTION_RGBA, TabStripMenuEntry, TabStripPaintOperation,
+    TabStripPaintOperationKind, TabStripRetainedError, TabStripRetainedState,
 };
 
 impl TabStripRetainedState {
-    pub(super) fn render_overlay_tree(
-        &mut self,
-        ui: &mut egui::Ui,
-        entries: &[TabStripMenuEntry],
-        route_prefix: &str,
-        anchor: egui::Pos2,
-        mut submenu_path: Vec<usize>,
-        protected_bounds: &[egui::Rect],
-    ) -> Result<TabStripOverlayOutcome, TabStripRetainedError> {
-        let mut current_entries = entries;
-        let mut current_prefix = route_prefix.to_owned();
-        let mut position = anchor;
-        let mut depth = 0_usize;
-        let mut operations = Vec::new();
-        let mut panel_bounds = Vec::new();
-        let mut closed = false;
-        while !current_entries.is_empty() {
-            let panel = self.render_overlay_panel(
-                ui,
-                current_entries,
-                &current_prefix,
-                position,
-                depth,
-                &mut operations,
-            )?;
-            panel_bounds.push(panel.bounds);
-            if panel.closed {
-                closed = true;
-                break;
-            }
-            if let Some(index) = panel.open_submenu {
-                submenu_path.truncate(depth);
-                submenu_path.push(index);
-            }
-            let Some(index) = submenu_path.get(depth).copied() else {
-                break;
-            };
-            let Some(entry) = current_entries.get(index) else {
-                submenu_path.truncate(depth);
-                break;
-            };
-            if entry.children.is_empty() {
-                submenu_path.truncate(depth);
-                break;
-            }
-            position = egui::pos2(panel.bounds.max.x + TAB_GAP_PX, panel.row_y(index));
-            current_prefix = format!("{current_prefix}-{index}");
-            current_entries = &entry.children;
-            depth = depth.saturating_add(1);
-        }
-        let Some(surface) = union_bounds(&panel_bounds) else {
-            let closed = protected_bounds.is_empty()
-                || ui.input(|input| {
-                    input.events.iter().any(|event| {
-                        let egui::Event::PointerButton {
-                            pos, pressed: true, ..
-                        } = event
-                        else {
-                            return false;
-                        };
-                        !protected_bounds.iter().any(|bounds| bounds.contains(*pos))
-                    })
-                });
-            return Ok(TabStripOverlayOutcome {
-                closed,
-                submenu_path: Vec::new(),
-                paint_plan: TabStripPaintPlan {
-                    surface_bounds: union_bounds(protected_bounds)
-                        .map_or(UiRect::new(0, 0, 0, 0), ui_rect),
-                    operations,
-                },
-            });
-        };
-        if !closed
-            && ui.input(|input| {
-                input.events.iter().any(|event| {
-                    let egui::Event::PointerButton {
-                        pos, pressed: true, ..
-                    } = event
-                    else {
-                        return false;
-                    };
-                    !panel_bounds.iter().any(|bounds| bounds.contains(*pos))
-                        && !protected_bounds.iter().any(|bounds| bounds.contains(*pos))
-                })
-            })
-        {
-            closed = true;
-        }
-        Ok(TabStripOverlayOutcome {
-            closed,
-            submenu_path,
-            paint_plan: TabStripPaintPlan {
-                surface_bounds: ui_rect(surface),
-                operations,
-            },
-        })
-    }
-
     pub(super) fn render_overlay_panel(
         &mut self,
         ui: &mut egui::Ui,

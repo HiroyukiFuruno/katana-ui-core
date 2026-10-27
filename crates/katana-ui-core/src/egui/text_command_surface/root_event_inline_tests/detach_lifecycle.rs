@@ -58,6 +58,7 @@ fn command_detach_clears_text_only_when_command_activation_is_present() {
         status_bar: None,
         diagnostics_list: None,
         selection_dialog: Vec::new(),
+        global_actions: Vec::new(),
         source_address_submissions: Vec::new(),
     };
     let batch = EguiTextCommandSurfaceRootEventBatch::new(payload, String::new());
@@ -86,6 +87,7 @@ fn context_menu_detach_is_one_shot_with_expected_duplicate_error() {
         status_bar: None,
         diagnostics_list: None,
         selection_dialog: Vec::new(),
+        global_actions: Vec::new(),
         source_address_submissions: Vec::new(),
     };
     let batch = EguiTextCommandSurfaceRootEventBatch::new(payload, String::new());

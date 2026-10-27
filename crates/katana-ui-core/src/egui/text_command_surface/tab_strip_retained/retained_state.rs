@@ -30,7 +30,7 @@ impl TabStripRetainedState {
             horizontal_scroll_offset: 0.0,
             next_nonce: 0,
             overlay: TabStripOverlayState::Closed,
-            overlay_primary_press: None,
+            overlay_input: Default::default(),
             rename_adapter: EguiTextSurfaceAdapter::with_catalog_and_metrics(
                 catalog,
                 config,
@@ -42,8 +42,12 @@ impl TabStripRetainedState {
             drag_release_pending: false,
             group_drag_release_pending: false,
             drag_candidates: Vec::new(),
+            tab_viewport: None,
             group_drag_candidates: Vec::new(),
             inline_rename_consumed: Vec::new(),
+            member_color: None,
+            pending_rename_start: None,
+            pending_rename_changes: None,
         })
     }
 
@@ -51,11 +55,14 @@ impl TabStripRetainedState {
         &mut self,
         ui: &mut egui::Ui,
     ) -> Result<TabStripRootOutput, TabStripRetainedError> {
+        self.flush_rename_start()?;
+        self.flush_rename_changes()?;
         self.routes.begin_frame();
         self.drag_candidates.clear();
         self.group_drag_candidates.clear();
         let revision = self.projection.revision;
         let correlation = self.projection.correlation.copy_for_route();
+        let drop_policy = self.projection.drop_policy;
         let projection = std::mem::replace(
             &mut self.projection,
             TabStripProjection {
@@ -67,6 +74,7 @@ impl TabStripRetainedState {
                 capabilities: Default::default(),
                 navigation: None,
                 scroll_presentation: Default::default(),
+                drop_policy,
             },
         );
         let mut active_reveal_pending = self.active_reveal_pending;
@@ -94,6 +102,7 @@ impl TabStripRetainedState {
         active_reveal_pending: &mut bool,
         horizontal_scroll_offset: f32,
     ) -> Result<TabStripRootOutput, TabStripRetainedError> {
+        self.overlay_input.opened_by_secondary = None;
         let available = ui.available_rect_before_wrap();
         let bounds = egui::Rect::from_min_size(
             available.min,
@@ -206,6 +215,7 @@ impl TabStripRetainedState {
                     );
                     Ok(())
                 });
+            self.tab_viewport = Some(scroll_output.inner_rect.intersect(tabs_ui.clip_rect()));
             next_horizontal_scroll_offset = scroll_output.state.offset.x;
             item_result = scroll_output.inner;
         });

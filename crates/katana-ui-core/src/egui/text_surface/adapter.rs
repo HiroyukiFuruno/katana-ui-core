@@ -7,7 +7,7 @@ use super::controlled_focus::{focus_request_event, synchronize_focus_request};
 use super::controlled_scroll::{
     scroll_request_event, synchronize_scroll_bounds, synchronize_scroll_request,
 };
-use super::events::TextSurfaceInteraction;
+use super::events::{OrderedKeyboardInput, OrderedKeyboardRouting, TextSurfaceInteraction};
 use super::measurement::{
     placeholder_bounds, placeholder_raster_identity, raster_texture_bounds, surface_extent_for_ui,
 };
@@ -15,7 +15,7 @@ use super::model::{
     EguiTextSurfaceAdapter, EguiTextSurfaceInputPolicy, TextSurfacePaintStyle,
     TextSurfaceRasterStyle,
 };
-use super::paint::{PaintLayers, build_paint_plan, paint_surface};
+use super::paint::{PaintLayers, build_paint_plan};
 use super::raster::{layout_for_surface, rasterize_placeholder};
 use crate::render_model::UiRect;
 use crate::text_surface::{
@@ -23,7 +23,12 @@ use crate::text_surface::{
 };
 
 mod constructors;
+mod ordered;
 mod rasterization;
+
+#[cfg(test)]
+#[path = "adapter/ordered_error_tests.rs"]
+mod ordered_error_tests;
 
 impl EguiTextSurfaceAdapter {
     pub(crate) fn request_focus_for_next_frame(&mut self, focused: bool) {
@@ -34,32 +39,14 @@ impl EguiTextSurfaceAdapter {
         self.pointer_exclusion_bounds = bounds;
     }
 
-    pub fn show_with_input_policy(
+    pub(crate) fn show_with_ordered_input_unpainted(
         &mut self,
         ui: &mut egui::Ui,
         surface: &mut TextSurface,
         raster_style: &TextSurfaceRasterStyle,
         paint_style: &TextSurfacePaintStyle,
         input_policy: &EguiTextSurfaceInputPolicy,
-    ) -> Result<EguiTextSurfaceOutput, EguiTextSurfaceError> {
-        let output = self.show_with_input_policy_unpainted(
-            ui,
-            surface,
-            raster_style,
-            paint_style,
-            input_policy,
-        )?;
-        paint_surface(ui, &mut self.textures, &output.artifact.paint_plan);
-        Ok(output)
-    }
-
-    pub(crate) fn show_with_input_policy_unpainted(
-        &mut self,
-        ui: &mut egui::Ui,
-        surface: &mut TextSurface,
-        raster_style: &TextSurfaceRasterStyle,
-        paint_style: &TextSurfacePaintStyle,
-        input_policy: &EguiTextSurfaceInputPolicy,
+        ordered: Option<&mut dyn OrderedKeyboardInput>,
     ) -> Result<EguiTextSurfaceOutput, EguiTextSurfaceError> {
         let (surface_width, surface_height) = surface_extent_for_ui(ui, surface);
         let scale_factor = ui.ctx().pixels_per_point();
@@ -111,16 +98,57 @@ impl EguiTextSurfaceAdapter {
         } else {
             self.pending_focus_request.take()
         };
-        let mut events = TextSurfaceInteraction::apply_interactions(
-            ui,
-            &response,
-            surface,
-            &initial_layout,
-            &initial_frame,
-            input_policy,
-            pending_focus_request,
-            &pointer_exclusion_bounds,
-        );
+        let mut events = if let Some(ordered) = ordered {
+            let mut refresh_error = None;
+            let mut refresh = |surface: &TextSurface| match self.raster(
+                surface,
+                raster_style,
+                content_width,
+                scale_factor,
+            ) {
+                Ok(frame) => Some(layout_for_surface(
+                    &frame,
+                    surface,
+                    TextSurfacePoint::new(
+                        viewport_bounds.x.saturating_sub(surface.state().scroll_x),
+                        viewport_bounds.y.saturating_sub(surface.state().scroll_y),
+                    ),
+                )),
+                Err(error) => {
+                    refresh_error = Some(error);
+                    None
+                }
+            };
+            let events = TextSurfaceInteraction::apply_interactions_ordered(
+                ui,
+                &response,
+                surface,
+                &initial_layout,
+                &initial_frame,
+                input_policy,
+                pending_focus_request,
+                &pointer_exclusion_bounds,
+                OrderedKeyboardRouting {
+                    handler: Some(ordered),
+                    refresh: &mut refresh,
+                },
+            );
+            if let Some(error) = refresh_error {
+                return Err(error);
+            }
+            events
+        } else {
+            TextSurfaceInteraction::apply_interactions(
+                ui,
+                &response,
+                surface,
+                &initial_layout,
+                &initial_frame,
+                input_policy,
+                pending_focus_request,
+                &pointer_exclusion_bounds,
+            )
+        };
         let focus_request = (!ui.is_sizing_pass())
             .then(|| synchronize_focus_request(&response, surface))
             .flatten();

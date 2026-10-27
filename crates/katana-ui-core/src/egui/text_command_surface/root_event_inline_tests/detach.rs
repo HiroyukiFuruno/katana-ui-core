@@ -145,6 +145,7 @@ fn detached_root_envelope_excludes_search_events() {
         .payload;
     let envelope = RootEventEnvelope {
         selection_dialog: &payload.selection_dialog,
+        global_actions: &payload.global_actions,
         text: &payload.text,
         toolbar: payload.toolbar.as_deref(),
         floating: payload.floating.as_deref(),

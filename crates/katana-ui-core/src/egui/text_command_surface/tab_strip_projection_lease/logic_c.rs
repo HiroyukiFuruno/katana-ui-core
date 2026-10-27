@@ -44,6 +44,7 @@ impl TabStripGroupPopupPresentation {
         Self {
             rename_placeholder: None,
             request_inline_rename: false,
+            rename_policy: TabStripRenamePolicy::OnSubmit,
             entries: Vec::new(),
         }
     }
@@ -58,6 +59,12 @@ impl TabStripGroupPopupPresentation {
     #[must_use]
     pub const fn request_inline_rename(mut self, value: bool) -> Self {
         self.request_inline_rename = value;
+        self
+    }
+
+    #[must_use]
+    pub const fn rename_policy(mut self, value: TabStripRenamePolicy) -> Self {
+        self.rename_policy = value;
         self
     }
 

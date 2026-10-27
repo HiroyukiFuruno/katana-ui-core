@@ -24,3 +24,5 @@ pub use model::{
     TextSurfacePaintOperation, TextSurfacePaintOperationKind, TextSurfacePaintPlan,
     TextSurfacePaintStyle, TextSurfacePaintTexture, TextSurfaceRasterStyle,
 };
+
+pub(crate) use events::OrderedKeyboardInput;

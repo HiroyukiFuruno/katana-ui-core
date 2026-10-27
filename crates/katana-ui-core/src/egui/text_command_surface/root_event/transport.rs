@@ -36,8 +36,17 @@ impl EguiTextCommandSurfaceRootEventTransport {
     where
         Dispatcher: KucRootEventBatchDispatcher,
     {
+        if !self.payload.global_actions.is_empty()
+            && self
+                .global_guard
+                .as_ref()
+                .is_none_or(|guard| !guard.is_valid())
+        {
+            return Err(EguiTextCommandSurfaceRootEventBatchDispatchError::StaleGlobalAction);
+        }
         let RootEventPayload {
             selection_dialog,
+            global_actions,
             text,
             toolbar,
             floating,
@@ -56,6 +65,11 @@ impl EguiTextCommandSurfaceRootEventTransport {
         let status_bar = status_bar.unwrap_or_default();
         let diagnostics_list = diagnostics_list.unwrap_or_default();
         let receipt = EguiTextCommandSurfaceRootEventDispatchReceipt {
+            class_count: if global_actions.is_empty() {
+                super::ROOT_EVENT_CLASS_COUNT - 1
+            } else {
+                super::ROOT_EVENT_CLASS_COUNT
+            },
             class_dispatches: [
                 EguiTextCommandSurfaceRootEventClassDispatch {
                     child_class: EguiTextCommandSurfaceRootEventChildClass::Text,
@@ -89,9 +103,16 @@ impl EguiTextCommandSurfaceRootEventTransport {
                     child_class: EguiTextCommandSurfaceRootEventChildClass::SelectionDialog,
                     event_count: selection_dialog.len(),
                 },
+                EguiTextCommandSurfaceRootEventClassDispatch {
+                    child_class: EguiTextCommandSurfaceRootEventChildClass::GlobalAction,
+                    event_count: global_actions.len(),
+                },
             ],
         };
 
+        dispatcher
+            .dispatch_global_action_events(global_actions)
+            .map_err(EguiTextCommandSurfaceRootEventBatchDispatchError::Dispatcher)?;
         dispatcher
             .dispatch_text_events(text)
             .map_err(EguiTextCommandSurfaceRootEventBatchDispatchError::Dispatcher)?;

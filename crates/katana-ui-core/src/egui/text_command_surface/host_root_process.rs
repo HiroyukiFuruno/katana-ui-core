@@ -65,6 +65,7 @@ impl HostRootProcess {
     ) -> Result<Self, EguiTextCommandSurfaceRootFactoryError> {
         let mut process = Self::retain(decoded, presentation_revision)?;
         process.effect_router = Some(attachments.router);
+        process.root.global_actions = attachments.global_actions;
         if let Some(source_address) = attachments.source_address {
             process.root.attach_source_address(source_address);
         }

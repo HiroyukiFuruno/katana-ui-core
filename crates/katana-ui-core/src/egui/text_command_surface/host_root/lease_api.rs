@@ -35,6 +35,7 @@ impl EguiTextCommandSurfaceHostProjectionLease {
             status_diagnostics: None,
             editor_viewport: None,
             context_menu_enabled_resolver: None,
+            global_actions: None,
         }
     }
 
@@ -56,6 +57,16 @@ impl EguiTextCommandSurfaceHostProjectionLease {
     #[must_use]
     pub fn with_editor_viewport(mut self, lease: EditorViewportProjectionLease) -> Self {
         self.editor_viewport = Some(lease);
+        self
+    }
+
+    /// Attaches host-defined actions whose scope is this retained root.
+    #[must_use]
+    pub fn with_global_actions(
+        mut self,
+        value: super::super::root::KucGlobalActionsProjection,
+    ) -> Self {
+        self.global_actions = Some(value);
         self
     }
 
@@ -84,6 +95,7 @@ impl EguiTextCommandSurfaceHostProjectionLease {
                 status_diagnostics: self.status_diagnostics,
                 editor_viewport: self.editor_viewport,
                 context_menu_enabled_resolver: self.context_menu_enabled_resolver,
+                global_actions: self.global_actions,
             },
         )
     }

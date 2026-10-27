@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-27
+
+### Added
+
+- Add opt-in group rename notifications, independent group colors, nearest ghost-center drop policy, and typed tab proposal origins (#114, #115, #116, #117).
+- Add per-mode query history keyboard navigation with draft restoration and ordered IME-aware input (#120).
+- Add host-defined global menu/shortcut actions with authenticated one-shot root delivery (#121).
+- Project UTF-8 search matches to whole-grapheme display highlights while preserving logical ranges (#122).
+
+### Fixed
+
+- Delete the selected text range on Backspace, preserve pointer dismissal behavior, and exclude clipped tabs from nearest-drop candidates.
+
 ## [0.5.1] - 2026-10-27
 
 ### Changed

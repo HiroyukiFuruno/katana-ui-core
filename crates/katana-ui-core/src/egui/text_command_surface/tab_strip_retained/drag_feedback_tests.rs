@@ -53,6 +53,7 @@ fn paint_plan_contains_ghost_and_indicator_and_refreshes_label_texture() {
                 super::TabStripDragFeedback {
                     label: &super::TabStripText::new("first"),
                     pointer: egui::pos2(20.0, 4.0),
+                    ghost_width: None,
                     indicator: Some(indicator),
                 },
                 strip,
@@ -90,6 +91,7 @@ fn paint_plan_contains_ghost_and_indicator_and_refreshes_label_texture() {
                 super::TabStripDragFeedback {
                     label: &super::TabStripText::new("second"),
                     pointer: egui::pos2(20.0, 4.0),
+                    ghost_width: None,
                     indicator: None,
                 },
                 strip,

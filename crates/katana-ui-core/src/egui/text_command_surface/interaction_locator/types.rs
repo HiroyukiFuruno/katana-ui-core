@@ -6,6 +6,8 @@ use crate::egui::text_command_surface::accesskit_evidence::AccessKitEvidence;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum KucInteractionActionClass {
     TextSurfaceContextTarget,
+    GlobalActionMenu,
+    GlobalAction,
     TextInput,
     Toolbar,
     FloatingToolbar,

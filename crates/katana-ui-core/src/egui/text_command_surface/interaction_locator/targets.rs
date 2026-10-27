@@ -160,28 +160,16 @@ pub(super) fn append_generic_targets(
     targets: &mut Vec<LocatorTarget>,
     evidence: &[AccessKitEvidence],
 ) {
-    for (target_class, action_class) in [
-        (
-            AccessKitTargetClass::StatusBarSegment,
-            KucInteractionActionClass::StatusBarSegment,
-        ),
-        (
-            AccessKitTargetClass::DiagnosticsScope,
-            KucInteractionActionClass::DiagnosticsScope,
-        ),
-        (
-            AccessKitTargetClass::DiagnosticsSeverityFilter,
-            KucInteractionActionClass::DiagnosticsSeverityFilter,
-        ),
-        (
-            AccessKitTargetClass::DiagnosticsItem,
-            KucInteractionActionClass::DiagnosticsItem,
-        ),
-        (
-            AccessKitTargetClass::DiagnosticsFix,
-            KucInteractionActionClass::DiagnosticsFix,
-        ),
+    for action_class in [
+        KucInteractionActionClass::GlobalActionMenu,
+        KucInteractionActionClass::GlobalAction,
+        KucInteractionActionClass::StatusBarSegment,
+        KucInteractionActionClass::DiagnosticsScope,
+        KucInteractionActionClass::DiagnosticsSeverityFilter,
+        KucInteractionActionClass::DiagnosticsItem,
+        KucInteractionActionClass::DiagnosticsFix,
     ] {
+        let target_class = accesskit_class(action_class);
         for value in evidence
             .iter()
             .filter(|value| value.target_class == target_class)
@@ -253,6 +241,8 @@ pub(super) fn accesskit_class(class: KucInteractionActionClass) -> AccessKitTarg
         KucInteractionActionClass::TextSurfaceContextTarget => {
             AccessKitTargetClass::TextSurfaceContextTarget
         }
+        KucInteractionActionClass::GlobalActionMenu => AccessKitTargetClass::GlobalActionMenu,
+        KucInteractionActionClass::GlobalAction => AccessKitTargetClass::GlobalAction,
         KucInteractionActionClass::TextInput => AccessKitTargetClass::TextInput,
         KucInteractionActionClass::Toolbar => AccessKitTargetClass::Toolbar,
         KucInteractionActionClass::FloatingToolbar => AccessKitTargetClass::FloatingToolbar,

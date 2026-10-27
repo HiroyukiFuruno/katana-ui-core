@@ -1,4 +1,5 @@
 use super::*;
+use crate::render_model::UiRect;
 
 #[test]
 fn overlay_tree_with_no_entries_returns_empty_closed_surface() {

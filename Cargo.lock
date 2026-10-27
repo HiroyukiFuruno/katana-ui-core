@@ -1998,7 +1998,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "cap-fs-ext",
  "cap-std",
@@ -2020,7 +2020,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core-native-ime-evidence"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "egui",
  "egui-winit",
@@ -2035,7 +2035,7 @@ dependencies = [
 
 [[package]]
 name = "katana-ui-core-storybook"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "eframe",
  "egui",

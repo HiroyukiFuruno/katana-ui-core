@@ -200,7 +200,12 @@ impl EguiTextCommandSurfaceHostRoot {
         &mut self,
         lease: super::super::SelectionDialogProjectionLease,
     ) -> Result<bool, super::super::SelectionDialogProjectionError> {
-        self.process.root.synchronize_selection_dialog(lease)
+        let changed = self.process.root.synchronize_selection_dialog(lease)?;
+        if changed {
+            let generation = &self.process.root.global_generation;
+            generation.set(generation.get().saturating_add(1));
+        }
+        Ok(changed)
     }
 
     /// 次のframeのinputを処理する前にretained stateを観測する。

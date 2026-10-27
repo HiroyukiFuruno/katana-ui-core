@@ -216,3 +216,51 @@ fn middle_of_non_source_group_candidate_has_no_drop_destination() {
             .is_none()
     );
 }
+
+#[test]
+fn released_group_drag_propagates_missing_port_without_a_stale_drag() {
+    let source = TabStripGroupTarget::from_opaque_bytes(b"source");
+    let projection =
+        TabStripProjection::new(1, TabStripCorrelation::from_opaque_bytes(b"corr")).group(
+            TabStripGroupDescriptor::new(source.clone(), TabStripText::new("Source")),
+        );
+    let config = PlatformTextRasterConfig::default();
+    let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
+    let mut state = TabStripRetainedState::from_lease(
+        TabStripProjectionLease::new(projection),
+        catalog,
+        config,
+    )
+    .expect("state");
+    state.group_drag = Some(super::super::TabStripGroupDragState {
+        source,
+        label: TabStripText::new("Source"),
+        pointer: egui::pos2(400.0, 400.0),
+    });
+    let context = egui::Context::default();
+    let mut result = None;
+    let mut output = context.run_ui(
+        egui::RawInput {
+            events: vec![egui::Event::PointerButton {
+                pos: egui::pos2(400.0, 400.0),
+                button: egui::PointerButton::Primary,
+                pressed: false,
+                modifiers: egui::Modifiers::NONE,
+            }],
+            ..Default::default()
+        },
+        |ui| {
+            result = Some(state.resolve_group_drag(
+                ui,
+                egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(120.0, 24.0)),
+                &mut Vec::new(),
+            ));
+        },
+    );
+    output.textures_delta.clear();
+    assert!(matches!(
+        result,
+        Some(Err(TabStripRetainedError::MissingPort))
+    ));
+    assert!(state.group_drag.is_none());
+}

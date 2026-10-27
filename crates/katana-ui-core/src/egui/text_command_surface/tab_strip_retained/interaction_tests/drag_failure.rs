@@ -12,6 +12,8 @@ fn resolve_tab_drag_propagates_real_ghost_raster_error_without_proposal() {
     )));
     let label = "x".repeat(16_000);
     state.drag = Some(TabStripDragState {
+        center_offset_x: 0.0,
+        ghost_width: 0.0,
         source: TabStripTabTarget::from_opaque_bytes(b"tab-drag"),
         origin: None,
         label: TabStripText::new(&label),

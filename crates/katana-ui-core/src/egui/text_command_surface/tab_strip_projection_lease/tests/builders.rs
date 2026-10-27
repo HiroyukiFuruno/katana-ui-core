@@ -99,6 +99,16 @@ fn builders_cover_optional_controls_capabilities_and_nested_routes() {
 }
 
 #[test]
+fn group_popup_rename_policy_builder_selects_only_the_requested_policy() {
+    let default = TabStripGroupPopupPresentation::new();
+    let configured = TabStripGroupPopupPresentation::new()
+        .rename_policy(TabStripRenamePolicy::OnChange);
+
+    assert_eq!(TabStripRenamePolicy::OnSubmit, default.rename_policy);
+    assert_eq!(TabStripRenamePolicy::OnChange, configured.rename_policy);
+}
+
+#[test]
 fn target_copy_is_deep_for_route_and_same_target_checks_payload_bytes() {
     let target = TabStripTabTarget::from_opaque_bytes(b"tab-a");
     let copied = target.copy_for_route();

@@ -194,6 +194,14 @@ impl TabStripRouteTable {
         })
     }
 
+    pub(super) fn origin_for_response(
+        &self,
+        response_id: egui::Id,
+    ) -> Option<super::tab_strip_proposal_port::TabStripProposalOrigin> {
+        let path = &self.frame_routes.get(&response_id)?.path;
+        Some(origin_for_path(path))
+    }
+
     pub(super) fn response_is_disabled(&self, response_id: egui::Id) -> bool {
         self.frame_routes
             .get(&response_id)
@@ -300,6 +308,26 @@ impl TabStripRouteTable {
             | TabStripMenuOperation::RemoveFromGroup => None,
         }
     }
+}
+
+fn origin_for_path(path: &str) -> super::tab_strip_proposal_port::TabStripProposalOrigin {
+    use super::tab_strip_proposal_port::TabStripProposalOrigin as Origin;
+    if path.starts_with("tab-strip-") {
+        return Origin::Navigation;
+    }
+    if path.contains("-popup-") {
+        return Origin::GroupPopup;
+    }
+    if path.contains("-menu-") {
+        return Origin::ContextMenu;
+    }
+    if path.ends_with("-trailing") {
+        return Origin::TrailingControl;
+    }
+    if path.ends_with("-header") {
+        return Origin::GroupHeader;
+    }
+    Origin::TabBody
 }
 
 #[cfg(test)]

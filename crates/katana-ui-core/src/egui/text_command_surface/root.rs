@@ -1,5 +1,9 @@
 //! Closed retained root contract for KUC text-command composition.
 
+#[path = "root/global_action_render.rs"]
+mod global_action_render;
+#[path = "root/global_actions.rs"]
+mod global_actions;
 mod interaction_locator;
 #[path = "root/modal_input.rs"]
 mod modal_input;
@@ -9,6 +13,8 @@ mod root_event;
 mod root_frame;
 #[path = "root/root_types.rs"]
 mod root_types;
+#[path = "root/show.rs"]
+mod show;
 use super::source_address_projection_lease::SourceAddressProjectionLease;
 use super::status_diagnostics_projection_lease::StatusDiagnosticsProjectionLease;
 use super::tab_strip_projection_lease::TabStripProjectionLease;
@@ -17,12 +23,12 @@ use super::types::{
     EguiTextCommandSurface, EguiTextCommandSurfaceAdapter, EguiTextCommandSurfaceError,
     TextCommandSurfaceStyle,
 };
-use crate::egui::artifact_compositor::{
-    ArtifactCanvasBounds, ArtifactCompositeRequest, ArtifactCompositor,
-};
 use crate::text_raster::{PlatformTextRasterConfig, PlatformTextRasterResources};
-use root_event::build_event_batch;
-use root_frame::build_frame;
+
+pub use global_actions::{
+    KucGlobalAction, KucGlobalActionEvent, KucGlobalActionFocusPolicy, KucGlobalActionTarget,
+    KucGlobalActionsProjection, KucGlobalShortcut,
+};
 
 pub use interaction_locator::{
     KucInteractionActionClass, KucInteractionLocator, KucInteractionLocatorError,
@@ -76,6 +82,8 @@ impl EguiTextCommandSurfaceRoot {
         value: &crate::text_surface::TextSurfaceUiSelection,
     ) {
         self.surface.text.restore_ui_selection(value);
+        self.global_generation
+            .set(self.global_generation.get().saturating_add(1));
         self.state_revision = self.state_revision.saturating_add(1);
     }
 
@@ -134,6 +142,11 @@ impl EguiTextCommandSurfaceRoot {
             status_bar: None,
             diagnostics_list: None,
             editor_viewport: None,
+            global_actions: None,
+            global_generation: std::rc::Rc::new(std::cell::Cell::new(0)),
+            global_document_focus: None,
+            global_ime_composing: false,
+            global_renderer: None,
         }
     }
 
@@ -147,113 +160,6 @@ impl EguiTextCommandSurfaceRoot {
             self.state_revision = self.state_revision.saturating_add(1);
         }
         changed
-    }
-
-    /// Renders one actual root frame and returns only its closed frame/event contracts.
-    pub fn show(
-        &mut self,
-        ui: &mut egui::Ui,
-        style: &TextCommandSurfaceStyle,
-    ) -> Result<EguiTextCommandSurfaceRootOutput, EguiTextCommandSurfaceRootError> {
-        ui.ctx().enable_accesskit();
-        self.frame_serial = self.frame_serial.saturating_add(1);
-        if let Some(dialog) = self.selection_dialog.as_mut() {
-            dialog.prepare_input(ui);
-        }
-        let dialog_open = self
-            .selection_dialog
-            .as_ref()
-            .is_some_and(|dialog| dialog.is_open());
-        if dialog_open {
-            if let Some(dialog) = self.selection_dialog.as_mut() {
-                dialog.capture_restore_focus(ui.ctx());
-            }
-            modal_input::suspend(self)?;
-        }
-        let modal_events =
-            dialog_open.then(|| ui.input_mut(|input| std::mem::take(&mut input.events)));
-        let output_result = ui
-            .add_enabled_ui(!dialog_open, |ui| {
-                self.adapter.show_with_tab_strip(
-                    ui,
-                    &mut self.surface,
-                    style,
-                    self.tab_strip.as_mut(),
-                    self.status_bar.as_mut(),
-                    self.diagnostics_list.as_mut(),
-                    self.editor_viewport.as_mut(),
-                )
-            })
-            .inner;
-        if let Some(events) = modal_events {
-            ui.input_mut(|input| input.events = events);
-        }
-        let output = output_result?;
-        let dialog = if let Some(dialog) = self.selection_dialog.as_mut() {
-            dialog
-                .show(ui.ctx(), style)
-                .map_err(EguiTextCommandSurfaceRootError::Serialization)?
-        } else {
-            None
-        };
-        let mut output = output.with_selection_dialog(dialog);
-        let accesskit = super::accesskit_evidence::finish_frame(ui.ctx());
-        output.accesskit_evidence = accesskit.entries;
-        output.accesskit_text_input_nodes = accesskit.text_input_nodes;
-        let mut events =
-            build_event_batch(&mut output, self.source_address_submission_port.clone())
-                .map_err(EguiTextCommandSurfaceRootError::Serialization)?;
-        if events.has_events() {
-            self.state_revision = self.state_revision.saturating_add(1);
-        }
-        events.set_root_metadata(&self.identity, self.state_revision);
-        events.set_root_frame_serial(self.frame_serial);
-        let context = events.current_context();
-        let bound_evidence = super::accesskit_evidence::bind_frame(
-            output.accesskit_evidence.clone(),
-            &self.identity,
-            &context,
-        );
-        let plans = output.artifact_paint_plans()?;
-        let composite = ArtifactCompositor::compose(ArtifactCompositeRequest {
-            canvas: ArtifactCanvasBounds::new(output.root_bounds),
-            plans: &plans,
-        })?;
-        let frame = build_frame(&self.identity, self.state_revision, &output, &composite)
-            .map_err(EguiTextCommandSurfaceRootError::Serialization)?;
-        let locator = interaction_locator::KucInteractionLocator::from_output(
-            &self.identity,
-            &context,
-            self.frame_serial,
-            &output,
-            &bound_evidence,
-        );
-        let artifact_order = output.artifact_order().to_vec();
-        #[cfg(any(test, feature = "storybook-artifacts"))]
-        let context_menu_visible = output
-            .context_menu
-            .as_ref()
-            .is_some_and(|value| value.record.is_some() && value.artifact.is_some());
-        Ok(EguiTextCommandSurfaceRootOutput {
-            evidence_text: output.text,
-            evidence_composite: composite,
-            accesskit_evidence: output.accesskit_evidence,
-            accesskit_text_input_nodes: output.accesskit_text_input_nodes,
-            locator,
-            artifact_order,
-            #[cfg(any(test, feature = "storybook-artifacts"))]
-            context_menu_visible,
-            frame,
-            events,
-            #[cfg(test)]
-            toolbar_record: output.toolbar.map(|value| value.record),
-            #[cfg(test)]
-            floating: output.floating,
-            #[cfg(test)]
-            context_menu_record: output.context_menu.and_then(|value| value.record),
-            #[cfg(test)]
-            search_record: output.search.map(|value| value.record),
-        })
     }
 }
 

@@ -24,6 +24,11 @@ pub struct EguiTextCommandSurfaceRoot {
     pub(super) status_bar: Option<crate::molecule::StatusBar>,
     pub(super) diagnostics_list: Option<crate::molecule::DiagnosticsList>,
     pub(super) editor_viewport: Option<super::super::EditorViewportProjectionLease>,
+    pub(crate) global_actions: Option<super::global_actions::KucGlobalActionsProjection>,
+    pub(crate) global_generation: std::rc::Rc<std::cell::Cell<u64>>,
+    pub(super) global_document_focus: Option<egui::Id>,
+    pub(super) global_ime_composing: bool,
+    pub(crate) global_renderer: Option<super::global_action_render::KucGlobalActionsRenderer>,
 }
 
 /// The only frame data exposed by the retained root.
@@ -59,6 +64,7 @@ pub enum EguiTextCommandSurfaceRootError {
     Artifact(EguiTextCommandSurfaceArtifactError),
     Composite(ArtifactCompositeError),
     Serialization(String),
+    GlobalActionRaster(String),
 }
 
 impl From<EguiTextCommandSurfaceError> for EguiTextCommandSurfaceRootError {
@@ -103,6 +109,9 @@ impl std::fmt::Display for EguiTextCommandSurfaceRootError {
             }
             Self::Composite(error) => {
                 write!(formatter, "text-command root composition failed: {error}")
+            }
+            Self::GlobalActionRaster(error) => {
+                write!(formatter, "global action raster failed: {error}")
             }
             Self::Serialization(error) => {
                 write!(formatter, "text-command root serialization failed: {error}")

@@ -1,3 +1,4 @@
+use super::query_history::{SearchQueryArrowKeyPolicy, SearchQueryHistoryDirection};
 use serde::{Deserialize, Serialize};
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -104,6 +105,8 @@ pub struct SelectionDialogProjectionLease {
     pub(crate) disabled: bool,
     pub(crate) readonly: bool,
     pub(crate) projection: SelectionDialogProjection,
+    pub(crate) query_arrow_policies:
+        std::collections::HashMap<KucDialogTarget, SearchQueryArrowKeyPolicy>,
 }
 
 impl SelectionDialogProjectionLease {
@@ -122,6 +125,7 @@ impl SelectionDialogProjectionLease {
             disabled: false,
             readonly: false,
             projection,
+            query_arrow_policies: std::collections::HashMap::new(),
         })
     }
 
@@ -150,6 +154,12 @@ pub enum SelectionDialogOperation {
     QueryChanged {
         mode: KucDialogTarget,
         value: String,
+    },
+    QueryHistoryNavigated {
+        mode: KucDialogTarget,
+        target: Option<KucDialogTarget>,
+        value: String,
+        direction: SearchQueryHistoryDirection,
     },
     IncludeChanged {
         mode: KucDialogTarget,

@@ -40,6 +40,8 @@ fn render_label_uses_active_background_when_tab_is_active() {
             active_reveal_pending: &mut active_reveal_pending,
             interaction: TabStripLabelInteraction { route_path: None },
             draggable: false,
+            background_color: None,
+            marker_color: None,
         };
         state
             .render_label(ui, &mut operations, request)
@@ -75,6 +77,8 @@ fn render_label_replaces_retained_texture_when_same_path_is_renamed() {
                     active_reveal_pending: &mut pending,
                     interaction: TabStripLabelInteraction { route_path: None },
                     draggable: false,
+                    background_color: None,
+                    marker_color: None,
                 },
             )
             .expect("initial label should render");
@@ -97,6 +101,8 @@ fn render_label_replaces_retained_texture_when_same_path_is_renamed() {
                     active_reveal_pending: &mut pending,
                     interaction: TabStripLabelInteraction { route_path: None },
                     draggable: false,
+                    background_color: None,
+                    marker_color: None,
                 },
             )
             .expect("renamed label should render");

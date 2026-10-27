@@ -8,7 +8,7 @@ use super::{
 impl EguiTextCommandSurfaceRootEventDispatchReceipt {
     #[must_use]
     pub fn class_dispatches(&self) -> &[EguiTextCommandSurfaceRootEventClassDispatch] {
-        &self.class_dispatches
+        &self.class_dispatches[..self.class_count]
     }
 
     #[must_use]

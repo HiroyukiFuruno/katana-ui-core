@@ -58,6 +58,38 @@ impl EguiTextCommandSurfaceHostRoot {
         )
     }
 
+    /// このrootと確定済み最新frameを照合し、全イベントを一度だけ配送する。
+    pub fn forward_global_events_once<F>(
+        &self,
+        frame: &EguiTextCommandSurfaceHostRootFrame,
+        forwarder: &mut F,
+    ) -> Result<
+        EguiTextCommandSurfaceRootEventForwardingReceipt,
+        EguiTextCommandSurfaceRootEventBatchForwardError<F::Error>,
+    >
+    where
+        F: KucRootEventBatchForwarder,
+    {
+        let valid = frame.global_generation.upgrade().is_some_and(|generation| {
+            std::rc::Rc::ptr_eq(&generation, &self.process.root.global_generation)
+                && generation.get() == frame.global_epoch
+        }) && frame.global_commit.is_committed();
+        if !valid {
+            return Err(
+                EguiTextCommandSurfaceRootEventBatchForwardError::GlobalAuthorizationFailed,
+            );
+        }
+        let commit = frame.global_commit.clone();
+        if !frame.output.events().authorize_global(
+            frame.global_generation.clone(),
+            frame.global_epoch,
+            std::rc::Rc::new(move || commit.is_committed()),
+        ) {
+            return Err(EguiTextCommandSurfaceRootEventBatchForwardError::AlreadyConsumed);
+        }
+        frame.output.events().forward_once(forwarder)
+    }
+
     /// retained root全体を一度表示し、閉じたfacade frameだけを返す。
     pub fn show(
         &mut self,
@@ -75,7 +107,14 @@ impl EguiTextCommandSurfaceHostRoot {
             ui.ctx().will_discard(),
         );
         selection_observation.finalize_after_pass(ui.ctx());
+        let global_commit = super::selection_commit::SelectionCommit::committed();
+        if output.events().has_global_events() {
+            global_commit.watch(ui.ctx());
+        }
         Ok(EguiTextCommandSurfaceHostRootFrame {
+            global_generation: std::rc::Rc::downgrade(&self.process.root.global_generation),
+            global_epoch: self.process.root.global_generation.get(),
+            global_commit,
             font_identity: self.process.unicode_font_identity(),
             output,
             record,
@@ -154,6 +193,11 @@ impl EguiTextCommandSurfaceHostRootFrame {
     where
         Forwarder: KucRootEventBatchForwarder,
     {
+        if self.output.events().has_global_events() {
+            return Err(
+                EguiTextCommandSurfaceRootEventBatchForwardError::GlobalAuthorizationRequired,
+            );
+        }
         self.output.events().forward_once(forwarder)
     }
 }

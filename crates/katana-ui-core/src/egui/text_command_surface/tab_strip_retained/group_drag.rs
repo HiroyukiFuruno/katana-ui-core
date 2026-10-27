@@ -68,7 +68,11 @@ impl TabStripRetainedState {
                     destination,
                 },
             };
-            self.forward_proposal(self.routes.correlation_for_proposal(), operation)?;
+            self.forward_proposal_with_origin(
+                self.routes.correlation_for_proposal(),
+                operation,
+                super::tab_strip_proposal_port::TabStripProposalOrigin::DragTerminal,
+            )?;
             return Ok(());
         }
         let drop = self.resolve_group_drop(drag.pointer, &drag.source, strip_bounds);
@@ -78,6 +82,7 @@ impl TabStripRetainedState {
                 label: &drag.label,
                 pointer: drag.pointer,
                 indicator: drop.map(|value| value.indicator),
+                ghost_width: None,
             },
             strip_bounds,
             operations,

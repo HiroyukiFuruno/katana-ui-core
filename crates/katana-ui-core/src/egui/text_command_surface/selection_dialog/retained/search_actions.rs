@@ -1,6 +1,6 @@
 use super::{
-    SearchResultMode, SelectionDialogEvent, SelectionDialogOperation, SelectionDialogRetainedState,
-    TextCommandSurfaceStyle, TextSurfacePaintOperation, activated,
+    SearchQueryArrowKeyPolicy, SearchResultMode, SelectionDialogEvent, SelectionDialogOperation,
+    SelectionDialogRetainedState, TextCommandSurfaceStyle, TextSurfacePaintOperation, activated,
 };
 
 impl SelectionDialogRetainedState {
@@ -43,6 +43,7 @@ impl SelectionDialogRetainedState {
                 .and_then(|_| focused_input(format!("kuc.dialog.filter.{mode_key}.false"))),
         ];
         let text_input_focused = focused_inputs.iter().any(Option::is_some);
+        let query_focused = focused_inputs[0].is_some();
         let composition_active = focused_inputs
             .iter()
             .flatten()
@@ -88,7 +89,13 @@ impl SelectionDialogRetainedState {
             .filter(|item| !item.disabled)
             .map(|item| item.target.clone())
             .collect::<Vec<_>>();
-        let keyboard_selected = self.navigate_rows(ui, &candidates, allowed);
+        let history_lane =
+            query_focused && self.lease.arrow_policy(&target) == SearchQueryArrowKeyPolicy::History;
+        let keyboard_selected = if composition_active || ime_event || history_lane {
+            None
+        } else {
+            self.navigate_rows(ui, &candidates, allowed)
+        };
         let mut deleted = None;
         for (index, row) in mode.history.iter().enumerate() {
             let highlights = if row.snippet.is_none() {
@@ -109,6 +116,7 @@ impl SelectionDialogRetainedState {
                 operations,
             )?;
             if allowed && !row.disabled && activated(ui, &response) {
+                self.history_traversal = None;
                 mode.query = row.label.clone();
                 self.selected = None;
                 self.event(
@@ -145,6 +153,7 @@ impl SelectionDialogRetainedState {
             }
         }
         if let Some(index) = deleted {
+            self.history_traversal = None;
             mode.history.remove(index);
         }
         let label = self.lease.controls.clear_history.clone();
@@ -159,6 +168,7 @@ impl SelectionDialogRetainedState {
             operations,
         )?;
         if allowed && !mode.history.is_empty() && activated(ui, &response) {
+            self.history_traversal = None;
             mode.history.clear();
             self.event(
                 events,

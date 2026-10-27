@@ -79,6 +79,7 @@ impl TabStripGroupDescriptor {
             accessibility_label: None,
             capabilities: TabStripGroupCapabilities::new(),
             swatches: Vec::new(),
+            color_presentation: None,
             tabs: Vec::new(),
             groups: Vec::new(),
             popup: None,
@@ -94,6 +95,12 @@ impl TabStripGroupDescriptor {
     #[must_use]
     pub const fn capabilities(mut self, value: TabStripGroupCapabilities) -> Self {
         self.capabilities = value;
+        self
+    }
+
+    #[must_use]
+    pub const fn color_presentation(mut self, value: TabStripGroupColorPresentation) -> Self {
+        self.color_presentation = Some(value);
         self
     }
 
@@ -161,6 +168,7 @@ impl TabStripProjection {
             capabilities: TabStripSurfaceCapabilities::new(),
             navigation: None,
             scroll_presentation: TabStripScrollPresentation::new(),
+            drop_policy: TabStripDropPolicy::Region,
         }
     }
 
@@ -189,6 +197,13 @@ impl TabStripProjection {
     #[must_use]
     pub fn navigation(mut self, value: TabStripNavigationPresentation) -> Self {
         self.navigation = Some(value);
+        self
+    }
+
+    /// Sets the opt-in insertion boundary policy.
+    #[must_use]
+    pub const fn drop_policy(mut self, value: TabStripDropPolicy) -> Self {
+        self.drop_policy = value;
         self
     }
 
