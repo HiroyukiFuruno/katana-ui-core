@@ -38,18 +38,18 @@ jobs:
           components: clippy, rustfmt
 
       - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: release-preflight-ubuntu-stable-all-features
 
       - name: Install just
-        uses: taiki-e/install-action@just
+        uses: taiki-e/install-action@53aaa72a1fed2d5b9189d6d54c38e29bf9be2ab9 # just
 
       - name: Install ast-lint
         run: just ast-lint-install
 
       - name: Install cargo-llvm-cov
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@f9ee2b3488b5862cca1caf86effaa61f55953001 # cargo-llvm-cov
 
       - name: Install headless display
         run: bash scripts/ci/install-headless-display.sh
