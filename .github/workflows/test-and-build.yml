@@ -72,13 +72,13 @@ jobs:
           components: clippy, rustfmt, llvm-tools-preview
 
       - name: Cache Rust build outputs
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           shared-key: ci-${{ matrix.os }}-stable-default
 
       - name: Install cargo-llvm-cov
         if: matrix.os == 'ubuntu-latest'
-        uses: taiki-e/install-action@cargo-llvm-cov
+        uses: taiki-e/install-action@f9ee2b3488b5862cca1caf86effaa61f55953001 # cargo-llvm-cov
 
       - name: Install headless display
         if: matrix.os == 'ubuntu-latest'
@@ -97,7 +97,7 @@ jobs:
         run: choco install ffmpeg --yes --no-progress
 
       - name: Install just
-        uses: taiki-e/install-action@just
+        uses: taiki-e/install-action@53aaa72a1fed2d5b9189d6d54c38e29bf9be2ab9 # just
 
       - name: Install ast-lint
         if: matrix.os != 'windows-latest'
