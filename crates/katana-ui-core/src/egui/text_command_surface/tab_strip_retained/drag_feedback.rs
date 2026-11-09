@@ -54,6 +54,7 @@ impl TabStripRetainedState {
             .rasterizer
             .rasterize(feedback.label, ui.ctx().pixels_per_point())
             .map_err(TabStripRetainedError::Raster)?;
+        let has_text = raster.width > 0 && raster.height > 0;
         let fingerprint = hex::encode(Sha256::digest(&raster.rgba_pixels));
         let texture = TabStripPaintTexture {
             identity: format!("tab-strip-drag-ghost:{fingerprint}"),
@@ -87,14 +88,16 @@ impl TabStripRetainedState {
                 color_rgba: DRAG_GHOST_RGBA,
             },
         });
-        let text_bounds = egui::Rect::from_min_size(
-            egui::pos2(
-                ghost.min.x + TAB_PADDING_PX,
-                ghost.center().y - texture.height as f32 / 2.0,
-            ),
-            egui::vec2(texture.width as f32, texture.height as f32),
-        );
-        self.paint_overlay_texture(ui, operations, strip_bounds, &texture, text_bounds);
+        if has_text {
+            let text_bounds = egui::Rect::from_min_size(
+                egui::pos2(
+                    ghost.min.x + TAB_PADDING_PX,
+                    ghost.center().y - texture.height as f32 / 2.0,
+                ),
+                egui::vec2(texture.width as f32, texture.height as f32),
+            );
+            self.paint_overlay_texture(ui, operations, strip_bounds, &texture, text_bounds);
+        }
         if let Some(indicator) = feedback.indicator {
             ui.painter().rect_filled(
                 indicator,

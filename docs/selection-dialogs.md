@@ -36,6 +36,30 @@ modeごとにquery、任意のinclude/exclude、options、history、resultsを�
 結果行のhighlightはsnippet（なければlabel）のUTF-8 byte範囲で、書記素境界以外は拒否される。
 `searched: false` は未検索、`true` で空のresultsは検索結果なしを表す。
 
+入力hint、filterの意味的な検証状態、履歴見出しは、mode targetごとの
+`SearchModePresentation` をleaseへ追加して指定する。validityの判定はhostが行い、
+KUCは無効な欄の下端にテーマの `invalid` 色で線を引く。この色が未指定なら `accent` 色を使う。
+ヒントは入力の操作名・アクセシビリティ名から独立し、
+履歴見出しは選択できないlabelとして表示される。
+
+```rust
+use katana_ui_core::egui::text_command_surface::{
+    SearchFilterValidity, SearchModePresentation, SelectionDialogProjectionLease,
+};
+
+let lease = SelectionDialogProjectionLease::new(revision, "検索", controls, projection)?
+    .search_mode_presentation(
+        active_mode,
+        SearchModePresentation::new()
+            .query_hint("検索語を入力")
+            .include_hint("含める語")
+            .exclude_hint("除外する語")
+            .include_validity(SearchFilterValidity::Valid)
+            .exclude_validity(SearchFilterValidity::Invalid)
+            .history_heading("保存履歴"),
+    )?;
+```
+
 ## 接続と通知
 
 画面内の全操作名は `KucDialogControls` でローカライズする。

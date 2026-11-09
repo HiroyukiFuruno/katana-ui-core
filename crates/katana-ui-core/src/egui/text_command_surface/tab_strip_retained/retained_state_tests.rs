@@ -129,7 +129,7 @@ fn show_preserves_retained_projection_and_scroll_when_real_tab_raster_fails() {
         TabStripProjection::new(9, TabStripCorrelation::from_opaque_bytes(b"invalid-corr")).tab(
             TabStripTabDescriptor::new(
                 TabStripTabTarget::from_opaque_bytes(b"empty-tab"),
-                TabStripText::new(""),
+                TabStripText::new("W".repeat(2048)),
             ),
         );
     let mut observed = None;
@@ -147,7 +147,7 @@ fn show_preserves_retained_projection_and_scroll_when_real_tab_raster_fails() {
 }
 
 #[test]
-fn show_projection_propagates_real_tab_and_group_label_raster_failures() {
+fn show_projection_keeps_empty_tab_and_group_labels_interactive() {
     let mut state = build_state_with_projection(TabStripProjection::new(
         1,
         TabStripCorrelation::from_opaque_bytes(b"corr"),
@@ -177,10 +177,7 @@ fn show_projection_propagates_real_tab_and_group_label_raster_failures() {
             tab_result = Some(state.show_projection(ui, &invalid_tab, &mut false, 0.0));
         });
         output.textures_delta.clear();
-        assert!(matches!(
-            tab_result.expect("invalid tab frame should execute"),
-            Err(TabStripRetainedError::Raster(_))
-        ));
+        assert!(tab_result.expect("empty tab frame should execute").is_ok());
 
         let mut invalid_group =
             TabStripProjection::new(3, TabStripCorrelation::from_opaque_bytes(b"invalid-group"))
@@ -196,8 +193,38 @@ fn show_projection_propagates_real_tab_and_group_label_raster_failures() {
             group_result = Some(state.show_projection(ui, &invalid_group, &mut false, 0.0));
         });
         output.textures_delta.clear();
+        assert!(
+            group_result
+                .expect("empty group frame should execute")
+                .is_ok()
+        );
+    }
+}
+
+#[test]
+fn show_projection_propagates_fallback_tab_and_group_raster_errors() {
+    let correlation = TabStripCorrelation::from_opaque_bytes(b"oversized");
+    let oversized_tab =
+        TabStripProjection::new(4, correlation.clone()).tab(TabStripTabDescriptor::new(
+            TabStripTabTarget::from_opaque_bytes(b"oversized-tab"),
+            TabStripText::new("W".repeat(2048)),
+        ));
+    let oversized_group =
+        TabStripProjection::new(5, correlation).group(TabStripGroupDescriptor::new(
+            TabStripGroupTarget::from_opaque_bytes(b"oversized-group"),
+            TabStripText::new("W".repeat(2048)),
+        ));
+    let mut state = build_state_with_projection(build_projection_with_navigation());
+    let context = egui::Context::default();
+    for mut projection in [oversized_tab, oversized_group] {
+        projection.root_items.clear();
+        let mut result = None;
+        let mut output = context.run_ui(retained_input(Vec::new()), |ui| {
+            result = Some(state.show_projection(ui, &projection, &mut false, 0.0));
+        });
+        output.textures_delta.clear();
         assert!(matches!(
-            group_result.expect("invalid group frame should execute"),
+            result.expect("descriptor fallback frame should execute"),
             Err(TabStripRetainedError::Raster(_))
         ));
     }

@@ -69,6 +69,13 @@ impl TabStripTextRasterizer {
         text: &TabStripText,
         scale_factor: f32,
     ) -> Result<TabStripTextRaster, PlatformTextRasterError> {
+        if text.value.is_empty() {
+            return Ok(TabStripTextRaster {
+                width: 0,
+                height: 0,
+                rgba_pixels: Vec::new(),
+            });
+        }
         let raster = self.rasterizer.rasterize(&PlatformTextRasterRequest {
             spans: UiTextSpan::emoji_marked_spans(
                 &text.value,

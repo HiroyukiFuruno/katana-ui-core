@@ -81,6 +81,7 @@ impl TabStripRetainedState {
             );
         }
         let raster_fingerprint = hex::encode(Sha256::digest(&raster.rgba_pixels));
+        let has_text = raster.width > 0 && raster.height > 0;
         let texture = TabStripPaintTexture {
             identity: format!("tab-strip:{path}:{raster_fingerprint}"),
             width: raster.width,
@@ -141,20 +142,22 @@ impl TabStripRetainedState {
             ),
             egui::vec2(texture.width as f32, texture.height as f32),
         );
-        paint_texture_tiled(
-            ui.painter(),
-            ui.ctx(),
-            &mut self.textures,
-            ui_rect(label_rect),
-            &texture,
-        );
-        operations.push(TabStripPaintOperation {
-            clip_bounds: ui_rect(bounds),
-            kind: TabStripPaintOperationKind::Texture {
-                bounds: ui_rect(label_rect),
-                texture,
-            },
-        });
+        if has_text {
+            paint_texture_tiled(
+                ui.painter(),
+                ui.ctx(),
+                &mut self.textures,
+                ui_rect(label_rect),
+                &texture,
+            );
+            operations.push(TabStripPaintOperation {
+                clip_bounds: ui_rect(bounds),
+                kind: TabStripPaintOperationKind::Texture {
+                    bounds: ui_rect(label_rect),
+                    texture,
+                },
+            });
+        }
         if active && *active_reveal_pending {
             response.scroll_to_me(Some(egui::Align::Center));
             *active_reveal_pending = false;

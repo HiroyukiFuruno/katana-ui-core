@@ -2,9 +2,13 @@ use crate::egui::command_chrome::{
     CommandChromePaintStyle, CommandChromeRasterStyle, EguiCommandChromeSearchStyle,
 };
 use crate::egui::text_command_surface::{EguiTextCommandSurfaceError, TextCommandSurfaceStyle};
-use crate::egui::text_surface::{TextSurfacePaintStyle, TextSurfaceRasterStyle};
+use crate::egui::text_surface::{
+    TextSurfaceAnnotationPaint, TextSurfacePaintStyle, TextSurfaceRasterStyle,
+};
 use crate::molecule::RgbaColor;
 use crate::theme::{FontToken, Rgba, ThemeSnapshot};
+
+pub(super) const INVALID_INPUT_ROLE: &str = "invalid-input";
 
 const LINE_HEIGHT_MULTIPLIER: f32 = 1.5;
 const ICON_SIZE_MULTIPLIER: f32 = 1.0;
@@ -35,7 +39,10 @@ pub(super) fn from_theme(
         selection_rgba: selection,
         preedit_rgba: accent,
         caret_rgba: accent_foreground,
-        annotation_paints: Vec::new(),
+        annotation_paints: vec![TextSurfaceAnnotationPaint::new(
+            INVALID_INPUT_ROLE,
+            theme.color("invalid").unwrap_or(accent),
+        )],
     };
 
     Ok(TextCommandSurfaceStyle {

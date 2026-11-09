@@ -1087,7 +1087,7 @@ def coverage_workflow_routing_failures(root: Path = ROOT) -> list[str]:
             "      - name: Run coverage\n"
             "        # WHY: release PR は release-preflight の release-check が同じ strict coverage を実行する。\n"
             "        if: >-\n"
-            "          matrix.os == 'ubuntu-latest' &&\n"
+            "          matrix.os == 'ubuntu-24.04' &&\n"
             "          !startsWith(github.head_ref, 'release/v')\n"
             "        env:\n"
             '          KUC_COVERAGE_EPHEMERAL_CLEANUP: "1"\n'
@@ -2254,10 +2254,10 @@ def write_coverage_workflow_routing_self_test_files(
     coverage_condition = (
         "        # WHY: release PR は release-preflight の release-check が同じ strict coverage を実行する。\n"
         "        if: >-\n"
-        "          matrix.os == 'ubuntu-latest' &&\n"
+        "          matrix.os == 'ubuntu-24.04' &&\n"
         "          !startsWith(github.head_ref, 'release/v')\n"
         if skip_release_duplicate
-        else "        if: matrix.os == 'ubuntu-latest'\n"
+        else "        if: matrix.os == 'ubuntu-24.04'\n"
     )
     (workflows / "test-and-build.yml").write_text(
         "name: CI\nsteps:\n"

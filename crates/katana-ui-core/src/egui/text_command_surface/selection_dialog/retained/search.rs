@@ -1,3 +1,4 @@
+use super::super::model::SearchFilterValidity;
 use super::{
     SearchResultProjection, SelectionDialogEvent, SelectionDialogOperation,
     SelectionDialogRetainedState, TextCommandSurfaceStyle, TextSurfacePaintOperation, activated,
@@ -47,6 +48,7 @@ impl SelectionDialogRetainedState {
         let mode = &mut search.modes[index];
         let target = mode.target.clone();
         let mode_key = target.interaction_key();
+        let mode_presentation = self.lease.search_mode_presentation_for(&target);
         let history_policy = allowed
             && self.lease.arrow_policy(&target) == super::SearchQueryArrowKeyPolicy::History;
         let key = format!("kuc.dialog.query.{mode_key}");
@@ -66,13 +68,17 @@ impl SelectionDialogRetainedState {
             operations: Vec::new(),
             ime_active,
         };
-        let changed = self.input_ordered(
+        let changed = self.input_ordered_presented(
             ui,
             key,
             &mode.label,
             &mut mode.query,
             style,
-            first || mode_changed,
+            super::input::InputPresentation {
+                focus: first || mode_changed,
+                placeholder: mode_presentation.query_hint.as_deref().unwrap_or_default(),
+                invalid: false,
+            },
             operations,
             history_policy.then_some(
                 &mut ordered as &mut dyn crate::egui::text_surface::OrderedKeyboardInput,
@@ -102,13 +108,34 @@ impl SelectionDialogRetainedState {
                 } else {
                     self.lease.controls.exclude.clone()
                 };
-                if self.input(
+                let (hint, validity) = if include {
+                    (
+                        mode_presentation
+                            .include_hint
+                            .as_deref()
+                            .unwrap_or_default(),
+                        mode_presentation.include_validity,
+                    )
+                } else {
+                    (
+                        mode_presentation
+                            .exclude_hint
+                            .as_deref()
+                            .unwrap_or_default(),
+                        mode_presentation.exclude_validity,
+                    )
+                };
+                if self.input_presented(
                     ui,
                     format!("kuc.dialog.filter.{mode_key}.{include}"),
                     &label,
                     value,
                     style,
-                    false,
+                    super::input::InputPresentation {
+                        focus: false,
+                        placeholder: hint,
+                        invalid: validity == Some(SearchFilterValidity::Invalid),
+                    },
                     operations,
                 )? {
                     self.selected = None;

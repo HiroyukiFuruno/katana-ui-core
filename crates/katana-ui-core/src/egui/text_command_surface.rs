@@ -113,9 +113,10 @@ pub use scenario::{
 pub use scenario_session::FullTextCommandSurfaceScenarioSession;
 pub use selection_dialog::{
     FileSelectionItem, FileSelectionProjection, KucDialogControls, KucDialogTarget,
-    SearchHighlightProjection, SearchHighlightProjectionError, SearchQueryArrowKeyPolicy,
-    SearchQueryHistoryDirection, SearchResultMode, SearchResultOption, SearchResultProjection,
-    SearchResultRow, SelectionDialogEvent, SelectionDialogOperation, SelectionDialogProjection,
+    SearchFilterValidity, SearchHighlightProjection, SearchHighlightProjectionError,
+    SearchModePresentation, SearchQueryArrowKeyPolicy, SearchQueryHistoryDirection,
+    SearchResultMode, SearchResultOption, SearchResultProjection, SearchResultRow,
+    SelectionDialogEvent, SelectionDialogOperation, SelectionDialogProjection,
     SelectionDialogProjectionError, SelectionDialogProjectionLease,
 };
 pub use source_address_projection_lease::{

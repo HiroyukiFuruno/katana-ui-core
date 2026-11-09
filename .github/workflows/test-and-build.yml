@@ -60,7 +60,7 @@ jobs:
       )
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-24.04, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -77,15 +77,15 @@ jobs:
           shared-key: ci-${{ matrix.os }}-stable-default
 
       - name: Install cargo-llvm-cov
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-24.04'
         uses: taiki-e/install-action@f9ee2b3488b5862cca1caf86effaa61f55953001 # cargo-llvm-cov
 
       - name: Install headless display
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-24.04'
         run: bash scripts/ci/install-headless-display.sh
 
       - name: Install ffmpeg on Ubuntu
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.os == 'ubuntu-24.04'
         run: bash scripts/ci/install-ffmpeg.sh
 
       - name: Install ffmpeg on macOS
@@ -136,7 +136,7 @@ jobs:
       - name: Run coverage
         # WHY: release PR は release-preflight の release-check が同じ strict coverage を実行する。
         if: >-
-          matrix.os == 'ubuntu-latest' &&
+          matrix.os == 'ubuntu-24.04' &&
           !startsWith(github.head_ref, 'release/v')
         env:
           KUC_COVERAGE_EPHEMERAL_CLEANUP: "1"

@@ -80,6 +80,31 @@ fn paint_overlay_label_records_text_raster_texture_plan() {
 }
 
 #[test]
+fn paint_overlay_label_skips_a_component_owned_empty_raster() {
+    let mut state = build_state();
+    let mut operations = Vec::new();
+    let context = egui::Context::default();
+    let mut output = context.run_ui(egui::RawInput::default(), |ui| {
+        let clip = ui.max_rect();
+        let row = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(40.0, 20.0));
+        state
+            .paint_overlay_label(
+                ui,
+                &mut operations,
+                clip,
+                &TabStripText::new(""),
+                row,
+                "empty-label",
+                0,
+            )
+            .expect("empty overlay labels should not require a raster texture");
+    });
+
+    assert!(operations.is_empty());
+    output.textures_delta.clear();
+}
+
+#[test]
 fn overlay_label_replaces_retained_texture_when_same_entry_is_renamed() {
     let mut state = build_state();
     let context = egui::Context::default();

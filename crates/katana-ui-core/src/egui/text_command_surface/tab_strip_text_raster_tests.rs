@@ -33,13 +33,15 @@ fn raster_debug_shape_is_opaque() -> Result<(), String> {
 }
 
 #[test]
-fn raster_empty_text_is_treated_as_validation_error() {
+fn raster_empty_text_is_a_component_owned_empty_raster() {
     let mut rasterizer =
         TabStripTextRasterizer::new().expect("tab strip rasterizer should initialize");
-    let error = rasterizer
+    let raster = rasterizer
         .rasterize(&TabStripText::new(""), 1.0)
-        .expect_err("empty tab strip text must fail");
-    assert!(error.to_string().contains("must not be empty"));
+        .expect("empty tab strip labels are valid component presentation");
+    assert_eq!(raster.width, 0);
+    assert_eq!(raster.height, 0);
+    assert!(raster.rgba_pixels.is_empty());
 }
 
 #[test]

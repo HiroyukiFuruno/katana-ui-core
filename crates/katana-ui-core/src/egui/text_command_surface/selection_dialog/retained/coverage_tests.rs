@@ -4,6 +4,10 @@ mod core;
 mod edges;
 #[path = "coverage_tests/errors.rs"]
 mod errors;
+#[path = "coverage_tests/invalid_filter_decoration.rs"]
+mod invalid_filter_decoration;
+#[path = "coverage_tests/search_heading_errors.rs"]
+mod search_heading_errors;
 
 use super::super::super::types::TextCommandSurfaceStyle;
 use super::super::model::{

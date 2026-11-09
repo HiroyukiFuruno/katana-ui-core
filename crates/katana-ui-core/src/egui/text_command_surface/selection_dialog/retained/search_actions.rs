@@ -15,6 +15,10 @@ impl SelectionDialogRetainedState {
         let allowed = !self.lease.disabled && !self.lease.readonly;
         let target = mode.target.clone();
         let mode_key = target.interaction_key();
+        let history_heading = self
+            .lease
+            .search_mode_presentation_for(&target)
+            .history_heading;
         let label = self.lease.controls.search.clone();
         let response = self.painter.label(
             ui,
@@ -89,6 +93,21 @@ impl SelectionDialogRetainedState {
             .filter(|item| !item.disabled)
             .map(|item| item.target.clone())
             .collect::<Vec<_>>();
+        if let Some(heading) = history_heading
+            .as_deref()
+            .filter(|heading| !heading.is_empty())
+        {
+            self.painter.label(
+                ui,
+                heading,
+                &format!("kuc.dialog.history.heading.{mode_key}"),
+                true,
+                false,
+                false,
+                style,
+                operations,
+            )?;
+        }
         let history_lane =
             query_focused && self.lease.arrow_policy(&target) == SearchQueryArrowKeyPolicy::History;
         let keyboard_selected = if composition_active || ime_event || history_lane {
