@@ -1174,6 +1174,162 @@ fn committed_name_projects_into_same_group_label_and_keeps_ime_focus() {
 }
 
 #[test]
+fn public_full_root_reprojects_empty_group_name_and_keeps_editing() {
+    let starts = Arc::new(Mutex::new(Vec::new()));
+    let names = Arc::new(Mutex::new(Vec::new()));
+    let port = || RecordingPort {
+        starts: Arc::clone(&starts),
+        names: Arc::clone(&names),
+    };
+    let mut root = EguiTextCommandSurfaceRootFactory::new()
+        .retain_with_lease(
+            katana_ui_core::egui::text_command_surface::EguiTextCommandSurfaceHostProjectionLease::new(
+                token(1),
+                |_| Ok(None),
+            )
+            .with_tab_strip(
+                TabStripProjectionLease::new(projection(1, true)).with_proposal_port(port()),
+            ),
+        )
+        .unwrap();
+    let context = egui::Context::default();
+    for _ in 0..4 {
+        frame(&context, &mut root, Vec::new());
+    }
+    assert_eq!(
+        starts.lock().unwrap().len(),
+        1,
+        "rename start is delivered once"
+    );
+
+    for pressed in [true, false] {
+        frame(
+            &context,
+            &mut root,
+            vec![egui::Event::Key {
+                key: egui::Key::A,
+                physical_key: None,
+                pressed,
+                repeat: false,
+                modifiers: egui::Modifiers {
+                    command: true,
+                    ..egui::Modifiers::default()
+                },
+            }],
+        );
+    }
+    frame(
+        &context,
+        &mut root,
+        vec![egui::Event::Ime(egui::ImeEvent::Commit(
+            "日本語".to_owned(),
+        ))],
+    );
+    frame(&context, &mut root, Vec::new());
+    root.synchronize_with_lease(
+        katana_ui_core::egui::text_command_surface::EguiTextCommandSurfaceHostProjectionLease::new(
+            token(2),
+            |_| Ok(None),
+        )
+        .with_tab_strip(
+            TabStripProjectionLease::new(labeled_projection(2, "日本語"))
+                .with_proposal_port(port()),
+        ),
+    )
+    .unwrap();
+    frame(&context, &mut root, Vec::new());
+
+    frame(
+        &context,
+        &mut root,
+        vec![egui::Event::Ime(egui::ImeEvent::Commit("⭐️".to_owned()))],
+    );
+    frame(&context, &mut root, Vec::new());
+    root.synchronize_with_lease(
+        katana_ui_core::egui::text_command_surface::EguiTextCommandSurfaceHostProjectionLease::new(
+            token(3),
+            |_| Ok(None),
+        )
+        .with_tab_strip(
+            TabStripProjectionLease::new(labeled_projection(3, "日本語⭐️"))
+                .with_proposal_port(port()),
+        ),
+    )
+    .unwrap();
+    frame(&context, &mut root, Vec::new());
+
+    for event in [
+        egui::Event::Key {
+            key: egui::Key::A,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers {
+                command: true,
+                ..egui::Modifiers::default()
+            },
+        },
+        egui::Event::Key {
+            key: egui::Key::A,
+            physical_key: None,
+            pressed: false,
+            repeat: false,
+            modifiers: egui::Modifiers {
+                command: true,
+                ..egui::Modifiers::default()
+            },
+        },
+        egui::Event::Key {
+            key: egui::Key::Backspace,
+            physical_key: None,
+            pressed: true,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        },
+        egui::Event::Key {
+            key: egui::Key::Backspace,
+            physical_key: None,
+            pressed: false,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        },
+    ] {
+        frame(&context, &mut root, vec![event]);
+    }
+    frame(&context, &mut root, Vec::new());
+    assert_eq!(names.lock().unwrap().as_slice(), ["日本語", "日本語⭐️", ""]);
+
+    root.synchronize_with_lease(
+        katana_ui_core::egui::text_command_surface::EguiTextCommandSurfaceHostProjectionLease::new(
+            token(4),
+            |_| Ok(None),
+        )
+        .with_tab_strip(
+            TabStripProjectionLease::new(labeled_projection(4, "")).with_proposal_port(port()),
+        ),
+    )
+    .unwrap();
+    let empty_frame = frame(&context, &mut root, Vec::new());
+    assert!(access_bounds(&empty_frame, "").width() > 0.0);
+
+    frame(
+        &context,
+        &mut root,
+        vec![egui::Event::Ime(egui::ImeEvent::Commit("継続".to_owned()))],
+    );
+    frame(&context, &mut root, Vec::new());
+    assert_eq!(
+        names.lock().unwrap().as_slice(),
+        ["日本語", "日本語⭐️", "", "継続"]
+    );
+    assert_eq!(
+        starts.lock().unwrap().len(),
+        1,
+        "projection updates do not restart rename"
+    );
+}
+
+#[test]
 fn discarded_input_does_not_cross_same_path_target_or_correlation_lease() {
     struct CorrelatedPort {
         inner: RecordingPort,

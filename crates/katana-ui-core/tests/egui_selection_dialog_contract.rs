@@ -9,9 +9,10 @@ use katana_ui_core::egui::text_command_surface::{
     EguiTextCommandSurfaceHostRootFrame, EguiTextCommandSurfacePresentation,
     EguiTextCommandSurfaceRootEventTransport, EguiTextCommandSurfaceRootFactory, FileSelectionItem,
     FileSelectionProjection, KucDialogControls, KucDialogTarget, KucRootEventBatchDispatcher,
-    KucRootEventBatchForwarder, SearchResultMode, SearchResultProjection, SearchResultRow,
-    SelectionDialogEvent, SelectionDialogOperation, SelectionDialogProjection,
-    SelectionDialogProjectionError, SelectionDialogProjectionLease, TextCommandSurfaceStyle,
+    KucRootEventBatchForwarder, SearchFilterValidity, SearchModePresentation, SearchResultMode,
+    SearchResultProjection, SearchResultRow, SelectionDialogEvent, SelectionDialogOperation,
+    SelectionDialogProjection, SelectionDialogProjectionError, SelectionDialogProjectionLease,
+    TextCommandSurfaceStyle,
 };
 use katana_ui_core::molecule::command_chrome::{
     CommandChromeSearchEvent, CommandChromeToolbarEvent, FloatingCommandToolbarEvent,
@@ -98,6 +99,10 @@ fn target(value: u8) -> KucDialogTarget {
 }
 
 fn root() -> EguiTextCommandSurfaceHostRoot {
+    root_with_style(TextCommandSurfaceStyle::standard().expect("style"))
+}
+
+fn root_with_style(style: TextCommandSurfaceStyle) -> EguiTextCommandSurfaceHostRoot {
     let surface = TextSurface::new(TextSurfaceProps::new(
         TextArea::new("dialog-body").value("本文⭐️"),
         Vec::new(),
@@ -111,13 +116,9 @@ fn root() -> EguiTextCommandSurfaceHostRoot {
         search: None,
         context_menu: None,
     };
-    let token = EguiTextCommandSurfaceHostProjectionEncoder::token(
-        1,
-        b"dialog-root",
-        presentation,
-        TextCommandSurfaceStyle::standard().expect("style"),
-    )
-    .expect("token");
+    let token =
+        EguiTextCommandSurfaceHostProjectionEncoder::token(1, b"dialog-root", presentation, style)
+            .expect("token");
     EguiTextCommandSurfaceRootFactory::new()
         .retain(token)
         .expect("root")
@@ -896,6 +897,199 @@ fn search_dialog_full_root_routes_history_filters_and_rejects_invalid_leases() {
             .expect("stale lease")
         ),
         Err(SelectionDialogProjectionError::StaleRevision { .. })
+    ));
+}
+
+fn invalid_filter_line(output: &egui::FullOutput, color: egui::Color32) -> egui::Rect {
+    let lines: Vec<_> = output
+        .shapes
+        .iter()
+        .filter_map(|shape| match &shape.shape {
+            egui::Shape::Rect(rect) if rect.fill == color => Some(rect.rect),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(lines.len(), 1, "only the invalid filter should be marked");
+    assert_eq!(lines[0].height(), 2.0);
+    assert!(lines[0].width() > 0.0);
+    lines[0]
+}
+
+#[test]
+fn search_mode_presentation_is_independent_and_resynchronizes_the_public_root() {
+    let context = egui::Context::default();
+    context.global_style_mut(|style| style.animation_time = 0.0);
+    let mut theme = katana_ui_core::theme::ThemeSnapshot::dark();
+    let [r, g, b, a] = [239, 43, 97, 255];
+    theme.colors.push(katana_ui_core::theme::ColorToken {
+        name: "invalid".into(),
+        rgba: [r, g, b, a],
+    });
+    let invalid_color = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
+    let mut root = root_with_style(TextCommandSurfaceStyle::from_theme(&theme).expect("style"));
+    let mut host = Host::default();
+    let mut first = mode(1);
+    first.history = vec![SearchResultRow {
+        target: target(7),
+        label: "保存済み検索".into(),
+        auxiliary_label: None,
+        snippet: None,
+        highlights: Vec::new(),
+        disabled: false,
+    }];
+    let projection = SelectionDialogProjection::Search(SearchResultProjection {
+        modes: vec![first, mode(2)],
+        active_mode: target(1),
+    });
+    let lease = SelectionDialogProjectionLease::new(1, "検索", controls(), projection.clone())
+        .expect("lease")
+        .search_mode_presentation(
+            target(1),
+            SearchModePresentation::new()
+                .query_hint("検索語を入力")
+                .include_hint("含める語")
+                .exclude_hint("除外する語")
+                .include_validity(SearchFilterValidity::Invalid)
+                .exclude_validity(SearchFilterValidity::Valid)
+                .history_heading("保存履歴"),
+        )
+        .expect("first mode presentation")
+        .search_mode_presentation(
+            target(2),
+            SearchModePresentation::new()
+                .query_hint("mode2 hint")
+                .include_hint("")
+                .exclude_hint("除外例2")
+                .include_validity(SearchFilterValidity::Valid)
+                .exclude_validity(SearchFilterValidity::Invalid)
+                .history_heading("履歴モード2"),
+        )
+        .expect("second mode presentation");
+    root.synchronize_selection_dialog(lease).expect("attach");
+
+    let mut output = None;
+    for _ in 0..4 {
+        output = Some(frame(&context, &mut root, Vec::new(), &mut host).1);
+    }
+    let first_frame = output.expect("first mode frame");
+    let include_line = invalid_filter_line(&first_frame, invalid_color);
+    let first_ax = first_frame
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .expect("first mode AX");
+    assert!(first_ax.nodes.iter().any(|(id, node)| {
+        *id == first_ax.focus
+            && node.role() == egui::accesskit::Role::TextInput
+            && node.label() == Some("mode1")
+    }));
+    for operation_label in ["mode1", "含める", "除外"] {
+        assert!(first_ax.nodes.iter().any(|(_, node)| {
+            node.role() == egui::accesskit::Role::TextInput && node.label() == Some(operation_label)
+        }));
+    }
+    assert!(!first_ax.nodes.iter().any(|(_, node)| {
+        ["検索語を入力", "含める語", "除外する語"].contains(&node.label().unwrap_or_default())
+    }));
+    let heading = first_ax
+        .nodes
+        .iter()
+        .find(|(_, node)| node.label() == Some("保存履歴"))
+        .map(|(_, node)| node)
+        .expect("localized history heading");
+    assert_eq!(heading.role(), egui::accesskit::Role::Label);
+    assert!(!first_ax.nodes.iter().any(|(_, node)| {
+        node.role() == egui::accesskit::Role::Button && node.label() == Some("保存履歴")
+    }));
+    assert!(first_ax.nodes.iter().any(|(_, node)| {
+        node.role() == egui::accesskit::Role::Button && node.label() == Some("保存済み検索")
+    }));
+
+    let (_, second_frame) = frame(
+        &context,
+        &mut root,
+        ax_click(&first_frame, "mode2"),
+        &mut host,
+    );
+    frame(&context, &mut root, Vec::new(), &mut host);
+    let second_ax = second_frame
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .expect("second mode AX");
+    assert!(second_ax.nodes.iter().any(|(_, node)| {
+        node.label() == Some("履歴モード2") && node.role() == egui::accesskit::Role::Label
+    }));
+    assert!(
+        host.operations
+            .contains(&SelectionDialogOperation::ModeChanged { mode: target(2) })
+    );
+
+    let (_, back_frame) = frame(
+        &context,
+        &mut root,
+        ax_click(&second_frame, "mode1"),
+        &mut host,
+    );
+    let (_, focused_frame) = frame(&context, &mut root, Vec::new(), &mut host);
+    let focused_ax = focused_frame
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .expect("query focus after mode switch");
+    let focused_query = focused_ax
+        .nodes
+        .iter()
+        .find(|(id, node)| {
+            *id == focused_ax.focus
+                && node.role() == egui::accesskit::Role::TextInput
+                && node.label() == Some("mode1")
+        })
+        .map(|(id, _)| *id)
+        .expect("query retains focus");
+    let _ = back_frame;
+
+    let updated = SelectionDialogProjectionLease::new(2, "検索", controls(), projection.clone())
+        .expect("updated lease")
+        .search_mode_presentation(
+            target(1),
+            SearchModePresentation::new()
+                .query_hint("")
+                .include_hint("含める語の例")
+                .exclude_hint("除外する語の例")
+                .include_validity(SearchFilterValidity::Valid)
+                .exclude_validity(SearchFilterValidity::Invalid)
+                .history_heading("更新された履歴"),
+        )
+        .expect("updated mode presentation");
+    let operation_count = host.operations.len();
+    root.synchronize_selection_dialog(updated)
+        .expect("resynchronize");
+    let (_, updated_frame) = frame(&context, &mut root, Vec::new(), &mut host);
+    let exclude_line = invalid_filter_line(&updated_frame, invalid_color);
+    assert!(exclude_line.min.y > include_line.min.y);
+    let updated_ax = updated_frame
+        .platform_output
+        .accesskit_update
+        .as_ref()
+        .expect("updated AX");
+    assert_eq!(updated_ax.focus, focused_query);
+    assert!(updated_ax.nodes.iter().any(|(_, node)| {
+        node.label() == Some("更新された履歴") && node.role() == egui::accesskit::Role::Label
+    }));
+    assert!(!host.operations[operation_count..].iter().any(|operation| {
+        matches!(
+            operation,
+            SelectionDialogOperation::QueryChanged { .. }
+                | SelectionDialogOperation::IncludeChanged { .. }
+                | SelectionDialogOperation::ExcludeChanged { .. }
+        )
+    }));
+    assert!(matches!(
+        SelectionDialogProjectionLease::new(3, "bad target", controls(), projection)
+            .expect("lease")
+            .search_mode_presentation(target(99), SearchModePresentation::new()),
+        Err(SelectionDialogProjectionError::MissingMode)
     ));
 }
 

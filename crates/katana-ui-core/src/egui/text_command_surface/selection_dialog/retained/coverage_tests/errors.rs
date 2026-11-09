@@ -1,8 +1,9 @@
 use super::super::super::super::types::TextCommandSurfaceStyle;
 use super::super::super::model::{
-    FileSelectionProjection, KucDialogTarget, SearchResultMode, SearchResultOption,
-    SearchResultRow, SelectionDialogProjection, SelectionDialogProjectionLease,
+    FileSelectionProjection, KucDialogTarget, SearchResultMode, SearchResultRow,
+    SelectionDialogProjection, SelectionDialogProjectionLease,
 };
+use super::super::super::search_model::SearchResultOption;
 use super::super::SelectionDialogRetainedState;
 use super::{controls, file_lease, mode_with_row, search_lease, show_rejects};
 use crate::text_raster::{PlatformTextRasterConfig, PlatformTextRasterResources};
@@ -279,13 +280,17 @@ fn input_propagates_raster_error_from_an_invalid_font_style() {
     let mut operations = Vec::new();
     let mut result = None;
     let mut output = context.run_ui(egui::RawInput::default(), |ui| {
-        result = Some(state.input(
+        result = Some(state.input_presented(
             ui,
             "coverage.invalid-input".into(),
             "Query",
             &mut value,
             &style,
-            false,
+            super::super::input::InputPresentation {
+                focus: false,
+                placeholder: "",
+                invalid: false,
+            },
             &mut operations,
         ));
     });

@@ -14,7 +14,7 @@ Issue #81 の Windows / Linux 検証は、実機を保有していないため�
 
 ## CI の境界
 
-`.github/workflows/native-ime-contract.yml` は `macos-latest`、`ubuntu-latest`、`windows-latest` で次を実行する。
+`.github/workflows/native-ime-contract.yml` は `macos-latest`、`ubuntu-24.04`、`windows-latest` で次を実行する。
 
 - core verifier を `--no-default-features --features native-ime-evidence` でテストする。
 - egui の Unicode session contract を `--features egui,native-ime-evidence` でテストする。

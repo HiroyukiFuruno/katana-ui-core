@@ -5,6 +5,8 @@ mod caret;
 mod editing;
 mod events;
 mod options;
+#[cfg(feature = "egui")]
+mod presentation;
 mod state;
 #[cfg(test)]
 mod synchronization_identity_tests;

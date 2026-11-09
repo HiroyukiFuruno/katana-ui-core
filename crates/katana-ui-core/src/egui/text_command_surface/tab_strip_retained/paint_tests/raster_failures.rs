@@ -36,7 +36,7 @@ fn render_group_propagates_real_raster_failures_from_header_tab_and_nested_group
 
     let invalid_header = TabStripGroupDescriptor::new(
         TabStripGroupTarget::from_opaque_bytes(b"invalid-header"),
-        TabStripText::new(""),
+        TabStripText::new("W".repeat(2048)),
     );
     let mut header_result = None;
     let mut output = context.run_ui(egui::RawInput::default(), |ui| {
@@ -62,7 +62,7 @@ fn render_group_propagates_real_raster_failures_from_header_tab_and_nested_group
     )
     .tab(TabStripTabDescriptor::new(
         TabStripTabTarget::from_opaque_bytes(b"invalid-child-tab"),
-        TabStripText::new(""),
+        TabStripText::new("W".repeat(2048)),
     ));
     let mut tab_result = None;
     let mut output = context.run_ui(egui::RawInput::default(), |ui| {
@@ -88,7 +88,7 @@ fn render_group_propagates_real_raster_failures_from_header_tab_and_nested_group
     )
     .group(TabStripGroupDescriptor::new(
         TabStripGroupTarget::from_opaque_bytes(b"invalid-child-group"),
-        TabStripText::new(""),
+        TabStripText::new("W".repeat(2048)),
     ));
     let mut nested_result = None;
     let mut output = context.run_ui(egui::RawInput::default(), |ui| {

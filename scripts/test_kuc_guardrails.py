@@ -4055,10 +4055,14 @@ class KucGuardrailsTest(unittest.TestCase):
         self.assertIn("tail -n 200", apt_installer_source)
         self.assertIn("failed after ${max_attempts} attempts", apt_installer_source)
 
-        for workflow_name in (
-            "test-and-build.yml",
-            "release-preflight.yml",
-            "release.yml",
+        for workflow_name, runner_selectors in (
+            ("test-and-build.yml", ("os: [macos-latest, ubuntu-24.04, windows-latest]",)),
+            ("native-ime-contract.yml", ("os: [macos-latest, ubuntu-24.04, windows-latest]",)),
+            ("release-preflight.yml", ("runs-on: ubuntu-24.04",)),
+            (
+                "release.yml",
+                ("runs-on: ubuntu-24.04", "os: [macos-latest, ubuntu-24.04, windows-latest]"),
+            ),
         ):
             with self.subTest(workflow=workflow_name):
                 source = (root / ".github/workflows" / workflow_name).read_text(
@@ -4066,6 +4070,9 @@ class KucGuardrailsTest(unittest.TestCase):
                 )
                 self.assertIn("bash scripts/ci/install-headless-display.sh", source)
                 self.assertNotIn("sudo apt-get update", source)
+                self.assertNotIn("ubuntu-latest", source)
+                for selector in runner_selectors:
+                    self.assertIn(selector, source)
 
     def test_apt_installer_passes_bounded_acquire_options(self) -> None:
         root = Path(__file__).resolve().parents[1]
@@ -4353,7 +4360,7 @@ class KucGuardrailsTest(unittest.TestCase):
         self.assertEqual(
             workflow_step(test_and_build, "Install ffmpeg on Ubuntu"),
             "      - name: Install ffmpeg on Ubuntu\n"
-            "        if: matrix.os == 'ubuntu-latest'\n"
+            "        if: matrix.os == 'ubuntu-24.04'\n"
             "        run: bash scripts/ci/install-ffmpeg.sh",
         )
         self.assertLess(

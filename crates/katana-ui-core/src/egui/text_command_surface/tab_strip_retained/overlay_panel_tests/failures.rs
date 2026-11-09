@@ -97,7 +97,7 @@ fn overlay_tree_propagates_real_missing_port_after_pointer_press_and_release() {
 }
 
 #[test]
-fn overlay_panel_propagates_real_empty_label_raster_failure_after_warm_frame() {
+fn overlay_panel_propagates_real_oversized_label_raster_failure_after_warm_frame() {
     let mut state = build_state();
     let context = egui::Context::default();
     let valid = vec![TabStripMenuEntry::action(
@@ -120,7 +120,7 @@ fn overlay_panel_propagates_real_empty_label_raster_failure_after_warm_frame() {
     output.textures_delta.clear();
 
     let invalid = vec![TabStripMenuEntry::action(
-        TabStripText::new(""),
+        TabStripText::new("W".repeat(2048)),
         TabStripText::new("empty label"),
         TabStripMenuOperation::RequestClose,
     )];

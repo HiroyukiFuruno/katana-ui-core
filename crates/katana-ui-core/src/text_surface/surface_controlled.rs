@@ -3,6 +3,24 @@ use super::surface_model::TextSurface;
 use crate::render_model::UiStateId;
 
 impl TextSurface {
+    /// Synchronizes field placeholder and validity without changing focus, selection or composition.
+    #[cfg(feature = "egui")]
+    pub(crate) fn synchronize_field_presentation(
+        &mut self,
+        placeholder: &str,
+        invalid: bool,
+    ) -> bool {
+        if !self
+            .props
+            .text_area
+            .synchronize_field_presentation(placeholder, invalid)
+        {
+            return false;
+        }
+        self.state.text_area = self.props.text_area.state().clone();
+        true
+    }
+
     /// Synchronizes a controlled identity without replacing KUC-owned interaction state.
     pub fn synchronize_state_id(&mut self, value: impl Into<UiStateId>) -> bool {
         if !self.props.text_area.synchronize_state_id(value) {

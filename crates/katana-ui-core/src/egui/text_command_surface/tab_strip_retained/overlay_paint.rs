@@ -21,6 +21,9 @@ impl TabStripRetainedState {
             .rasterizer
             .rasterize(text, ui.ctx().pixels_per_point())
             .map_err(TabStripRetainedError::Raster)?;
+        if raster.width == 0 || raster.height == 0 {
+            return Ok(());
+        }
         let raster_fingerprint = hex::encode(Sha256::digest(&raster.rgba_pixels));
         let texture = TabStripPaintTexture {
             identity: format!("tab-strip-overlay:{prefix}:{index}:{raster_fingerprint}"),

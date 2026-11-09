@@ -18,9 +18,11 @@
 GitHub のブランチ保護（branch protection）では、KUC repo 内で次を必須検査（required check）にする。
 
 - `Test and Build (macos-latest)`
-- `Test and Build (ubuntu-latest)`
+- `Test and Build (ubuntu-24.04)`
 - `Test and Build (windows-latest)`
 - `preflight`
+
+Linux の描画検査と公開ジョブは、検査でハッシュを固定している Noto Color Emoji を供給する Ubuntu 24.04 を使用する。
 
 ## リリース前検査
 

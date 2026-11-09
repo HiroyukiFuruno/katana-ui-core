@@ -1,4 +1,8 @@
 use super::query_history::{SearchQueryArrowKeyPolicy, SearchQueryHistoryDirection};
+pub(super) use super::search_model::{
+    SearchFilterValidity, SearchModePresentation, SearchResultMode, SearchResultProjection,
+    SearchResultRow,
+};
 use serde::{Deserialize, Serialize};
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -53,43 +57,6 @@ pub struct FileSelectionProjection {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SearchResultOption {
-    pub target: KucDialogTarget,
-    pub label: String,
-    pub enabled: bool,
-    pub selected: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SearchResultRow {
-    pub target: KucDialogTarget,
-    pub label: String,
-    pub auxiliary_label: Option<String>,
-    pub snippet: Option<String>,
-    pub highlights: Vec<(usize, usize)>,
-    pub disabled: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SearchResultMode {
-    pub target: KucDialogTarget,
-    pub label: String,
-    pub query: String,
-    pub include: Option<String>,
-    pub exclude: Option<String>,
-    pub options: Vec<SearchResultOption>,
-    pub history: Vec<SearchResultRow>,
-    pub results: Vec<SearchResultRow>,
-    pub searched: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct SearchResultProjection {
-    pub modes: Vec<SearchResultMode>,
-    pub active_mode: KucDialogTarget,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SelectionDialogProjection {
     File(FileSelectionProjection),
     Search(SearchResultProjection),
@@ -107,6 +74,8 @@ pub struct SelectionDialogProjectionLease {
     pub(crate) projection: SelectionDialogProjection,
     pub(crate) query_arrow_policies:
         std::collections::HashMap<KucDialogTarget, SearchQueryArrowKeyPolicy>,
+    pub(crate) search_mode_presentations:
+        std::collections::HashMap<KucDialogTarget, SearchModePresentation>,
 }
 
 impl SelectionDialogProjectionLease {
@@ -126,6 +95,7 @@ impl SelectionDialogProjectionLease {
             readonly: false,
             projection,
             query_arrow_policies: std::collections::HashMap::new(),
+            search_mode_presentations: std::collections::HashMap::new(),
         })
     }
 
@@ -143,6 +113,30 @@ impl SelectionDialogProjectionLease {
     pub fn readonly(mut self, value: bool) -> Self {
         self.readonly = value;
         self
+    }
+
+    /// Sets localized hints, filter validity and a non-interactive history heading for one mode.
+    pub fn search_mode_presentation(
+        mut self,
+        mode: KucDialogTarget,
+        presentation: SearchModePresentation,
+    ) -> Result<Self, SelectionDialogProjectionError> {
+        if !matches!(&self.projection, SelectionDialogProjection::Search(search) if search.modes.iter().any(|item| item.target == mode))
+        {
+            return Err(SelectionDialogProjectionError::MissingMode);
+        }
+        self.search_mode_presentations.insert(mode, presentation);
+        Ok(self)
+    }
+
+    pub(crate) fn search_mode_presentation_for(
+        &self,
+        mode: &KucDialogTarget,
+    ) -> SearchModePresentation {
+        self.search_mode_presentations
+            .get(mode)
+            .cloned()
+            .unwrap_or_default()
     }
 }
 

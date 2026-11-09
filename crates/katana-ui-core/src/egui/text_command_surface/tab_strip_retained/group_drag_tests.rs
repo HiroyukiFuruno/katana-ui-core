@@ -91,11 +91,14 @@ fn ongoing_group_drag_skips_self_and_tab_candidates_and_keeps_feedback() {
 
 #[test]
 fn ongoing_group_drag_propagates_real_ghost_raster_failure_without_forwarding() {
-    let source = TabStripGroupTarget::from_opaque_bytes(b"source-empty-label");
+    let source = TabStripGroupTarget::from_opaque_bytes(b"source-oversized-label");
     let projection = TabStripProjection::new(1, TabStripCorrelation::from_opaque_bytes(b"corr"))
         .group(
-            TabStripGroupDescriptor::new(source.copy_for_route(), TabStripText::new(""))
-                .capabilities(TabStripGroupCapabilities::new().draggable(true)),
+            TabStripGroupDescriptor::new(
+                source.copy_for_route(),
+                TabStripText::new("W".repeat(2048)),
+            )
+            .capabilities(TabStripGroupCapabilities::new().draggable(true)),
         );
     let config = PlatformTextRasterConfig::default();
     let catalog = Arc::new(PlatformFontCatalog::new(config.catalog_policy()));
@@ -111,7 +114,7 @@ fn ongoing_group_drag_propagates_real_ghost_raster_failure_without_forwarding() 
     }));
     state.group_drag = Some(super::super::TabStripGroupDragState {
         source,
-        label: TabStripText::new(""),
+        label: TabStripText::new("W".repeat(2048)),
         pointer: egui::pos2(20.0, 10.0),
     });
     let context = egui::Context::default();
